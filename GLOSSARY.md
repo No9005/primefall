@@ -4,17 +4,17 @@ Primefall is a mobile-first, 2.5D tactical 3v3 game where teams plan simultaneou
 
 ## Language
 
-### Heroes and teams
+### Heroes and squads
 
 **Hero**:
 A controllable unit with a fixed deck, weapon range, and unique card set.
 _Avoid_: Character, unit, champion
 
-**Team**:
+**Squad**:
 A group of three Heroes fighting together.
-_Avoid_: Squad, faction
+_Avoid_: Team, faction
 
-**Erschöpfung / Exhaustion**:
+**Exhaustion**:
 The state of a Hero whose Deck is empty. An exhausted Hero is removed from the match.
 _Avoid_: Death, KO, defeat
 
@@ -75,7 +75,7 @@ A Hero state granted by certain Assassin Utility cards. A hidden Hero remains co
 _Avoid_: Stealth, invisible, camouflage
 
 **Marked**:
-A target state that makes an enemy visible to the marking Hero’s team until the end of the next round.
+A target state that makes an enemy visible to the marking Hero’s squad until the end of the next round.
 _Avoid_: Tagged, revealed, spotted
 
 ### Battlefield and objectives
@@ -89,9 +89,9 @@ The rule determining whether a Hero can see and target another Hero. Attacks req
 _Avoid_: Vision, LOS
 
 **Prime Zone**:
-The central 3 by 3 objective area. A team wins by controlling it during three consecutive resolutions.
+The central 3 by 3 objective area. A squad wins by controlling it during three consecutive resolutions.
 _Avoid_: Point, base, capture zone
 
 **Resolution**:
-The deterministic simulation of all committed commands after both teams have planned.
+The deterministic simulation of all committed commands after both squads have planned.
 _Avoid_: Turn, combat phase, action phase
