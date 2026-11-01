@@ -12,7 +12,7 @@ export default tseslint.config(
   { files: ["**/*.{ts,tsx}"], languageOptions: { globals: globals.browser } },
   {
     // Compare against enum members, never string literals (project rule in CLAUDE.md).
-    files: ["packages/**/*.ts", "apps/**/*.{ts,tsx}"],
+    files: ["packages/**/*.ts", "apps/**/*.{ts,tsx}", "tools/**/*.ts"],
     languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
     rules: { "@typescript-eslint/no-unsafe-enum-comparison": "error" },
   },

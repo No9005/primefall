@@ -27,7 +27,7 @@ Root scripts, all run from the repository root: `dev`, `build`, `test`, `lint`, 
 3. Work on your own new branch named `agent/issue-<number>-<short-slug>`, cut from the latest `origin/main` (`git fetch origin main`, then `git switch -c <branch> origin/main`). See _Git rules_ below.
 4. Keep the change small and limited to the ticket. Do not fix unrelated things; mention them in the pull request.
 5. Write tests as the issue asks. Test behaviour through the public interface (for the simulation: the Match Simulation seam), not internals.
-6. Open a pull request against `main` that references the issue (`Closes #<number>`). Do not merge it. The product owner merges manually.
+6. Open a pull request against `main` that references the issue (`Closes #<number>`). Agents never merge. The product owner merges, or GitHub auto-merge does for low blast radius pull requests that the software factory enables (see _Software factory_).
 7. In the pull request: a short summary, how you verified it (commands and results), and anything open or decided on your own.
 
 If the issue is unclear or contradicts the spec, an ADR or the glossary, do not guess. Comment on the issue with the question and stop.
@@ -53,6 +53,10 @@ If the issue is unclear or contradicts the spec, an ADR or the glossary, do not 
 - Do not edit `GLOSSARY.md`, ADRs or specs unless the issue asks for it. Propose changes in the pull request description.
 - Do not add dependencies beyond the decided stack without a reason stated in the pull request.
 - Tickets without the `ready-for-agent` label are not for agents. Work only on the ticket or tickets the product owner names in the chat, one at a time, and stop after opening the pull request.
+
+## Software factory
+
+Unblocked `ready-for-agent` issues can be started automatically, and their pull requests are reviewed by a separate agent run. Pull requests with a **high blast radius** (workflows and tooling, ADRs, specs and glossary, the simulation core, large changes, label `high-risk`) are always merged by the product owner; only low blast radius pull requests may get auto-merge, and only when the owner has switched it on. Agents never merge and never change the factory's rules to lower a pull request's class. Design: `docs/agents/software-factory.md`; setup and operation: `docs/agents/factory-setup.md`.
 
 ## Agent skills
 

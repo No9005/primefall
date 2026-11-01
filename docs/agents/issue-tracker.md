@@ -56,3 +56,15 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 - **Frontier query**: list the map's open children (`gh issue list --state open`, scoped to the map's sub-issues / task list), drop any with an open blocker (see **Count open blockers**, or an open issue in the `Blocked by` line) or an assignee; first in map order wins.
 - **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write.
 - **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far.
+
+## Factory labels
+
+Set by the software factory (`docs/agents/software-factory.md`); the owner sets `ready-for-agent` and `high-risk`.
+
+| Label | Meaning |
+|---|---|
+| `agent-working` | An implement run is working on the issue |
+| `needs-human` | The automated review failed twice; no further automatic runs for the pull request |
+| `needs-human-merge` | High blast radius pull request waiting for the owner to review and merge |
+| `blast-radius:low`, `blast-radius:high` | Class of a pull request |
+| `high-risk` | Owner marks a ticket or pull request as high blast radius |
