@@ -1,6 +1,15 @@
 // Reactor Deck map data (ADR 0016) and the Grid model shared by rules and rendering.
 
-export type TileKind = "floor" | "wall" | "fullCover" | "halfCover" | "primeZone" | "overwatchNest" | "spawn";
+/** String-valued so Match State stays readable when serialized; always compare against the members. */
+export enum TileKind {
+  Floor = "floor",
+  Wall = "wall",
+  FullCover = "fullCover",
+  HalfCover = "halfCover",
+  PrimeZone = "primeZone",
+  OverwatchNest = "overwatchNest",
+  Spawn = "spawn",
+}
 
 export interface GridPosition {
   col: number;
@@ -14,14 +23,15 @@ export interface Grid {
   tiles: readonly (readonly TileKind[])[];
 }
 
+// Raw characters only exist here, at the parsing boundary.
 const LEGEND: Record<string, TileKind> = {
-  ".": "floor",
-  "#": "wall",
-  F: "fullCover",
-  H: "halfCover",
-  P: "primeZone",
-  O: "overwatchNest",
-  S: "spawn",
+  ".": TileKind.Floor,
+  "#": TileKind.Wall,
+  F: TileKind.FullCover,
+  H: TileKind.HalfCover,
+  P: TileKind.PrimeZone,
+  O: TileKind.OverwatchNest,
+  S: TileKind.Spawn,
 };
 
 /** Parses an ASCII layout (one string per row) into a Grid and rejects ragged or unknown rows. */

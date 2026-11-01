@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findTiles, parseGrid, REACTOR_DECK, tileAt } from "./reactor-deck";
+import { findTiles, parseGrid, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
 
 const centreColumn = (REACTOR_DECK.width - 1) / 2;
 
@@ -19,17 +19,17 @@ describe("Reactor Deck", () => {
   it("is enclosed by walls", () => {
     const { width, height } = REACTOR_DECK;
     for (let col = 0; col < width; col++) {
-      expect(tileAt(REACTOR_DECK, { col, row: 0 })).toBe("wall");
-      expect(tileAt(REACTOR_DECK, { col, row: height - 1 })).toBe("wall");
+      expect(tileAt(REACTOR_DECK, { col, row: 0 })).toBe(TileKind.Wall);
+      expect(tileAt(REACTOR_DECK, { col, row: height - 1 })).toBe(TileKind.Wall);
     }
     for (let row = 0; row < height; row++) {
-      expect(tileAt(REACTOR_DECK, { col: 0, row })).toBe("wall");
-      expect(tileAt(REACTOR_DECK, { col: width - 1, row })).toBe("wall");
+      expect(tileAt(REACTOR_DECK, { col: 0, row })).toBe(TileKind.Wall);
+      expect(tileAt(REACTOR_DECK, { col: width - 1, row })).toBe(TileKind.Wall);
     }
   });
 
   it("gives each Squad exactly three Spawn tiles on its own edge", () => {
-    const spawns = findTiles(REACTOR_DECK, "spawn");
+    const spawns = findTiles(REACTOR_DECK, TileKind.Spawn);
     const left = spawns.filter((p) => p.col < centreColumn);
     const right = spawns.filter((p) => p.col > centreColumn);
     expect(spawns).toHaveLength(6);
@@ -38,7 +38,7 @@ describe("Reactor Deck", () => {
   });
 
   it("puts the 3 by 3 Prime Zone on the central tiles", () => {
-    const zone = findTiles(REACTOR_DECK, "primeZone");
+    const zone = findTiles(REACTOR_DECK, TileKind.PrimeZone);
     expect(zone).toHaveLength(9);
     for (const { col, row } of zone) {
       expect(col).toBeGreaterThanOrEqual(9);
@@ -49,11 +49,11 @@ describe("Reactor Deck", () => {
   });
 
   it("has exactly one Overwatch Nest on the central column", () => {
-    expect(findTiles(REACTOR_DECK, "overwatchNest")).toEqual([{ col: 10, row: 1 }]);
+    expect(findTiles(REACTOR_DECK, TileKind.OverwatchNest)).toEqual([{ col: 10, row: 1 }]);
   });
 
   it("places Half Cover symmetrically in the main corridor", () => {
-    expect(findTiles(REACTOR_DECK, "halfCover")).toEqual([{ col: 5, row: 5 }, { col: 15, row: 5 }]);
+    expect(findTiles(REACTOR_DECK, TileKind.HalfCover)).toEqual([{ col: 5, row: 5 }, { col: 15, row: 5 }]);
   });
 });
 
