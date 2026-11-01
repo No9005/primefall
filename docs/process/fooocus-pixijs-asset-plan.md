@@ -1,0 +1,430 @@
+# Fooocus to PixiJS Asset Production Plan
+
+## Purpose
+
+This document defines the first Fooocus-based asset production workflow for Primefall’s PixiJS prototype. It covers the three Hero classes and the Reactor Deck Grid, using the smallest practical set of poses and animations.
+
+Primefall is a mobile-first, 2.5D tactical 3v3 game with simultaneous planning and deterministic Resolution. Its visual presentation must prioritize readable silhouettes, clear tactical information, and fast comprehension on a phone-sized screen.
+
+## Visual Direction
+
+The target look is **stylized sci-fi tactical 2.5D**, not photorealistic and not a detailed AAA render.
+
+### Core visual rules
+
+- **2:1 isometric projection** for all Heroes, Cover, walls, and props.
+- **Clean cel-shaded game art** with bold, readable silhouettes.
+- **Limited sci-fi palette:** dark graphite, steel blue, teal, warm orange accents, and restrained red for enemy or danger signals.
+- **Simple directional lighting** with a consistent light direction across every asset.
+- **Soft contact shadows**, kept subtle so they do not interfere with Grid readability.
+- **Flat or near-flat backgrounds**, removed before export to PixiJS.
+- **No visual noise:** every prop must be recognizable as floor, wall, Full Cover, Half Cover, objective, or decoration.
+
+### Why this direction
+
+Primefall’s UX depends on players quickly understanding positioning, Line of Sight, Cover, and the Prime Zone. Highly detailed or photorealistic assets would reduce readability. A clean stylized look supports the game’s tactical clarity and mobile-first presentation.
+
+## Production Principles
+
+### One asset per generation
+
+Generate each Hero pose, prop, wall type, and floor tile as a separate image. Do not ask Fooocus for a complete sprite sheet in one generation; it tends to mix poses, duplicate characters, and produce inconsistent frames.
+
+### Fixed visual foundation
+
+Every prompt must reuse the same:
+
+- Camera: `2:1 isometric view`
+- Art style: `clean cel-shaded sci-fi game art`
+- Palette: `dark graphite, steel blue, teal, warm orange accents`
+- Lighting: `soft directional lighting, subtle contact shadow`
+- Background: `isolated on plain flat background`
+- Quality terms: `crisp edges, readable silhouette, high quality game sprite`
+
+### Variable parts
+
+Only change what the asset needs:
+
+- Hero class and equipment
+- Pose or animation frame
+- Weapon or held object
+- Prop type
+- Tile type
+- Direction, where required
+
+### Export rules
+
+- Export transparent PNGs with alpha.
+- Use one consistent pixels-per-unit scale.
+- Hero pivot: bottom center.
+- Tile pivot: bottom vertex of the 2:1 diamond.
+- Prop pivot: bottom center.
+- Animation frames must share identical canvas size, padding, and pivot.
+
+## Fooocus Settings
+
+### Global settings
+
+| Setting | Recommended value | Reason |
+|---|---|---|
+| Base model | Juggernaut XL v8/v9 | Versatile SDXL model; good starting point for stylized sci-fi game assets. |
+| Alternative model | AnimaPencilXL | Use if Juggernaut results are too realistic or too render-heavy. |
+| Performance | Speed for drafts, Quality for finals | Speed enables fast pose iteration; Quality produces final production frames. |
+| Aspect ratio | 1024 x 1024 for props and tiles; 832 x 1216 for Heroes | SDXL is most reliable around 1024 px; vertical ratios suit full-body Heroes. |
+| Guidance scale | 4–6 | Keeps the model responsive to the prompt without making images harsh. |
+| Image sharpness | 2–4 | Produces crisp sprite edges without unnatural over-sharpening. |
+| Seed | Fixed during iteration; record final seeds | Makes prompt changes comparable and allows controlled variation. |
+| Refiner | None | Avoids shifting the established stylized look. |
+| Styles | None or Fooocus V2 | Strong style presets can override the intended game-art direction. |
+
+### Image Prompt settings
+
+| Use case | Control mode | Weight | Stop At | Reason |
+|---|---|---:|---:|---|
+| New Hero pose from approved reference | PyraCanny | 0.8–1.0 | 0.4–0.5 | Preserves silhouette, proportions, and pose structure. |
+| Very strict pose or weapon position | PyraCanny | 1.0 | 0.4–0.5 | Maximizes structural control. |
+| Reuse approved color and material style | ImagePrompt | 0.4–0.7 | 0.7–0.9 | Transfers palette and material feel without copying the pose. |
+| Map tile variation | ImagePrompt | 0.4–0.6 | 0.8–0.9 | Keeps tile family consistent while allowing a new surface type. |
+
+## Prompt Structure
+
+### Fixed prompt block
+
+Use this block in every prompt:
+
+```text
+Primefall stylized sci-fi tactical game asset,
+2:1 isometric view,
+clean cel-shaded game art,
+dark graphite, steel blue, teal and warm orange accent palette,
+soft directional lighting, subtle contact shadow,
+isolated on plain flat background,
+crisp edges, readable silhouette, high quality game sprite
+```
+
+### Negative prompt
+
+Use this negative prompt for all generations:
+
+```text
+photorealistic, realistic photo, 3D render, blurry, noisy, text, watermark, logo,
+busy background, multiple characters, cropped, deformed, extra limbs, mutated,
+low contrast, muddy colors, complex background, UI elements
+```
+
+### Prompt template
+
+```text
+[single asset type] + [Hero class or object] + [pose/state] +
+[unique visual details] + [fixed Primefall style block]
+```
+
+Example:
+
+```text
+single Primefall Bruiser Hero, standing idle while holding compact kinetic shotgun,
+heavy armored exosuit, broad silhouette, teal armor plates, orange energy accents,
+Primefall stylized sci-fi tactical game asset,
+2:1 isometric view,
+clean cel-shaded game art,
+dark graphite, steel blue, teal and warm orange accent palette,
+soft directional lighting, subtle contact shadow,
+isolated on plain flat background,
+crisp edges, readable silhouette, high quality game sprite
+```
+
+## Hero Pose Set
+
+The MVP needs expressive but economical animation. Do not create a unique pose for every card. Instead, reuse a small set of shared tactical poses and add class-specific weapon or effect sprites.
+
+### Shared Hero poses
+
+Every Hero needs these base poses:
+
+| Pose | Used for | Notes |
+|---|---|---|
+| `idle` | Planning phase, waiting state | Neutral stance, weapon lowered or held ready |
+| `move` | Move commands and Resolution movement | One reusable movement pose; rotate or mirror where possible |
+| `attack_ranged` | Most Attack cards | Weapon aimed forward; muzzle flash as separate VFX |
+| `block_shield` | Block 2, Shield effects | Defensive stance with shield VFX |
+| `utility_cast` | Utility cards, Overdrives, drones, Cover deployment | One generic casting/activation pose |
+| `hit` | Deck Damage feedback | Short recoil or stagger |
+| `exhausted` | Deck empty / Hero removal | Kneeling or lowered stance; no death gore |
+
+### Class-specific additions
+
+| Hero | Additional pose or asset | Covers |
+|---|---|---|
+| Bruiser / Vanguard | `heavy_attack` | Slam Shot, Concussion Round, Shockwave, Adrenal Surge |
+| Bruiser / Vanguard | `breach_charge_throw` | Breach Charge and its Overdrive |
+| Controller / Tactician | `drone_deploy` | Scout Drone |
+| Controller / Tactician | `cover_deploy` | Deploy Cover |
+| Assassin / Striker | `precision_aim` | Precision Shot, Piercing Round, Long Shot, Ghost Shot |
+| Assassin / Striker | `hidden_crouch` | Vanish and Hidden state |
+
+This gives approximately **7 shared poses plus 6 class-specific poses**, or 27 Hero sprite bases before directional variants. VFX such as shields, drones, Cover deployment, muzzle flashes, and explosions should be separate sprites.
+
+## Hero Prompt Examples
+
+### Bruiser / Vanguard reference sheet
+
+```text
+game character reference sheet, full body, front view, side view, back view,
+single Primefall Bruiser Hero, durable sci-fi vanguard,
+heavy armored exosuit, broad silhouette, teal armor plates,
+orange energy accents, compact kinetic shotgun,
+Primefall stylized sci-fi tactical game asset,
+2:1 isometric view,
+clean cel-shaded game art,
+dark graphite, steel blue, teal and warm orange accent palette,
+soft directional lighting, subtle contact shadow,
+isolated on plain flat background,
+crisp edges, readable silhouette, high quality game sprite
+```
+
+### Bruiser heavy attack
+
+```text
+single Primefall Bruiser Hero, powerful close-range shotgun attack,
+heavy armored exosuit, broad silhouette, teal armor plates,
+orange energy accents, compact kinetic shotgun,
+aggressive forward stance,
+Primefall stylized sci-fi tactical game asset,
+2:1 isometric view,
+clean cel-shaded game art,
+dark graphite, steel blue, teal and warm orange accent palette,
+soft directional lighting, subtle contact shadow,
+isolated on plain flat background,
+crisp edges, readable silhouette, high quality game sprite
+```
+
+### Controller / Tactician reference sheet
+
+```text
+game character reference sheet, full body, front view, side view, back view,
+single Primefall Controller Hero, agile sci-fi tactician,
+light tactical suit, holographic wrist device, small pulse sidearm,
+blue-teal energy accents, compact silhouette,
+Primefall stylized sci-fi tactical game asset,
+2:1 isometric view,
+clean cel-shaded game art,
+dark graphite, steel blue, teal and warm orange accent palette,
+soft directional lighting, subtle contact shadow,
+isolated on plain flat background,
+crisp edges, readable silhouette, high quality game sprite
+```
+
+### Controller drone deployment
+
+```text
+single Primefall Controller Hero, deploying small scouting drone from wrist device,
+light tactical suit, holographic wrist device, small pulse sidearm,
+blue-teal energy accents, focused utility stance,
+Primefall stylized sci-fi tactical game asset,
+2:1 isometric view,
+clean cel-shaded game art,
+dark graphite, steel blue, teal and warm orange accent palette,
+soft directional lighting, subtle contact shadow,
+isolated on plain flat background,
+crisp edges, readable silhouette, high quality game sprite
+```
+
+### Assassin / Striker reference sheet
+
+```text
+game character reference sheet, full body, front view, side view, back view,
+single Primefall Assassin Hero, sleek sci-fi striker,
+lightweight dark armor, narrow silhouette, long precision rifle,
+orange targeting accents, hooded tactical helmet,
+Primefall stylized sci-fi tactical game asset,
+2:1 isometric view,
+clean cel-shaded game art,
+dark graphite, steel blue, teal and warm orange accent palette,
+soft directional lighting, subtle contact shadow,
+isolated on plain flat background,
+crisp edges, readable silhouette, high quality game sprite
+```
+
+### Assassin precision aim
+
+```text
+single Primefall Assassin Hero, aiming long precision rifle,
+lightweight dark armor, narrow silhouette,
+orange targeting accents, hooded tactical helmet,
+stable long-range firing stance,
+Primefall stylized sci-fi tactical game asset,
+2:1 isometric view,
+clean cel-shaded game art,
+dark graphite, steel blue, teal and warm orange accent palette,
+soft directional lighting, subtle contact shadow,
+isolated on plain flat background,
+crisp edges, readable silhouette, high quality game sprite
+```
+
+## Reactor Deck Grid Assets
+
+The Reactor Deck is a damaged cargo ship with a central reactor, mirror-symmetric layout, 20 by 12 tile Grid, no interactive doors, and no vertical levels. Generate tiles and Cover as separate assets so PixiJS can compose the Grid from data.
+
+### Required tile and prop set
+
+| Asset | Quantity | Purpose |
+|---|---:|---|
+| Open floor tile | 2–3 variants | Standard movement tiles |
+| Damaged floor tile | 1–2 variants | Visual variety without changing gameplay |
+| Wall / Bulkhead | 1–2 variants | Grid boundaries and sight blockers |
+| Full Cover | 1–2 variants | Blocks attacks and sight from a firing direction |
+| Half Cover | 1–2 variants | Reduces damage by 1 but does not block sight |
+| Reactor floor tile | 1 | Prime Zone center |
+| Reactor edge tile | 1 | Transition into the Prime Zone |
+| Overwatch Nest prop | 1 | Single Full Cover position overlooking the Prime Zone |
+| Spawn marker | 1 | Optional visual marker for Squad spawn areas |
+
+### Floor tile prompt
+
+```text
+single Primefall Reactor Deck floor tile, 2:1 isometric diamond shape,
+damaged cargo ship metal flooring, dark graphite plating,
+subtle teal technical markings, small scuffs and panel seams,
+Primefall stylized sci-fi tactical game asset,
+clean cel-shaded game art,
+soft directional lighting,
+isolated on plain flat background,
+no walls, no props, seamless tileable,
+crisp edges, high quality game sprite
+```
+
+### Wall / Bulkhead prompt
+
+```text
+single Primefall Reactor Deck wall segment, 2:1 isometric view,
+damaged cargo ship bulkhead, dark graphite metal panels,
+teal technical markings, orange warning stripe,
+Primefall stylized sci-fi tactical game asset,
+clean cel-shaded game art,
+soft directional lighting, subtle contact shadow,
+isolated on plain flat background,
+crisp edges, readable silhouette, high quality game sprite
+```
+
+### Full Cover prompt
+
+```text
+single Primefall Reactor Deck Full Cover prop, 2:1 isometric view,
+heavy reinforced cargo container, dark graphite metal,
+teal panel details, orange hazard markings,
+clear blocking silhouette,
+Primefall stylized sci-fi tactical game asset,
+clean cel-shaded game art,
+soft directional lighting, subtle contact shadow,
+isolated on plain flat background,
+crisp edges, readable silhouette, high quality game sprite
+```
+
+### Half Cover prompt
+
+```text
+single Primefall Reactor Deck Half Cover prop, 2:1 isometric view,
+low damaged cargo crate, dark graphite metal,
+teal panel details, orange hazard markings,
+lower silhouette than Full Cover,
+Primefall stylized sci-fi tactical game asset,
+clean cel-shaded game art,
+soft directional lighting, subtle contact shadow,
+isolated on plain flat background,
+crisp edges, readable silhouette, high quality game sprite
+```
+
+### Reactor / Prime Zone prompt
+
+```text
+single Primefall Reactor Deck reactor floor tile, 2:1 isometric diamond shape,
+central sci-fi reactor platform, circular dark metal base,
+glowing teal energy core, orange warning accents,
+Primefall stylized sci-fi tactical game asset,
+clean cel-shaded game art,
+soft directional lighting,
+isolated on plain flat background,
+no Heroes, no walls, seamless tileable,
+crisp edges, high quality game sprite
+```
+
+### Overwatch Nest prompt
+
+```text
+single Primefall Reactor Deck Overwatch Nest prop, 2:1 isometric view,
+elevated-looking reinforced observation position,
+dark graphite metal structure, teal scanning light,
+orange hazard markings, clear Full Cover silhouette,
+Primefall stylized sci-fi tactical game asset,
+clean cel-shaded game art,
+soft directional lighting, subtle contact shadow,
+isolated on plain flat background,
+crisp edges, readable silhouette, high quality game sprite
+```
+
+## VFX Assets
+
+Generate effects separately from Heroes. PixiJS can then attach, rotate, scale, and animate them independently.
+
+| VFX | Used for |
+|---|---|
+| Muzzle flash | Ranged attacks |
+| Energy projectile | Pulse Bolt, Tag Round, precision shots |
+| Shotgun blast | Bruiser attacks |
+| Shield ring | Block, Bulwark, Aegis Protocol |
+| Cover deploy effect | Deploy Cover |
+| Drone sprite | Scout Drone |
+| Mark reticle | Marked status |
+| Slow indicator | Slow status |
+| Reactor pulse | Prime Zone control feedback |
+| Explosion / breach effect | Breach Charge and Overdrive |
+
+### Muzzle flash prompt
+
+```text
+single sci-fi muzzle flash VFX sprite,
+short bright orange energy burst,
+transparent-background-ready game effect,
+clean stylized game art,
+isolated on plain black background,
+no weapon, no character, no text
+```
+
+### Shield VFX prompt
+
+```text
+single sci-fi shield VFX sprite,
+translucent teal hexagonal energy barrier,
+compact circular shape,
+transparent-background-ready game effect,
+clean stylized game art,
+isolated on plain black background,
+no character, no weapon, no text
+```
+
+## Production Order
+
+1. Create one Bruiser reference sheet.
+2. Approve silhouette, palette, lighting, and isometric angle.
+3. Generate the Controller and Assassin reference sheets using the approved style.
+4. Generate the seven shared poses for each Hero.
+5. Generate the six class-specific poses.
+6. Generate floor, wall, Full Cover, Half Cover, reactor, and Overwatch Nest assets.
+7. Generate VFX separately.
+8. Remove backgrounds and export transparent PNGs.
+9. Build a small PixiJS test scene with one Hero, one floor tile, one wall, Full Cover, and Half Cover.
+10. Validate scale, pivots, shadows, depth sorting, and Grid readability.
+11. Only then produce remaining variants and animation frames.
+
+## Acceptance Criteria
+
+An asset is production-ready when:
+
+- It uses the shared 2:1 isometric camera.
+- Its silhouette is readable at mobile scale.
+- Its palette matches the Primefall visual direction.
+- It has a transparent background.
+- Its pivot is correct for PixiJS.
+- Its lighting direction matches all other assets.
+- It does not visually compete with Grid, Cover, or objective information.
+- Animation frames align in size, pivot, and proportions.
