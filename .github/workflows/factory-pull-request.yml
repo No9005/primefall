@@ -81,14 +81,17 @@ jobs:
     outputs:
       verdict: ${{ steps.report.outputs.verdict }}
     steps:
+      # The action must run inside a git repository, so the pull request is checked out at the
+      # workspace root (first: a later root checkout would clean `trusted`) and the trusted factory
+      # code from the default branch next to it.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.context.outputs.head_sha }}
+          fetch-depth: 0
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.repository.default_branch }}
           path: trusted
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.context.outputs.head_sha }}
-          path: work
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -96,7 +99,6 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          working_directory: work
           prompt: |
             You are the review run of the Primefall software factory. Review pull request #${{ env.PR }} in ${{ github.repository }}. You only read; you never change the repository.
 
@@ -104,7 +106,7 @@ jobs:
             - Judge the diff cold against: the issue and its acceptance criteria, CLAUDE.md, the ADRs in docs/adr, GLOSSARY.md and the specs it touches.
             - Verdict "fail" when something must be fixed: wrong behaviour, a missed acceptance criterion, a violated project rule or ADR, missing or weak tests. Otherwise "pass"; put minor remarks in the summary.
             - Each finding names a file and a line that exists in the new version of the file, and says what to change.
-            - If you judge the change riskier than the rules in tools/factory/blast-radius-rules.json say (for example it affects shared behaviour broadly), set raiseBlastRadiusReason. You can raise the class, never lower it.
+            - If you judge the change riskier than the rules in trusted/tools/factory/blast-radius-rules.json say (for example it affects shared behaviour broadly), set raiseBlastRadiusReason. You can raise the class, never lower it.
             - Write exactly one file, review-result.json, in the current directory, as JSON: {"verdict":"pass"|"fail","summary":"...","findings":[{"path":"...","line":1,"body":"..."}],"raiseBlastRadiusReason":"..." (optional)}.
           claude_args: |
             --model claude-sonnet-5-5
@@ -113,7 +115,7 @@ jobs:
             --allowedTools "Read,Glob,Grep,Write,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(git diff:*),Bash(git log:*)"
       - name: Report the review
         id: report
-        run: node trusted/tools/factory/src/cli.ts review-report "$PR" work/review-result.json
+        run: node trusted/tools/factory/src/cli.ts review-report "$PR" review-result.json
         env:
           GH_TOKEN: ${{ github.token }}
 
