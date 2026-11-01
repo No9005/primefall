@@ -54,6 +54,7 @@ const Command = {
   ReworkDecision: "rework-decision",
   MergeGate: "merge-gate",
   RetroDecision: "retro-decision",
+  DeleteMergedBranch: "delete-merged-branch",
 } as const;
 
 const REVIEW_STATUS_CONTEXT = "agent-review";
@@ -379,6 +380,15 @@ function retroDecision(number: number, manual: boolean): void {
   output("numbers", merged.slice(0, interval === 0 ? DEFAULT_RETRO_EVERY : interval).map((pr) => pr.number).join(","));
 }
 
+/** After a merge: deletes the head branch of a merged factory pull request. Other branches are left alone. */
+function deleteMergedBranch(number: number): void {
+  const pr = api<{ merged_at: string | null; head: { ref: string; repo: { full_name: string } | null }; base: { repo: { full_name: string } } }>(`repos/${repo}/pulls/${number}`);
+  const factory = isFactoryPullRequest({ headRef: pr.head.ref, headRepo: pr.head.repo?.full_name ?? "", baseRepo: pr.base.repo.full_name });
+  if (pr.merged_at === null || !factory) return console.log(`Branch ${pr.head.ref} is kept (merged: ${pr.merged_at !== null}, factory pull request: ${factory}).`);
+  gh(["api", "-X", "DELETE", `repos/${repo}/git/refs/heads/${pr.head.ref}`]);
+  console.log(`Deleted branch ${pr.head.ref}.`);
+}
+
 const [command, ...args] = process.argv.slice(2);
 switch (command) {
   case Command.EnsureLabels:
@@ -413,6 +423,9 @@ switch (command) {
     break;
   case Command.RetroDecision:
     retroDecision(Number(args[0]), args[1] === "manual");
+    break;
+  case Command.DeleteMergedBranch:
+    deleteMergedBranch(Number(args[0]));
     break;
   default:
     console.error(`Unknown command: ${command ?? "(none)"}`);

@@ -28,7 +28,7 @@ Settings, Rules, Rulesets, New branch ruleset, target `main`, enforcement Active
 - Require conversation resolution before merging.
 - Block force pushes and deletions. Restrict direct pushes (everything goes through pull requests).
 - Bypass list: only you. This is also how you merge your own pull requests, which never receive `agent-review`.
-- Allow auto-merge: Settings, General, Pull Requests, "Allow auto-merge"; allow squash merging; optionally "Automatically delete head branches".
+- Allow auto-merge: Settings, General, Pull Requests, "Allow auto-merge"; allow squash merging; "Automatically delete head branches" is not needed: the factory deletes the branches of merged `agent/` pull requests itself (the workflow `factory-cleanup.yml`).
 
 ## 5. Variables and labels
 

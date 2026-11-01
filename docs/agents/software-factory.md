@@ -12,7 +12,7 @@ The factory turns unblocked `ready-for-agent` issues into pull requests and merg
 | Continuous deployment | Vercel (preview per pull request, deploy from `main`) |
 | Observability platform | None on purpose: the Actions run pages suffice |
 
-The factory code (decisions and CLI) lives in `tools/factory`. The workflows are `factory-implement.yml`, `factory-pull-request.yml` and `factory-retro.yml` next to `ci.yml`. The workflows always run the factory code and rules from the default branch, never from the pull request they judge.
+The factory code (decisions and CLI) lives in `tools/factory`. The workflows are `factory-implement.yml`, `factory-pull-request.yml`, `factory-retro.yml` and `factory-cleanup.yml` next to `ci.yml`. The workflows always run the factory code and rules from the default branch, never from the pull request they judge.
 
 ## Tasks
 
@@ -24,6 +24,7 @@ The factory code (decisions and CLI) lives in `tools/factory`. The workflows are
 | **Rework** | `agent-review` failed and fewer than 2 reviews have failed | Fixes only what the review named, pushes, and runs the pipeline again for the new commit | Review. After the second failed review: label `needs-human`, no more runs |
 | **Merge gate** | Review passed | Low and `AUTOMERGE_ENABLED=true`: enables GitHub's native auto-merge (squash). High: label `needs-human-merge` with a comment, no auto-merge | The merge closes the issue, which triggers Implement for the tickets it unblocked |
 | **Retro** | An `agent/` pull request is merged and the number of merged `agent/` pull requests (retro pull requests not counted) is a multiple of `RETRO_EVERY` (default 10, `0` = off), or the owner starts it by hand (Actions, "Factory retro") | A run reads the last N merged agent pull requests (issues, reviews, rework, labels, the owner's comments) and looks for a mistake that appears at least twice or that the owner corrected. If it finds one, it opens `agent/retro-<n>` with changes to `CLAUDE.md` or other agent instructions, each tied to the pull requests that motivated it; otherwise it only comments on the latest pull request. It cannot push workflow files and never touches the blast radius rules, `CODEOWNERS`, ADRs, specs or the glossary | Review. The merge gate never enables auto-merge for a retro pull request: the owner decides |
+| **Cleanup** | An `agent/` pull request of this repository is merged | Deletes its head branch. Other branches are never deleted | Nothing |
 
 Agents never merge. Only the merge gate enables auto-merge, and GitHub merges once the rules of `main` are satisfied (CI, `agent-review`, Vercel preview, resolved conversations, code owner review where required).
 
