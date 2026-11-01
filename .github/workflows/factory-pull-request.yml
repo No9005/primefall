@@ -96,6 +96,9 @@ jobs:
         with:
           node-version: 22
       - name: Collect the review bot's open threads
+        # Only an aid for the reviewer: if it fails (for example because the command is new and the
+        # trusted code on the default branch does not know it yet), the review still runs without it.
+        continue-on-error: true
         run: node trusted/tools/factory/src/cli.ts open-threads "$PR" open-review-threads.json
         env:
           GH_TOKEN: ${{ github.token }}
