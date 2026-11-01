@@ -297,7 +297,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   const aimsAtAlly = aimedCard?.type === CardType.Utility && aimedCard.target !== CardTarget.VisibleEnemy;
   const targetableIds = useMemo(() => {
     if (aiming === undefined || playing) return [];
-    if (aimedCard?.target === CardTarget.SelfHero) return [selected.id];
+    if (aimedCard?.target === CardTarget.SelfHero || aimedCard?.target === CardTarget.EnemiesInRange) return [selected.id];
     if (aimsAtAlly) return view.heroes.filter((hero) => hero.id !== selected.id && !hero.exhausted).map((hero) => hero.id);
     return view.enemies.filter((enemy) => enemy.visibility === Visibility.Visible && !enemy.exhausted).map((enemy) => enemy.id);
   }, [aiming, aimedCard, aimsAtAlly, playing, selected.id, view.heroes, view.enemies]);
@@ -440,9 +440,11 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         <div className="hud target-hint">
           {aimedCard?.target === CardTarget.SelfHero
             ? "Tap this Hero to confirm"
-            : aimsAtAlly
-              ? "Tap an allied Hero"
-              : "Tap an enemy Hero to attack"}
+            : aimedCard?.target === CardTarget.EnemiesInRange
+              ? "Tap this Hero to hit every enemy Hero in Range"
+              : aimsAtAlly
+                ? "Tap an allied Hero"
+                : "Tap an enemy Hero to attack"}
         </div>
       )}
       <div className="hud energy" data-testid="energy" aria-label="Energy">

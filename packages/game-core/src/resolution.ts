@@ -11,6 +11,7 @@ import {
   CardType,
   EffectKind,
   HERO_DECKS,
+  isAreaAttack,
   isPlayableCard,
   isPlayableUtility,
   type PLAYABLE_UTILITY_EFFECTS,
@@ -29,6 +30,7 @@ import {
 import {
   CoverKind,
   coverAgainst,
+  coverAt,
   type GridPosition,
   HALF_COVER_REDUCTION,
   hasLineOfSight,
@@ -144,15 +146,21 @@ function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: 
  * lose their last card in this Tick. A failed Attack (Range, Line of Sight, Exhausted target) does nothing.
  */
 function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], events: MatchEvent[]): void {
-  const landed = attacks.filter(({ hero, card, targetId }) => {
+  const canReach = (hero: HeroState, card: CardDefinition, target: HeroState) =>
+    !target.exhausted &&
+    target.squad !== hero.squad &&
+    chebyshevDistance(hero.position, target.position) <= (card.range ?? 0) &&
+    hasLineOfSight(REACTOR_DECK, hero.position, target.position) &&
+    coverAgainst(REACTOR_DECK, hero.position, target.position) !== CoverKind.Full;
+  // An area Attack hits every enemy Hero it reaches and does nothing when there is none.
+  const aimed = attacks.flatMap((attack) =>
+    isAreaAttack(attack.card)
+      ? match.heroes.filter((target) => canReach(attack.hero, attack.card, target)).map((target) => ({ ...attack, targetId: target.id }))
+      : [attack],
+  );
+  const landed = aimed.filter(({ hero, card, targetId }) => {
     const target = match.heroes.find((candidate) => candidate.id === targetId);
-    const reachable =
-      target !== undefined &&
-      !target.exhausted &&
-      target.squad !== hero.squad &&
-      chebyshevDistance(hero.position, target.position) <= (card.range ?? 0) &&
-      hasLineOfSight(REACTOR_DECK, hero.position, target.position) &&
-      coverAgainst(REACTOR_DECK, hero.position, target.position) !== CoverKind.Full;
+    const reachable = target !== undefined && canReach(hero, card, target);
     if (!reachable) events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId });
     return reachable;
   });
@@ -170,6 +178,39 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplySlow)) {
       applySlow(tick, hero, target, effect, events);
     }
+  }
+  // Knockback comes after all damage of the Tick, in Hero order, so an earlier push can block a later one.
+  for (const { hero, card, targetId } of landed) {
+    const push = card.effects.find(({ kind }) => kind === EffectKind.Knockback);
+    if (push) knockBack(match, tick, hero, match.heroes.find((candidate) => candidate.id === targetId)!, push.amount ?? 0, events);
+  }
+}
+
+/**
+ * Pushes `target` up to `distance` tiles directly away from `attacker`, one event per tile. It stops early,
+ * without error, before a Wall (or Wall corner), a Full Cover tile, another Hero or the edge of the Grid.
+ */
+function knockBack(
+  match: MatchState,
+  tick: number,
+  attacker: HeroState,
+  target: HeroState,
+  distance: number,
+  events: MatchEvent[],
+): void {
+  const direction = {
+    col: Math.sign(target.position.col - attacker.position.col),
+    row: Math.sign(target.position.row - attacker.position.row),
+  };
+  for (let step = 0; step < distance; step++) {
+    const to = { col: target.position.col + direction.col, row: target.position.row + direction.row };
+    const blocked =
+      !isStepAllowed(target.position, to) ||
+      coverAt(REACTOR_DECK, to) === CoverKind.Full ||
+      match.heroes.some((other) => samePosition(other.position, to));
+    if (blocked) return;
+    events.push({ kind: EventKind.Knockback, tick, heroId: target.id, from: { ...target.position }, to });
+    target.position = to;
   }
 }
 

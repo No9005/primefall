@@ -136,12 +136,26 @@ export function isPlayableUtility(card: CardDefinition): boolean {
 }
 
 /**
- * Whether a card's Primary effect can be planned and resolved so far. Only Attacks can be played in
- * Overdrive so far; Utility Overdrives (for example two allied targets) follow with their own tickets.
+ * Attacks that hit every enemy Hero in Range (no chosen target): damage, then Knockback. The player
+ * confirms them on the casting Hero, so the action's target is that Hero.
+ */
+export function isAreaAttack(card: CardDefinition): boolean {
+  const [first, ...rest] = card.effects;
+  return (
+    card.type === CardType.Attack &&
+    card.target === CardTarget.EnemiesInRange &&
+    first?.kind === EffectKind.Damage &&
+    rest.every((effect) => effect.kind === EffectKind.Knockback)
+  );
+}
+
+/**
+ * Whether a card's Primary effect can be planned and resolved so far. Only simple Attacks can be played in
+ * Overdrive so far; other Overdrives (for example two allied targets) follow with their own tickets.
  */
 export function isPlayableCard(card: CardDefinition, overdrive?: boolean): boolean {
   if (overdrive) return card.overdrive !== undefined && isSimpleAttack(cardInMode(card, true));
-  return isSimpleAttack(card) || isPlayableUtility(card);
+  return isSimpleAttack(card) || isAreaAttack(card) || isPlayableUtility(card);
 }
 
 const slow: CardEffect = { kind: EffectKind.ApplySlow, duration: 1 };

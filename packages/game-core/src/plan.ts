@@ -1,7 +1,7 @@
 // Squad Plans and planning-time validation (ADR 0013, ADR 0020). Shared with clients: a plan is plain
 // data, and `validatePlan` lets the UI explain why a plan cannot be committed. The host validates again.
 
-import { type CardIndex, cardInMode, CardTarget, CardType, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
+import { type CardIndex, cardInMode, CardTarget, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type SquadId, type SquadView, Visibility } from "./host";
 import { type Grid, type GridPosition, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
 
@@ -168,8 +168,9 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
           issues.push({ kind: PlanIssueKind.NoOverdrive, heroId, message: `${base.name} has no Overdrive.` });
         } else if (!card || !isPlayableCard(base!, action.overdrive)) {
           issues.push({ kind: PlanIssueKind.UnplayableCard, heroId, message: "This card's effect cannot be played yet." });
-        } else if (card.type === CardType.Utility && card.target !== CardTarget.VisibleEnemy) {
-          const isSelfCard = card.target === CardTarget.SelfHero;
+        } else if (card.target !== CardTarget.VisibleEnemy) {
+          // Self cards and area Attacks are confirmed on this Hero; ally cards need another Hero.
+          const isSelfCard = card.target === CardTarget.SelfHero || card.target === CardTarget.EnemiesInRange;
           const validTarget = isSelfCard
             ? action.target === heroId
             : view.heroes.some((ally) => ally.id === action.target && ally.id !== heroId && !ally.exhausted);

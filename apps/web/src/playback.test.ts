@@ -21,6 +21,19 @@ describe("buildPlaybackFrames", () => {
     expect(frames[1]!.moves.a).toEqual({ col: 2, row: 0 });
   });
 
+  it("shows a pushed Hero moving one tile per frame", () => {
+    const push = (to: number): MatchEvent => ({
+      kind: EventKind.Knockback,
+      tick: 1,
+      heroId: "b",
+      from: { col: to - 1, row: 0 },
+      to: { col: to, row: 0 },
+    });
+    const frames = buildPlaybackFrames([push(5), push(6)]);
+    expect(frames.map((frame) => frame.moves.b)).toEqual([{ col: 5, row: 0 }, { col: 6, row: 0 }]);
+    expect(describeEvent(push(5), (id) => id.toUpperCase())).toBe("Tick 1: B is pushed back");
+  });
+
   it("keeps a frame for a Tick in which every move was blocked", () => {
     const blocked: MatchEvent = { kind: EventKind.MoveBlocked, tick: 1, heroId: "a", from: { col: 1, row: 0 } };
     expect(buildPlaybackFrames([blocked])).toMatchObject([{ tick: 1, moves: {}, shields: {}, hits: [], exhausted: [] }]);
