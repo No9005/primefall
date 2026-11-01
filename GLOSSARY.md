@@ -41,7 +41,7 @@ Permanent removal of a card from the current match.
 _Avoid_: Banish, remove from game
 
 **Overdrive**:
-An alternative, stronger card mode that exiles the card in exchange for a powerful effect, sometimes including a permanent buff that ends when the Hero is exhausted.
+An alternative, stronger card mode that exiles the card and replaces its standard effect with a powerful one, sometimes including a permanent buff that ends when the Hero is exhausted.
 _Avoid_: Ultimate, special, finisher
 
 **Pitch**:
@@ -87,7 +87,7 @@ A forced movement effect that moves the target directly away from the attacker. 
 _Avoid_: Push, displacement
 
 **Long Shot**:
-An Assassin Attack with Range 7. Its Overdrive grants bonus damage when the target is at Range 6 or 7.
+An Assassin Attack with Range 7. Its Overdrive deals bonus damage when the target is at Range 6 or 7.
 _Avoid_: Sniper shot, ranged finisher
 
 ### Battlefield and objectives
