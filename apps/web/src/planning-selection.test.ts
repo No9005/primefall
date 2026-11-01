@@ -1,6 +1,20 @@
-import { ActionKind, HeroClass, type QueuedAction } from "game-core";
+import { ActionKind, cardInMode, HERO_DECKS, HeroClass, type QueuedAction } from "game-core";
 import { describe, expect, it } from "vitest";
-import { CardUse, cardUseReasons, coverProtectionLabel, energyReadout, selectHero } from "./planning-selection";
+import { CardUse, cardUseReasons, coverProtectionLabel, energyReadout, rangeDamageLabel, selectHero } from "./planning-selection";
+
+describe("rangeDamageLabel", () => {
+  const longShotOverdrive = cardInMode(HERO_DECKS[HeroClass.Assassin][4]!, true);
+  const from = { col: 2, row: 1 };
+
+  it("shows the long range bonus from Range 6 and the usual damage closer", () => {
+    expect(rangeDamageLabel(longShotOverdrive, from, { col: 7, row: 1 })).toBe("Range 5 · 2 damage");
+    expect(rangeDamageLabel(longShotOverdrive, from, { col: 8, row: 1 })).toBe("Range 6 · 4 damage (long range bonus)");
+  });
+
+  it("shows nothing for a card whose damage does not depend on Range", () => {
+    expect(rangeDamageLabel(HERO_DECKS[HeroClass.Assassin][0]!, from, { col: 8, row: 1 })).toBeUndefined();
+  });
+});
 
 describe("coverProtectionLabel", () => {
   it("names the protection a target tile gives against the attacker", () => {
@@ -57,10 +71,11 @@ describe("energyReadout and cardUseReasons", () => {
   });
 
   it("allows the Overdrive of Long Shot and explains an Overdrive that is missing or not playable yet", () => {
-    // Assassin card 4 is Long Shot (playable Overdrive), card 0 is Precision Shot (none), card 10 is Mark Target (Utility Overdrive).
+    // Assassin card 4 is Long Shot (playable Overdrive), card 0 is Precision Shot (none); Controller card 4 is
+    // Scout Drone (an area Overdrive without an interpreter yet).
     expect(cardUseReasons(HeroClass.Assassin, 4, [], [1], true)[CardUse.Primary]).toBeUndefined();
     expect(cardUseReasons(HeroClass.Assassin, 0, [], [1], true)[CardUse.Primary]).toBe("Overdrive is not playable yet");
-    expect(cardUseReasons(HeroClass.Assassin, 10, [], [1], true)[CardUse.Primary]).toBe("Overdrive is not playable yet");
+    expect(cardUseReasons(HeroClass.Controller, 4, [], [1], true)[CardUse.Primary]).toBe("Overdrive is not playable yet");
   });
 
   it("allows Pitch, Move and Block while the Queue has room and disables them when it is full", () => {
