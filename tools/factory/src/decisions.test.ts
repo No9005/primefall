@@ -4,6 +4,12 @@ import {
   candidateIssues,
   CommentMarker,
   isFactoryPullRequest,
+  isReviewBot,
+  openBotThreads,
+  reviewMarker,
+  supersededFailedReviews,
+  threadsToResolve,
+  type ReviewThread,
   isIssueStartable,
   Label,
   MergeGateAction,
@@ -118,7 +124,7 @@ describe("parseReviewResult", () => {
 });
 
 describe("reviewOutcome", () => {
-  const parsed = { verdict: ReviewVerdict.Pass, summary: "ok", findings: [], raiseBlastRadiusReason: undefined };
+  const parsed = { verdict: ReviewVerdict.Pass, summary: "ok", findings: [], raiseBlastRadiusReason: undefined, resolvedThreads: [] };
 
   it("is not-run when no result file exists, so no rework starts", () => {
     expect(reviewOutcome({ resultFileExists: false, parsed: undefined })).toBe(ReviewOutcome.NotRun);
@@ -172,5 +178,82 @@ describe("summarizeAgentRun", () => {
   it("copes with an unexpected log", () => {
     expect(summarizeAgentRun(null)).toEqual({ deniedTools: [], finalMessage: "" });
     expect(summarizeAgentRun([{ type: "result" }, 5, null])).toEqual({ deniedTools: [], finalMessage: "" });
+  });
+});
+
+describe("resolving the review bot's own threads", () => {
+  const thread = (id: string, overrides: Partial<ReviewThread> = {}): ReviewThread => ({
+    id,
+    authorLogin: "github-actions",
+    resolved: false,
+    path: "a.ts",
+    line: 3,
+    body: "fix this",
+    ...overrides,
+  });
+
+  it("recognises the review bot with and without the [bot] suffix", () => {
+    expect(isReviewBot("github-actions")).toBe(true);
+    expect(isReviewBot("github-actions[bot]")).toBe(true);
+    expect(isReviewBot("No9005")).toBe(false);
+    expect(isReviewBot("claude")).toBe(false);
+    expect(isReviewBot(undefined)).toBe(false);
+  });
+
+  it("lists only unresolved threads started by the bot", () => {
+    const threads = [thread("a"), thread("b", { resolved: true }), thread("c", { authorLogin: "No9005" }), thread("d", { authorLogin: undefined })];
+    expect(openBotThreads(threads).map((t) => t.id)).toEqual(["a"]);
+  });
+
+  describe("threadsToResolve", () => {
+    const open = [thread("a"), thread("b")];
+    const reported = [
+      { id: "a", reason: "The Queue is now reset in changeSelection." },
+      { id: "b", reason: "Covered by the new test." },
+    ];
+
+    it("resolves the reported threads when the review passed", () => {
+      expect(threadsToResolve({ verdict: ReviewVerdict.Pass, reported, openBotThreads: open }).map((t) => t.id)).toEqual(["a", "b"]);
+    });
+
+    it("resolves nothing when the review failed", () => {
+      expect(threadsToResolve({ verdict: ReviewVerdict.Fail, reported, openBotThreads: open })).toEqual([]);
+    });
+
+    it("never resolves a thread that is not an open thread of the bot", () => {
+      const result = threadsToResolve({ verdict: ReviewVerdict.Pass, reported: [{ id: "someone-elses", reason: "x" }, ...reported], openBotThreads: open });
+      expect(result.map((t) => t.id)).toEqual(["a", "b"]);
+    });
+
+    it("drops duplicates and entries without a reason", () => {
+      const result = threadsToResolve({
+        verdict: ReviewVerdict.Pass,
+        reported: [reported[0]!, reported[0]!, { id: "b", reason: "   " }],
+        openBotThreads: open,
+      });
+      expect(result.map((t) => t.id)).toEqual(["a"]);
+    });
+  });
+
+  it("collapses earlier failed reviews of other commits, not the current one and not passes", () => {
+    const reviews = [
+      { nodeId: "old-fail", body: `${reviewMarker(ReviewVerdict.Fail)}\nfail`, commitId: "111" },
+      { nodeId: "old-pass", body: `${reviewMarker(ReviewVerdict.Pass)}\npass`, commitId: "111" },
+      { nodeId: "human", body: "Looks odd", commitId: "111" },
+      { nodeId: "current-fail", body: reviewMarker(ReviewVerdict.Fail), commitId: "222" },
+      { nodeId: "no-body", body: null, commitId: "111" },
+    ];
+    expect(supersededFailedReviews(reviews, "222")).toEqual(["old-fail"]);
+  });
+
+  it("reads resolvedThreads from the review result and drops malformed entries", () => {
+    const result = parseReviewResult({
+      verdict: "pass",
+      summary: "ok",
+      findings: [],
+      resolvedThreads: [{ id: "a", reason: " fixed in changeSelection " }, { id: "", reason: "x" }, { id: "b" }, "nope"],
+    });
+    expect(result?.resolvedThreads).toEqual([{ id: "a", reason: "fixed in changeSelection" }]);
+    expect(parseReviewResult({ verdict: "pass", summary: "ok", findings: [] })?.resolvedThreads).toEqual([]);
   });
 });
