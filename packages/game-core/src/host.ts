@@ -40,6 +40,8 @@ export enum EventKind {
   Step = "step",
   /** A Hero's step failed (Wall, Wall corner, another Hero or a conflict) and it stopped. */
   MoveBlocked = "moveBlocked",
+  /** A Hero created Shield by Blocking; `amount` is the Shield gained. */
+  ShieldGained = "shieldGained",
 }
 
 /** Something that happened during a Resolution, for playback. Events of the same Tick play together. */
@@ -48,10 +50,12 @@ export interface MatchEvent {
   /** 1-based Tick of the Resolution. */
   tick: number;
   heroId: string;
-  /** Where the Hero stands before the step, or stays when blocked. */
-  from: GridPosition;
+  /** Where the Hero stands before the step, or stays when blocked; absent for non-movement events. */
+  from?: GridPosition;
   /** The tile entered; absent when blocked. */
   to?: GridPosition;
+  /** Shield gained, for `ShieldGained`. */
+  amount?: number;
 }
 
 export interface SubmitResult {

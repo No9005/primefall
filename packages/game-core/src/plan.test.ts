@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { HeroClass } from "./cards";
+import { HERO_DECKS, HeroClass } from "./cards";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { SquadId } from "./host";
-import { ActionKind, type MoveAction, PlanIssueKind, validatePlan } from "./plan";
+import { ActionKind, energyPool, type MoveAction, PlanIssueKind, type QueuedAction, validatePlan } from "./plan";
 import type { GridPosition } from "./reactor-deck";
 
 const view = buildSquadView(startRound(createMatch(9)), SquadId.Left);
@@ -52,5 +52,41 @@ describe("validatePlan", () => {
 
   it("gives every issue a reason to show", () => {
     expect(validatePlan(view, planFor(move(999, near(5))))[0]!.message).not.toBe("");
+  });
+});
+
+describe("validatePlan: Pitch, Energy and Block", () => {
+  const costOf = (card: number) => HERO_DECKS[bruiser.heroClass][card]!.energyCost;
+  const planKinds = (pitched: number[], queue: QueuedAction[]) =>
+    validatePlan(view, { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue, pitched }] }).map((issue) => issue.kind);
+
+  it("gives 1 Energy per pitched card", () => {
+    expect(energyPool([])).toBe(0);
+    expect(energyPool(bruiser.hand.slice(0, 3))).toBe(3);
+  });
+
+  it("rejects a Queue whose Energy costs exceed the pool and accepts one that fits", () => {
+    const [primary, ...others] = bruiser.hand;
+    const cost = costOf(primary!);
+    const action: QueuedAction = { kind: ActionKind.Primary, card: primary! };
+    expect(planKinds([], [action])).toEqual([PlanIssueKind.NotEnoughEnergy]);
+    expect(planKinds(others.slice(0, cost - 1), [action])).toEqual([PlanIssueKind.NotEnoughEnergy]);
+    expect(planKinds(others.slice(0, cost), [action])).toEqual([]);
+  });
+
+  it("makes Move 2 and Block 2 free", () => {
+    const [a, b] = bruiser.hand;
+    expect(planKinds([], [{ kind: ActionKind.Block, card: a! }, move(b!, near(1))])).toEqual([]);
+  });
+
+  it("lets a card fulfil only one role per Round", () => {
+    const [a] = bruiser.hand;
+    expect(planKinds([a!], [{ kind: ActionKind.Block, card: a! }])).toEqual([PlanIssueKind.CardUsedTwice]);
+    expect(planKinds([a!, a!], [])).toEqual([PlanIssueKind.CardUsedTwice]);
+  });
+
+  it("rejects pitching a card that is not in the Hand", () => {
+    const outside = [...Array(12).keys()].find((index) => !bruiser.hand.includes(index))!;
+    expect(planKinds([outside], [])).toEqual([PlanIssueKind.CardNotInHand]);
   });
 });

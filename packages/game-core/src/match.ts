@@ -15,6 +15,8 @@ export interface HeroState {
   hand: CardIndex[];
   discard: CardIndex[];
   exile: CardIndex[];
+  /** Round-scoped: created by Block, cleared at the end of every Resolution (ADR 0002). */
+  shield: number;
 }
 
 /** Plain serializable data: it survives `JSON.stringify` / `JSON.parse` unchanged. */
@@ -69,6 +71,7 @@ export function createMatch(seed: number): MatchState {
         hand: [],
         discard: [],
         exile: [],
+        shield: 0,
       });
     });
   }
