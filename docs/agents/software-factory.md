@@ -43,6 +43,15 @@ Everything else is low: other markdown, UI, rendering, assets, card and map data
 
 The reviewer may raise a pull request to high with a reason, only if the change alters how the game is resolved or affects the factory or agent behaviour in a way the path rules cannot see; card data, UI and test changes alone are not a reason. An existing high label is kept. The same paths are in `.github/CODEOWNERS` (a pattern without an owner removes ownership for data, exports and tests), so GitHub itself requires the owner's review for the high paths. A `high-risk` label cannot be expressed there: for it the merge gate simply never enables auto-merge.
 
+### Review threads and earlier reviews
+
+The review stays on the lines (inline comments). When a review **passes**, the factory tidies up after its own earlier reviews, with GraphQL calls (resolving a thread has no REST equivalent):
+
+- Before the review run, `open-threads` lists the bot's own unresolved threads. The reviewer checks each against the **current code** and reports the ones that are demonstrably fixed, each with a concrete reason (`resolvedThreads`).
+- The factory resolves only threads that the bot started and that are still open, only when the verdict is pass, and posts the reviewer's reason as a reply in the thread first, so the decision can be audited. A thread without a reason is not resolved. Threads of people are never touched.
+- The bot's earlier failed reviews (for older commits) are collapsed as outdated, so a "fail" for an old commit no longer sits next to the current "pass".
+- This is housekeeping: if a call fails, the review result is unchanged and the threads stay open for the owner to resolve by hand. A resolved thread can be reopened in the pull request.
+
 ## Brakes
 
 - **Automated checks:** CI (lint, type check, tests) on every pull request.

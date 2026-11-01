@@ -32,6 +32,11 @@ export const ReviewOutcome = { Pass: ReviewVerdict.Pass, Fail: ReviewVerdict.Fai
 export type ReviewOutcome = (typeof ReviewOutcome)[keyof typeof ReviewOutcome];
 
 export const MAX_FAILED_REVIEWS = 2;
+
+/** Hidden marker at the start of every review the factory posts; the verdict is part of it. */
+export function reviewMarker(verdict: ReviewVerdict): string {
+  return `<!-- factory-review:${verdict} -->`;
+}
 export const AGENT_BRANCH_PREFIX = "agent/";
 
 export function blastRadiusLabel(level: BlastRadius): string {
@@ -121,11 +126,18 @@ export interface ReviewFinding {
   body: string;
 }
 
+/** An earlier review thread the reviewer judges fixed, with the reason it gives. */
+export interface ResolvedThread {
+  id: string;
+  reason: string;
+}
+
 export interface ReviewResult {
   verdict: ReviewVerdict;
   summary: string;
   findings: ReviewFinding[];
   raiseBlastRadiusReason: string | undefined;
+  resolvedThreads: ResolvedThread[];
 }
 
 /** Validates the JSON the review run wrote; anything malformed counts as a failed review. */
@@ -141,7 +153,13 @@ export function parseReviewResult(raw: unknown): ReviewResult | undefined {
     findings.push({ path: f.path, line: f.line, body: f.body });
   }
   const reason = typeof value.raiseBlastRadiusReason === "string" && value.raiseBlastRadiusReason.length > 0 ? value.raiseBlastRadiusReason : undefined;
-  return { verdict, summary: value.summary, findings, raiseBlastRadiusReason: reason };
+  // Optional part: entries that are not well formed are dropped instead of failing the whole review.
+  const resolvedThreads: ResolvedThread[] = [];
+  for (const item of Array.isArray(value.resolvedThreads) ? (value.resolvedThreads as unknown[]) : []) {
+    const t = item as Record<string, unknown>;
+    if (typeof t?.id === "string" && t.id.length > 0 && typeof t.reason === "string" && t.reason.trim().length > 0) resolvedThreads.push({ id: t.id, reason: t.reason.trim() });
+  }
+  return { verdict, summary: value.summary, findings, raiseBlastRadiusReason: reason, resolvedThreads };
 }
 
 /**
@@ -186,4 +204,52 @@ export function summarizeAgentRun(log: unknown): AgentRunSummary {
   const content = ((lastAssistant?.message as Record<string, unknown> | undefined)?.content ?? []) as Record<string, unknown>[];
   const text = content.filter((c) => c?.type === "text" && typeof c.text === "string").map((c) => c.text as string).join("\n");
   return { deniedTools, finalMessage: truncate(text, 1500) };
+}
+
+/** The factory posts its reviews with the workflow token, so GitHub reports this author. */
+const REVIEW_BOT_LOGIN = "github-actions";
+
+export function isReviewBot(login: string | undefined): boolean {
+  return login?.replace(/\[bot\]$/, "") === REVIEW_BOT_LOGIN;
+}
+
+export interface ReviewThread {
+  id: string;
+  authorLogin: string | undefined;
+  resolved: boolean;
+  path: string;
+  line: number | null;
+  /** Text of the first comment of the thread. */
+  body: string;
+}
+
+/** Only unresolved threads that the review bot started; threads of people are never touched. */
+export function openBotThreads(threads: ReviewThread[]): ReviewThread[] {
+  return threads.filter((thread) => !thread.resolved && isReviewBot(thread.authorLogin));
+}
+
+/**
+ * Which threads may be resolved after a review. Only when the review passed, only threads that the
+ * bot started and that are still open, each with a reason, and each at most once.
+ */
+export function threadsToResolve(input: { verdict: ReviewVerdict; reported: ResolvedThread[]; openBotThreads: ReviewThread[] }): ResolvedThread[] {
+  if (input.verdict !== ReviewVerdict.Pass) return [];
+  const allowed = new Set(input.openBotThreads.map((thread) => thread.id));
+  const seen = new Set<string>();
+  return input.reported.filter((entry) => {
+    if (!allowed.has(entry.id) || seen.has(entry.id) || entry.reason.trim().length === 0) return false;
+    seen.add(entry.id);
+    return true;
+  });
+}
+
+export interface PostedReview {
+  nodeId: string;
+  body: string | null;
+  commitId: string;
+}
+
+/** Earlier failed reviews of the factory for other commits, to be collapsed once a review passes. */
+export function supersededFailedReviews(reviews: PostedReview[], headSha: string): string[] {
+  return reviews.filter((review) => review.commitId !== headSha && review.body?.includes(reviewMarker(ReviewVerdict.Fail))).map((review) => review.nodeId);
 }

@@ -95,6 +95,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Collect the review bot's open threads
+        # Only an aid for the reviewer: if it fails (for example because the command is new and the
+        # trusted code on the default branch does not know it yet), the review still runs without it.
+        continue-on-error: true
+        run: node trusted/tools/factory/src/cli.ts open-threads "$PR" open-review-threads.json
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Run the review agent
         uses: anthropics/claude-code-action@v1
         with:
@@ -110,7 +117,8 @@ jobs:
             - Verdict "fail" when something must be fixed: wrong behaviour, a missed acceptance criterion, a violated project rule or ADR, missing or weak tests. Otherwise "pass"; put minor remarks in the summary.
             - Each finding names a file and a line that exists in the new version of the file, and says what to change.
             - The blast radius rules are in trusted/tools/factory/blast-radius-rules.json: high means documentation and agent files, the factory and tooling, or the business logic of the rules package (how the game is resolved). Card data, map data, UI, rendering, assets and tests are low on purpose. Set raiseBlastRadiusReason only if the change alters how the game is resolved or affects the factory or agent behaviour in a way the path rules cannot see; never for card data, UI or tests alone. You can raise the class, never lower it.
-            - Write exactly one file, review-result.json, in the current directory, as JSON: {"verdict":"pass"|"fail","summary":"...","findings":[{"path":"...","line":1,"body":"..."}],"raiseBlastRadiusReason":"..." (optional)}.
+            - The file open-review-threads.json lists your earlier unresolved review threads (id, path, line, comment). Judge each one critically against the **current code**, not against the old comment: list it in `resolvedThreads` as {"id","reason"} only if the concern is demonstrably fixed in the current version, and make the reason concrete (what changed and where). If you are unsure, or only part of it is fixed, do not list it. Never list threads when your verdict is fail. Threads are resolved only when the verdict is pass.
+            - Write exactly one file, review-result.json, in the current directory, as JSON: {"verdict":"pass"|"fail","summary":"...","findings":[{"path":"...","line":1,"body":"..."}],"raiseBlastRadiusReason":"..." (optional),"resolvedThreads":[{"id":"...","reason":"..."}] (optional)}.
           claude_args: |
             --model claude-sonnet-5-5
             --effort medium
