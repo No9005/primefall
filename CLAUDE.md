@@ -24,13 +24,20 @@ Root scripts, all run from the repository root: `dev`, `build`, `test`, `lint`, 
 
 1. Read the whole issue, including its comments, and the spec, ADRs and glossary parts it touches.
 2. Check the issue's blocking relationships (see `docs/agents/issue-tracker.md`). If a blocking issue is still open, stop and comment on the issue instead of starting.
-3. Work on your own branch named `agent/issue-<number>-<short-slug>`, unless the session prescribes a branch name; then use that. Never push to `main`.
+3. Work on your own new branch named `agent/issue-<number>-<short-slug>`, cut from the latest `origin/main` (`git fetch origin main`, then `git switch -c <branch> origin/main`). See _Git rules_ below.
 4. Keep the change small and limited to the ticket. Do not fix unrelated things; mention them in the pull request.
 5. Write tests as the issue asks. Test behaviour through the public interface (for the simulation: the Match Simulation seam), not internals.
 6. Open a pull request against `main` that references the issue (`Closes #<number>`). Do not merge it. The product owner merges manually.
 7. In the pull request: a short summary, how you verified it (commands and results), and anything open or decided on your own.
 
 If the issue is unclear or contradicts the spec, an ADR or the glossary, do not guess. Comment on the issue with the question and stop.
+
+## Git rules
+
+- **Never commit to `main`. Never push to `main`. Never force-push `main`. No exceptions.** `main` only changes through a pull request that the product owner merges.
+- Always work on your own branch, cut fresh from the latest `origin/main`. Never work on `main` itself and never reuse a branch whose pull request has already been merged: start a new branch from the current `origin/main` instead.
+- If the session or tooling prescribes a branch name, use that name, but it must still be a branch cut from the latest `origin/main`, and the rules above still apply.
+- Do not rewrite shared history. If a push is rejected, stop and ask the product owner instead of forcing it.
 
 ## Code style
 
