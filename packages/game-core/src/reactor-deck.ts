@@ -58,9 +58,41 @@ export function findTiles(grid: Grid, kind: TileKind): GridPosition[] {
   return found;
 }
 
+/** How a tile protects a Hero standing on it against attackers at Range 2 or more (ADR 0020). */
+export enum CoverKind {
+  None = "none",
+  Half = "half",
+  Full = "full",
+}
+
+/** Half Cover reduces incoming damage by this much. */
+export const HALF_COVER_REDUCTION = 1;
+/** Attackers at this Range or closer ignore Cover. */
+export const COVER_IGNORED_RANGE = 1;
+
+/** The Overwatch Nest is a Full Cover tile (ADR 0016). */
+export function coverAt(grid: Grid, position: GridPosition): CoverKind {
+  switch (tileAt(grid, position)) {
+    case TileKind.FullCover:
+    case TileKind.OverwatchNest:
+      return CoverKind.Full;
+    case TileKind.HalfCover:
+      return CoverKind.Half;
+    default:
+      return CoverKind.None;
+  }
+}
+
+/** The Cover that protects `target` from an attacker standing at `attacker`; none at Range 1. */
+export function coverAgainst(grid: Grid, attacker: GridPosition, target: GridPosition): CoverKind {
+  const range = Math.max(Math.abs(attacker.col - target.col), Math.abs(attacker.row - target.row));
+  return range <= COVER_IGNORED_RANGE ? CoverKind.None : coverAt(grid, target);
+}
+
 /**
- * Line of Sight between two tiles: the straight line between their centres must not cross a Wall.
- * Heroes never block it. The line is traced from the same end for both directions, so it is symmetric.
+ * Line of Sight between two tiles: the straight line between their centres must not cross a Wall or a
+ * Full Cover tile between them (the end tiles never block). Half Cover and Heroes never block it.
+ * The line is traced from the same end for both directions, so it is symmetric.
  */
 export function hasLineOfSight(grid: Grid, a: GridPosition, b: GridPosition): boolean {
   const [from, to] = a.col < b.col || (a.col === b.col && a.row <= b.row) ? [a, b] : [b, a];
@@ -68,7 +100,8 @@ export function hasLineOfSight(grid: Grid, a: GridPosition, b: GridPosition): bo
   for (let i = 1; i < steps; i++) {
     const col = Math.round(from.col + ((to.col - from.col) * i) / steps);
     const row = Math.round(from.row + ((to.row - from.row) * i) / steps);
-    if (tileAt(grid, { col, row }) === TileKind.Wall) return false;
+    const blocker = { col, row };
+    if (tileAt(grid, blocker) === TileKind.Wall || coverAt(grid, blocker) === CoverKind.Full) return false;
   }
   return true;
 }

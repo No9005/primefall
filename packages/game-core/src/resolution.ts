@@ -5,7 +5,16 @@ import { type CardDefinition, HERO_DECKS } from "./cards";
 import { EventKind, type MatchEvent, type SquadId } from "./host";
 import type { HeroState, MatchState } from "./match";
 import { ActionKind, BLOCK_SHIELD, chebyshevDistance, MOVE_DISTANCE, type SquadPlan } from "./plan";
-import { type GridPosition, hasLineOfSight, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
+import {
+  CoverKind,
+  coverAgainst,
+  type GridPosition,
+  HALF_COVER_REDUCTION,
+  hasLineOfSight,
+  REACTOR_DECK,
+  TileKind,
+  tileAt,
+} from "./reactor-deck";
 
 export interface ResolutionResult {
   /** The Match State after the Resolution; the Round counter and Hands are unchanged. */
@@ -86,13 +95,15 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
       !target.exhausted &&
       target.squad !== hero.squad &&
       chebyshevDistance(hero.position, target.position) <= (card.range ?? 0) &&
-      hasLineOfSight(REACTOR_DECK, hero.position, target.position);
+      hasLineOfSight(REACTOR_DECK, hero.position, target.position) &&
+      coverAgainst(REACTOR_DECK, hero.position, target.position) !== CoverKind.Full;
     if (!reachable) events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId });
     return reachable;
   });
   for (const { hero, card, targetId } of landed) {
     const target = match.heroes.find((candidate) => candidate.id === targetId)!;
-    const incoming = card.effects[0]!.amount ?? 0;
+    const halfCover = coverAgainst(REACTOR_DECK, hero.position, target.position) === CoverKind.Half;
+    const incoming = Math.max(0, (card.effects[0]!.amount ?? 0) - (halfCover ? HALF_COVER_REDUCTION : 0));
     const absorbed = Math.min(target.shield, incoming);
     target.shield -= absorbed;
     // Deck Damage takes the top cards, one per point; they leave the cycle (Exile) so the damage lasts.

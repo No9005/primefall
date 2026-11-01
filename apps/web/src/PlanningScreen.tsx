@@ -17,7 +17,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Board } from "./Board";
 import { buildPlaybackFrames, describeEvent, tickCountOf } from "./playback";
-import { CARD_USE_LABELS, CardUse, cardUseReasons, energyReadout, selectHero } from "./planning-selection";
+import { CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, energyReadout, selectHero } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
 export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
@@ -84,12 +84,24 @@ function SquadPanel({
   );
 }
 
-function EnemyPanel({ enemies, playback }: { enemies: readonly EnemyView[]; playback: PlaybackState | undefined }) {
+function EnemyPanel({
+  enemies,
+  playback,
+  attackerPosition,
+}: {
+  enemies: readonly EnemyView[];
+  playback: PlaybackState | undefined;
+  /** Set while the player picks a target: the protection each enemy's tile gives against this attacker is shown. */
+  attackerPosition: GridPosition | undefined;
+}) {
   return (
     <aside className="hud enemy-panel" aria-label="Enemy Squad">
       {enemies.map((enemy) => (
         <div key={enemy.id} className="hero-row" data-testid={`enemy-${enemy.heroClass}`}>
           <span className="hero-name">{HERO_NAMES[enemy.heroClass]}</span>
+          {attackerPosition && !enemy.exhausted && coverProtectionLabel(attackerPosition, enemy.position) && (
+            <span className="tag cover-tag">{coverProtectionLabel(attackerPosition, enemy.position)}</span>
+          )}
           <span className="counts">
             Deck {enemy.deckCount - (playback?.deckDamage[enemy.id] ?? 0)}
             {(playback?.shields[enemy.id] ?? 0) > 0 && ` · Shield ${playback?.shields[enemy.id]}`}
@@ -341,7 +353,11 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         )}
       </header>
       <SquadPanel heroes={view.heroes} selectedId={selected.id} playback={playback} onSelect={changeSelection} />
-      <EnemyPanel enemies={view.enemies} playback={playback} />
+      <EnemyPanel
+        enemies={view.enemies}
+        playback={playback}
+        attackerPosition={aiming !== undefined && !playing ? planningFrom : undefined}
+      />
       {(playback?.log ?? log).length > 0 && (
         <ol className="hud log" aria-label="Resolution log" data-testid="log">
           {(playback?.log ?? log).map((line, i) => (
