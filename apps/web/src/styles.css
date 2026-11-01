@@ -1,0 +1,8 @@
+html, body, #root { height: 100%; margin: 0; }
+body { background: #12161c; color: #dbe4ec; font-family: system-ui, sans-serif; }
+.app { display: flex; flex-direction: column; height: 100%; }
+.app-bar { display: flex; align-items: baseline; gap: 16px; padding: 6px 12px; }
+.app-bar h1 { margin: 0; font-size: 18px; letter-spacing: 0.1em; text-transform: uppercase; }
+.app-bar p { margin: 0; color: #8a99a8; font-size: 13px; }
+.board { flex: 1; min-height: 0; overflow: hidden; }
+.board canvas { display: block; }
