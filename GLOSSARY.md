@@ -101,15 +101,15 @@ The rule determining whether a Hero can see and target another Hero. Attacks req
 _Avoid_: Vision, LOS
 
 **Visible**:
-An enemy Hero currently within Line of Sight.
+An enemy Hero currently within Line of Sight. The squad can see its current position, Shield, and the number of cards in its Deck, Discard, and Exile.
 _Avoid_: Spotted, revealed
 
 **Ghost**:
-The last known position of an enemy Hero that is no longer Visible.
+The last known position of an enemy Hero that is no longer Visible, together with the Deck, Discard, and Exile counts last seen.
 _Avoid_: Memory, echo
 
 **Unknown**:
-An enemy Hero with neither current Line of Sight nor a known last position.
+An enemy Hero with neither current Line of Sight nor a known last position. Nothing about its status is known.
 _Avoid_: Hidden enemy, unseen
 
 **Tick**:
