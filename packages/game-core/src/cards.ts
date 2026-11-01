@@ -81,6 +81,9 @@ export interface CardDefinition {
   overdriveTarget?: CardTarget;
 }
 
+/** Index of a card in its Hero's fixed Deck list (`HERO_DECKS`). */
+export type CardIndex = number;
+
 /** Maximum Hand size a Draw fills up to. */
 export const HAND_SIZE = 4;
 

@@ -3,6 +3,7 @@
 // the host.
 
 import type { HeroClass } from "./cards";
+import type { SquadPlan } from "./plan";
 import type { GridPosition } from "./reactor-deck";
 
 export enum SquadId {
@@ -34,17 +35,27 @@ export interface SquadView {
   heroes: readonly HeroView[];
 }
 
-/** Commands of one Squad for one Round. Commands are not defined yet, so a plan is empty for now. */
-export interface SquadPlan {
-  squad: SquadId;
+export enum EventKind {
+  /** A Hero moved one tile. */
+  Step = "step",
+  /** A Hero's step failed (Wall, Wall corner, another Hero or a conflict) and it stopped. */
+  MoveBlocked = "moveBlocked",
 }
 
-/** Something that happened during a Resolution, for playback. No event kinds exist yet. */
+/** Something that happened during a Resolution, for playback. Events of the same Tick play together. */
 export interface MatchEvent {
-  kind: string;
+  kind: EventKind;
+  /** 1-based Tick of the Resolution. */
+  tick: number;
+  heroId: string;
+  /** Where the Hero stands before the step, or stays when blocked. */
+  from: GridPosition;
+  /** The tile entered; absent when blocked. */
+  to?: GridPosition;
 }
 
 export interface SubmitResult {
+  /** The view after the Resolution, already at the start of the next Round. */
   view: SquadView;
   events: readonly MatchEvent[];
 }
