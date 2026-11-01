@@ -49,7 +49,7 @@ The reviewer may raise a pull request to high with a reason, only if the change 
 - **Automated review:** the separate review run above.
 - **Human review:** every high-risk pull request, and every pull request while `AUTOMERGE_ENABLED` is not `true` (phase 0).
 - **Throttle and caps:** one implement run at a time; at most one run per issue; two failed reviews hand over to a human; a kill switch (`FACTORY_ENABLED`).
-- **Run limits:** every Claude run uses `claude-sonnet-5-5` with medium effort. Implement 30 minutes and 60 turns, Rework 20 minutes and 40 turns, Review 15 minutes and 30 turns. These are starting values: change `timeout-minutes` and `--max-turns` in the workflows after the first runs.
+- **Run limits:** every Claude run uses `claude-sonnet-5-5` with medium effort. Implement 30 minutes and 80 turns, Rework 20 minutes and 40 turns, Review 15 minutes and 30 turns. These are starting values: change `timeout-minutes` and `--max-turns` in the workflows after the first runs.
 
 ## The five questions per task
 
