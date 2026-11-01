@@ -1,4 +1,4 @@
-import { type CardIndex, energyPool, HERO_DECKS, type HeroClass, MAX_QUEUE_LENGTH, type QueuedAction, queueEnergyCost } from "game-core";
+import { type CardIndex, energyPool, HERO_DECKS, type HeroClass, isSimpleAttack, MAX_QUEUE_LENGTH, type QueuedAction, queueEnergyCost } from "game-core";
 
 export interface PlanningDraft {
   selectedId: string;
@@ -53,7 +53,13 @@ export function cardUseReasons(
   const cost = HERO_DECKS[heroClass][card]!.energyCost;
   const { available } = energyReadout(heroClass, queue, pitched);
   return {
-    [CardUse.Primary]: queueFull ?? (cost > available ? `needs ${cost} Energy` : "effects are not playable yet"),
+    [CardUse.Primary]:
+      queueFull ??
+      (!isSimpleAttack(HERO_DECKS[heroClass][card]!)
+        ? "effect is not playable yet"
+        : cost > available
+          ? `needs ${cost} Energy`
+          : undefined),
     [CardUse.Pitch]: undefined,
     [CardUse.Move]: queueFull,
     [CardUse.Block]: queueFull,

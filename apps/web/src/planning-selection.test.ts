@@ -28,12 +28,19 @@ describe("selectHero", () => {
 describe("energyReadout and cardUseReasons", () => {
   // Bruiser card 4 is Breach Charge (cost 2), card 0 is Slam Shot (cost 1).
   it("shows pitched, spent and available Energy", () => {
-    const spending: QueuedAction[] = [{ kind: ActionKind.Primary, card: 0 }];
+    const spending: QueuedAction[] = [{ kind: ActionKind.Primary, card: 0, target: "enemy" }];
     expect(energyReadout(HeroClass.Bruiser, spending, [1, 2, 3])).toEqual({ pitched: 3, spent: 1, available: 2 });
   });
 
   it("explains a Primary effect the Hero cannot afford", () => {
-    expect(cardUseReasons(HeroClass.Bruiser, 4, [], [1])[CardUse.Primary]).toBe("needs 2 Energy");
+    // Assassin card 7 is Execution Round (cost 2).
+    expect(cardUseReasons(HeroClass.Assassin, 7, [], [1])[CardUse.Primary]).toBe("needs 2 Energy");
+  });
+
+  it("allows the Primary effect of an affordable simple Attack and explains one that is not playable yet", () => {
+    expect(cardUseReasons(HeroClass.Bruiser, 0, [], [1])[CardUse.Primary]).toBeUndefined();
+    // Bruiser card 6 is Bulwark, a Utility card.
+    expect(cardUseReasons(HeroClass.Bruiser, 6, [], [1])[CardUse.Primary]).toBe("effect is not playable yet");
   });
 
   it("allows Pitch, Move and Block while the Queue has room and disables them when it is full", () => {

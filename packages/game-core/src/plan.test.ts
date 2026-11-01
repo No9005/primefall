@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { HERO_DECKS, HeroClass } from "./cards";
+import { HeroClass } from "./cards";
 import { buildSquadView, createMatch, startRound } from "./match";
-import { SquadId } from "./host";
+import { SquadId, type SquadView } from "./host";
 import { ActionKind, energyPool, type MoveAction, PlanIssueKind, type QueuedAction, validatePlan } from "./plan";
 import type { GridPosition } from "./reactor-deck";
 
 const view = buildSquadView(startRound(createMatch(9)), SquadId.Left);
+const enemy = view.enemies[0]!;
 const bruiser = view.heroes.find((hero) => hero.heroClass === HeroClass.Bruiser)!;
 const near = (offset: number): GridPosition => ({ col: bruiser.position.col + offset, row: bruiser.position.row });
 const move = (card: number, destination: GridPosition): MoveAction => ({ kind: ActionKind.Move, card, destination });
@@ -56,7 +57,6 @@ describe("validatePlan", () => {
 });
 
 describe("validatePlan: Pitch, Energy and Block", () => {
-  const costOf = (card: number) => HERO_DECKS[bruiser.heroClass][card]!.energyCost;
   const planKinds = (pitched: number[], queue: QueuedAction[]) =>
     validatePlan(view, { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue, pitched }] }).map((issue) => issue.kind);
 
@@ -66,12 +66,42 @@ describe("validatePlan: Pitch, Energy and Block", () => {
   });
 
   it("rejects a Queue whose Energy costs exceed the pool and accepts one that fits", () => {
-    const [primary, ...others] = bruiser.hand;
-    const cost = costOf(primary!);
-    const action: QueuedAction = { kind: ActionKind.Primary, card: primary! };
-    expect(planKinds([], [action])).toEqual([PlanIssueKind.NotEnoughEnergy]);
-    expect(planKinds(others.slice(0, cost - 1), [action])).toEqual([PlanIssueKind.NotEnoughEnergy]);
-    expect(planKinds(others.slice(0, cost), [action])).toEqual([]);
+    // Execution Round (Assassin card 7) costs 2.
+    const assassin = view.heroes.find((hero) => hero.heroClass === HeroClass.Assassin)!;
+    const withHand: SquadView = {
+      ...view,
+      heroes: view.heroes.map((hero) => (hero === assassin ? { ...hero, hand: [7, 0, 1, 2] } : hero)),
+    };
+    const action: QueuedAction = { kind: ActionKind.Primary, card: 7, target: enemy.id };
+    const kindsFor = (pitched: number[]) =>
+      validatePlan(withHand, { squad: SquadId.Left, heroes: [{ heroId: assassin.id, queue: [action], pitched }] }).map((issue) => issue.kind);
+    expect(kindsFor([])).toEqual([PlanIssueKind.NotEnoughEnergy]);
+    expect(kindsFor([0])).toEqual([PlanIssueKind.NotEnoughEnergy]);
+    expect(kindsFor([0, 1])).toEqual([]);
+  });
+
+  it("needs an enemy Hero as the target of an Attack and rejects cards that are not playable yet", () => {
+    const attack = (card: number, target: string): QueuedAction => ({ kind: ActionKind.Primary, card, target });
+    const withHand: SquadView = {
+      ...view,
+      heroes: view.heroes.map((hero) => (hero === bruiser ? { ...hero, hand: [0, 1, 6, 7] } : hero)),
+    };
+    const check = (queue: QueuedAction[]) =>
+      validatePlan(withHand, { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue, pitched: [1] }] }).map((issue) => issue.kind);
+    expect(check([attack(0, enemy.id)])).toEqual([]);
+    expect(check([attack(0, bruiser.id)])).toEqual([PlanIssueKind.BadTarget]);
+    expect(check([attack(0, "nobody")])).toEqual([PlanIssueKind.BadTarget]);
+    // Bruiser card 6 is Bulwark, a Utility card.
+    expect(check([attack(6, enemy.id)])).toEqual([PlanIssueKind.UnplayableCard]);
+  });
+
+  it("rejects any plan for an Exhausted Hero", () => {
+    const exhausted: SquadView = {
+      ...view,
+      heroes: view.heroes.map((hero) => (hero === bruiser ? { ...hero, exhausted: true } : hero)),
+    };
+    const plan = { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue: [{ kind: ActionKind.Block as const, card: bruiser.hand[0]! }] }] };
+    expect(validatePlan(exhausted, plan).map((issue) => issue.kind)).toEqual([PlanIssueKind.HeroExhausted]);
   });
 
   it("makes Move 2 and Block 2 free", () => {

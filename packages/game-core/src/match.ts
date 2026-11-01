@@ -2,7 +2,7 @@
 // every function returns a new Match State and all randomness comes from the seeded PRNG in it.
 
 import { type CardIndex, HAND_SIZE, HERO_DECKS, HeroClass } from "./cards";
-import { ROUND_LIMIT, SquadId, type HeroView, type SquadView } from "./host";
+import { type EnemyView, ROUND_LIMIT, SquadId, type HeroView, type SquadView } from "./host";
 import { findTiles, GridPosition, REACTOR_DECK, TileKind } from "./reactor-deck";
 
 export interface HeroState {
@@ -17,6 +17,8 @@ export interface HeroState {
   exile: CardIndex[];
   /** Round-scoped: created by Block, cleared at the end of every Resolution (ADR 0002). */
   shield: number;
+  /** Set after a Resolution that leaves the Deck empty; an Exhausted Hero is out of the match (ADR 0006). */
+  exhausted: boolean;
 }
 
 /** Plain serializable data: it survives `JSON.stringify` / `JSON.parse` unchanged. */
@@ -72,6 +74,7 @@ export function createMatch(seed: number): MatchState {
         discard: [],
         exile: [],
         shield: 0,
+        exhausted: false,
       });
     });
   }
@@ -85,7 +88,7 @@ export function createMatch(seed: number): MatchState {
 export function startRound(previous: MatchState): MatchState {
   const match = structuredClone(previous);
   match.round += 1;
-  for (const hero of match.heroes) {
+  for (const hero of match.heroes.filter((candidate) => !candidate.exhausted)) {
     while (hero.hand.length < HAND_SIZE && hero.deck.length > 0) {
       hero.hand.push(hero.deck.pop()!);
     }
@@ -109,6 +112,16 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
       deckCount: hero.deck.length,
       exileCount: hero.exile.length,
       hand: [...hero.hand],
+      exhausted: hero.exhausted,
     }));
-  return { squad, round: match.round, roundLimit: ROUND_LIMIT, heroes };
+  const enemies: EnemyView[] = match.heroes
+    .filter((hero) => hero.squad !== squad)
+    .map((hero) => ({
+      id: hero.id,
+      heroClass: hero.heroClass,
+      position: { ...hero.position },
+      deckCount: hero.deck.length,
+      exhausted: hero.exhausted,
+    }));
+  return { squad, round: match.round, roundLimit: ROUND_LIMIT, heroes, enemies };
 }

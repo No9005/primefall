@@ -87,6 +87,19 @@ export type CardIndex = number;
 /** Maximum Hand size a Draw fills up to. */
 export const HAND_SIZE = 4;
 
+/**
+ * Cards whose Primary effect is only "deal damage to one visible enemy". These are the Attacks the
+ * resolution can play so far; other effects follow with their own tickets.
+ */
+export function isSimpleAttack(card: CardDefinition): boolean {
+  return (
+    card.type === CardType.Attack &&
+    card.target === CardTarget.VisibleEnemy &&
+    card.effects.length === 1 &&
+    card.effects[0]!.kind === EffectKind.Damage
+  );
+}
+
 const slow: CardEffect = { kind: EffectKind.ApplySlow, duration: 1 };
 const marked: CardEffect = { kind: EffectKind.ApplyMarked, duration: 1 };
 const knockback: CardEffect = { kind: EffectKind.Knockback, amount: 2 };

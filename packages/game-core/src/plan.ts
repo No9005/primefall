@@ -1,7 +1,7 @@
 // Squad Plans and planning-time validation (ADR 0013, ADR 0020). Shared with clients: a plan is plain
 // data, and `validatePlan` lets the UI explain why a plan cannot be committed. The host validates again.
 
-import { type CardIndex, HERO_DECKS, type HeroClass } from "./cards";
+import { type CardIndex, HERO_DECKS, type HeroClass, isSimpleAttack } from "./cards";
 import type { SquadId, SquadView } from "./host";
 import { type Grid, type GridPosition, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
 
@@ -22,7 +22,7 @@ export enum ActionKind {
   Move = "move",
   /** Any card used as Block 2: Shield 2 in its Tick. */
   Block = "block",
-  /** A card's primary effect; it costs the card's Energy. Effects are not resolved yet. */
+  /** A card's primary effect; it costs the card's Energy. Only simple damage Attacks resolve so far. */
   Primary = "primary",
 }
 
@@ -41,6 +41,8 @@ export interface BlockAction {
 export interface PrimaryAction {
   kind: ActionKind.Primary;
   card: CardIndex;
+  /** Id of the enemy Hero the Attack is aimed at. Range and Line of Sight are checked when it resolves. */
+  target: string;
 }
 
 /** Actions are a union that grows with the card uses. */
@@ -80,6 +82,10 @@ export enum PlanIssueKind {
   QueueTooLong = "queueTooLong",
   BadDestination = "badDestination",
   NotEnoughEnergy = "notEnoughEnergy",
+  /** The card's primary effect cannot be played yet. */
+  UnplayableCard = "unplayableCard",
+  BadTarget = "badTarget",
+  HeroExhausted = "heroExhausted",
 }
 
 export interface PlanIssue {
@@ -119,6 +125,10 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
       issues.push({ kind: PlanIssueKind.UnknownHero, heroId, message: `Unknown Hero ${heroId}.` });
       continue;
     }
+    if (hero.exhausted && (queue.length > 0 || pitched.length > 0)) {
+      issues.push({ kind: PlanIssueKind.HeroExhausted, heroId, message: "An Exhausted Hero cannot act." });
+      continue;
+    }
     if (queue.length > MAX_QUEUE_LENGTH) {
       issues.push({ kind: PlanIssueKind.QueueTooLong, heroId, message: `A Queue holds at most ${MAX_QUEUE_LENGTH} actions.` });
     }
@@ -144,6 +154,14 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
     let position = hero.position;
     for (const action of queue) {
       useCard(action.card);
+      if (action.kind === ActionKind.Primary) {
+        const card = HERO_DECKS[hero.heroClass][action.card];
+        if (!card || !isSimpleAttack(card)) {
+          issues.push({ kind: PlanIssueKind.UnplayableCard, heroId, message: "This card's effect cannot be played yet." });
+        } else if (!view.enemies.some((enemy) => enemy.id === action.target && !enemy.exhausted)) {
+          issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: "An Attack needs an enemy Hero as its target." });
+        }
+      }
       if (action.kind !== ActionKind.Move) continue;
       const reachable = moveDestinations(position).some(
         (tile) => tile.col === action.destination.col && tile.row === action.destination.row,
