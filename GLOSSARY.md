@@ -120,6 +120,10 @@ _Avoid_: Turn, phase
 The central 3 by 3 objective area. A squad wins by controlling it during three consecutive Resolutions.
 _Avoid_: Point, base, capture zone
 
+**Round Limit**:
+The maximum of 30 Rounds per match. If no Squad has won by then, the Squad with more cards in its Heroes' Decks wins; equal totals are a draw.
+_Avoid_: Timeout, turn cap
+
 **Overwatch Nest**:
 The single Full Cover position with a sightline into the Prime Zone. It is the Assassin’s secondary objective.
 _Avoid_: Sniper nest, camp spot
