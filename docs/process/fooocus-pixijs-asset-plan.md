@@ -22,6 +22,8 @@ Do not use `gamedev-skills/awesome-gamedev-agent-skills` for this workflow.
 
 ### Skill responsibilities
 
+The skill names below are topics. In the repository they are consolidated into two skills: `isometric` and `pixijs`. Each topic name here is the matching file under that skill's `references/` directory (for example `pixijs-assets` is `.claude/skills/pixijs/references/assets.md`).
+
 | Production concern | Skill / tool |
 |---|---|
 | Hero identity, visual style, and prompt language | Fooocus + `isometric-art-direction` |

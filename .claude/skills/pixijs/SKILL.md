@@ -1,60 +1,25 @@
 ---
 name: pixijs
-description: Entry point for PixiJS v8 tasks; routes to specialized skills for application, scene graph, assets, events, color, math, ticker, performance, filters, and rendering.
+description: PixiJS v8 guidance (Application, scene graph, assets, events, color, math, ticker, filters, performance). Use for any PixiJS v8 task in apps/web.
 license: MIT
 ---
 
-# PixiJS v8 Skill Router
+# PixiJS v8
 
-PixiJS is a fast 2D rendering library for the web using WebGL, WebGPU, and Canvas fallback.
+Read only the reference file that matches the task, from this skill's `references/` directory. Topics with extra detail have a folder of the same name next to the file (for example `references/assets/` for loading specifics). For API details not covered here, consult the official PixiJS documentation.
 
-## How to use this skill
-
-1. Find the specialized skill matching the task.
-2. Load that skill's `SKILL.md` and follow its guidance.
-3. For API details not covered by a sub-skill, consult the official PixiJS documentation.
-
-## Skill router
-
-### Foundations
-
-| Skill | Use for |
+| File | Use when |
 |---|---|
-| `pixijs-application` | Creating and configuring a PixiJS Application. |
-| `pixijs-core-concepts` | Renderer pipeline, render loop, systems, and render targets. |
-| `pixijs-create` | Project scaffolding and TypeScript setup. |
-| `pixijs-environments` | Web Workers, Node/SSR, and strict-CSP contexts. |
-| `pixijs-migration-v8` | Upgrading from PixiJS v7. |
-| `pixijs-scene-core-concepts` | Scene graph, transforms, render order, masking, and layers. |
-
-### Scene objects
-
-| Skill | Use for |
-|---|---|
-| `pixijs-scene-container` | Containers, transforms, zIndex, bounds, and coordinate conversion. |
-| `pixijs-scene-sprite` | Sprite, AnimatedSprite, NineSliceSprite, and TilingSprite. |
-| `pixijs-scene-graphics` | Vector shapes, paths, fills, strokes, and gradients. |
-| `pixijs-scene-text` | Text, BitmapText, HTMLText, and text styles. |
-| `pixijs-scene-mesh` | Custom geometry and meshes. |
-| `pixijs-scene-particle-container` | High-performance particle rendering. |
-| `pixijs-scene-dom-container` | HTML overlays on the canvas. |
-
-### Utilities
-
-| Skill | Use for |
-|---|---|
-| `pixijs-assets` | Loading textures, sprite sheets, fonts, JSON, and bundles. |
-| `pixijs-color` | Colors, tints, and color conversion. |
-| `pixijs-events` | Pointer, mouse, touch, and wheel input. |
-| `pixijs-math` | Points, vectors, matrices, shapes, and hit testing. |
-| `pixijs-ticker` | Frame updates and render-loop control. |
-
-### Advanced
-
-| Skill | Use for |
-|---|---|
-| `pixijs-accessibility` | Screen-reader and keyboard accessibility. |
-| `pixijs-blend-modes` | Advanced compositing. |
-| `pixijs-custom-rendering` | Custom shaders, uniforms, and render pipes. |
-| `pixijs-filters` | Visual effects and filters. |
-| `pixijs-performance` | Profiling and optimizing FPS, draw calls, and GPU memory. |
+| `references/application.md` | Creating and configuring a PixiJS v8 Application. |
+| `references/assets.md` | Loading and managing resources in PixiJS v8. |
+| `references/color.md` | Creating, converting, or manipulating colors in PixiJS v8. |
+| `references/core-concepts.md` | Understanding how PixiJS v8 renders frames, selects a renderer, and manages the render loop. |
+| `references/events.md` | Handling pointer, mouse, touch, or wheel input in PixiJS v8. |
+| `references/filters.md` | Applying visual effects to PixiJS v8 containers via the filter pipeline. |
+| `references/math.md` | Working with coordinates, vectors, matrices, shapes, hit testing, or layout rectangles in PixiJS v8. |
+| `references/performance.md` | Profiling or optimizing a PixiJS v8 app for FPS, draw calls, or GPU memory. |
+| `references/scene-container.md` | Grouping, positioning, or transforming display objects in PixiJS v8. |
+| `references/scene-graphics.md` | Drawing vector shapes and paths in PixiJS v8. |
+| `references/scene-particle-container.md` | Rendering thousands of lightweight sprites in PixiJS v8. |
+| `references/scene-sprite.md` | Drawing images in PixiJS v8. |
+| `references/ticker.md` | Running per-frame logic or controlling the PixiJS v8 render loop. |
