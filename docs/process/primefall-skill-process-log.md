@@ -12,13 +12,40 @@ This document records how the Primefall design process used the Claude skills in
 
 All steps below were executed by Perplexity in a Perplexity mobile app chat.
 
+## ADR origins
+
+### ADRs 0001–0015
+
+ADRs 0001 through 0015 were **not created in this chat session**. They already existed in the repository when this session began and were inherited as prior design documentation.
+
+This chat session read and audited them, but did not recreate their original creation history. The available evidence in this session covers only their later revision, not the original interview or decision process that produced them.
+
+Therefore, this log must not claim a detailed creation history for ADRs 0001–0015. Any such history would need to be recovered from the earlier chat sessions, local notes, or the Git history of the commits that originally added those files.
+
+### ADR 0016
+
+ADR 0016 – Reactor Deck Map was created in this chat session.
+
+It emerged from a `grill-with-docs` session that used `grilling` and `domain-modeling` to clarify the first map layout. The discussion moved through the following decision rounds:
+
+1. **Map theme and layout:** The first map should be a spaceship, specifically the Reactor Deck.
+2. **Map orientation:** The map must be horizontal, with one Squad spawning on the left edge and the other on the right edge.
+3. **Symmetry and routes:** The map is mirror-symmetric, with main routes at least two tiles wide.
+4. **Prime Zone:** The central objective is a 3 by 3 reactor area with no permanent Cover.
+5. **Overwatch Nest:** There is exactly one Full Cover Overwatch Nest with a limited sightline into the Prime Zone.
+6. **Cover distribution:** Side corridors provide Cover for movement and retreat, but no permanent safe sightlines into the Prime Zone.
+7. **Spawns and scouting:** Both Squads spawn on opposite horizontal edges without direct Line of Sight into the Prime Zone, encouraging early scouting.
+8. **Prototype boundaries:** No interactive doors and no vertical levels in the first prototype.
+
+After the user confirmed the frontier decisions, ADR 0016 was created and later revised to use the horizontal 20 by 12 layout.
+
 ## Skills used
 
 | Skill | When | Purpose |
 |---|---|---|
-| `grill-with-docs` | Start of the map-layout discussion | Ran `grilling` and `domain-modeling` to stress-test the map design and create ADRs and glossary entries as decisions crystallised |
+| `grill-with-docs` | Start of the map-layout discussion | Ran `grilling` and `domain-modeling` to stress-test the map design and create ADR 0016 and glossary entries as decisions crystallised |
 | `grilling` | Throughout the map and tech discussions | Interviewed in rounds, mapped a design tree, asked only frontier questions, and recorded recommendations |
-| `domain-modeling` | Throughout ADR and glossary work | Sharpened terminology, recorded ADRs, and maintained `GLOSSARY.md` |
+| `domain-modeling` | Throughout ADR and glossary work | Sharpened terminology, audited existing ADRs, and maintained `GLOSSARY.md` |
 | `to-spec` | After the design tree reached a shared understanding | Synthesised the conversation into `docs/specs/offline-mvp-prototype.md` |
 
 ## Process timeline
