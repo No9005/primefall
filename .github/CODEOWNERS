@@ -19,11 +19,11 @@
 **/package.json @No9005
 /package-lock.json @No9005
 
-# Business logic of the rules package
-/packages/game-core/src/ @No9005
-
-# Data, exports and tests of the rules package need no owner review (a pattern without an owner removes ownership)
-/packages/game-core/src/index.ts
-/packages/game-core/src/cards.ts
-/packages/game-core/src/reactor-deck.ts
-/packages/game-core/src/**/*.test.ts
+# Business logic of the rules package: no owner during the MVP (blast-radius-rules.json: businessLogicPaths is empty).
+# After the MVP, restore:
+#   /packages/game-core/src/ @No9005
+# and, below it, the lines without an owner that exclude data, exports and tests:
+#   /packages/game-core/src/index.ts
+#   /packages/game-core/src/cards.ts
+#   /packages/game-core/src/reactor-deck.ts
+#   /packages/game-core/src/**/*.test.ts

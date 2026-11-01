@@ -4,6 +4,7 @@ import { BlastRadius, classifyPullRequest, keepHighWhenAlreadyHigh, pathMatchesG
 
 const rules = JSON.parse(readFileSync(new URL("../blast-radius-rules.json", import.meta.url), "utf8")) as BlastRadiusRules;
 const file = (filename: string, additions = 5, deletions = 0): ChangedFile => ({ filename, additions, deletions });
+const withBusinessLogic: BlastRadiusRules = { ...rules, businessLogicPaths: ["packages/game-core/src/**"] };
 const classify = (files: ChangedFile[], labels: string[] = []) => classifyPullRequest({ files, labels, rules });
 
 describe("pathMatchesGlob", () => {
@@ -79,12 +80,17 @@ describe("classifyPullRequest", () => {
     ["packages/game-core/src/resolve-round.ts"],
     ["packages/game-core/src/prng.ts"],
     ["packages/game-core/src/server/resolve.ts"],
-  ])("is high when it touches the business logic of the rules package: %s", (filename) => {
-    expect(classify([file(filename)]).level).toBe(BlastRadius.High);
+  ])("is high when business logic paths are configured and it touches the rules package: %s", (filename) => {
+    expect(classifyPullRequest({ files: [file(filename)], labels: [], rules: withBusinessLogic }).level).toBe(BlastRadius.High);
+  });
+
+  it("is low for the rules package during the MVP (the shipped rules list no business logic paths)", () => {
+    expect(rules.businessLogicPaths).toEqual([]);
+    expect(classify([file("packages/game-core/src/match.ts"), file("packages/game-core/src/cards.ts")])).toEqual({ level: BlastRadius.Low, reasons: [] });
   });
 
   it("is high when business logic changes together with card data", () => {
-    const result = classify([file("packages/game-core/src/cards.ts"), file("packages/game-core/src/match.ts")]);
+    const result = classifyPullRequest({ files: [file("packages/game-core/src/cards.ts"), file("packages/game-core/src/match.ts")], labels: [], rules: withBusinessLogic });
     expect(result.level).toBe(BlastRadius.High);
     expect(result.reasons).toHaveLength(1);
   });
