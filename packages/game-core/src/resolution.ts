@@ -2,7 +2,7 @@
 // always give the same result. Only Move actions exist so far.
 
 import { type CardDefinition, HERO_DECKS } from "./cards";
-import { EventKind, type MatchEvent, SquadId } from "./host";
+import { EventKind, MatchEndReason, type MatchEvent, PRIME_ZONE_WIN_RESOLUTIONS, ROUND_LIMIT, SquadId } from "./host";
 import { canSquadSee, type HeroState, type MatchState, recordSightings } from "./match";
 import { ActionKind, BLOCK_SHIELD, chebyshevDistance, MOVE_DISTANCE, type SquadPlan } from "./plan";
 import {
@@ -129,6 +129,46 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
   }
 }
 
+const otherSquad = (squad: SquadId) => (squad === SquadId.Left ? SquadId.Right : SquadId.Left);
+
+/**
+ * Updates Prime Zone control and checks the victory conditions at the end of a Resolution
+ * (ADR 0010, ADR 0011, ADR 0019). Squad loss is checked first: an Exhausted Squad cannot win by keeping
+ * control on a tie. Sets `match.result` when the match is over.
+ */
+function evaluateMatchEnd(match: MatchState): void {
+  const inZone = (squad: SquadId) =>
+    match.heroes.filter(
+      (hero) => hero.squad === squad && !hero.exhausted && tileAt(REACTOR_DECK, hero.position) === TileKind.PrimeZone,
+    ).length;
+  const [left, right] = [inZone(SquadId.Left), inZone(SquadId.Right)];
+  const controller = left === right ? match.primeZone.controller : left > right ? SquadId.Left : SquadId.Right;
+  match.primeZone =
+    controller === undefined
+      ? { progress: 0 }
+      : { controller, progress: controller === match.primeZone.controller ? match.primeZone.progress + 1 : 1 };
+
+  const deckTotals = {
+    [SquadId.Left]: 0,
+    [SquadId.Right]: 0,
+  };
+  for (const hero of match.heroes) deckTotals[hero.squad] += hero.deck.length;
+  const end = (reason: MatchEndReason, winner?: SquadId) => {
+    match.result = { ...(winner ? { winner } : {}), reason, round: match.round, deckTotals };
+  };
+
+  const lost = SQUADS.filter((squad) => match.heroes.filter((hero) => hero.squad === squad).every((hero) => hero.exhausted));
+  if (lost.length === 2) return end(MatchEndReason.AllHeroesExhausted);
+  if (lost.length === 1) return end(MatchEndReason.AllHeroesExhausted, otherSquad(lost[0]!));
+  if (match.primeZone.progress >= PRIME_ZONE_WIN_RESOLUTIONS) {
+    return end(MatchEndReason.PrimeZoneHeld, match.primeZone.controller);
+  }
+  if (match.round >= ROUND_LIMIT) {
+    const difference = deckTotals[SquadId.Left] - deckTotals[SquadId.Right];
+    end(MatchEndReason.RoundLimit, difference === 0 ? undefined : difference > 0 ? SquadId.Left : SquadId.Right);
+  }
+}
+
 /**
  * Plays out the plans: Tick n resolves the n-th action of every Hero's Queue. Cards used in a Queue
  * leave the Hand for the Discard, whether the action succeeds or fails.
@@ -185,6 +225,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     hero.exhausted = true;
     events.push({ kind: EventKind.Exhausted, tick: Math.max(ticks, 1), heroId: hero.id });
   }
+  evaluateMatchEnd(match);
   endTick();
   return { match, events, perceivedBy };
 }

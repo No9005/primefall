@@ -8,7 +8,9 @@ import {
   type GridPosition,
   type HeroView,
   type QueuedAction,
+  PRIME_ZONE_WIN_RESOLUTIONS,
   ROUND_LIMIT,
+  SquadId,
   type SquadPlan,
   type SquadView,
   type SubmitResult,
@@ -380,6 +382,10 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       <header className="hud top-bar">
         <span data-testid="round">
           Round {view.round} / {ROUND_LIMIT}
+        </span>
+        <span data-testid="prime-progress" aria-label="Prime Zone control">
+          Prime Zone · You {view.primeProgress[view.squad]} / {PRIME_ZONE_WIN_RESOLUTIONS} · Enemy{" "}
+          {view.primeProgress[view.squad === SquadId.Left ? SquadId.Right : SquadId.Left]} / {PRIME_ZONE_WIN_RESOLUTIONS}
         </span>
         {playing && (
           <span data-testid="tick" className="tick">

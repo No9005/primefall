@@ -18,10 +18,12 @@ export function createLocalHost(seed: number): MatchHost {
       return buildSquadView(match, squad);
     },
     async submitPlan(plan: SquadPlan): Promise<SubmitResult> {
-      const issues = validatePlan(buildSquadView(match, plan.squad), plan);
+      if (match.result) throw new Error("The match is over.");
+      const issues =validatePlan(buildSquadView(match, plan.squad), plan);
       if (issues.length > 0) throw new Error(`Invalid plan: ${issues.map((issue) => issue.message).join(" ")}`);
       const resolution = resolveRound(match, [plan]);
-      match = startRound(resolution.match);
+      // A finished match stays at the Round it ended in.
+      match = resolution.match.result ? resolution.match : startRound(resolution.match);
       return { view: buildSquadView(match, plan.squad), events: getSquadEvents(plan.squad, resolution) };
     },
   };
