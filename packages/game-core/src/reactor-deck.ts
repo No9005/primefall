@@ -59,6 +59,21 @@ export function findTiles(grid: Grid, kind: TileKind): GridPosition[] {
 }
 
 /**
+ * Line of Sight between two tiles: the straight line between their centres must not cross a Wall.
+ * Heroes never block it. The line is traced from the same end for both directions, so it is symmetric.
+ */
+export function hasLineOfSight(grid: Grid, a: GridPosition, b: GridPosition): boolean {
+  const [from, to] = a.col < b.col || (a.col === b.col && a.row <= b.row) ? [a, b] : [b, a];
+  const steps = Math.max(Math.abs(to.col - from.col), Math.abs(to.row - from.row));
+  for (let i = 1; i < steps; i++) {
+    const col = Math.round(from.col + ((to.col - from.col) * i) / steps);
+    const row = Math.round(from.row + ((to.row - from.row) * i) / steps);
+    if (tileAt(grid, { col, row }) === TileKind.Wall) return false;
+  }
+  return true;
+}
+
+/**
  * The Reactor Deck: 21 by 11 tiles, mirror-symmetric around column 10.
  * `#` Wall, `H` Half Cover, `P` Prime Zone, `O` Overwatch Nest, `S` Spawn, `.` open floor (ADR 0016).
  */
