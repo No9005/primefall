@@ -112,6 +112,33 @@ export function isFactoryPullRequest(input: { headRef: string; headRepo: string;
   return input.headRef.startsWith(AGENT_BRANCH_PREFIX) && input.headRepo === input.baseRepo;
 }
 
+export const RETRO_BRANCH_PREFIX = `${AGENT_BRANCH_PREFIX}retro-`;
+export const DEFAULT_RETRO_EVERY = 10;
+
+/** A retro pull request comes from `agent/retro-<n>`; it is never counted and never starts a retro. */
+export function isRetroBranch(headRef: string): boolean {
+  return headRef.startsWith(RETRO_BRANCH_PREFIX);
+}
+
+/**
+ * How many merged agent pull requests make one retro (repository variable RETRO_EVERY).
+ * Unset or invalid means the default; "0" switches the retro off (returned as 0).
+ */
+export function retroInterval(variable: string | undefined): number {
+  const text = variable?.trim();
+  if (text === "0") return 0;
+  return text !== undefined && /^[1-9]\d*$/.test(text) ? Number(text) : DEFAULT_RETRO_EVERY;
+}
+
+/**
+ * A merged pull request starts a retro when it is an agent pull request (not a retro itself) and the
+ * number of merged agent pull requests, this one included, is a multiple of the interval.
+ */
+export function retroDue(input: { headRef: string; mergedAgentPullRequests: number; interval: number }): boolean {
+  if (input.interval === 0 || !input.headRef.startsWith(AGENT_BRANCH_PREFIX) || isRetroBranch(input.headRef)) return false;
+  return input.mergedAgentPullRequests > 0 && input.mergedAgentPullRequests % input.interval === 0;
+}
+
 export const ReworkAction = { Rework: "rework", NeedsHuman: "needs-human" } as const;
 export type ReworkAction = (typeof ReworkAction)[keyof typeof ReworkAction];
 
@@ -127,9 +154,9 @@ export const MergeGateAction = {
 } as const;
 export type MergeGateAction = (typeof MergeGateAction)[keyof typeof MergeGateAction];
 
-export function mergeGateDecision(input: { level: BlastRadius; reviewPassed: boolean; needsHuman: boolean; automergeEnabled: boolean }): MergeGateAction {
+export function mergeGateDecision(input: { level: BlastRadius; reviewPassed: boolean; needsHuman: boolean; automergeEnabled: boolean; humanOnly?: boolean }): MergeGateAction {
   if (!input.reviewPassed || input.needsHuman) return MergeGateAction.Nothing;
-  if (input.level === BlastRadius.High) return MergeGateAction.AwaitHumanMerge;
+  if (input.level === BlastRadius.High || input.humanOnly) return MergeGateAction.AwaitHumanMerge;
   return input.automergeEnabled ? MergeGateAction.EnableAutoMerge : MergeGateAction.Nothing;
 }
 

@@ -19,6 +19,12 @@ import {
   type ReviewThread,
   effectiveBlastRadius,
   isFactoryPullRequest,
+  isRetroBranch,
+  retroDue,
+  AGENT_BRANCH_PREFIX,
+  DEFAULT_RETRO_EVERY,
+  retroInterval,
+  RETRO_BRANCH_PREFIX,
   isIssueStartable,
   Label,
   MergeGateAction,
@@ -47,6 +53,7 @@ const Command = {
   ReviewReport: "review-report",
   ReworkDecision: "rework-decision",
   MergeGate: "merge-gate",
+  RetroDecision: "retro-decision",
 } as const;
 
 const REVIEW_STATUS_CONTEXT = "agent-review";
@@ -159,7 +166,7 @@ function selectIssue(triggerName: string, number: number): void {
 
 interface PullRequestData {
   number: number;
-  head: { sha: string };
+  head: { sha: string; ref: string };
   labels: { name: string }[];
 }
 
@@ -339,6 +346,7 @@ function mergeGate(number: number): void {
     reviewPassed: latest?.body?.includes(reviewMarker(ReviewVerdict.Pass)) ?? false,
     needsHuman: labels.includes(Label.NeedsHuman),
     automergeEnabled: process.env.AUTOMERGE_ENABLED === "true",
+    humanOnly: isRetroBranch(pr.head.ref),
   });
   if (action === MergeGateAction.EnableAutoMerge) gh(["pr", "merge", String(number), "--repo", repo, "--auto", "--squash"]);
   if (action === MergeGateAction.AwaitHumanMerge) {
@@ -346,6 +354,29 @@ function mergeGate(number: number): void {
     upsertComment(number, CommentMarker.NeedsHumanMerge, "This pull request has a high blast radius (see the blast radius comment). The automated review passed; it needs a human to review and merge it. Auto-merge is not enabled.");
   }
   output("action", action);
+}
+
+/**
+ * After a merge (or by hand): decides whether a retro is due and what the retro run needs. The count comes
+ * from GitHub every time; nothing is stored. Outputs: run, branch, numbers (the pull requests to look at).
+ * `manual` ignores the count and the interval but still skips when a retro is already open.
+ */
+function retroDecision(number: number, manual: boolean): void {
+  const interval = retroInterval(process.env.RETRO_EVERY);
+  const merged = apiList<{ number: number; merged_at: string | null; head: { ref: string; repo: { full_name: string } | null } }>(`repos/${repo}/pulls?state=closed&sort=updated&direction=desc`)
+    .filter((pr) => pr.merged_at !== null && pr.head.repo?.full_name === repo && pr.head.ref.startsWith(AGENT_BRANCH_PREFIX) && !isRetroBranch(pr.head.ref))
+    .sort((a, b) => Date.parse(b.merged_at ?? "") - Date.parse(a.merged_at ?? ""));
+  const count = merged.length;
+  const headRef = manual ? "" : loadPullRequest(number).head.ref;
+  const due = manual || retroDue({ headRef, mergedAgentPullRequests: count, interval });
+  const retroBranch = `${RETRO_BRANCH_PREFIX}${count}`;
+  const openRetro = apiList<{ head: { ref: string }; state: string }>(`repos/${repo}/pulls?state=open`).some((pr) => isRetroBranch(pr.head.ref));
+  const branchExists = api<unknown[]>(`repos/${repo}/git/matching-refs/heads/${retroBranch}`).length > 0;
+  const run = due && !openRetro && !branchExists;
+  console.log(`merged agent pull requests: ${count}, interval: ${interval}, due: ${due}, open retro: ${openRetro}, branch exists: ${branchExists}`);
+  output("run", String(run));
+  output("branch", retroBranch);
+  output("numbers", merged.slice(0, interval === 0 ? DEFAULT_RETRO_EVERY : interval).map((pr) => pr.number).join(","));
 }
 
 const [command, ...args] = process.argv.slice(2);
@@ -379,6 +410,9 @@ switch (command) {
     break;
   case Command.MergeGate:
     mergeGate(Number(args[0]));
+    break;
+  case Command.RetroDecision:
+    retroDecision(Number(args[0]), args[1] === "manual");
     break;
   default:
     console.error(`Unknown command: ${command ?? "(none)"}`);
