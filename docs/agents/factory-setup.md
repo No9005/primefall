@@ -38,6 +38,7 @@ Settings, Secrets and variables, Actions, Variables:
 |---|---|---|
 | `FACTORY_ENABLED` | `true` / anything else | Kill switch: every factory job does nothing unless it is `true` |
 | `BLAST_RADIUS_ENABLED` | `false` / anything else | Switch for the blast radius rating. Set `false` (for example while the basic MVP is built) and every pull request counts as low: no `blast-radius:*` label or comment, no `needs-human-merge`, and the merge gate may enable auto-merge for all of them. Unset or any other value keeps the rating on. Set it back (or delete the variable) when the basic MVP is done |
+| `RETRO_EVERY` | positive integer / `0` | The retro task runs after every Nth merged agent pull request. Unset or invalid: 10. `0`: off |
 | `AUTOMERGE_ENABLED` | `true` / anything else | Phase 0 (not `true`): a human merges every pull request. Phase 1: low blast radius pull requests get auto-merge |
 
 The workflows create these labels when they are missing: `agent-working`, `needs-human`, `needs-human-merge`, `blast-radius:low`, `blast-radius:high`, `high-risk`.
@@ -66,5 +67,6 @@ These could not be tested without real runs; verify them on the first runs and f
 - The Claude action refuses to run when the workflow was started by a bot (for example the pull request that the agent opened itself); the workflows list `claude` and `github-actions` in `allowed_bots`, nothing else. If a run fails with "Workflow initiated by non-human actor", a bot name is missing there.
 - After a rework, a passing review resolves the bot's fixed threads (with a reply that gives the reason) and collapses its earlier failed reviews. These are GraphQL calls with the workflow token and could not be tested outside Actions; check the run log of the review job for "Resolved thread" or "Could not tidy review threads".
 - The review run writes a valid `review-result.json`. A pull request that changes a factory workflow, or a branch that is behind `main` in its workflow files, gets `agent-review: error` ("did not run"), because the Claude action refuses to run when the workflow differs from the default branch; update the branch with `main` and run the pipeline again.
+- The retro task: after the first N merged agent pull requests (or "Factory retro", "Run workflow"), the run either opens a pull request `agent/retro-<n>` with changes tied to the pull requests that motivated them, or comments on the latest pull request that it found no repeated pattern. A change to a workflow prompt must arrive as text in the pull request body, because the agent cannot push workflow files.
 - The Vercel status name matches the required check in the ruleset.
 - After the first merge, closing the issue starts the next unblocked ticket.
