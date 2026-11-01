@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { REACTOR_DECK } from "game-core";
 import { describe, expect, it } from "vitest";
-import { BOARD_ALIASES, buildPlacements, CAMERA_FOCUS, computeCamera, gridToWorld } from "./board-layout";
+import { AssetAlias, buildPlacements, CAMERA_FOCUS, computeCamera, gridToWorld, Layer } from "./board-layout";
 
 const assetsDir = path.resolve(__dirname, "../public/assets");
 const manifest = JSON.parse(readFileSync(path.join(assetsDir, "manifest.json"), "utf8")) as {
@@ -20,15 +20,15 @@ describe("gridToWorld", () => {
 
 describe("buildPlacements for the Reactor Deck", () => {
   const placements = buildPlacements(REACTOR_DECK);
-  const floors = placements.filter((p) => p.layer === "floor");
-  const objects = placements.filter((p) => p.layer === "object");
+  const floors = placements.filter((p) => p.layer === Layer.Floor);
+  const objects = placements.filter((p) => p.layer === Layer.Object);
 
   it("draws one floor sprite per tile", () => {
     expect(floors).toHaveLength(REACTOR_DECK.width * REACTOR_DECK.height);
   });
 
   it("only uses aliases that exist in the manifest with an existing file", () => {
-    for (const alias of new Set([...placements.map((p) => p.alias), ...BOARD_ALIASES])) {
+    for (const alias of new Set([...placements.map((p) => p.alias), ...Object.values(AssetAlias)])) {
       const src = manifestAssets.get(alias);
       expect(src, alias).toBeDefined();
       expect(existsSync(path.join(assetsDir, src!)), alias).toBe(true);
@@ -37,14 +37,15 @@ describe("buildPlacements for the Reactor Deck", () => {
 
   it("uses every tile and prop kind the Reactor Deck contains", () => {
     const used = new Set(placements.map((p) => p.alias));
-    for (const alias of ["tiles.floor_01", "tiles.floor_02", "tiles.floor_damaged_01", "tiles.reactor_floor_01", "tiles.reactor_edge_01", "tiles.spawn_marker_01", "props.wall_01", "props.cover_half_01", "props.overwatch_nest_01"]) {
+    const expected = [AssetAlias.Floor01, AssetAlias.Floor02, AssetAlias.FloorDamaged01, AssetAlias.ReactorFloor01, AssetAlias.ReactorEdge01, AssetAlias.SpawnMarker01, AssetAlias.Wall01, AssetAlias.CoverHalf01, AssetAlias.OverwatchNest01];
+    for (const alias of expected) {
       expect(used.has(alias), alias).toBe(true);
     }
   });
 
   it("puts props in front of objects further back, by column plus row", () => {
-    const wallBack = objects.find((p) => p.alias === "props.wall_01" && p.depth === 2);
-    const wallFront = objects.find((p) => p.alias === "props.wall_01" && p.depth === 20);
+    const wallBack = objects.find((p) => p.alias === AssetAlias.Wall01 && p.depth === 2);
+    const wallFront = objects.find((p) => p.alias === AssetAlias.Wall01 && p.depth === 20);
     expect(wallBack).toBeDefined();
     expect(wallFront).toBeDefined();
     expect(wallFront!.depth).toBeGreaterThan(wallBack!.depth);
@@ -52,7 +53,7 @@ describe("buildPlacements for the Reactor Deck", () => {
   });
 
   it("anchors a prop at the same bottom vertex as the floor tile below it", () => {
-    const nest = objects.find((p) => p.alias === "props.overwatch_nest_01")!;
+    const nest = objects.find((p) => p.alias === AssetAlias.OverwatchNest01)!;
     const floor = floors.find((p) => p.x === nest.x && p.y === nest.y);
     expect(floor).toBeDefined();
   });

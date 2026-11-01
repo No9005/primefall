@@ -5,7 +5,11 @@ import { describe, expect, it } from "vitest";
 const repoRoot = path.resolve(__dirname, "../../..");
 
 async function lint(filePath: string, code: string) {
-  const eslint = new ESLint({ cwd: repoRoot });
+  // The snippets are not real project files, so the type-aware enum rule cannot run on them.
+  const eslint = new ESLint({
+    cwd: repoRoot,
+    overrideConfig: { languageOptions: { parserOptions: { projectService: false } }, rules: { "@typescript-eslint/no-unsafe-enum-comparison": "off" } },
+  });
   const [result] = await eslint.lintText(code, { filePath: path.join(repoRoot, filePath) });
   return result?.messages.map((m) => m.message) ?? [];
 }

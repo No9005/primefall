@@ -10,6 +10,12 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   { files: ["**/*.{ts,tsx}"], languageOptions: { globals: globals.browser } },
+  {
+    // Compare against enum members, never string literals (project rule in CLAUDE.md).
+    files: ["packages/**/*.ts", "apps/**/*.{ts,tsx}"],
+    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
+    rules: { "@typescript-eslint/no-unsafe-enum-comparison": "error" },
+  },
   { files: ["*.js", "**/*.config.ts"], languageOptions: { globals: globals.node } },
   {
     // game-core is deterministic and pure: no browser APIs, no Math.random (use the seeded PRNG).

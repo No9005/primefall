@@ -43,6 +43,7 @@ If the issue is unclear or contradicts the spec, an ADR or the glossary, do not 
 
 - **Code must be readable first.** Clear names, small focused functions, comments only where the _why_ is not obvious.
 - **No file-per-function.** Do not put every function in its own file. Keep related code together in one cohesive module.
+- **Compare against enum members, never against string literals.** Model every fixed set of values (tile kinds, action and effect kinds, status names, layers, asset aliases) as a TypeScript enum (string-valued when it is part of serialized state) or an `as const` object, and compare, branch and `switch` on the member (`kind === TileKind.Wall`), not on the raw string. Do not use a string literal union as a substitute. Raw strings appear only at boundaries (parsing input, JSON, the asset manifest) and are converted to the enum there. ESLint enforces this for enum-typed values (`no-unsafe-enum-comparison`).
 - **Extract only when DRY is violated.** Move code into a shared module only when it is actually duplicated (for example business logic repeated in several places) or when a function is used from several different files. Do not extract speculatively "for reuse later".
 
 ## Rules that matter for this project

@@ -1,7 +1,7 @@
 import { REACTOR_DECK } from "game-core";
 import { Application, Assets, Container, Sprite } from "pixi.js";
 import { useEffect, useRef } from "react";
-import { buildPlacements, computeCamera } from "./board-layout";
+import { buildPlacements, computeCamera, Layer } from "./board-layout";
 
 interface Manifest {
   bundles: { name: string; assets: { alias: string; src: string; data?: { anchor?: [number, number] } }[] }[];
@@ -55,7 +55,7 @@ export function Board() {
         sprite.anchor.set(anchorX, anchorY);
         sprite.position.set(x, y);
         sprite.zIndex = depth;
-        (layer === "floor" ? floor : objects).addChild(sprite);
+        (layer === Layer.Floor ? floor : objects).addChild(sprite);
       }
 
       const frame = () => {
