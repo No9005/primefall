@@ -52,6 +52,10 @@ The review stays on the lines (inline comments). When a review **passes**, the f
 - The bot's earlier failed reviews (for older commits) are collapsed as outdated, so a "fail" for an old commit no longer sits next to the current "pass".
 - This is housekeeping: if a call fails, the review result is unchanged and the threads stay open for the owner to resolve by hand. A resolved thread can be reopened in the pull request.
 
+### Switching the rating off
+
+The repository variable `BLAST_RADIUS_ENABLED` set to `false` switches the rating off: no blast radius job, no labels or comments, the reviewer's "raise to high" is ignored, and the merge gate treats every pull request as low (old `blast-radius:*` labels are ignored too). The review itself still runs. Intended for the early MVP, when everything should merge cleanly; switch it back on later. It does not change GitHub's own enforcement (code owner review in the ruleset), see the setup guide.
+
 ## Brakes
 
 - **Automated checks:** CI (lint, type check, tests) on every pull request.

@@ -37,9 +37,12 @@ Settings, Secrets and variables, Actions, Variables:
 | Variable | Value | Meaning |
 |---|---|---|
 | `FACTORY_ENABLED` | `true` / anything else | Kill switch: every factory job does nothing unless it is `true` |
+| `BLAST_RADIUS_ENABLED` | `false` / anything else | Switch for the blast radius rating. Set `false` (for example while the basic MVP is built) and every pull request counts as low: no `blast-radius:*` label or comment, no `needs-human-merge`, and the merge gate may enable auto-merge for all of them. Unset or any other value keeps the rating on. Set it back (or delete the variable) when the basic MVP is done |
 | `AUTOMERGE_ENABLED` | `true` / anything else | Phase 0 (not `true`): a human merges every pull request. Phase 1: low blast radius pull requests get auto-merge |
 
 The workflows create these labels when they are missing: `agent-working`, `needs-human`, `needs-human-merge`, `blast-radius:low`, `blast-radius:high`, `high-risk`.
+
+**Early MVP mode, merging everything.** The variable only controls the factory. GitHub still enforces the code owner review from the ruleset for the paths in `.github/CODEOWNERS`. To let those pull requests merge without your review too, switch off "Require review from code owners" in the ruleset (or empty `.github/CODEOWNERS`) for the time being, and switch it back on when you set `BLAST_RADIUS_ENABLED` back. Together with `AUTOMERGE_ENABLED=true` a pull request then merges once CI, `agent-review` and the preview pass.
 
 ## 6. Start, pause, stop
 

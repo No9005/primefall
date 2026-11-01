@@ -47,7 +47,8 @@ jobs:
 
   blast-radius:
     needs: context
-    if: needs.context.outputs.factory == 'true'
+    # BLAST_RADIUS_ENABLED=false switches the rating off (every pull request then counts as low).
+    if: needs.context.outputs.factory == 'true' && vars.BLAST_RADIUS_ENABLED != 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -69,7 +70,8 @@ jobs:
 
   review:
     needs: [context, blast-radius]
-    if: needs.context.outputs.factory == 'true'
+    # The blast radius job is skipped when the rating is switched off; the review still runs.
+    if: ${{ !cancelled() && needs.context.outputs.factory == 'true' && (needs.blast-radius.result == 'success' || needs.blast-radius.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -129,6 +131,7 @@ jobs:
         run: node trusted/tools/factory/src/cli.ts review-report "$PR" review-result.json
         env:
           GH_TOKEN: ${{ github.token }}
+          BLAST_RADIUS_ENABLED: ${{ vars.BLAST_RADIUS_ENABLED }}
 
   after-review:
     needs: [context, review]
@@ -159,6 +162,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           AUTOMERGE_ENABLED: ${{ vars.AUTOMERGE_ENABLED }}
+          BLAST_RADIUS_ENABLED: ${{ vars.BLAST_RADIUS_ENABLED }}
 
   rework:
     needs: [context, after-review]
