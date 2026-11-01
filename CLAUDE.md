@@ -11,9 +11,14 @@ The current product spec is `docs/specs/offline-mvp-prototype.md` (card effects:
 
 ## Stack and commands
 
-TypeScript, PixiJS v8 for presentation (stylized 2.5D, orthographic camera). The game simulation is deterministic and runs client-side; there is no backend in the prototype. No Matter.js. See ADR 0012 and the spec's _Implementation Decisions_.
+TypeScript (strict), PixiJS v8 for presentation (stylized 2.5D, orthographic camera), React and Vite for the web app. An npm-workspaces monorepo (ADR 0017, ADR 0018):
 
-Project structure and tooling are decided in the architecture ADR and created by the scaffolding ticket. Once they exist, keep these npm script names so every agent can rely on them: `dev`, `build`, `test`, `lint`. Run `build`, `test` and `lint` before finishing any ticket; all must pass.
+- `packages/game-core`: rules, simulation, AI and game data. Entry points: `game-core` (shared: types, `validatePlan`, card display data), `game-core/server` (full simulation) and `game-core/local-host` (in-browser host for the offline prototype).
+- `apps/web`: React UI and PixiJS rendering. It may import only `game-core` and `game-core/local-host`; ESLint forbids `game-core/server`. `game-core` must not use browser APIs or `Math.random()`.
+
+The simulation is deterministic and, for the offline prototype, runs in a local host in the browser behind the same interface a server will use; there is no backend. No Matter.js.
+
+Root scripts, all run from the repository root: `dev`, `build`, `test`, `lint`, `typecheck`. Run `build`, `test`, `lint` and `typecheck` before finishing any ticket; all must pass. CI runs lint, type check and tests on every pull request; Vercel builds the web app.
 
 ## How to work on a ticket
 
