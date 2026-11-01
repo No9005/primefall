@@ -23,7 +23,15 @@ describe("buildPlaybackFrames", () => {
 
   it("keeps a frame for a Tick in which every move was blocked", () => {
     const blocked: MatchEvent = { kind: EventKind.MoveBlocked, tick: 1, heroId: "a", from: { col: 1, row: 0 } };
-    expect(buildPlaybackFrames([blocked])).toEqual([{ tick: 1, moves: {} }]);
+    expect(buildPlaybackFrames([blocked])).toEqual([{ tick: 1, moves: {}, shields: {} }]);
+  });
+
+  it("shows Shield in the frame of the Tick in which it was gained", () => {
+    const shield: MatchEvent = { kind: EventKind.ShieldGained, tick: 2, heroId: "a", amount: 2 };
+    expect(buildPlaybackFrames([step(1, "a", 1), shield])).toEqual([
+      { tick: 1, moves: { a: { col: 1, row: 0 } }, shields: {} },
+      { tick: 2, moves: {}, shields: { a: 2 } },
+    ]);
   });
 
   it("has no frames and no Ticks without events", () => {

@@ -1,10 +1,12 @@
-import type { GridPosition, MatchEvent } from "game-core";
+import { EventKind, type GridPosition, type MatchEvent } from "game-core";
 
 /** One visible change during playback: some Heroes arrive on new tiles within a Tick. */
 export interface PlaybackFrame {
   tick: number;
   /** New tile per Hero id; Heroes that did not move are absent. */
   moves: Record<string, GridPosition>;
+  /** Shield gained per Hero id in this frame. */
+  shields: Record<string, number>;
 }
 
 /**
@@ -21,8 +23,9 @@ export function buildPlaybackFrames(events: readonly MatchEvent[]): PlaybackFram
     for (const event of events.filter((candidate) => candidate.tick === tick)) {
       const occurrence = seen.get(event.heroId) ?? 0;
       seen.set(event.heroId, occurrence + 1);
-      tickFrames[occurrence] ??= { tick, moves: {} };
+      tickFrames[occurrence] ??= { tick, moves: {}, shields: {} };
       if (event.to) tickFrames[occurrence].moves[event.heroId] = event.to;
+      if (event.kind === EventKind.ShieldGained) tickFrames[occurrence].shields[event.heroId] = event.amount ?? 0;
     }
     frames.push(...tickFrames);
   }
