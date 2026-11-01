@@ -12,6 +12,7 @@ import {
   readyLabelSetByOwner,
   ReviewOutcome,
   reviewOutcome,
+  summarizeAgentRun,
   reworkDecision,
   ReworkAction,
   ReviewVerdict,
@@ -34,6 +35,7 @@ describe("isIssueStartable", () => {
     ["while a run is working on it", { labels: [Label.ReadyForAgent, Label.AgentWorking] }],
     ["with an open pull request", { hasOpenPullRequest: true }],
     ["with an existing agent branch", { hasAgentBranch: true }],
+    ["after a failed run (needs-human)", { labels: [Label.ReadyForAgent, Label.NeedsHuman] }],
   ])("does not start %s", (_name, change) => {
     expect(isIssueStartable({ ...startable, ...change }).startable).toBe(false);
   });
@@ -136,5 +138,39 @@ describe("CommentMarker", () => {
   it("gives every kind of factory comment its own marker so they never overwrite each other", () => {
     const markers = Object.values(CommentMarker);
     expect(new Set(markers).size).toBe(markers.length);
+  });
+});
+
+describe("summarizeAgentRun", () => {
+  const log = [
+    { type: "system", subtype: "init" },
+    { type: "assistant", message: { content: [{ type: "text", text: "Starting." }] } },
+    { type: "assistant", message: { content: [{ type: "tool_use", name: "Bash" }, { type: "text", text: "I could not push the branch." }] } },
+    {
+      type: "result",
+      permission_denials: [
+        { tool_name: "Bash", tool_input: { command: "git push -u origin agent/issue-9-x" } },
+        { tool_name: "Write", tool_input: { file_path: "/tmp/x" } },
+        { tool_name: "Other", tool_input: { a: 1 } },
+      ],
+    },
+  ];
+
+  it("lists the denied tools and the last assistant text", () => {
+    const summary = summarizeAgentRun(log);
+    expect(summary.deniedTools).toEqual(["Bash: git push -u origin agent/issue-9-x", "Write: /tmp/x", 'Other: {"a":1}']);
+    expect(summary.finalMessage).toBe("I could not push the branch.");
+  });
+
+  it("limits the number and length of the denied tools", () => {
+    const many = { type: "result", permission_denials: Array.from({ length: 30 }, () => ({ tool_name: "Bash", tool_input: { command: "x".repeat(500) } })) };
+    const summary = summarizeAgentRun([many]);
+    expect(summary.deniedTools).toHaveLength(10);
+    expect(summary.deniedTools[0]!.length).toBeLessThan(230);
+  });
+
+  it("copes with an unexpected log", () => {
+    expect(summarizeAgentRun(null)).toEqual({ deniedTools: [], finalMessage: "" });
+    expect(summarizeAgentRun([{ type: "result" }, 5, null])).toEqual({ deniedTools: [], finalMessage: "" });
   });
 });

@@ -97,6 +97,12 @@ jobs:
             --effort medium
             --max-turns 60
             --allowedTools "Read,Glob,Grep,Edit,Write,Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git fetch:*),Bash(git switch:*),Bash(git status:*),Bash(git add:*),Bash(git commit:*),Bash(git reset --soft:*),Bash(git merge-base:*),Bash(git rev-parse:*),Bash(git diff:*),Bash(git log:*),Bash(git push -u origin agent/*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(gh issue comment:*)"
+      - name: Report a run that ended without a pull request
+        if: always()
+        run: node tools/factory/src/cli.ts implement-report "$ISSUE" "$RUNNER_TEMP/claude-execution-output.json" "$RUN_URL"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - name: Remove the working marker
         if: always()
         run: node tools/factory/src/cli.ts mark-working "$ISSUE" off

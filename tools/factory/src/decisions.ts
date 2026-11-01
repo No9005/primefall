@@ -21,6 +21,7 @@ export const CommentMarker = {
   NeedsHuman: "<!-- factory:needs-human -->",
   NeedsHumanMerge: "<!-- factory:needs-human-merge -->",
   ReviewNotRun: "<!-- factory:review-not-run -->",
+  ImplementFailed: "<!-- factory:implement-failed -->",
 } as const;
 
 export const ReviewVerdict = { Pass: "pass", Fail: "fail" } as const;
@@ -81,6 +82,7 @@ export function isIssueStartable(issue: IssueState): Startable {
   if (issue.labels.includes(Label.ReadyForHuman)) return { startable: false, reason: "labelled ready-for-human" };
   if (!issue.readyLabelSetByOwner) return { startable: false, reason: "ready-for-agent was not set by the repository owner" };
   if (issue.openBlockers > 0) return { startable: false, reason: `${issue.openBlockers} open blocker(s)` };
+  if (issue.labels.includes(Label.NeedsHuman)) return { startable: false, reason: "labelled needs-human (a run failed; remove the label to retry)" };
   if (issue.labels.includes(Label.AgentWorking)) return { startable: false, reason: "a run is already working on it" };
   if (issue.hasOpenPullRequest) return { startable: false, reason: "an open pull request exists" };
   if (issue.hasAgentBranch) return { startable: false, reason: "an agent branch already exists" };
@@ -150,4 +152,38 @@ export function parseReviewResult(raw: unknown): ReviewResult | undefined {
 export function reviewOutcome(input: { resultFileExists: boolean; parsed: ReviewResult | undefined }): ReviewOutcome {
   if (!input.resultFileExists) return ReviewOutcome.NotRun;
   return input.parsed?.verdict ?? ReviewOutcome.Fail;
+}
+
+export interface AgentRunSummary {
+  /** The commands or tools the run was not allowed to use. */
+  deniedTools: string[];
+  /** What the agent said last. */
+  finalMessage: string;
+}
+
+const MAX_DENIED_SHOWN = 10;
+const MAX_FIELD_LENGTH = 200;
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+
+/**
+ * Reads the execution log the Claude action saves (a JSON array of messages) and extracts what a
+ * human needs to see when a run ends without a pull request: the denied tools and the last words.
+ * Anything unexpected in the log is skipped rather than failing the report.
+ */
+export function summarizeAgentRun(log: unknown): AgentRunSummary {
+  const messages = Array.isArray(log) ? (log as Record<string, unknown>[]) : [];
+  const result = messages.find((m) => m?.type === "result");
+  const denials = Array.isArray(result?.permission_denials) ? (result.permission_denials as Record<string, unknown>[]) : [];
+  const deniedTools = denials.slice(0, MAX_DENIED_SHOWN).map((d) => {
+    const input = (d.tool_input ?? {}) as Record<string, unknown>;
+    const detail = typeof input.command === "string" ? input.command : typeof input.file_path === "string" ? input.file_path : JSON.stringify(input);
+    return `${String(d.tool_name ?? "unknown tool")}: ${truncate(detail, MAX_FIELD_LENGTH)}`;
+  });
+  const lastAssistant = [...messages].reverse().find((m) => m?.type === "assistant");
+  const content = ((lastAssistant?.message as Record<string, unknown> | undefined)?.content ?? []) as Record<string, unknown>[];
+  const text = content.filter((c) => c?.type === "text" && typeof c.text === "string").map((c) => c.text as string).join("\n");
+  return { deniedTools, finalMessage: truncate(text, 1500) };
 }
