@@ -1,6 +1,7 @@
 import {
   ActionKind,
   type CardIndex,
+  type EnemyView,
   HERO_DECKS,
   HeroClass,
   moveDestinations,
@@ -15,7 +16,7 @@ import {
 } from "game-core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Board } from "./Board";
-import { buildPlaybackFrames, tickCountOf } from "./playback";
+import { buildPlaybackFrames, describeEvent, tickCountOf } from "./playback";
 import { CARD_USE_LABELS, CardUse, cardUseReasons, energyReadout, selectHero } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
@@ -34,43 +35,68 @@ interface PlaybackState {
   tick: number;
   tickCount: number;
   positions: Record<string, GridPosition>;
-  /** Shield per Hero id gained so far in the playback; it expires when the playback ends. */
+  /** Shield per Hero id gained so far in the playback, less what Attacks absorbed; it expires with the playback. */
   shields: Record<string, number>;
+  /** Cards removed from each Hero's Deck so far in the playback (Deck Damage). */
+  deckDamage: Record<string, number>;
+  exhausted: string[];
+  /** Heroes hit in the frame being shown. */
+  hit: string[];
+  log: string[];
 }
 
 function SquadPanel({
   heroes,
   selectedId,
-  shields,
+  playback,
   onSelect,
 }: {
   heroes: readonly HeroView[];
   selectedId: string;
-  shields: Record<string, number>;
+  playback: PlaybackState | undefined;
   onSelect: (id: string) => void;
 }) {
   return (
     <aside className="hud squad-panel" aria-label="Squad">
       {heroes.map((hero) => {
         const playerControlled = hero.heroClass === PLAYER_HERO_CLASS;
+        const shield = playback?.shields[hero.id] ?? 0;
         return (
           <button
             key={hero.id}
             type="button"
             className="hero-row"
             aria-pressed={hero.id === selectedId}
-            disabled={!playerControlled}
+            disabled={!playerControlled || hero.exhausted}
             onClick={() => onSelect(hero.id)}
           >
             <span className="hero-name">{HERO_NAMES[hero.heroClass]}</span>
             <span className="counts">
-              Deck {hero.deckCount} · Exile {hero.exileCount}
-              {(shields[hero.id] ?? 0) > 0 && ` · Shield ${shields[hero.id]}`}
+              Deck {hero.deckCount - (playback?.deckDamage[hero.id] ?? 0)} · Exile {hero.exileCount}
+              {shield > 0 && ` · Shield ${shield}`}
             </span>
             {!playerControlled && <span className="tag">AI</span>}
+            {(hero.exhausted || playback?.exhausted.includes(hero.id)) && <span className="tag">Exhausted</span>}
           </button>
         );
       })}
+    </aside>
+  );
+}
+
+function EnemyPanel({ enemies, playback }: { enemies: readonly EnemyView[]; playback: PlaybackState | undefined }) {
+  return (
+    <aside className="hud enemy-panel" aria-label="Enemy Squad">
+      {enemies.map((enemy) => (
+        <div key={enemy.id} className="hero-row" data-testid={`enemy-${enemy.heroClass}`}>
+          <span className="hero-name">{HERO_NAMES[enemy.heroClass]}</span>
+          <span className="counts">
+            Deck {enemy.deckCount - (playback?.deckDamage[enemy.id] ?? 0)}
+            {(playback?.shields[enemy.id] ?? 0) > 0 && ` · Shield ${playback?.shields[enemy.id]}`}
+          </span>
+          {(enemy.exhausted || playback?.exhausted.includes(enemy.id)) && <span className="tag">Exhausted</span>}
+        </div>
+      ))}
     </aside>
   );
 }
@@ -79,7 +105,9 @@ interface HandProps {
   hero: HeroView;
   queue: readonly QueuedAction[];
   pitched: readonly CardIndex[];
+  /** The card waiting for a tile (Move 2) or a target (Primary effect). */
   armed: CardIndex | undefined;
+  armedLabel: string;
   choosing: CardIndex | undefined;
   disabled: boolean;
   onCardTap: (card: CardIndex) => void;
@@ -91,7 +119,7 @@ const ACTION_USE_LABELS: Record<ActionKind, string> = {
   [ActionKind.Primary]: CARD_USE_LABELS[CardUse.Primary],
 };
 
-function Hand({ hero, queue, pitched, armed, choosing, disabled, onCardTap }: HandProps) {
+function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onCardTap }: HandProps) {
   const deck = HERO_DECKS[hero.heroClass];
   return (
     <ul className="hud hand" aria-label="Hand">
@@ -102,7 +130,7 @@ function Hand({ hero, queue, pitched, armed, choosing, disabled, onCardTap }: Ha
         let use = "";
         if (queuedAt >= 0) use = `${ACTION_USE_LABELS[queue[queuedAt]!.kind]} · #${queuedAt + 1}`;
         else if (isPitched) use = CARD_USE_LABELS[CardUse.Pitch];
-        else if (cardIndex === armed) use = "Pick a tile";
+        else if (cardIndex === armed) use = armedLabel;
         return (
           <li key={cardIndex}>
             <button
@@ -150,6 +178,10 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   const [queue, setQueue] = useState<readonly QueuedAction[]>([]);
   const [pitched, setPitched] = useState<readonly CardIndex[]>([]);
   const [armed, setArmed] = useState<CardIndex>();
+  /** The card of a Primary effect that waits for the player to tap its target. */
+  const [aiming, setAiming] = useState<CardIndex>();
+  /** Log of the last Resolution; stays visible until the next one. */
+  const [log, setLog] = useState<string[]>([]);
   const [choosing, setChoosing] = useState<CardIndex>();
   const [playback, setPlayback] = useState<PlaybackState>();
   const unmounted = useRef(false);
@@ -182,10 +214,22 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     [queue],
   );
 
-  const boardHeroes = useMemo(
-    () => view.heroes.map((hero) => ({ ...hero, position: playback?.positions[hero.id] ?? hero.position })),
-    [view.heroes, playback],
+  const onBoard = <T extends { id: string; position: GridPosition; exhausted: boolean }>(units: readonly T[]) =>
+    units.map((unit) => ({
+      ...unit,
+      position: playback?.positions[unit.id] ?? unit.position,
+      exhausted: unit.exhausted || (playback?.exhausted.includes(unit.id) ?? false),
+    }));
+  const boardHeroes = useMemo(() => onBoard(view.heroes), [view.heroes, playback]);
+  const boardEnemies = useMemo(() => onBoard(view.enemies), [view.enemies, playback]);
+  const targetableIds = useMemo(
+    () => (aiming !== undefined && !playing ? view.enemies.filter((enemy) => !enemy.exhausted).map((enemy) => enemy.id) : []),
+    [aiming, playing, view.enemies],
   );
+  const nameOf = (heroId: string) => {
+    const unit = [...view.heroes, ...view.enemies].find((candidate) => candidate.id === heroId);
+    return unit ? `${heroId.startsWith(view.squad) ? "" : "Enemy "}${HERO_NAMES[unit.heroClass]}` : heroId;
+  };
 
   function changeSelection(heroId: string) {
     const next = selectHero({ selectedId, queue, pitched, armed }, heroId, playing);
@@ -193,12 +237,14 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     setQueue(next.queue);
     setPitched(next.pitched);
     setArmed(next.armed);
+    setAiming(undefined);
     setChoosing(undefined);
   }
 
   // Tapping a used card frees it again; tapping a free card opens the use chooser.
   function tapCard(card: CardIndex) {
     setArmed(undefined);
+    setAiming(undefined);
     if (queue.some((action) => action.card === card) || pitched.includes(card)) {
       setQueue(queue.filter((action) => action.card !== card));
       setPitched(pitched.filter((pitchedCard) => pitchedCard !== card));
@@ -213,7 +259,14 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     if (use === CardUse.Pitch) setPitched([...pitched, choosing]);
     if (use === CardUse.Block) setQueue([...queue, { kind: ActionKind.Block, card: choosing }]);
     if (use === CardUse.Move) setArmed(choosing);
+    if (use === CardUse.Primary) setAiming(choosing);
     setChoosing(undefined);
+  }
+
+  function tapTarget(targetId: string) {
+    if (aiming === undefined || playing) return;
+    setQueue([...queue, { kind: ActionKind.Primary, card: aiming, target: targetId }]);
+    setAiming(undefined);
   }
 
   function tapTile(destination: GridPosition) {
@@ -226,15 +279,35 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     const result = await submitPlan(plan);
     const positions: Record<string, GridPosition> = {};
     const shields: Record<string, number> = {};
+    const deckDamage: Record<string, number> = {};
+    const exhausted: string[] = [];
+    const lines: string[] = [];
     const tickCount = tickCountOf(result.events);
-    setPlayback({ tick: 0, tickCount, positions, shields });
+    setLog([]);
+    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, exhausted, hit: [], log: lines });
     for (const frame of buildPlaybackFrames(result.events)) {
       Object.assign(positions, frame.moves);
       for (const [heroId, amount] of Object.entries(frame.shields)) shields[heroId] = (shields[heroId] ?? 0) + amount;
-      setPlayback({ tick: frame.tick, tickCount, positions: { ...positions }, shields: { ...shields } });
+      for (const { targetId, damage, absorbed } of frame.hits) {
+        shields[targetId] = Math.max(0, (shields[targetId] ?? 0) - absorbed);
+        deckDamage[targetId] = (deckDamage[targetId] ?? 0) + damage;
+      }
+      exhausted.push(...frame.exhausted);
+      lines.push(...frame.events.flatMap((event) => describeEvent(event, nameOf) ?? []));
+      setPlayback({
+        tick: frame.tick,
+        tickCount,
+        positions: { ...positions },
+        shields: { ...shields },
+        deckDamage: { ...deckDamage },
+        exhausted: [...exhausted],
+        hit: frame.hits.map((hit) => hit.targetId),
+        log: [...lines],
+      });
       await new Promise((resolve) => setTimeout(resolve, STEP_MS));
       if (unmounted.current) return;
     }
+    setLog(lines);
     setPlayback(undefined);
     setQueue([]);
     setPitched([]);
@@ -247,8 +320,12 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     <div className="planning">
       <Board
         heroes={boardHeroes}
+        enemies={boardEnemies}
         selectedId={selected.id}
         onSelect={(id) => view.heroes.find((hero) => hero.id === id)?.heroClass === PLAYER_HERO_CLASS && changeSelection(id)}
+        targetableIds={targetableIds}
+        onTargetTap={tapTarget}
+        hitIds={playback?.hit ?? []}
         highlights={highlights}
         markers={markers}
         onTileTap={tapTile}
@@ -263,7 +340,16 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
           </span>
         )}
       </header>
-      <SquadPanel heroes={view.heroes} selectedId={selected.id} shields={playback?.shields ?? {}} onSelect={changeSelection} />
+      <SquadPanel heroes={view.heroes} selectedId={selected.id} playback={playback} onSelect={changeSelection} />
+      <EnemyPanel enemies={view.enemies} playback={playback} />
+      {(playback?.log ?? log).length > 0 && (
+        <ol className="hud log" aria-label="Resolution log" data-testid="log">
+          {(playback?.log ?? log).map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ol>
+      )}
+      {aiming !== undefined && !playing && <div className="hud target-hint">Tap an enemy Hero to attack</div>}
       <div className="hud energy" data-testid="energy" aria-label="Energy">
         Energy · Pitched {energy.pitched} · Spent {energy.spent} · Available {energy.available}
       </div>
@@ -274,7 +360,8 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         hero={selected}
         queue={queue}
         pitched={pitched}
-        armed={armed}
+        armed={armed ?? aiming}
+        armedLabel={aiming !== undefined ? "Pick a target" : "Pick a tile"}
         choosing={choosing}
         disabled={playing}
         onCardTap={tapCard}

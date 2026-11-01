@@ -1,4 +1,4 @@
-import { type GridPosition, REACTOR_DECK, type HeroView } from "game-core";
+import { type GridPosition, type HeroClass, REACTOR_DECK } from "game-core";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
 import { buildPlacements, computeCamera, gridToWorld, Layer, TILE_HEIGHT, TILE_WIDTH } from "./board-layout";
@@ -27,10 +27,23 @@ export interface BoardMarker {
   label: string;
 }
 
+interface TokenHero {
+  id: string;
+  heroClass: HeroClass;
+  position: GridPosition;
+  exhausted: boolean;
+}
+
 interface BoardProps {
-  heroes: readonly HeroView[];
+  heroes: readonly TokenHero[];
+  enemies: readonly TokenHero[];
   selectedId: string;
   onSelect: (heroId: string) => void;
+  /** Enemies the player may pick as the target of an Attack right now. */
+  targetableIds: readonly string[];
+  onTargetTap: (heroId: string) => void;
+  /** Heroes shown as hit (during the playback frame in which they took an Attack). */
+  hitIds: readonly string[];
   /** Tiles the player may tap right now. */
   highlights: readonly GridPosition[];
   markers: readonly BoardMarker[];
@@ -41,13 +54,26 @@ function tileDiamond(): number[] {
   return [0, -TILE_HEIGHT / 2, TILE_WIDTH / 2, 0, 0, TILE_HEIGHT / 2, -TILE_WIDTH / 2, 0];
 }
 
-export function Board({ heroes, selectedId, onSelect, highlights, markers, onTileTap }: BoardProps) {
+export function Board({
+  heroes,
+  enemies,
+  selectedId,
+  onSelect,
+  targetableIds,
+  onTargetTap,
+  hitIds,
+  highlights,
+  markers,
+  onTileTap,
+}: BoardProps) {
   const host = useRef<HTMLDivElement>(null);
   const [tokens, setTokens] = useState<Container>();
   const [overlay, setOverlay] = useState<Container>();
   // Always the latest callbacks, so the pixi sprites need not be rebuilt for them.
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const onTargetTapRef = useRef(onTargetTap);
+  onTargetTapRef.current = onTargetTap;
   const onTileTapRef = useRef(onTileTap);
   onTileTapRef.current = onTileTap;
 
@@ -81,27 +107,32 @@ export function Board({ heroes, selectedId, onSelect, highlights, markers, onTil
   useEffect(() => {
     if (!tokens) return;
     const created: Container[] = [];
-    for (const hero of heroes) {
+    const ring = (color: number) =>
+      new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color });
+    const addToken = (hero: TokenHero, enemy: boolean) => {
       const { x, y } = gridToWorld(hero.position);
-      const bottom = y + TILE_HEIGHT / 2;
       const token = new Container();
-      token.position.set(x, bottom);
+      token.position.set(x, y + TILE_HEIGHT / 2);
       token.zIndex = hero.position.col + hero.position.row + 0.5;
-      if (hero.id === selectedId) {
-        const ring = new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color: 0x2ec4b6 });
-        token.addChild(ring);
-      }
-      const sprite = new Sprite(Assets.get(`heroes.${hero.heroClass}.idle`));
+      const targetable = enemy && targetableIds.includes(hero.id);
+      if (hero.id === selectedId) token.addChild(ring(0x2ec4b6));
+      if (targetable) token.addChild(ring(0xe5484d));
+      const pose = hero.exhausted ? "exhausted" : hitIds.includes(hero.id) ? "hit" : "idle";
+      const sprite = new Sprite(Assets.get(`heroes.${hero.heroClass}.${pose}`));
       sprite.anchor.set(0.5, 1);
+      // Enemies carry a red tint so the two Squads are told apart.
+      if (enemy) sprite.tint = 0xffb3b3;
       token.addChild(sprite);
       token.eventMode = "static";
       token.cursor = "pointer";
-      token.on("pointertap", () => onSelectRef.current(hero.id));
+      token.on("pointertap", () => (enemy ? onTargetTapRef.current(hero.id) : onSelectRef.current(hero.id)));
       tokens.addChild(token);
       created.push(token);
-    }
+    };
+    heroes.forEach((hero) => addToken(hero, false));
+    enemies.forEach((hero) => addToken(hero, true));
     return () => created.forEach((token) => token.destroy({ children: true }));
-  }, [tokens, heroes, selectedId]);
+  }, [tokens, heroes, enemies, selectedId, targetableIds, hitIds]);
 
   useEffect(() => {
     const element = host.current;

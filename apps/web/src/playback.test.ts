@@ -1,6 +1,6 @@
 import { EventKind, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
-import { buildPlaybackFrames, tickCountOf } from "./playback";
+import { buildPlaybackFrames, describeEvent, tickCountOf } from "./playback";
 
 const step = (tick: number, heroId: string, col: number): MatchEvent => ({
   kind: EventKind.Step,
@@ -23,12 +23,29 @@ describe("buildPlaybackFrames", () => {
 
   it("keeps a frame for a Tick in which every move was blocked", () => {
     const blocked: MatchEvent = { kind: EventKind.MoveBlocked, tick: 1, heroId: "a", from: { col: 1, row: 0 } };
-    expect(buildPlaybackFrames([blocked])).toEqual([{ tick: 1, moves: {}, shields: {} }]);
+    expect(buildPlaybackFrames([blocked])).toMatchObject([{ tick: 1, moves: {}, shields: {}, hits: [], exhausted: [] }]);
+  });
+
+  it("shows Deck Damage and Exhaustion in the frame of their event", () => {
+    const hit: MatchEvent = { kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "b", absorbed: 1, damage: 1 };
+    const exhausted: MatchEvent = { kind: EventKind.Exhausted, tick: 1, heroId: "b" };
+    const [frame] = buildPlaybackFrames([hit, exhausted]);
+    expect(frame!.hits).toEqual([{ targetId: "b", damage: 1, absorbed: 1 }]);
+    expect(frame!.exhausted).toEqual(["b"]);
+  });
+
+  it("describes hits, failed Attacks and Exhaustion for the log", () => {
+    const name = (id: string) => id.toUpperCase();
+    const hit: MatchEvent = { kind: EventKind.AttackHit, tick: 2, heroId: "a", targetId: "b", absorbed: 1, damage: 1 };
+    expect(describeEvent(hit, name)).toBe("Tick 2: A hits B: Deck Damage 1, Shield absorbed 1");
+    expect(describeEvent({ kind: EventKind.AttackFailed, tick: 1, heroId: "a", targetId: "b" }, name)).toContain("fails");
+    expect(describeEvent({ kind: EventKind.Exhausted, tick: 1, heroId: "b" }, name)).toBe("B is Exhausted");
+    expect(describeEvent(step(1, "a", 1), name)).toBeUndefined();
   });
 
   it("shows Shield in the frame of the Tick in which it was gained", () => {
     const shield: MatchEvent = { kind: EventKind.ShieldGained, tick: 2, heroId: "a", amount: 2 };
-    expect(buildPlaybackFrames([step(1, "a", 1), shield])).toEqual([
+    expect(buildPlaybackFrames([step(1, "a", 1), shield])).toMatchObject([
       { tick: 1, moves: { a: { col: 1, row: 0 } }, shields: {} },
       { tick: 2, moves: {}, shields: { a: 2 } },
     ]);
