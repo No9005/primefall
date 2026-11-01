@@ -45,9 +45,7 @@ Dark tactical HUD. Colours: graphite `#12161c` (ground), panel `#1b222b`, steel 
 ## Open points
 
 - UI language (English or German).
-- Distance metric for Range and sight range (Chebyshev, Manhattan or Euclidean) is not defined in the ADRs. The mockup draws Range 3 as a square (Chebyshev) for layout only.
-- Whether Pitch is a queue action or a planning-time funding step. The mockup treats it as funding (a marker on the card, not a queue slot).
-- Maximum number of actions per Hero queue (the mockup shows 4 slots).
+- Resolved by ADR 0020: Chebyshev distance (the Range overlay is a square), Pitch is a planning step marked on the card, and a queue has at most 4 actions (5 with Forward Deploy).
 - Camera: the full 21 x 11 Grid is about 2048 px wide at 128 px tiles, so the phone view scales it to roughly 0.65; check tile and sprite readability once real assets exist.
 - Final card artwork and iconography (placeholders use text only).
 - Sound and haptics are out of scope for the MVP.
