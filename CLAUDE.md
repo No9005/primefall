@@ -27,8 +27,9 @@ Root scripts, all run from the repository root: `dev`, `build`, `test`, `lint`, 
 3. Work on your own new branch named `agent/issue-<number>-<short-slug>`, cut from the latest `origin/main` (`git fetch origin main`, then `git switch -c <branch> origin/main`). See _Git rules_ below.
 4. Keep the change small and limited to the ticket. Do not fix unrelated things; mention them in the pull request.
 5. Write tests as the issue asks. Test behaviour through the public interface (for the simulation: the Match Simulation seam), not internals.
-6. Open a pull request against `main` that references the issue (`Closes #<number>`). Agents never merge. The product owner merges, or GitHub auto-merge does for low blast radius pull requests that the software factory enables (see _Software factory_).
-7. In the pull request: a short summary, how you verified it (commands and results), and anything open or decided on your own.
+6. **Tidy your commits before the first push.** Squash commits that belong together into logical commits: one commit per coherent change, usually one to three per ticket, never a commit per small edit or fix-up. Do this locally, before the branch is pushed (for example `git reset --soft $(git merge-base origin/main HEAD)` and then commit again in logical pieces; agents cannot use interactive rebase). Pushed history is shared and is never rewritten (see _Git rules_).
+7. Open a pull request against `main` that references the issue (`Closes #<number>`). Agents never merge. The product owner merges, or GitHub auto-merge does for low blast radius pull requests that the software factory enables (see _Software factory_).
+8. In the pull request: a short summary, how you verified it (commands and results), and anything open or decided on your own.
 
 If the issue is unclear or contradicts the spec, an ADR or the glossary, do not guess. Comment on the issue with the question and stop.
 
@@ -37,7 +38,7 @@ If the issue is unclear or contradicts the spec, an ADR or the glossary, do not 
 - **Never commit to `main`. Never push to `main`. Never force-push `main`. No exceptions.** `main` only changes through a pull request that the product owner merges.
 - Always work on your own branch, cut fresh from the latest `origin/main`. Never work on `main` itself and never reuse a branch whose pull request has already been merged: start a new branch from the current `origin/main` instead.
 - If the session or tooling prescribes a branch name, use that name, but it must still be a branch cut from the latest `origin/main`, and the rules above still apply.
-- Do not rewrite shared history. If a push is rejected, stop and ask the product owner instead of forcing it.
+- Squashing your own commits that have not been pushed yet is expected (see _How to work on a ticket_). Do not rewrite shared history, that is, anything already pushed. If a push is rejected, stop and ask the product owner instead of forcing it.
 
 ## Code style
 
