@@ -21,6 +21,11 @@ button { font: inherit; color: inherit; }
 .counts { grid-column: 1; font-family: "IBM Plex Mono", monospace; font-size: 12px; color: #8a99a8; }
 .tag { grid-column: 2; grid-row: 1; font-size: 12px; color: #8a99a8; }
 
+.energy { bottom: 108px; left: 50%; transform: translateX(-50%); padding: 4px 12px; font-family: "IBM Plex Mono", monospace; font-size: 12px; color: #ff8a3d; white-space: nowrap; }
+.use-chooser { bottom: 140px; left: 50%; transform: translateX(-50%); padding: 6px; display: flex; gap: 6px; }
+.use { display: flex; flex-direction: column; justify-content: center; min-width: 88px; min-height: 44px; padding: 4px 8px; background: #12161c; color: #dbe4ec; border: 1px solid #2ec4b6; border-radius: 4px; cursor: pointer; }
+.use:disabled { border-color: #3d5a73; opacity: 0.7; cursor: default; }
+.use-reason { font-size: 12px; color: #ff8a3d; }
 .hand { bottom: 6px; left: 50%; transform: translateX(-50%); margin: 0; padding: 6px; list-style: none; display: flex; gap: 6px; }
 .hand li { display: contents; }
 .card { display: flex; flex-direction: column; justify-content: space-between; width: 96px; min-height: 84px; padding: 6px; background: #12161c; border: 1px solid #3d5a73; border-radius: 4px; text-align: left; cursor: pointer; }
