@@ -5,11 +5,14 @@ import {
   type CardDefinition,
   type CardEffect,
   type CardIndex,
+  cardInMode,
   CardTarget,
+  damageAtDistance,
   CardType,
   EffectKind,
   HERO_DECKS,
   isAreaAttack,
+  isPlayableCard,
   isPlayableUtility,
   type PLAYABLE_UTILITY_EFFECTS,
 } from "./cards";
@@ -164,7 +167,8 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
   for (const { hero, card, targetId } of landed) {
     const target = match.heroes.find((candidate) => candidate.id === targetId)!;
     const halfCover = coverAgainst(REACTOR_DECK, hero.position, target.position) === CoverKind.Half;
-    const incoming = Math.max(0, (card.effects[0]!.amount ?? 0) - (halfCover ? HALF_COVER_REDUCTION : 0));
+    const base = damageAtDistance(card.effects[0]!, chebyshevDistance(hero.position, target.position));
+    const incoming = Math.max(0, base - (halfCover ? HALF_COVER_REDUCTION : 0));
     const absorbed = Math.min(target.shield, incoming);
     target.shield -= absorbed;
     // Deck Damage takes the top cards, one per point; they leave the cycle (Exile) so the damage lasts.
@@ -307,7 +311,13 @@ interface HeroQueue {
   queue: readonly (QueuedAction | undefined)[];
   /** The Hand cards that leave the Hand: each at most once, and only cards the Hero holds. */
   spent: CardIndex[];
+  /** The part of `spent` that was played in Overdrive: these go to the Exile instead of the Discard. */
+  overdriven: CardIndex[];
 }
+
+/** The card an action plays, in the mode the action chose. */
+const playedCard = (hero: HeroState, action: { card: CardIndex; overdrive?: boolean }): CardDefinition =>
+  cardInMode(HERO_DECKS[hero.heroClass][action.card]!, action.overdrive);
 
 /**
  * Drops what the host should have validated, so the simulation is safe on its own: a card that is not in
@@ -326,8 +336,22 @@ function legalQueues(match: MatchState, plans: readonly SquadPlan[]): HeroQueue[
         return true;
       };
       pitched.forEach(claim);
-      const legal = queue.map((action, index) => (index < MAX_QUEUE_LENGTH && claim(action.card) ? action : undefined));
-      return [{ heroId, queue: legal, spent }];
+      const overdriven: CardIndex[] = [];
+      const legal = queue.map((action, index) => {
+        if (index >= MAX_QUEUE_LENGTH) return undefined;
+        // An Overdrive that does not exist or cannot be played yet is illegal and fails without spending the card.
+        if (
+          action.kind === ActionKind.Primary &&
+          action.overdrive &&
+          !isPlayableCard(HERO_DECKS[hero.heroClass][action.card]!, true)
+        ) {
+          return undefined;
+        }
+        if (!claim(action.card)) return undefined;
+        if (action.kind === ActionKind.Primary && action.overdrive) overdriven.push(action.card);
+        return action;
+      });
+      return [{ heroId, queue: legal, spent, overdriven }];
     }),
   );
 }
@@ -367,7 +391,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     }
     for (const { hero, action } of actions) {
       if (action.kind !== ActionKind.Primary) continue;
-      const card = HERO_DECKS[hero.heroClass][action.card]!;
+      const card = playedCard(hero, action);
       if (card.type === CardType.Utility) resolveUtility(match, tick, hero, card, action.target, events);
     }
     const movers = actions.flatMap(({ hero, action }) =>
@@ -375,8 +399,8 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     );
     resolveMoves(match, tick, movers, events);
     const attacks = actions.flatMap(({ hero, action }) =>
-      action.kind === ActionKind.Primary && HERO_DECKS[hero.heroClass][action.card]!.type === CardType.Attack
-        ? [{ hero, card: HERO_DECKS[hero.heroClass][action.card]!, targetId: action.target }]
+      action.kind === ActionKind.Primary && playedCard(hero, action).type === CardType.Attack
+        ? [{ hero, card: playedCard(hero, action), targetId: action.target }]
         : [],
     );
     resolveAttacks(match, tick, attacks, events);
@@ -384,12 +408,13 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
   }
 
   // Pitched and queued cards leave the Hand for the Discard; Energy and Shield expire with the Round.
-  for (const { heroId, spent } of queues) {
+  // Cards played in Overdrive are Exiled and never return (ADR 0003).
+  for (const { heroId, spent, overdriven } of queues) {
     const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
     if (hero.exhausted) continue;
     for (const card of spent) {
       hero.hand.splice(hero.hand.indexOf(card), 1);
-      hero.discard.push(card);
+      (overdriven.includes(card) ? hero.exile : hero.discard).push(card);
     }
   }
   for (const hero of match.heroes) {

@@ -2,6 +2,7 @@ import {
   ActionKind,
   type CardIndex,
   CardTarget,
+  cardInMode,
   CardType,
   type EnemyView,
   HERO_DECKS,
@@ -169,8 +170,11 @@ function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onC
         const queuedAt = queue.findIndex((action) => action.card === cardIndex);
         const isPitched = pitched.includes(cardIndex);
         let use = "";
-        if (queuedAt >= 0) use = `${ACTION_USE_LABELS[queue[queuedAt]!.kind]} · #${queuedAt + 1}`;
-        else if (isPitched) use = CARD_USE_LABELS[CardUse.Pitch];
+        const queued = queue[queuedAt];
+        if (queued) {
+          const overdriven = queued.kind === ActionKind.Primary && queued.overdrive;
+          use = `${overdriven ? "Overdrive" : ACTION_USE_LABELS[queued.kind]} · #${queuedAt + 1}`;
+        } else if (isPitched) use = CARD_USE_LABELS[CardUse.Pitch];
         else if (cardIndex === armed) use = armedLabel;
         return (
           <li key={cardIndex}>
@@ -192,9 +196,24 @@ function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onC
   );
 }
 
-function UseChooser({ reasons, onChoose }: { reasons: Record<CardUse, string | undefined>; onChoose: (use: CardUse) => void }) {
+interface UseChooserProps {
+  reasons: Record<CardUse, string | undefined>;
+  onChoose: (use: CardUse) => void;
+  /** Only for cards that have an Overdrive: the switch applies to the Primary effect. */
+  hasOverdrive: boolean;
+  overdrive: boolean;
+  onToggleOverdrive: () => void;
+}
+
+function UseChooser({ reasons, onChoose, hasOverdrive, overdrive, onToggleOverdrive }: UseChooserProps) {
   return (
     <div className="hud use-chooser" role="group" aria-label="Use card as">
+      {hasOverdrive && (
+        <button type="button" className="use overdrive-switch" aria-pressed={overdrive} onClick={onToggleOverdrive}>
+          <span>Overdrive {overdrive ? "on" : "off"}</span>
+          <span className="use-reason">{overdrive ? "replaces the effect; the card is Exiled" : "tap to Exile this card for a stronger effect"}</span>
+        </button>
+      )}
       {Object.values(CardUse).map((use) => (
         <button key={use} type="button" className="use" disabled={reasons[use] !== undefined} onClick={() => onChoose(use)}>
           <span>{CARD_USE_LABELS[use]}</span>
@@ -224,6 +243,8 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   /** Log of the last Resolution; stays visible until the next one. */
   const [log, setLog] = useState<string[]>([]);
   const [choosing, setChoosing] = useState<CardIndex>();
+  /** Whether the card being chosen is used in Overdrive when its Primary effect is picked. */
+  const [overdrive, setOverdrive] = useState(false);
   const [playback, setPlayback] = useState<PlaybackState>();
   const unmounted = useRef(false);
   useEffect(() => {
@@ -272,7 +293,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       }),
     [view.enemies, playback],
   );
-  const aimedCard = aiming === undefined ? undefined : HERO_DECKS[selected.heroClass][aiming];
+  const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, overdrive);
   const aimsAtAlly = aimedCard?.type === CardType.Utility && aimedCard.target !== CardTarget.VisibleEnemy;
   const targetableIds = useMemo(() => {
     if (aiming === undefined || playing) return [];
@@ -293,12 +314,14 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     setArmed(next.armed);
     setAiming(undefined);
     setChoosing(undefined);
+    setOverdrive(false);
   }
 
   // Tapping a used card frees it again; tapping a free card opens the use chooser.
   function tapCard(card: CardIndex) {
     setArmed(undefined);
     setAiming(undefined);
+    setOverdrive(false);
     if (queue.some((action) => action.card === card) || pitched.includes(card)) {
       setQueue(queue.filter((action) => action.card !== card));
       setPitched(pitched.filter((pitchedCard) => pitchedCard !== card));
@@ -314,13 +337,15 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     if (use === CardUse.Block) setQueue([...queue, { kind: ActionKind.Block, card: choosing }]);
     if (use === CardUse.Move) setArmed(choosing);
     if (use === CardUse.Primary) setAiming(choosing);
+    else setOverdrive(false);
     setChoosing(undefined);
   }
 
   function tapTarget(targetId: string) {
     if (aiming === undefined || playing || !targetableIds.includes(targetId)) return;
-    setQueue([...queue, { kind: ActionKind.Primary, card: aiming, target: targetId }]);
+    setQueue([...queue, { kind: ActionKind.Primary, card: aiming, target: targetId, ...(overdrive ? { overdrive } : {}) }]);
     setAiming(undefined);
+    setOverdrive(false);
   }
 
   function tapTile(destination: GridPosition) {
@@ -426,7 +451,13 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         Energy · Pitched {energy.pitched} · Spent {energy.spent} · Available {energy.available}
       </div>
       {choosing !== undefined && !playing && (
-        <UseChooser reasons={cardUseReasons(selected.heroClass, choosing, queue, pitched)} onChoose={chooseUse} />
+        <UseChooser
+          reasons={cardUseReasons(selected.heroClass, choosing, queue, pitched, overdrive)}
+          onChoose={chooseUse}
+          hasOverdrive={HERO_DECKS[selected.heroClass][choosing]!.overdrive !== undefined}
+          overdrive={overdrive}
+          onToggleOverdrive={() => setOverdrive(!overdrive)}
+        />
       )}
       <Hand
         hero={selected}

@@ -1,7 +1,7 @@
 // Squad Plans and planning-time validation (ADR 0013, ADR 0020). Shared with clients: a plan is plain
 // data, and `validatePlan` lets the UI explain why a plan cannot be committed. The host validates again.
 
-import { type CardIndex, CardTarget, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
+import { type CardIndex, cardInMode, CardTarget, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type SquadId, type SquadView, Visibility } from "./host";
 import { type Grid, type GridPosition, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
 
@@ -46,6 +46,8 @@ export interface PrimaryAction {
    * when it resolves), this Hero or an allied Hero for a Utility card.
    */
   target: string;
+  /** Play the card's Overdrive instead of its standard effect; the card is then Exiled (ADR 0003). */
+  overdrive?: boolean;
 }
 
 /** Actions are a union that grows with the card uses. */
@@ -89,6 +91,8 @@ export enum PlanIssueKind {
   UnplayableCard = "unplayableCard",
   BadTarget = "badTarget",
   HeroExhausted = "heroExhausted",
+  /** Overdrive was requested for a card that has none. */
+  NoOverdrive = "noOverdrive",
 }
 
 export interface PlanIssue {
@@ -158,8 +162,11 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
     for (const action of queue) {
       useCard(action.card);
       if (action.kind === ActionKind.Primary) {
-        const card = HERO_DECKS[hero.heroClass][action.card];
-        if (!card || !isPlayableCard(card)) {
+        const base = HERO_DECKS[hero.heroClass][action.card];
+        const card = base && cardInMode(base, action.overdrive);
+        if (base && action.overdrive && !base.overdrive) {
+          issues.push({ kind: PlanIssueKind.NoOverdrive, heroId, message: `${base.name} has no Overdrive.` });
+        } else if (!card || !isPlayableCard(base!, action.overdrive)) {
           issues.push({ kind: PlanIssueKind.UnplayableCard, heroId, message: "This card's effect cannot be played yet." });
         } else if (card.target !== CardTarget.VisibleEnemy) {
           // Self cards and area Attacks are confirmed on this Hero; ally cards need another Hero.

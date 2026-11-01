@@ -88,6 +88,23 @@ export type CardIndex = number;
 export const HAND_SIZE = 4;
 
 /**
+ * The card as it is played in a mode: with `overdrive`, the Overdrive effects (and target) replace the
+ * standard ones (ADR 0003). A card without an Overdrive keeps its standard effects, so callers check
+ * `card.overdrive` first where the mode must exist.
+ */
+export function cardInMode(card: CardDefinition, overdrive: boolean | undefined): CardDefinition {
+  if (!overdrive || !card.overdrive) return card;
+  return { ...card, effects: card.overdrive, target: card.overdriveTarget ?? card.target };
+}
+
+/** Damage of a Damage-type effect at `distance` tiles: long-range damage applies from Range 6. */
+export const LONG_RANGE_FROM = 6;
+export function damageAtDistance(effect: CardEffect, distance: number): number {
+  const longRange = effect.kind === EffectKind.DamageAtLongRange && distance >= LONG_RANGE_FROM;
+  return (longRange ? effect.longRangeAmount : effect.amount) ?? 0;
+}
+
+/**
  * Cards whose Primary effect is only "deal damage to one visible enemy". These are the Attacks the
  * resolution can play so far; other effects follow with their own tickets.
  */
@@ -96,7 +113,7 @@ export function isSimpleAttack(card: CardDefinition): boolean {
   return (
     card.type === CardType.Attack &&
     card.target === CardTarget.VisibleEnemy &&
-    first?.kind === EffectKind.Damage &&
+    (first?.kind === EffectKind.Damage || first?.kind === EffectKind.DamageAtLongRange) &&
     rest.every((effect) => effect.kind === EffectKind.ApplySlow)
   );
 }
@@ -132,9 +149,14 @@ export function isAreaAttack(card: CardDefinition): boolean {
   );
 }
 
-/** Whether a card's Primary effect can be planned and resolved so far. */
-export const isPlayableCard = (card: CardDefinition): boolean =>
-  isSimpleAttack(card) || isAreaAttack(card) || isPlayableUtility(card);
+/**
+ * Whether a card's Primary effect can be planned and resolved so far. Only simple Attacks can be played in
+ * Overdrive so far; other Overdrives (for example two allied targets) follow with their own tickets.
+ */
+export function isPlayableCard(card: CardDefinition, overdrive?: boolean): boolean {
+  if (overdrive) return card.overdrive !== undefined && isSimpleAttack(cardInMode(card, true));
+  return isSimpleAttack(card) || isAreaAttack(card) || isPlayableUtility(card);
+}
 
 const slow: CardEffect = { kind: EffectKind.ApplySlow, duration: 1 };
 const marked: CardEffect = { kind: EffectKind.ApplyMarked, duration: 1 };
