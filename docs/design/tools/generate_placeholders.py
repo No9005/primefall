@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
-OUT = Path(__file__).resolve().parent.parent / "assets"
+OUT = Path(__file__).resolve().parents[3] / "apps" / "web" / "public" / "assets"
 TW, TH = 128, 64            # tile diamond
 PROP = (128, 128)           # props: footprint sits in the bottom 128x64
 HERO = (128, 192)           # heroes: feet anchor at bottom centre
