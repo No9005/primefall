@@ -95,7 +95,13 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 77. As a player, I want the match to end immediately when one Squad controls the Prime Zone during three consecutive Resolutions, so that victory is clear.
 78. As a player, I want Core Rush to be unavailable in the first prototype, so that the Prime Zone remains the only victory path.
 79. As a player, I want the user interface to use the project glossary vocabulary, so that game concepts remain consistent.
-80. As a player, I want the spec to respect the existing ADRs, so that future implementation follows the documented decisions.
+80. As a player, I want to always control the Bruiser in the first prototype, so that the first match is simple to understand.
+81. As a player, I want to see the current Round as "Round X / 30", so that I know how much time is left.
+82. As a player, I want the match to end after 30 Rounds with the Squad holding more Deck cards winning, so that every match finishes.
+83. As a player, I want to see my Hand and the number of cards in my Deck and Exile, so that I can plan my economy.
+84. As a player, I want to see the Deck, Discard and Exile counts and the Shield of Visible enemies, so that I can predict when they will have their strong cards again.
+85. As a player, I want Ghosts to show the last seen counts and Unknown enemies to show nothing, so that scouting is valuable.
+86. As a player, I want the spec to respect the existing ADRs, so that future implementation follows the documented decisions.
 
 ## Implementation Decisions
 
@@ -122,6 +128,11 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Keep match state in browser memory, with optional localStorage support.
 - Use PixiJS for stylized 2.5D presentation with an orthographic camera.
 - Do not use Matter.js in the MVP; movement, Line of Sight, Cover, and combat are tile-based simulation rules.
+- The player always controls the Bruiser / Vanguard; Hero choice is a later extension.
+- A match ends after 30 Rounds (ADR 0019); the Round counter is shown in the UI as "Round X / 30".
+- Only a Match Host computes outcomes; the client sends Squad Plans and renders Squad View and filtered events (ADR 0017). The offline prototype runs the host in the browser main thread behind an asynchronous interface.
+- Card effects are declarative data interpreted by the engine (ADR 0018).
+- Tooling, repository layout and CI follow ADR 0018.
 - Do not publish the spec to a GitHub Issue; store it as a Markdown document under `docs/specs/`.
 
 ## Testing Decisions
@@ -133,6 +144,10 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Prefer existing seams; do not introduce additional seams unless a higher-level test cannot otherwise be expressed.
 - Use the Reactor Deck layout and the MVP card set as stable fixtures for deterministic scenario tests.
 - Treat AI behaviour as heuristic: test that AI actions are legal and objective-oriented, not that a specific action is always chosen.
+
+## Future Work: UI Tests
+
+Browser tests are intentionally not part of the MVP. Rough idea for later: a small Playwright suite that starts the app, plays a complete offline match against the AI with a fixed seed, and asserts the main flow (planning, commit, Resolution playback, end screen with Round counter); plus screenshot comparisons for the HUD and card Hand at a mobile viewport. It should run separately from `npm test` and, if added to CI, in its own job.
 
 ## Out of Scope
 
