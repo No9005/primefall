@@ -1,6 +1,6 @@
 # Software factory
 
-The factory turns unblocked `ready-for-agent` issues into pull requests and merges the low-risk ones automatically. A human decides every high-risk one. This page uses the terms of the `software-factory` skill. Setup steps are in `docs/agents/factory-setup.md`.
+The factory turns unblocked `ready-for-agent` issues into pull requests and merges the low-risk ones automatically. A human decides every high-risk one. The terms (task, trigger, run, runner, orchestrator) are used as in the tables below. Setup steps are in `docs/agents/factory-setup.md`.
 
 ## Slots
 
@@ -32,16 +32,9 @@ All of these must hold (`isIssueStartable`): it carries `ready-for-agent` and no
 
 ## Blast radius
 
-High when any one applies (`classifyPullRequest`; the rules are in `tools/factory/blast-radius-rules.json`):
+The path rules are the single source of truth in `tools/factory/blast-radius-rules.json`; `.github/CODEOWNERS` mirrors them so GitHub itself requires the owner's review (keep them in step by hand). Do not list the paths anywhere else. In short: a pull request is **high** when it touches design, decision, spec or agent files, the factory or tooling, or the business logic of the rules package (how the game is resolved), or when the pull request or its ticket carries `high-risk`. Everything else (other markdown, UI, rendering, assets, card and map data, tests, exports) is **low**, however large. A pull request that mixes low and high parts is high. Size limits exist in the rules file as optional fields and are not set.
 
-- It touches **design, decision, spec or agent files**: ADRs, specs, the design documents (`docs/design/**/*.md`), `GLOSSARY.md`, `CLAUDE.md`, `docs/agents` and `.claude` (skills). Other markdown (READMEs, process notes, the pitch) is low.
-- It touches **the factory or tooling**: `.github`, `tools/factory`, lint and TypeScript configuration, any `package.json`, the lockfile (dependencies).
-- It touches the **business logic of the rules package**, meaning how the game is resolved: everything under `packages/game-core/src` except card data (`cards.ts`), map data (`reactor-deck.ts`), the package exports (`index.ts`) and tests.
-- The pull request or its ticket carries `high-risk`.
-
-Everything else is low: other markdown, UI, rendering, assets, card and map data, tests and exports, however large the change. Size limits exist in the rules file as optional fields and are not set. A pull request that mixes low and high parts is high.
-
-The reviewer may raise a pull request to high with a reason, only if the change alters how the game is resolved or affects the factory or agent behaviour in a way the path rules cannot see; card data, UI and test changes alone are not a reason. An existing high label is kept. The same paths are in `.github/CODEOWNERS` (a pattern without an owner removes ownership for data, exports and tests), so GitHub itself requires the owner's review for the high paths. A `high-risk` label cannot be expressed there: for it the merge gate simply never enables auto-merge.
+The reviewer may raise a pull request to high with a reason, only if the change alters how the game is resolved or affects the factory or agent behaviour in a way the path rules cannot see; card data, UI and test changes alone are not a reason. An existing high label is kept. A `high-risk` label cannot be expressed in `CODEOWNERS`: for it the merge gate simply never enables auto-merge.
 
 ### Review threads and earlier reviews
 
@@ -77,4 +70,4 @@ The repository variable `BLAST_RADIUS_ENABLED` set to `false` switches the ratin
 - The pipeline files are validated by reading and by unit tests of the decision logic, not by real runs. The setup guide has a first-run checklist.
 - An implement run that ends without a branch or pull request (for example because the agent was denied a command it needed) is reported on the issue: a comment with the run link, the denied commands and the agent's last message, and the label `needs-human`. A `needs-human` issue is not started again automatically; remove the label to retry.
 - A review run that writes a result file with unusable content counts as a failed review. A review that never ran (no result file) is reported as `agent-review: error` with a comment and does not count as a failed review and does not start a rework. The Claude action skips itself when the workflow files of the branch differ from the default branch (for example for pull requests that change a workflow, or an agent branch that was cut before the workflows changed on `main`); update the branch with `main` or start "Factory pull request" by hand.
-- Pull requests opened by humans are not handled by the factory.
+- Only pull requests from `agent/` branches of this repository are handled. Pull requests from other branches are not.

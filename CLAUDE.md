@@ -57,7 +57,9 @@ If the issue is unclear or contradicts the spec, an ADR or the glossary, do not 
 
 ## Software factory
 
-Unblocked `ready-for-agent` issues can be started automatically, and their pull requests are reviewed by a separate agent run. Pull requests with a **high blast radius** (design, decision, spec and agent files such as ADRs, specs, design documents, the glossary and `CLAUDE.md`; the factory and tooling; the business logic of the rules package; label `high-risk`) are always merged by the product owner; other markdown, UI, assets, card and map data and tests are low; only low blast radius pull requests may get auto-merge, and only when the owner has switched it on. The owner can switch the rating off with the repository variable `BLAST_RADIUS_ENABLED=false` (early MVP); then every pull request counts as low. Agents never merge and never change the factory's rules to lower a pull request's class. Design: `docs/agents/software-factory.md`; setup and operation: `docs/agents/factory-setup.md`.
+Unblocked `ready-for-agent` issues are started automatically and their pull requests are reviewed by a separate agent run. Pull requests with a **high blast radius** are always merged by the product owner; only low ones may get auto-merge, and only when the owner has switched it on. Agents never merge and never change the factory's rules to lower a pull request's class. The rules, switches and setup are in `docs/agents/software-factory.md` and `docs/agents/factory-setup.md`; the path rules are only in `tools/factory/blast-radius-rules.json`.
+
+In a factory run, the issue named in the run prompt is your ticket (there is no chat to name one); everything else in this file applies unchanged.
 
 ## Agent skills
 
