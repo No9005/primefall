@@ -22,7 +22,8 @@
 # Business logic of the rules package
 /packages/game-core/src/ @No9005
 
-# Data, exports and tests of the rules package need no owner review (a pattern without an owner removes ownership)
+# Data, exports and tests of the rules package need no owner review (a pattern without an owner removes ownership).
+# Changing existing tests is high in the factory's rules, but CODEOWNERS cannot tell new tests from changed ones.
 /packages/game-core/src/index.ts
 /packages/game-core/src/cards.ts
 /packages/game-core/src/reactor-deck.ts

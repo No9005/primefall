@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BlastRadius, classifyPullRequest, keepHighWhenAlreadyHigh, pathMatchesGlob, type BlastRadiusRules, type ChangedFile } from "./blast-radius.ts";
+import { BlastRadius, classifyPullRequest, FileStatus, keepHighWhenAlreadyHigh, pathMatchesGlob, type BlastRadiusRules, type ChangedFile } from "./blast-radius.ts";
 
 const rules = JSON.parse(readFileSync(new URL("../blast-radius-rules.json", import.meta.url), "utf8")) as BlastRadiusRules;
-const file = (filename: string, additions = 5, deletions = 0): ChangedFile => ({ filename, additions, deletions });
+const file = (filename: string, additions = 5, deletions = 0, status: FileStatus = FileStatus.Modified): ChangedFile => ({ filename, additions, deletions, status });
 const classify = (files: ChangedFile[], labels: string[] = []) => classifyPullRequest({ files, labels, rules });
 
 describe("pathMatchesGlob", () => {
@@ -19,8 +19,8 @@ describe("pathMatchesGlob", () => {
 });
 
 describe("classifyPullRequest", () => {
-  it("is low for UI, rendering, tests and assets", () => {
-    const result = classify([file("apps/web/src/Board.tsx"), file("apps/web/src/board-layout.test.ts"), file("apps/web/public/assets/tiles/floor_01.png")]);
+  it("is low for UI, rendering, new tests and assets", () => {
+    const result = classify([file("apps/web/src/Board.tsx"), file("apps/web/src/board-layout.test.ts", 20, 0, FileStatus.Added), file("apps/web/public/assets/tiles/floor_01.png")]);
     expect(result).toEqual({ level: BlastRadius.Low, reasons: [] });
   });
 
@@ -28,7 +28,6 @@ describe("classifyPullRequest", () => {
     ["card data", "packages/game-core/src/cards.ts"],
     ["map data", "packages/game-core/src/reactor-deck.ts"],
     ["the package exports", "packages/game-core/src/index.ts"],
-    ["a test of the rules package", "packages/game-core/src/match.test.ts"],
     ["a mockup page", "docs/design/mockups.html"],
     ["a design asset script", "docs/design/tools/generate_placeholders.py"],
     ["the README", "README.md"],
@@ -37,6 +36,32 @@ describe("classifyPullRequest", () => {
     ["a markdown note in a package", "packages/game-core/NOTES.md"],
   ])("is low when it only touches %s", (_name, filename) => {
     expect(classify([file(filename)]).level).toBe(BlastRadius.Low);
+  });
+
+  describe("tests", () => {
+    it.each([
+      ["a new test file", file("packages/game-core/src/new.test.ts", 40, 0, FileStatus.Added)],
+      ["a new test file in the web app", file("apps/web/src/new.test.tsx", 40, 0, FileStatus.Added)],
+      ["new tests added to an existing test file", file("packages/game-core/src/match.test.ts", 30, 0, FileStatus.Modified)],
+    ])("is low for %s", (_name, changed) => {
+      expect(classify([changed]).level).toBe(BlastRadius.Low);
+    });
+
+    it.each([
+      ["lines removed from an existing test file", file("packages/game-core/src/match.test.ts", 3, 2, FileStatus.Modified)],
+      ["a rewritten test in the web app", file("apps/web/src/board-layout.test.ts", 5, 5, FileStatus.Modified)],
+      ["a removed test file", file("packages/game-core/src/cards.test.ts", 0, 40, FileStatus.Removed)],
+      ["a renamed test file", file("packages/game-core/src/cards.spec.test.ts", 0, 0, FileStatus.Renamed)],
+      ["a test in a __tests__ folder", file("apps/web/src/__tests__/board.ts", 1, 1, FileStatus.Modified)],
+    ])("is high for %s", (_name, changed) => {
+      const result = classify([changed]);
+      expect(result.level).toBe(BlastRadius.High);
+      expect(result.reasons[0]).toContain("existing tests");
+    });
+
+    it("does not count a changed test as business logic twice", () => {
+      expect(classify([file("packages/game-core/src/match.test.ts", 3, 2)]).reasons).toHaveLength(1);
+    });
   });
 
   it("is not high just because it is large when no size limit is configured", () => {

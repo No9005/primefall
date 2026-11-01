@@ -4,7 +4,7 @@
 // Environment: GH_TOKEN, GITHUB_REPOSITORY, GITHUB_REPOSITORY_OWNER, GITHUB_OUTPUT, AUTOMERGE_ENABLED.
 import { execFileSync } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
-import { BlastRadius, classifyPullRequest, keepHighWhenAlreadyHigh, type BlastRadiusRules, type ChangedFile } from "./blast-radius.ts";
+import { BlastRadius, classifyPullRequest, FileStatus, keepHighWhenAlreadyHigh, type BlastRadiusRules, type ChangedFile } from "./blast-radius.ts";
 import {
   blastRadiusLabel,
   candidateIssues,
@@ -160,8 +160,14 @@ function pullRequestContext(number: number): void {
 
 function classify(number: number, rulesPath: string): void {
   const rules = JSON.parse(readFileSync(rulesPath, "utf8")) as BlastRadiusRules;
-  const files = apiList<{ filename: string; additions: number; deletions: number }>(`repos/${repo}/pulls/${number}/files`).map(
-    (f): ChangedFile => ({ filename: f.filename, additions: f.additions, deletions: f.deletions }),
+  const files = apiList<{ filename: string; additions: number; deletions: number; status: string }>(`repos/${repo}/pulls/${number}/files`).map(
+    (f): ChangedFile => ({
+      filename: f.filename,
+      additions: f.additions,
+      deletions: f.deletions,
+      // Other statuses (copied, changed) are treated as a modification.
+      status: Object.values(FileStatus).find((status) => status === f.status) ?? FileStatus.Modified,
+    }),
   );
   const labels = loadPullRequest(number).labels.map((l) => l.name);
   const result = keepHighWhenAlreadyHigh(classifyPullRequest({ files, labels, rules }), labels.includes(Label.BlastRadiusHigh));

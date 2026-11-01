@@ -10,6 +10,8 @@ export interface BlastRadiusRules {
   documentationAndAgentPaths: string[];
   /** The factory itself and tooling that enforces the project's rules or brings in dependencies. */
   factoryAndToolingPaths: string[];
+  /** Test files: adding tests is low, changing or removing existing tests is high. */
+  testPaths: string[];
   /** Business logic: how the game is resolved. Data, exports and tests are listed as exceptions. */
   businessLogicPaths: string[];
   businessLogicExceptions: string[];
@@ -18,10 +20,15 @@ export interface BlastRadiusRules {
   maxChangedFiles?: number;
 }
 
+/** Status of a file in a pull request, as the GitHub API reports it. */
+export const FileStatus = { Added: "added", Modified: "modified", Removed: "removed", Renamed: "renamed" } as const;
+export type FileStatus = (typeof FileStatus)[keyof typeof FileStatus];
+
 export interface ChangedFile {
   filename: string;
   additions: number;
   deletions: number;
+  status: FileStatus;
 }
 
 export interface Classification {
@@ -53,6 +60,15 @@ function firstMatch(path: string, globs: string[]): string | undefined {
   return globs.find((glob) => pathMatchesGlob(path, glob));
 }
 
+/**
+ * A test file changes existing tests when it is removed, renamed or has lines removed or rewritten.
+ * A new file, or a modified file that only gains lines, adds tests (or assertions) and does not.
+ */
+function changesExistingTests(file: ChangedFile): boolean {
+  if (file.status === FileStatus.Removed || file.status === FileStatus.Renamed) return true;
+  return file.status === FileStatus.Modified && file.deletions > 0;
+}
+
 /** Rules in the order they are reported; any single one makes the pull request high. */
 export function classifyPullRequest(input: { files: ChangedFile[]; labels: string[]; rules: BlastRadiusRules }): Classification {
   const { files, labels, rules } = input;
@@ -69,6 +85,11 @@ export function classifyPullRequest(input: { files: ChangedFile[]; labels: strin
       const glob = firstMatch(filename, globs);
       if (glob) reasons.push(`Touches ${name}: \`${filename}\` (matches \`${glob}\`)`);
     }
+  }
+
+  for (const file of files) {
+    const glob = firstMatch(file.filename, rules.testPaths);
+    if (glob && changesExistingTests(file)) reasons.push(`Changes or removes existing tests: \`${file.filename}\` (matches \`${glob}\`)`);
   }
 
   const changedLines = files.reduce((sum, file) => sum + file.additions + file.deletions, 0);
