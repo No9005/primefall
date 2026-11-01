@@ -6,11 +6,16 @@ export type BlastRadius = (typeof BlastRadius)[keyof typeof BlastRadius];
 
 export interface BlastRadiusRules {
   highRiskLabel: string;
-  maxChangedLines: number;
-  maxChangedFiles: number;
+  /** Documentation (markdown) and agent files. */
+  documentationAndAgentPaths: string[];
+  /** The factory itself and tooling that enforces the project's rules or brings in dependencies. */
   factoryAndToolingPaths: string[];
-  decisionAndContractPaths: string[];
-  simulationPaths: string[];
+  /** Business logic: how the game is resolved. Data, exports and tests are listed as exceptions. */
+  businessLogicPaths: string[];
+  businessLogicExceptions: string[];
+  /** Optional size limits; a pull request is not high just because it is large unless these are set. */
+  maxChangedLines?: number;
+  maxChangedFiles?: number;
 }
 
 export interface ChangedFile {
@@ -53,21 +58,22 @@ export function classifyPullRequest(input: { files: ChangedFile[]; labels: strin
   const { files, labels, rules } = input;
   const reasons: string[] = [];
 
-  const groups: [string, string[]][] = [
-    ["factory or tooling", rules.factoryAndToolingPaths],
-    ["decisions and contracts", rules.decisionAndContractPaths],
-    ["deterministic simulation core", rules.simulationPaths],
+  const groups: [string, string[], string[]][] = [
+    ["documentation or agent files", rules.documentationAndAgentPaths, []],
+    ["factory or tooling", rules.factoryAndToolingPaths, []],
+    ["business logic", rules.businessLogicPaths, rules.businessLogicExceptions],
   ];
-  for (const [name, globs] of groups) {
+  for (const [name, globs, exceptions] of groups) {
     for (const { filename } of files) {
+      if (firstMatch(filename, exceptions)) continue;
       const glob = firstMatch(filename, globs);
       if (glob) reasons.push(`Touches ${name}: \`${filename}\` (matches \`${glob}\`)`);
     }
   }
 
   const changedLines = files.reduce((sum, file) => sum + file.additions + file.deletions, 0);
-  if (changedLines > rules.maxChangedLines) reasons.push(`Changes ${changedLines} lines (limit ${rules.maxChangedLines})`);
-  if (files.length > rules.maxChangedFiles) reasons.push(`Changes ${files.length} files (limit ${rules.maxChangedFiles})`);
+  if (rules.maxChangedLines !== undefined && changedLines > rules.maxChangedLines) reasons.push(`Changes ${changedLines} lines (limit ${rules.maxChangedLines})`);
+  if (rules.maxChangedFiles !== undefined && files.length > rules.maxChangedFiles) reasons.push(`Changes ${files.length} files (limit ${rules.maxChangedFiles})`);
   if (labels.includes(rules.highRiskLabel)) reasons.push(`Carries the \`${rules.highRiskLabel}\` label`);
 
   return { level: reasons.length > 0 ? BlastRadius.High : BlastRadius.Low, reasons };

@@ -1,24 +1,20 @@
 {
-  "note": "Changing this file is itself high blast radius (it matches tools/factory/**). New simulation files in game-core must be added to simulationPaths.",
+  "note": "High blast radius means: documentation and agent files, the factory and tooling, or the business logic of the rules package. Everything else (UI, rendering, assets, card and map data, tests, exports) is low. Changing this file is itself high (it matches tools/factory/**). Keep .github/CODEOWNERS in sync.",
   "highRiskLabel": "high-risk",
-  "maxChangedLines": 400,
-  "maxChangedFiles": 15,
+  "documentationAndAgentPaths": ["**/*.md", ".claude/**", "docs/agents/**"],
   "factoryAndToolingPaths": [
     ".github/**",
-    "CLAUDE.md",
-    "docs/agents/**",
     "tools/factory/**",
     "eslint.config.js",
     "**/tsconfig*.json",
     "**/package.json",
     "package-lock.json"
   ],
-  "decisionAndContractPaths": ["docs/adr/**", "docs/specs/**", "GLOSSARY.md"],
-  "simulationPaths": [
-    "packages/game-core/src/server.ts",
-    "packages/game-core/src/server/**",
-    "packages/game-core/src/**/prng*",
-    "packages/game-core/src/**/resolve*",
-    "packages/game-core/src/**/match-state*"
+  "businessLogicPaths": ["packages/game-core/src/**"],
+  "businessLogicExceptions": [
+    "packages/game-core/src/index.ts",
+    "packages/game-core/src/cards.ts",
+    "packages/game-core/src/reactor-deck.ts",
+    "packages/game-core/src/**/*.test.ts"
   ]
 }

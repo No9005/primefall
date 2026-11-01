@@ -32,15 +32,16 @@ All of these must hold (`isIssueStartable`): it carries `ready-for-agent` and no
 
 ## Blast radius
 
-High when any one applies (`classifyPullRequest`):
+High when any one applies (`classifyPullRequest`; the rules are in `tools/factory/blast-radius-rules.json`):
 
-- It touches the factory or tooling: `.github`, `CLAUDE.md`, `docs/agents`, `tools/factory`, lint or TypeScript configuration, any `package.json`, the lockfile.
-- It touches decisions and contracts: `docs/adr`, `docs/specs`, `GLOSSARY.md`.
-- It touches the deterministic simulation core (the globs in the rules file: the server entry point, the PRNG, round resolution, Match State). New simulation files must be added to the rules file and to `.github/CODEOWNERS`.
-- More than 400 changed lines or more than 15 changed files.
+- It touches **documentation or agent files**: any markdown file (ADRs, specs, glossary, `CLAUDE.md`, READMEs, skill files), `.claude`, `docs/agents`.
+- It touches **the factory or tooling**: `.github`, `tools/factory`, lint and TypeScript configuration, any `package.json`, the lockfile (dependencies).
+- It touches the **business logic of the rules package**, meaning how the game is resolved: everything under `packages/game-core/src` except card data (`cards.ts`), map data (`reactor-deck.ts`), the package exports (`index.ts`) and tests.
 - The pull request or its ticket carries `high-risk`.
 
-Everything else is low. The reviewer may raise a pull request to high with a reason; an existing high label is kept. The same paths are in `.github/CODEOWNERS`, so GitHub itself requires the owner's review for them (with the ruleset from the setup guide). Size and label rules cannot be expressed there: for those the merge gate simply never enables auto-merge.
+Everything else is low: UI, rendering, assets, card and map data, tests and exports, however large the change. Size limits exist in the rules file as optional fields and are not set. A pull request that mixes low and high parts is high.
+
+The reviewer may raise a pull request to high with a reason, only if the change alters how the game is resolved or affects the factory or agent behaviour in a way the path rules cannot see; card data, UI and test changes alone are not a reason. An existing high label is kept. The same paths are in `.github/CODEOWNERS` (a pattern without an owner removes ownership for data, exports and tests), so GitHub itself requires the owner's review for the high paths. A `high-risk` label cannot be expressed there: for it the merge gate simply never enables auto-merge.
 
 ## Brakes
 
