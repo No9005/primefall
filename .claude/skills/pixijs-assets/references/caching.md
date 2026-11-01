@@ -1,5 +1,7 @@
 # Caching
 
+Every asset loaded through `Assets` is cached until explicitly unloaded. The cache is keyed by resolved URL, alias, and bundle identifier.
+
 ## Quick start
 
 ```ts
@@ -10,6 +12,17 @@ const sprite = new Sprite(cached);
 
 await Assets.unload("hero.png");
 ```
+
+## Synchronous access
+
+```ts
+await Assets.load(["hero.png", "enemy.png"]);
+
+const hero = Assets.get("hero");
+const enemy = Assets.get("enemy");
+```
+
+`Assets.get()` returns `undefined` if the asset has not been loaded yet.
 
 ## Deduping
 
@@ -26,6 +39,8 @@ sprite.destroy();
 await Assets.unload("hero.png");
 ```
 
+Always destroy or detach display objects that reference an asset before unloading it.
+
 ## Bundle unloading
 
 ```ts
@@ -36,4 +51,5 @@ await Assets.unloadBundle("level1");
 ## Common mistakes
 
 - Do not call `Assets.get()` before `Assets.load()`.
-- Unload bundles between levels.
+- Unload bundles between levels to release GPU memory.
+- Do not use sprites after their texture has been unloaded.

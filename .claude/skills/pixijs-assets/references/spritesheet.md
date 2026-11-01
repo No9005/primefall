@@ -1,4 +1,6 @@
-# Spritesheet
+# Spritesheet: Texture Atlases and Animations
+
+Load and use texture atlases and animation sheets with PixiJS's `Spritesheet` class. Atlases reduce draw calls by packing many textures into a single image.
 
 ## Quick start
 
@@ -11,9 +13,12 @@ app.stage.addChild(hero);
 const walk = new AnimatedSprite(sheet.animations["walk"]);
 walk.animationSpeed = 0.15;
 walk.play();
+app.stage.addChild(walk);
 ```
 
-## JSON format
+When loaded through `Assets.load()`, the JSON file is fetched, the atlas image is loaded, and `sheet.parse()` is called automatically.
+
+## Spritesheet JSON format
 
 ```json
 {
@@ -26,7 +31,7 @@ walk.play();
     }
   },
   "animations": {
-    "walk": ["walk_01.png", "walk_02.png"]
+    "walk": ["walk_01.png", "walk_02.png", "walk_03.png"]
   },
   "meta": {
     "image": "spritesheet.png",
@@ -35,6 +40,15 @@ walk.play();
   }
 }
 ```
+
+Key fields:
+
+- `frames` maps frame names to rectangle data, trim info, anchors, and 9-slice borders.
+- `rotated` indicates the frame is stored rotated 90 degrees in the atlas.
+- `trimmed` indicates transparent padding was removed.
+- `animations` maps animation names to ordered frame-name arrays.
+- `meta.scale` sets the texture-source resolution.
+- `meta.image` is the atlas image filename, resolved relative to the JSON file.
 
 ## Manual creation
 
@@ -48,7 +62,16 @@ const sheet = new Spritesheet({
 await sheet.parse();
 ```
 
+`parse()` is async for large spritesheets. `cachePrefix` prevents cache collisions when multiple atlases share frame names.
+
+## Cleanup
+
+```ts
+sheet.destroy();
+sheet.destroy(true); // also destroys the base atlas texture
+```
+
 ## Common mistakes
 
-- Ensure `meta.scale` matches the atlas resolution.
-- Do not access textures before parse completes.
+- Ensure `meta.scale` matches the actual atlas resolution.
+- Do not access `sheet.textures` before parsing completes.

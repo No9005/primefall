@@ -1,5 +1,7 @@
 # Progress Tracking
 
+`Assets.load` and `Assets.loadBundle` accept a progress callback that fires as each asset completes. The value is normalized from 0 to 1.
+
 ## Quick start
 
 ```ts
@@ -20,7 +22,20 @@ await Assets.loadBundle("level1", (progress) => {
 });
 ```
 
+## LoadOptions
+
+```ts
+await Assets.load("game.json", {
+  onProgress: (progress) => updateBar(progress),
+  onError: (err, asset) => {
+    const src = typeof asset === "string" ? asset : asset.src;
+    console.warn("failed:", src, err);
+  },
+});
+```
+
 ## Common mistakes
 
-- Use `await` to detect completion.
+- Use `await` or `.then()` to detect completion; `progress === 1` can fire slightly before the promise resolves.
+- Progress updates in discrete steps per asset.
 - Background loading has no progress callback.

@@ -1,5 +1,7 @@
 # Animated GIFs
 
+PixiJS loads animated GIFs through `Assets.load()` and returns a `GifSource`. GIF support requires the `pixi.js/gif` side-effect import.
+
 ## Quick start
 
 ```ts
@@ -11,15 +13,42 @@ const gif = new GifSprite(source);
 app.stage.addChild(gif);
 ```
 
-## Playback
+## Load options
+
+```ts
+const source = await Assets.load({
+  src: "pixel-art.gif",
+  data: {
+    fps: 12,
+    scaleMode: "nearest",
+    resolution: 2,
+  },
+});
+```
+
+## Playback control
 
 ```ts
 gif.play();
 gif.stop();
 gif.currentFrame = 5;
+gif.animationSpeed = 0.5;
+gif.loop = false;
+```
+
+## Sharing a source
+
+Multiple `GifSprite` instances can share the same `GifSource`; each has independent playback state.
+
+## Cleanup
+
+```ts
+gif.destroy();
+await Assets.unload("explosion.gif");
 ```
 
 ## Common mistakes
 
-- Import `pixi.js/gif` before loading.
+- Import `pixi.js/gif` before loading a GIF.
 - Prefer spritesheets for performance-critical animations.
+- Do not call `destroy(true)` when other sprites share the source.

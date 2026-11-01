@@ -1,5 +1,7 @@
 # TilingSprite
 
+`TilingSprite` repeats a texture across a given area. Use it for scrolling backgrounds, parallax layers, and repeating ground patterns.
+
 ## Quick start
 
 ```ts
@@ -22,14 +24,22 @@ app.ticker.add((ticker) => {
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `texture` | Texture | Texture.EMPTY | Repeated texture. |
-| `width` | number | 256 | Tiling width. |
-| `height` | number | 256 | Tiling height. |
-| `tilePosition` | PointData | 0,0 | Pattern offset. |
-| `tileScale` | PointData | 1,1 | Pattern scale. |
+| `texture` | Texture | Texture.EMPTY | Texture repeated across the region. |
+| `width` | number | 256 | Visible tiling width. |
+| `height` | number | 256 | Visible tiling height. |
+| `tilePosition` | PointData | 0,0 | Pattern offset; animate to scroll. |
+| `tileScale` | PointData | 1,1 | Scale of the tile pattern. |
+| `tileRotation` | number | 0 | Rotation of the tile pattern. |
+
+## Parallax
+
+```ts
+far.tilePosition.x -= 0.5 * ticker.deltaTime;
+near.tilePosition.x -= 2 * ticker.deltaTime;
+```
 
 ## Common mistakes
 
-- Always pass a texture.
-- Use `tileScale` to scale the pattern.
-- Prefer power-of-two textures.
+- Always pass a texture; the default is `Texture.EMPTY`.
+- Use `tileScale` to scale the pattern, not `scale`, which stretches the whole sprite.
+- Prefer power-of-two textures for reliable hardware tiling.

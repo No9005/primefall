@@ -396,7 +396,7 @@ crisp edges, readable silhouette, high quality game sprite
 
 ## Reactor Deck Grid Assets
 
-The Reactor Deck is a damaged cargo ship with a central reactor, mirror-symmetric layout, 20 by 12 tile Grid, no interactive doors, and no vertical levels. Generate tiles and Cover as separate assets so PixiJS can compose the Grid from data.
+The Reactor Deck is a damaged cargo ship with a central reactor, mirror-symmetric layout, 21 by 11 tile Grid, no interactive doors, and no vertical levels. Generate tiles and Cover as separate assets so PixiJS can compose the Grid from data.
 
 ### Required tile and prop set
 

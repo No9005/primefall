@@ -1,53 +1,48 @@
 ---
 name: isometric-character-sprites
-description: Use when generating isometric characters in consistent 8 directions with a fixed feet-anchor and exaggerated arcade-style movement poses.
+description: Use when generating isometric characters in consistent 8 directions with a fixed feet-anchor for movement and depth sorting.
 license: MIT
 ---
 
 # Isometric Character Sprites
 
+## Overview
+
+Characters move, so they need consistent proportions across 8 facing directions and a fixed feet-anchor (where the character touches the ground). Without this, characters appear to slide, jitter, or sort incorrectly when walking.
+
+## When to Use
+
+- You need a player or NPC that faces multiple directions.
+- Characters change size or proportion between directions.
+- Movement looks like the sprite is sliding or floating.
+
 ## Process
 
-1. Lock art direction and character height.
-2. Generate the same character in 8 directions.
-3. Keep proportions identical.
-4. Fix seed/settings.
-5. Clean alpha.
-6. Define the feet-anchor.
-7. Test by cycling directions.
+1. Lock art direction and character height in pixels.
+2. Generate the same character in 8 directions (S, SW, W, NW, N, NE, E, SE) on a plain background.
+3. Keep proportions identical - same height line and feet baseline across all 8.
+4. Fix seed/settings; regenerate any direction that drifts in size or style.
+5. Clean alpha with `transparent-cutout-cleanup`.
+6. Define the feet-anchor (bottom-center) identically for every direction.
+7. Test by cycling directions in place - the feet must not jump between frames.
 
-## Movement poses (exaggerated arcade style)
+## Rationalizations (Stop Lying to Yourself)
 
-Movement poses must be exaggerated and readable, inspired by classic run-and-gun arcade action games:
+| Excuse | Reality |
+|---|---|
+| "4 directions is enough" | Diagonal movement looks broken with 4 directions in iso. Do 8. |
+| "Slight height differences are fine" | A 3px height drift reads as bobbing. Align the baseline. |
 
-- Strong, clear silhouettes — the pose must read instantly, even at small size.
-- Exaggerated weight shifts — lean into the direction of movement.
-- Big anticipation and follow-through — wind up before an action, overshoot after it.
-- Dynamic limbs — arms and legs swing widely, never stiff or neutral.
-- Head and torso lead the motion — the body follows the intended direction.
-- Squash and stretch where appropriate — compress on impact, extend on release.
-- Feet stay grounded per pose — the feet-anchor must remain consistent for depth sorting.
+## Red Flags - STOP if you catch yourself:
 
-### Prompt additions for movement poses
-
-When generating walk, run, attack, or reaction poses, add phrases like:
-
-```text
-exaggerated dynamic pose, strong silhouette, classic arcade action pose,
-wide limb swing, leaned-forward running posture, dramatic follow-through,
-clear readable silhouette, game-ready sprite
-```
-
-Avoid:
-
-```text
-neutral pose, stiff limbs, static standing, realistic proportions
-```
+- Inconsistent character height across directions.
+- Feet-anchor differs per direction so the sprite slides.
+- Only front-facing direction exists.
 
 ## Verification
 
-- [ ] 8 consistent directions exist.
-- [ ] Feet-anchor is identical.
-- [ ] Cycling directions shows no jump.
-- [ ] Movement poses read as exaggerated and dynamic, arcade-action inspired.
-- [ ] Silhouettes are clear at small size.
+You are NOT done until every box is checked:
+
+- [ ] 8 consistent directions exist for the character.
+- [ ] Feet-anchor is identical across all directions.
+- [ ] Cycling directions in place shows no jump or slide.
