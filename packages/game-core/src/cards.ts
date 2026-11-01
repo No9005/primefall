@@ -118,8 +118,23 @@ export function isPlayableUtility(card: CardDefinition): boolean {
   );
 }
 
+/**
+ * Attacks that hit every enemy Hero in Range (no chosen target): damage, then Knockback. The player
+ * confirms them on the casting Hero, so the action's target is that Hero.
+ */
+export function isAreaAttack(card: CardDefinition): boolean {
+  const [first, ...rest] = card.effects;
+  return (
+    card.type === CardType.Attack &&
+    card.target === CardTarget.EnemiesInRange &&
+    first?.kind === EffectKind.Damage &&
+    rest.every((effect) => effect.kind === EffectKind.Knockback)
+  );
+}
+
 /** Whether a card's Primary effect can be planned and resolved so far. */
-export const isPlayableCard = (card: CardDefinition): boolean => isSimpleAttack(card) || isPlayableUtility(card);
+export const isPlayableCard = (card: CardDefinition): boolean =>
+  isSimpleAttack(card) || isAreaAttack(card) || isPlayableUtility(card);
 
 const slow: CardEffect = { kind: EffectKind.ApplySlow, duration: 1 };
 const marked: CardEffect = { kind: EffectKind.ApplyMarked, duration: 1 };
