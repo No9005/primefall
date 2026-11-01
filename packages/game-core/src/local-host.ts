@@ -22,7 +22,7 @@ export function createLocalHost(seed: number): MatchHost {
       if (issues.length > 0) throw new Error(`Invalid plan: ${issues.map((issue) => issue.message).join(" ")}`);
       const resolution = resolveRound(match, [plan]);
       match = startRound(resolution.match);
-      return { view: buildSquadView(match, plan.squad), events: getSquadEvents(plan.squad, resolution.events) };
+      return { view: buildSquadView(match, plan.squad), events: getSquadEvents(plan.squad, resolution) };
     },
   };
 }

@@ -26,7 +26,10 @@ describe("local host", () => {
     expect(Object.keys(view).sort()).toEqual(["enemies", "heroes", "round", "roundLimit", "squad"]);
     expect(Object.keys(view.heroes[0]!).sort()).toEqual(["deckCount", "exhausted", "exileCount", "hand", "heroClass", "id", "position"]);
     expect(view.enemies).toHaveLength(3);
-    expect(Object.keys(view.enemies[0]!).sort()).toEqual(["deckCount", "exhausted", "heroClass", "id", "position"]);
+    // At the Spawn areas no enemy is in sight yet, so nothing but identity is delivered.
+    expect(view.enemies.map((enemy) => Object.keys(enemy).sort())).toEqual(
+      Array(3).fill(["heroClass", "id", "visibility"]),
+    );
     expect(json).not.toMatch(/seed|rng/i);
   });
 

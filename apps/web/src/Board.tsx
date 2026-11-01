@@ -27,11 +27,13 @@ export interface BoardMarker {
   label: string;
 }
 
-interface TokenHero {
+export interface TokenHero {
   id: string;
   heroClass: HeroClass;
   position: GridPosition;
   exhausted: boolean;
+  /** A Ghost: drawn faded at its last known position and not selectable as a target. */
+  ghost?: boolean;
 }
 
 interface BoardProps {
@@ -122,6 +124,7 @@ export function Board({
       sprite.anchor.set(0.5, 1);
       // Enemies carry a red tint so the two Squads are told apart.
       if (enemy) sprite.tint = 0xffb3b3;
+      if (hero.ghost) sprite.alpha = 0.35;
       token.addChild(sprite);
       token.eventMode = "static";
       token.cursor = "pointer";

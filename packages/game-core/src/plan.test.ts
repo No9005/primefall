@@ -5,8 +5,11 @@ import { SquadId, type SquadView } from "./host";
 import { ActionKind, energyPool, type MoveAction, PlanIssueKind, type QueuedAction, validatePlan } from "./plan";
 import type { GridPosition } from "./reactor-deck";
 
-const view = buildSquadView(startRound(createMatch(9)), SquadId.Left);
-const enemy = view.enemies[0]!;
+// The enemy Bruiser stands in sight of the Squad; the other enemies are still Unknown.
+const match = startRound(createMatch(9));
+match.heroes.find((hero) => hero.id === "right-bruiser")!.position = { col: 8, row: 5 };
+const view = buildSquadView(match, SquadId.Left);
+const enemy = view.enemies.find((candidate) => candidate.id === "right-bruiser")!;
 const bruiser = view.heroes.find((hero) => hero.heroClass === HeroClass.Bruiser)!;
 const near = (offset: number): GridPosition => ({ col: bruiser.position.col + offset, row: bruiser.position.row });
 const move = (card: number, destination: GridPosition): MoveAction => ({ kind: ActionKind.Move, card, destination });
@@ -91,6 +94,8 @@ describe("validatePlan: Pitch, Energy and Block", () => {
     expect(check([attack(0, enemy.id)])).toEqual([]);
     expect(check([attack(0, bruiser.id)])).toEqual([PlanIssueKind.BadTarget]);
     expect(check([attack(0, "nobody")])).toEqual([PlanIssueKind.BadTarget]);
+    // Only a Visible enemy can be targeted: right-controller is still Unknown.
+    expect(check([attack(0, "right-controller")])).toEqual([PlanIssueKind.BadTarget]);
     // Bruiser card 6 is Bulwark, a Utility card.
     expect(check([attack(6, enemy.id)])).toEqual([PlanIssueKind.UnplayableCard]);
   });

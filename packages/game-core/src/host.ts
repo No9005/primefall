@@ -26,19 +26,56 @@ export interface HeroView {
   exhausted: boolean;
 }
 
-/** What a Squad knows about an enemy Hero: its tile and Deck size, never its Hand or Deck order. */
-export interface EnemyView {
-  id: string;
-  heroClass: HeroClass;
-  position: GridPosition;
-  deckCount: number;
-  exhausted: boolean;
+/** How much a Squad knows about one enemy Hero (Fog of War, ADR 0005). */
+export enum Visibility {
+  /** Within sight range and Line of Sight of the Squad right now. */
+  Visible = "visible",
+  /** Out of sight, but seen before: last known position and counts. */
+  Ghost = "ghost",
+  /** Never seen: nothing is known beyond which Hero it is. */
+  Unknown = "unknown",
 }
 
 /**
- * What one Squad may know about the match. Without Fog of War every enemy counts as Visible; the
- * Visible, Ghost and Unknown states replace `enemies` later. Never contains enemy Hands, Deck order,
- * seed or PRNG state.
+ * Which enemy Hero this is. Both Squads field one Hero of each class, so the identity reveals nothing
+ * about the match; it lets the Squad panel list an Unknown enemy.
+ */
+interface EnemyIdentity {
+  id: string;
+  heroClass: HeroClass;
+}
+
+/** A currently seen enemy Hero: never its Hand, Energy, Queue or Deck order. */
+export interface VisibleEnemyView extends EnemyIdentity {
+  visibility: Visibility.Visible;
+  position: GridPosition;
+  shield: number;
+  deckCount: number;
+  discardCount: number;
+  exileCount: number;
+  exhausted: boolean;
+}
+
+/** The last known position and counts of an enemy Hero that is no longer Visible. */
+export interface GhostEnemyView extends EnemyIdentity {
+  visibility: Visibility.Ghost;
+  position: GridPosition;
+  deckCount: number;
+  discardCount: number;
+  exileCount: number;
+  /** The Round in which the Hero was last seen. */
+  lastSeenRound: number;
+}
+
+export interface UnknownEnemyView extends EnemyIdentity {
+  visibility: Visibility.Unknown;
+}
+
+export type EnemyView = VisibleEnemyView | GhostEnemyView | UnknownEnemyView;
+
+/**
+ * What one Squad may know about the match. Never contains enemy Hands, Energy, Queues, Deck order,
+ * seed or PRNG state, and nothing about enemies the Squad has not seen.
  */
 export interface SquadView {
   squad: SquadId;

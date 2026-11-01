@@ -147,9 +147,9 @@ describe("resolveRound: Pitch and Block", () => {
 describe("getSquadEvents", () => {
   it("returns the events as copies", () => {
     const match = matchWith({ [LEFT_BRUISER]: { col: 8, row: 5 } });
-    const { events } = resolveRound(match, [movePlan(match, { [LEFT_BRUISER]: [{ col: 9, row: 5 }] })]);
-    const visible = getSquadEvents(SquadId.Left, events);
-    expect(visible).toEqual(events);
-    expect(visible[0]).not.toBe(events[0]);
+    const resolution = resolveRound(match, [movePlan(match, { [LEFT_BRUISER]: [{ col: 9, row: 5 }] })]);
+    const visible = getSquadEvents(SquadId.Left, resolution);
+    expect(visible).toEqual(resolution.events);
+    expect(visible[0]).not.toBe(resolution.events[0]);
   });
 });
