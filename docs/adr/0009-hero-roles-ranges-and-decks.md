@@ -9,3 +9,7 @@ Each Hero has a distinct role and a fixed 12-card Deck with no Flex cards.
 The Assassin’s Long Shot Overdrive grants bonus damage when the target is more than 5 tiles away, at Range 6 or 7. Ghost Shot is the Assassin’s third Attack Overdrive and may target a Ghost’s last known position.
 
 Distinct ranges and deck weights give each role a clear job without making any single Hero universally dominant.
+
+## Status
+
+accepted. Revised: the Assassin's Overdrive distribution is superseded by `docs/specs/mvp-card-set.md`. Its three Overdrive modes are Long Shot (both cards), Ghost Shot and Mark Target (a Utility card), on four Overdrive cards in total (see ADR 0003).

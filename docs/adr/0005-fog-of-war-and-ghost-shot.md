@@ -7,3 +7,7 @@ All squad members share vision. Every Hero has a base sight range of 7 tiles; an
 Normal attacks still require current Line of Sight. This preserves information as a valuable resource while giving the Assassin a high-risk tool to punish predictable movement.
 
 The base sight range of 7 matches the Assassin's Long Shot range and keeps both Spawn areas (8 tiles from the nearest Prime Zone tile) out of sight of the Prime Zone.
+
+## Status
+
+accepted. Revised: Ghost Shot is no longer the Assassin's only Overdrive. Its three Overdrive modes are Long Shot (both cards), Ghost Shot and Mark Target (a Utility card), on four Overdrive cards in total (see `docs/specs/mvp-card-set.md` and ADR 0003).
