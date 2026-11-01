@@ -14,6 +14,30 @@ export enum SquadId {
 /** Rounds per match (Round Limit, ADR 0019). */
 export const ROUND_LIMIT = 30;
 
+/** Why a match ended (ADR 0010, ADR 0011, ADR 0019). */
+export enum MatchEndReason {
+  /** A Squad controlled the Prime Zone for three consecutive Resolutions. */
+  PrimeZoneHeld = "primeZoneHeld",
+  /** All three Heroes of a Squad are Exhausted. */
+  AllHeroesExhausted = "allHeroesExhausted",
+  /** The Round Limit passed; decided by the cards in all Decks. */
+  RoundLimit = "roundLimit",
+}
+
+/** The result of a finished match. */
+export interface MatchResult {
+  /** Absent for a draw. */
+  winner?: SquadId;
+  reason: MatchEndReason;
+  /** The Round in which the match ended. */
+  round: number;
+  /** Cards in all Decks of each Squad's Heroes at the end. */
+  deckTotals: Record<SquadId, number>;
+}
+
+/** Consecutive Resolutions a Squad must control the Prime Zone to win (ADR 0010). */
+export const PRIME_ZONE_WIN_RESOLUTIONS = 3;
+
 export interface HeroView {
   id: string;
   heroClass: HeroClass;
@@ -81,6 +105,10 @@ export interface SquadView {
   squad: SquadId;
   round: number;
   roundLimit: number;
+  /** Consecutive Resolutions each Squad has controlled the Prime Zone (0 for the Squad that does not). */
+  primeProgress: Record<SquadId, number>;
+  /** Set once the match is over; no further plans are accepted. */
+  result?: MatchResult;
   heroes: readonly HeroView[];
   enemies: readonly EnemyView[];
 }

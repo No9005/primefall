@@ -2,7 +2,7 @@
 // every function returns a new Match State and all randomness comes from the seeded PRNG in it.
 
 import { type CardIndex, HAND_SIZE, HERO_DECKS, HeroClass } from "./cards";
-import { type EnemyView, ROUND_LIMIT, SquadId, type HeroView, type SquadView, Visibility } from "./host";
+import { type EnemyView, type MatchResult, ROUND_LIMIT, SquadId, type HeroView, type SquadView, Visibility } from "./host";
 import { chebyshevDistance } from "./plan";
 import { findTiles, GridPosition, hasLineOfSight, REACTOR_DECK, TileKind } from "./reactor-deck";
 
@@ -43,6 +43,10 @@ export interface MatchState {
   heroes: HeroState[];
   /** Per Squad: Ghost memory of the enemy Heroes it has seen, by Hero id. */
   ghosts: Record<SquadId, Record<string, GhostMemory>>;
+  /** The Squad that controls the Prime Zone and for how many consecutive Resolutions (ADR 0010). */
+  primeZone: { controller?: SquadId; progress: number };
+  /** Set when a victory condition is met; the match accepts no further Rounds. */
+  result?: MatchResult;
 }
 
 const SQUAD_ORDER: readonly HeroClass[] = [HeroClass.Bruiser, HeroClass.Controller, HeroClass.Assassin];
@@ -79,6 +83,7 @@ export function createMatch(seed: number): MatchState {
     round: 0,
     heroes: [],
     ghosts: { [SquadId.Left]: {}, [SquadId.Right]: {} },
+    primeZone: { progress: 0 },
   };
   for (const squad of [SquadId.Left, SquadId.Right]) {
     const spawns = spawnTiles(squad);
@@ -190,5 +195,11 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
       if (ghost) return { ...identity, visibility: Visibility.Ghost, ...structuredClone(ghost) };
       return { ...identity, visibility: Visibility.Unknown };
     });
-  return { squad, round: match.round, roundLimit: ROUND_LIMIT, heroes, enemies };
+  const { controller, progress } = match.primeZone;
+  const primeProgress = {
+    [SquadId.Left]: controller === SquadId.Left ? progress : 0,
+    [SquadId.Right]: controller === SquadId.Right ? progress : 0,
+  };
+  const result = match.result ? { result: structuredClone(match.result) } : {};
+  return { squad, round: match.round, roundLimit: ROUND_LIMIT, primeProgress, ...result, heroes, enemies };
 }
