@@ -82,6 +82,7 @@ jobs:
       id-token: write
     outputs:
       verdict: ${{ steps.report.outputs.verdict }}
+      retry: ${{ steps.report.outputs.retry }}
     steps:
       # The action must run inside a git repository, so the pull request is checked out at the
       # workspace root (first: a later root checkout would clean `trusted`) and the trusted factory
@@ -142,6 +143,7 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
+      actions: write
     outputs:
       rework: ${{ steps.rework.outputs.action }}
     steps:
@@ -164,6 +166,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           AUTOMERGE_ENABLED: ${{ vars.AUTOMERGE_ENABLED }}
           BLAST_RADIUS_ENABLED: ${{ vars.BLAST_RADIUS_ENABLED }}
+      # A review that did not run (no result file, or one that cannot be read) is repeated once; a started run
+      # replaces this one (same concurrency group). Only a workflow_dispatch starts a new run from here.
+      - name: Repeat a review that did not run
+        if: needs.review.outputs.verdict == 'not-run' && needs.review.outputs.retry == 'true'
+        run: gh workflow run factory-pull-request.yml --repo "${{ github.repository }}" --ref "${{ github.event.repository.default_branch }}" -f pr="$PR"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   rework:
     needs: [context, after-review]
@@ -181,6 +190,11 @@ jobs:
         with:
           ref: ${{ needs.context.outputs.head_ref }}
           fetch-depth: 0
+      # The factory code that reports a stalled rework comes from the default branch, not from the branch.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: trusted
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -210,11 +224,14 @@ jobs:
             --allowedTools "Read,Glob,Grep,Edit,Write,Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git status:*),Bash(git add:*),Bash(git commit:*),Bash(git diff:*),Bash(git log:*),Bash(git push origin HEAD:${{ needs.context.outputs.head_ref }}),Bash(gh pr view:*),Bash(gh api repos/${{ github.repository }}/pulls/${{ env.PR }}/reviews:*),Bash(gh api repos/${{ github.repository }}/pulls/${{ env.PR }}/comments:*)"
       # A push made with the workflow token does not start new workflow runs, a workflow_dispatch does.
       # If the push already started a run, both share one concurrency group and the older one is cancelled.
-      - name: Run the pipeline again for the new commit
+      # Without a new commit there is nothing new to review: hand over to a human instead of stalling.
+      - name: Run the pipeline again for the new commit, or hand over
         if: always()
         run: |
           if [ "$(git rev-parse HEAD)" != "${{ steps.before.outputs.sha }}" ]; then
             gh workflow run factory-pull-request.yml --repo "${{ github.repository }}" --ref "${{ github.event.repository.default_branch }}" -f pr="$PR"
+          else
+            node trusted/tools/factory/src/cli.ts rework-stalled "$PR"
           fi
         env:
           GH_TOKEN: ${{ github.token }}

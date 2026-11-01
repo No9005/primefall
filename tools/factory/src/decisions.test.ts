@@ -15,6 +15,7 @@ import {
   isIssueStartable,
   closingReferences,
   isRetroBranch,
+  reviewRetryDue,
   retroDue,
   retroInterval,
   Label,
@@ -140,8 +141,8 @@ describe("reviewOutcome", () => {
     expect(reviewOutcome({ resultFileExists: false, parsed: undefined })).toBe(ReviewOutcome.NotRun);
   });
 
-  it("is a failed review when the file has unusable content", () => {
-    expect(reviewOutcome({ resultFileExists: true, parsed: undefined })).toBe(ReviewOutcome.Fail);
+  it("is not run when the file has unusable content (there are no findings to rework)", () => {
+    expect(reviewOutcome({ resultFileExists: true, parsed: undefined })).toBe(ReviewOutcome.NotRun);
   });
 
   it("uses the verdict of a valid result", () => {
@@ -346,5 +347,13 @@ describe("closingReferences", () => {
     ["Part of #16", []],
   ])("%j gives %j", (description, expected) => {
     expect(closingReferences(description)).toEqual(expected);
+  });
+});
+
+describe("reviewRetryDue", () => {
+  it("repeats a review that did not run once per commit", () => {
+    expect(reviewRetryDue(1)).toBe(true);
+    expect(reviewRetryDue(2)).toBe(false);
+    expect(reviewRetryDue(3)).toBe(false);
   });
 });
