@@ -2,7 +2,7 @@
 // data, and `validatePlan` lets the UI explain why a plan cannot be committed. The host validates again.
 
 import { type CardIndex, HERO_DECKS, type HeroClass, isSimpleAttack } from "./cards";
-import type { SquadId, SquadView } from "./host";
+import { type SquadId, type SquadView, Visibility } from "./host";
 import { type Grid, type GridPosition, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
 
 /** A Hero's Queue holds at most 4 actions (the maximum Hand size, ADR 0020). */
@@ -158,8 +158,10 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
         const card = HERO_DECKS[hero.heroClass][action.card];
         if (!card || !isSimpleAttack(card)) {
           issues.push({ kind: PlanIssueKind.UnplayableCard, heroId, message: "This card's effect cannot be played yet." });
-        } else if (!view.enemies.some((enemy) => enemy.id === action.target && !enemy.exhausted)) {
-          issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: "An Attack needs an enemy Hero as its target." });
+        } else if (!view.enemies.some(
+            (enemy) => enemy.id === action.target && enemy.visibility === Visibility.Visible && !enemy.exhausted,
+          )) {
+          issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: "An Attack needs a Visible enemy Hero as its target." });
         }
       }
       if (action.kind !== ActionKind.Move) continue;

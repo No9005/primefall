@@ -2,8 +2,8 @@
 // always give the same result. Only Move actions exist so far.
 
 import { type CardDefinition, HERO_DECKS } from "./cards";
-import { EventKind, type MatchEvent, type SquadId } from "./host";
-import type { HeroState, MatchState } from "./match";
+import { EventKind, type MatchEvent, SquadId } from "./host";
+import { canSquadSee, type HeroState, type MatchState, recordSightings } from "./match";
 import { ActionKind, BLOCK_SHIELD, chebyshevDistance, MOVE_DISTANCE, type SquadPlan } from "./plan";
 import {
   CoverKind,
@@ -21,6 +21,22 @@ export interface ResolutionResult {
   match: MatchState;
   /** Everything that happened, for all Squads. Clients only ever see `getSquadEvents`. */
   events: readonly MatchEvent[];
+  /** Parallel to `events`: the Squads that perceive each event. */
+  perceivedBy: readonly (readonly SquadId[])[];
+}
+
+const SQUADS = [SquadId.Left, SquadId.Right];
+
+/** Which Squads perceive the events from `first` on, judged by the current positions (see `getSquadEvents`). */
+function perceivers(match: MatchState, events: readonly MatchEvent[], first: number): SquadId[][] {
+  return events.slice(first).map((event) => {
+    const involved = [event.heroId, event.targetId].flatMap((id) => match.heroes.filter((hero) => hero.id === id));
+    const tiles = [event.from, event.to, ...involved.map((hero) => hero.position)].filter((tile) => tile !== undefined);
+    return SQUADS.filter(
+      (squad) =>
+        involved.some((hero) => hero.squad === squad) || tiles.some((tile) => canSquadSee(match, squad, tile)),
+    );
+  });
 }
 
 interface Mover {
@@ -121,6 +137,12 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
   const match = structuredClone(previous);
   const queues = plans.flatMap((plan) => plan.heroes);
   const events: MatchEvent[] = [];
+  const perceivedBy: SquadId[][] = [];
+  // Judged at the end of each Tick, when Heroes stand where the Tick left them; also feeds Ghost memory.
+  const endTick = () => {
+    perceivedBy.push(...perceivers(match, events, perceivedBy.length));
+    recordSightings(match);
+  };
 
   const ticks = Math.max(0, ...queues.map(({ queue }) => queue.length));
   for (let tick = 1; tick <= ticks; tick++) {
@@ -145,6 +167,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
         : [],
     );
     resolveAttacks(match, tick, attacks, events);
+    endTick();
   }
 
   // Pitched and queued cards leave the Hand for the Discard; Energy and Shield expire with the Round.
@@ -162,13 +185,17 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     hero.exhausted = true;
     events.push({ kind: EventKind.Exhausted, tick: Math.max(ticks, 1), heroId: hero.id });
   }
-  return { match, events };
+  endTick();
+  return { match, events, perceivedBy };
 }
 
 /**
- * The events a Squad may see; the only source of events for a client. Without Fog of War every Squad
- * sees everything, but the filter lives here so hidden information never has to be removed in the UI.
+ * The events a Squad may perceive; the only source of events for a client, so hidden information never
+ * has to be removed in the UI. A Squad perceives an event when one of its own Heroes is involved (it acts
+ * or is the target), or when it sees, at the end of the event's Tick, a tile the event touched: the tiles
+ * a Hero stepped from or to, and where the acting and the targeted Hero stand. Being attacked by an
+ * enemy out of sight therefore reveals which Hero attacked, but not where it stands.
  */
-export function getSquadEvents(_squad: SquadId, events: readonly MatchEvent[]): MatchEvent[] {
-  return structuredClone([...events]);
+export function getSquadEvents(squad: SquadId, resolution: ResolutionResult): MatchEvent[] {
+  return structuredClone(resolution.events.filter((_, i) => resolution.perceivedBy[i]!.includes(squad)));
 }

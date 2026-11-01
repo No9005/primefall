@@ -2,8 +2,9 @@
 // every function returns a new Match State and all randomness comes from the seeded PRNG in it.
 
 import { type CardIndex, HAND_SIZE, HERO_DECKS, HeroClass } from "./cards";
-import { type EnemyView, ROUND_LIMIT, SquadId, type HeroView, type SquadView } from "./host";
-import { findTiles, GridPosition, REACTOR_DECK, TileKind } from "./reactor-deck";
+import { type EnemyView, ROUND_LIMIT, SquadId, type HeroView, type SquadView, Visibility } from "./host";
+import { chebyshevDistance } from "./plan";
+import { findTiles, GridPosition, hasLineOfSight, REACTOR_DECK, TileKind } from "./reactor-deck";
 
 export interface HeroState {
   id: string;
@@ -21,6 +22,18 @@ export interface HeroState {
   exhausted: boolean;
 }
 
+/** What a Squad last saw of an enemy Hero (Ghost memory, ADR 0005). */
+export interface GhostMemory {
+  position: GridPosition;
+  deckCount: number;
+  discardCount: number;
+  exileCount: number;
+  lastSeenRound: number;
+}
+
+/** Sight range of every Hero in tiles; the Hidden Assassin's 9 comes with Hidden (ADR 0005). */
+export const SIGHT_RANGE = 7;
+
 /** Plain serializable data: it survives `JSON.stringify` / `JSON.parse` unchanged. */
 export interface MatchState {
   seed: number;
@@ -28,6 +41,8 @@ export interface MatchState {
   rngState: number;
   round: number;
   heroes: HeroState[];
+  /** Per Squad: Ghost memory of the enemy Heroes it has seen, by Hero id. */
+  ghosts: Record<SquadId, Record<string, GhostMemory>>;
 }
 
 const SQUAD_ORDER: readonly HeroClass[] = [HeroClass.Bruiser, HeroClass.Controller, HeroClass.Assassin];
@@ -58,7 +73,13 @@ function spawnTiles(squad: SquadId): GridPosition[] {
 
 /** Creates two Squads of three Heroes on their Spawn tiles, each with a freshly shuffled Deck. */
 export function createMatch(seed: number): MatchState {
-  const match: MatchState = { seed, rngState: seed >>> 0, round: 0, heroes: [] };
+  const match: MatchState = {
+    seed,
+    rngState: seed >>> 0,
+    round: 0,
+    heroes: [],
+    ghosts: { [SquadId.Left]: {}, [SquadId.Right]: {} },
+  };
   for (const squad of [SquadId.Left, SquadId.Right]) {
     const spawns = spawnTiles(squad);
     SQUAD_ORDER.forEach((heroClass, i) => {
@@ -78,6 +99,7 @@ export function createMatch(seed: number): MatchState {
       });
     });
   }
+  recordSightings(match);
   return match;
 }
 
@@ -98,7 +120,41 @@ export function startRound(previous: MatchState): MatchState {
       shuffle(match, hero.deck);
     }
   }
+  recordSightings(match);
   return match;
+}
+
+/**
+ * Whether the Squad sees a tile right now: vision is shared, so one non-Exhausted Hero of the Squad
+ * with the tile in sight range and Line of Sight is enough.
+ */
+export function canSquadSee(match: MatchState, squad: SquadId, tile: GridPosition): boolean {
+  return match.heroes.some(
+    (hero) =>
+      hero.squad === squad &&
+      !hero.exhausted &&
+      chebyshevDistance(hero.position, tile) <= SIGHT_RANGE &&
+      hasLineOfSight(REACTOR_DECK, hero.position, tile),
+  );
+}
+
+/**
+ * Updates every Squad's Ghost memory with the enemies it sees right now. Called after every Tick, so an
+ * enemy that leaves sight mid-Resolution is remembered where it was last seen.
+ */
+export function recordSightings(match: MatchState): void {
+  for (const squad of [SquadId.Left, SquadId.Right]) {
+    for (const enemy of match.heroes.filter((hero) => hero.squad !== squad)) {
+      if (!canSquadSee(match, squad, enemy.position)) continue;
+      match.ghosts[squad][enemy.id] = {
+        position: { ...enemy.position },
+        deckCount: enemy.deck.length,
+        discardCount: enemy.discard.length,
+        exileCount: enemy.exile.length,
+        lastSeenRound: match.round,
+      };
+    }
+  }
 }
 
 /** The Squad View of one Squad: its own Heroes only, with counts instead of Deck contents. */
@@ -116,12 +172,23 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
     }));
   const enemies: EnemyView[] = match.heroes
     .filter((hero) => hero.squad !== squad)
-    .map((hero) => ({
-      id: hero.id,
-      heroClass: hero.heroClass,
-      position: { ...hero.position },
-      deckCount: hero.deck.length,
-      exhausted: hero.exhausted,
-    }));
+    .map((hero): EnemyView => {
+      const identity = { id: hero.id, heroClass: hero.heroClass };
+      if (canSquadSee(match, squad, hero.position)) {
+        return {
+          ...identity,
+          visibility: Visibility.Visible,
+          position: { ...hero.position },
+          shield: hero.shield,
+          deckCount: hero.deck.length,
+          discardCount: hero.discard.length,
+          exileCount: hero.exile.length,
+          exhausted: hero.exhausted,
+        };
+      }
+      const ghost = match.ghosts[squad][hero.id];
+      if (ghost) return { ...identity, visibility: Visibility.Ghost, ...structuredClone(ghost) };
+      return { ...identity, visibility: Visibility.Unknown };
+    });
   return { squad, round: match.round, roundLimit: ROUND_LIMIT, heroes, enemies };
 }

@@ -13,9 +13,10 @@ import {
   type SquadView,
   type SubmitResult,
   validatePlan,
+  Visibility,
 } from "game-core";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Board } from "./Board";
+import { Board, type TokenHero } from "./Board";
 import { buildPlaybackFrames, describeEvent, tickCountOf } from "./playback";
 import { CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, energyReadout, selectHero } from "./planning-selection";
 
@@ -96,19 +97,41 @@ function EnemyPanel({
 }) {
   return (
     <aside className="hud enemy-panel" aria-label="Enemy Squad">
-      {enemies.map((enemy) => (
-        <div key={enemy.id} className="hero-row" data-testid={`enemy-${enemy.heroClass}`}>
-          <span className="hero-name">{HERO_NAMES[enemy.heroClass]}</span>
-          {attackerPosition && !enemy.exhausted && coverProtectionLabel(attackerPosition, enemy.position) && (
-            <span className="tag cover-tag">{coverProtectionLabel(attackerPosition, enemy.position)}</span>
-          )}
-          <span className="counts">
-            Deck {enemy.deckCount - (playback?.deckDamage[enemy.id] ?? 0)}
-            {(playback?.shields[enemy.id] ?? 0) > 0 && ` · Shield ${playback?.shields[enemy.id]}`}
-          </span>
-          {(enemy.exhausted || playback?.exhausted.includes(enemy.id)) && <span className="tag">Exhausted</span>}
-        </div>
-      ))}
+      {enemies.map((enemy) => {
+        if (enemy.visibility === Visibility.Unknown) {
+          return (
+            <div key={enemy.id} className="hero-row unknown" data-testid={`enemy-${enemy.heroClass}`}>
+              <span className="hero-name">{HERO_NAMES[enemy.heroClass]}</span>
+              <span className="counts">Unknown</span>
+            </div>
+          );
+        }
+        if (enemy.visibility === Visibility.Ghost) {
+          return (
+            <div key={enemy.id} className="hero-row ghost" data-testid={`enemy-${enemy.heroClass}`}>
+              <span className="hero-name">{HERO_NAMES[enemy.heroClass]}</span>
+              <span className="tag">last seen</span>
+              <span className="counts">
+                Deck {enemy.deckCount} · Discard {enemy.discardCount} · Exile {enemy.exileCount}
+              </span>
+            </div>
+          );
+        }
+        const cover = attackerPosition && coverProtectionLabel(attackerPosition, enemy.position);
+        return (
+          <div key={enemy.id} className="hero-row" data-testid={`enemy-${enemy.heroClass}`}>
+            <span className="hero-name">{HERO_NAMES[enemy.heroClass]}</span>
+            {attackerPosition && !enemy.exhausted && cover && <span className="tag cover-tag">{cover}</span>}
+            <span className="counts">
+              Deck {enemy.deckCount - (playback?.deckDamage[enemy.id] ?? 0)} · Discard {enemy.discardCount} · Exile{" "}
+              {enemy.exileCount}
+              {enemy.shield + (playback?.shields[enemy.id] ?? 0) > 0 &&
+                ` · Shield ${enemy.shield + (playback?.shields[enemy.id] ?? 0)}`}
+            </span>
+            {(enemy.exhausted || playback?.exhausted.includes(enemy.id)) && <span className="tag">Exhausted</span>}
+          </div>
+        );
+      })}
     </aside>
   );
 }
@@ -233,9 +256,21 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       exhausted: unit.exhausted || (playback?.exhausted.includes(unit.id) ?? false),
     }));
   const boardHeroes = useMemo(() => onBoard(view.heroes), [view.heroes, playback]);
-  const boardEnemies = useMemo(() => onBoard(view.enemies), [view.enemies, playback]);
+  // Unknown enemies have no marker; Ghosts stay where they were last seen, faded.
+  const boardEnemies = useMemo(
+    () =>
+      view.enemies.flatMap((enemy): TokenHero[] => {
+        if (enemy.visibility === Visibility.Unknown) return [];
+        if (enemy.visibility === Visibility.Ghost) return [{ ...enemy, exhausted: false, ghost: true }];
+        return onBoard([enemy]);
+      }),
+    [view.enemies, playback],
+  );
   const targetableIds = useMemo(
-    () => (aiming !== undefined && !playing ? view.enemies.filter((enemy) => !enemy.exhausted).map((enemy) => enemy.id) : []),
+    () =>
+      aiming !== undefined && !playing
+        ? view.enemies.filter((enemy) => enemy.visibility === Visibility.Visible && !enemy.exhausted).map((enemy) => enemy.id)
+        : [],
     [aiming, playing, view.enemies],
   );
   const nameOf = (heroId: string) => {
