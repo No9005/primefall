@@ -9,6 +9,8 @@ import {
   mergeGateDecision,
   parseReviewResult,
   readyLabelSetByOwner,
+  ReviewOutcome,
+  reviewOutcome,
   reworkDecision,
   ReworkAction,
   ReviewVerdict,
@@ -109,5 +111,22 @@ describe("parseReviewResult", () => {
     expect(parseReviewResult(null)).toBeUndefined();
     expect(parseReviewResult({ verdict: "maybe", summary: "x", findings: [] })).toBeUndefined();
     expect(parseReviewResult({ verdict: "pass", summary: "x", findings: [{ path: "a" }] })).toBeUndefined();
+  });
+});
+
+describe("reviewOutcome", () => {
+  const parsed = { verdict: ReviewVerdict.Pass, summary: "ok", findings: [], raiseBlastRadiusReason: undefined };
+
+  it("is not-run when no result file exists, so no rework starts", () => {
+    expect(reviewOutcome({ resultFileExists: false, parsed: undefined })).toBe(ReviewOutcome.NotRun);
+  });
+
+  it("is a failed review when the file has unusable content", () => {
+    expect(reviewOutcome({ resultFileExists: true, parsed: undefined })).toBe(ReviewOutcome.Fail);
+  });
+
+  it("uses the verdict of a valid result", () => {
+    expect(reviewOutcome({ resultFileExists: true, parsed })).toBe(ReviewOutcome.Pass);
+    expect(reviewOutcome({ resultFileExists: true, parsed: { ...parsed, verdict: ReviewVerdict.Fail } })).toBe(ReviewOutcome.Fail);
   });
 });

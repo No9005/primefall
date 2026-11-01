@@ -187,7 +187,7 @@ jobs:
             --model claude-sonnet-5-5
             --effort medium
             --max-turns 40
-            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git status:*),Bash(git add:*),Bash(git commit:*),Bash(git diff:*),Bash(git log:*),Bash(git push origin HEAD:${{ needs.context.outputs.head_ref }}),Bash(gh pr view:*),Bash(gh api repos/${{ github.repository }}/pulls/${{ env.PR }}/reviews),Bash(gh api repos/${{ github.repository }}/pulls/${{ env.PR }}/comments)"
+            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git status:*),Bash(git add:*),Bash(git commit:*),Bash(git diff:*),Bash(git log:*),Bash(git push origin HEAD:${{ needs.context.outputs.head_ref }}),Bash(gh pr view:*),Bash(gh api repos/${{ github.repository }}/pulls/${{ env.PR }}/reviews:*),Bash(gh api repos/${{ github.repository }}/pulls/${{ env.PR }}/comments:*)"
       # A push made with the workflow token does not start new workflow runs, a workflow_dispatch does.
       # If the push already started a run, both share one concurrency group and the older one is cancelled.
       - name: Run the pipeline again for the new commit

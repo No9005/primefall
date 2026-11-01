@@ -15,6 +15,10 @@ export const Label = {
 export const ReviewVerdict = { Pass: "pass", Fail: "fail" } as const;
 export type ReviewVerdict = (typeof ReviewVerdict)[keyof typeof ReviewVerdict];
 
+/** What a review run amounts to. `NotRun` means no result file exists, so no review happened. */
+export const ReviewOutcome = { Pass: ReviewVerdict.Pass, Fail: ReviewVerdict.Fail, NotRun: "not-run" } as const;
+export type ReviewOutcome = (typeof ReviewOutcome)[keyof typeof ReviewOutcome];
+
 export const MAX_FAILED_REVIEWS = 2;
 export const AGENT_BRANCH_PREFIX = "agent/";
 
@@ -125,4 +129,14 @@ export function parseReviewResult(raw: unknown): ReviewResult | undefined {
   }
   const reason = typeof value.raiseBlastRadiusReason === "string" && value.raiseBlastRadiusReason.length > 0 ? value.raiseBlastRadiusReason : undefined;
   return { verdict, summary: value.summary, findings, raiseBlastRadiusReason: reason };
+}
+
+/**
+ * A missing result file means the review never ran (for example the Claude action skipped itself
+ * because the workflow files of the branch differ from the default branch): that is not a failed
+ * review and must not start a rework. A file with unusable content is a failed review.
+ */
+export function reviewOutcome(input: { resultFileExists: boolean; parsed: ReviewResult | undefined }): ReviewOutcome {
+  if (!input.resultFileExists) return ReviewOutcome.NotRun;
+  return input.parsed?.verdict ?? ReviewOutcome.Fail;
 }

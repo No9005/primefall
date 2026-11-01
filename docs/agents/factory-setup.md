@@ -59,6 +59,6 @@ These could not be tested without real runs; verify them on the first runs and f
 - The action accepts the `prompt` input and the options in `claude_args` (`--model`, `--effort medium`, `--max-turns`, `--allowedTools`), and the Actions copy of Claude Code knows `--effort`. Effort levels of the CLI: low, medium, high, xhigh, max.
 - The `--allowedTools` patterns match the commands the agent needs (a denied command shows up in the run log); the pattern `git push -u origin agent/*` accepts the agent's branch.
 - Pull requests and pushes made by the agent start the CI and pipeline workflows. The implement run uses the Claude GitHub App token via the action; if events do not start, the workflows' manual start still works.
-- The review run writes a valid `review-result.json`; otherwise it counts as a failed review.
+- The review run writes a valid `review-result.json`. A pull request that changes a factory workflow, or a branch that is behind `main` in its workflow files, gets `agent-review: error` ("did not run"), because the Claude action refuses to run when the workflow differs from the default branch; update the branch with `main` and run the pipeline again.
 - The Vercel status name matches the required check in the ruleset.
 - After the first merge, closing the issue starts the next unblocked ticket.
