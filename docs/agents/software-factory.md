@@ -12,7 +12,7 @@ The factory turns unblocked `ready-for-agent` issues into pull requests and merg
 | Continuous deployment | Vercel (preview per pull request, deploy from `main`) |
 | Observability platform | None on purpose: the Actions run pages suffice |
 
-The factory code (decisions and CLI) lives in `tools/factory`. The workflows are `factory-implement.yml` and `factory-pull-request.yml` next to `ci.yml`. The workflows always run the factory code and rules from the default branch, never from the pull request they judge.
+The factory code (decisions and CLI) lives in `tools/factory`. The workflows are `factory-implement.yml`, `factory-pull-request.yml` and `factory-retro.yml` next to `ci.yml`. The workflows always run the factory code and rules from the default branch, never from the pull request they judge.
 
 ## Tasks
 
@@ -23,6 +23,7 @@ The factory code (decisions and CLI) lives in `tools/factory`. The workflows are
 | **Review** | Same | A separate read-only run in a fresh context reviews the diff against the issue, `CLAUDE.md`, the ADRs, the glossary and the specs. It writes a result file; the CLI posts it as a review with inline comments and sets the status `agent-review`. It may raise the class to high, never lower it. It also runs for high-risk pull requests | Rework on fail, Merge gate on pass |
 | **Rework** | `agent-review` failed and fewer than 2 reviews have failed | Fixes only what the review named, pushes, and runs the pipeline again for the new commit | Review. After the second failed review: label `needs-human`, no more runs |
 | **Merge gate** | Review passed | Low and `AUTOMERGE_ENABLED=true`: enables GitHub's native auto-merge (squash). High: label `needs-human-merge` with a comment, no auto-merge | The merge closes the issue, which triggers Implement for the tickets it unblocked |
+| **Retro** | An `agent/` pull request is merged and the number of merged `agent/` pull requests (retro pull requests not counted) is a multiple of `RETRO_EVERY` (default 10, `0` = off), or the owner starts it by hand (Actions, "Factory retro") | A run reads the last N merged agent pull requests (issues, reviews, rework, labels, the owner's comments) and looks for a mistake that appears at least twice or that the owner corrected. If it finds one, it opens `agent/retro-<n>` with changes to `CLAUDE.md` or other agent instructions, each tied to the pull requests that motivated it; otherwise it only comments on the latest pull request. It cannot push workflow files and never touches the blast radius rules, `CODEOWNERS`, ADRs, specs or the glossary | Review. The merge gate never enables auto-merge for a retro pull request: the owner decides |
 
 Agents never merge. Only the merge gate enables auto-merge, and GitHub merges once the rules of `main` are satisfied (CI, `agent-review`, Vercel preview, resolved conversations, code owner review where required).
 
@@ -70,4 +71,5 @@ The repository variable `BLAST_RADIUS_ENABLED` set to `false` switches the ratin
 - The pipeline files are validated by reading and by unit tests of the decision logic, not by real runs. The setup guide has a first-run checklist.
 - An implement run that ends without a branch or pull request (for example because the agent was denied a command it needed) is reported on the issue: a comment with the run link, the denied commands and the agent's last message, and the label `needs-human`. A `needs-human` issue is not started again automatically; remove the label to retry.
 - A review run that writes a result file with unusable content counts as a failed review. A review that never ran (no result file) is reported as `agent-review: error` with a comment and does not count as a failed review and does not start a rework. The Claude action skips itself when the workflow files of the branch differ from the default branch (for example for pull requests that change a workflow, or an agent branch that was cut before the workflows changed on `main`); update the branch with `main` or start "Factory pull request" by hand.
+- The retro task and the other agent runs cannot push `.github/workflows/*`: the Claude GitHub App has no `workflows` permission, and giving it that permission would let an agent change what runs with the repository's secrets before any review. Workflow changes are made by the owner or in a chat session and reviewed by the owner. An implement run that needs one ends without a pull request and is reported on the issue.
 - Only pull requests from `agent/` branches of this repository are handled. Pull requests from other branches are not.
