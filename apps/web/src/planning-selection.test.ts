@@ -56,6 +56,13 @@ describe("energyReadout and cardUseReasons", () => {
     expect(cardUseReasons(HeroClass.Bruiser, 8, [], [1])[CardUse.Primary]).toBe("effect is not playable yet");
   });
 
+  it("allows the Overdrive of Long Shot and explains an Overdrive that is missing or not playable yet", () => {
+    // Assassin card 4 is Long Shot (playable Overdrive), card 0 is Precision Shot (none), card 10 is Mark Target (Utility Overdrive).
+    expect(cardUseReasons(HeroClass.Assassin, 4, [], [1], true)[CardUse.Primary]).toBeUndefined();
+    expect(cardUseReasons(HeroClass.Assassin, 0, [], [1], true)[CardUse.Primary]).toBe("Overdrive is not playable yet");
+    expect(cardUseReasons(HeroClass.Assassin, 10, [], [1], true)[CardUse.Primary]).toBe("Overdrive is not playable yet");
+  });
+
   it("allows Pitch, Move and Block while the Queue has room and disables them when it is full", () => {
     const open = cardUseReasons(HeroClass.Bruiser, 0, [], []);
     expect([open[CardUse.Pitch], open[CardUse.Move], open[CardUse.Block]]).toEqual([undefined, undefined, undefined]);

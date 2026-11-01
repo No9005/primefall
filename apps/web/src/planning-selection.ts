@@ -74,6 +74,7 @@ export function cardUseReasons(
   card: CardIndex,
   queue: readonly QueuedAction[],
   pitched: readonly CardIndex[],
+  overdrive = false,
 ): Record<CardUse, string | undefined> {
   const queueFull = queue.length >= MAX_QUEUE_LENGTH ? "Queue is full" : undefined;
   const cost = HERO_DECKS[heroClass][card]!.energyCost;
@@ -81,8 +82,10 @@ export function cardUseReasons(
   return {
     [CardUse.Primary]:
       queueFull ??
-      (!isPlayableCard(HERO_DECKS[heroClass][card]!)
-        ? "effect is not playable yet"
+      (!isPlayableCard(HERO_DECKS[heroClass][card]!, overdrive)
+        ? overdrive
+          ? "Overdrive is not playable yet"
+          : "effect is not playable yet"
         : cost > available
           ? `needs ${cost} Energy`
           : undefined),
