@@ -2,9 +2,41 @@
 
 ## Purpose
 
-This document defines the first Fooocus-based asset production workflow for Primefall’s PixiJS prototype. It covers the three Hero classes and the Reactor Deck Grid, using the smallest practical set of poses and animations.
+This document defines the production-ready workflow for creating Primefall’s first Hero and Reactor Deck assets with Fooocus, then integrating them into PixiJS.
+
+It covers the three Hero classes, the Reactor Deck Grid, the minimum viable pose set, and the skills used to keep art, grid behavior, and rendering consistent.
 
 Primefall is a mobile-first, 2.5D tactical 3v3 game with simultaneous planning and deterministic Resolution. Its visual presentation must prioritize readable silhouettes, clear tactical information, and fast comprehension on a phone-sized screen.
+
+## Tooling
+
+Primefall uses three tools with clearly separated responsibilities.
+
+| Tool | Responsibility |
+|---|---|
+| **Fooocus** | Generates all raster art: Hero Showcases, Iso Idle sprites, gameplay poses, floor tiles, walls, Cover, Reactor assets, and VFX. |
+| **`0xheycat/isometric-game-skills`** | Defines isometric art direction, sprite conventions, grid math, depth sorting, tile picking, transparent cutout cleanup, and atlas packing. |
+| **`pixijs/pixijs-skills`** | Authoritative reference for PixiJS implementation: application setup, asset loading, sprites, containers, events, ticker, math, performance, filters, and particles. |
+
+Do not use `gamedev-skills/awesome-gamedev-agent-skills` for this workflow.
+
+### Skill responsibilities
+
+| Production concern | Skill / tool |
+|---|---|
+| Hero identity, visual style, and prompt language | Fooocus + `isometric-art-direction` |
+| Hero Showcase generation | Fooocus |
+| Iso Idle and gameplay pose generation | Fooocus + `isometric-character-sprites` |
+| Floor, wall, Cover, Reactor, and Overwatch Nest generation | Fooocus + `isometric-object-sprites` / `seamless-isometric-terrain` |
+| Transparent PNG cleanup and alpha export | `transparent-cutout-cleanup` |
+| Sprite naming, atlas layout, padding, and pivots | `spritesheet-atlas-packing` |
+| 20 x 12 Grid coordinates, movement, and range math | `isometric-grid-math` + `pixijs-math` |
+| PixiJS application, asset loading, sprites, and layers | `pixijs`, `pixijs-application`, `pixijs-assets`, `pixijs-scene-container`, `pixijs-scene-sprite` |
+| Tile selection, Hero selection, and touch input | `tile-picking-interaction` + `pixijs-events` |
+| Hero/Cover depth sorting and occlusion | `depth-sorting-occlusion` + `pixijs-scene-container` |
+| Resolution replay, animation timing, and VFX | `pixijs-ticker`, `pixijs-scene-sprite`, `pixijs-scene-particle-container` |
+| Mobile performance | `pixijs-performance` |
+| Shield, Hidden, Marked, and target-highlight effects | `pixijs-filters` + `pixijs-color` |
 
 ## Visual Direction
 
@@ -503,31 +535,185 @@ isolated on plain black background,
 no character, no weapon, no text
 ```
 
+## Production-Ready Workflow
+
+Use this workflow for every new Hero and for the first Reactor Deck asset set.
+
+### 1. Define art direction
+
+Use `isometric-art-direction` to lock:
+
+- 2:1 isometric camera
+- Cel-shaded sci-fi style
+- Primefall palette
+- Light direction
+- Silhouette rules
+- Asset naming conventions
+
+Do not generate production assets before these rules are written down.
+
+### 2. Create the first Hero Showcase
+
+Generate the Bruiser / Vanguard Showcase in Fooocus.
+
+Approve:
+
+- Hero identity
+- Silhouette
+- Costume
+- Weapon
+- Palette
+- Lighting
+- Overall readability
+
+Remove the background and save the result as a transparent PNG.
+
+### 3. Create the first Iso Idle
+
+Use the approved Showcase as an Image Prompt reference in Fooocus.
+
+Generate one Iso Idle sprite using `isometric-character-sprites` conventions.
+
+Use:
+
+- Control mode: `ImagePrompt`
+- Weight: `0.5–0.7`
+- Stop At: `0.7–0.9`
+
+### 4. Prepare the sprite for PixiJS
+
+Use `transparent-cutout-cleanup` to:
+
+- Remove background remnants
+- Repair alpha edges
+- Remove stray pixels
+- Preserve a clean silhouette
+- Export a transparent PNG
+
+Use `spritesheet-atlas-packing` to define:
+
+- File name
+- Canvas size
+- Padding
+- Pivot
+- Pixels-per-unit
+- Future atlas placement
+
+### 5. Validate in PixiJS
+
+Use official `pixijs-skills` to build a minimal test scene.
+
+Load:
+
+- One Iso Idle Hero
+- One open floor tile
+- One wall
+- One Full Cover
+- One Half Cover
+
+Use `pixijs-application`, `pixijs-assets`, `pixijs-scene-container`, `pixijs-scene-sprite`, and `pixijs-math`.
+
+Validate:
+
+- Hero scale relative to tiles
+- Bottom-center Hero pivot
+- Tile pivot at the lower diamond vertex
+- Shadow direction
+- Layer order
+- Depth sorting behind and in front of Cover
+- Touch and mouse tile picking
+- Performance on a mobile-sized canvas
+
+### 6. Approve the production baseline
+
+The baseline is approved only when the Hero, floor, wall, Full Cover, and Half Cover look consistent in PixiJS.
+
+Do not generate the full pose set or complete map asset set before this approval.
+
+### 7. Produce remaining Hero poses
+
+Use the approved Iso Idle as a PyraCanny reference.
+
+Generate the shared poses:
+
+- `move`
+- `attack_ranged`
+- `block_shield`
+- `utility_cast`
+- `hit`
+- `exhausted`
+
+Then generate class-specific poses.
+
+Use:
+
+- Control mode: `PyraCanny`
+- Weight: `0.8–1.0`
+- Stop At: `0.4–0.5`
+
+### 8. Produce Reactor Deck assets
+
+Use `isometric-object-sprites` and `seamless-isometric-terrain` conventions to generate:
+
+- Floor variants
+- Walls
+- Full Cover
+- Half Cover
+- Reactor tiles
+- Overwatch Nest
+- Spawn marker
+
+Validate each asset in the same PixiJS test scene.
+
+### 9. Produce VFX separately
+
+Generate VFX in Fooocus as isolated sprites.
+
+Use `pixijs-scene-particle-container`, `pixijs-ticker`, and `pixijs-filters` to attach and animate them independently from Hero sprites.
+
+### 10. Package for PixiJS
+
+Use `spritesheet-atlas-packing` to create:
+
+- Consistent frame sizes
+- Uniform padding
+- Correct pivots
+- Atlas JSON or PixiJS-compatible sprite-sheet metadata
+- Stable asset names
+
+Validate the atlas in PixiJS before expanding the asset library.
+
 ## Production Order
 
-1. Create the Bruiser / Vanguard Hero Showcase in three-quarter front view.
-2. Approve silhouette, costume, weapon, palette, lighting, and overall Hero identity.
-3. Remove the Showcase background and save it as a transparent PNG.
-4. Generate the Bruiser Iso Idle from the approved Showcase using ImagePrompt.
-5. Test the Iso Idle in a minimal PixiJS Grid scene with floor, wall, Full Cover, and Half Cover.
-6. Approve Grid scale, pivot, shadow direction, silhouette readability, and visual consistency.
-7. Generate the Controller and Assassin Showcases using the approved visual language.
-8. Generate their Iso Idle sprites from the approved Showcases.
-9. Generate the remaining shared gameplay poses for each Hero using PyraCanny.
-10. Generate class-specific poses and VFX.
-11. Generate floor, wall, Full Cover, Half Cover, reactor, and Overwatch Nest assets.
-12. Remove backgrounds, export transparent PNGs, and validate all assets in PixiJS.
-13. Only then produce remaining variants and animation frames.
+1. Lock art direction with `isometric-art-direction`.
+2. Create the Bruiser / Vanguard Hero Showcase in three-quarter front view.
+3. Approve silhouette, costume, weapon, palette, lighting, and overall Hero identity.
+4. Remove the Showcase background and save it as a transparent PNG.
+5. Generate the Bruiser Iso Idle from the approved Showcase using ImagePrompt.
+6. Clean up alpha and define pivot, canvas, padding, and atlas conventions.
+7. Test the Iso Idle in a minimal PixiJS Grid scene with floor, wall, Full Cover, and Half Cover.
+8. Approve Grid scale, pivot, shadow direction, silhouette readability, depth sorting, and visual consistency.
+9. Generate the Controller and Assassin Showcases using the approved visual language.
+10. Generate their Iso Idle sprites from the approved Showcases.
+11. Generate the remaining shared gameplay poses for each Hero using PyraCanny.
+12. Generate class-specific poses and VFX.
+13. Generate floor, wall, Full Cover, Half Cover, reactor, and Overwatch Nest assets.
+14. Remove backgrounds, export transparent PNGs, and validate all assets in PixiJS.
+15. Package animation frames into PixiJS-compatible atlases.
+16. Only then produce remaining variants and animation frames.
 
 ## Acceptance Criteria
 
 An asset is production-ready when:
 
+- It was generated as a single isolated asset.
 - It uses the shared visual language and palette.
 - Hero Showcases use the three-quarter front view; gameplay sprites use the shared 2:1 isometric camera.
 - Its silhouette is readable at mobile scale.
-- It has a transparent background.
+- It has a clean transparent background.
 - Its pivot is correct for PixiJS.
 - Its lighting direction matches all other assets.
+- It has been validated in the PixiJS Grid test scene.
 - It does not visually compete with Grid, Cover, or objective information.
 - Animation frames align in size, pivot, and proportions.
+- Atlas naming, padding, and metadata are stable.
