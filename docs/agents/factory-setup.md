@@ -57,6 +57,7 @@ The Claude Pro subscription has usage limits, not a money budget. Runs that use 
 These could not be tested without real runs; verify them on the first runs and fix the workflows if needed:
 
 - The action accepts the `prompt` input and the options in `claude_args` (`--model`, `--effort medium`, `--max-turns`, `--allowedTools`), and the Actions copy of Claude Code knows `--effort`. Effort levels of the CLI: low, medium, high, xhigh, max.
+- The agent runs git from the repository root. `git -C <path> …`, chained commands and heredoc scripts do not match the tool patterns and are denied (a run for #10 lost its work because its push used `git -C`); the prompts say so. If a run ends without a pull request, the comment on the issue lists the denied commands.
 - The `--allowedTools` patterns match the commands the agent needs (a denied command shows up in the run log); the pattern `git push -u origin agent/*` accepts the agent's branch.
 - Pull requests and pushes made by the agent start the CI and pipeline workflows. The implement run uses the Claude GitHub App token via the action; if events do not start, the workflows' manual start still works.
 - The Claude action refuses to run when the workflow was started by a bot (for example the pull request that the agent opened itself); the workflows list `claude` and `github-actions` in `allowed_bots`, nothing else. If a run fails with "Workflow initiated by non-human actor", a bot name is missing there.
