@@ -124,6 +124,8 @@ export enum EventKind {
   AttackHit = "attackHit",
   /** An Attack failed (target out of Range, without Line of Sight or already Exhausted). */
   AttackFailed = "attackFailed",
+  /** A queued action was illegal when it resolved (card not in the Hand, used twice, beyond the Queue limit). */
+  ActionFailed = "actionFailed",
   /** A Hero's Deck is empty after the Resolution; it is removed from the match. */
   Exhausted = "exhausted",
 }
