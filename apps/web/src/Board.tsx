@@ -1,7 +1,7 @@
-import { REACTOR_DECK } from "game-core";
-import { Application, Assets, Container, Sprite } from "pixi.js";
-import { useEffect, useRef } from "react";
-import { buildPlacements, computeCamera, Layer } from "./board-layout";
+import { REACTOR_DECK, type HeroView } from "game-core";
+import { Application, Assets, Container, Graphics, Sprite } from "pixi.js";
+import { useEffect, useRef, useState } from "react";
+import { buildPlacements, computeCamera, gridToWorld, Layer, TILE_HEIGHT, TILE_WIDTH } from "./board-layout";
 
 interface Manifest {
   bundles: { name: string; assets: { alias: string; src: string; data?: { anchor?: [number, number] } }[] }[];
@@ -21,8 +21,43 @@ function loadAssets(): Promise<Manifest> {
   return assetsReady;
 }
 
-export function Board() {
+interface BoardProps {
+  heroes: readonly HeroView[];
+  selectedId: string;
+  onSelect: (heroId: string) => void;
+}
+
+export function Board({ heroes, selectedId, onSelect }: BoardProps) {
   const host = useRef<HTMLDivElement>(null);
+  const [tokens, setTokens] = useState<Container>();
+  // Always the latest callback, so the pixi sprites need not be rebuilt for it.
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+
+  useEffect(() => {
+    if (!tokens) return;
+    const created: Container[] = [];
+    for (const hero of heroes) {
+      const { x, y } = gridToWorld(hero.position);
+      const bottom = y + TILE_HEIGHT / 2;
+      const token = new Container();
+      token.position.set(x, bottom);
+      token.zIndex = hero.position.col + hero.position.row + 0.5;
+      if (hero.id === selectedId) {
+        const ring = new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color: 0x2ec4b6 });
+        token.addChild(ring);
+      }
+      const sprite = new Sprite(Assets.get(`heroes.${hero.heroClass}.idle`));
+      sprite.anchor.set(0.5, 1);
+      token.addChild(sprite);
+      token.eventMode = "static";
+      token.cursor = "pointer";
+      token.on("pointertap", () => onSelectRef.current(hero.id));
+      tokens.addChild(token);
+      created.push(token);
+    }
+    return () => created.forEach((token) => token.destroy({ children: true }));
+  }, [tokens, heroes, selectedId]);
 
   useEffect(() => {
     const element = host.current;
@@ -48,6 +83,8 @@ export function Board() {
       objects.sortableChildren = true;
       world.addChild(floor, objects);
       app.stage.addChild(world);
+      // Hero tokens sort together with the props, by tile depth.
+      setTokens(objects);
 
       for (const { alias, x, y, layer, depth } of buildPlacements(REACTOR_DECK)) {
         const sprite = new Sprite(Assets.get(alias));
