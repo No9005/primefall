@@ -6,9 +6,19 @@ license: MIT
 
 # Seamless Isometric Terrain
 
-## Golden rule
+## What this skill does
 
-> Fix the seed. Keep the prompt short. Same shape for every tile.
+This skill produces **isometric ground tiles** that snap together into a clean map with **no seams, no gaps, and no color chaos**. The single most important idea: **a map looks seamless when every tile shares the exact same diamond shape and thickness.**
+
+## When to use this skill
+
+- The user wants to make terrain / ground tiles for an isometric game or map.
+- Tiles don't line up: visible edges, seams, gaps, or mismatched sizes/angles.
+- Tiles have mixed/irregular colors, stray edges, or random props.
+
+## The golden rule
+
+> **Fix the seed. Keep the prompt short. Same shape for every tile.**
 
 ## Quick reference
 
@@ -27,18 +37,10 @@ simple clean composition, isolated on plain flat background,
 game asset, high quality
 ```
 
-## References
-
-- `references/01-overview.md`
-- `references/02-production-guide.md`
-- `references/03-prompts.md`
-- `references/04-rules.md`
-- `references/05-troubleshooting.md`
-- `references/06-tileset-spec.md`
-
 ## Verification
 
-- [ ] Each tile fills its full 2:1 footprint.
-- [ ] Tiles connect without seams or gaps.
-- [ ] Seed was fixed across the set.
+- [ ] Each tile fills its full 2:1 isometric footprint.
+- [ ] Placed in a grid, tiles connect without visible seams or gaps.
+- [ ] The seed was fixed across the whole set.
+- [ ] No stray props or objects are baked into ground tiles.
 - [ ] Background removed to clean transparent alpha.

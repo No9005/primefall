@@ -6,6 +6,8 @@ license: MIT
 
 # PixiJS Ticker
 
+`app.ticker` runs callbacks every frame and drives `app.render()` at `UPDATE_PRIORITY.LOW`.
+
 ## Quick start
 
 ```ts
@@ -17,9 +19,9 @@ app.ticker.add((ticker) => {
 
 ## Time values
 
-- `deltaTime`: dimensionless multiplier.
-- `deltaMS`: milliseconds.
-- `elapsedMS`: raw milliseconds.
+- `deltaTime`: dimensionless multiplier, about 1.0 at 60 FPS.
+- `deltaMS`: real milliseconds, scaled by ticker speed and FPS caps.
+- `elapsedMS`: raw milliseconds without scaling or capping.
 
 ## Priorities
 
@@ -31,8 +33,26 @@ app.ticker.add(
 );
 ```
 
+Priority order: `INTERACTION` > `HIGH` > `NORMAL` > `LOW` > `UTILITY`.
+
+## Frame-rate control
+
+```ts
+app.ticker.maxFPS = 30;
+app.ticker.minFPS = 10;
+app.ticker.speed = 0.5;
+```
+
+## Per-object updates
+
+```ts
+sprite.onRender = () => {
+  sprite.rotation += 0.01;
+};
+```
+
 ## Common mistakes
 
-- Callback receives Ticker instance, not a delta number.
-- Use `deltaMS` for time-based movement.
-- Use `onRender` for per-object updates.
+- The ticker callback receives the Ticker instance, not a delta number.
+- Use `deltaMS` for time-based movement; `deltaTime` is not milliseconds.
+- Use `onRender` for per-object frame logic; `updateTransform` was removed in v8.

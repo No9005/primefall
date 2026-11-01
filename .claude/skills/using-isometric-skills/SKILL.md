@@ -19,9 +19,9 @@ This is the meta-skill. Isometric games fail when you jump straight into code or
 ## Process
 
 1. Classify the request into one phase: Art Foundations, Asset Generation, Asset Processing, Engine & Rendering, Gameplay, or Polish.
-2. Open the matching skill from the table below and follow it exactly.
-3. If the task spans phases, run skills in pipeline order.
-4. Lock art direction FIRST.
+2. Open the matching skill from the table below and follow it exactly. Do not improvise.
+3. If the task spans phases, run skills in pipeline order (art -> assets -> processing -> engine -> gameplay -> polish).
+4. Lock art direction FIRST. Every asset skill depends on a single agreed style sheet.
 5. Return to this router whenever the user changes scope.
 
 ### Routing table
@@ -48,8 +48,23 @@ This is the meta-skill. Isometric games fail when you jump straight into code or
 | Frame drops, lag | `canvas-performance-optimization` |
 | Automating the asset pipeline | `asset-pipeline-automation` |
 
+## Rationalizations (Stop Lying to Yourself)
+
+| Excuse | Reality |
+|---|---|
+| "This task is simple, I do not need a skill" | Simple tasks are where silent inconsistencies enter. Route it anyway. |
+| "I will pick the skill later" | Order matters. Wrong order means re-generating assets twice. |
+
+## Red Flags - STOP if you catch yourself:
+
+- Writing renderer code before art direction is locked.
+- Generating assets in 3 different styles because no style sheet exists.
+- Skipping straight to gameplay before the world renders correctly.
+
 ## Verification
 
+You are NOT done until every box is checked:
+
 - [ ] The request is mapped to exactly one starting skill.
-- [ ] Multi-phase tasks have an explicit skill order.
+- [ ] Multi-phase tasks have an explicit skill order written down.
 - [ ] Art direction is locked before any asset is generated.

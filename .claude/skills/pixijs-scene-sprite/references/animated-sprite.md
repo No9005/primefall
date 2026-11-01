@@ -1,5 +1,7 @@
 # AnimatedSprite
 
+`AnimatedSprite` cycles through an array of textures for frame-based animation.
+
 ## Quick start
 
 ```ts
@@ -21,19 +23,35 @@ app.stage.addChild(walk);
 |---|---|---|---|
 | `textures` | Texture[] or FrameObject[] | — | Frame list. |
 | `animationSpeed` | number | 1 | Playback multiplier. |
-| `autoPlay` | boolean | false | Start immediately. |
-| `loop` | boolean | true | Restart after last frame. |
+| `autoPlay` | boolean | false | Start playback immediately. |
+| `autoUpdate` | boolean | true | Drive playback from Ticker.shared. |
+| `loop` | boolean | true | Restart after the last frame. |
 
-## Playback
+## Playback control
 
 ```ts
 walk.play();
 walk.stop();
+walk.gotoAndStop(3);
 walk.gotoAndPlay(0);
+walk.currentFrame = 2;
 ```
+
+## Per-frame timing
+
+```ts
+const explosion = new AnimatedSprite({
+  textures: [
+    { texture: frame0, time: 100 },
+    { texture: frame1, time: 200 },
+  ],
+});
+```
+
+`FrameObject.time` is in milliseconds.
 
 ## Common mistakes
 
-- Load the spritesheet first.
+- Load the spritesheet before using `Texture.from()` on its frames.
 - Set `autoPlay: true` or call `play()`.
-- `FrameObject.time` is in milliseconds.
+- Use milliseconds, not seconds, for `FrameObject.time`.

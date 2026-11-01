@@ -1,5 +1,7 @@
 # Compressed Textures
 
+GPU-compressed texture formats use 4-8x less GPU memory than PNG/JPEG and skip runtime decoding.
+
 ## Quick start
 
 ```ts
@@ -20,6 +22,19 @@ import "pixi.js/ktx2";
 import "pixi.js/basis";
 ```
 
+Import only the formats you use; each loader adds decoder runtime to the bundle.
+
+## Format selection
+
+| Format | Notes |
+|---|---|
+| DDS | Legacy desktop formats, wide support |
+| KTX | Older Khronos container |
+| KTX2 | Newer container, typically used with Basis Universal |
+| Basis | Supercompressed, transcodes to GPU-native format at load time |
+
+Use KTX2 + Basis for new projects unless you need a specific legacy format.
+
 ## Resolver fallback
 
 ```ts
@@ -31,5 +46,5 @@ Assets.add({
 
 ## Common mistakes
 
-- Import the matching loader before loading.
-- Provide PNG/WebP fallback for Canvas.
+- Always import the matching format loader before loading.
+- Compressed textures require WebGL or WebGPU; provide a PNG/WebP fallback for Canvas.
