@@ -2,3 +2,5 @@
 // Only a Match Host may import this; apps/web is forbidden to (ADR 0017). Stub for now.
 
 export const SERVER_ENTRY = "game-core/server" as const;
+
+export * from "./match";

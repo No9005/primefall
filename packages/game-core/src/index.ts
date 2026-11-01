@@ -8,4 +8,5 @@ export function describeRules(): string {
   return `${GAME_NAME} rules package, shared entry point`;
 }
 
+export * from "./cards";
 export * from "./reactor-deck";
