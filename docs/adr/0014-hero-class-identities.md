@@ -9,3 +9,7 @@ Primefall has three Hero classes with distinct tactical jobs, weapon ranges, and
 Cards with the same name always have the same effect and the same Overdrive mode. The Assassin’s Ghost Shot is the squad’s only tool that can target a Ghost’s last known position.
 
 Complementary roles create squad-level decisions: who holds space, who enables, and who gathers information.
+
+## Status
+
+accepted. Revised: the Assassin's Overdrive distribution is superseded by `docs/specs/mvp-card-set.md`. Its three Overdrive modes are Long Shot (both cards), Ghost Shot and Mark Target (a Utility card), on four Overdrive cards in total (see ADR 0003).

@@ -44,7 +44,7 @@ Overdrive modes: Breach Charge, Shockwave, and Adrenal Surge (three Overdrive ca
 11. **Gravity Snare** — Utility, 2 Energy: A visible enemy gains Slow until the end of the next Resolution.
 12. **Overwatch Uplink** — Utility, 1 Energy: An allied Hero may attack an enemy in Half Cover during this round without the Half Cover damage reduction.
 
-Overdrive modes: Tag Round, Scout Drone (both cards) and Aegis Protocol (four Overdrive cards).
+Overdrive modes: Tag Round, Scout Drone (both cards) and Aegis Protocol (four Overdrive cards in total).
 
 ## Assassin / Striker — 12 cards
 
@@ -61,4 +61,4 @@ Overdrive modes: Tag Round, Scout Drone (both cards) and Aegis Protocol (four Ov
 11. **Mark Target** — Utility, 1 Energy: Mark an enemy within the Hero’s current sight range until the end of the next Resolution. **Overdrive:** Mark the enemy; if it is within Range 5 (this Hero's weapon range), also deal 1 damage.
 12. **Reposition** — Utility, 1 Energy: This Hero gains Move 3 during this round.
 
-Overdrive modes: Long Shot (both cards), Ghost Shot and Mark Target (four Overdrive cards).
+Overdrive modes: Long Shot (both cards), Ghost Shot and Mark Target (four Overdrive cards in total).
