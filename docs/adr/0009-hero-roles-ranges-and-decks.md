@@ -7,3 +7,5 @@ Each Hero has a distinct role and a fixed 12-card Deck with no Flex cards.
 - **Assassin / Striker:** Range 5; 8 Attack / 4 Utility; Hidden, scouting, long-range precision, and burst damage. It has two Damage Overdrive Attack cards and two Long Shot cards with Range 7.
 
 The Assassin’s Long Shot Overdrive grants bonus damage when the target is more than 5 tiles away, at Range 6 or 7. Ghost Shot is the Assassin’s third Attack Overdrive and may target a Ghost’s last known position.
+
+Distinct ranges and deck weights give each role a clear job without making any single Hero universally dominant.
