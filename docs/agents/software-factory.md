@@ -61,5 +61,5 @@ Everything else is low. The reviewer may raise a pull request to high with a rea
 ## Known limits
 
 - The pipeline files are validated by reading and by unit tests of the decision logic, not by real runs. The setup guide has a first-run checklist.
-- A review run that produces no valid result counts as a failed review.
+- A review run that writes a result file with unusable content counts as a failed review. A review that never ran (no result file) is reported as `agent-review: error` with a comment and does not count as a failed review and does not start a rework. The Claude action skips itself when the workflow files of the branch differ from the default branch (for example for pull requests that change a workflow, or an agent branch that was cut before the workflows changed on `main`); update the branch with `main` or start "Factory pull request" by hand.
 - Pull requests opened by humans are not handled by the factory.
