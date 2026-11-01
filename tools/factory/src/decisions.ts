@@ -22,6 +22,20 @@ export function blastRadiusLabel(level: BlastRadius): string {
   return level === BlastRadius.High ? Label.BlastRadiusHigh : Label.BlastRadiusLow;
 }
 
+export const SelectTrigger = { Labeled: "labeled", Closed: "closed", Manual: "manual" } as const;
+export type SelectTrigger = (typeof SelectTrigger)[keyof typeof SelectTrigger];
+
+/**
+ * Issues the implement run may start, in the order they are tried. A labelled or manually started
+ * issue is the only candidate. When any issue closes, every open ready issue is a candidate (lowest
+ * number first): a closed issue can free several tickets, and a ticket freed earlier but not
+ * started must not be forgotten.
+ */
+export function candidateIssues(trigger: SelectTrigger, issueNumber: number, openReadyIssues: number[]): number[] {
+  if (trigger !== SelectTrigger.Closed) return [issueNumber];
+  return [...new Set(openReadyIssues)].sort((a, b) => a - b);
+}
+
 export interface IssueEvent {
   event: string;
   actor: string | undefined;

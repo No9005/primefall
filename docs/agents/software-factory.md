@@ -18,7 +18,7 @@ The factory code (decisions and CLI) lives in `tools/factory`. The workflows are
 
 | Task | Trigger | Does | Triggers next |
 |---|---|---|---|
-| **Implement** | The owner labels an issue `ready-for-agent`, or a blocking issue closes, or the owner starts it by hand (Actions, "Factory implement", issue number) | Picks the first issue that is startable (below), then runs the agent: own branch `agent/issue-<n>-<slug>` from `origin/main`, build, test, lint, pull request with `Closes #<n>` | Blast radius and Review (the pull request) |
+| **Implement** | The owner labels an issue `ready-for-agent`, or any issue closes, or the owner starts it by hand (Actions, "Factory implement", issue number) | Picks the first startable issue (below), then runs the agent. When an issue closes, every open `ready-for-agent` issue is checked, lowest number first, so tickets that became free earlier are not forgotten: own branch `agent/issue-<n>-<slug>` from `origin/main`, build, test, lint, pull request with `Closes #<n>` | Blast radius and Review (the pull request) |
 | **Blast radius** | Pull request from an `agent/` branch opened or updated | Computes `low` or `high` from the diff with the rules in `tools/factory/blast-radius-rules.json`; sets one `blast-radius:*` label and a comment with the reasons | Review |
 | **Review** | Same | A separate read-only run in a fresh context reviews the diff against the issue, `CLAUDE.md`, the ADRs, the glossary and the specs. It writes a result file; the CLI posts it as a review with inline comments and sets the status `agent-review`. It may raise the class to high, never lower it. It also runs for high-risk pull requests | Rework on fail, Merge gate on pass |
 | **Rework** | `agent-review` failed and fewer than 2 reviews have failed | Fixes only what the review named, pushes, and runs the pipeline again for the new commit | Review. After the second failed review: label `needs-human`, no more runs |
@@ -56,7 +56,7 @@ Everything else is low. The reviewer may raise a pull request to high with a rea
 2. **Reads and writes:** issues, labels, comments, pull requests, reviews and commit statuses on GitHub; branches and commits for Implement and Rework.
 3. **Triggers next:** see the table.
 4. **Where a human re-enters:** setting `ready-for-agent`; every high-risk merge; `needs-human` pull requests; the switch to automatic merging; the kill switch. A run never waits for a human: it ends, and the human's change starts the next run.
-5. **What stops duplicates:** one global implement run at a time, `agent-working` label, the open-pull-request and agent-branch checks, and one concurrency group per pull request (a newer run cancels an older one). GitHub keeps only the newest waiting run per concurrency group, so with several tickets released at once an issue may be skipped; it starts when the next blocker closes or when it is started by hand.
+5. **What stops duplicates:** one global implement run at a time, `agent-working` label, the open-pull-request and agent-branch checks, and one concurrency group per pull request (a newer run cancels an older one). GitHub keeps only the newest waiting run per concurrency group, so a ticket whose run was replaced while waiting starts at the next closed issue, or when it is started by hand.
 
 ## Known limits
 
