@@ -50,6 +50,8 @@ export interface HeroView {
   exhausted: boolean;
   /** Slowed: the next Move 2 becomes a Move 1. */
   slowed: boolean;
+  /** Hidden: enemies do not see this Hero, and an Assassin sees 2 tiles further. */
+  hidden: boolean;
 }
 
 /** How much a Squad knows about one enemy Hero (Fog of War, ADR 0005). */
@@ -134,6 +136,12 @@ export enum EventKind {
   SlowApplied = "slowApplied",
   /** A Slowed Hero's Move 2 was cut to a Move 1; the Slow is used up. */
   SlowUsed = "slowUsed",
+  /** `heroId` became Hidden. */
+  HiddenGained = "hiddenGained",
+  /** `heroId` is no longer Hidden: it attacked or was Marked. */
+  HiddenEnded = "hiddenEnded",
+  /** `heroId` made `targetId` Marked. */
+  MarkedApplied = "markedApplied",
   /** Knockback pushed `heroId` one tile, from `from` to `to`; a push of two tiles gives two events. */
   Knockback = "knockback",
   /** A Hero's Deck is empty after the Resolution; it is removed from the match. */

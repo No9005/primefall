@@ -12,12 +12,13 @@ import {
   EffectKind,
   HERO_DECKS,
   isAreaAttack,
+  isGhostAttack,
   isPlayableCard,
   isPlayableUtility,
   type PLAYABLE_UTILITY_EFFECTS,
 } from "./cards";
 import { EventKind, MatchEndReason, type MatchEvent, PRIME_ZONE_WIN_RESOLUTIONS, ROUND_LIMIT, SquadId } from "./host";
-import { canSquadSee, type HeroState, type MatchState, recordSightings } from "./match";
+import { canSquadSee, canSquadSeeHero, type HeroState, type MatchState, recordSightings, sightRange } from "./match";
 import {
   ActionKind,
   BLOCK_SHIELD,
@@ -59,14 +60,33 @@ function applySlow(tick: number, source: HeroState, target: HeroState, effect: C
   events.push({ kind: EventKind.SlowApplied, tick, heroId: source.id, targetId: target.id });
 }
 
+/** Shield absorbs first; the rest is Deck Damage: the top cards, one per point, leave the cycle (Exile) so the damage lasts. */
+function dealDamage(tick: number, source: HeroState, target: HeroState, incoming: number, events: MatchEvent[]): void {
+  const absorbed = Math.min(target.shield, incoming);
+  target.shield -= absorbed;
+  const removed = target.deck.splice(Math.max(0, target.deck.length - (incoming - absorbed)));
+  target.exile.push(...removed);
+  events.push({ kind: EventKind.AttackHit, tick, heroId: source.id, targetId: target.id, absorbed, damage: removed.length });
+}
+
+/** A Hero stops being Hidden when it attacks or is revealed (Marked). */
+function endHidden(tick: number, hero: HeroState, events: MatchEvent[]): void {
+  if (hero.hidden === 0) return;
+  hero.hidden = 0;
+  events.push({ kind: EventKind.HiddenEnded, tick, heroId: hero.id });
+}
+
 /** Which Squads perceive the events from `first` on, judged by the current positions (see `getSquadEvents`). */
 function perceivers(match: MatchState, events: readonly MatchEvent[], first: number): SquadId[][] {
   return events.slice(first).map((event) => {
     const involved = [event.heroId, event.targetId].flatMap((id) => match.heroes.filter((hero) => hero.id === id));
     const tiles = [event.from, event.to, ...involved.map((hero) => hero.position)].filter((tile) => tile !== undefined);
+    // Seeing a tile does not reveal what a Hidden enemy does on it.
     return SQUADS.filter(
       (squad) =>
-        involved.some((hero) => hero.squad === squad) || tiles.some((tile) => canSquadSee(match, squad, tile)),
+        involved.some((hero) => hero.squad === squad) ||
+        (involved.every((hero) => canSquadSeeHero(match, squad, hero) || hero.hidden === 0) &&
+          tiles.some((tile) => canSquadSee(match, squad, tile))),
     );
   });
 }
@@ -74,12 +94,18 @@ function perceivers(match: MatchState, events: readonly MatchEvent[], first: num
 interface Mover {
   heroId: string;
   destination: GridPosition;
+  /** Tiles the Move covers at most: 2, or more after Reposition. */
+  distance: number;
 }
 
 interface Attack {
   hero: HeroState;
   card: CardDefinition;
   targetId: string;
+  /** For a Ghost Shot: the last known position of the targeted Ghost, as remembered when the Resolution began. */
+  ghostTile?: GridPosition;
+  /** Set when a Ghost Shot found nobody on its tile. */
+  missed?: boolean;
 }
 
 const samePosition = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
@@ -114,8 +140,11 @@ function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: 
     events.push({ kind: EventKind.SlowUsed, tick, heroId });
   }
   let active = movers;
-  for (let step = 0; step < MOVE_DISTANCE && active.length > 0; step++) {
-    if (step >= SLOWED_MOVE_DISTANCE) active = active.filter(({ heroId }) => !slowedIds.has(heroId));
+  const furthest = Math.max(0, ...movers.map(({ distance }) => distance));
+  for (let step = 0; step < furthest && active.length > 0; step++) {
+    active = active.filter(
+      ({ heroId, distance }) => step < (slowedIds.has(heroId) ? SLOWED_MOVE_DISTANCE : distance),
+    );
     const attempts = active.flatMap((mover) => {
       const hero = match.heroes.find((candidate) => candidate.id === mover.heroId)!;
       if (samePosition(hero.position, mover.destination)) return [];
@@ -153,28 +182,36 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     hasLineOfSight(REACTOR_DECK, hero.position, target.position) &&
     coverAgainst(REACTOR_DECK, hero.position, target.position) !== CoverKind.Full;
   // An area Attack hits every enemy Hero it reaches and does nothing when there is none.
-  const aimed = attacks.flatMap((attack) =>
-    isAreaAttack(attack.card)
-      ? match.heroes.filter((target) => canReach(attack.hero, attack.card, target)).map((target) => ({ ...attack, targetId: target.id }))
-      : [attack],
-  );
-  const landed = aimed.filter(({ hero, card, targetId }) => {
+  // A Ghost Shot goes to a tile: it hits the enemy standing there when it resolves, or nobody.
+  const aimed = attacks.flatMap((attack) => {
+    if (isAreaAttack(attack.card)) {
+      return match.heroes.filter((target) => canReach(attack.hero, attack.card, target)).map((target) => ({ ...attack, targetId: target.id }));
+    }
+    if (!isGhostAttack(attack.card)) return [attack];
+    const occupant = match.heroes.find(
+      (other) =>
+        other.squad !== attack.hero.squad &&
+        attack.ghostTile !== undefined &&
+        samePosition(other.position, attack.ghostTile),
+    );
+    return [{ ...attack, targetId: occupant?.id ?? attack.targetId, missed: occupant === undefined }];
+  });
+  // Attacking gives away a Hidden Hero, whether or not the Attack lands.
+  for (const { hero } of attacks) endHidden(tick, hero, events);
+  const landed = aimed.filter(({ hero, card, targetId, missed }) => {
     const target = match.heroes.find((candidate) => candidate.id === targetId);
-    const reachable = target !== undefined && canReach(hero, card, target);
+    const reachable = !missed && target !== undefined && canReach(hero, card, target);
     if (!reachable) events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId });
     return reachable;
   });
   for (const { hero, card, targetId } of landed) {
     const target = match.heroes.find((candidate) => candidate.id === targetId)!;
-    const halfCover = coverAgainst(REACTOR_DECK, hero.position, target.position) === CoverKind.Half;
-    const base = damageAtDistance(card.effects[0]!, chebyshevDistance(hero.position, target.position));
-    const incoming = Math.max(0, base - (halfCover ? HALF_COVER_REDUCTION : 0));
-    const absorbed = Math.min(target.shield, incoming);
-    target.shield -= absorbed;
-    // Deck Damage takes the top cards, one per point; they leave the cycle (Exile) so the damage lasts.
-    const removed = target.deck.splice(Math.max(0, target.deck.length - (incoming - absorbed)));
-    target.exile.push(...removed);
-    events.push({ kind: EventKind.AttackHit, tick, heroId: hero.id, targetId, absorbed, damage: removed.length });
+    const distance = chebyshevDistance(hero.position, target.position);
+    const ignoresHalfCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreHalfCover);
+    const halfCover = coverAgainst(REACTOR_DECK, hero.position, target.position) === CoverKind.Half && !ignoresHalfCover;
+    const damageEffect = card.effects.find(({ kind }) => kind === EffectKind.Damage || kind === EffectKind.DamageAtLongRange)!;
+    const incoming = Math.max(0, damageAtDistance(damageEffect, distance) - (halfCover ? HALF_COVER_REDUCTION : 0));
+    dealDamage(tick, hero, target, incoming, events);
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplySlow)) {
       applySlow(tick, hero, target, effect, events);
     }
@@ -215,6 +252,7 @@ function knockBack(
 }
 
 interface UtilityUse {
+  match: MatchState;
   tick: number;
   card: CardDefinition;
   effect: CardEffect;
@@ -233,8 +271,32 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
     events.push({ kind: EventKind.ShieldGained, tick, heroId: target.id, amount });
   },
   [EffectKind.ApplySlow]: ({ tick, effect, caster, target, events }) => applySlow(tick, caster, target, effect, events),
-  // Needs Hidden (Assassin ticket); until then Suppress only Slows.
-  [EffectKind.PreventHidden]: () => {},
+  [EffectKind.PreventHidden]: ({ target }) => {
+    target.hiddenPrevented = true;
+  },
+  // Hidden needs Cover where the Hero stands; Suppress in the same Round prevents it.
+  [EffectKind.BecomeHidden]: ({ tick, effect, caster, events }) => {
+    if (caster.hiddenPrevented || coverAt(REACTOR_DECK, caster.position) === CoverKind.None) {
+      events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
+      return;
+    }
+    caster.hidden = effect.duration ?? 1;
+    events.push({ kind: EventKind.HiddenGained, tick, heroId: caster.id });
+  },
+  [EffectKind.ExtendMove]: ({ effect, caster }) => {
+    caster.extendedMove = effect.amount;
+  },
+  // Marked lasts until the end of the next Resolution; it also reveals a Hidden Hero.
+  [EffectKind.ApplyMarked]: ({ tick, effect, caster, target, events }) => {
+    target.marked = (effect.duration ?? 1) + 1;
+    events.push({ kind: EventKind.MarkedApplied, tick, heroId: caster.id, targetId: target.id });
+    endHidden(tick, target, events);
+  },
+  // Damage on a Utility card (Mark Target's Overdrive) ignores Cover; it only reaches `withinRange`.
+  [EffectKind.Damage]: ({ tick, effect, caster, target, events }) => {
+    const reaches = effect.withinRange === undefined || chebyshevDistance(caster.position, target.position) <= effect.withinRange;
+    if (reaches) dealDamage(tick, caster, target, effect.amount ?? 0, events);
+  },
 };
 
 /**
@@ -250,18 +312,24 @@ function resolveUtility(
   events: MatchEvent[],
 ): void {
   const target = match.heroes.find((candidate) => candidate.id === targetId);
+  // Mark Target needs the enemy within this Hero's own sight range (9 while Hidden), which also finds Hidden enemies.
+  const inOwnSight = (enemy: HeroState) =>
+    chebyshevDistance(caster.position, enemy.position) <= sightRange(caster) &&
+    hasLineOfSight(REACTOR_DECK, caster.position, enemy.position);
   const validTarget =
     target !== undefined &&
     !target.exhausted &&
     (card.target === CardTarget.VisibleEnemy
-      ? target.squad !== caster.squad && canSquadSee(match, caster.squad, target.position)
-      : target.squad === caster.squad && (card.target === CardTarget.SelfHero ? target === caster : target !== caster));
+      ? target.squad !== caster.squad && canSquadSeeHero(match, caster.squad, target)
+      : card.target === CardTarget.EnemyInSight
+        ? target.squad !== caster.squad && inOwnSight(target)
+        : target.squad === caster.squad && (card.target === CardTarget.SelfHero ? target === caster : target !== caster));
   if (!validTarget || !isPlayableUtility(card)) {
     events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
     return;
   }
   for (const effect of card.effects) {
-    UTILITY_EFFECTS[effect.kind as (typeof PLAYABLE_UTILITY_EFFECTS)[number]]({ tick, card, effect, caster, target, events });
+    UTILITY_EFFECTS[effect.kind as (typeof PLAYABLE_UTILITY_EFFECTS)[number]]({ match, tick, card, effect, caster, target, events });
   }
 }
 
@@ -372,6 +440,8 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     recordSightings(match);
   };
 
+  // A Ghost Shot aims at what the Squad remembered when the Resolution began, not at later sightings.
+  const ghostTiles = structuredClone(match.ghosts);
   const ticks = Math.max(0, ...queues.map(({ queue }) => queue.length));
   for (let tick = 1; tick <= ticks; tick++) {
     const actions = match.heroes.filter((hero) => !hero.exhausted).flatMap((hero) => {
@@ -394,13 +464,22 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
       const card = playedCard(hero, action);
       if (card.type === CardType.Utility) resolveUtility(match, tick, hero, card, action.target, events);
     }
-    const movers = actions.flatMap(({ hero, action }) =>
-      action.kind === ActionKind.Move ? [{ heroId: hero.id, destination: action.destination }] : [],
-    );
+    const movers = actions.flatMap(({ hero, action }) => {
+      if (action.kind !== ActionKind.Move) return [];
+      // Reposition stretches the next Move of the Queue only.
+      const distance = hero.extendedMove ?? MOVE_DISTANCE;
+      delete hero.extendedMove;
+      return [{ heroId: hero.id, destination: action.destination, distance }];
+    });
     resolveMoves(match, tick, movers, events);
-    const attacks = actions.flatMap(({ hero, action }) =>
+    const attacks: Attack[] = actions.flatMap(({ hero, action }) =>
       action.kind === ActionKind.Primary && playedCard(hero, action).type === CardType.Attack
-        ? [{ hero, card: playedCard(hero, action), targetId: action.target }]
+        ? [{
+            hero,
+            card: playedCard(hero, action),
+            targetId: action.target,
+            ghostTile: ghostTiles[hero.squad][action.target]?.position,
+          }]
         : [],
     );
     resolveAttacks(match, tick, attacks, events);
@@ -420,6 +499,10 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
   for (const hero of match.heroes) {
     hero.shield = 0;
     hero.slow = Math.max(0, hero.slow - 1);
+    hero.hidden = Math.max(0, hero.hidden - 1);
+    hero.marked = Math.max(0, hero.marked - 1);
+    hero.hiddenPrevented = false;
+    delete hero.extendedMove;
   }
   // Exhaustion takes effect only now, so a Hero whose Deck ran out mid-Resolution finished its Queue (ADR 0006).
   for (const hero of match.heroes.filter((candidate) => !candidate.exhausted && candidate.deck.length === 0)) {

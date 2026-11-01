@@ -23,6 +23,14 @@ export interface HeroState {
    * until the end of the next one, so it starts at 2. A Move 2 that uses it up sets it to 0.
    */
   slow: number;
+  /** Resolution ends left before Hidden expires (0: not Hidden); an Attack or being Marked ends it at once. */
+  hidden: number;
+  /** Resolution ends left before Marked expires (0: not Marked); a Marked Hero is Visible to the enemy Squad. */
+  marked: number;
+  /** Suppress: this Hero cannot become Hidden for the rest of the Round. */
+  hiddenPrevented: boolean;
+  /** Reposition: the Hero's next Move action covers this many tiles; absent when none is pending. */
+  extendedMove?: number;
   /** Set after a Resolution that leaves the Deck empty; an Exhausted Hero is out of the match (ADR 0006). */
   exhausted: boolean;
 }
@@ -36,8 +44,15 @@ export interface GhostMemory {
   lastSeenRound: number;
 }
 
-/** Sight range of every Hero in tiles; the Hidden Assassin's 9 comes with Hidden (ADR 0005). */
+/** Sight range of every Hero in tiles (ADR 0005). */
 export const SIGHT_RANGE = 7;
+/** Extra sight range of a Hidden Assassin: 9 tiles in total. */
+export const HIDDEN_SIGHT_BONUS = 2;
+
+/** How many tiles a Hero sees: the Hidden Assassin sees further. */
+export function sightRange(hero: HeroState): number {
+  return SIGHT_RANGE + (hero.hidden > 0 && hero.heroClass === HeroClass.Assassin ? HIDDEN_SIGHT_BONUS : 0);
+}
 
 /** Plain serializable data: it survives `JSON.stringify` / `JSON.parse` unchanged. */
 export interface MatchState {
@@ -106,6 +121,9 @@ export function createMatch(seed: number): MatchState {
         exile: [],
         shield: 0,
         slow: 0,
+        hidden: 0,
+        marked: 0,
+        hiddenPrevented: false,
         exhausted: false,
       });
     });
@@ -144,9 +162,19 @@ export function canSquadSee(match: MatchState, squad: SquadId, tile: GridPositio
     (hero) =>
       hero.squad === squad &&
       !hero.exhausted &&
-      chebyshevDistance(hero.position, tile) <= SIGHT_RANGE &&
+      chebyshevDistance(hero.position, tile) <= sightRange(hero) &&
       hasLineOfSight(REACTOR_DECK, hero.position, tile),
   );
+}
+
+/**
+ * Whether the Squad sees a Hero right now. A Marked enemy is always seen; a Hidden enemy is not seen even
+ * on a tile in sight; otherwise the Hero is seen when its tile is.
+ */
+export function canSquadSeeHero(match: MatchState, squad: SquadId, target: HeroState): boolean {
+  if (target.squad === squad) return true;
+  if (target.marked > 0) return true;
+  return target.hidden === 0 && canSquadSee(match, squad, target.position);
 }
 
 /**
@@ -156,7 +184,7 @@ export function canSquadSee(match: MatchState, squad: SquadId, tile: GridPositio
 export function recordSightings(match: MatchState): void {
   for (const squad of [SquadId.Left, SquadId.Right]) {
     for (const enemy of match.heroes.filter((hero) => hero.squad !== squad)) {
-      if (!canSquadSee(match, squad, enemy.position)) continue;
+      if (!canSquadSeeHero(match, squad, enemy)) continue;
       match.ghosts[squad][enemy.id] = {
         position: { ...enemy.position },
         deckCount: enemy.deck.length,
@@ -181,12 +209,13 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
       hand: [...hero.hand],
       exhausted: hero.exhausted,
       slowed: hero.slow > 0,
+      hidden: hero.hidden > 0,
     }));
   const enemies: EnemyView[] = match.heroes
     .filter((hero) => hero.squad !== squad)
     .map((hero): EnemyView => {
       const identity = { id: hero.id, heroClass: hero.heroClass };
-      if (canSquadSee(match, squad, hero.position)) {
+      if (canSquadSeeHero(match, squad, hero)) {
         return {
           ...identity,
           visibility: Visibility.Visible,

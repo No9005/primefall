@@ -1,7 +1,7 @@
 // Squad Plans and planning-time validation (ADR 0013, ADR 0020). Shared with clients: a plan is plain
 // data, and `validatePlan` lets the UI explain why a plan cannot be committed. The host validates again.
 
-import { type CardIndex, cardInMode, CardTarget, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
+import { type CardIndex, cardInMode, CardTarget, EffectKind, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type SquadId, type SquadView, Visibility } from "./host";
 import { type Grid, type GridPosition, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
 
@@ -107,10 +107,10 @@ export function chebyshevDistance(a: GridPosition, b: GridPosition): number {
 }
 
 /** Tiles a Move 2 from `from` may be planned to: 1 or 2 tiles away, inside the Grid, not a Wall. */
-export function moveDestinations(from: GridPosition, grid: Grid = REACTOR_DECK): GridPosition[] {
+export function moveDestinations(from: GridPosition, grid: Grid = REACTOR_DECK, distance = MOVE_DISTANCE): GridPosition[] {
   const found: GridPosition[] = [];
-  for (let row = from.row - MOVE_DISTANCE; row <= from.row + MOVE_DISTANCE; row++) {
-    for (let col = from.col - MOVE_DISTANCE; col <= from.col + MOVE_DISTANCE; col++) {
+  for (let row = from.row - distance; row <= from.row + distance; row++) {
+    for (let col = from.col - distance; col <= from.col + distance; col++) {
       const kind = tileAt(grid, { col, row });
       if (kind !== undefined && kind !== TileKind.Wall && chebyshevDistance(from, { col, row }) > 0) {
         found.push({ col, row });
@@ -159,8 +159,16 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
       });
     }
     let position = hero.position;
+    // Reposition stretches the next Move of the Queue to the distance on its card.
+    let moveDistance = MOVE_DISTANCE;
     for (const action of queue) {
       useCard(action.card);
+      if (action.kind === ActionKind.Primary) {
+        const extend = cardInMode(HERO_DECKS[hero.heroClass][action.card]!, action.overdrive).effects.find(
+          ({ kind }) => kind === EffectKind.ExtendMove,
+        );
+        if (extend) moveDistance = extend.amount ?? MOVE_DISTANCE;
+      }
       if (action.kind === ActionKind.Primary) {
         const base = HERO_DECKS[hero.heroClass][action.card];
         const card = base && cardInMode(base, action.overdrive);
@@ -168,7 +176,11 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
           issues.push({ kind: PlanIssueKind.NoOverdrive, heroId, message: `${base.name} has no Overdrive.` });
         } else if (!card || !isPlayableCard(base!, action.overdrive)) {
           issues.push({ kind: PlanIssueKind.UnplayableCard, heroId, message: "This card's effect cannot be played yet." });
-        } else if (card.target !== CardTarget.VisibleEnemy) {
+        } else if (card.target === CardTarget.GhostEnemy) {
+          if (!view.enemies.some((enemy) => enemy.id === action.target && enemy.visibility === Visibility.Ghost)) {
+            issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Ghost as its target.` });
+          }
+        } else if (card.target !== CardTarget.VisibleEnemy && card.target !== CardTarget.EnemyInSight) {
           // Self cards and area Attacks are confirmed on this Hero; ally cards need another Hero.
           const isSelfCard = card.target === CardTarget.SelfHero || card.target === CardTarget.EnemiesInRange;
           const validTarget = isSelfCard
@@ -188,13 +200,14 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
         }
       }
       if (action.kind !== ActionKind.Move) continue;
-      const reachable = moveDestinations(position).some(
+      const reachable = moveDestinations(position, REACTOR_DECK, moveDistance).some(
         (tile) => tile.col === action.destination.col && tile.row === action.destination.row,
       );
       if (!reachable) {
         issues.push({ kind: PlanIssueKind.BadDestination, heroId, message: "Move 2 needs a free destination 1 or 2 tiles away." });
       }
       position = action.destination;
+      moveDistance = MOVE_DISTANCE;
     }
   }
   return issues;

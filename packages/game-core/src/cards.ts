@@ -22,6 +22,8 @@ export enum CardTarget {
   EmptyTile = "emptyTile",
   Area = "area",
   EnemyInSight = "enemyInSight",
+  /** An enemy Hero that is a Ghost for the Squad: the shot goes to its last known position (ADR 0005). */
+  GhostEnemy = "ghostEnemy",
 }
 
 export enum EffectKind {
@@ -36,6 +38,8 @@ export enum EffectKind {
   IgnoreHalfCover = "ignoreHalfCover",
   GainShield = "gainShield",
   GrantExtraMove = "grantExtraMove",
+  /** The Hero's next Move action in the Queue covers `amount` tiles instead of 2 (ADR 0020). */
+  ExtendMove = "extendMove",
   PreventHidden = "preventHidden",
   GainPermanentAttack = "gainPermanentAttack",
   RevealArea = "revealArea",
@@ -114,22 +118,40 @@ export function isSimpleAttack(card: CardDefinition): boolean {
     card.type === CardType.Attack &&
     card.target === CardTarget.VisibleEnemy &&
     (first?.kind === EffectKind.Damage || first?.kind === EffectKind.DamageAtLongRange) &&
-    rest.every((effect) => effect.kind === EffectKind.ApplySlow)
+    rest.every((effect) => effect.kind === EffectKind.ApplySlow || effect.kind === EffectKind.IgnoreHalfCover)
   );
 }
 
-/**
- * Utility effect kinds the resolution has an interpreter for; later Utility effects are added here.
- * `PreventHidden` is accepted but does nothing until Hidden exists (Assassin ticket).
- */
-export const PLAYABLE_UTILITY_EFFECTS = [EffectKind.GainShield, EffectKind.ApplySlow, EffectKind.PreventHidden] as const;
+/** The Overdrive of Ghost Shot: an Attack on a Ghost's last known position that deals damage to whoever stands there. */
+export function isGhostAttack(card: CardDefinition): boolean {
+  const [first, second, ...rest] = card.effects;
+  return (
+    card.type === CardType.Attack &&
+    card.target === CardTarget.GhostEnemy &&
+    first?.kind === EffectKind.TargetGhost &&
+    second?.kind === EffectKind.Damage &&
+    rest.length === 0
+  );
+}
 
-/** Utility cards aimed at this Hero, an allied Hero or a visible enemy whose effects all have an interpreter. */
+/** Utility effect kinds the resolution has an interpreter for; later Utility effects are added here. */
+export const PLAYABLE_UTILITY_EFFECTS = [
+  EffectKind.GainShield,
+  EffectKind.ApplySlow,
+  EffectKind.PreventHidden,
+  EffectKind.BecomeHidden,
+  EffectKind.ExtendMove,
+  EffectKind.ApplyMarked,
+  EffectKind.Damage,
+] as const;
+
+/** Utility cards aimed at this Hero, an allied Hero, a visible enemy or an enemy in sight whose effects all have an interpreter. */
 export function isPlayableUtility(card: CardDefinition): boolean {
   return (
     card.type === CardType.Utility &&
     (card.target === CardTarget.SelfHero ||
       card.target === CardTarget.AllyHero ||
+      card.target === CardTarget.EnemyInSight ||
       card.target === CardTarget.VisibleEnemy) &&
     card.effects.every((effect) => (PLAYABLE_UTILITY_EFFECTS as readonly EffectKind[]).includes(effect.kind))
   );
@@ -150,11 +172,19 @@ export function isAreaAttack(card: CardDefinition): boolean {
 }
 
 /**
- * Whether a card's Primary effect can be planned and resolved so far. Only simple Attacks can be played in
- * Overdrive so far; other Overdrives (for example two allied targets) follow with their own tickets.
+ * Whether a card's Primary effect can be planned and resolved so far. Only simple Attacks, Ghost Shot and
+ * Utility cards can be played in Overdrive so far; other Overdrives (for example two allied targets) follow
+ * with their own tickets.
  */
 export function isPlayableCard(card: CardDefinition, overdrive?: boolean): boolean {
-  if (overdrive) return card.overdrive !== undefined && isSimpleAttack(cardInMode(card, true));
+  if (overdrive) {
+    if (card.overdrive === undefined) return false;
+    const mode = cardInMode(card, true);
+    // Utility Overdrives with two allied targets or an area follow with their own tickets.
+    return (
+      isSimpleAttack(mode) || isGhostAttack(mode) || (mode.target === CardTarget.EnemyInSight && isPlayableUtility(mode))
+    );
+  }
   return isSimpleAttack(card) || isAreaAttack(card) || isPlayableUtility(card);
 }
 
@@ -268,6 +298,7 @@ const longShot: CardDefinition = {
 const ghostShot: CardDefinition = {
   name: "Ghost Shot", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE,
   target: CardTarget.VisibleEnemy, effects: [damage(2)],
+  overdriveTarget: CardTarget.GhostEnemy,
   overdrive: [{ kind: EffectKind.TargetGhost }, damage(2)],
 };
 const executionRound: CardDefinition = {
@@ -286,7 +317,7 @@ const markTarget: CardDefinition = {
 };
 const reposition: CardDefinition = {
   name: "Reposition", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.SelfHero, effects: [{ kind: EffectKind.GrantExtraMove, amount: 3 }],
+  target: CardTarget.SelfHero, effects: [{ kind: EffectKind.ExtendMove, amount: 3 }],
 };
 
 /**
