@@ -120,7 +120,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Implement simultaneous planning with a fixed timer and early commit.
 - Implement deterministic priority-interleaved Resolution using per-Hero action queues and Ticks.
 - Validate actions at execution time; illegal actions fail without affecting later actions.
-- Implement squad-shared, enemy-only Fog of War with Visible, Ghost, and Unknown states.
+- Implement squad-shared, enemy-only Fog of War with Visible, Ghost, and Unknown states. Base sight range is 7 tiles (9 for a Hidden Assassin); Visible requires sight range and Line of Sight.
 - Implement Hidden only for the Assassin through selected Utility cards.
 - Implement Marked as a Squad-wide visibility effect until the end of the next round.
 - Implement Ghost Shot as the Assassin’s Attack Overdrive that targets a Ghost’s last known position.

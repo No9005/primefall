@@ -1,0 +1,504 @@
+{
+  "bundles": [
+    {
+      "name": "tiles",
+      "assets": [
+        {
+          "alias": "tiles.floor_01",
+          "src": "tiles/floor_01.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "tiles.floor_02",
+          "src": "tiles/floor_02.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "tiles.floor_damaged_01",
+          "src": "tiles/floor_damaged_01.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "tiles.reactor_floor_01",
+          "src": "tiles/reactor_floor_01.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "tiles.reactor_edge_01",
+          "src": "tiles/reactor_edge_01.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "tiles.spawn_marker_01",
+          "src": "tiles/spawn_marker_01.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "props",
+      "assets": [
+        {
+          "alias": "props.wall_01",
+          "src": "props/wall_01.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "props.cover_full_01",
+          "src": "props/cover_full_01.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "props.cover_half_01",
+          "src": "props/cover_half_01.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "props.overwatch_nest_01",
+          "src": "props/overwatch_nest_01.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "heroes.bruiser",
+      "assets": [
+        {
+          "alias": "heroes.bruiser.idle",
+          "src": "heroes/bruiser/idle.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.bruiser.move",
+          "src": "heroes/bruiser/move.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.bruiser.attack_ranged",
+          "src": "heroes/bruiser/attack_ranged.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.bruiser.block_shield",
+          "src": "heroes/bruiser/block_shield.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.bruiser.utility_cast",
+          "src": "heroes/bruiser/utility_cast.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.bruiser.hit",
+          "src": "heroes/bruiser/hit.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.bruiser.exhausted",
+          "src": "heroes/bruiser/exhausted.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.bruiser.heavy_attack",
+          "src": "heroes/bruiser/heavy_attack.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.bruiser.breach_charge_throw",
+          "src": "heroes/bruiser/breach_charge_throw.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "heroes.controller",
+      "assets": [
+        {
+          "alias": "heroes.controller.idle",
+          "src": "heroes/controller/idle.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.controller.move",
+          "src": "heroes/controller/move.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.controller.attack_ranged",
+          "src": "heroes/controller/attack_ranged.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.controller.block_shield",
+          "src": "heroes/controller/block_shield.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.controller.utility_cast",
+          "src": "heroes/controller/utility_cast.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.controller.hit",
+          "src": "heroes/controller/hit.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.controller.exhausted",
+          "src": "heroes/controller/exhausted.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.controller.drone_deploy",
+          "src": "heroes/controller/drone_deploy.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.controller.cover_deploy",
+          "src": "heroes/controller/cover_deploy.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "heroes.assassin",
+      "assets": [
+        {
+          "alias": "heroes.assassin.idle",
+          "src": "heroes/assassin/idle.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.assassin.move",
+          "src": "heroes/assassin/move.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.assassin.attack_ranged",
+          "src": "heroes/assassin/attack_ranged.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.assassin.block_shield",
+          "src": "heroes/assassin/block_shield.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.assassin.utility_cast",
+          "src": "heroes/assassin/utility_cast.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.assassin.hit",
+          "src": "heroes/assassin/hit.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.assassin.exhausted",
+          "src": "heroes/assassin/exhausted.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.assassin.precision_aim",
+          "src": "heroes/assassin/precision_aim.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        },
+        {
+          "alias": "heroes.assassin.hidden_crouch",
+          "src": "heroes/assassin/hidden_crouch.png",
+          "data": {
+            "anchor": [
+              0.5,
+              1
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "vfx",
+      "assets": [
+        {
+          "alias": "vfx.muzzle_flash",
+          "src": "vfx/muzzle_flash.png",
+          "data": {
+            "anchor": [
+              0.5,
+              0.5
+            ]
+          }
+        },
+        {
+          "alias": "vfx.energy_projectile",
+          "src": "vfx/energy_projectile.png",
+          "data": {
+            "anchor": [
+              0.5,
+              0.5
+            ]
+          }
+        },
+        {
+          "alias": "vfx.shotgun_blast",
+          "src": "vfx/shotgun_blast.png",
+          "data": {
+            "anchor": [
+              0.5,
+              0.5
+            ]
+          }
+        },
+        {
+          "alias": "vfx.shield_ring",
+          "src": "vfx/shield_ring.png",
+          "data": {
+            "anchor": [
+              0.5,
+              0.5
+            ]
+          }
+        },
+        {
+          "alias": "vfx.cover_deploy_effect",
+          "src": "vfx/cover_deploy_effect.png",
+          "data": {
+            "anchor": [
+              0.5,
+              0.5
+            ]
+          }
+        },
+        {
+          "alias": "vfx.drone",
+          "src": "vfx/drone.png",
+          "data": {
+            "anchor": [
+              0.5,
+              0.5
+            ]
+          }
+        },
+        {
+          "alias": "vfx.mark_reticle",
+          "src": "vfx/mark_reticle.png",
+          "data": {
+            "anchor": [
+              0.5,
+              0.5
+            ]
+          }
+        },
+        {
+          "alias": "vfx.slow_indicator",
+          "src": "vfx/slow_indicator.png",
+          "data": {
+            "anchor": [
+              0.5,
+              0.5
+            ]
+          }
+        },
+        {
+          "alias": "vfx.reactor_pulse",
+          "src": "vfx/reactor_pulse.png",
+          "data": {
+            "anchor": [
+              0.5,
+              0.5
+            ]
+          }
+        },
+        {
+          "alias": "vfx.explosion",
+          "src": "vfx/explosion.png",
+          "data": {
+            "anchor": [
+              0.5,
+              0.5
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
