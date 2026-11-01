@@ -1,12 +1,9 @@
 // Match setup and the card economy of a Round (ADR 0007, ADR 0017). Pure and deterministic:
 // every function returns a new Match State and all randomness comes from the seeded PRNG in it.
 
-import { HAND_SIZE, HERO_DECKS, HeroClass } from "./cards";
+import { type CardIndex, HAND_SIZE, HERO_DECKS, HeroClass } from "./cards";
 import { ROUND_LIMIT, SquadId, type HeroView, type SquadView } from "./host";
 import { findTiles, GridPosition, REACTOR_DECK, TileKind } from "./reactor-deck";
-
-/** Index of a card in its Hero's fixed Deck list (`HERO_DECKS`). */
-export type CardIndex = number;
 
 export interface HeroState {
   id: string;
