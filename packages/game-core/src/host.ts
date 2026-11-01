@@ -48,6 +48,8 @@ export interface HeroView {
   hand: readonly number[];
   /** An Exhausted Hero is removed from the match: it plans and acts no more. */
   exhausted: boolean;
+  /** Slowed: the next Move 2 becomes a Move 1. */
+  slowed: boolean;
 }
 
 /** How much a Squad knows about one enemy Hero (Fog of War, ADR 0005). */
@@ -78,6 +80,8 @@ export interface VisibleEnemyView extends EnemyIdentity {
   discardCount: number;
   exileCount: number;
   exhausted: boolean;
+  /** Slowed: shown only while the enemy is Visible. */
+  slowed: boolean;
 }
 
 /** The last known position and counts of an enemy Hero that is no longer Visible. */
@@ -126,6 +130,10 @@ export enum EventKind {
   AttackFailed = "attackFailed",
   /** A queued action was illegal when it resolved (card not in the Hand, used twice, beyond the Queue limit). */
   ActionFailed = "actionFailed",
+  /** `heroId` made `targetId` Slowed (Attack or Utility card). */
+  SlowApplied = "slowApplied",
+  /** A Slowed Hero's Move 2 was cut to a Move 1; the Slow is used up. */
+  SlowUsed = "slowUsed",
   /** A Hero's Deck is empty after the Resolution; it is removed from the match. */
   Exhausted = "exhausted",
 }

@@ -18,6 +18,11 @@ export interface HeroState {
   exile: CardIndex[];
   /** Round-scoped: created by Block, cleared at the end of every Resolution (ADR 0002). */
   shield: number;
+  /**
+   * Resolution ends left before Slow expires; 0 means not Slowed. Slow applied during a Resolution lasts
+   * until the end of the next one, so it starts at 2. A Move 2 that uses it up sets it to 0.
+   */
+  slow: number;
   /** Set after a Resolution that leaves the Deck empty; an Exhausted Hero is out of the match (ADR 0006). */
   exhausted: boolean;
 }
@@ -100,6 +105,7 @@ export function createMatch(seed: number): MatchState {
         discard: [],
         exile: [],
         shield: 0,
+        slow: 0,
         exhausted: false,
       });
     });
@@ -174,6 +180,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
       exileCount: hero.exile.length,
       hand: [...hero.hand],
       exhausted: hero.exhausted,
+      slowed: hero.slow > 0,
     }));
   const enemies: EnemyView[] = match.heroes
     .filter((hero) => hero.squad !== squad)
@@ -189,6 +196,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
           discardCount: hero.discard.length,
           exileCount: hero.exile.length,
           exhausted: hero.exhausted,
+          slowed: hero.slow > 0,
         };
       }
       const ghost = match.ghosts[squad][hero.id];

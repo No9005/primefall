@@ -67,6 +67,10 @@ export function describeEvent(event: MatchEvent, nameOf: (heroId: string) => str
         ((event.absorbed ?? 0) > 0 ? `, Shield absorbed ${event.absorbed}` : "");
     case EventKind.AttackFailed:
       return `Tick ${event.tick}: ${who}'s Attack on ${nameOf(event.targetId!)} fails (Range or Line of Sight)`;
+    case EventKind.SlowApplied:
+      return `Tick ${event.tick}: ${who} Slows ${nameOf(event.targetId!)}`;
+    case EventKind.SlowUsed:
+      return `Tick ${event.tick}: ${who} is Slowed: Move 2 becomes Move 1`;
     case EventKind.Exhausted:
       return `${who} is Exhausted`;
     default:
