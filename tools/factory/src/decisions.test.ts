@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BlastRadius } from "./blast-radius.ts";
 import {
+  candidateIssues,
   isFactoryPullRequest,
   isIssueStartable,
   Label,
@@ -11,6 +12,7 @@ import {
   reworkDecision,
   ReworkAction,
   ReviewVerdict,
+  SelectTrigger,
   type IssueState,
 } from "./decisions.ts";
 
@@ -31,6 +33,18 @@ describe("isIssueStartable", () => {
     ["with an existing agent branch", { hasAgentBranch: true }],
   ])("does not start %s", (_name, change) => {
     expect(isIssueStartable({ ...startable, ...change }).startable).toBe(false);
+  });
+});
+
+describe("candidateIssues", () => {
+  it("uses only the labelled or manually started issue", () => {
+    expect(candidateIssues(SelectTrigger.Labeled, 12, [8, 9, 12])).toEqual([12]);
+    expect(candidateIssues(SelectTrigger.Manual, 8, [8, 9])).toEqual([8]);
+  });
+
+  it("tries every open ready issue, lowest number first, when an issue closes", () => {
+    expect(candidateIssues(SelectTrigger.Closed, 12, [15, 13, 15, 22])).toEqual([13, 15, 22]);
+    expect(candidateIssues(SelectTrigger.Closed, 12, [])).toEqual([]);
   });
 });
 

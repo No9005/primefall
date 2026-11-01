@@ -7,6 +7,7 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { BlastRadius, classifyPullRequest, keepHighWhenAlreadyHigh, type BlastRadiusRules, type ChangedFile } from "./blast-radius.ts";
 import {
   blastRadiusLabel,
+  candidateIssues,
   isFactoryPullRequest,
   isIssueStartable,
   Label,
@@ -17,6 +18,7 @@ import {
   reworkDecision,
   ReworkAction,
   ReviewVerdict,
+  SelectTrigger,
   type IssueEvent,
   type ReviewResult,
 } from "./decisions.ts";
@@ -107,11 +109,16 @@ function ensureLabels(): void {
   }
 }
 
-function selectIssue(trigger: string, number: number): void {
-  const candidates =
-    trigger === "closed"
-      ? apiList<{ number: number }>(`repos/${repo}/issues/${number}/dependencies/blocking`).map((i) => i.number).sort((a, b) => a - b)
-      : [number];
+function selectIssue(triggerName: string, number: number): void {
+  const trigger = Object.values(SelectTrigger).find((t) => t === triggerName);
+  if (!trigger) throw new Error(`Unknown trigger: ${triggerName}`);
+  const openReadyIssues =
+    trigger === SelectTrigger.Closed
+      ? apiList<{ number: number; pull_request?: unknown }>(`repos/${repo}/issues?state=open&labels=${Label.ReadyForAgent}`)
+          .filter((issue) => !issue.pull_request)
+          .map((issue) => issue.number)
+      : [];
+  const candidates = candidateIssues(trigger, number, openReadyIssues);
   for (const candidate of candidates) {
     const issue = api<IssueData>(`repos/${repo}/issues/${candidate}`);
     if (issue.state !== "open") continue;

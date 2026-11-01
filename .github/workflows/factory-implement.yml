@@ -13,7 +13,8 @@ on:
         required: true
 
 # One implement run at a time. Waiting runs are queued, but GitHub keeps only the newest waiting
-# run; a skipped ticket starts when the next blocker closes or when it is started by hand.
+# run; a ticket that was skipped starts when the next issue closes (every open ready issue is
+# checked then) or when it is started by hand.
 concurrency:
   group: factory-implement
   cancel-in-progress: false
