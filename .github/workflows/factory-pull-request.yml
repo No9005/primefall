@@ -138,7 +138,8 @@ jobs:
     if: needs.review.result == 'success'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # contents: write is needed to enable auto-merge (GraphQL mergePullRequest); the job runs trusted code from the default branch.
+      contents: write
       pull-requests: write
       issues: write
     outputs:
