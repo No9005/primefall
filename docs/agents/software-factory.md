@@ -62,5 +62,6 @@ The reviewer may raise a pull request to high with a reason, only if the change 
 ## Known limits
 
 - The pipeline files are validated by reading and by unit tests of the decision logic, not by real runs. The setup guide has a first-run checklist.
+- An implement run that ends without a branch or pull request (for example because the agent was denied a command it needed) is reported on the issue: a comment with the run link, the denied commands and the agent's last message, and the label `needs-human`. A `needs-human` issue is not started again automatically; remove the label to retry.
 - A review run that writes a result file with unusable content counts as a failed review. A review that never ran (no result file) is reported as `agent-review: error` with a comment and does not count as a failed review and does not start a rework. The Claude action skips itself when the workflow files of the branch differ from the default branch (for example for pull requests that change a workflow, or an agent branch that was cut before the workflows changed on `main`); update the branch with `main` or start "Factory pull request" by hand.
 - Pull requests opened by humans are not handled by the factory.

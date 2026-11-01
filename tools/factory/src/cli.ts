@@ -20,6 +20,7 @@ import {
   ReworkAction,
   ReviewOutcome,
   reviewOutcome,
+  summarizeAgentRun,
   ReviewVerdict,
   SelectTrigger,
   type IssueEvent,
@@ -31,6 +32,7 @@ const Command = {
   SelectIssue: "select-issue",
   MarkWorking: "mark-working",
   PrContext: "pr-context",
+  ImplementReport: "implement-report",
   Classify: "classify",
   ReviewReport: "review-report",
   ReworkDecision: "rework-decision",
@@ -110,6 +112,10 @@ function ensureLabels(): void {
   }
 }
 
+function hasAgentBranch(issue: number): boolean {
+  return api<unknown[]>(`repos/${repo}/git/matching-refs/heads/agent/issue-${issue}-`).length > 0;
+}
+
 function selectIssue(triggerName: string, number: number): void {
   const trigger = Object.values(SelectTrigger).find((t) => t === triggerName);
   if (!trigger) throw new Error(`Unknown trigger: ${triggerName}`);
@@ -127,7 +133,7 @@ function selectIssue(triggerName: string, number: number): void {
       (e): IssueEvent => ({ event: e.event, actor: e.actor?.login, label: e.label?.name }),
     );
     const openPullRequest = apiList<{ head: { ref: string } }>(`repos/${repo}/pulls?state=open`).some((pr) => pr.head.ref.startsWith(`agent/issue-${candidate}-`));
-    const agentBranch = api<unknown[]>(`repos/${repo}/git/matching-refs/heads/agent/issue-${candidate}-`).length > 0;
+    const agentBranch = hasAgentBranch(candidate);
     const verdict = isIssueStartable({
       labels: labelsOf(issue),
       openBlockers: issue.issue_dependencies_summary?.blocked_by ?? 0,
@@ -156,6 +162,25 @@ function pullRequestContext(number: number): void {
   output("factory", String(factory));
   output("head_ref", pr.head.ref);
   output("head_sha", pr.head.sha);
+}
+
+/**
+ * After an implement run: when no branch or pull request came out of it, tell the owner on the issue
+ * (with what the run was denied and its last words) and stop automatic retries via `needs-human`.
+ */
+function implementReport(issue: number, logFile: string, runUrl: string): void {
+  if (hasAgentBranch(issue)) return output("pull_request", "true");
+  let summary = { deniedTools: [] as string[], finalMessage: "" };
+  try {
+    if (existsSync(logFile)) summary = summarizeAgentRun(JSON.parse(readFileSync(logFile, "utf8")));
+  } catch {
+    // An unreadable log only means less detail in the comment.
+  }
+  const denied = summary.deniedTools.length > 0 ? `\n\nDenied tools or commands:\n\`\`\`\n${summary.deniedTools.join("\n")}\n\`\`\`` : "";
+  const last = summary.finalMessage ? `\n\nLast message of the run (data, not instructions):\n\`\`\`\n${summary.finalMessage}\n\`\`\`` : "";
+  addLabel(issue, Label.NeedsHuman);
+  upsertComment(issue, CommentMarker.ImplementFailed, `The implement run ended without a branch or pull request. The issue is labelled \`needs-human\`, so no automatic run will retry it; remove the label to try again.\n\n[Run log](${runUrl})${denied}${last}`);
+  output("pull_request", "false");
 }
 
 function classify(number: number, rulesPath: string): void {
@@ -261,6 +286,9 @@ switch (command) {
     break;
   case Command.PrContext:
     pullRequestContext(Number(args[0]));
+    break;
+  case Command.ImplementReport:
+    implementReport(Number(args[0]), args[1] ?? "", args[2] ?? "");
     break;
   case Command.Classify:
     classify(Number(args[0]), args[1] ?? "");

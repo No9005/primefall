@@ -64,7 +64,7 @@ Set by the software factory (`docs/agents/software-factory.md`); the owner sets 
 | Label | Meaning |
 |---|---|
 | `agent-working` | An implement run is working on the issue |
-| `needs-human` | The automated review failed twice; no further automatic runs for the pull request |
+| `needs-human` | On a pull request: the automated review failed twice. On an issue: an implement run ended without a pull request. No further automatic runs until the owner acts (on an issue: remove the label to retry) |
 | `needs-human-merge` | High blast radius pull request waiting for the owner to review and merge |
 | `blast-radius:low`, `blast-radius:high` | Class of a pull request |
 | `high-risk` | Owner marks a ticket or pull request as high blast radius |
