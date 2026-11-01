@@ -1,10 +1,18 @@
 // Resolution of a Round (ADR 0013, ADR 0020). Pure and deterministic: the same Match State and plans
 // always give the same result. Only Move actions exist so far.
 
-import { type CardDefinition, HERO_DECKS } from "./cards";
+import { type CardDefinition, type CardIndex, HERO_DECKS } from "./cards";
 import { EventKind, MatchEndReason, type MatchEvent, PRIME_ZONE_WIN_RESOLUTIONS, ROUND_LIMIT, SquadId } from "./host";
 import { canSquadSee, type HeroState, type MatchState, recordSightings } from "./match";
-import { ActionKind, BLOCK_SHIELD, chebyshevDistance, MOVE_DISTANCE, type SquadPlan } from "./plan";
+import {
+  ActionKind,
+  BLOCK_SHIELD,
+  chebyshevDistance,
+  MAX_QUEUE_LENGTH,
+  MOVE_DISTANCE,
+  type QueuedAction,
+  type SquadPlan,
+} from "./plan";
 import {
   CoverKind,
   coverAgainst,
@@ -169,13 +177,45 @@ function evaluateMatchEnd(match: MatchState): void {
   }
 }
 
+interface HeroQueue {
+  heroId: string;
+  /** One entry per planned action; `undefined` marks an action that is illegal and fails (ADR 0013). */
+  queue: readonly (QueuedAction | undefined)[];
+  /** The Hand cards that leave the Hand: each at most once, and only cards the Hero holds. */
+  spent: CardIndex[];
+}
+
+/**
+ * Drops what the host should have validated, so the simulation is safe on its own: a card that is not in
+ * the Hand or was already used this Round, and every action beyond the Queue limit, fails without
+ * affecting the other actions. Pitched cards are claimed first, like in `validatePlan`.
+ */
+function legalQueues(match: MatchState, plans: readonly SquadPlan[]): HeroQueue[] {
+  return plans.flatMap((plan) =>
+    plan.heroes.flatMap(({ heroId, queue, pitched = [] }) => {
+      const hero = match.heroes.find((candidate) => candidate.id === heroId);
+      if (!hero) return [];
+      const spent: CardIndex[] = [];
+      const claim = (card: CardIndex) => {
+        if (!hero.hand.includes(card) || spent.includes(card)) return false;
+        spent.push(card);
+        return true;
+      };
+      pitched.forEach(claim);
+      const legal = queue.map((action, index) => (index < MAX_QUEUE_LENGTH && claim(action.card) ? action : undefined));
+      return [{ heroId, queue: legal, spent }];
+    }),
+  );
+}
+
 /**
  * Plays out the plans: Tick n resolves the n-th action of every Hero's Queue. Cards used in a Queue
- * leave the Hand for the Discard, whether the action succeeds or fails.
+ * leave the Hand for the Discard, whether the action succeeds or fails. An action that is illegal
+ * (card not in the Hand, used twice, beyond the Queue limit) fails and costs nothing.
  */
 export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]): ResolutionResult {
   const match = structuredClone(previous);
-  const queues = plans.flatMap((plan) => plan.heroes);
+  const queues = legalQueues(match, plans);
   const events: MatchEvent[] = [];
   const perceivedBy: SquadId[][] = [];
   // Judged at the end of each Tick, when Heroes stand where the Tick left them; also feeds Ghost memory.
@@ -187,7 +227,11 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
   const ticks = Math.max(0, ...queues.map(({ queue }) => queue.length));
   for (let tick = 1; tick <= ticks; tick++) {
     const actions = match.heroes.filter((hero) => !hero.exhausted).flatMap((hero) => {
-      const action = queues.find(({ heroId }) => heroId === hero.id)?.queue[tick - 1];
+      const queue = queues.find(({ heroId }) => heroId === hero.id)?.queue;
+      if (queue && tick <= queue.length && !queue[tick - 1]) {
+        events.push({ kind: EventKind.ActionFailed, tick, heroId: hero.id });
+      }
+      const action = queue?.[tick - 1];
       return action ? [{ hero, action }] : [];
     });
     // Shield exists from its Tick on, so damage resolved later in the same Tick is absorbed by it.
@@ -211,10 +255,10 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
   }
 
   // Pitched and queued cards leave the Hand for the Discard; Energy and Shield expire with the Round.
-  for (const { heroId, queue, pitched = [] } of queues) {
+  for (const { heroId, spent } of queues) {
     const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
     if (hero.exhausted) continue;
-    for (const card of [...pitched, ...queue.map((action) => action.card)]) {
+    for (const card of spent) {
       hero.hand.splice(hero.hand.indexOf(card), 1);
       hero.discard.push(card);
     }
