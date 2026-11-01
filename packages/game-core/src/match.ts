@@ -2,12 +2,8 @@
 // every function returns a new Match State and all randomness comes from the seeded PRNG in it.
 
 import { HAND_SIZE, HERO_DECKS, HeroClass } from "./cards";
+import { ROUND_LIMIT, SquadId, type HeroView, type SquadView } from "./host";
 import { findTiles, GridPosition, REACTOR_DECK, TileKind } from "./reactor-deck";
-
-export enum SquadId {
-  Left = "left",
-  Right = "right",
-}
 
 /** Index of a card in its Hero's fixed Deck list (`HERO_DECKS`). */
 export type CardIndex = number;
@@ -100,4 +96,19 @@ export function startRound(previous: MatchState): MatchState {
     }
   }
   return match;
+}
+
+/** The Squad View of one Squad: its own Heroes only, with counts instead of Deck contents. */
+export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
+  const heroes: HeroView[] = match.heroes
+    .filter((hero) => hero.squad === squad)
+    .map((hero) => ({
+      id: hero.id,
+      heroClass: hero.heroClass,
+      position: { ...hero.position },
+      deckCount: hero.deck.length,
+      exileCount: hero.exile.length,
+      hand: [...hero.hand],
+    }));
+  return { squad, round: match.round, roundLimit: ROUND_LIMIT, heroes };
 }
