@@ -18,6 +18,7 @@ import {
   type ResolvedThread,
   type ReviewThread,
   effectiveBlastRadius,
+  closingReferences,
   isFactoryPullRequest,
   isRetroBranch,
   retroDue,
@@ -167,6 +168,7 @@ function selectIssue(triggerName: string, number: number): void {
 interface PullRequestData {
   number: number;
   head: { sha: string; ref: string };
+  body: string | null;
   labels: { name: string }[];
 }
 
@@ -348,7 +350,11 @@ function mergeGate(number: number): void {
     automergeEnabled: process.env.AUTOMERGE_ENABLED === "true",
     humanOnly: isRetroBranch(pr.head.ref),
   });
-  if (action === MergeGateAction.EnableAutoMerge) gh(["pr", "merge", String(number), "--repo", repo, "--auto", "--squash"]);
+  if (action === MergeGateAction.EnableAutoMerge) {
+    // The squash commit carries the closing keywords: a pull request merged by auto-merge left its issue open.
+    const closing = closingReferences(pr.body);
+    gh(["pr", "merge", String(number), "--repo", repo, "--auto", "--squash", ...(closing.length > 0 ? ["--body", closing.join("\n")] : [])]);
+  }
   if (action === MergeGateAction.AwaitHumanMerge) {
     addLabel(number, Label.NeedsHumanMerge);
     upsertComment(number, CommentMarker.NeedsHumanMerge, "This pull request has a high blast radius (see the blast radius comment). The automated review passed; it needs a human to review and merge it. Auto-merge is not enabled.");

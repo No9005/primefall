@@ -13,6 +13,7 @@ import {
   threadsToResolve,
   type ReviewThread,
   isIssueStartable,
+  closingReferences,
   isRetroBranch,
   retroDue,
   retroInterval,
@@ -331,5 +332,19 @@ describe("retroDue", () => {
   it("recognises retro branches", () => {
     expect(isRetroBranch("agent/retro-10")).toBe(true);
     expect(isRetroBranch("agent/issue-10-retro")).toBe(false);
+  });
+});
+
+describe("closingReferences", () => {
+  it.each<[string | null | undefined, string[]]>([
+    [undefined, []],
+    [null, []],
+    ["No keyword, see #12", []],
+    ["Closes #12", ["Closes #12"]],
+    ["closes #12 and fixes #13.", ["Closes #12", "Closes #13"]],
+    ["Resolved: #7\nCloses #7", ["Closes #7"]],
+    ["Part of #16", []],
+  ])("%j gives %j", (description, expected) => {
+    expect(closingReferences(description)).toEqual(expected);
   });
 });
