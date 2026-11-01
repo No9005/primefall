@@ -1,6 +1,7 @@
 import {
   ActionKind,
   type CardIndex,
+  type CardDefinition,
   CardTarget,
   cardInMode,
   CardType,
@@ -23,7 +24,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Board, type TokenHero } from "./Board";
 import { buildPlaybackFrames, describeEvent, tickCountOf } from "./playback";
-import { CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, energyReadout, selectHero } from "./planning-selection";
+import { CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, energyReadout, rangeDamageLabel, selectHero } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
 export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
@@ -83,6 +84,7 @@ function SquadPanel({
             </span>
             {!playerControlled && <span className="tag">AI</span>}
             {hero.slowed && <span className="tag slow-tag">Slowed</span>}
+            {hero.hidden && <span className="tag hidden-tag">Hidden · sight +2</span>}
             {(hero.exhausted || playback?.exhausted.includes(hero.id)) && <span className="tag">Exhausted</span>}
           </button>
         );
@@ -95,11 +97,14 @@ function EnemyPanel({
   enemies,
   playback,
   attackerPosition,
+  aimedCard,
 }: {
   enemies: readonly EnemyView[];
   playback: PlaybackState | undefined;
   /** Set while the player picks a target: the protection each enemy's tile gives against this attacker is shown. */
   attackerPosition: GridPosition | undefined;
+  /** The card being aimed, if any: a distance-dependent damage is shown per enemy. */
+  aimedCard: CardDefinition | undefined;
 }) {
   return (
     <aside className="hud enemy-panel" aria-label="Enemy Squad">
@@ -124,9 +129,11 @@ function EnemyPanel({
           );
         }
         const cover = attackerPosition && coverProtectionLabel(attackerPosition, enemy.position);
+        const damage = attackerPosition && aimedCard && rangeDamageLabel(aimedCard, attackerPosition, enemy.position);
         return (
           <div key={enemy.id} className="hero-row" data-testid={`enemy-${enemy.heroClass}`}>
             <span className="hero-name">{HERO_NAMES[enemy.heroClass]}</span>
+            {damage && <span className="tag range-tag">{damage}</span>}
             {attackerPosition && !enemy.exhausted && cover && <span className="tag cover-tag">{cover}</span>}
             {enemy.slowed && <span className="tag slow-tag">Slowed</span>}
             <span className="counts">
@@ -294,10 +301,14 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     [view.enemies, playback],
   );
   const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, overdrive);
-  const aimsAtAlly = aimedCard?.type === CardType.Utility && aimedCard.target !== CardTarget.VisibleEnemy;
+  const aimsAtAlly = aimedCard?.type === CardType.Utility && aimedCard.target === CardTarget.AllyHero;
   const targetableIds = useMemo(() => {
     if (aiming === undefined || playing) return [];
     if (aimedCard?.target === CardTarget.SelfHero || aimedCard?.target === CardTarget.EnemiesInRange) return [selected.id];
+    // Ghost Shot aims at the last known position of a Ghost.
+    if (aimedCard?.target === CardTarget.GhostEnemy) {
+      return view.enemies.filter((enemy) => enemy.visibility === Visibility.Ghost).map((enemy) => enemy.id);
+    }
     if (aimsAtAlly) return view.heroes.filter((hero) => hero.id !== selected.id && !hero.exhausted).map((hero) => hero.id);
     return view.enemies.filter((enemy) => enemy.visibility === Visibility.Visible && !enemy.exhausted).map((enemy) => enemy.id);
   }, [aiming, aimedCard, aimsAtAlly, playing, selected.id, view.heroes, view.enemies]);
@@ -428,6 +439,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         enemies={view.enemies}
         playback={playback}
         attackerPosition={aiming !== undefined && !aimsAtAlly && !playing ? planningFrom : undefined}
+        aimedCard={aimedCard}
       />
       {(playback?.log ?? log).length > 0 && (
         <ol className="hud log" aria-label="Resolution log" data-testid="log">
@@ -442,9 +454,11 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
             ? "Tap this Hero to confirm"
             : aimedCard?.target === CardTarget.EnemiesInRange
               ? "Tap this Hero to hit every enemy Hero in Range"
-              : aimsAtAlly
-                ? "Tap an allied Hero"
-                : "Tap an enemy Hero to attack"}
+              : aimedCard?.target === CardTarget.GhostEnemy
+                ? "Tap a Ghost to shoot its last known position; it hits only if an enemy stands there"
+                : aimsAtAlly
+                  ? "Tap an allied Hero"
+                  : "Tap an enemy Hero to attack"}
         </div>
       )}
       <div className="hud energy" data-testid="energy" aria-label="Energy">

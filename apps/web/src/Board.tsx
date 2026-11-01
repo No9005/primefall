@@ -34,6 +34,8 @@ export interface TokenHero {
   exhausted: boolean;
   /** Slowed Heroes show a Slow indicator; only Visible and own Heroes ever carry it. */
   slowed?: boolean;
+  /** A Hidden Hero of the player's Squad is drawn translucent. */
+  hidden?: boolean;
   /** A Ghost: drawn faded at its last known position and not selectable as a target. */
   ghost?: boolean;
 }
@@ -127,6 +129,7 @@ export function Board({
       // Enemies carry a red tint so the two Squads are told apart.
       if (enemy) sprite.tint = 0xffb3b3;
       if (hero.ghost) sprite.alpha = 0.35;
+      if (hero.hidden) sprite.alpha = 0.55;
       token.addChild(sprite);
       if (hero.slowed && !hero.exhausted) {
         const indicator = new Sprite(Assets.get("vfx.slow_indicator"));

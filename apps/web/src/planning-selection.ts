@@ -1,8 +1,13 @@
 import {
+  type CardDefinition,
   type CardIndex,
+  chebyshevDistance,
   CoverKind,
   coverAgainst,
+  damageAtDistance,
+  EffectKind,
   energyPool,
+  LONG_RANGE_FROM,
   type GridPosition,
   HALF_COVER_REDUCTION,
   HERO_DECKS,
@@ -40,6 +45,15 @@ export function coverProtectionLabel(attacker: GridPosition, target: GridPositio
     default:
       return undefined;
   }
+}
+
+/** For a card whose damage depends on the Range (Long Shot's Overdrive): the damage against a target at `target`. */
+export function rangeDamageLabel(card: CardDefinition, attacker: GridPosition, target: GridPosition): string | undefined {
+  const effect = card.effects.find(({ kind }) => kind === EffectKind.DamageAtLongRange);
+  if (!effect) return undefined;
+  const distance = chebyshevDistance(attacker, target);
+  const damage = damageAtDistance(effect, distance);
+  return `Range ${distance} · ${damage} damage${distance >= LONG_RANGE_FROM ? " (long range bonus)" : ""}`;
 }
 
 export enum CardUse {
