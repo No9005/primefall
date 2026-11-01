@@ -3,7 +3,7 @@
 
 import { EventKind, type MatchEvent, type SquadId } from "./host";
 import type { MatchState } from "./match";
-import { MOVE_DISTANCE, type SquadPlan } from "./plan";
+import { ActionKind, BLOCK_SHIELD, MOVE_DISTANCE, type SquadPlan } from "./plan";
 import { type GridPosition, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
 
 export interface ResolutionResult {
@@ -77,20 +77,32 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
 
   const ticks = Math.max(0, ...queues.map(({ queue }) => queue.length));
   for (let tick = 1; tick <= ticks; tick++) {
-    const movers = match.heroes.flatMap((hero) => {
+    const actions = match.heroes.flatMap((hero) => {
       const action = queues.find(({ heroId }) => heroId === hero.id)?.queue[tick - 1];
-      return action ? [{ heroId: hero.id, destination: action.destination }] : [];
+      return action ? [{ hero, action }] : [];
     });
+    // Shield exists from its Tick on, so damage resolved later in the same Tick is absorbed by it.
+    for (const { hero, action } of actions) {
+      if (action.kind === ActionKind.Block) {
+        hero.shield += BLOCK_SHIELD;
+        events.push({ kind: EventKind.ShieldGained, tick, heroId: hero.id, amount: BLOCK_SHIELD });
+      }
+    }
+    const movers = actions.flatMap(({ hero, action }) =>
+      action.kind === ActionKind.Move ? [{ heroId: hero.id, destination: action.destination }] : [],
+    );
     resolveMoves(match, tick, movers, events);
   }
 
-  for (const { heroId, queue } of queues) {
+  // Pitched and queued cards leave the Hand for the Discard; Energy and Shield expire with the Round.
+  for (const { heroId, queue, pitched = [] } of queues) {
     const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
-    for (const { card } of queue) {
+    for (const card of [...pitched, ...queue.map((action) => action.card)]) {
       hero.hand.splice(hero.hand.indexOf(card), 1);
       hero.discard.push(card);
     }
   }
+  for (const hero of match.heroes) hero.shield = 0;
   return { match, events };
 }
 

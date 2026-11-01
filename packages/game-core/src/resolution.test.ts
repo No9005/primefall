@@ -117,6 +117,33 @@ describe("resolveRound: Move", () => {
   });
 });
 
+describe("resolveRound: Pitch and Block", () => {
+  const handOf = (match: MatchState) => match.heroes.find((hero) => hero.id === LEFT_BRUISER)!.hand;
+
+  it("discards pitched cards", () => {
+    const match = matchWith({});
+    const hand = [...handOf(match)];
+    const plan: SquadPlan = { squad: SquadId.Left, heroes: [{ heroId: LEFT_BRUISER, queue: [], pitched: [hand[0]!, hand[1]!] }] };
+    const bruiser = resolveRound(match, [plan]).match.heroes.find((hero) => hero.id === LEFT_BRUISER)!;
+    expect(bruiser.hand).toEqual([hand[2], hand[3]]);
+    expect(bruiser.discard).toEqual([hand[0], hand[1]]);
+  });
+
+  it("creates Shield 2 in the Tick of the Block and clears it before the next Round", () => {
+    const match = matchWith({ [LEFT_BRUISER]: { col: 8, row: 5 } });
+    const hand = [...handOf(match)];
+    const queue = [
+      { kind: ActionKind.Move as const, card: hand[0]!, destination: { col: 9, row: 5 } },
+      { kind: ActionKind.Block as const, card: hand[1]! },
+    ];
+    const { match: after, events } = resolveRound(match, [{ squad: SquadId.Left, heroes: [{ heroId: LEFT_BRUISER, queue }] }]);
+    const shield = events.filter(({ kind }) => kind === EventKind.ShieldGained);
+    expect(shield).toEqual([{ kind: EventKind.ShieldGained, tick: 2, heroId: LEFT_BRUISER, amount: 2 }]);
+    expect(after.heroes.every((hero) => hero.shield === 0)).toBe(true);
+    expect(after.heroes.find((hero) => hero.id === LEFT_BRUISER)!.discard).toEqual([hand[0], hand[1]]);
+  });
+});
+
 describe("getSquadEvents", () => {
   it("returns the events as copies", () => {
     const match = matchWith({ [LEFT_BRUISER]: { col: 8, row: 5 } });
