@@ -139,6 +139,16 @@ export function retroDue(input: { headRef: string; mergedAgentPullRequests: numb
   return input.mergedAgentPullRequests > 0 && input.mergedAgentPullRequests % input.interval === 0;
 }
 
+/**
+ * The issues a pull request closes, as normalised lines ("Closes #12"). They become the body of the squash
+ * commit, so the closing keyword is also in the commit that lands on the default branch. A pull request that
+ * the factory merges with auto-merge did not close its issue from the description alone.
+ */
+export function closingReferences(description: string | null | undefined): string[] {
+  const numbers = [...(description ?? "").matchAll(/\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)\b/gi)].map((match) => match[1] as string);
+  return [...new Set(numbers)].map((number) => `Closes #${number}`);
+}
+
 export const ReworkAction = { Rework: "rework", NeedsHuman: "needs-human" } as const;
 export type ReworkAction = (typeof ReworkAction)[keyof typeof ReworkAction];
 
