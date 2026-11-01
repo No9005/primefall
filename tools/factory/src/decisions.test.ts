@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { BlastRadius } from "./blast-radius.ts";
 import {
+  blastRadiusEnabled,
   candidateIssues,
   CommentMarker,
+  effectiveBlastRadius,
   isFactoryPullRequest,
   isReviewBot,
   openBotThreads,
@@ -255,5 +257,27 @@ describe("resolving the review bot's own threads", () => {
     });
     expect(result?.resolvedThreads).toEqual([{ id: "a", reason: "fixed in changeSelection" }]);
     expect(parseReviewResult({ verdict: "pass", summary: "ok", findings: [] })?.resolvedThreads).toEqual([]);
+  });
+});
+
+describe("the blast radius switch", () => {
+  it("is on unless the variable is exactly false", () => {
+    expect(blastRadiusEnabled(undefined)).toBe(true);
+    expect(blastRadiusEnabled("")).toBe(true);
+    expect(blastRadiusEnabled("true")).toBe(true);
+    expect(blastRadiusEnabled("false")).toBe(false);
+  });
+
+  it("rates every pull request low when switched off, and keeps the rating when on", () => {
+    expect(effectiveBlastRadius(BlastRadius.High, false)).toBe(BlastRadius.Low);
+    expect(effectiveBlastRadius(BlastRadius.Low, false)).toBe(BlastRadius.Low);
+    expect(effectiveBlastRadius(BlastRadius.High, true)).toBe(BlastRadius.High);
+    expect(effectiveBlastRadius(BlastRadius.Low, true)).toBe(BlastRadius.Low);
+  });
+
+  it("lets the merge gate enable auto-merge for a high pull request when the rating is off", () => {
+    const high = { level: BlastRadius.High, reviewPassed: true, needsHuman: false, automergeEnabled: true };
+    expect(mergeGateDecision({ ...high, level: effectiveBlastRadius(high.level, false) })).toBe(MergeGateAction.EnableAutoMerge);
+    expect(mergeGateDecision({ ...high, level: effectiveBlastRadius(high.level, true) })).toBe(MergeGateAction.AwaitHumanMerge);
   });
 });

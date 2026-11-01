@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { BlastRadius, classifyPullRequest, keepHighWhenAlreadyHigh, type BlastRadiusRules, type ChangedFile } from "./blast-radius.ts";
 import {
+  blastRadiusEnabled,
   blastRadiusLabel,
   candidateIssues,
   CommentMarker,
@@ -16,6 +17,7 @@ import {
   type PostedReview,
   type ResolvedThread,
   type ReviewThread,
+  effectiveBlastRadius,
   isFactoryPullRequest,
   isIssueStartable,
   Label,
@@ -59,6 +61,7 @@ const LABEL_COLORS: Record<string, string> = {
 };
 
 const repo = process.env.GITHUB_REPOSITORY ?? "";
+const ratingEnabled = blastRadiusEnabled(process.env.BLAST_RADIUS_ENABLED);
 const owner = process.env.GITHUB_REPOSITORY_OWNER ?? "";
 
 function gh(args: string[], input?: string): string {
@@ -191,6 +194,7 @@ function implementReport(issue: number, logFile: string, runUrl: string): void {
 }
 
 function classify(number: number, rulesPath: string): void {
+  if (!ratingEnabled) return console.log("Blast radius rating is switched off (BLAST_RADIUS_ENABLED=false).");
   const rules = JSON.parse(readFileSync(rulesPath, "utf8")) as BlastRadiusRules;
   const files = apiList<{ filename: string; additions: number; deletions: number }>(`repos/${repo}/pulls/${number}/files`).map(
     (f): ChangedFile => ({ filename: f.filename, additions: f.additions, deletions: f.deletions }),
@@ -237,7 +241,7 @@ function reviewReport(number: number, file: string): void {
   const passed = effective.verdict === ReviewVerdict.Pass;
   gh(["api", "-X", "POST", `repos/${repo}/statuses/${pr.head.sha}`, "-f", `state=${passed ? "success" : "failure"}`, "-f", `context=${REVIEW_STATUS_CONTEXT}`, "-f", `description=Automated review: ${effective.verdict}`]);
   if (passed) tidyBotThreadsAndReviews(number, pr.head.sha, effective.resolvedThreads);
-  if (effective.raiseBlastRadiusReason) setBlastRadius(number, BlastRadius.High, [`Raised by the reviewer: ${effective.raiseBlastRadiusReason}`]);
+  if (effective.raiseBlastRadiusReason && ratingEnabled) setBlastRadius(number, BlastRadius.High, [`Raised by the reviewer: ${effective.raiseBlastRadiusReason}`]);
   output("verdict", effective.verdict);
 }
 
@@ -331,7 +335,7 @@ function mergeGate(number: number): void {
   const reviews = apiList<{ body: string | null; commit_id: string }>(`repos/${repo}/pulls/${number}/reviews`);
   const latest = reviews.filter((r) => r.commit_id === pr.head.sha && r.body?.includes("factory-review:")).at(-1);
   const action = mergeGateDecision({
-    level: labels.includes(Label.BlastRadiusHigh) ? BlastRadius.High : BlastRadius.Low,
+    level: effectiveBlastRadius(labels.includes(Label.BlastRadiusHigh) ? BlastRadius.High : BlastRadius.Low, ratingEnabled),
     reviewPassed: latest?.body?.includes(reviewMarker(ReviewVerdict.Pass)) ?? false,
     needsHuman: labels.includes(Label.NeedsHuman),
     automergeEnabled: process.env.AUTOMERGE_ENABLED === "true",

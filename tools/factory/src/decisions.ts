@@ -39,6 +39,19 @@ export function reviewMarker(verdict: ReviewVerdict): string {
 }
 export const AGENT_BRANCH_PREFIX = "agent/";
 
+/**
+ * The owner can switch the blast radius rating off (repository variable BLAST_RADIUS_ENABLED=false),
+ * for example while the basic MVP is built. Anything but the exact value "false" keeps it on.
+ */
+export function blastRadiusEnabled(variable: string | undefined): boolean {
+  return variable !== "false";
+}
+
+/** With the rating switched off every pull request counts as low, whatever labels it carries. */
+export function effectiveBlastRadius(level: BlastRadius, enabled: boolean): BlastRadius {
+  return enabled ? level : BlastRadius.Low;
+}
+
 export function blastRadiusLabel(level: BlastRadius): string {
   return level === BlastRadius.High ? Label.BlastRadiusHigh : Label.BlastRadiusLow;
 }
