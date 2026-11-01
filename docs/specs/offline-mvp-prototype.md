@@ -10,6 +10,10 @@ Primefall provides a mobile-first, offline 3v3 tactical match on the Reactor Dec
 
 Both squads plan simultaneously, commit commands, and resolve combat through a deterministic priority-interleaved Resolution. A squad wins by controlling the central 3 by 3 Prime Zone during three consecutive Resolutions.
 
+## Card Set
+
+The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That document is the authoritative reference for all card effects, Energy costs, and Overdrive modes.
+
 ## User Stories
 
 1. As a player, I want to start a 3v3 match on the Reactor Deck, so that I can play a complete tactical match against AI opponents.
