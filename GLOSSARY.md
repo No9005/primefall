@@ -78,19 +78,55 @@ _Avoid_: Stealth, invisible, camouflage
 A target state that makes an enemy visible to the marking Hero’s squad until the end of the next round.
 _Avoid_: Tagged, revealed, spotted
 
+**Slow**:
+A status effect that makes the affected Hero’s next Move 2 use a Move 1 use. It lasts until the end of the next Resolution.
+_Avoid_: Hinder, debuff
+
+**Knockback**:
+A forced movement effect that moves the target directly away from the attacker. The target stops at a wall, Full Cover, or another Hero.
+_Avoid_: Push, displacement
+
+**Long Shot**:
+An Assassin Attack with Range 7. Its Overdrive grants bonus damage when the target is at Range 6 or 7.
+_Avoid_: Sniper shot, ranged finisher
+
 ### Battlefield and objectives
 
 **Grid**:
-The 16 by 10 tile-based battlefield used for movement, range, line of sight, and cover.
+The 20 by 12 tile-based battlefield used for movement, range, line of sight, and cover.
 _Avoid_: Map, board, arena
 
 **Line of Sight**:
 The rule determining whether a Hero can see and target another Hero. Attacks require current Line of Sight.
 _Avoid_: Vision, LOS
 
+**Visible**:
+An enemy Hero currently within Line of Sight.
+_Avoid_: Spotted, revealed
+
+**Ghost**:
+The last known position of an enemy Hero that is no longer Visible.
+_Avoid_: Memory, echo
+
+**Unknown**:
+An enemy Hero with neither current Line of Sight nor a known last position.
+_Avoid_: Hidden enemy, unseen
+
+**Tick**:
+One simultaneous Resolution step in which each non-exhausted Hero processes the next action in its queue.
+_Avoid_: Turn, phase
+
 **Prime Zone**:
-The central 3 by 3 objective area. A squad wins by controlling it during three consecutive resolutions.
+The central 3 by 3 objective area. A squad wins by controlling it during three consecutive Resolutions.
 _Avoid_: Point, base, capture zone
+
+**Overwatch Nest**:
+The single Full Cover position with a sightline into the Prime Zone. It is the Assassin’s secondary objective.
+_Avoid_: Sniper nest, camp spot
+
+**Reactor Deck**:
+The first Primefall map: a damaged cargo ship whose central reactor is the Prime Zone.
+_Avoid_: Level, stage
 
 **Resolution**:
 The deterministic simulation of all committed commands after both squads have planned.

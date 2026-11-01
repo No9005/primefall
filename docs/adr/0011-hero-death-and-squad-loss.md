@@ -1,5 +1,11 @@
-# Hero Death and Squad Loss
+# Hero Exhaustion and Squad Loss
 
-When a Hero dies, its player removes one chosen card from its current Hand and one card from the remaining Deck. If the Hand is empty, two cards are removed from the remaining Deck instead.
+A Hero becomes Exhausted when its Deck is empty and is removed from the match. There is no separate death state and no additional Hand or Deck penalty after Exhaustion.
 
-A Hero with an empty Deck becomes Exhausted and is removed from the match. A squad loses when all three of its Heroes are Exhausted.
+A Squad loses when all three of its Heroes are Exhausted.
+
+## Status
+
+accepted
+
+This ADR replaces the earlier Hero Death rule and aligns Squad loss with the Deck-as-Life model.
