@@ -1,5 +1,5 @@
-import { REACTOR_DECK, type HeroView } from "game-core";
-import { Application, Assets, Container, Graphics, Sprite } from "pixi.js";
+import { type GridPosition, REACTOR_DECK, type HeroView } from "game-core";
+import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
 import { buildPlacements, computeCamera, gridToWorld, Layer, TILE_HEIGHT, TILE_WIDTH } from "./board-layout";
 
@@ -21,18 +21,62 @@ function loadAssets(): Promise<Manifest> {
   return assetsReady;
 }
 
+/** A numbered marker on a tile: the destination of a planned action. */
+export interface BoardMarker {
+  position: GridPosition;
+  label: string;
+}
+
 interface BoardProps {
   heroes: readonly HeroView[];
   selectedId: string;
   onSelect: (heroId: string) => void;
+  /** Tiles the player may tap right now. */
+  highlights: readonly GridPosition[];
+  markers: readonly BoardMarker[];
+  onTileTap: (tile: GridPosition) => void;
 }
 
-export function Board({ heroes, selectedId, onSelect }: BoardProps) {
+function tileDiamond(): number[] {
+  return [0, -TILE_HEIGHT / 2, TILE_WIDTH / 2, 0, 0, TILE_HEIGHT / 2, -TILE_WIDTH / 2, 0];
+}
+
+export function Board({ heroes, selectedId, onSelect, highlights, markers, onTileTap }: BoardProps) {
   const host = useRef<HTMLDivElement>(null);
   const [tokens, setTokens] = useState<Container>();
-  // Always the latest callback, so the pixi sprites need not be rebuilt for it.
+  const [overlay, setOverlay] = useState<Container>();
+  // Always the latest callbacks, so the pixi sprites need not be rebuilt for them.
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const onTileTapRef = useRef(onTileTap);
+  onTileTapRef.current = onTileTap;
+
+  useEffect(() => {
+    if (!overlay) return;
+    const created: Container[] = [];
+    for (const tile of highlights) {
+      const { x, y } = gridToWorld(tile);
+      const diamond = new Graphics().poly(tileDiamond()).fill({ color: 0x2ec4b6, alpha: 0.35 }).stroke({ width: 2, color: 0x2ec4b6 });
+      diamond.position.set(x, y);
+      diamond.eventMode = "static";
+      diamond.cursor = "pointer";
+      diamond.on("pointertap", () => onTileTapRef.current(tile));
+      overlay.addChild(diamond);
+      created.push(diamond);
+    }
+    markers.forEach(({ position, label }) => {
+      const { x, y } = gridToWorld(position);
+      const marker = new Container();
+      marker.position.set(x, y);
+      marker.addChild(new Graphics().circle(0, 0, 16).fill(0xff8a3d).stroke({ width: 2, color: 0x12161c }));
+      const text = new Text({ text: label, style: { fill: 0x12161c, fontSize: 20, fontWeight: "700" } });
+      text.anchor.set(0.5);
+      marker.addChild(text);
+      overlay.addChild(marker);
+      created.push(marker);
+    });
+    return () => created.forEach((child) => child.destroy({ children: true }));
+  }, [overlay, highlights, markers]);
 
   useEffect(() => {
     if (!tokens) return;
@@ -81,10 +125,13 @@ export function Board({ heroes, selectedId, onSelect }: BoardProps) {
       const floor = new Container();
       const objects = new Container();
       objects.sortableChildren = true;
-      world.addChild(floor, objects);
+      const planning = new Container();
+      world.addChild(floor, planning, objects);
       app.stage.addChild(world);
       // Hero tokens sort together with the props, by tile depth.
       setTokens(objects);
+      // Highlights and markers lie on the floor; markers would hide behind props, which is acceptable.
+      setOverlay(planning);
 
       for (const { alias, x, y, layer, depth } of buildPlacements(REACTOR_DECK)) {
         const sprite = new Sprite(Assets.get(alias));
