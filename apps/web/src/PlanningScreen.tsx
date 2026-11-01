@@ -17,6 +17,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Board } from "./Board";
 import { buildPlaybackFrames, tickCountOf } from "./playback";
+import { selectHero } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
 export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
@@ -138,6 +139,13 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     [view.heroes, playback],
   );
 
+  function changeSelection(heroId: string) {
+    const next = selectHero({ selectedId, queue, armed }, heroId, playing);
+    setSelectedId(next.selectedId);
+    setQueue(next.queue);
+    setArmed(next.armed);
+  }
+
   function tapCard(card: CardIndex) {
     if (queue.some((action) => action.card === card)) {
       setQueue(queue.filter((action) => action.card !== card));
@@ -175,7 +183,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       <Board
         heroes={boardHeroes}
         selectedId={selected.id}
-        onSelect={(id) => view.heroes.find((hero) => hero.id === id)?.heroClass === PLAYER_HERO_CLASS && setSelectedId(id)}
+        onSelect={(id) => view.heroes.find((hero) => hero.id === id)?.heroClass === PLAYER_HERO_CLASS && changeSelection(id)}
         highlights={highlights}
         markers={markers}
         onTileTap={tapTile}
@@ -190,7 +198,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
           </span>
         )}
       </header>
-      <SquadPanel heroes={view.heroes} selectedId={selected.id} onSelect={setSelectedId} />
+      <SquadPanel heroes={view.heroes} selectedId={selected.id} onSelect={changeSelection} />
       <Hand hero={selected} queue={queue} armed={armed} disabled={playing} onCardTap={tapCard} />
       <section className="hud commit-panel" aria-label="Commit">
         {issues.length > 0 && (
