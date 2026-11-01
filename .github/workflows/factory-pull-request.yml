@@ -106,7 +106,7 @@ jobs:
             - Judge the diff cold against: the issue and its acceptance criteria, CLAUDE.md, the ADRs in docs/adr, GLOSSARY.md and the specs it touches.
             - Verdict "fail" when something must be fixed: wrong behaviour, a missed acceptance criterion, a violated project rule or ADR, missing or weak tests. Otherwise "pass"; put minor remarks in the summary.
             - Each finding names a file and a line that exists in the new version of the file, and says what to change.
-            - If you judge the change riskier than the rules in trusted/tools/factory/blast-radius-rules.json say (for example it affects shared behaviour broadly), set raiseBlastRadiusReason. You can raise the class, never lower it.
+            - The blast radius rules are in trusted/tools/factory/blast-radius-rules.json: high means documentation and agent files, the factory and tooling, or the business logic of the rules package (how the game is resolved). Card data, map data, UI, rendering, assets and tests are low on purpose. Set raiseBlastRadiusReason only if the change alters how the game is resolved or affects the factory or agent behaviour in a way the path rules cannot see; never for card data, UI or tests alone. You can raise the class, never lower it.
             - Write exactly one file, review-result.json, in the current directory, as JSON: {"verdict":"pass"|"fail","summary":"...","findings":[{"path":"...","line":1,"body":"..."}],"raiseBlastRadiusReason":"..." (optional)}.
           claude_args: |
             --model claude-sonnet-5-5
