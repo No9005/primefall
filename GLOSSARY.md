@@ -67,7 +67,7 @@ Unblocked damage that removes cards from the top of the target’s Deck. One dam
 _Avoid_: HP damage, wound
 
 **Cover**:
-Terrain that changes incoming attacks and visibility. Full Cover blocks attacks and sight from a firing direction; Half Cover reduces damage by 1 but does not block sight.
+Terrain a Hero can stand on that changes incoming attacks and visibility. Against attackers at Range 2 or more, Full Cover blocks the attack and Half Cover reduces damage by 1. Attackers at Range 1 ignore it.
 _Avoid_: Obstacle, wall, terrain
 
 **Hidden**:
@@ -111,6 +111,14 @@ _Avoid_: Memory, echo
 **Unknown**:
 An enemy Hero with neither current Line of Sight nor a known last position. Nothing about its status is known.
 _Avoid_: Hidden enemy, unseen
+
+**Range**:
+Distance in tiles, counted with diagonal neighbours at distance 1. Used for weapon range, sight range, and adjacency.
+_Avoid_: Distance, reach
+
+**Queue**:
+The ordered actions a Hero has planned for one Round, at most four. One action is resolved per Tick.
+_Avoid_: Command list, turn order
 
 **Tick**:
 One simultaneous Resolution step in which each non-exhausted Hero processes the next action in its queue.
