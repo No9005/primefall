@@ -1,0 +1,24 @@
+{
+  "note": "Changing this file is itself high blast radius (it matches tools/factory/**). New simulation files in game-core must be added to simulationPaths.",
+  "highRiskLabel": "high-risk",
+  "maxChangedLines": 400,
+  "maxChangedFiles": 15,
+  "factoryAndToolingPaths": [
+    ".github/**",
+    "CLAUDE.md",
+    "docs/agents/**",
+    "tools/factory/**",
+    "eslint.config.js",
+    "**/tsconfig*.json",
+    "**/package.json",
+    "package-lock.json"
+  ],
+  "decisionAndContractPaths": ["docs/adr/**", "docs/specs/**", "GLOSSARY.md"],
+  "simulationPaths": [
+    "packages/game-core/src/server.ts",
+    "packages/game-core/src/server/**",
+    "packages/game-core/src/**/prng*",
+    "packages/game-core/src/**/resolve*",
+    "packages/game-core/src/**/match-state*"
+  ]
+}

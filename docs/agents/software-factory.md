@@ -1,0 +1,65 @@
+# Software factory
+
+The factory turns unblocked `ready-for-agent` issues into pull requests and merges the low-risk ones automatically. A human decides every high-risk one. This page uses the terms of the `software-factory` skill. Setup steps are in `docs/agents/factory-setup.md`.
+
+## Slots
+
+| Service | Product |
+|---|---|
+| Ticket tracker | GitHub Issues (native blocking links) |
+| Git host | GitHub |
+| Orchestrator and runner | GitHub Actions with `anthropics/claude-code-action` |
+| Continuous deployment | Vercel (preview per pull request, deploy from `main`) |
+| Observability platform | None on purpose: the Actions run pages suffice |
+
+The factory code (decisions and CLI) lives in `tools/factory`. The workflows are `factory-implement.yml` and `factory-pull-request.yml` next to `ci.yml`. The workflows always run the factory code and rules from the default branch, never from the pull request they judge.
+
+## Tasks
+
+| Task | Trigger | Does | Triggers next |
+|---|---|---|---|
+| **Implement** | The owner labels an issue `ready-for-agent`, or a blocking issue closes, or the owner starts it by hand (Actions, "Factory implement", issue number) | Picks the first issue that is startable (below), then runs the agent: own branch `agent/issue-<n>-<slug>` from `origin/main`, build, test, lint, pull request with `Closes #<n>` | Blast radius and Review (the pull request) |
+| **Blast radius** | Pull request from an `agent/` branch opened or updated | Computes `low` or `high` from the diff with the rules in `tools/factory/blast-radius-rules.json`; sets one `blast-radius:*` label and a comment with the reasons | Review |
+| **Review** | Same | A separate read-only run in a fresh context reviews the diff against the issue, `CLAUDE.md`, the ADRs, the glossary and the specs. It writes a result file; the CLI posts it as a review with inline comments and sets the status `agent-review`. It may raise the class to high, never lower it. It also runs for high-risk pull requests | Rework on fail, Merge gate on pass |
+| **Rework** | `agent-review` failed and fewer than 2 reviews have failed | Fixes only what the review named, pushes, and runs the pipeline again for the new commit | Review. After the second failed review: label `needs-human`, no more runs |
+| **Merge gate** | Review passed | Low and `AUTOMERGE_ENABLED=true`: enables GitHub's native auto-merge (squash). High: label `needs-human-merge` with a comment, no auto-merge | The merge closes the issue, which triggers Implement for the tickets it unblocked |
+
+Agents never merge. Only the merge gate enables auto-merge, and GitHub merges once the rules of `main` are satisfied (CI, `agent-review`, Vercel preview, resolved conversations, code owner review where required).
+
+## A startable issue
+
+All of these must hold (`isIssueStartable`): it carries `ready-for-agent` and not `ready-for-human`; the latest `ready-for-agent` label was set by the repository owner; it has no open blocker; no run is marked `agent-working`; it has no open pull request from `agent/issue-<n>-…`; no `agent/issue-<n>-…` branch exists.
+
+## Blast radius
+
+High when any one applies (`classifyPullRequest`):
+
+- It touches the factory or tooling: `.github`, `CLAUDE.md`, `docs/agents`, `tools/factory`, lint or TypeScript configuration, any `package.json`, the lockfile.
+- It touches decisions and contracts: `docs/adr`, `docs/specs`, `GLOSSARY.md`.
+- It touches the deterministic simulation core (the globs in the rules file: the server entry point, the PRNG, round resolution, Match State). New simulation files must be added to the rules file and to `.github/CODEOWNERS`.
+- More than 400 changed lines or more than 15 changed files.
+- The pull request or its ticket carries `high-risk`.
+
+Everything else is low. The reviewer may raise a pull request to high with a reason; an existing high label is kept. The same paths are in `.github/CODEOWNERS`, so GitHub itself requires the owner's review for them (with the ruleset from the setup guide). Size and label rules cannot be expressed there: for those the merge gate simply never enables auto-merge.
+
+## Brakes
+
+- **Automated checks:** CI (lint, type check, tests) on every pull request.
+- **Automated review:** the separate review run above.
+- **Human review:** every high-risk pull request, and every pull request while `AUTOMERGE_ENABLED` is not `true` (phase 0).
+- **Throttle and caps:** one implement run at a time; at most one run per issue; two failed reviews hand over to a human; a kill switch (`FACTORY_ENABLED`).
+- **Run limits:** every Claude run uses `claude-sonnet-5-5` with medium effort. Implement 30 minutes and 60 turns, Rework 20 minutes and 40 turns, Review 15 minutes and 30 turns. These are starting values: change `timeout-minutes` and `--max-turns` in the workflows after the first runs.
+
+## The five questions per task
+
+1. **Trigger:** see the table. All triggers react only to the owner (label events, manual starts) or to pull requests from `agent/` branches of this repository.
+2. **Reads and writes:** issues, labels, comments, pull requests, reviews and commit statuses on GitHub; branches and commits for Implement and Rework.
+3. **Triggers next:** see the table.
+4. **Where a human re-enters:** setting `ready-for-agent`; every high-risk merge; `needs-human` pull requests; the switch to automatic merging; the kill switch. A run never waits for a human: it ends, and the human's change starts the next run.
+5. **What stops duplicates:** one global implement run at a time, `agent-working` label, the open-pull-request and agent-branch checks, and one concurrency group per pull request (a newer run cancels an older one). GitHub keeps only the newest waiting run per concurrency group, so with several tickets released at once an issue may be skipped; it starts when the next blocker closes or when it is started by hand.
+
+## Known limits
+
+- The pipeline files are validated by reading and by unit tests of the decision logic, not by real runs. The setup guide has a first-run checklist.
+- A review run that produces no valid result counts as a failed review.
+- Pull requests opened by humans are not handled by the factory.

@@ -1,0 +1,25 @@
+# Paths with a high blast radius need the owner's review before they can merge
+# (software factory: docs/agents/software-factory.md). Keep in sync with
+# tools/factory/blast-radius-rules.json.
+
+# Factory and tooling
+/.github/ @No9005
+/CLAUDE.md @No9005
+/docs/agents/ @No9005
+/tools/factory/ @No9005
+/eslint.config.js @No9005
+**/tsconfig*.json @No9005
+**/package.json @No9005
+/package-lock.json @No9005
+
+# Decisions and contracts
+/docs/adr/ @No9005
+/docs/specs/ @No9005
+/GLOSSARY.md @No9005
+
+# Deterministic simulation core
+/packages/game-core/src/server.ts @No9005
+/packages/game-core/src/server/ @No9005
+/packages/game-core/src/**/prng* @No9005
+/packages/game-core/src/**/resolve* @No9005
+/packages/game-core/src/**/match-state* @No9005
