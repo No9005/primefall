@@ -17,6 +17,7 @@ export enum CardTarget {
   EnemiesInRange = "enemiesInRange",
   SelfHero = "selfHero",
   AllyHero = "allyHero",
+  AllyHeroTile = "allyHeroTile",
   Tile = "tile",
   EmptyTile = "emptyTile",
   Area = "area",
@@ -25,13 +26,13 @@ export enum CardTarget {
 
 export enum EffectKind {
   Damage = "damage",
-  DamageAdjacentHeroes = "damageAdjacentHeroes",
+  DamageHeroesAtAndAroundTarget = "damageHeroesAtAndAroundTarget",
   DamageAtLongRange = "damageAtLongRange",
   ApplySlow = "applySlow",
   ApplyMarked = "applyMarked",
   Knockback = "knockback",
   DestroyHalfCover = "destroyHalfCover",
-  DestroyFullCover = "destroyFullCover",
+  DestroyAnyCover = "destroyAnyCover",
   IgnoreHalfCover = "ignoreHalfCover",
   GainShield = "gainShield",
   GrantExtraMove = "grantExtraMove",
@@ -44,6 +45,12 @@ export enum EffectKind {
   RemoveHalfCoverReduction = "removeHalfCoverReduction",
 }
 
+/** Who receives an effect that can apply either to the casting Hero or to the card's target. */
+export enum EffectRecipient {
+  Self = "self",
+  Target = "target",
+}
+
 export interface CardEffect {
   kind: EffectKind;
   /** Damage, Shield, tiles or bonus value, depending on the kind. */
@@ -52,6 +59,12 @@ export interface CardEffect {
   duration?: number;
   /** Side length of a square area. */
   size?: number;
+  /** For damage that is higher at long range: the damage at Range 6 or 7 (`amount` applies closer). */
+  longRangeAmount?: number;
+  /** The effect only applies when the target is within this many tiles. */
+  withinRange?: number;
+  /** Who receives the effect; defaults to the card's target. */
+  recipient?: EffectRecipient;
 }
 
 export interface CardDefinition {
@@ -62,8 +75,10 @@ export interface CardDefinition {
   range?: number;
   target: CardTarget;
   effects: readonly CardEffect[];
-  /** Present only on cards with an Overdrive mode; replaces the standard effects. */
+  /** Present only on cards with an Overdrive mode; replaces the standard effects (ADR 0003). */
   overdrive?: readonly CardEffect[];
+  /** Target of the Overdrive when it differs from `target`. */
+  overdriveTarget?: CardTarget;
 }
 
 /** Maximum Hand size a Draw fills up to. */
@@ -92,7 +107,8 @@ const breachCharge: CardDefinition = {
   name: "Breach Charge", type: CardType.Attack, energyCost: 2, range: BRUISER_RANGE,
   target: CardTarget.Tile,
   effects: [damage(2), { kind: EffectKind.DestroyHalfCover }],
-  overdrive: [{ kind: EffectKind.DestroyFullCover }, { kind: EffectKind.DamageAdjacentHeroes, amount: 2 }],
+  // Destroys any Cover and hurts every Hero on the target tile and around it, allies and the caster included.
+  overdrive: [{ kind: EffectKind.DestroyAnyCover }, { kind: EffectKind.DamageHeroesAtAndAroundTarget, amount: 2 }],
 };
 const shockwave: CardDefinition = {
   name: "Shockwave", type: CardType.Attack, energyCost: 2, range: 1,
@@ -115,34 +131,39 @@ const reinforce: CardDefinition = {
 const adrenalSurge: CardDefinition = {
   name: "Adrenal Surge", type: CardType.Utility, energyCost: 2,
   target: CardTarget.SelfHero, effects: [{ kind: EffectKind.GainPermanentAttack, amount: 1 }],
-  overdrive: [damage(2), { kind: EffectKind.GainPermanentAttack, amount: 1 }],
+  // Overdrive: this Hero and an allied Hero each gain the permanent +1 Attack.
+  overdriveTarget: CardTarget.AllyHero,
+  overdrive: [
+    { kind: EffectKind.GainPermanentAttack, amount: 1, recipient: EffectRecipient.Self },
+    { kind: EffectKind.GainPermanentAttack, amount: 1, recipient: EffectRecipient.Target },
+  ],
 };
 
 const pulseBolt: CardDefinition = {
   name: "Pulse Bolt", type: CardType.Attack, energyCost: 1, range: CONTROLLER_RANGE,
   target: CardTarget.VisibleEnemy, effects: [damage(2)],
 };
-// Only the first Tag Round has an Overdrive mode.
-const tagRoundWithOverdrive: CardDefinition = {
+const tagRound: CardDefinition = {
   name: "Tag Round", type: CardType.Attack, energyCost: 1, range: CONTROLLER_RANGE,
   target: CardTarget.VisibleEnemy, effects: [damage(1), marked], overdrive: [damage(1), marked, slow],
 };
-const tagRound: CardDefinition = {
-  name: "Tag Round", type: CardType.Attack, energyCost: 1, range: CONTROLLER_RANGE,
-  target: CardTarget.VisibleEnemy, effects: [damage(1), marked],
+const shockPulse: CardDefinition = {
+  name: "Shock Pulse", type: CardType.Attack, energyCost: 1, range: CONTROLLER_RANGE,
+  target: CardTarget.VisibleEnemy, effects: [damage(1), slow],
 };
 const scoutDrone: CardDefinition = {
   name: "Scout Drone", type: CardType.Utility, energyCost: 1, range: 4, target: CardTarget.Area,
   effects: [{ kind: EffectKind.RevealArea, size: 3, duration: 2 }],
   overdrive: [{ kind: EffectKind.RevealArea, size: 5, duration: 2 }],
 };
-// Only the first Aegis Protocol has an Overdrive mode: two allied Heroes each gain Shield 3.
-const aegisProtocolWithOverdrive: CardDefinition = {
+// Overdrive: two allied Heroes each gain Shield 3.
+const aegisProtocol: CardDefinition = {
   name: "Aegis Protocol", type: CardType.Utility, energyCost: 1,
   target: CardTarget.AllyHero, effects: [shield(3)], overdrive: [shield(3), shield(3)],
 };
-const aegisProtocol: CardDefinition = {
-  name: "Aegis Protocol", type: CardType.Utility, energyCost: 1, target: CardTarget.AllyHero, effects: [shield(3)],
+const fortify: CardDefinition = {
+  name: "Fortify", type: CardType.Utility, energyCost: 1, range: 3,
+  target: CardTarget.AllyHeroTile, effects: [{ kind: EffectKind.PlaceHalfCover, duration: 2 }],
 };
 const deployCover: CardDefinition = {
   name: "Deploy Cover", type: CardType.Utility, energyCost: 1,
@@ -167,7 +188,8 @@ const piercingRound: CardDefinition = {
 const longShot: CardDefinition = {
   name: "Long Shot", type: CardType.Attack, energyCost: 1, range: 7,
   target: CardTarget.VisibleEnemy, effects: [damage(2)],
-  overdrive: [{ kind: EffectKind.DamageAtLongRange, amount: 4 }],
+  // Overdrive: 4 damage at Range 6 or 7, otherwise the usual 2.
+  overdrive: [{ kind: EffectKind.DamageAtLongRange, amount: 2, longRangeAmount: 4 }],
 };
 const ghostShot: CardDefinition = {
   name: "Ghost Shot", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE,
@@ -184,7 +206,9 @@ const vanish: CardDefinition = {
 };
 const markTarget: CardDefinition = {
   name: "Mark Target", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.EnemyInSight, effects: [marked], overdrive: [marked, damage(1)],
+  target: CardTarget.EnemyInSight, effects: [marked],
+  // Overdrive: also 1 damage, but only within the Assassin's weapon range.
+  overdrive: [marked, { ...damage(1), withinRange: ASSASSIN_RANGE }],
 };
 const reposition: CardDefinition = {
   name: "Reposition", type: CardType.Utility, energyCost: 1,
@@ -201,8 +225,8 @@ export const HERO_DECKS: Record<HeroClass, readonly CardDefinition[]> = {
     bulwark, bulwark, forwardDeploy, suppress, reinforce, adrenalSurge,
   ],
   [HeroClass.Controller]: [
-    pulseBolt, pulseBolt, tagRoundWithOverdrive, tagRound, scoutDrone, scoutDrone,
-    aegisProtocolWithOverdrive, aegisProtocol, deployCover, deployCover, gravitySnare, overwatchUplink,
+    pulseBolt, pulseBolt, tagRound, shockPulse, scoutDrone, scoutDrone,
+    aegisProtocol, fortify, deployCover, deployCover, gravitySnare, overwatchUplink,
   ],
   [HeroClass.Assassin]: [
     precisionShot, precisionShot, piercingRound, piercingRound, longShot, longShot,
