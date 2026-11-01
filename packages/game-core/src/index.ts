@@ -9,4 +9,5 @@ export function describeRules(): string {
 }
 
 export * from "./cards";
+export * from "./host";
 export * from "./reactor-deck";

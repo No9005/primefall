@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HAND_SIZE, HERO_DECKS, HeroClass } from "./cards";
-import { createMatch, HeroState, MatchState, SquadId, startRound } from "./match";
+import { createMatch, HeroState, MatchState, startRound } from "./match";
+import { SquadId } from "./host";
 
 function hero(match: MatchState, squad: SquadId, heroClass: HeroClass): HeroState {
   return match.heroes.find((h) => h.squad === squad && h.heroClass === heroClass)!;
