@@ -22,6 +22,7 @@ export const CommentMarker = {
   NeedsHumanMerge: "<!-- factory:needs-human-merge -->",
   ReviewNotRun: "<!-- factory:review-not-run -->",
   ImplementFailed: "<!-- factory:implement-failed -->",
+  ReworkStalled: "<!-- factory:rework-stalled -->",
 } as const;
 
 export const ReviewVerdict = { Pass: "pass", Fail: "fail" } as const;
@@ -32,6 +33,13 @@ export const ReviewOutcome = { Pass: ReviewVerdict.Pass, Fail: ReviewVerdict.Fai
 export type ReviewOutcome = (typeof ReviewOutcome)[keyof typeof ReviewOutcome];
 
 export const MAX_FAILED_REVIEWS = 2;
+/** A review that did not run is repeated automatically this many times per commit; then a human looks. */
+export const MAX_REVIEW_RETRIES = 1;
+
+/** `notRunCount` includes the run that just did not run. */
+export function reviewRetryDue(notRunCount: number): boolean {
+  return notRunCount <= MAX_REVIEW_RETRIES;
+}
 
 /** Hidden marker at the start of every review the factory posts; the verdict is part of it. */
 export function reviewMarker(verdict: ReviewVerdict): string {
@@ -218,8 +226,10 @@ export function parseReviewResult(raw: unknown): ReviewResult | undefined {
  * review and must not start a rework. A file with unusable content is a failed review.
  */
 export function reviewOutcome(input: { resultFileExists: boolean; parsed: ReviewResult | undefined }): ReviewOutcome {
-  if (!input.resultFileExists) return ReviewOutcome.NotRun;
-  return input.parsed?.verdict ?? ReviewOutcome.Fail;
+  // A missing or unreadable result file means no review happened. It is not a failed review: a failed
+  // review hands findings to a rework run, and there are none to hand over.
+  if (!input.resultFileExists || input.parsed === undefined) return ReviewOutcome.NotRun;
+  return input.parsed.verdict;
 }
 
 export interface AgentRunSummary {

@@ -9,8 +9,13 @@ on:
   workflow_dispatch:
     inputs:
       issue:
-        description: Issue number to start
-        required: true
+        description: Issue number to start (not used with trigger "closed")
+        required: false
+        default: "0"
+      trigger:
+        description: '"manual" starts the given issue, "closed" checks every open ready issue (used after a merge)'
+        required: false
+        default: manual
 
 # One implement run at a time. Waiting runs are queued, but GitHub keeps only the newest waiting
 # run; a ticket that was skipped starts when the next issue closes (every open ready issue is
@@ -23,7 +28,7 @@ jobs:
   select:
     if: >-
       vars.FACTORY_ENABLED == 'true' && (
-        (github.event_name == 'workflow_dispatch' && github.actor == github.repository_owner) ||
+        (github.event_name == 'workflow_dispatch' && (github.actor == github.repository_owner || github.actor == 'github-actions[bot]')) ||
         github.event.action == 'closed' ||
         (github.event.action == 'labeled' && github.event.label.name == 'ready-for-agent' && github.event.sender.login == github.repository_owner)
       )
@@ -50,7 +55,7 @@ jobs:
         run: node tools/factory/src/cli.ts select-issue "$TRIGGER" "$ISSUE"
         env:
           GH_TOKEN: ${{ github.token }}
-          TRIGGER: ${{ github.event_name == 'workflow_dispatch' && 'manual' || github.event.action }}
+          TRIGGER: ${{ github.event_name == 'workflow_dispatch' && inputs.trigger || github.event.action }}
           ISSUE: ${{ github.event.issue.number || inputs.issue }}
 
   implement:

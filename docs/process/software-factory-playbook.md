@@ -101,10 +101,12 @@ Read this before building. Each row is something that cost a run, a pull request
 
 | Pitfall | What happens | Do |
 |---|---|---|
-| Review results from free text | Unparseable output | The review agent writes one JSON file (`verdict`, `summary`, `findings` with path and line, optional `raiseBlastRadiusReason`, optional `resolvedThreads`); an unusable file counts as a failed review |
+| Review results from free text | Unparseable output | The review agent writes one JSON file (`verdict`, `summary`, `findings` with path and line, optional `raiseBlastRadiusReason`, optional `resolvedThreads`); an unusable or missing file counts as "did not run" (status `error`, repeated once, no rework), not as a failed review: a failed review would start a rework run that has no findings to fix |
 | Findings on lines that do not exist | The API call that posts the review fails | The prompt requires a path and a line in the new version of the file |
 | The reviewer lowers the class | The safety rating becomes meaningless | It may raise the class with a reason, never lower it; an existing high label is kept |
 | A pass for the latest commit next to a fail for an older one | Confusing, and it blocks the ruleset | Collapse earlier failed reviews as outdated when a review passes |
+| A rework run that changes nothing | The pipeline is never re-run and the pull request waits forever | The job reports it (`needs-human`) when no new commit exists |
+| The next ticket after a bot merge | A close with the workflow token starts no workflow, so the chain ends after each auto-merge | After a merge a workflow closes the issues and dispatches the implement workflow itself |
 | Retro and other human-only pull requests | Could slip through as "low" | The merge gate has a human-only flag that overrides the rating and the switches |
 
 ### Blast radius

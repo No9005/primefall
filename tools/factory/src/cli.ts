@@ -21,6 +21,7 @@ import {
   closingReferences,
   isFactoryPullRequest,
   isRetroBranch,
+  reviewRetryDue,
   retroDue,
   AGENT_BRANCH_PREFIX,
   DEFAULT_RETRO_EVERY,
@@ -55,6 +56,8 @@ const Command = {
   ReworkDecision: "rework-decision",
   MergeGate: "merge-gate",
   RetroDecision: "retro-decision",
+  AfterMerge: "after-merge",
+  ReworkStalled: "rework-stalled",
 } as const;
 
 const REVIEW_STATUS_CONTEXT = "agent-review";
@@ -235,8 +238,8 @@ function reviewReport(number: number, file: string): void {
     result = undefined;
   }
   const outcome = reviewOutcome({ resultFileExists: existsSync(file), parsed: result });
-  if (outcome === ReviewOutcome.NotRun) return reportReviewNotRun(number);
-  const effective: ReviewResult = result ?? { verdict: ReviewVerdict.Fail, summary: "The review run produced no valid result.", findings: [], raiseBlastRadiusReason: undefined, resolvedThreads: [] };
+  if (outcome === ReviewOutcome.NotRun || result === undefined) return reportReviewNotRun(number, existsSync(file) ? "the run wrote a result file with unusable content." : "the run wrote no result file.");
+  const effective: ReviewResult = result;
   const pr = loadPullRequest(number);
   const body = `${reviewMarker(effective.verdict)}\n**Automated review: ${effective.verdict}**\n\n${effective.summary}${FOOTER}`;
   const comments = effective.findings.map((f) => ({ path: f.path, line: f.line, side: "RIGHT", body: f.body }));
@@ -318,15 +321,18 @@ function tidyBotThreadsAndReviews(number: number, headSha: string, reported: Res
 }
 
 /** No review happened: say so, do not count it as a failed review and do not start a rework. */
-function reportReviewNotRun(number: number): void {
+function reportReviewNotRun(number: number, reason: string): void {
   const pr = loadPullRequest(number);
   gh(["api", "-X", "POST", `repos/${repo}/statuses/${pr.head.sha}`, "-f", "state=error", "-f", `context=${REVIEW_STATUS_CONTEXT}`, "-f", "description=Automated review did not run"]);
+  const notRunCount = apiList<{ context: string; state: string }>(`repos/${repo}/commits/${pr.head.sha}/statuses`).filter((s) => s.context === REVIEW_STATUS_CONTEXT && s.state === "error").length;
+  const retry = reviewRetryDue(notRunCount);
   upsertComment(
     number,
     CommentMarker.ReviewNotRun,
-    "The automated review did not run. A common cause is that the workflow files of this branch differ from the default branch (the Claude action then skips itself). Update the branch with the default branch, or start \"Factory pull request\" for this pull request by hand. This does not count as a failed review.",
+    `The automated review did not run: ${reason} A common cause is that the workflow files of this branch differ from the default branch (the Claude action then skips itself); update the branch with the default branch, or start "Factory pull request" for this pull request by hand. This does not count as a failed review and starts no rework. ${retry ? "The review is repeated once automatically." : "It was already repeated; a human takes over."}`,
   );
   output("verdict", ReviewOutcome.NotRun);
+  output("retry", String(retry));
 }
 
 function reworkCommand(number: number): void {
@@ -385,6 +391,31 @@ function retroDecision(number: number, manual: boolean): void {
   output("numbers", merged.slice(0, interval === 0 ? DEFAULT_RETRO_EVERY : interval).map((pr) => pr.number).join(","));
 }
 
+/** A rework run that pushed nothing has nothing more to give: stop automatic runs and say so. */
+function reworkStalled(number: number): void {
+  addLabel(number, Label.NeedsHuman);
+  upsertComment(number, CommentMarker.ReworkStalled, "The rework run finished without a new commit, so the automated review has nothing new to judge. No further automatic runs will start for this pull request; a human takes over.");
+}
+
+/**
+ * After a merge: closes the issues the pull request names (GitHub did not close them after an auto-merge in
+ * every case) and tells the workflow to start the next ticket. A close made with the workflow token starts no
+ * workflow, so the workflow dispatches "Factory implement" itself. Output: start.
+ */
+function afterMerge(number: number): void {
+  const pr = api<{ merged_at: string | null; body: string | null; head: { ref: string; repo: { full_name: string } | null }; base: { repo: { full_name: string } } }>(`repos/${repo}/pulls/${number}`);
+  const factory = isFactoryPullRequest({ headRef: pr.head.ref, headRepo: pr.head.repo?.full_name ?? "", baseRepo: pr.base.repo.full_name });
+  if (pr.merged_at === null || !factory) return output("start", "false");
+  for (const reference of closingReferences(pr.body)) {
+    const issueNumber = Number(reference.replace(/\D/g, ""));
+    const issue = api<IssueData & { pull_request?: unknown }>(`repos/${repo}/issues/${issueNumber}`);
+    if (issue.state !== "open" || issue.pull_request) continue;
+    gh(["api", "-X", "PATCH", `repos/${repo}/issues/${issueNumber}`, "-f", "state=closed", "-f", "state_reason=completed"]);
+    console.log(`Closed #${issueNumber}.`);
+  }
+  output("start", "true");
+}
+
 const [command, ...args] = process.argv.slice(2);
 switch (command) {
   case Command.EnsureLabels:
@@ -419,6 +450,12 @@ switch (command) {
     break;
   case Command.RetroDecision:
     retroDecision(Number(args[0]), args[1] === "manual");
+    break;
+  case Command.AfterMerge:
+    afterMerge(Number(args[0]));
+    break;
+  case Command.ReworkStalled:
+    reworkStalled(Number(args[0]));
     break;
   default:
     console.error(`Unknown command: ${command ?? "(none)"}`);
