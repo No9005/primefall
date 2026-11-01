@@ -1,4 +1,4 @@
-import { type GridPosition, type HeroClass, REACTOR_DECK } from "game-core";
+import { CoverKind, coverAt, type GridPosition, type HeroClass, REACTOR_DECK } from "game-core";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
 import { buildPlacements, computeCamera, gridToWorld, Layer, TILE_HEIGHT, TILE_WIDTH } from "./board-layout";
@@ -172,6 +172,19 @@ export function Board({
         sprite.zIndex = depth;
         (layer === Layer.Floor ? floor : objects).addChild(sprite);
       }
+
+      // Cover tiles get an outline on the floor: orange for Full Cover, blue for Half Cover.
+      REACTOR_DECK.tiles.forEach((line, row) =>
+        line.forEach((_, col) => {
+          const cover = coverAt(REACTOR_DECK, { col, row });
+          if (cover === CoverKind.None) return;
+          const color = cover === CoverKind.Full ? 0xff8a3d : 0x4aa3ff;
+          const { x, y } = gridToWorld({ col, row });
+          const outline = new Graphics().poly(tileDiamond()).stroke({ width: 3, color, alpha: 0.9 });
+          outline.position.set(x, y);
+          planning.addChild(outline);
+        }),
+      );
 
       const frame = () => {
         const camera = computeCamera(app.screen.width, app.screen.height);

@@ -1,4 +1,18 @@
-import { type CardIndex, energyPool, HERO_DECKS, type HeroClass, isSimpleAttack, MAX_QUEUE_LENGTH, type QueuedAction, queueEnergyCost } from "game-core";
+import {
+  type CardIndex,
+  CoverKind,
+  coverAgainst,
+  energyPool,
+  type GridPosition,
+  HALF_COVER_REDUCTION,
+  HERO_DECKS,
+  type HeroClass,
+  isSimpleAttack,
+  MAX_QUEUE_LENGTH,
+  type QueuedAction,
+  queueEnergyCost,
+  REACTOR_DECK,
+} from "game-core";
 
 export interface PlanningDraft {
   selectedId: string;
@@ -14,6 +28,18 @@ export interface PlanningDraft {
 export function selectHero(draft: PlanningDraft, heroId: string, playing: boolean): PlanningDraft {
   if (playing || heroId === draft.selectedId) return draft;
   return { selectedId: heroId, queue: [], pitched: [], armed: undefined };
+}
+
+/** What the Cover on a target's tile does against an attacker at `attacker`; `undefined` without protection. */
+export function coverProtectionLabel(attacker: GridPosition, target: GridPosition): string | undefined {
+  switch (coverAgainst(REACTOR_DECK, attacker, target)) {
+    case CoverKind.Full:
+      return "Full Cover · cannot be attacked";
+    case CoverKind.Half:
+      return `Half Cover · damage -${HALF_COVER_REDUCTION}`;
+    default:
+      return undefined;
+  }
 }
 
 export enum CardUse {

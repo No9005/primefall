@@ -1,6 +1,18 @@
 import { ActionKind, HeroClass, type QueuedAction } from "game-core";
 import { describe, expect, it } from "vitest";
-import { CardUse, cardUseReasons, energyReadout, selectHero } from "./planning-selection";
+import { CardUse, cardUseReasons, coverProtectionLabel, energyReadout, selectHero } from "./planning-selection";
+
+describe("coverProtectionLabel", () => {
+  it("names the protection a target tile gives against the attacker", () => {
+    expect(coverProtectionLabel({ col: 8, row: 5 }, { col: 5, row: 5 })).toBe("Half Cover · damage -1");
+    expect(coverProtectionLabel({ col: 10, row: 4 }, { col: 10, row: 1 })).toBe("Full Cover · cannot be attacked");
+  });
+
+  it("shows nothing on open floor or at Range 1", () => {
+    expect(coverProtectionLabel({ col: 8, row: 5 }, { col: 7, row: 5 })).toBeUndefined();
+    expect(coverProtectionLabel({ col: 6, row: 5 }, { col: 5, row: 5 })).toBeUndefined();
+  });
+});
 
 const queue: readonly QueuedAction[] = [{ kind: ActionKind.Move, card: 0, destination: { col: 1, row: 1 } }];
 
