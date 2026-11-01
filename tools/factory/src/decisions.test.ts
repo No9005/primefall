@@ -13,6 +13,9 @@ import {
   threadsToResolve,
   type ReviewThread,
   isIssueStartable,
+  isRetroBranch,
+  retroDue,
+  retroInterval,
   Label,
   MergeGateAction,
   mergeGateDecision,
@@ -101,6 +104,10 @@ describe("mergeGateDecision", () => {
   it("never enables auto-merge for high blast radius", () => {
     expect(mergeGateDecision({ ...base, level: BlastRadius.High })).toBe(MergeGateAction.AwaitHumanMerge);
     expect(mergeGateDecision({ ...base, level: BlastRadius.High, automergeEnabled: false })).toBe(MergeGateAction.AwaitHumanMerge);
+  });
+
+  it("never enables auto-merge for a human-only pull request such as a retro, even with the rating off", () => {
+    expect(mergeGateDecision({ ...base, humanOnly: true })).toBe(MergeGateAction.AwaitHumanMerge);
   });
 
   it("does nothing without a passing review or when a human is needed", () => {
@@ -279,5 +286,50 @@ describe("the blast radius switch", () => {
     const high = { level: BlastRadius.High, reviewPassed: true, needsHuman: false, automergeEnabled: true };
     expect(mergeGateDecision({ ...high, level: effectiveBlastRadius(high.level, false) })).toBe(MergeGateAction.EnableAutoMerge);
     expect(mergeGateDecision({ ...high, level: effectiveBlastRadius(high.level, true) })).toBe(MergeGateAction.AwaitHumanMerge);
+  });
+});
+
+describe("retroInterval", () => {
+  it.each<[string | undefined, number]>([
+    [undefined, 10],
+    ["", 10],
+    ["5", 5],
+    [" 20 ", 20],
+    ["0", 0],
+    ["-3", 10],
+    ["abc", 10],
+    ["2.5", 10],
+    ["07", 10],
+  ])("RETRO_EVERY=%j means %i", (variable, expected) => {
+    expect(retroInterval(variable)).toBe(expected);
+  });
+});
+
+describe("retroDue", () => {
+  const merged = { headRef: "agent/issue-5-foo", interval: 10 };
+
+  it.each([
+    [9, false],
+    [10, true],
+    [11, false],
+    [20, true],
+    [0, false],
+  ])("with %i merged agent pull requests: %s", (mergedAgentPullRequests, expected) => {
+    expect(retroDue({ ...merged, mergedAgentPullRequests })).toBe(expected);
+  });
+
+  it("follows the configured interval and is off at 0", () => {
+    expect(retroDue({ ...merged, mergedAgentPullRequests: 5, interval: 5 })).toBe(true);
+    expect(retroDue({ ...merged, mergedAgentPullRequests: 10, interval: 0 })).toBe(false);
+  });
+
+  it("is never started by a retro pull request or a pull request that is not from an agent branch", () => {
+    expect(retroDue({ ...merged, headRef: "agent/retro-10", mergedAgentPullRequests: 10 })).toBe(false);
+    expect(retroDue({ ...merged, headRef: "feature/thing", mergedAgentPullRequests: 10 })).toBe(false);
+  });
+
+  it("recognises retro branches", () => {
+    expect(isRetroBranch("agent/retro-10")).toBe(true);
+    expect(isRetroBranch("agent/issue-10-retro")).toBe(false);
   });
 });
