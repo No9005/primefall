@@ -1,6 +1,6 @@
 ---
 name: isometric-character-sprites
-description: Use when generating isometric characters in consistent 8 directions with a fixed feet-anchor and exaggerated Metal Slug-style movement poses.
+description: Use when generating isometric characters in consistent 8 directions with a fixed feet-anchor and exaggerated arcade-style movement poses.
 license: MIT
 ---
 
@@ -16,9 +16,9 @@ license: MIT
 6. Define the feet-anchor.
 7. Test by cycling directions.
 
-## Movement poses (Metal Slug style)
+## Movement poses (exaggerated arcade style)
 
-Movement poses must be exaggerated and readable, in the spirit of Metal Slug:
+Movement poses must be exaggerated and readable, inspired by classic run-and-gun arcade action games:
 
 - Strong, clear silhouettes — the pose must read instantly, even at small size.
 - Exaggerated weight shifts — lean into the direction of movement.
@@ -33,7 +33,7 @@ Movement poses must be exaggerated and readable, in the spirit of Metal Slug:
 When generating walk, run, attack, or reaction poses, add phrases like:
 
 ```text
-exaggerated dynamic pose, strong silhouette, Metal Slug inspired action pose,
+exaggerated dynamic pose, strong silhouette, classic arcade action pose,
 wide limb swing, leaned-forward running posture, dramatic follow-through,
 clear readable silhouette, game-ready sprite
 ```
@@ -49,5 +49,5 @@ neutral pose, stiff limbs, static standing, realistic proportions
 - [ ] 8 consistent directions exist.
 - [ ] Feet-anchor is identical.
 - [ ] Cycling directions shows no jump.
-- [ ] Movement poses read as exaggerated and dynamic, Metal Slug-inspired.
+- [ ] Movement poses read as exaggerated and dynamic, arcade-action inspired.
 - [ ] Silhouettes are clear at small size.
