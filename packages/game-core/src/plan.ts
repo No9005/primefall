@@ -1,7 +1,7 @@
 // Squad Plans and planning-time validation (ADR 0013, ADR 0020). Shared with clients: a plan is plain
 // data, and `validatePlan` lets the UI explain why a plan cannot be committed. The host validates again.
 
-import { type CardIndex, HERO_DECKS, type HeroClass, isSimpleAttack } from "./cards";
+import { type CardIndex, CardTarget, CardType, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type SquadId, type SquadView, Visibility } from "./host";
 import { type Grid, type GridPosition, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
 
@@ -22,7 +22,7 @@ export enum ActionKind {
   Move = "move",
   /** Any card used as Block 2: Shield 2 in its Tick. */
   Block = "block",
-  /** A card's primary effect; it costs the card's Energy. Only simple damage Attacks resolve so far. */
+  /** A card's primary effect; it costs the card's Energy. Simple damage Attacks and Shield Utility cards resolve so far. */
   Primary = "primary",
 }
 
@@ -41,7 +41,10 @@ export interface BlockAction {
 export interface PrimaryAction {
   kind: ActionKind.Primary;
   card: CardIndex;
-  /** Id of the enemy Hero the Attack is aimed at. Range and Line of Sight are checked when it resolves. */
+  /**
+   * Id of the Hero the card is aimed at: an enemy Hero for an Attack (Range and Line of Sight are checked
+   * when it resolves), this Hero or an allied Hero for a Utility card.
+   */
   target: string;
 }
 
@@ -156,8 +159,20 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
       useCard(action.card);
       if (action.kind === ActionKind.Primary) {
         const card = HERO_DECKS[hero.heroClass][action.card];
-        if (!card || !isSimpleAttack(card)) {
+        if (!card || !isPlayableCard(card)) {
           issues.push({ kind: PlanIssueKind.UnplayableCard, heroId, message: "This card's effect cannot be played yet." });
+        } else if (card.type === CardType.Utility) {
+          const isSelfCard = card.target === CardTarget.SelfHero;
+          const validTarget = isSelfCard
+            ? action.target === heroId
+            : view.heroes.some((ally) => ally.id === action.target && ally.id !== heroId && !ally.exhausted);
+          if (!validTarget) {
+            issues.push({
+              kind: PlanIssueKind.BadTarget,
+              heroId,
+              message: isSelfCard ? `${card.name} can only target this Hero.` : `${card.name} needs an allied Hero as its target.`,
+            });
+          }
         } else if (!view.enemies.some(
             (enemy) => enemy.id === action.target && enemy.visibility === Visibility.Visible && !enemy.exhausted,
           )) {

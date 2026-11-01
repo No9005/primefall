@@ -1,7 +1,17 @@
 // Resolution of a Round (ADR 0013, ADR 0020). Pure and deterministic: the same Match State and plans
 // always give the same result. Only Move actions exist so far.
 
-import { type CardDefinition, type CardIndex, HERO_DECKS } from "./cards";
+import {
+  type CardDefinition,
+  type CardEffect,
+  type CardIndex,
+  CardTarget,
+  CardType,
+  EffectKind,
+  HERO_DECKS,
+  isPlayableUtility,
+  type PLAYABLE_UTILITY_EFFECTS,
+} from "./cards";
 import { EventKind, MatchEndReason, type MatchEvent, PRIME_ZONE_WIN_RESOLUTIONS, ROUND_LIMIT, SquadId } from "./host";
 import { canSquadSee, type HeroState, type MatchState, recordSightings } from "./match";
 import {
@@ -137,7 +147,54 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
   }
 }
 
-const otherSquad = (squad: SquadId) => (squad === SquadId.Left ? SquadId.Right : SquadId.Left);
+interface UtilityUse {
+  tick: number;
+  card: CardDefinition;
+  effect: CardEffect;
+  /** The Hero that plays the card. */
+  caster: HeroState;
+  /** The Hero the card is aimed at: the caster itself or an allied Hero. */
+  target: HeroState;
+  events: MatchEvent[];
+}
+
+/** One interpreter per Utility effect kind (ADR 0018); new Utility effects add an entry here. */
+const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: UtilityUse) => void> = {
+  [EffectKind.GainShield]: ({ tick, effect, target, events }) => {
+    const amount = effect.amount ?? 0;
+    target.shield += amount;
+    events.push({ kind: EventKind.ShieldGained, tick, heroId: target.id, amount });
+  },
+};
+
+/**
+ * Plays a Utility card in its Tick. The target must be the caster (self cards) or another, not yet
+ * Exhausted Hero of the same Squad (ally cards); otherwise the action fails without effect.
+ */
+function resolveUtility(
+  match: MatchState,
+  tick: number,
+  caster: HeroState,
+  card: CardDefinition,
+  targetId: string,
+  events: MatchEvent[],
+): void {
+  const target = match.heroes.find((candidate) => candidate.id === targetId);
+  const validTarget =
+    target !== undefined &&
+    !target.exhausted &&
+    target.squad === caster.squad &&
+    (card.target === CardTarget.SelfHero ? target === caster : target !== caster);
+  if (!validTarget || !isPlayableUtility(card)) {
+    events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
+    return;
+  }
+  for (const effect of card.effects) {
+    UTILITY_EFFECTS[effect.kind as (typeof PLAYABLE_UTILITY_EFFECTS)[number]]({ tick, card, effect, caster, target, events });
+  }
+}
+
+const otherSquad =(squad: SquadId) => (squad === SquadId.Left ? SquadId.Right : SquadId.Left);
 
 /**
  * Updates Prime Zone control and checks the victory conditions at the end of a Resolution
@@ -241,12 +298,17 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
         events.push({ kind: EventKind.ShieldGained, tick, heroId: hero.id, amount: BLOCK_SHIELD });
       }
     }
+    for (const { hero, action } of actions) {
+      if (action.kind !== ActionKind.Primary) continue;
+      const card = HERO_DECKS[hero.heroClass][action.card]!;
+      if (card.type === CardType.Utility) resolveUtility(match, tick, hero, card, action.target, events);
+    }
     const movers = actions.flatMap(({ hero, action }) =>
       action.kind === ActionKind.Move ? [{ heroId: hero.id, destination: action.destination }] : [],
     );
     resolveMoves(match, tick, movers, events);
     const attacks = actions.flatMap(({ hero, action }) =>
-      action.kind === ActionKind.Primary
+      action.kind === ActionKind.Primary && HERO_DECKS[hero.heroClass][action.card]!.type === CardType.Attack
         ? [{ hero, card: HERO_DECKS[hero.heroClass][action.card]!, targetId: action.target }]
         : [],
     );

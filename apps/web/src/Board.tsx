@@ -41,7 +41,7 @@ interface BoardProps {
   enemies: readonly TokenHero[];
   selectedId: string;
   onSelect: (heroId: string) => void;
-  /** Enemies the player may pick as the target of an Attack right now. */
+  /** Heroes (enemies for an Attack, this or allied Heroes for a Utility card) the player may pick as target right now. */
   targetableIds: readonly string[];
   onTargetTap: (heroId: string) => void;
   /** Heroes shown as hit (during the playback frame in which they took an Attack). */
@@ -116,9 +116,9 @@ export function Board({
       const token = new Container();
       token.position.set(x, y + TILE_HEIGHT / 2);
       token.zIndex = hero.position.col + hero.position.row + 0.5;
-      const targetable = enemy && targetableIds.includes(hero.id);
+      const targetable = targetableIds.includes(hero.id);
       if (hero.id === selectedId) token.addChild(ring(0x2ec4b6));
-      if (targetable) token.addChild(ring(0xe5484d));
+      if (targetable) token.addChild(ring(enemy ? 0xe5484d : 0x5ad17a));
       const pose = hero.exhausted ? "exhausted" : hitIds.includes(hero.id) ? "hit" : "idle";
       const sprite = new Sprite(Assets.get(`heroes.${hero.heroClass}.${pose}`));
       sprite.anchor.set(0.5, 1);
@@ -128,7 +128,7 @@ export function Board({
       token.addChild(sprite);
       token.eventMode = "static";
       token.cursor = "pointer";
-      token.on("pointertap", () => (enemy ? onTargetTapRef.current(hero.id) : onSelectRef.current(hero.id)));
+      token.on("pointertap", () => (enemy || targetable ? onTargetTapRef.current(hero.id) : onSelectRef.current(hero.id)));
       tokens.addChild(token);
       created.push(token);
     };
