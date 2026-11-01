@@ -30,7 +30,7 @@ Do not use `gamedev-skills/awesome-gamedev-agent-skills` for this workflow.
 | Floor, wall, Cover, Reactor, and Overwatch Nest generation | Fooocus + `isometric-object-sprites` / `seamless-isometric-terrain` |
 | Transparent PNG cleanup and alpha export | `transparent-cutout-cleanup` |
 | Sprite naming, atlas layout, padding, and pivots | `spritesheet-atlas-packing` |
-| 20 x 12 Grid coordinates, movement, and range math | `isometric-grid-math` + `pixijs-math` |
+| 21 x 11 Grid coordinates, movement, and range math | `isometric-grid-math` + `pixijs-math` |
 | PixiJS application, asset loading, sprites, and layers | `pixijs`, `pixijs-application`, `pixijs-assets`, `pixijs-scene-container`, `pixijs-scene-sprite` |
 | Tile selection, Hero selection, and touch input | `tile-picking-interaction` + `pixijs-events` |
 | Hero/Cover depth sorting and occlusion | `depth-sorting-occlusion` + `pixijs-scene-container` |
