@@ -14,13 +14,20 @@ All steps below were executed by Perplexity in a Perplexity mobile app chat.
 
 ## ADR origins
 
-### ADRs 0001–0015
+### ADRs 0001–0016
 
-ADRs 0001 through 0015 were **not created in this chat session**. They already existed in the repository when this session began and were inherited as prior design documentation.
+All ADRs, 0001 through 0016, were created within the same Perplexity mobile app chat. However, Perplexity appears to have started a new session at some point during that chat.
 
-This chat session read and audited them, but did not recreate their original creation history. The available evidence in this session covers only their later revision, not the original interview or decision process that produced them.
+There appears to be a mechanism that transferred older information from the chat into the new session. This allowed the design context, prior decisions, and the ADR numbering to remain available after the session boundary.
 
-Therefore, this log must not claim a detailed creation history for ADRs 0001–0015. Any such history would need to be recovered from the earlier chat sessions, local notes, or the Git history of the commits that originally added those files.
+From the user’s verifiable perspective:
+
+- ADRs 0001–0016 were produced in the same chat.
+- The chat spanned at least one internal session boundary.
+- Older conversation information was carried into the later session.
+- ADR 0016 was created in the later part of the chat, after the map-layout discussion.
+
+The exact internal mechanism is not documented here. It may involve conversation-context transfer, session continuation, or another Perplexity-specific behaviour.
 
 ### ADR 0016
 
