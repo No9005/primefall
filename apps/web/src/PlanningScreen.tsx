@@ -1,6 +1,8 @@
 import {
   ActionKind,
   type CardIndex,
+  CardTarget,
+  CardType,
   type EnemyView,
   HERO_DECKS,
   HeroClass,
@@ -268,13 +270,14 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       }),
     [view.enemies, playback],
   );
-  const targetableIds = useMemo(
-    () =>
-      aiming !== undefined && !playing
-        ? view.enemies.filter((enemy) => enemy.visibility === Visibility.Visible && !enemy.exhausted).map((enemy) => enemy.id)
-        : [],
-    [aiming, playing, view.enemies],
-  );
+  const aimedCard = aiming === undefined ? undefined : HERO_DECKS[selected.heroClass][aiming];
+  const aimsAtAlly = aimedCard?.type === CardType.Utility;
+  const targetableIds = useMemo(() => {
+    if (aiming === undefined || playing) return [];
+    if (aimedCard?.target === CardTarget.SelfHero) return [selected.id];
+    if (aimsAtAlly) return view.heroes.filter((hero) => hero.id !== selected.id && !hero.exhausted).map((hero) => hero.id);
+    return view.enemies.filter((enemy) => enemy.visibility === Visibility.Visible && !enemy.exhausted).map((enemy) => enemy.id);
+  }, [aiming, aimedCard, aimsAtAlly, playing, selected.id, view.heroes, view.enemies]);
   const nameOf = (heroId: string) => {
     const unit = [...view.heroes, ...view.enemies].find((candidate) => candidate.id === heroId);
     return unit ? `${heroId.startsWith(view.squad) ? "" : "Enemy "}${HERO_NAMES[unit.heroClass]}` : heroId;
@@ -313,7 +316,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   }
 
   function tapTarget(targetId: string) {
-    if (aiming === undefined || playing) return;
+    if (aiming === undefined || playing || !targetableIds.includes(targetId)) return;
     setQueue([...queue, { kind: ActionKind.Primary, card: aiming, target: targetId }]);
     setAiming(undefined);
   }
@@ -397,7 +400,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       <EnemyPanel
         enemies={view.enemies}
         playback={playback}
-        attackerPosition={aiming !== undefined && !playing ? planningFrom : undefined}
+        attackerPosition={aiming !== undefined && !aimsAtAlly && !playing ? planningFrom : undefined}
       />
       {(playback?.log ?? log).length > 0 && (
         <ol className="hud log" aria-label="Resolution log" data-testid="log">
@@ -406,7 +409,15 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
           ))}
         </ol>
       )}
-      {aiming !== undefined && !playing && <div className="hud target-hint">Tap an enemy Hero to attack</div>}
+      {aiming !== undefined && !playing && (
+        <div className="hud target-hint">
+          {aimedCard?.target === CardTarget.SelfHero
+            ? "Tap this Hero to confirm"
+            : aimsAtAlly
+              ? "Tap an allied Hero"
+              : "Tap an enemy Hero to attack"}
+        </div>
+      )}
       <div className="hud energy" data-testid="energy" aria-label="Energy">
         Energy · Pitched {energy.pitched} · Spent {energy.spent} · Available {energy.available}
       </div>

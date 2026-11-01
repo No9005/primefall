@@ -51,8 +51,9 @@ describe("energyReadout and cardUseReasons", () => {
 
   it("allows the Primary effect of an affordable simple Attack and explains one that is not playable yet", () => {
     expect(cardUseReasons(HeroClass.Bruiser, 0, [], [1])[CardUse.Primary]).toBeUndefined();
-    // Bruiser card 6 is Bulwark, a Utility card.
-    expect(cardUseReasons(HeroClass.Bruiser, 6, [], [1])[CardUse.Primary]).toBe("effect is not playable yet");
+    // Bruiser card 6 is Bulwark (playable Utility); card 8 is Forward Deploy (no interpreter yet).
+    expect(cardUseReasons(HeroClass.Bruiser, 6, [], [1])[CardUse.Primary]).toBeUndefined();
+    expect(cardUseReasons(HeroClass.Bruiser, 8, [], [1])[CardUse.Primary]).toBe("effect is not playable yet");
   });
 
   it("allows Pitch, Move and Block while the Queue has room and disables them when it is full", () => {

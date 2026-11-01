@@ -7,7 +7,7 @@ import {
   HALF_COVER_REDUCTION,
   HERO_DECKS,
   type HeroClass,
-  isSimpleAttack,
+  isPlayableCard,
   MAX_QUEUE_LENGTH,
   type QueuedAction,
   queueEnergyCost,
@@ -81,7 +81,7 @@ export function cardUseReasons(
   return {
     [CardUse.Primary]:
       queueFull ??
-      (!isSimpleAttack(HERO_DECKS[heroClass][card]!)
+      (!isPlayableCard(HERO_DECKS[heroClass][card]!)
         ? "effect is not playable yet"
         : cost > available
           ? `needs ${cost} Energy`

@@ -100,6 +100,21 @@ export function isSimpleAttack(card: CardDefinition): boolean {
   );
 }
 
+/** Utility effect kinds the resolution has an interpreter for; later Utility effects are added here. */
+export const PLAYABLE_UTILITY_EFFECTS = [EffectKind.GainShield] as const;
+
+/** Utility cards aimed at this Hero or an allied Hero whose effects all have an interpreter. */
+export function isPlayableUtility(card: CardDefinition): boolean {
+  return (
+    card.type === CardType.Utility &&
+    (card.target === CardTarget.SelfHero || card.target === CardTarget.AllyHero) &&
+    card.effects.every((effect) => (PLAYABLE_UTILITY_EFFECTS as readonly EffectKind[]).includes(effect.kind))
+  );
+}
+
+/** Whether a card's Primary effect can be planned and resolved so far. */
+export const isPlayableCard = (card: CardDefinition): boolean => isSimpleAttack(card) || isPlayableUtility(card);
+
 const slow: CardEffect = { kind: EffectKind.ApplySlow, duration: 1 };
 const marked: CardEffect = { kind: EffectKind.ApplyMarked, duration: 1 };
 const knockback: CardEffect = { kind: EffectKind.Knockback, amount: 2 };
