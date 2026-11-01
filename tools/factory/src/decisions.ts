@@ -12,6 +12,17 @@ export const Label = {
   HighRisk: "high-risk",
 } as const;
 
+/**
+ * Hidden markers that identify the factory's single comment of each kind (see upsertComment).
+ * Every kind needs its own marker, otherwise one comment overwrites the other.
+ */
+export const CommentMarker = {
+  BlastRadius: "<!-- factory:blast-radius -->",
+  NeedsHuman: "<!-- factory:needs-human -->",
+  NeedsHumanMerge: "<!-- factory:needs-human-merge -->",
+  ReviewNotRun: "<!-- factory:review-not-run -->",
+} as const;
+
 export const ReviewVerdict = { Pass: "pass", Fail: "fail" } as const;
 export type ReviewVerdict = (typeof ReviewVerdict)[keyof typeof ReviewVerdict];
 

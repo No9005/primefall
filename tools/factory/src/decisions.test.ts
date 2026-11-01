@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BlastRadius } from "./blast-radius.ts";
 import {
   candidateIssues,
+  CommentMarker,
   isFactoryPullRequest,
   isIssueStartable,
   Label,
@@ -128,5 +129,12 @@ describe("reviewOutcome", () => {
   it("uses the verdict of a valid result", () => {
     expect(reviewOutcome({ resultFileExists: true, parsed })).toBe(ReviewOutcome.Pass);
     expect(reviewOutcome({ resultFileExists: true, parsed: { ...parsed, verdict: ReviewVerdict.Fail } })).toBe(ReviewOutcome.Fail);
+  });
+});
+
+describe("CommentMarker", () => {
+  it("gives every kind of factory comment its own marker so they never overwrite each other", () => {
+    const markers = Object.values(CommentMarker);
+    expect(new Set(markers).size).toBe(markers.length);
   });
 });
