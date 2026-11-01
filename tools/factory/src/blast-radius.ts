@@ -6,7 +6,7 @@ export type BlastRadius = (typeof BlastRadius)[keyof typeof BlastRadius];
 
 export interface BlastRadiusRules {
   highRiskLabel: string;
-  /** Documentation (markdown) and agent files. */
+  /** Design, decision and spec documents and agent files. Other markdown (READMEs, notes) is not listed. */
   documentationAndAgentPaths: string[];
   /** The factory itself and tooling that enforces the project's rules or brings in dependencies. */
   factoryAndToolingPaths: string[];
@@ -59,7 +59,7 @@ export function classifyPullRequest(input: { files: ChangedFile[]; labels: strin
   const reasons: string[] = [];
 
   const groups: [string, string[], string[]][] = [
-    ["documentation or agent files", rules.documentationAndAgentPaths, []],
+    ["design, decision, spec or agent files", rules.documentationAndAgentPaths, []],
     ["factory or tooling", rules.factoryAndToolingPaths, []],
     ["business logic", rules.businessLogicPaths, rules.businessLogicExceptions],
   ];

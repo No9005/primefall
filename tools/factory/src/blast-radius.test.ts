@@ -30,7 +30,11 @@ describe("classifyPullRequest", () => {
     ["the package exports", "packages/game-core/src/index.ts"],
     ["a test of the rules package", "packages/game-core/src/match.test.ts"],
     ["a mockup page", "docs/design/mockups.html"],
-    ["a design asset", "docs/design/tools/generate_placeholders.py"],
+    ["a design asset script", "docs/design/tools/generate_placeholders.py"],
+    ["the README", "README.md"],
+    ["a process note", "docs/process/primefall-skill-process-log.md"],
+    ["the product pitch", "docs/PITCH.md"],
+    ["a markdown note in a package", "packages/game-core/NOTES.md"],
   ])("is low when it only touches %s", (_name, filename) => {
     expect(classify([file(filename)]).level).toBe(BlastRadius.Low);
   });
@@ -42,15 +46,15 @@ describe("classifyPullRequest", () => {
 
   it.each([
     ["CLAUDE.md"],
-    ["README.md"],
     ["GLOSSARY.md"],
     ["docs/adr/0021-new.md"],
     ["docs/specs/mvp-card-set.md"],
     ["docs/design/ui-spec.md"],
+    ["docs/design/asset-contract.md"],
     ["docs/agents/issue-tracker.md"],
     [".claude/skills/to-tickets/SKILL.md"],
     [".claude/skills/pixijs/references/index.md"],
-  ])("is high when it touches documentation or agent files: %s", (filename) => {
+  ])("is high when it touches design, decision, spec or agent files: %s", (filename) => {
     expect(classify([file(filename)]).level).toBe(BlastRadius.High);
   });
 

@@ -1,7 +1,15 @@
 {
-  "note": "High blast radius means: documentation and agent files, the factory and tooling, or the business logic of the rules package. Everything else (UI, rendering, assets, card and map data, tests, exports) is low. Changing this file is itself high (it matches tools/factory/**). Keep .github/CODEOWNERS in sync.",
+  "note": "High blast radius means: design, decision, spec and agent files, the factory and tooling, or the business logic of the rules package. Everything else (other markdown such as READMEs and notes, UI, rendering, assets, card and map data, tests, exports) is low. Changing this file is itself high (it matches tools/factory/**). Keep .github/CODEOWNERS in sync.",
   "highRiskLabel": "high-risk",
-  "documentationAndAgentPaths": ["**/*.md", ".claude/**", "docs/agents/**"],
+  "documentationAndAgentPaths": [
+    "CLAUDE.md",
+    "GLOSSARY.md",
+    "docs/adr/**",
+    "docs/specs/**",
+    "docs/design/**/*.md",
+    "docs/agents/**",
+    ".claude/**"
+  ],
   "factoryAndToolingPaths": [
     ".github/**",
     "tools/factory/**",
