@@ -134,6 +134,8 @@ export enum EventKind {
   SlowApplied = "slowApplied",
   /** A Slowed Hero's Move 2 was cut to a Move 1; the Slow is used up. */
   SlowUsed = "slowUsed",
+  /** Knockback pushed `heroId` one tile, from `from` to `to`; a push of two tiles gives two events. */
+  Knockback = "knockback",
   /** A Hero's Deck is empty after the Resolution; it is removed from the match. */
   Exhausted = "exhausted",
 }

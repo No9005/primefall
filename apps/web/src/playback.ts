@@ -71,6 +71,8 @@ export function describeEvent(event: MatchEvent, nameOf: (heroId: string) => str
       return `Tick ${event.tick}: ${who} Slows ${nameOf(event.targetId!)}`;
     case EventKind.SlowUsed:
       return `Tick ${event.tick}: ${who} is Slowed: Move 2 becomes Move 1`;
+    case EventKind.Knockback:
+      return `Tick ${event.tick}: ${who} is pushed back`;
     case EventKind.Exhausted:
       return `${who} is Exhausted`;
     default:

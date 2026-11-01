@@ -118,6 +118,20 @@ describe("validatePlan: Pitch, Energy and Block", () => {
     expect(check([use(6, bruiser.id)], [])).toEqual([PlanIssueKind.NotEnoughEnergy]);
   });
 
+  it("plans Shockwave on this Hero, without an enemy target", () => {
+    const withHand: SquadView = {
+      ...view,
+      heroes: view.heroes.map((hero) => (hero === bruiser ? { ...hero, hand: [5, 0, 1, 2] } : hero)),
+    };
+    const check = (target: string) =>
+      validatePlan(withHand, {
+        squad: SquadId.Left,
+        heroes: [{ heroId: bruiser.id, queue: [{ kind: ActionKind.Primary, card: 5, target }], pitched: [0, 1] }],
+      }).map((issue) => issue.kind);
+    expect(check(bruiser.id)).toEqual([]);
+    expect(check(enemy.id)).toEqual([PlanIssueKind.BadTarget]);
+  });
+
   it("rejects any plan for an Exhausted Hero", () => {
     const exhausted: SquadView = {
       ...view,
