@@ -1,0 +1,445 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Primefall UI Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout concept: one scalable landscape "device" with the isometric board as the full-bleed bottom layer
+   and HUD panels pinned to its edges; a thin viewer bar above switches screens and device size. */
+:root {
+  --ground: #12161c;
+  --panel: #1b222b;
+  --panel-2: #232c37;
+  --line: #34414f;
+  --steel: #3d5a73;
+  --teal: #2ec4b6;
+  --orange: #ff8a3d;
+  --red: #e5484d;
+  --text: #dbe4ec;
+  --muted: #8a99a8;
+  --font-display: "Rajdhani", "Arial Narrow", sans-serif;
+  --font-body: "Barlow", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--ground); }
+body {
+  color: var(--text); font: 14px/1.4 var(--font-body);
+  padding-block: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+/* viewer chrome */
+.viewer { max-width: 1320px; margin: 0 auto; display: grid; gap: 12px; }
+.bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.bar h1 { font: 700 22px var(--font-display); letter-spacing: .08em; text-transform: uppercase; margin: 0; }
+.tabs, .sizes { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs button, .sizes button {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; min-height: 36px;
+  font: 600 14px var(--font-display); letter-spacing: .06em; text-transform: uppercase;
+}
+.tabs button[aria-selected="true"], .sizes button[aria-selected="true"] { background: var(--teal); color: #06231f; border-color: var(--teal); }
+.caption { color: var(--muted); max-width: 90ch; margin: 0; }
+.hint { color: var(--orange); font-size: 13px; margin: 0; }
+.stage { width: 100%; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: #0b0e12; }
+
+/* device */
+.device { position: relative; width: 844px; height: 390px; transform-origin: 0 0; overflow: hidden; background: #0f1319; user-select: none; }
+.board { position: absolute; inset: 0; overflow: hidden; }
+.world { position: absolute; left: 0; top: 0; width: 2100px; height: 1150px; transform-origin: 0 0; }
+.world > * { position: absolute; pointer-events: none; }
+.tile, .prop { width: 128px; }
+.tile { height: 64px; } .prop { height: 128px; }
+.hl { width: 128px; height: 64px; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.hl.range { background: rgba(255, 138, 61, .28); }
+.hl.target { background: rgba(229, 72, 77, .5); }
+.hl.zone { background: rgba(46, 196, 182, .16); }
+.tok { width: 128px; height: 192px; transition: left .7s ease, top .7s ease; }
+.tok img { position: absolute; inset: 0; width: 128px; height: 192px; }
+.tok.flip img { transform: scaleX(-1); }
+.tok .ring { position: absolute; left: 24px; top: 148px; width: 80px; height: 40px; border-radius: 50%; border: 3px solid var(--teal); }
+.tok.enemy .ring { border-color: var(--red); }
+.tok.sel .ring { box-shadow: 0 0 0 3px rgba(46, 196, 182, .35), 0 0 22px var(--teal); }
+.tok .tag { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); white-space: nowrap;
+  font: 600 20px var(--font-display); background: rgba(18, 22, 28, .85); border: 1px solid var(--line); padding: 0 10px; border-radius: 4px; }
+.tok .tag small { font: 500 16px var(--font-mono); color: var(--muted); }
+.tok.ghost img { opacity: .4; filter: grayscale(1); }
+.tok.ghost .tag { border-style: dashed; color: var(--muted); }
+.fx { width: 128px; height: 128px; animation: fx .7s ease-out forwards; }
+@keyframes fx { from { opacity: 1; transform: scale(.6); } to { opacity: 0; transform: scale(1.3); } }
+
+/* screens + HUD */
+.screen { position: absolute; inset: 0; display: none; }
+.screen.on { display: block; }
+.hud { position: absolute; background: rgba(18, 22, 28, .86); border: 1px solid var(--line); border-radius: 8px; backdrop-filter: blur(2px); }
+.label { font: 600 12px var(--font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.top { left: 8px; right: 8px; top: 6px; height: 36px; display: flex; align-items: center; gap: 16px; padding: 0 12px; justify-content: space-between; }
+.round { font: 700 20px var(--font-display); letter-spacing: .06em; }
+.timer { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: center; }
+.timer .track { width: 160px; height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.timer .fill { height: 100%; width: 60%; background: var(--teal); }
+.pips { display: inline-flex; gap: 3px; vertical-align: middle; margin-left: 6px; }
+.pips i { width: 12px; height: 8px; background: var(--panel-2); border: 1px solid var(--line); display: block; }
+.pips.you i.f { background: var(--teal); border-color: var(--teal); }
+.pips.foe i.f { background: var(--red); border-color: var(--red); }
+.squad { left: 8px; top: 48px; width: 172px; padding: 5px 6px; display: grid; gap: 2px; }
+.hero-row { display: grid; grid-template-columns: 22px 1fr; gap: 6px; align-items: center; padding: 2px 4px; border-radius: 6px; border: 1px solid transparent; background: transparent; text-align: left; min-height: 30px; }
+.hero-row.sel { border-color: var(--teal); background: rgba(46, 196, 182, .1); }
+.badge { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font: 700 15px var(--font-display); color: #10161c; }
+.hero-row b { font: 600 13px var(--font-display); letter-spacing: .04em; display: block; line-height: 1.1; }
+.hero-row span { font: 400 10px var(--font-mono); color: var(--muted); }
+.foes { left: 8px; top: 174px; width: 172px; padding: 5px 6px; display: grid; gap: 1px; }
+.foe { font: 400 10px var(--font-mono); color: var(--muted); }
+.foe b { font: 600 12px var(--font-display); color: var(--red); letter-spacing: .04em; }
+.foe.ghost b { color: var(--muted); } .foe.ghost { opacity: .8; }
+.queue { right: 8px; top: 48px; width: 178px; padding: 8px; display: grid; gap: 5px; }
+.slot { display: grid; grid-template-columns: 18px 1fr; gap: 6px; align-items: center; min-height: 30px; padding: 2px 6px; border: 1px dashed var(--line); border-radius: 6px; font-size: 12px; background: transparent; text-align: left; }
+.slot.f { border-style: solid; background: var(--panel-2); }
+.slot em { font: normal 600 12px var(--font-mono); color: var(--muted); }
+.slot span { line-height: 1.15; }
+.slot small { display: block; color: var(--muted); font-size: 11px; }
+.commit { width: 100%; min-height: 44px; border: 0; border-radius: 6px; background: var(--teal); color: #06231f; font: 700 18px var(--font-display); letter-spacing: .12em; text-transform: uppercase; }
+.commit[disabled] { background: var(--panel-2); color: var(--muted); }
+.energy { left: 8px; bottom: 8px; width: 78px; height: 104px; padding: 8px 6px; display: grid; align-content: space-between; text-align: center; }
+.energy .big { font: 700 34px var(--font-display); line-height: 1; color: var(--orange); }
+.energy .sub { font: 400 11px var(--font-mono); color: var(--muted); }
+.hand { position: absolute; left: 94px; right: 194px; bottom: 8px; display: flex; gap: 8px; justify-content: center; align-items: flex-end; }
+.card { position: relative; width: 112px; height: 118px; padding: 6px 8px; display: grid; align-content: start; gap: 2px; text-align: left;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; transition: transform .15s; }
+.card .kind { font: 600 11px var(--font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--teal); }
+.card.util .kind { color: var(--orange); }
+.card .name { font: 700 17px var(--font-display); line-height: 1.05; }
+.card .txt { font-size: 11px; line-height: 1.25; color: var(--muted); }
+.card .cost { position: absolute; right: 6px; top: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--orange); color: #1b0e03; display: grid; place-items: center; font: 700 14px var(--font-display); }
+.card .use { position: absolute; left: 6px; right: 6px; bottom: 5px; font: 600 11px var(--font-mono); text-align: center; border-radius: 4px; background: var(--steel); padding: 1px 0; }
+.card.sel { transform: translateY(-14px); border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal); }
+.card.used { opacity: .55; }
+.card .info { position: absolute; right: 4px; bottom: 24px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel-2); font: 600 12px var(--font-display); display: grid; place-items: center; }
+.chooser { position: absolute; left: 94px; right: 194px; bottom: 134px; display: flex; gap: 6px; justify-content: center; }
+.chooser button { min-height: 40px; padding: 4px 12px; background: var(--panel); border: 1px solid var(--teal); border-radius: 6px; font: 600 14px var(--font-display); letter-spacing: .04em; }
+.chooser button small { display: block; font: 400 10px var(--font-mono); color: var(--muted); letter-spacing: 0; }
+.chooser button.od { border-color: var(--orange); }
+.chooser button[disabled] { border-color: var(--line); color: var(--muted); }
+.sheet { position: absolute; inset: 0; background: rgba(8, 10, 13, .72); display: none; place-items: center; }
+.sheet.on { display: grid; }
+.sheet .body { width: min(92%, 620px); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; grid-template-columns: 140px 1fr; gap: 14px; }
+.sheet .big-card { border: 1px solid var(--teal); border-radius: 8px; padding: 8px; display: grid; align-content: start; gap: 4px; }
+.sheet h3 { margin: 0 0 6px; font: 700 20px var(--font-display); letter-spacing: .05em; }
+.uses { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.uses div { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: var(--panel-2); font-size: 12px; }
+.uses div b { display: block; font: 600 14px var(--font-display); letter-spacing: .04em; }
+.uses div.od { border-color: var(--orange); grid-column: 1 / -1; }
+.uses div.off { opacity: .5; }
+.close { margin-top: 8px; min-height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel-2); font: 600 14px var(--font-display); letter-spacing: .08em; text-transform: uppercase; }
+
+.center { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10, 13, 17, .6); text-align: center; }
+.center .box { display: grid; gap: 10px; justify-items: center; padding: 18px 26px; max-width: 80%; }
+.title { font: 700 56px var(--font-display); letter-spacing: .2em; text-transform: uppercase; line-height: 1; margin: 0; }
+.title em { font-style: normal; color: var(--teal); }
+.sub { color: var(--muted); margin: 0; }
+.big-btn { min-height: 48px; padding: 0 34px; border: 0; border-radius: 6px; background: var(--teal); color: #06231f; font: 700 20px var(--font-display); letter-spacing: .14em; text-transform: uppercase; }
+.ghost-btn { min-height: 40px; padding: 0 20px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); font: 600 15px var(--font-display); letter-spacing: .08em; text-transform: uppercase; }
+.verdict { font: 700 46px var(--font-display); letter-spacing: .16em; text-transform: uppercase; margin: 0; color: var(--teal); }
+.stats { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 22px; text-align: left; }
+.stats dt { font: 600 11px var(--font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.stats dd { margin: 0; font: 500 14px var(--font-mono); }
+
+.tickbar { left: 8px; right: 8px; top: 6px; height: 36px; display: flex; align-items: center; gap: 14px; padding: 0 12px; }
+.ticks { display: flex; gap: 4px; }
+.ticks i { width: 28px; height: 8px; background: var(--panel-2); border: 1px solid var(--line); display: block; }
+.ticks i.on { background: var(--teal); border-color: var(--teal); }
+.log { right: 8px; top: 48px; bottom: 56px; width: 270px; padding: 8px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 5px; }
+.log p { margin: 0; font-size: 12px; line-height: 1.3; padding: 4px 6px; border-left: 3px solid var(--teal); background: var(--panel-2); border-radius: 0 4px 4px 0; }
+.log p.foe-ev { border-left-color: var(--red); }
+.log p.dim { border-left-color: var(--muted); color: var(--muted); }
+.log p b { font: 600 11px var(--font-mono); color: var(--muted); margin-right: 6px; }
+.ctrl { left: 8px; bottom: 8px; display: flex; gap: 6px; padding: 6px; }
+.ctrl button { min-height: 40px; min-width: 56px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel-2); font: 600 14px var(--font-display); letter-spacing: .06em; text-transform: uppercase; padding: 0 10px; }
+.ctrl button[aria-pressed="true"] { border-color: var(--teal); color: var(--teal); }
+@media (prefers-reduced-motion: reduce) { .tok { transition: none; } .fx { animation: none; opacity: 0; } .card { transition: none; } }
+@media (max-width: 520px) { .title { font-size: 40px; } }
+</style>
+
+<div class="viewer">
+  <div class="bar">
+    <h1>Primefall &middot; Offline MVP</h1>
+    <div class="sizes" role="tablist" aria-label="Device size">
+      <button role="tab" id="size-phone" aria-selected="true" data-size="phone">Phone 844&times;390</button>
+      <button role="tab" id="size-desk" aria-selected="false" data-size="desk">Desktop 1280&times;600</button>
+    </div>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Screens" id="tabs">
+    <button role="tab" aria-selected="true" data-screen="start">1 Start</button>
+    <button role="tab" aria-selected="false" data-screen="plan">2 Planning</button>
+    <button role="tab" aria-selected="false" data-screen="sheet">Card detail</button>
+    <button role="tab" aria-selected="false" data-screen="res">3 Resolution</button>
+    <button role="tab" aria-selected="false" data-screen="end">4 End</button>
+  </div>
+  <p class="caption" id="caption"></p>
+  <p class="hint">Landscape first: on a narrow window the mockup is scaled down; open it on a wide screen for true size.</p>
+  <div class="stage" id="stage"><div class="device" id="device">
+    <div class="board"><div class="world" id="world"></div></div>
+
+    <!-- 1 START -->
+    <section class="screen on" id="s-start">
+      <div class="center"><div class="box">
+        <h2 class="title">Prime<em>fall</em></h2>
+        <p class="sub">Reactor Deck &middot; 3v3 vs AI &middot; you command the Bruiser</p>
+        <button class="big-btn" data-go="plan">Play</button>
+        <span class="label num">Seed 8123</span>
+      </div></div>
+    </section>
+
+    <!-- 2 PLANNING -->
+    <section class="screen" id="s-plan">
+      <div class="hud top">
+        <div class="round">Round 7 <span style="color:var(--muted)">/ 30</span></div>
+        <div class="timer"><span class="label">Planning</span><div class="track"><div class="fill"></div></div><span class="num" id="clock">0:14</span></div>
+        <div class="label">Prime Zone &nbsp;You<span class="pips you"><i class="f"></i><i></i><i></i></span> &nbsp;Enemy<span class="pips foe"><i></i><i></i><i></i></span></div>
+      </div>
+      <div class="hud squad" id="squad"></div>
+      <div class="hud foes" id="foes"></div>
+      <div class="hud queue"><div class="label">Bruiser queue</div><div id="queue" style="display:grid;gap:5px"></div><button class="commit" id="commit">Commit</button></div>
+      <div class="hud energy"><div class="label">Energy</div><div class="big num" id="energy">0</div><div class="sub num" id="energy-sub"></div></div>
+      <div class="chooser" id="chooser"></div>
+      <div class="hand" id="hand"></div>
+    </section>
+
+    <!-- CARD DETAIL SHEET -->
+    <section class="sheet" id="sheet">
+      <div class="body" id="sheet-body"></div>
+    </section>
+
+    <!-- 3 RESOLUTION -->
+    <section class="screen" id="s-res">
+      <div class="hud tickbar"><div class="round">Resolution</div><div class="ticks" id="ticks"><i></i><i></i><i></i><i></i></div><span class="label num" id="tick-label">Tick 0 / 4</span></div>
+      <div class="hud log" id="log"></div>
+      <div class="hud ctrl">
+        <button id="play" aria-pressed="true">Pause</button>
+        <button id="speed" aria-pressed="false">1x</button>
+        <button id="skip">Skip</button>
+      </div>
+    </section>
+
+    <!-- 4 END -->
+    <section class="screen" id="s-end">
+      <div class="center"><div class="box">
+        <p class="label">Match result</p>
+        <h2 class="verdict">Victory</h2>
+        <p class="sub">Your Squad controlled the Prime Zone for 3 consecutive Resolutions.</p>
+        <dl class="stats">
+          <div><dt>Round</dt><dd>9 / 30</dd></div>
+          <div><dt>Heroes left</dt><dd>3 of 3</dd></div>
+          <div><dt>Deck cards</dt><dd>21 vs 14</dd></div>
+        </dl>
+        <div style="display:flex;gap:10px"><button class="big-btn" data-go="start">Play again</button></div>
+        <span class="label num">Seed 8123</span>
+      </div></div>
+    </section>
+  </div></div>
+</div>
+
+<script>
+(function () {
+  var A = "assets/";
+  // Reactor Deck (ADR 0016), 21 x 11. S spawn, P Prime Zone, H Half Cover, O Overwatch Nest, # wall.
+  var MAP = [
+    "#####################", "#.........O.........#", "#...##.........##...#", "#...#...........#...#",
+    "#S..#....PPP....#..S#", "#S...H...PPP...H...S#", "#S..#....PPP....#..S#", "#...#...........#...#",
+    "#...##.........##...#", "#...................#", "#####################"];
+  var OX = 720, OY = 120;
+  function xy(c, r) { return { x: (c - r) * 64 + OX, y: (c + r) * 32 + OY }; }
+  var world = document.getElementById("world");
+  function el(tag, cls, parent) { var e = document.createElement(tag); if (cls) e.className = cls; (parent || world).appendChild(e); return e; }
+  function place(node, c, r, w, h, z, dy) { var p = xy(c, r); node.style.left = (p.x - w / 2) + "px"; node.style.top = (p.y + 32 - h + (dy || 0)) + "px"; node.style.zIndex = z; return node; }
+  function img(src, cls, parent) { var i = el("img", cls, parent); i.src = A + src + ".png"; i.alt = ""; i.draggable = false; return i; }
+
+  var rows = MAP.length, cols = MAP[0].length;
+  for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
+    var ch = MAP[r][c];
+    var f = (c * 7 + r * 3) % 11 === 0 ? "tiles/floor_damaged_01" : ((c + r) % 2 ? "tiles/floor_02" : "tiles/floor_01");
+    if (ch === "P") f = "tiles/reactor_floor_01"; else if (ch === "S") f = "tiles/spawn_marker_01";
+    place(img(f, "tile"), c, r, 128, 64, 1);
+    if (ch === "#") place(img("props/wall_01", "prop"), c, r, 128, 128, 10 + (c + r) * 2);
+    if (ch === "H") place(img("props/cover_half_01", "prop"), c, r, 128, 128, 10 + (c + r) * 2);
+    if (ch === "O") place(img("props/overwatch_nest_01", "prop"), c, r, 128, 128, 10 + (c + r) * 2);
+  }
+
+  // Tokens: own Squad, Visible enemy, Ghost enemy. Unknown enemy has no marker.
+  var toks = {};
+  function token(id, cls, pose, c, r, tag) {
+    var t = el("div", "tok " + cls); img("heroes/" + id + "/" + pose, "", t); el("div", "ring", t);
+    var g = el("div", "tag", t); g.innerHTML = tag;
+    t.dataset.c = c; t.dataset.r = r; toks[id + cls] = t; moveTok(t, c, r); return t;
+  }
+  function moveTok(t, c, r) { t.dataset.c = c; t.dataset.r = r; place(t, c, r, 128, 192, 10 + (c + r) * 2 + 1, 0); }
+  var bru = token("bruiser", "sel", "idle", 7, 5, "Bruiser <small>D8</small>");
+  token("controller", "", "idle", 5, 3, "Controller");
+  token("assassin", "", "idle", 5, 7, "Assassin");
+  token("bruiser", "enemy flip", "idle", 13, 5, "Enemy Bruiser <small>D9 &middot; S2</small>");
+  token("assassin", "enemy ghost flip", "idle", 14, 2, "Ghost <small>last seen</small>");
+
+  var rangeLayer = [];
+  function showRange(on, target) {
+    rangeLayer.forEach(function (n) { n.remove(); }); rangeLayer = [];
+    if (!on) return;
+    var bc = +bru.dataset.c, br = +bru.dataset.r;
+    for (var dc = -3; dc <= 3; dc++) for (var dr = -3; dr <= 3; dr++) {
+      var cc = bc + dc, rr = br + dr; if (cc < 1 || rr < 1 || cc > 19 || rr > 9 || (!dc && !dr)) continue;
+      var isT = target && cc === 13 - 0 && rr === 5; // placeholder, enemy is outside range 3: shown for layout only
+      var n = el("div", "hl range"); place(n, cc, rr, 128, 64, 4, 0 - 0); n.style.top = (xy(cc, rr).y - 32) + "px"; rangeLayer.push(n);
+    }
+  }
+  for (var zr = 4; zr <= 6; zr++) for (var zc = 9; zc <= 11; zc++) { var zn = el("div", "hl zone"); zn.style.left = (xy(zc, zr).x - 64) + "px"; zn.style.top = (xy(zc, zr).y - 32) + "px"; zn.style.zIndex = 3; }
+
+  // camera
+  var dev = document.getElementById("device"), stage = document.getElementById("stage");
+  var size = "phone";
+  function camera(focusC, focusR, yShift) {
+    var W = dev.offsetWidth, H = dev.offsetHeight, s = W / 1250, p = xy(focusC, focusR);
+    world.style.transform = "translate(" + (W / 2 - p.x * s) + "px," + (H * (yShift || 0.5) - p.y * s) + "px) scale(" + s + ")";
+  }
+  function fit() {
+    var W = size === "phone" ? 844 : 1280, H = size === "phone" ? 390 : 600;
+    dev.style.width = W + "px"; dev.style.height = H + "px";
+    var k = Math.min(1, stage.clientWidth / W);
+    dev.style.transform = "scale(" + k + ")"; stage.style.height = (H * k) + "px";
+    camera(9, 5, 0.52);
+  }
+
+  // cards
+  var CARDS = [
+    { id: "slam", name: "Slam Shot", kind: "Attack", cost: 1, range: 3, txt: "Deal 2 damage to a visible enemy within Range 3." },
+    { id: "bulwark", name: "Bulwark", kind: "Utility", cost: 1, txt: "This Hero gains Shield 3." },
+    { id: "breach", name: "Breach Charge", kind: "Attack", cost: 2, txt: "Deal 2 damage and destroy Half Cover on the target tile.", od: "Destroy Full Cover on the target tile and deal 2 damage to each Hero on adjacent tiles." },
+    { id: "suppress", name: "Suppress", kind: "Utility", cost: 1, txt: "A visible enemy gains Slow and cannot become Hidden this round." }
+  ];
+  var USE = { primary: "Primary", pitch: "Pitch 1", move: "Move 2", block: "Block 2", od: "Overdrive" };
+  var plan = { suppress: "pitch", slam: "primary", bulwark: "block" };  // example state: realistic mid-planning
+  var order = ["slam", "bulwark"], selected = null;
+  function card(id) { return CARDS.filter(function (c) { return c.id === id; })[0]; }
+  function energy() {
+    var pitched = 0, spent = 0;
+    Object.keys(plan).forEach(function (id) { if (plan[id] === "pitch") pitched++; if (plan[id] === "primary") spent += card(id).cost; });
+    return { pitched: pitched, spent: spent, avail: pitched - spent };
+  }
+  function renderPlan() {
+    var hand = document.getElementById("hand"); hand.innerHTML = "";
+    CARDS.forEach(function (c) {
+      var b = document.createElement("button"); b.className = "card " + (c.kind === "Utility" ? "util " : "") + (selected === c.id ? "sel " : "") + (plan[c.id] ? "used" : "");
+      b.setAttribute("aria-label", c.name + ", " + c.kind + ", " + c.cost + " Energy");
+      b.innerHTML = '<span class="kind">' + c.kind + '</span><span class="name">' + c.name + '</span><span class="txt">' + c.txt + '</span><span class="cost">' + c.cost + '</span>' +
+        (plan[c.id] ? '<span class="use">' + USE[plan[c.id]] + "</span>" : "") + '<span class="info" data-info="' + c.id + '">i</span>';
+      b.addEventListener("click", function (e) {
+        if (e.target.dataset.info) { openSheet(e.target.dataset.info); return; }
+        selected = selected === c.id ? null : c.id; showRange(selected && card(selected).range); renderPlan();
+      });
+      hand.appendChild(b);
+    });
+    var ch = document.getElementById("chooser"); ch.innerHTML = "";
+    if (selected) {
+      var c = card(selected), e = energy(), own = plan[selected];
+      var avail = e.avail + (own === "primary" ? c.cost : 0) - (own === "pitch" ? 1 : 0);
+      [["primary", USE.primary, "costs " + c.cost + " Energy", avail >= c.cost], ["pitch", USE.pitch, "+1 Energy", true], ["move", USE.move, "no Energy", true], ["block", USE.block, "Shield 2", true]]
+        .concat(c.od ? [["od", "Overdrive", "exiles card", avail >= c.cost]] : []).forEach(function (u) {
+          var b = document.createElement("button"); if (u[0] === "od") b.className = "od"; b.disabled = !u[3];
+          b.innerHTML = u[1] + "<small>" + (u[3] ? u[2] : "needs " + c.cost + " Energy") + "</small>";
+          b.addEventListener("click", function () {
+            plan[selected] = u[0]; order = order.filter(function (i) { return i !== selected; });
+            if (u[0] !== "pitch") order.push(selected);
+            selected = null; showRange(false); renderPlan();
+          });
+          ch.appendChild(b);
+        });
+    }
+    var en = energy(); document.getElementById("energy").textContent = en.avail;
+    document.getElementById("energy-sub").textContent = en.pitched + " pitched / " + en.spent + " spent";
+    var q = document.getElementById("queue"); q.innerHTML = "";
+    for (var i = 0; i < 4; i++) {
+      var id = order[i], s = document.createElement("button"); s.className = "slot" + (id ? " f" : "");
+      if (id) {
+        var cd = card(id), u = plan[id], tgt = u === "primary" && cd.kind === "Attack" ? "Enemy Bruiser" : (u === "primary" ? "self" : "");
+        s.innerHTML = "<em>" + (i + 1) + "</em><span>" + (u === "primary" ? cd.name : USE[u]) + "<small>" + (u === "primary" ? tgt : cd.name) + "</small></span>";
+        s.addEventListener("click", function (x) { return function () { delete plan[x]; order = order.filter(function (o) { return o !== x; }); renderPlan(); }; }(id));
+        s.setAttribute("aria-label", "Remove action " + (i + 1));
+      } else { s.innerHTML = "<em>" + (i + 1) + "</em><span style='color:var(--muted)'>Empty</span>"; s.disabled = true; }
+      q.appendChild(s);
+    }
+  }
+  var squad = document.getElementById("squad");
+  squad.innerHTML = '<div class="label">Your Squad</div>' +
+    '<div class="hero-row sel"><div class="badge" style="background:var(--orange)">B</div><div><b>Bruiser <span style="color:var(--teal)">YOU</span></b><span>8 deck &middot; 0 exile</span></div></div>' +
+    '<div class="hero-row"><div class="badge" style="background:var(--teal)">C</div><div><b>Controller <span style="color:var(--muted)">AI</span></b><span>10 deck &middot; 1 exile</span></div></div>' +
+    '<div class="hero-row"><div class="badge" style="background:#78a0c8">A</div><div><b>Assassin <span style="color:var(--muted)">AI</span></b><span>3 deck &middot; 2 exile</span></div></div>';
+  document.getElementById("foes").innerHTML = '<div class="label">Enemy Squad</div>' +
+    '<div class="foe"><b>Bruiser &middot; Visible &middot; Shield 2</b></div><div class="foe">9 deck &middot; 3 disc &middot; 0 exile</div>' +
+    '<div class="foe ghost"><b>Assassin &middot; Ghost</b></div><div class="foe ghost">last seen 7 / 2 / 1</div>' +
+    '<div class="foe ghost"><b>Controller &middot; Unknown</b></div>';
+
+  // card detail sheet
+  function openSheet(id) {
+    var c = card(id), b = document.getElementById("sheet-body");
+    b.innerHTML = '<div class="big-card"><span class="kind" style="font:600 12px var(--font-display);letter-spacing:.12em;text-transform:uppercase;color:var(--teal)">' + c.kind + '</span><strong style="font:700 22px var(--font-display);line-height:1.05">' + c.name + '</strong><span class="num" style="color:var(--orange)">' + c.cost + ' Energy' + (c.range ? ' &middot; Range ' + c.range : '') + '</span><span style="font-size:12px;color:var(--muted)">' + c.txt + '</span></div>' +
+      '<div><h3>Four ways to use this card</h3><div class="uses"><div><b>Primary effect</b>' + c.txt + ' Costs ' + c.cost + ' Energy.</div><div><b>Pitch 1</b>Discard for 1 Energy.</div><div><b>Move 2</b>Move up to 2 tiles.</div><div><b>Block 2</b>Gain Shield 2.</div>' +
+      (c.od ? '<div class="od"><b>Overdrive (exiles this card)</b>' + c.od + '</div>' : '<div class="od off"><b>Overdrive</b>Not available on this card.</div>') +
+      '</div><button class="close" id="close">Close</button></div>';
+    document.getElementById("sheet").classList.add("on");
+    document.getElementById("close").addEventListener("click", closeSheet);
+  }
+  function closeSheet() { document.getElementById("sheet").classList.remove("on"); }
+
+  // resolution (scripted example)
+  var res = { t: 0, timer: null, playing: true, fast: false };
+  var SCRIPT = [
+    { tick: 1, ev: [["Bruiser moves 2 tiles to the Prime Zone edge.", ""], ["Enemy Bruiser blocks: Shield 2.", "foe-ev"]], run: function () { moveTok(bru, 9, 5); } },
+    { tick: 2, ev: [["Bruiser Slam Shot hits Enemy Bruiser. Shield absorbs 2, 0 Deck Damage.", ""], ["Controller Scout Drone reveals a 3 by 3 area.", ""]], run: function () { fx("vfx/muzzle_flash", 9, 5); fx("vfx/shield_ring", 13, 5); } },
+    { tick: 3, ev: [["Enemy Bruiser Slam Shot hits Bruiser: 2 Deck Damage, Deck 8 to 6.", "foe-ev"], ["Bruiser Block 2 fails: Shield was already used.", "dim"]], run: function () { fx("vfx/energy_projectile", 9, 5); } },
+    { tick: 4, ev: [["Resolution ends. You control the Prime Zone: 1 / 3.", ""]], run: function () { fx("vfx/reactor_pulse", 10, 5); } }
+  ];
+  function fx(name, c, r) { var n = img(name, "fx"); place(n, c, r, 128, 128, 999, 0); n.style.top = (xy(c, r).y - 96) + "px"; setTimeout(function () { n.remove(); }, 800); }
+  function setTicks(n) { var i = document.getElementById("ticks").children; for (var k = 0; k < i.length; k++) i[k].className = k < n ? "on" : ""; document.getElementById("tick-label").textContent = "Tick " + n + " / 4"; }
+  function stepRes() {
+    if (res.t >= SCRIPT.length) { res.playing = false; document.getElementById("play").textContent = "Done"; return; }
+    var s = SCRIPT[res.t++]; setTicks(s.tick); s.run && s.run();
+    var log = document.getElementById("log");
+    s.ev.forEach(function (e) { var p = document.createElement("p"); p.className = e[1]; p.innerHTML = "<b>T" + s.tick + "</b>" + e[0]; log.appendChild(p); });
+    while (log.children.length > 7) log.removeChild(log.firstChild);
+  }
+  function loopRes() { clearTimeout(res.timer); if (!res.playing) return; stepRes(); if (res.t < SCRIPT.length) res.timer = setTimeout(loopRes, res.fast ? 700 : 1500); }
+  function resetRes() { clearTimeout(res.timer); res.t = 0; res.playing = true; document.getElementById("log").innerHTML = ""; setTicks(0); moveTok(bru, 7, 5); document.getElementById("play").textContent = "Pause"; }
+
+  // screens
+  var CAP = {
+    start: "Start: one primary action. The Reactor Deck is already visible behind the menu; the seed is shown small for bug reports.",
+    plan: "Planning: tap a card, choose how to use it, and the action joins the Bruiser queue. Pitch funds Energy (example: Suppress is pitched for the Slam Shot). Tap a queue slot to remove it. The orange area shows Range 3. The enemy Bruiser is Visible, the Assassin is a Ghost, the Controller is Unknown.",
+    sheet: "Card detail: the four uses of one card plus Overdrive where available. Disabled uses say why.",
+    res: "Resolution: the same board with a reduced HUD. The log names cause and effect per Tick. Failed actions stay visible in the log (dimmed).",
+    end: "End: result, reason and Round reached. Draw and defeat use the same layout."
+  };
+  function show(name) {
+    ["start", "plan", "res", "end"].forEach(function (s) { document.getElementById("s-" + s).classList.toggle("on", s === name || (name === "sheet" && s === "plan")); });
+    closeSheet(); if (name === "sheet") openSheet("breach");
+    [].forEach.call(document.querySelectorAll("#tabs button"), function (b) { b.setAttribute("aria-selected", b.dataset.screen === name ? "true" : "false"); });
+    document.getElementById("caption").textContent = CAP[name];
+    if (name === "res") { resetRes(); loopRes(); } else { clearTimeout(res.timer); if (name !== "res") moveTok(bru, 7, 5); }
+    if (name !== "plan" && name !== "sheet") { selected = null; showRange(false); renderPlan(); }
+  }
+  document.getElementById("tabs").addEventListener("click", function (e) { if (e.target.dataset.screen) show(e.target.dataset.screen); });
+  document.addEventListener("click", function (e) { var g = e.target.dataset && e.target.dataset.go; if (g) show(g); });
+  document.getElementById("commit").addEventListener("click", function () { show("res"); });
+  document.getElementById("play").addEventListener("click", function () { res.playing = !res.playing; this.textContent = res.playing ? "Pause" : "Play"; if (res.playing) loopRes(); });
+  document.getElementById("speed").addEventListener("click", function () { res.fast = !res.fast; this.textContent = res.fast ? "2x" : "1x"; this.setAttribute("aria-pressed", res.fast); });
+  document.getElementById("skip").addEventListener("click", function () { clearTimeout(res.timer); while (res.t < SCRIPT.length) stepRes(); setTimeout(function () { show("end"); }, 600); });
+  [].forEach.call(document.querySelectorAll(".sizes button"), function (b) {
+    b.addEventListener("click", function () { size = b.dataset.size; [].forEach.call(document.querySelectorAll(".sizes button"), function (x) { x.setAttribute("aria-selected", x === b ? "true" : "false"); }); fit(); });
+  });
+  window.addEventListener("resize", fit);
+  renderPlan(); fit(); show("start");
+})();
+</script>

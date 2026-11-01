@@ -101,7 +101,7 @@ The rule determining whether a Hero can see and target another Hero. Attacks req
 _Avoid_: Vision, LOS
 
 **Visible**:
-An enemy Hero currently within Line of Sight. The squad can see its current position, Shield, and the number of cards in its Deck, Discard, and Exile.
+An enemy Hero currently within Line of Sight and within the squad's sight range (7 tiles; 9 for a Hidden Assassin). The squad can see its current position, Shield, and the number of cards in its Deck, Discard, and Exile.
 _Avoid_: Spotted, revealed
 
 **Ghost**:
