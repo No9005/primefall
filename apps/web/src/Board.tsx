@@ -32,6 +32,8 @@ export interface TokenHero {
   heroClass: HeroClass;
   position: GridPosition;
   exhausted: boolean;
+  /** Slowed Heroes show a Slow indicator; only Visible and own Heroes ever carry it. */
+  slowed?: boolean;
   /** A Ghost: drawn faded at its last known position and not selectable as a target. */
   ghost?: boolean;
 }
@@ -126,6 +128,11 @@ export function Board({
       if (enemy) sprite.tint = 0xffb3b3;
       if (hero.ghost) sprite.alpha = 0.35;
       token.addChild(sprite);
+      if (hero.slowed && !hero.exhausted) {
+        const indicator = new Sprite(Assets.get("vfx.slow_indicator"));
+        indicator.anchor.set(0.5, 1);
+        token.addChild(indicator);
+      }
       token.eventMode = "static";
       token.cursor = "pointer";
       token.on("pointertap", () => (enemy || targetable ? onTargetTapRef.current(hero.id) : onSelectRef.current(hero.id)));

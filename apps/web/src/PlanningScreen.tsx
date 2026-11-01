@@ -81,6 +81,7 @@ function SquadPanel({
               {shield > 0 && ` · Shield ${shield}`}
             </span>
             {!playerControlled && <span className="tag">AI</span>}
+            {hero.slowed && <span className="tag slow-tag">Slowed</span>}
             {(hero.exhausted || playback?.exhausted.includes(hero.id)) && <span className="tag">Exhausted</span>}
           </button>
         );
@@ -126,6 +127,7 @@ function EnemyPanel({
           <div key={enemy.id} className="hero-row" data-testid={`enemy-${enemy.heroClass}`}>
             <span className="hero-name">{HERO_NAMES[enemy.heroClass]}</span>
             {attackerPosition && !enemy.exhausted && cover && <span className="tag cover-tag">{cover}</span>}
+            {enemy.slowed && <span className="tag slow-tag">Slowed</span>}
             <span className="counts">
               Deck {enemy.deckCount - (playback?.deckDamage[enemy.id] ?? 0)} · Discard {enemy.discardCount} · Exile{" "}
               {enemy.exileCount}
@@ -271,7 +273,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     [view.enemies, playback],
   );
   const aimedCard = aiming === undefined ? undefined : HERO_DECKS[selected.heroClass][aiming];
-  const aimsAtAlly = aimedCard?.type === CardType.Utility;
+  const aimsAtAlly = aimedCard?.type === CardType.Utility && aimedCard.target !== CardTarget.VisibleEnemy;
   const targetableIds = useMemo(() => {
     if (aiming === undefined || playing) return [];
     if (aimedCard?.target === CardTarget.SelfHero) return [selected.id];

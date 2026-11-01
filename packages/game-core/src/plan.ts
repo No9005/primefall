@@ -161,7 +161,7 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
         const card = HERO_DECKS[hero.heroClass][action.card];
         if (!card || !isPlayableCard(card)) {
           issues.push({ kind: PlanIssueKind.UnplayableCard, heroId, message: "This card's effect cannot be played yet." });
-        } else if (card.type === CardType.Utility) {
+        } else if (card.type === CardType.Utility && card.target !== CardTarget.VisibleEnemy) {
           const isSelfCard = card.target === CardTarget.SelfHero;
           const validTarget = isSelfCard
             ? action.target === heroId
@@ -176,7 +176,7 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
         } else if (!view.enemies.some(
             (enemy) => enemy.id === action.target && enemy.visibility === Visibility.Visible && !enemy.exhausted,
           )) {
-          issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: "An Attack needs a Visible enemy Hero as its target." });
+          issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Visible enemy Hero as its target.` });
         }
       }
       if (action.kind !== ActionKind.Move) continue;

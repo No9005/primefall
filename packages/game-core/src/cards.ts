@@ -92,22 +92,28 @@ export const HAND_SIZE = 4;
  * resolution can play so far; other effects follow with their own tickets.
  */
 export function isSimpleAttack(card: CardDefinition): boolean {
+  const [first, ...rest] = card.effects;
   return (
     card.type === CardType.Attack &&
     card.target === CardTarget.VisibleEnemy &&
-    card.effects.length === 1 &&
-    card.effects[0]!.kind === EffectKind.Damage
+    first?.kind === EffectKind.Damage &&
+    rest.every((effect) => effect.kind === EffectKind.ApplySlow)
   );
 }
 
-/** Utility effect kinds the resolution has an interpreter for; later Utility effects are added here. */
-export const PLAYABLE_UTILITY_EFFECTS = [EffectKind.GainShield] as const;
+/**
+ * Utility effect kinds the resolution has an interpreter for; later Utility effects are added here.
+ * `PreventHidden` is accepted but does nothing until Hidden exists (Assassin ticket).
+ */
+export const PLAYABLE_UTILITY_EFFECTS = [EffectKind.GainShield, EffectKind.ApplySlow, EffectKind.PreventHidden] as const;
 
-/** Utility cards aimed at this Hero or an allied Hero whose effects all have an interpreter. */
+/** Utility cards aimed at this Hero, an allied Hero or a visible enemy whose effects all have an interpreter. */
 export function isPlayableUtility(card: CardDefinition): boolean {
   return (
     card.type === CardType.Utility &&
-    (card.target === CardTarget.SelfHero || card.target === CardTarget.AllyHero) &&
+    (card.target === CardTarget.SelfHero ||
+      card.target === CardTarget.AllyHero ||
+      card.target === CardTarget.VisibleEnemy) &&
     card.effects.every((effect) => (PLAYABLE_UTILITY_EFFECTS as readonly EffectKind[]).includes(effect.kind))
   );
 }

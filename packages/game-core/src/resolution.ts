@@ -45,6 +45,15 @@ export interface ResolutionResult {
 
 const SQUADS = [SquadId.Left, SquadId.Right];
 
+/** Tiles a Slowed Hero's Move covers at most (Move 1). */
+const SLOWED_MOVE_DISTANCE = 1;
+
+/** Slow applied in a Resolution lasts until the end of the next one: that is `duration` Resolutions after this. */
+function applySlow(tick: number, source: HeroState, target: HeroState, effect: CardEffect, events: MatchEvent[]): void {
+  target.slow = (effect.duration ?? 1) + 1;
+  events.push({ kind: EventKind.SlowApplied, tick, heroId: source.id, targetId: target.id });
+}
+
 /** Which Squads perceive the events from `first` on, judged by the current positions (see `getSquadEvents`). */
 function perceivers(match: MatchState, events: readonly MatchEvent[], first: number): SquadId[][] {
   return events.slice(first).map((event) => {
@@ -90,8 +99,18 @@ function stepTowards(from: GridPosition, destination: GridPosition): GridPositio
  * Heroes entering the same free tile in the same step both stay (ADR 0013).
  */
 function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: MatchEvent[]): void {
+  // A Slowed Hero's Move 2 becomes a Move 1, and that uses the Slow up.
+  const slowedIds = new Set<string>();
+  for (const { heroId } of movers) {
+    const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
+    if (hero.slow === 0) continue;
+    hero.slow = 0;
+    slowedIds.add(heroId);
+    events.push({ kind: EventKind.SlowUsed, tick, heroId });
+  }
   let active = movers;
   for (let step = 0; step < MOVE_DISTANCE && active.length > 0; step++) {
+    if (step >= SLOWED_MOVE_DISTANCE) active = active.filter(({ heroId }) => !slowedIds.has(heroId));
     const attempts = active.flatMap((mover) => {
       const hero = match.heroes.find((candidate) => candidate.id === mover.heroId)!;
       if (samePosition(hero.position, mover.destination)) return [];
@@ -144,6 +163,9 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const removed = target.deck.splice(Math.max(0, target.deck.length - (incoming - absorbed)));
     target.exile.push(...removed);
     events.push({ kind: EventKind.AttackHit, tick, heroId: hero.id, targetId, absorbed, damage: removed.length });
+    for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplySlow)) {
+      applySlow(tick, hero, target, effect, events);
+    }
   }
 }
 
@@ -153,7 +175,7 @@ interface UtilityUse {
   effect: CardEffect;
   /** The Hero that plays the card. */
   caster: HeroState;
-  /** The Hero the card is aimed at: the caster itself or an allied Hero. */
+  /** The Hero the card is aimed at: the caster itself, an allied Hero or a visible enemy. */
   target: HeroState;
   events: MatchEvent[];
 }
@@ -165,6 +187,9 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
     target.shield += amount;
     events.push({ kind: EventKind.ShieldGained, tick, heroId: target.id, amount });
   },
+  [EffectKind.ApplySlow]: ({ tick, effect, caster, target, events }) => applySlow(tick, caster, target, effect, events),
+  // Needs Hidden (Assassin ticket); until then Suppress only Slows.
+  [EffectKind.PreventHidden]: () => {},
 };
 
 /**
@@ -183,8 +208,9 @@ function resolveUtility(
   const validTarget =
     target !== undefined &&
     !target.exhausted &&
-    target.squad === caster.squad &&
-    (card.target === CardTarget.SelfHero ? target === caster : target !== caster);
+    (card.target === CardTarget.VisibleEnemy
+      ? target.squad !== caster.squad && canSquadSee(match, caster.squad, target.position)
+      : target.squad === caster.squad && (card.target === CardTarget.SelfHero ? target === caster : target !== caster));
   if (!validTarget || !isPlayableUtility(card)) {
     events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
     return;
@@ -325,7 +351,10 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
       hero.discard.push(card);
     }
   }
-  for (const hero of match.heroes) hero.shield = 0;
+  for (const hero of match.heroes) {
+    hero.shield = 0;
+    hero.slow = Math.max(0, hero.slow - 1);
+  }
   // Exhaustion takes effect only now, so a Hero whose Deck ran out mid-Resolution finished its Queue (ADR 0006).
   for (const hero of match.heroes.filter((candidate) => !candidate.exhausted && candidate.deck.length === 0)) {
     hero.exhausted = true;
