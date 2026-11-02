@@ -5,13 +5,16 @@ import {
   CardTarget,
   cardInMode,
   CardType,
+  destroyCover,
   type EnemyView,
+  type Grid,
   HERO_DECKS,
   HeroClass,
   moveDestinations,
   type GridPosition,
   type HeroView,
   type QueuedAction,
+  REACTOR_DECK,
   PRIME_ZONE_WIN_RESOLUTIONS,
   ROUND_LIMIT,
   SquadId,
@@ -98,7 +101,10 @@ function EnemyPanel({
   playback,
   attackerPosition,
   aimedCard,
+  knownGrid,
 }: {
+  /** The Reactor Deck as the Squad knows it: Cover it has seen destroyed is gone. */
+  knownGrid: Grid;
   enemies: readonly EnemyView[];
   playback: PlaybackState | undefined;
   /** Set while the player picks a target: the protection each enemy's tile gives against this attacker is shown. */
@@ -128,7 +134,7 @@ function EnemyPanel({
             </div>
           );
         }
-        const cover = attackerPosition && coverProtectionLabel(attackerPosition, enemy.position);
+        const cover = attackerPosition && coverProtectionLabel(attackerPosition, enemy.position, knownGrid);
         const damage = attackerPosition && aimedCard && rangeDamageLabel(aimedCard, attackerPosition, enemy.position);
         return (
           <div key={enemy.id} className="hero-row" data-testid={`enemy-${enemy.heroClass}`}>
@@ -271,10 +277,15 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
 
   const lastMove = queue.filter((action) => action.kind === ActionKind.Move).at(-1);
   const planningFrom = lastMove?.kind === ActionKind.Move ? lastMove.destination : selected.position;
-  const highlights = useMemo(
-    () => (armed !== undefined && !playing ? moveDestinations(planningFrom) : []),
-    [armed, playing, planningFrom],
-  );
+  const knownGrid = useMemo(() => view.destroyedCover.reduce(destroyCover, REACTOR_DECK), [view.destroyedCover]);
+  const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, overdrive);
+  const aimsAtTile = aimedCard?.target === CardTarget.Tile;
+  const highlights = useMemo(() => {
+    if (playing) return [];
+    if (armed !== undefined) return moveDestinations(planningFrom);
+    // A tile card (Breach Charge) can be aimed at any tile within its Range; Line of Sight is checked in the Resolution.
+    return aimsAtTile ? moveDestinations(planningFrom, REACTOR_DECK, aimedCard?.range) : [];
+  }, [armed, aimsAtTile, aimedCard, playing, planningFrom]);
   const markers = useMemo(
     () =>
       queue.flatMap((action, i) =>
@@ -300,7 +311,6 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       }),
     [view.enemies, playback],
   );
-  const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, overdrive);
   const aimsAtAlly = aimedCard?.type === CardType.Utility && aimedCard.target === CardTarget.AllyHero;
   const targetableIds = useMemo(() => {
     if (aiming === undefined || playing) return [];
@@ -360,6 +370,12 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   }
 
   function tapTile(destination: GridPosition) {
+    if (aiming !== undefined && aimsAtTile) {
+      setQueue([...queue, { kind: ActionKind.Primary, card: aiming, target: selected.id, tile: destination, ...(overdrive ? { overdrive } : {}) }]);
+      setAiming(undefined);
+      setOverdrive(false);
+      return;
+    }
     if (armed === undefined) return;
     setQueue([...queue, { kind: ActionKind.Move, card: armed, destination }]);
     setArmed(undefined);
@@ -409,6 +425,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   return (
     <div className="planning">
       <Board
+        destroyedCover={view.destroyedCover}
         heroes={boardHeroes}
         enemies={boardEnemies}
         selectedId={selected.id}
@@ -436,6 +453,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       </header>
       <SquadPanel heroes={view.heroes} selectedId={selected.id} playback={playback} onSelect={changeSelection} />
       <EnemyPanel
+        knownGrid={knownGrid}
         enemies={view.enemies}
         playback={playback}
         attackerPosition={aiming !== undefined && !aimsAtAlly && !playing ? planningFrom : undefined}
@@ -450,7 +468,9 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       )}
       {aiming !== undefined && !playing && (
         <div className="hud target-hint">
-          {aimedCard?.target === CardTarget.SelfHero
+          {aimsAtTile
+            ? "Tap a highlighted tile: it hurts the enemy Hero there and destroys Half Cover"
+            : aimedCard?.target === CardTarget.SelfHero
             ? "Tap this Hero to confirm"
             : aimedCard?.target === CardTarget.EnemiesInRange
               ? "Tap this Hero to hit every enemy Hero in Range"

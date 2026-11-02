@@ -1,4 +1,4 @@
-import { CoverKind, coverAt, type GridPosition, type HeroClass, REACTOR_DECK } from "game-core";
+import { CoverKind, coverAt, destroyCover, type GridPosition, type HeroClass, REACTOR_DECK } from "game-core";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
 import { buildPlacements, computeCamera, gridToWorld, Layer, TILE_HEIGHT, TILE_WIDTH } from "./board-layout";
@@ -40,7 +40,17 @@ export interface TokenHero {
   ghost?: boolean;
 }
 
+/** The containers the terrain is drawn into, and the sprite anchors from the asset manifest. */
+interface Terrain {
+  floor: Container;
+  objects: Container;
+  planning: Container;
+  anchors: Map<string, number[]>;
+}
+
 interface BoardProps {
+  /** Cover tiles the Squad has seen destroyed; the board draws them as open floor. */
+  destroyedCover: readonly GridPosition[];
   heroes: readonly TokenHero[];
   enemies: readonly TokenHero[];
   selectedId: string;
@@ -61,6 +71,7 @@ function tileDiamond(): number[] {
 }
 
 export function Board({
+  destroyedCover,
   heroes,
   enemies,
   selectedId,
@@ -75,6 +86,7 @@ export function Board({
   const host = useRef<HTMLDivElement>(null);
   const [tokens, setTokens] = useState<Container>();
   const [overlay, setOverlay] = useState<Container>();
+  const [terrain, setTerrain] = useState<Terrain>();
   // Always the latest callbacks, so the pixi sprites need not be rebuilt for them.
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
@@ -147,6 +159,40 @@ export function Board({
     return () => created.forEach((token) => token.destroy({ children: true }));
   }, [tokens, heroes, enemies, selectedId, targetableIds, hitIds]);
 
+  // The terrain is drawn again when Cover the Squad has seen destroyed changes.
+  useEffect(() => {
+    if (!terrain) return;
+    const { floor, objects, planning, anchors } = terrain;
+    const grid = destroyedCover.reduce(destroyCover, REACTOR_DECK);
+    const created: Container[] = [];
+    for (const { alias, x, y, layer, depth } of buildPlacements(grid)) {
+      const sprite = new Sprite(Assets.get(alias));
+      const [anchorX, anchorY] = anchors.get(alias) ?? [0.5, 1];
+      sprite.anchor.set(anchorX, anchorY);
+      sprite.position.set(x, y);
+      sprite.zIndex = depth;
+      (layer === Layer.Floor ? floor : objects).addChild(sprite);
+      created.push(sprite);
+    }
+
+    // Cover tiles get an outline on the floor: orange for Full Cover, blue for Half Cover.
+    // Destroyed Cover keeps a grey outline so the broken tile stays readable.
+    grid.tiles.forEach((line, row) =>
+      line.forEach((_, col) => {
+        const cover = coverAt(grid, { col, row });
+        const destroyed = destroyedCover.some((tile) => tile.col === col && tile.row === row);
+        if (cover === CoverKind.None && !destroyed) return;
+        const color = destroyed ? 0x8a8f98 : cover === CoverKind.Full ? 0xff8a3d : 0x4aa3ff;
+        const { x, y } = gridToWorld({ col, row });
+        const outline = new Graphics().poly(tileDiamond()).stroke({ width: destroyed ? 2 : 3, color, alpha: destroyed ? 0.6 : 0.9 });
+        outline.position.set(x, y);
+        planning.addChild(outline);
+        created.push(outline);
+      }),
+    );
+    return () => created.forEach((child) => child.destroy({ children: true }));
+  }, [terrain, destroyedCover]);
+
   useEffect(() => {
     const element = host.current;
     if (!element) return;
@@ -177,27 +223,7 @@ export function Board({
       // Highlights and markers lie on the floor; markers would hide behind props, which is acceptable.
       setOverlay(planning);
 
-      for (const { alias, x, y, layer, depth } of buildPlacements(REACTOR_DECK)) {
-        const sprite = new Sprite(Assets.get(alias));
-        const [anchorX, anchorY] = anchors.get(alias) ?? [0.5, 1];
-        sprite.anchor.set(anchorX, anchorY);
-        sprite.position.set(x, y);
-        sprite.zIndex = depth;
-        (layer === Layer.Floor ? floor : objects).addChild(sprite);
-      }
-
-      // Cover tiles get an outline on the floor: orange for Full Cover, blue for Half Cover.
-      REACTOR_DECK.tiles.forEach((line, row) =>
-        line.forEach((_, col) => {
-          const cover = coverAt(REACTOR_DECK, { col, row });
-          if (cover === CoverKind.None) return;
-          const color = cover === CoverKind.Full ? 0xff8a3d : 0x4aa3ff;
-          const { x, y } = gridToWorld({ col, row });
-          const outline = new Graphics().poly(tileDiamond()).stroke({ width: 3, color, alpha: 0.9 });
-          outline.position.set(x, y);
-          planning.addChild(outline);
-        }),
-      );
+      setTerrain({ floor, objects, planning, anchors });
 
       const frame = () => {
         const camera = computeCamera(app.screen.width, app.screen.height);

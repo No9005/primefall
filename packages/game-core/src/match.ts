@@ -4,7 +4,7 @@
 import { type CardIndex, HAND_SIZE, HERO_DECKS, HeroClass } from "./cards";
 import { type EnemyView, type MatchResult, ROUND_LIMIT, SquadId, type HeroView, type SquadView, Visibility } from "./host";
 import { chebyshevDistance } from "./plan";
-import { findTiles, GridPosition, hasLineOfSight, REACTOR_DECK, TileKind } from "./reactor-deck";
+import { destroyedCoverTiles, findTiles, type Grid, GridPosition, hasLineOfSight, REACTOR_DECK, TileKind } from "./reactor-deck";
 
 export interface HeroState {
   id: string;
@@ -63,6 +63,10 @@ export interface MatchState {
   heroes: HeroState[];
   /** Per Squad: Ghost memory of the enemy Heroes it has seen, by Hero id. */
   ghosts: Record<SquadId, Record<string, GhostMemory>>;
+  /** The Grid as it is now: Cover can be destroyed during the match, so rules read Cover and Line of Sight from here. */
+  grid: Grid;
+  /** Per Squad: the destroyed Cover tiles it has seen destroyed or looked at since (Fog of War). */
+  knownDestroyedCover: Record<SquadId, GridPosition[]>;
   /** The Squad that controls the Prime Zone and for how many consecutive Resolutions (ADR 0010). */
   primeZone: { controller?: SquadId; progress: number };
   /** Set when a victory condition is met; the match accepts no further Rounds. */
@@ -103,6 +107,8 @@ export function createMatch(seed: number): MatchState {
     round: 0,
     heroes: [],
     ghosts: { [SquadId.Left]: {}, [SquadId.Right]: {} },
+    grid: REACTOR_DECK,
+    knownDestroyedCover: { [SquadId.Left]: [], [SquadId.Right]: [] },
     primeZone: { progress: 0 },
   };
   for (const squad of [SquadId.Left, SquadId.Right]) {
@@ -163,7 +169,7 @@ export function canSquadSee(match: MatchState, squad: SquadId, tile: GridPositio
       hero.squad === squad &&
       !hero.exhausted &&
       chebyshevDistance(hero.position, tile) <= sightRange(hero) &&
-      hasLineOfSight(REACTOR_DECK, hero.position, tile),
+      hasLineOfSight(match.grid, hero.position, tile),
   );
 }
 
@@ -182,7 +188,14 @@ export function canSquadSeeHero(match: MatchState, squad: SquadId, target: HeroS
  * enemy that leaves sight mid-Resolution is remembered where it was last seen.
  */
 export function recordSightings(match: MatchState): void {
+  const destroyed = destroyedCoverTiles(match.grid);
   for (const squad of [SquadId.Left, SquadId.Right]) {
+    const known = match.knownDestroyedCover[squad];
+    for (const tile of destroyed) {
+      if (!known.some((other) => other.col === tile.col && other.row === tile.row) && canSquadSee(match, squad, tile)) {
+        known.push(tile);
+      }
+    }
     for (const enemy of match.heroes.filter((hero) => hero.squad !== squad)) {
       if (!canSquadSeeHero(match, squad, enemy)) continue;
       match.ghosts[squad][enemy.id] = {
@@ -238,5 +251,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
     [SquadId.Right]: controller === SquadId.Right ? progress : 0,
   };
   const result = match.result ? { result: structuredClone(match.result) } : {};
-  return { squad, round: match.round, roundLimit: ROUND_LIMIT, primeProgress, ...result, heroes, enemies };
+  // Cover that was destroyed out of sight still looks intact to this Squad.
+  const destroyedCover = match.knownDestroyedCover[squad].map((tile) => ({ ...tile }));
+  return { squad, round: match.round, roundLimit: ROUND_LIMIT, primeProgress, ...result, destroyedCover, heroes, enemies };
 }

@@ -15,6 +15,7 @@ import {
   isGhostAttack,
   isPlayableCard,
   isPlayableUtility,
+  isTileAttack,
   type PLAYABLE_UTILITY_EFFECTS,
 } from "./cards";
 import { EventKind, MatchEndReason, type MatchEvent, PRIME_ZONE_WIN_RESOLUTIONS, ROUND_LIMIT, SquadId } from "./host";
@@ -32,6 +33,7 @@ import {
   CoverKind,
   coverAgainst,
   coverAt,
+  destroyCover,
   type GridPosition,
   HALF_COVER_REDUCTION,
   hasLineOfSight,
@@ -106,6 +108,8 @@ interface Attack {
   ghostTile?: GridPosition;
   /** Set when a Ghost Shot found nobody on its tile. */
   missed?: boolean;
+  /** For a tile Attack (Breach Charge): the targeted tile. */
+  tile?: GridPosition;
 }
 
 const samePosition = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
@@ -179,11 +183,12 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     !target.exhausted &&
     target.squad !== hero.squad &&
     chebyshevDistance(hero.position, target.position) <= (card.range ?? 0) &&
-    hasLineOfSight(REACTOR_DECK, hero.position, target.position) &&
-    coverAgainst(REACTOR_DECK, hero.position, target.position) !== CoverKind.Full;
+    hasLineOfSight(match.grid, hero.position, target.position) &&
+    coverAgainst(match.grid, hero.position, target.position) !== CoverKind.Full;
   // An area Attack hits every enemy Hero it reaches and does nothing when there is none.
   // A Ghost Shot goes to a tile: it hits the enemy standing there when it resolves, or nobody.
-  const aimed = attacks.flatMap((attack) => {
+  const tileAttacks = attacks.filter(({ card }) => isTileAttack(card));
+  const aimed = attacks.filter(({ card }) => !isTileAttack(card)).flatMap((attack) => {
     if (isAreaAttack(attack.card)) {
       return match.heroes.filter((target) => canReach(attack.hero, attack.card, target)).map((target) => ({ ...attack, targetId: target.id }));
     }
@@ -208,7 +213,7 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const target = match.heroes.find((candidate) => candidate.id === targetId)!;
     const distance = chebyshevDistance(hero.position, target.position);
     const ignoresHalfCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreHalfCover);
-    const halfCover = coverAgainst(REACTOR_DECK, hero.position, target.position) === CoverKind.Half && !ignoresHalfCover;
+    const halfCover = coverAgainst(match.grid, hero.position, target.position) === CoverKind.Half && !ignoresHalfCover;
     const damageEffect = card.effects.find(({ kind }) => kind === EffectKind.Damage || kind === EffectKind.DamageAtLongRange)!;
     const incoming = Math.max(0, damageAtDistance(damageEffect, distance) - (halfCover ? HALF_COVER_REDUCTION : 0));
     dealDamage(tick, hero, target, incoming, events);
@@ -216,10 +221,36 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
       applySlow(tick, hero, target, effect, events);
     }
   }
+  // Tile Attacks come after the other damage of the Tick, so Cover they destroy still protected against it.
+  for (const attack of tileAttacks) resolveTileAttack(match, tick, attack, events);
   // Knockback comes after all damage of the Tick, in Hero order, so an earlier push can block a later one.
   for (const { hero, card, targetId } of landed) {
     const push = card.effects.find(({ kind }) => kind === EffectKind.Knockback);
     if (push) knockBack(match, tick, hero, match.heroes.find((candidate) => candidate.id === targetId)!, push.amount ?? 0, events);
+  }
+}
+
+/**
+ * Breach Charge on a tile: needs Range and Line of Sight to the tile, otherwise it fails. It damages the
+ * enemy Hero standing there, with Cover applying as it does for any Attack (Full Cover blocks the damage,
+ * Half Cover reduces it), and then destroys Half Cover on the tile. Full Cover stays.
+ */
+function resolveTileAttack(match: MatchState, tick: number, { hero, card, tile }: Attack, events: MatchEvent[]): void {
+  if (!tile || chebyshevDistance(hero.position, tile) > (card.range ?? 0) || !hasLineOfSight(match.grid, hero.position, tile)) {
+    events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id });
+    return;
+  }
+  const occupant = match.heroes.find((other) => other.squad !== hero.squad && !other.exhausted && samePosition(other.position, tile));
+  const cover = coverAgainst(match.grid, hero.position, tile);
+  if (occupant && cover === CoverKind.Full) {
+    events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId: occupant.id });
+  } else if (occupant) {
+    const amount = card.effects.find(({ kind }) => kind === EffectKind.Damage)?.amount ?? 0;
+    dealDamage(tick, hero, occupant, Math.max(0, amount - (cover === CoverKind.Half ? HALF_COVER_REDUCTION : 0)), events);
+  }
+  if (coverAt(match.grid, tile) === CoverKind.Half) {
+    match.grid = destroyCover(match.grid, tile);
+    events.push({ kind: EventKind.CoverDestroyed, tick, heroId: hero.id, to: { ...tile } });
   }
 }
 
@@ -243,7 +274,7 @@ function knockBack(
     const to = { col: target.position.col + direction.col, row: target.position.row + direction.row };
     const blocked =
       !isStepAllowed(target.position, to) ||
-      coverAt(REACTOR_DECK, to) === CoverKind.Full ||
+      coverAt(match.grid, to) === CoverKind.Full ||
       match.heroes.some((other) => samePosition(other.position, to));
     if (blocked) return;
     events.push({ kind: EventKind.Knockback, tick, heroId: target.id, from: { ...target.position }, to });
@@ -275,8 +306,8 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
     target.hiddenPrevented = true;
   },
   // Hidden needs Cover where the Hero stands; Suppress in the same Round prevents it.
-  [EffectKind.BecomeHidden]: ({ tick, effect, caster, events }) => {
-    if (caster.hiddenPrevented || coverAt(REACTOR_DECK, caster.position) === CoverKind.None) {
+  [EffectKind.BecomeHidden]: ({ match, tick, effect, caster, events }) => {
+    if (caster.hiddenPrevented || coverAt(match.grid, caster.position) === CoverKind.None) {
       events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
       return;
     }
@@ -315,7 +346,7 @@ function resolveUtility(
   // Mark Target needs the enemy within this Hero's own sight range (9 while Hidden), which also finds Hidden enemies.
   const inOwnSight = (enemy: HeroState) =>
     chebyshevDistance(caster.position, enemy.position) <= sightRange(caster) &&
-    hasLineOfSight(REACTOR_DECK, caster.position, enemy.position);
+    hasLineOfSight(match.grid, caster.position, enemy.position);
   const validTarget =
     target !== undefined &&
     !target.exhausted &&
@@ -479,6 +510,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
             card: playedCard(hero, action),
             targetId: action.target,
             ghostTile: ghostTiles[hero.squad][action.target]?.position,
+            tile: action.tile,
           }]
         : [],
     );

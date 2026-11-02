@@ -8,6 +8,7 @@ import {
   EffectKind,
   energyPool,
   LONG_RANGE_FROM,
+  type Grid,
   type GridPosition,
   HALF_COVER_REDUCTION,
   HERO_DECKS,
@@ -36,8 +37,8 @@ export function selectHero(draft: PlanningDraft, heroId: string, playing: boolea
 }
 
 /** What the Cover on a target's tile does against an attacker at `attacker`; `undefined` without protection. */
-export function coverProtectionLabel(attacker: GridPosition, target: GridPosition): string | undefined {
-  switch (coverAgainst(REACTOR_DECK, attacker, target)) {
+export function coverProtectionLabel(attacker: GridPosition, target: GridPosition, grid: Grid = REACTOR_DECK): string | undefined {
+  switch (coverAgainst(grid, attacker, target)) {
     case CoverKind.Full:
       return "Full Cover · cannot be attacked";
     case CoverKind.Half:

@@ -41,7 +41,8 @@ export function buildPlaybackFrames(events: readonly MatchEvent[]): PlaybackFram
       tickFrames[occurrence] ??= { tick, moves: {}, shields: {}, hits: [], exhausted: [], events: [] };
       const frame = tickFrames[occurrence];
       frame.events.push(event);
-      if (event.to) frame.moves[event.heroId] = event.to;
+      // `to` of a CoverDestroyed event is the Cover's tile, not a place the Hero moves to.
+      if (event.to && event.kind !== EventKind.CoverDestroyed) frame.moves[event.heroId] = event.to;
       if (event.kind === EventKind.ShieldGained) frame.shields[event.heroId] = event.amount ?? 0;
       if (event.kind === EventKind.AttackHit) {
         frame.hits.push({ targetId: event.targetId!, damage: event.damage ?? 0, absorbed: event.absorbed ?? 0 });
@@ -66,7 +67,9 @@ export function describeEvent(event: MatchEvent, nameOf: (heroId: string) => str
       return `Tick ${event.tick}: ${who} hits ${nameOf(event.targetId!)}: Deck Damage ${event.damage}` +
         ((event.absorbed ?? 0) > 0 ? `, Shield absorbed ${event.absorbed}` : "");
     case EventKind.AttackFailed:
-      return `Tick ${event.tick}: ${who}'s Attack on ${nameOf(event.targetId!)} fails (Range or Line of Sight)`;
+      return `Tick ${event.tick}: ${who}'s Attack${event.targetId ? ` on ${nameOf(event.targetId)}` : ""} fails (Range or Line of Sight)`;
+    case EventKind.CoverDestroyed:
+      return `Tick ${event.tick}: ${who} destroys the Cover on column ${event.to!.col}, row ${event.to!.row}`;
     case EventKind.SlowApplied:
       return `Tick ${event.tick}: ${who} Slows ${nameOf(event.targetId!)}`;
     case EventKind.SlowUsed:

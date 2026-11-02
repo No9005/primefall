@@ -172,6 +172,21 @@ export function isAreaAttack(card: CardDefinition): boolean {
 }
 
 /**
+ * Breach Charge without Overdrive: an Attack on a tile that damages the enemy Hero standing there and
+ * destroys Half Cover on it. The action carries the tile; its target is the casting Hero.
+ */
+export function isTileAttack(card: CardDefinition): boolean {
+  const [first, second, ...rest] = card.effects;
+  return (
+    card.type === CardType.Attack &&
+    card.target === CardTarget.Tile &&
+    first?.kind === EffectKind.Damage &&
+    second?.kind === EffectKind.DestroyHalfCover &&
+    rest.length === 0
+  );
+}
+
+/**
  * Whether a card's Primary effect can be planned and resolved so far. Only simple Attacks, Ghost Shot and
  * Utility cards can be played in Overdrive so far; other Overdrives (for example two allied targets) follow
  * with their own tickets.
@@ -185,7 +200,7 @@ export function isPlayableCard(card: CardDefinition, overdrive?: boolean): boole
       isSimpleAttack(mode) || isGhostAttack(mode) || (mode.target === CardTarget.EnemyInSight && isPlayableUtility(mode))
     );
   }
-  return isSimpleAttack(card) || isAreaAttack(card) || isPlayableUtility(card);
+  return isSimpleAttack(card) || isAreaAttack(card) || isTileAttack(card) || isPlayableUtility(card);
 }
 
 const slow: CardEffect = { kind: EffectKind.ApplySlow, duration: 1 };
