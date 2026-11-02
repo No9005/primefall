@@ -37,6 +37,9 @@ import {
   coverAt,
   destroyCover,
   type GridPosition,
+  isStepAllowed,
+  isWall,
+  stepTowards,
   HALF_COVER_REDUCTION,
   hasLineOfSight,
   REACTOR_DECK,
@@ -123,21 +126,6 @@ interface Attack {
 }
 
 const samePosition = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
-const isWall = (position: GridPosition) => tileAt(REACTOR_DECK, position) === TileKind.Wall;
-
-/** A step is legal into the Grid, not into a Wall, and a diagonal step may not cut a Wall corner. */
-function isStepAllowed(from: GridPosition, to: GridPosition): boolean {
-  if (tileAt(REACTOR_DECK, to) === undefined || isWall(to)) return false;
-  const diagonal = from.col !== to.col && from.row !== to.row;
-  return !(diagonal && (isWall({ col: to.col, row: from.row }) || isWall({ col: from.col, row: to.row })));
-}
-
-function stepTowards(from: GridPosition, destination: GridPosition): GridPosition {
-  return {
-    col: from.col + Math.sign(destination.col - from.col),
-    row: from.row + Math.sign(destination.row - from.row),
-  };
-}
 
 /**
  * Resolves one Tick of Move actions. All Heroes take their first step before any takes the second, so
