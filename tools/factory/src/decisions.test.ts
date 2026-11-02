@@ -26,6 +26,7 @@ import {
   ReviewOutcome,
   reviewOutcome,
   summarizeAgentRun,
+  formatRunSummary,
   reworkDecision,
   ReworkAction,
   ReviewVerdict,
@@ -351,5 +352,23 @@ describe("reviewRetryDue", () => {
     expect(reviewRetryDue(1)).toBe(true);
     expect(reviewRetryDue(2)).toBe(false);
     expect(reviewRetryDue(3)).toBe(false);
+  });
+});
+
+describe("formatRunSummary", () => {
+  it("shows session, turns, duration, cost and denied commands", () => {
+    const log = [
+      { type: "system", subtype: "init", session_id: "s-1" },
+      { type: "result", subtype: "success", num_turns: 10, duration_ms: 18392, total_cost_usd: 0.0877, permission_denials: [{ tool_name: "Bash", tool_input: { command: "git rm a.ts" } }] },
+    ];
+    expect(formatRunSummary("Rework", log)).toBe(
+      ["### Rework", "- session: s-1", "- turns: 10", "- duration: 18 s", "- cost: $0.09", "- result: success", "- denied:", "  - `Bash: git rm a.ts`", ""].join("\n"),
+    );
+  });
+
+  it("copes with an unreadable log", () => {
+    expect(formatRunSummary("Review", null)).toBe(
+      ["### Review", "- session: unknown", "- turns: unknown", "- duration: unknown", "- cost: unknown", "- result: unknown", "- denied: none", ""].join("\n"),
+    );
   });
 });
