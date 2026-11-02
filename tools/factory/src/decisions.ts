@@ -159,7 +159,10 @@ export function closingReferences(description: string | null | undefined): strin
 }
 
 /** Hidden marker of one restart by the revive job; it carries the commit so a restart counts per head commit. */
-export const reviveMarker = (sha: string): string => `<!-- factory:revived:${sha.slice(0, 7)} -->`;
+/** The pipeline run name ends with the pull request number; match it whole so #7 does not match #76. */
+export const runNameIsForPullRequest = (runName: string, number: number): boolean => new RegExp(`#${number}$`).test(runName.trim());
+
+export const reviveMarker =(sha: string): string => `<!-- factory:revived:${sha.slice(0, 7)} -->`;
 
 /** The "revive" job (every 5 minutes) only restarts what an event chain dropped. */
 export const ReviveAction = {
