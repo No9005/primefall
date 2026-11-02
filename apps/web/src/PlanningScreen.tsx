@@ -32,7 +32,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Board, type TokenHero } from "./Board";
 import { buildPlaybackFrames, describeEvent, tickCountOf } from "./playback";
-import { CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero } from "./planning-selection";
+import { CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, targetHint } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
 export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
@@ -184,7 +184,7 @@ const ACTION_USE_LABELS: Record<ActionKind, string> = {
 function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onCardTap }: HandProps) {
   const deck = HERO_DECKS[hero.heroClass];
   return (
-    <ul className="hud hand" aria-label="Hand">
+    <ul className="hand" aria-label="Hand">
       {hero.hand.map((cardIndex) => {
         const card = deck[cardIndex]!;
         const queuedAt = queue.findIndex((action) => action.card === cardIndex);
@@ -554,11 +554,11 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       />
       <header className="hud top-bar">
         <span data-testid="round">
-          Round {view.round} / {ROUND_LIMIT}
+          Round {view.round}/{ROUND_LIMIT}
         </span>
         <span data-testid="prime-progress" aria-label="Prime Zone control">
-          Prime Zone · You {view.primeProgress[view.squad]} / {PRIME_ZONE_WIN_RESOLUTIONS} · Enemy{" "}
-          {view.primeProgress[view.squad === SquadId.Left ? SquadId.Right : SquadId.Left]} / {PRIME_ZONE_WIN_RESOLUTIONS}
+          Zone · You {view.primeProgress[view.squad]}/{PRIME_ZONE_WIN_RESOLUTIONS} · Enemy{" "}
+          {view.primeProgress[view.squad === SquadId.Left ? SquadId.Right : SquadId.Left]}/{PRIME_ZONE_WIN_RESOLUTIONS}
         </span>
         {!playing && (
           <span data-testid="timer" aria-label="Planning time left">
@@ -567,7 +567,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         )}
         {playing && (
           <span data-testid="tick" className="tick">
-            Tick {Math.max(playback.tick, 1)} / {Math.max(playback.tickCount, 1)}
+            Tick {Math.max(playback.tick, 1)}/{Math.max(playback.tickCount, 1)}
           </span>
         )}
       </header>
@@ -580,38 +580,13 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         aimedCard={aimedCard}
       />
       {(playback?.log ?? log).length > 0 && (
-        <ol className="hud log" aria-label="Resolution log" data-testid="log">
+        // Newest line stays in view; older ones scroll up.
+        <ol className="hud log" aria-label="Resolution log" data-testid="log" ref={(el) => el?.scrollTo(0, el.scrollHeight)}>
           {(playback?.log ?? log).map((line, i) => (
             <li key={i}>{line}</li>
           ))}
         </ol>
       )}
-      {aiming !== undefined && !playing && (
-        <div className="hud target-hint">
-          {aimedCard?.target === CardTarget.Area
-            ? "Tap a highlighted tile: the area around it is revealed"
-            : aimedCard?.target === CardTarget.EmptyTile
-              ? "Tap a highlighted empty tile to place Half Cover"
-              : aimsAtTile
-            ? "Tap a highlighted tile: it hurts the enemy Hero there and destroys Half Cover"
-            : needsSecondAlly
-              ? deployAlly === undefined ? "Tap the first allied Hero" : "Tap the second allied Hero"
-            : aimedCard?.target === CardTarget.SelfHero
-            ? "Tap this Hero to confirm"
-            : aimedCard?.target === CardTarget.EnemiesInRange
-              ? "Tap this Hero to hit every enemy Hero in Range"
-              : aimedCard?.target === CardTarget.GhostEnemy
-                ? "Tap a Ghost to shoot its last known position; it hits only if an enemy stands there"
-                : aimsAtDeployTile
-                  ? "Tap the tile the ally moves towards"
-                  : aimsAtAlly
-                  ? "Tap an allied Hero"
-                  : "Tap an enemy Hero to attack"}
-        </div>
-      )}
-      <div className="hud energy" data-testid="energy" aria-label="Energy">
-        Energy · Pitched {energy.pitched} · Spent {energy.spent} · Available {energy.available}
-      </div>
       {choosing !== undefined && !playing && (
         <CardDetailSheet
           card={HERO_DECKS[selected.heroClass][choosing]!}
@@ -625,23 +600,39 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
           }}
         />
       )}
-      <Hand
-        hero={selected}
-        queue={queue}
-        pitched={pitched}
-        armed={armed ?? aiming}
-        armedLabel={aiming !== undefined ? "Pick a target" : "Pick a tile"}
-        choosing={choosing}
-        disabled={playing}
-        onCardTap={tapCard}
-      />
-      <section className="hud commit-panel" aria-label="Commit">
-        {issues.length > 0 && (
-          <ul className="issues" role="alert">
-            {issues.map((issue) => (
-              <li key={issue.message}>{issue.message}</li>
-            ))}
-          </ul>
+      <div className="hud hand-bar">
+        <div className="energy" data-testid="energy" aria-label="Energy">
+          <span>Pitched {energy.pitched}</span>
+          <span>Spent {energy.spent}</span>
+          <span className="available">Available {energy.available}</span>
+        </div>
+        <Hand
+          hero={selected}
+          queue={queue}
+          pitched={pitched}
+          armed={armed ?? aiming}
+          armedLabel={aiming !== undefined ? "Pick a target" : "Pick a tile"}
+          choosing={choosing}
+          disabled={playing}
+          onCardTap={tapCard}
+        />
+      </div>
+      <section className="commit-panel" aria-label="Commit">
+        {((aiming !== undefined && !playing) || issues.length > 0) && (
+          <div className="commit-info">
+            {aiming !== undefined && !playing && aimedCard && (
+              <p className="target-hint">
+                {targetHint({ card: aimedCard, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked: deployAlly !== undefined })}
+              </p>
+            )}
+            {issues.length > 0 && (
+              <ul className="issues" role="alert">
+                {issues.map((issue) => (
+                  <li key={issue.message}>{issue.message}</li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
         <button type="button" className="commit" disabled={issues.length > 0 || playing} onClick={() => void commit(plan)}>
           Commit

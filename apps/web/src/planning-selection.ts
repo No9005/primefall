@@ -2,6 +2,7 @@ import {
   type CardDefinition,
   type CardEffect,
   type CardIndex,
+  CardTarget,
   chebyshevDistance,
   CoverKind,
   coverAgainst,
@@ -122,6 +123,32 @@ export const CARD_USE_LABELS: Record<CardUse, string> = {
   [CardUse.Move]: "Move 2",
   [CardUse.Block]: "Block 2",
 };
+
+export interface AimState {
+  card: CardDefinition;
+  /** The card needs a highlighted tile (Breach Charge). */
+  aimsAtTile: boolean;
+  aimsAtAlly: boolean;
+  /** Forward Deploy: the ally is picked, the tile it moves towards is next. */
+  aimsAtDeployTile: boolean;
+  needsSecondAlly: boolean;
+  /** An ally has already been picked (Aegis Protocol Overdrive). */
+  allyPicked: boolean;
+}
+
+/** One short line telling the player what to tap next while a card is aimed. */
+export function targetHint({ card, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked }: AimState): string {
+  if (card.target === CardTarget.Area) return "Tap a highlighted tile to reveal the area";
+  if (card.target === CardTarget.EmptyTile) return "Tap a highlighted empty tile for Half Cover";
+  if (aimsAtTile) return "Tap a highlighted tile to hit the Hero there";
+  if (needsSecondAlly) return allyPicked ? "Tap the second allied Hero" : "Tap the first allied Hero";
+  if (card.target === CardTarget.SelfHero) return "Tap this Hero to confirm";
+  if (card.target === CardTarget.EnemiesInRange) return "Tap this Hero to hit all enemies in Range";
+  if (card.target === CardTarget.GhostEnemy) return "Tap a Ghost to shoot its last position";
+  if (aimsAtDeployTile) return "Tap the tile the ally moves to";
+  if (aimsAtAlly) return "Tap an allied Hero";
+  return "Tap an enemy Hero to attack";
+}
 
 export interface EnergyReadout {
   pitched: number;
