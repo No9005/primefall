@@ -1,6 +1,6 @@
 import { ActionKind, cardInMode, HERO_DECKS, HeroClass, type QueuedAction } from "game-core";
 import { describe, expect, it } from "vitest";
-import { CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, targetHint } from "./planning-selection";
+import { cardFace, CardUse, cardUseReasons, queueSlotCode, removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, targetHint } from "./planning-selection";
 
 describe("rangeDamageLabel", () => {
   const longShotOverdrive = cardInMode(HERO_DECKS[HeroClass.Assassin][4]!, true);
@@ -122,5 +122,41 @@ describe("energyReadout and cardUseReasons", () => {
     const full: QueuedAction[] = [1, 2, 3, 4].map((card) => ({ kind: ActionKind.Block, card }));
     const reasons = cardUseReasons(HeroClass.Bruiser, 0, full, []);
     expect([reasons[CardUse.Pitch], reasons[CardUse.Move], reasons[CardUse.Block]]).toEqual([undefined, "Queue is full", "Queue is full"]);
+  });
+});
+
+describe("cardFace", () => {
+  it("takes the effect text from the card data for every MVP card", () => {
+    for (const heroClass of Object.values(HeroClass)) {
+      for (const card of HERO_DECKS[heroClass]) {
+        const { type, effectText } = cardFace(card);
+        expect(effectText).toContain(describeEffects(card.effects));
+        if (card.overdrive) expect(effectText).toContain(describeEffects(card.overdrive));
+        expect(["ATTACK", "UTILITY"]).toContain(type);
+      }
+    }
+  });
+});
+
+describe("Queue window", () => {
+  const queue: QueuedAction[] = [
+    { kind: ActionKind.Block, card: 1 },
+    { kind: ActionKind.Move, card: 2, destination: { col: 3, row: 3 } },
+  ];
+
+  it("shows short codes per action", () => {
+    expect(queueSlotCode(HeroClass.Bruiser, queue[0]!)).toBe("BLK");
+    expect(queueSlotCode(HeroClass.Bruiser, queue[1]!)).toBe("MOVE");
+  });
+
+  it("gives the Energy of a removed action back", () => {
+    // Bruiser card 0 is Slam Shot (cost 1).
+    const withAttack: QueuedAction[] = [...queue, { kind: ActionKind.Primary, card: 0, target: "enemy" }];
+    const pitched = [5, 6];
+    expect(energyReadout(HeroClass.Bruiser, withAttack, pitched).available).toBe(energyReadout(HeroClass.Bruiser, queue, pitched).available - 1);
+    const afterRemoval = removeQueueAction(withAttack, 2);
+    expect(afterRemoval).toEqual(queue);
+    expect(energyReadout(HeroClass.Bruiser, afterRemoval, pitched)).toEqual(energyReadout(HeroClass.Bruiser, queue, pitched));
+    expect(removeQueueAction(queue, 0)).toEqual([queue[1]]);
   });
 });

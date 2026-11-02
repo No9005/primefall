@@ -1,4 +1,6 @@
 import {
+  ActionKind,
+  CardType,
   type CardDefinition,
   type CardEffect,
   type CardIndex,
@@ -108,6 +110,28 @@ export function describeEffects(effects: readonly CardEffect[] | undefined): str
   if (!effects || effects.length === 0) return undefined;
   const text = effects.map(describeEffect).join(", ");
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** What a card face shows besides its name and cost; the effect text always comes from the card data. */
+export function cardFace(card: CardDefinition): { type: string; effectText: string } {
+  const effectText = describeEffects(card.effects) ?? "";
+  const overdriveText = describeEffects(card.overdrive);
+  return {
+    type: card.type === CardType.Attack ? "ATTACK" : "UTILITY",
+    effectText: overdriveText ? `${effectText}. Overdrive: ${overdriveText}` : effectText,
+  };
+}
+
+/** The short code a filled Queue slot shows. */
+export function queueSlotCode(heroClass: HeroClass, action: QueuedAction): string {
+  if (action.kind === ActionKind.Move) return "MOVE";
+  if (action.kind === ActionKind.Block) return "BLK";
+  return HERO_DECKS[heroClass][action.card]!.type === CardType.Attack ? "ATK" : "UTL";
+}
+
+/** The Queue without the action in slot `index`; its Energy is available again because Spent follows the Queue. */
+export function removeQueueAction(queue: readonly QueuedAction[], index: number): readonly QueuedAction[] {
+  return queue.filter((_, i) => i !== index);
 }
 
 export enum CardUse {
