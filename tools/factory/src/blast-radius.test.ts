@@ -47,6 +47,7 @@ describe("classifyPullRequest", () => {
 
   it.each([
     ["CLAUDE.md"],
+    ["CODING_STANDARDS.md"],
     ["GLOSSARY.md"],
     ["docs/adr/0021-new.md"],
     ["docs/specs/mvp-card-set.md"],

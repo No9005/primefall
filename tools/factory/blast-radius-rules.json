@@ -3,6 +3,7 @@
   "highRiskLabel": "high-risk",
   "documentationAndAgentPaths": [
     "CLAUDE.md",
+    "CODING_STANDARDS.md",
     "GLOSSARY.md",
     "docs/adr/**",
     "docs/specs/**",
