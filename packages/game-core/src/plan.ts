@@ -3,7 +3,7 @@
 
 import { type CardIndex, cardInMode, CardTarget, EffectKind, EffectRecipient, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type SquadId, type SquadView, Visibility } from "./host";
-import { type Grid, type GridPosition, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
+import { type Grid, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind, tileAt } from "./reactor-deck";
 
 /** A Hero's Queue holds at most 4 actions (the maximum Hand size, ADR 0020). */
 export const MAX_QUEUE_LENGTH = 4;
@@ -127,6 +127,24 @@ export function moveDestinations(from: GridPosition, grid: Grid = REACTOR_DECK, 
   }
   return found;
 }
+
+/** Where a Move 2 towards `destination` really ends: it stops before a Wall or Wall corner (ADR 0020). */
+export function moveEnd(from: GridPosition, destination: GridPosition): GridPosition {
+  let position = from;
+  for (let step = 0; step < MOVE_DISTANCE; step++) {
+    const next = stepTowards(position, destination);
+    if (!isStepAllowed(position, next) || (next.col === position.col && next.row === position.row)) break;
+    position = next;
+  }
+  return position;
+}
+
+/** The Move 2 destinations the Hero reaches completely: `moveDestinations` minus tiles behind a Wall or Wall corner. */
+export const reachableMoveDestinations = (from: GridPosition): GridPosition[] =>
+  moveDestinations(from).filter((destination) => {
+    const end = moveEnd(from, destination);
+    return end.col === destination.col && end.row === destination.row;
+  });
 
 /** Returns every rule the plan breaks against the Squad View; an empty list means it can be committed. */
 export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
