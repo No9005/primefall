@@ -15,7 +15,6 @@ import { type MutableRefObject, useEffect, useRef, useState } from "react";
 import type { BoardPick, Point } from "./card-drag";
 import {
   beginMoveFraming,
-  buildPlacements,
   type Camera,
   type CameraView,
   endMoveFraming,
@@ -25,7 +24,6 @@ import {
   takeOverFraming,
   gridToWorld,
   isZoomed,
-  Layer,
   panBy,
   pickTileAt,
   resolveTap,
@@ -35,6 +33,7 @@ import {
   zoomAt,
   zoomOnPoint,
 } from "./board-layout";
+import { buildTerrain, type Face } from "./terrain";
 
 interface Manifest {
   bundles: { name: string; assets: { alias: string; src: string; data?: { anchor?: [number, number] } }[] }[];
@@ -75,12 +74,15 @@ export interface TokenHero {
   marked?: boolean;
 }
 
-/** The containers the terrain is drawn into, and the sprite anchors from the asset manifest. */
+/** The containers the terrain is drawn into. */
 interface Terrain {
   floor: Container;
   objects: Container;
   planning: Container;
-  anchors: Map<string, number[]>;
+}
+
+function fillFace(graphics: Graphics, { points, fill, edge }: Face): Graphics {
+  return graphics.poly(points).fill(fill).stroke({ width: 1, color: edge, alpha: 0.8 });
 }
 
 interface BoardProps {
@@ -264,18 +266,23 @@ export function Board({
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
   useEffect(() => {
     if (!terrain) return;
-    const { floor, objects, planning, anchors } = terrain;
+    const { floor, objects, planning } = terrain;
     const known = destroyedCover.reduce(destroyCover, REACTOR_DECK);
     const grid = placedCover.reduce((current, tile) => withTile(current, tile, TileKind.HalfCover), known);
     const created: Container[] = [];
-    for (const { alias, x, y, layer, depth } of buildPlacements(grid)) {
-      const sprite = new Sprite(Assets.get(alias));
-      const [anchorX, anchorY] = anchors.get(alias) ?? [0.5, 1];
-      sprite.anchor.set(anchorX, anchorY);
-      sprite.position.set(x, y);
-      sprite.zIndex = depth;
-      (layer === Layer.Floor ? floor : objects).addChild(sprite);
-      created.push(sprite);
+    // Floor tiles share one shape layer; standing pieces are drawn per tile and sort with the Heroes by depth.
+    const ground = new Graphics();
+    floor.addChild(ground);
+    created.push(ground);
+    for (const tile of buildTerrain(grid)) {
+      fillFace(ground, tile.floor);
+      if (tile.marker) ground.poly(tile.marker.points).stroke({ width: 2, color: tile.marker.color, alpha: 0.9 });
+      if (!tile.piece) continue;
+      const piece = new Graphics();
+      for (const face of tile.piece) fillFace(piece, face);
+      piece.zIndex = tile.depth;
+      objects.addChild(piece);
+      created.push(piece);
     }
 
     // Cover tiles get an outline on the floor: orange for Full Cover, blue for Half Cover.
@@ -320,7 +327,7 @@ export function Board({
     const app = new Application();
 
     void (async () => {
-      const [manifest] = await Promise.all([
+      await Promise.all([
         loadAssets(),
         app.init({ background: "#12161c", resizeTo: element, antialias: true, autoDensity: true, resolution: window.devicePixelRatio }),
       ]);
@@ -330,7 +337,6 @@ export function Board({
       }
       element.appendChild(app.canvas);
 
-      const anchors = new Map(manifest.bundles.flatMap((b) => b.assets).map((a) => [a.alias, a.data?.anchor ?? [0.5, 1]]));
       const world = new Container();
       const floor = new Container();
       const objects = new Container();
@@ -343,7 +349,7 @@ export function Board({
       // Highlights and markers lie on the floor; markers would hide behind props, which is acceptable.
       setOverlay(planning);
 
-      setTerrain({ floor, objects, planning, anchors });
+      setTerrain({ floor, objects, planning });
 
       const size = (): CameraView => ({ width: app.screen.width, height: app.screen.height });
       let camera = fitCamera(size());
