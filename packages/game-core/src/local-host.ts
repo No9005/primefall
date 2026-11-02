@@ -3,7 +3,7 @@
 
 import { planSquad } from "./ai";
 import { type MatchHost, SquadId, type SquadView, type SubmitResult } from "./host";
-import { buildSquadView, createMatch, startRound } from "./match";
+import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { type SquadPlan, validatePlan } from "./plan";
 import { getSquadEvents, resolveRound } from "./resolution";
 import { SERVER_ENTRY } from "./server";
@@ -11,10 +11,41 @@ import { SERVER_ENTRY } from "./server";
 export const LOCAL_HOST_ENTRY = "game-core/local-host" as const;
 export const LOCAL_HOST_BACKEND = SERVER_ENTRY;
 
+/** Schema version of a saved match; bump it whenever the Match State changes shape. */
+export const SNAPSHOT_VERSION = 1;
+
+/** A local host can save the running match as text, to resume it later. */
+export interface LocalMatchHost extends MatchHost {
+  /** The match seed, shown for bug reports. */
+  readonly seed: number;
+  /** The Match State at the start of the current Round, tagged with `SNAPSHOT_VERSION`. */
+  snapshot(): string;
+}
+
 /** Starts a match at Round 1 with all Hands drawn. The AI plans the enemy Squad and the allied Heroes the player leaves out of a plan. */
-export function createLocalHost(seed: number): MatchHost {
-  let match = startRound(createMatch(seed));
+export function createLocalHost(seed: number): LocalMatchHost {
+  return hostFor(startRound(createMatch(seed)));
+}
+
+/** Resumes a saved match. Returns undefined if the text is unreadable or has another schema version. */
+export function restoreLocalHost(snapshot: string): LocalMatchHost | undefined {
+  try {
+    const saved: unknown = JSON.parse(snapshot);
+    if (typeof saved !== "object" || saved === null) return undefined;
+    const { version, match } = saved as { version?: unknown; match?: Partial<MatchState> };
+    if (version !== SNAPSHOT_VERSION || typeof match !== "object" || match === null) return undefined;
+    if (!Array.isArray(match.heroes) || typeof match.round !== "number" || typeof match.rngState !== "number") return undefined;
+    return hostFor(match as MatchState);
+  } catch {
+    return undefined;
+  }
+}
+
+function hostFor(initial: MatchState): LocalMatchHost {
+  let match = initial;
   return {
+    seed: initial.seed,
+    snapshot: () => JSON.stringify({ version: SNAPSHOT_VERSION, match }),
     async getSquadView(squad: SquadId): Promise<SquadView> {
       return buildSquadView(match, squad);
     },
