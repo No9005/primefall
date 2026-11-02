@@ -134,6 +134,19 @@ export function removeQueueAction(queue: readonly QueuedAction[], index: number)
   return queue.filter((_, i) => i !== index);
 }
 
+/** The Queue entries the tap flow and the drag flow both build, so one use of a card is one entry however it was chosen. */
+export function moveAction(card: CardIndex, destination: GridPosition): QueuedAction {
+  return { kind: ActionKind.Move, card, destination };
+}
+
+export function blockAction(card: CardIndex): QueuedAction {
+  return { kind: ActionKind.Block, card };
+}
+
+export function primaryAction(card: CardIndex, target: string, { tile, overdrive }: { tile?: GridPosition; overdrive?: boolean } = {}): QueuedAction {
+  return { kind: ActionKind.Primary, card, target, ...(tile ? { tile } : {}), ...(overdrive ? { overdrive } : {}) };
+}
+
 export enum CardUse {
   Primary = "primary",
   Pitch = "pitch",
