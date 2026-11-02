@@ -4,6 +4,7 @@
 
 # Design, decision, spec and agent files (other markdown such as READMEs and notes is low)
 /CLAUDE.md @No9005
+/CODING_STANDARDS.md @No9005
 /GLOSSARY.md @No9005
 /docs/adr/ @No9005
 /docs/specs/ @No9005
