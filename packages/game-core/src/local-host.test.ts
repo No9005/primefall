@@ -33,14 +33,22 @@ describe("local host", () => {
     expect(json).not.toMatch(/seed|rng/i);
   });
 
-  it("resolves an empty plan into the next Round with nothing happening", async () => {
+  it("lets the AI move the allied Heroes the player did not plan", async () => {
     const host = createLocalHost(7);
     const before = await host.getSquadView(SquadId.Left);
     const result = await host.submitPlan({ squad: SquadId.Left, heroes: [] });
     expect(result.view).toEqual(await host.getSquadView(SquadId.Left));
     expect(result.view.round).toBe(before.round + 1);
+    expect(result.view.heroes.map((hero) => hero.position)).not.toEqual(before.heroes.map((hero) => hero.position));
+    expect(result.events.length).toBeGreaterThan(0);
+  });
+
+  it("leaves the allied Heroes the player planned to the player", async () => {
+    const host = createLocalHost(7);
+    const before = await host.getSquadView(SquadId.Left);
+    const plan = { squad: SquadId.Left, heroes: before.heroes.map((hero) => ({ heroId: hero.id, queue: [] })) };
+    const result = await host.submitPlan(plan);
     expect(result.view.heroes.map((hero) => hero.position)).toEqual(before.heroes.map((hero) => hero.position));
-    expect(result.events).toEqual([]);
   });
 
   it("moves the Hero, discards the card and draws a new one the next Round", async () => {
@@ -51,7 +59,9 @@ describe("local host", () => {
       heroes: [{ heroId: before.id, queue: [{ kind: ActionKind.Move as const, card: before.hand[0]!, destination: { col: 3, row: before.position.row } }] }],
     };
     const result = await host.submitPlan(plan);
-    expect(result.events.map((event) => event.tick)).toEqual([1, 1]);
+    const own = result.events.filter((event) => event.heroId === before.id);
+    expect(own.length).toBeGreaterThan(0);
+    expect(own.every((event) => event.tick === 1)).toBe(true);
     const after = result.view.heroes[0]!;
     expect(after.position).toEqual({ col: 3, row: before.position.row });
     expect(after.hand).toHaveLength(HAND_SIZE);

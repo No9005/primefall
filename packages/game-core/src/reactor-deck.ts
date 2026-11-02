@@ -99,6 +99,23 @@ export function destroyCover(grid: Grid, position: GridPosition): Grid {
   return coverAt(grid, position) === CoverKind.None ? grid : withTile(grid, position, TileKind.Floor);
 }
 
+export const isWall = (position: GridPosition) => tileAt(REACTOR_DECK, position) === TileKind.Wall;
+
+/** A step is legal into the Grid, not into a Wall, and a diagonal step may not cut a Wall corner. */
+export function isStepAllowed(from: GridPosition, to: GridPosition): boolean {
+  if (tileAt(REACTOR_DECK, to) === undefined || isWall(to)) return false;
+  const diagonal = from.col !== to.col && from.row !== to.row;
+  return !(diagonal && (isWall({ col: to.col, row: from.row }) || isWall({ col: from.col, row: to.row })));
+}
+
+/** The tile one step from `from` straight towards `destination` (diagonal when both axes differ). */
+export function stepTowards(from: GridPosition, destination: GridPosition): GridPosition {
+  return {
+    col: from.col + Math.sign(destination.col - from.col),
+    row: from.row + Math.sign(destination.row - from.row),
+  };
+}
+
 /** The Cover tiles of the original map that are no longer Cover in `grid`. */
 export function destroyedCoverTiles(grid: Grid): GridPosition[] {
   const destroyed: GridPosition[] = [];

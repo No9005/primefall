@@ -3,5 +3,6 @@
 
 export const SERVER_ENTRY = "game-core/server" as const;
 
+export * from "./ai";
 export * from "./match";
 export * from "./resolution";
