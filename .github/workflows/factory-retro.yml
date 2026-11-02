@@ -11,6 +11,11 @@ on:
   pull_request:
     types: [closed]
   workflow_dispatch:
+    inputs:
+      pr:
+        description: Merged pull request to count (set by the factory run after its own merge); empty starts a retro by hand
+        required: false
+        default: ""
 
 # One retro at a time.
 concurrency:
@@ -20,9 +25,9 @@ concurrency:
 jobs:
   decide:
     if: >-
-      vars.FACTORY_ENABLED == 'true' && (
+      (vars.FACTORY_ENABLED == 'true' || vars.FACTORY_RUN_ENABLED == 'true') && (
         (github.event_name == 'pull_request' && github.event.pull_request.merged == true) ||
-        (github.event_name == 'workflow_dispatch' && github.actor == github.repository_owner)
+        (github.event_name == 'workflow_dispatch' && (github.actor == github.repository_owner || (inputs.pr != '' && github.actor == 'github-actions[bot]')))
       )
     runs-on: ubuntu-latest
     permissions:
@@ -44,8 +49,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RETRO_EVERY: ${{ vars.RETRO_EVERY }}
-          PR: ${{ github.event.pull_request.number || 0 }}
-          MODE: ${{ github.event_name == 'workflow_dispatch' && 'manual' || 'merged' }}
+          PR: ${{ github.event.pull_request.number || inputs.pr || 0 }}
+          MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.pr == '' && 'manual' || 'merged' }}
 
   retro:
     needs: decide
