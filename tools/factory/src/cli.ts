@@ -19,17 +19,6 @@ import {
   type ReviewThread,
   effectiveBlastRadius,
   closingReferences,
-  formatHealthEntry,
-  parseHealthEntries,
-  summarizeHealthLog,
-  type HealthEntry,
-  reviveMarker,
-  runNameIsForPullRequest,
-  ReviewState,
-  ReviveAction,
-  reviveSteps,
-  type RevivePullRequest,
-  type ReviveState,
   isFactoryPullRequest,
   isRetroBranch,
   reviewRetryDue,
@@ -59,7 +48,6 @@ const Command = {
   EnsureLabels: "ensure-labels",
   SelectIssue: "select-issue",
   MarkWorking: "mark-working",
-  PrContext: "pr-context",
   ImplementReport: "implement-report",
   OpenThreads: "open-threads",
   Classify: "classify",
@@ -68,8 +56,6 @@ const Command = {
   MergeGate: "merge-gate",
   RetroDecision: "retro-decision",
   AfterMerge: "after-merge",
-  Revive: "revive",
-  HealthLog: "health-log",
   ReworkStalled: "rework-stalled",
   PrForIssue: "pr-for-issue",
   AwaitMerge: "await-merge",
@@ -84,7 +70,6 @@ const LABEL_COLORS: Record<string, string> = {
   [Label.BlastRadiusLow]: "0e8a16",
   [Label.BlastRadiusHigh]: "b60205",
   [Label.HighRisk]: "b60205",
-  [Label.FactoryHealth]: "5319e7",
 };
 
 const repo = process.env.GITHUB_REPOSITORY ?? "";
@@ -196,15 +181,6 @@ interface PullRequestData {
 }
 
 const loadPullRequest = (number: number) => api<PullRequestData>(`repos/${repo}/pulls/${number}`);
-
-/** Resolves what the later jobs need to know and whether this pull request belongs to the factory. */
-function pullRequestContext(number: number): void {
-  const pr = api<{ head: { ref: string; sha: string; repo: { full_name: string } | null }; base: { repo: { full_name: string } } }>(`repos/${repo}/pulls/${number}`);
-  const factory = isFactoryPullRequest({ headRef: pr.head.ref, headRepo: pr.head.repo?.full_name ?? "", baseRepo: pr.base.repo.full_name });
-  output("factory", String(factory));
-  output("head_ref", pr.head.ref);
-  output("head_sha", pr.head.sha);
-}
 
 /**
  * After an implement run: when no branch or pull request came out of it, tell the owner on the issue
@@ -444,100 +420,6 @@ function afterMerge(number: number): void {
   output("start", "true");
 }
 
-/** Workflow runs of the given file that are queued or running (the run name carries the pull request number). */
-function activeRuns(workflowFile: string): { display_title: string }[] {
-  const statuses = ["queued", "in_progress", "waiting", "pending"];
-  return statuses.flatMap((status) => api<{ workflow_runs: { display_title: string }[] }>(`repos/${repo}/actions/workflows/${workflowFile}/runs?status=${status}&per_page=50`).workflow_runs);
-}
-
-function reviveState(): ReviveState {
-  const pipelineRuns = activeRuns("factory-pull-request.yml");
-  const open = apiList<{ number: number; head: { ref: string; repo: { full_name: string } | null }; base: { repo: { full_name: string } } }>(`repos/${repo}/pulls?state=open`).filter((pr) =>
-    isFactoryPullRequest({ headRef: pr.head.ref, headRepo: pr.head.repo?.full_name ?? "", baseRepo: pr.base.repo.full_name }),
-  );
-  const openAgentPullRequests = open.map((listed): RevivePullRequest => {
-    const pr = api<{ number: number; updated_at: string; mergeable_state: string; auto_merge: unknown; labels: { name: string }[]; head: { sha: string } }>(`repos/${repo}/pulls/${listed.number}`);
-    const statuses = apiList<{ context: string; state: string; created_at: string }>(`repos/${repo}/commits/${pr.head.sha}/statuses`).filter((s) => s.context === REVIEW_STATUS_CONTEXT);
-    const latest = statuses[0];
-    const committed = api<{ commit: { committer: { date: string } } }>(`repos/${repo}/commits/${pr.head.sha}`).commit.committer.date;
-    const lastActivity = Math.max(Date.parse(pr.updated_at), Date.parse(committed), latest ? Date.parse(latest.created_at) : 0);
-    const marker = reviveMarker(pr.head.sha);
-    const comments = apiList<{ body: string }>(`repos/${repo}/issues/${pr.number}/comments`);
-    return {
-      number: pr.number,
-      labels: pr.labels.map((l) => l.name),
-      hasConflict: pr.mergeable_state === "dirty",
-      review: latest?.state === "success" ? ReviewState.Pass : latest?.state === "failure" ? ReviewState.Fail : latest?.state === "error" ? ReviewState.Error : ReviewState.None,
-      pipelineRunning: pipelineRuns.some((run) => runNameIsForPullRequest(run.display_title, pr.number)),
-      idleMinutes: Math.floor((Date.now() - lastActivity) / 60000),
-      revivedForHead: comments.filter((c) => c.body.includes(marker)).length,
-      autoMergeEnabled: pr.auto_merge !== null,
-    };
-  });
-  const recentlyClosed = api<{ merged_at: string | null; body: string | null; head: { ref: string; repo: { full_name: string } | null }; base: { repo: { full_name: string } } }[]>(`repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=15`);
-  const issuesToClose = recentlyClosed
-    .filter((pr) => pr.merged_at !== null && !isRetroBranch(pr.head.ref) && isFactoryPullRequest({ headRef: pr.head.ref, headRepo: pr.head.repo?.full_name ?? "", baseRepo: pr.base.repo.full_name }))
-    .flatMap((pr) => closingReferences(pr.body).map((reference) => Number(reference.replace(/\D/g, ""))))
-    .filter((number) => api<{ state: string; pull_request?: unknown }>(`repos/${repo}/issues/${number}`).state === "open");
-  const working = apiList<{ number: number }>(`repos/${repo}/issues?state=open&labels=${Label.AgentWorking}`).length > 0;
-  const implementRunning = working || activeRuns("factory-implement.yml").length > 0;
-  return { openAgentPullRequests, issuesToClose: [...new Set(issuesToClose)], implementRunning, startableIssue: implementRunning ? undefined : firstStartable(openReadyIssueNumbers()) };
-}
-
-/** The issue that collects the revive job's interventions; created on first use. */
-function healthIssue(create: boolean): number | undefined {
-  const existing = api<{ number: number; pull_request?: unknown }[]>(`repos/${repo}/issues?state=all&labels=${Label.FactoryHealth}&per_page=5`).find((issue) => !issue.pull_request);
-  if (existing || !create) return existing?.number;
-  ensureLabels();
-  return api<{ number: number }>(`repos/${repo}/issues`, ["-X", "POST", "-f", "title=Factory health log", "-f", `labels[]=${Label.FactoryHealth}`, "-f", `body=One comment per intervention of the revive job (see docs/agents/software-factory.md). The retro reads it to find causes that keep coming back. Do not close or edit this issue.${FOOTER}`]).number;
-}
-
-/** Logging must never stop the revive job. */
-function logHealth(entry: HealthEntry): void {
-  try {
-    const issue = healthIssue(true);
-    if (issue !== undefined) gh(["api", "-X", "POST", `repos/${repo}/issues/${issue}/comments`, "-f", `body=${formatHealthEntry(entry)}${FOOTER}`]);
-  } catch (error) {
-    console.log(`Could not write the health log: ${String(error).slice(0, 200)}`);
-  }
-}
-
-/** For the retro: writes the log's entries and its causes to a file. */
-function writeHealthLog(file: string): void {
-  const issue = healthIssue(false);
-  const entries = issue === undefined ? [] : parseHealthEntries(apiList<{ body: string }>(`repos/${repo}/issues/${issue}/comments`).map((comment) => comment.body));
-  writeFileSync(file, JSON.stringify({ issue: issue ?? null, entries: entries.length, causes: summarizeHealthLog(entries) }, null, 2));
-  console.log(`Health log: ${entries.length} entries.`);
-}
-
-/**
- * Every 5 minutes: restarts what the event chain dropped (a merge by the workflow token starts no workflow,
- * a pull request with a conflict gets none either). It reads the whole state, so a missed event is made up
- * for by the next run. With `--dry-run` it only prints what it would do.
- */
-function revive(dryRun: boolean): void {
-  const steps = reviveSteps(reviveState());
-  if (steps.length === 0) return console.log("Nothing to revive.");
-  const branch = api<{ default_branch: string }>(`repos/${repo}`).default_branch;
-  for (const step of steps) {
-    console.log(`${dryRun ? "[dry run] " : ""}${step.action} ${step.target ?? ""}: ${step.reason}`);
-    if (dryRun || step.target === undefined) continue;
-    logHealth({ time: new Date().toISOString().replace(/\.\d+Z$/, "Z"), action: step.action, target: step.target, reason: step.reason });
-    if (step.action === ReviveAction.CloseIssue) gh(["api", "-X", "PATCH", `repos/${repo}/issues/${step.target}`, "-f", "state=closed", "-f", "state_reason=completed"]);
-    if (step.action === ReviveAction.StartImplement) gh(["workflow", "run", "factory-implement.yml", "--repo", repo, "--ref", branch, "-f", "trigger=closed"]);
-    if (step.action === ReviveAction.RunMergeGate) mergeGate(step.target);
-    if (step.action === ReviveAction.RunPipeline) {
-      const sha = loadPullRequest(step.target).head.sha;
-      gh(["api", "-X", "POST", `repos/${repo}/issues/${step.target}/comments`, "-f", `body=${reviveMarker(sha)}\nThe pipeline was restarted by the revive job: ${step.reason}.${FOOTER}`]);
-      gh(["workflow", "run", "factory-pull-request.yml", "--repo", repo, "--ref", branch, "-f", `pr=${step.target}`]);
-    }
-    if (step.action === ReviveAction.HandOver) {
-      addLabel(step.target, Label.NeedsHuman);
-      upsertComment(step.target, CommentMarker.ReviveHandOver, `The revive job hands this pull request to a human: ${step.reason}. No further automatic runs will start for it.`);
-    }
-  }
-}
-
 /** Output `pr`: the open pull request of an issue's agent branch, or empty. */
 function prForIssue(issue: number): void {
   const pr = apiList<{ number: number; head: { ref: string } }>(`repos/${repo}/pulls?state=open`).find((listed) => listed.head.ref.startsWith(`agent/issue-${issue}-`));
@@ -567,9 +449,6 @@ switch (command) {
   case Command.MarkWorking:
     (args[1] === "on" ? addLabel : removeLabel)(Number(args[0]), Label.AgentWorking);
     break;
-  case Command.PrContext:
-    pullRequestContext(Number(args[0]));
-    break;
   case Command.ImplementReport:
     implementReport(Number(args[0]), args[1] ?? "", args[2] ?? "");
     break;
@@ -590,12 +469,6 @@ switch (command) {
     break;
   case Command.RetroDecision:
     retroDecision(Number(args[0]), args[1] === "manual");
-    break;
-  case Command.HealthLog:
-    writeHealthLog(args[0] ?? "health-log.json");
-    break;
-  case Command.Revive:
-    revive(args.includes("--dry-run"));
     break;
   case Command.AfterMerge:
     afterMerge(Number(args[0]));
