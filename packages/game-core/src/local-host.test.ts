@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HAND_SIZE } from "./cards";
 import { ROUND_LIMIT, SquadId } from "./host";
 import { ActionKind, type SquadPlan } from "./plan";
-import { createLocalHost } from "./local-host";
+import { createLocalHost, restoreLocalHost, SNAPSHOT_VERSION } from "./local-host";
 
 describe("local host", () => {
   it("answers asynchronously with the Squad's own Heroes, Hands and counts", async () => {
@@ -110,6 +110,25 @@ describe("local host", () => {
     expect(replay.view).toEqual(first.view);
     expect(replay.events).toEqual(first.events);
     expect(first.view.result).toBeDefined();
+  });
+
+  it("resumes a saved match with the same Round, Decks, Hands and positions", async () => {
+    const host = createLocalHost(11);
+    await host.submitPlan({ squad: SquadId.Left, heroes: [] });
+    const resumed = restoreLocalHost(host.snapshot())!;
+    expect(resumed.seed).toBe(11);
+    expect(await resumed.getSquadView(SquadId.Left)).toEqual(await host.getSquadView(SquadId.Left));
+    // Both continue identically.
+    const plan = { squad: SquadId.Left, heroes: [] };
+    expect(await resumed.submitPlan(plan)).toEqual(await host.submitPlan(plan));
+  });
+
+  it("ignores a snapshot with another schema version or garbage", () => {
+    const saved = JSON.parse(createLocalHost(1).snapshot());
+    expect(restoreLocalHost(JSON.stringify({ ...saved, version: SNAPSHOT_VERSION + 1 }))).toBeUndefined();
+    expect(restoreLocalHost("not json")).toBeUndefined();
+    expect(restoreLocalHost("null")).toBeUndefined();
+    expect(restoreLocalHost(JSON.stringify({ version: SNAPSHOT_VERSION, match: {} }))).toBeUndefined();
   });
 
   it("rejects an invalid plan", async () => {
