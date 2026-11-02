@@ -73,6 +73,7 @@ describe("candidateIssues", () => {
   it("tries every open ready issue, lowest number first, when an issue closes", () => {
     expect(candidateIssues(SelectTrigger.Closed, 12, [15, 13, 15, 22])).toEqual([13, 15, 22]);
     expect(candidateIssues(SelectTrigger.Closed, 12, [])).toEqual([]);
+    expect(candidateIssues(SelectTrigger.Manual, 0, [9, 8])).toEqual([8, 9]);
   });
 });
 
