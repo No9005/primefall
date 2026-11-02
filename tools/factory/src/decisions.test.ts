@@ -18,6 +18,7 @@ import {
   ReviewState,
   ReviveAction,
   reviveSteps,
+  runNameIsForPullRequest,
   type RevivePullRequest,
   type ReviveState,
   reviewRetryDue,
@@ -81,6 +82,14 @@ describe("readyLabelSetByOwner", () => {
     expect(readyLabelSetByOwner(events, "owner")).toBe(true);
     expect(readyLabelSetByOwner(events.slice(0, 1), "owner")).toBe(false);
     expect(readyLabelSetByOwner([], "owner")).toBe(false);
+  });
+});
+
+describe("runNameIsForPullRequest", () => {
+  it("matches the whole pull request number only", () => {
+    expect(runNameIsForPullRequest("Factory pull request #76", 76)).toBe(true);
+    expect(runNameIsForPullRequest("Factory pull request #76", 7)).toBe(false);
+    expect(runNameIsForPullRequest("Factory pull request #10", 1)).toBe(false);
   });
 });
 
