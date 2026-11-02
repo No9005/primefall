@@ -46,12 +46,17 @@ export function TutorialScreen({ onPlay, onClose }: { onPlay: () => void; onClos
   // A step runs for TUTORIAL_STEP_SECONDS and then the next one starts; the last step waits for Play.
   useEffect(() => {
     setSeconds(0);
-    const timer = setInterval(() => setSeconds((s) => s + 0.25), 250);
+    let elapsed = 0;
+    const timer = setInterval(() => {
+      elapsed = Math.min(elapsed + 0.25, TUTORIAL_STEP_SECONDS);
+      setSeconds(elapsed);
+      if (elapsed >= TUTORIAL_STEP_SECONDS) {
+        clearInterval(timer);
+        if (!last) setIndex((i) => i + 1);
+      }
+    }, 250);
     return () => clearInterval(timer);
-  }, [index]);
-  useEffect(() => {
-    if (seconds >= TUTORIAL_STEP_SECONDS && !last) setIndex((i) => i + 1);
-  }, [seconds, last]);
+  }, [index, last]);
 
   const faces =
     step.topic === TutorialTopic.Overdrive && step.card
