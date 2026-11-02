@@ -48,6 +48,13 @@ describe("buildPlaybackFrames", () => {
     expect(buildPlaybackFrames([blocked])).toMatchObject([{ tick: 1, moves: {}, shields: {}, hits: [], exhausted: [] }]);
   });
 
+  it("describes a blocked Move for an own and an enemy Hero", () => {
+    const nameOf = (id: string) => (id === "a" ? "Bruiser" : "Enemy Bruiser");
+    const blocked = (heroId: string): MatchEvent => ({ kind: EventKind.MoveBlocked, tick: 1, heroId, from: { col: 1, row: 0 } });
+    expect(describeEvent(blocked("a"), nameOf)).toBe("Tick 1: Bruiser's Move is blocked");
+    expect(describeEvent(blocked("b"), nameOf)).toBe("Tick 1: Enemy Bruiser's Move is blocked");
+  });
+
   it("shows Deck Damage and Exhaustion in the frame of their event", () => {
     const hit: MatchEvent = { kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "b", absorbed: 1, damage: 1 };
     const exhausted: MatchEvent = { kind: EventKind.Exhausted, tick: 1, heroId: "b" };
