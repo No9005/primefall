@@ -2,7 +2,7 @@
 
 Mobile-first, 2.5D tactical 3v3 game: both Squads plan simultaneously, commit commands, and a deterministic Resolution plays out. A Squad wins by holding the Prime Zone for three consecutive Resolutions.
 
-The current product spec is `docs/specs/offline-mvp-prototype.md` (card effects: `docs/specs/mvp-card-set.md`). The vocabulary is `GLOSSARY.md`. Decisions are in `docs/adr/`. Work is tracked as GitHub issues.
+The current product spec is `docs/specs/offline-mvp-prototype.md` (card effects: `docs/specs/mvp-card-set.md`). The vocabulary is `GLOSSARY.md`. Decisions are in `docs/adr/`. Work is tracked as GitHub issues. Switch values, working agreements and approaches that were tried and dropped: `docs/process/status.md`.
 
 ## Language
 
@@ -38,6 +38,7 @@ If the issue is unclear or contradicts the spec, an ADR or the glossary, do not 
 - **Never commit to `main`. Never push to `main`. Never force-push `main`. No exceptions.** `main` only changes through a pull request that the product owner merges.
 - Always work on your own branch, cut fresh from the latest `origin/main`. Never work on `main` itself and never reuse a branch whose pull request has already been merged: start a new branch from the current `origin/main` instead.
 - If the session or tooling prescribes a branch name, use that name, but it must still be a branch cut from the latest `origin/main`, and the rules above still apply.
+- In a chat session, merge a pull request only when the owner explicitly says so for that pull request; the session acts through the owner's account, which settings cannot tell apart from the owner.
 - Squashing your own commits that have not been pushed yet is expected (see _How to work on a ticket_). Do not rewrite shared history, that is, anything already pushed. If a push is rejected, stop and ask the product owner instead of forcing it.
 
 ## Code style
