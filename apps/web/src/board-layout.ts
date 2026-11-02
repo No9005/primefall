@@ -176,6 +176,9 @@ export function resolveTap(x: number, y: number, { heroes, targetableIds, highli
     if (distance <= HERO_PICK_TOLERANCE && (!nearest || distance < nearest.distance)) nearest = { id: hero.id, distance };
   }
   if (nearest) return { kind: "hero", id: nearest.id };
+  // A highlighted tile is a valid target, so its floor diamond wins over a Wall sprite whose rectangle also covers the point.
+  const floor = { col: Math.round(point.col), row: Math.round(point.row) };
+  if (highlights.some((h) => h.col === floor.col && h.row === floor.row)) return { kind: "tile", tile: floor };
   const tile = pickTileAt(x, y, grid);
   if (!tile) return { kind: "none" };
   if (highlights.some((h) => h.col === tile.col && h.row === tile.row)) return { kind: "tile", tile };

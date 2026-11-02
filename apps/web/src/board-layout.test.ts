@@ -206,6 +206,36 @@ describe("resolveTap", () => {
     expect(resolveTap(other.x, other.y, candidates)).toEqual({ kind: "none" });
   });
 
+  describe("next to a Wall", () => {
+    const wall = { col: 4, row: 6 };
+    const target = { col: 4, row: 5 };
+    const { x, y } = world(target.col, target.row);
+    const inset = 4;
+    const points = [
+      [x, y],
+      [x + TILE_WIDTH / 2 - inset, y],
+      [x - TILE_WIDTH / 2 + inset, y],
+      [x, y + TILE_HEIGHT / 2 - inset],
+      [x, y - TILE_HEIGHT / 2 + inset],
+    ] as const;
+    const base = { heroes: [], targetableIds: [] };
+
+    it("picks a highlighted tile over the Wall sprite that covers its diamond", () => {
+      expect(REACTOR_DECK.tiles[wall.row]?.[wall.col]).toBe(TileKind.Wall);
+      expect(pickTileAt(x - TILE_WIDTH / 2 + inset, y)).toEqual(wall);
+      for (const [px, py] of points) expect(resolveTap(px, py, { ...base, highlights: [target] })).toEqual({ kind: "tile", tile: target });
+    });
+
+    it("without a highlight still picks the Wall as before, which is no target", () => {
+      for (const [px, py] of points) expect(resolveTap(px, py, { ...base, highlights: [] })).toEqual({ kind: "none" });
+    });
+
+    it("still prefers a Hero target within tolerance over a highlighted tile", () => {
+      const enemy = { id: "enemy", position: target };
+      expect(resolveTap(x, y, { heroes: [enemy], targetableIds: ["enemy"], highlights: [target] })).toEqual({ kind: "hero", id: "enemy" });
+    });
+  });
+
   it("selects an own Hero by tapping its tile", () => {
     const point = world(4, 4);
     expect(resolveTap(point.x, point.y, candidates)).toEqual({ kind: "hero", id: "own" });
