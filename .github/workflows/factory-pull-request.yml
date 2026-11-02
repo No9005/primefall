@@ -3,6 +3,8 @@
 # are handled, and only when the repository variable FACTORY_ENABLED is "true".
 # The factory code and rules always come from the default branch, never from the pull request.
 name: Factory pull request
+# The pull request number is in the run name: the revive job finds a running pipeline by it.
+run-name: Factory pull request #${{ github.event.pull_request.number || inputs.pr }}
 
 on:
   pull_request:

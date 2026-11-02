@@ -23,6 +23,7 @@ export const CommentMarker = {
   ReviewNotRun: "<!-- factory:review-not-run -->",
   ImplementFailed: "<!-- factory:implement-failed -->",
   ReworkStalled: "<!-- factory:rework-stalled -->",
+  ReviveHandOver: "<!-- factory:revive-hand-over -->",
 } as const;
 
 export const ReviewVerdict = { Pass: "pass", Fail: "fail" } as const;
@@ -155,6 +156,84 @@ export function retroDue(input: { headRef: string; mergedAgentPullRequests: numb
 export function closingReferences(description: string | null | undefined): string[] {
   const numbers = [...(description ?? "").matchAll(/\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)\b/gi)].map((match) => match[1] as string);
   return [...new Set(numbers)].map((number) => `Closes #${number}`);
+}
+
+/** Hidden marker of one restart by the revive job; it carries the commit so a restart counts per head commit. */
+export const reviveMarker = (sha: string): string => `<!-- factory:revived:${sha.slice(0, 7)} -->`;
+
+/** The "revive" job (every 5 minutes) only restarts what an event chain dropped. */
+export const ReviveAction = {
+  CloseIssue: "close-issue",
+  StartImplement: "start-implement",
+  RunPipeline: "run-pipeline",
+  RunMergeGate: "run-merge-gate",
+  HandOver: "hand-over",
+} as const;
+export type ReviveAction = (typeof ReviveAction)[keyof typeof ReviveAction];
+
+export interface ReviveStep {
+  action: ReviveAction;
+  /** Pull request or issue number, whichever the action works on. */
+  target?: number;
+  reason: string;
+}
+
+export const ReviewState = { Pass: "pass", Fail: "fail", Error: "error", None: "none" } as const;
+export type ReviewState = (typeof ReviewState)[keyof typeof ReviewState];
+
+export interface RevivePullRequest {
+  number: number;
+  labels: string[];
+  hasConflict: boolean;
+  /** State of the `agent-review` status for the current head commit. */
+  review: ReviewState;
+  /** A pipeline run for this pull request is queued or running. */
+  pipelineRunning: boolean;
+  /** Minutes since the last activity on the pull request (commit, status, comment). */
+  idleMinutes: number;
+  /** How often the revive job already restarted the pipeline for this head commit. */
+  revivedForHead: number;
+  autoMergeEnabled: boolean;
+}
+
+export interface ReviveState {
+  openAgentPullRequests: RevivePullRequest[];
+  /** Issues named by a merged agent pull request that are still open. */
+  issuesToClose: number[];
+  implementRunning: boolean;
+  /** The ticket the factory would start now, if any. */
+  startableIssue: number | undefined;
+}
+
+/** A pull request must be this quiet before the revive job acts: the normal events get the first chance. */
+export const REVIVE_AFTER_MINUTES = { NoReview: 10, FailedReview: 20 } as const;
+
+/** What to restart. Idempotent: it returns nothing while a run is in progress or a human is needed. */
+export function reviveSteps(state: ReviveState): ReviveStep[] {
+  const steps: ReviveStep[] = state.issuesToClose.map((issue) => ({ action: ReviveAction.CloseIssue, target: issue, reason: "its pull request was merged but the issue is still open" }));
+  for (const pr of state.openAgentPullRequests) {
+    if (pr.labels.includes(Label.NeedsHuman)) continue;
+    if (pr.hasConflict) {
+      steps.push({ action: ReviveAction.HandOver, target: pr.number, reason: "the pull request has a merge conflict, so GitHub starts no workflows for it" });
+      continue;
+    }
+    if (pr.pipelineRunning) continue;
+    const quietFor = pr.review === ReviewState.Fail ? REVIVE_AFTER_MINUTES.FailedReview : REVIVE_AFTER_MINUTES.NoReview;
+    if (pr.review === ReviewState.Pass) {
+      const waiting = pr.labels.includes(Label.NeedsHumanMerge);
+      if (!pr.autoMergeEnabled && !waiting && pr.idleMinutes >= REVIVE_AFTER_MINUTES.NoReview) {
+        steps.push({ action: ReviveAction.RunMergeGate, target: pr.number, reason: "the review passed but the merge gate did not act" });
+      }
+      continue;
+    }
+    if (pr.idleMinutes < quietFor) continue;
+    if (pr.revivedForHead >= 1) steps.push({ action: ReviveAction.HandOver, target: pr.number, reason: "the pipeline was restarted once for this commit and there is still no passing review" });
+    else steps.push({ action: ReviveAction.RunPipeline, target: pr.number, reason: pr.review === ReviewState.Fail ? "the review failed and nothing followed" : "no review for the current commit" });
+  }
+  if (!state.implementRunning && state.startableIssue !== undefined) {
+    steps.push({ action: ReviveAction.StartImplement, target: state.startableIssue, reason: "a ticket is startable and no implement run is active" });
+  }
+  return steps;
 }
 
 export const ReworkAction = { Rework: "rework", NeedsHuman: "needs-human" } as const;
