@@ -34,6 +34,7 @@ import {
   zoomOnPoint,
 } from "./board-layout";
 import { buildTerrain, type Face } from "./terrain";
+import { TERRAIN_STYLE } from "./terrain-style";
 
 interface Manifest {
   bundles: { name: string; assets: { alias: string; src: string; data?: { anchor?: [number, number] } }[] }[];
@@ -294,7 +295,8 @@ export function Board({
         const placed = placedCover.some(isTile);
         const destroyed = !placed && destroyedCover.some(isTile);
         if (cover === CoverKind.None && !destroyed) return;
-        const color = destroyed ? 0x8a8f98 : placed ? 0x7be0ff : cover === CoverKind.Full ? 0xff8a3d : 0x4aa3ff;
+        const outlines = TERRAIN_STYLE.coverOutline;
+        const color = destroyed ? outlines.destroyed : placed ? outlines.placed : cover === CoverKind.Full ? outlines.full : outlines.half;
         const { x, y } = gridToWorld({ col, row });
         const outline = new Graphics().poly(tileDiamond()).stroke({ width: destroyed ? 2 : placed ? 5 : 3, color, alpha: destroyed ? 0.6 : 0.9 });
         outline.position.set(x, y);
