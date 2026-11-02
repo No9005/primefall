@@ -9,7 +9,7 @@ Clickable mockups: `docs/design/mockups.html` (open in a browser). Assets: `docs
 - Commit must feel consequential.
 - The replay must explain cause and effect.
 - Orientation: **landscape first** (Grid is 21 x 11 tiles, about 2:1). In portrait the app shows a "Rotate your device" notice. Desktop scales the same layout.
-- The board fills the whole screen as the bottom layer; HUD panels overlay it at the edges. The default camera frames the central 13 columns around the Prime Zone; pinch or drag pans and zooms, double tap re-centres on the selected Hero.
+- The board fills the whole screen as the bottom layer; HUD panels overlay it at the edges. The camera always shows the whole board (all 21 by 11 tiles, including tall props such as Walls), as large as fits and centred, also after a resize or rotation. Pan, zoom and re-centring on a Hero are not part of the prototype.
 
 ## Screens
 
