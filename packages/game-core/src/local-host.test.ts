@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HAND_SIZE } from "./cards";
 import { ROUND_LIMIT, SquadId } from "./host";
-import { ActionKind } from "./plan";
+import { ActionKind, type SquadPlan } from "./plan";
 import { createLocalHost } from "./local-host";
 
 describe("local host", () => {
@@ -66,6 +66,50 @@ describe("local host", () => {
     expect(after.position).toEqual({ col: 3, row: before.position.row });
     expect(after.hand).toHaveLength(HAND_SIZE);
     expect(after.hand).not.toContain(before.hand[0]);
+  });
+
+  it("replays a recorded seed and plans to the same final state", async () => {
+    async function play(seed: number, recorded?: SquadPlan[]) {
+      const host = createLocalHost(seed);
+      const plans: SquadPlan[] = [];
+      const events = [];
+      let view = await host.getSquadView(SquadId.Left);
+      while (!view.result) {
+        const recordedPlan = recorded?.[plans.length];
+        let result;
+        if (recordedPlan) {
+          result = await host.submitPlan(recordedPlan);
+          plans.push(recordedPlan);
+        } else {
+          // Scripted player: the first Hero steps one column along the Row each Round with its
+          // first card. If the host rejects the step, the Queue stays empty (as after a timeout).
+          const hero = view.heroes[0]!;
+          const step = { col: hero.position.col + (hero.position.col < 5 ? 1 : -1), row: hero.position.row };
+          const moving: SquadPlan = {
+            squad: SquadId.Left,
+            heroes: [{ heroId: hero.id, queue: [{ kind: ActionKind.Move as const, card: hero.hand[0]!, destination: step }] }],
+          };
+          const idle: SquadPlan = { squad: SquadId.Left, heroes: [{ heroId: hero.id, queue: [] }] };
+          let plan = moving;
+          try {
+            result = await host.submitPlan(moving);
+          } catch {
+            plan = idle;
+            result = await host.submitPlan(idle);
+          }
+          plans.push(plan);
+        }
+        events.push(result.events);
+        view = result.view;
+      }
+      return { plans, events, view };
+    }
+    const first = await play(2024);
+    expect(first.plans.some((plan) => plan.heroes.some((hero) => hero.queue.length > 0))).toBe(true);
+    const replay = await play(2024, first.plans);
+    expect(replay.view).toEqual(first.view);
+    expect(replay.events).toEqual(first.events);
+    expect(first.view.result).toBeDefined();
   });
 
   it("rejects an invalid plan", async () => {

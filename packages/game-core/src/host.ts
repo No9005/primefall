@@ -14,6 +14,9 @@ export enum SquadId {
 /** Rounds per match (Round Limit, ADR 0019). */
 export const ROUND_LIMIT = 30;
 
+/** Seconds a Squad has to plan a Round before the host closes Planning with empty Queues (ADR 0017). */
+export const PLANNING_TIMER_SECONDS = 60;
+
 /** Why a match ended (ADR 0010, ADR 0011, ADR 0019). */
 export enum MatchEndReason {
   /** A Squad controlled the Prime Zone for three consecutive Resolutions. */
