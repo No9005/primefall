@@ -19,6 +19,12 @@ import {
   type ReviewThread,
   effectiveBlastRadius,
   closingReferences,
+  reviveMarker,
+  ReviewState,
+  ReviveAction,
+  reviveSteps,
+  type RevivePullRequest,
+  type ReviveState,
   isFactoryPullRequest,
   isRetroBranch,
   reviewRetryDue,
@@ -57,6 +63,7 @@ const Command = {
   MergeGate: "merge-gate",
   RetroDecision: "retro-decision",
   AfterMerge: "after-merge",
+  Revive: "revive",
   ReworkStalled: "rework-stalled",
 } as const;
 
@@ -76,7 +83,7 @@ const ratingEnabled = blastRadiusEnabled(process.env.BLAST_RADIUS_ENABLED);
 const owner = process.env.GITHUB_REPOSITORY_OWNER ?? "";
 
 function gh(args: string[], input?: string): string {
-  return execFileSync("gh", args, { encoding: "utf8", input, stdio: ["pipe", "pipe", "inherit"] });
+  return execFileSync("gh", args, { encoding: "utf8", input, stdio: ["pipe", "pipe", "inherit"], maxBuffer: 256 * 1024 * 1024 });
 }
 
 function api<T>(path: string, args: string[] = []): T {
@@ -137,16 +144,8 @@ function hasAgentBranch(issue: number): boolean {
   return api<unknown[]>(`repos/${repo}/git/matching-refs/heads/agent/issue-${issue}-`).length > 0;
 }
 
-function selectIssue(triggerName: string, number: number): void {
-  const trigger = Object.values(SelectTrigger).find((t) => t === triggerName);
-  if (!trigger) throw new Error(`Unknown trigger: ${triggerName}`);
-  const openReadyIssues =
-    trigger === SelectTrigger.Closed
-      ? apiList<{ number: number; pull_request?: unknown }>(`repos/${repo}/issues?state=open&labels=${Label.ReadyForAgent}`)
-          .filter((issue) => !issue.pull_request)
-          .map((issue) => issue.number)
-      : [];
-  const candidates = candidateIssues(trigger, number, openReadyIssues);
+/** The first of the candidates the factory may start now, with the reason for each skipped one printed. */
+function firstStartable(candidates: number[]): number | undefined {
   for (const candidate of candidates) {
     const issue = api<IssueData>(`repos/${repo}/issues/${candidate}`);
     if (issue.state !== "open") continue;
@@ -163,9 +162,21 @@ function selectIssue(triggerName: string, number: number): void {
       readyLabelSetByOwner: readyLabelSetByOwner(events, owner),
     });
     console.log(`#${candidate}: ${verdict.startable ? "start" : "skip"} (${verdict.reason})`);
-    if (verdict.startable) return output("issue", String(candidate));
+    if (verdict.startable) return candidate;
   }
-  output("issue", "");
+  return undefined;
+}
+
+const openReadyIssueNumbers = (): number[] =>
+  apiList<{ number: number; pull_request?: unknown }>(`repos/${repo}/issues?state=open&labels=${Label.ReadyForAgent}`)
+    .filter((issue) => !issue.pull_request)
+    .map((issue) => issue.number);
+
+function selectIssue(triggerName: string, number: number): void {
+  const trigger = Object.values(SelectTrigger).find((t) => t === triggerName);
+  if (!trigger) throw new Error(`Unknown trigger: ${triggerName}`);
+  const openReadyIssues = trigger === SelectTrigger.Closed ? openReadyIssueNumbers() : [];
+  output("issue", String(firstStartable(candidateIssues(trigger, number, openReadyIssues)) ?? ""));
 }
 
 interface PullRequestData {
@@ -416,6 +427,73 @@ function afterMerge(number: number): void {
   output("start", "true");
 }
 
+/** Workflow runs of the given file that are queued or running (the run name carries the pull request number). */
+function activeRuns(workflowFile: string): { display_title: string }[] {
+  const statuses = ["queued", "in_progress", "waiting", "pending"];
+  return statuses.flatMap((status) => api<{ workflow_runs: { display_title: string }[] }>(`repos/${repo}/actions/workflows/${workflowFile}/runs?status=${status}&per_page=50`).workflow_runs);
+}
+
+function reviveState(): ReviveState {
+  const pipelineRuns = activeRuns("factory-pull-request.yml");
+  const open = apiList<{ number: number; head: { ref: string; repo: { full_name: string } | null }; base: { repo: { full_name: string } } }>(`repos/${repo}/pulls?state=open`).filter((pr) =>
+    isFactoryPullRequest({ headRef: pr.head.ref, headRepo: pr.head.repo?.full_name ?? "", baseRepo: pr.base.repo.full_name }),
+  );
+  const openAgentPullRequests = open.map((listed): RevivePullRequest => {
+    const pr = api<{ number: number; updated_at: string; mergeable_state: string; auto_merge: unknown; labels: { name: string }[]; head: { sha: string } }>(`repos/${repo}/pulls/${listed.number}`);
+    const statuses = apiList<{ context: string; state: string; created_at: string }>(`repos/${repo}/commits/${pr.head.sha}/statuses`).filter((s) => s.context === REVIEW_STATUS_CONTEXT);
+    const latest = statuses[0];
+    const committed = api<{ commit: { committer: { date: string } } }>(`repos/${repo}/commits/${pr.head.sha}`).commit.committer.date;
+    const lastActivity = Math.max(Date.parse(pr.updated_at), Date.parse(committed), latest ? Date.parse(latest.created_at) : 0);
+    const marker = reviveMarker(pr.head.sha);
+    const comments = apiList<{ body: string }>(`repos/${repo}/issues/${pr.number}/comments`);
+    return {
+      number: pr.number,
+      labels: pr.labels.map((l) => l.name),
+      hasConflict: pr.mergeable_state === "dirty",
+      review: latest?.state === "success" ? ReviewState.Pass : latest?.state === "failure" ? ReviewState.Fail : latest?.state === "error" ? ReviewState.Error : ReviewState.None,
+      pipelineRunning: pipelineRuns.some((run) => run.display_title.includes(`#${pr.number}`)),
+      idleMinutes: Math.floor((Date.now() - lastActivity) / 60000),
+      revivedForHead: comments.filter((c) => c.body.includes(marker)).length,
+      autoMergeEnabled: pr.auto_merge !== null,
+    };
+  });
+  const recentlyClosed = api<{ merged_at: string | null; body: string | null; head: { ref: string; repo: { full_name: string } | null }; base: { repo: { full_name: string } } }[]>(`repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=15`);
+  const issuesToClose = recentlyClosed
+    .filter((pr) => pr.merged_at !== null && !isRetroBranch(pr.head.ref) && isFactoryPullRequest({ headRef: pr.head.ref, headRepo: pr.head.repo?.full_name ?? "", baseRepo: pr.base.repo.full_name }))
+    .flatMap((pr) => closingReferences(pr.body).map((reference) => Number(reference.replace(/\D/g, ""))))
+    .filter((number) => api<{ state: string; pull_request?: unknown }>(`repos/${repo}/issues/${number}`).state === "open");
+  const working = apiList<{ number: number }>(`repos/${repo}/issues?state=open&labels=${Label.AgentWorking}`).length > 0;
+  const implementRunning = working || activeRuns("factory-implement.yml").length > 0;
+  return { openAgentPullRequests, issuesToClose: [...new Set(issuesToClose)], implementRunning, startableIssue: implementRunning ? undefined : firstStartable(openReadyIssueNumbers()) };
+}
+
+/**
+ * Every 5 minutes: restarts what the event chain dropped (a merge by the workflow token starts no workflow,
+ * a pull request with a conflict gets none either). It reads the whole state, so a missed event is made up
+ * for by the next run. With `--dry-run` it only prints what it would do.
+ */
+function revive(dryRun: boolean): void {
+  const steps = reviveSteps(reviveState());
+  if (steps.length === 0) return console.log("Nothing to revive.");
+  const branch = api<{ default_branch: string }>(`repos/${repo}`).default_branch;
+  for (const step of steps) {
+    console.log(`${dryRun ? "[dry run] " : ""}${step.action} ${step.target ?? ""}: ${step.reason}`);
+    if (dryRun || step.target === undefined) continue;
+    if (step.action === ReviveAction.CloseIssue) gh(["api", "-X", "PATCH", `repos/${repo}/issues/${step.target}`, "-f", "state=closed", "-f", "state_reason=completed"]);
+    if (step.action === ReviveAction.StartImplement) gh(["workflow", "run", "factory-implement.yml", "--repo", repo, "--ref", branch, "-f", "trigger=closed"]);
+    if (step.action === ReviveAction.RunMergeGate) mergeGate(step.target);
+    if (step.action === ReviveAction.RunPipeline) {
+      const sha = loadPullRequest(step.target).head.sha;
+      gh(["api", "-X", "POST", `repos/${repo}/issues/${step.target}/comments`, "-f", `body=${reviveMarker(sha)}\nThe pipeline was restarted by the revive job: ${step.reason}.${FOOTER}`]);
+      gh(["workflow", "run", "factory-pull-request.yml", "--repo", repo, "--ref", branch, "-f", `pr=${step.target}`]);
+    }
+    if (step.action === ReviveAction.HandOver) {
+      addLabel(step.target, Label.NeedsHuman);
+      upsertComment(step.target, CommentMarker.ReviveHandOver, `The revive job hands this pull request to a human: ${step.reason}. No further automatic runs will start for it.`);
+    }
+  }
+}
+
 const [command, ...args] = process.argv.slice(2);
 switch (command) {
   case Command.EnsureLabels:
@@ -450,6 +528,9 @@ switch (command) {
     break;
   case Command.RetroDecision:
     retroDecision(Number(args[0]), args[1] === "manual");
+    break;
+  case Command.Revive:
+    revive(args.includes("--dry-run"));
     break;
   case Command.AfterMerge:
     afterMerge(Number(args[0]));
