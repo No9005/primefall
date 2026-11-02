@@ -37,6 +37,36 @@ describe("AI planning", () => {
   });
 });
 
+describe("AI symmetry", () => {
+  const mirror = ({ col, row }: { col: number; row: number }) => ({ col: 20 - col, row });
+
+  // The Reactor Deck is mirror-symmetric around column 10 (ADR 0016), so a Hero and its mirror image must
+  // plan the mirrored Moves; otherwise one Squad reaches the Prime Zone first (issue 87).
+  it.each([
+    [{ col: 5, row: 1 }],
+    [{ col: 3, row: 2 }],
+    [{ col: 6, row: 9 }],
+    [{ col: 8, row: 5 }],
+  ])("plans mirrored Moves for the Bruiser at %j and its mirror image", (start) => {
+    const match = startRound(createMatch(5));
+    match.heroes.find((hero) => hero.id === "left-bruiser")!.position = start;
+    match.heroes.find((hero) => hero.id === "right-bruiser")!.position = mirror(start);
+    const left = planSquad(buildSquadView(match, SquadId.Left)).heroes.find((hero) => hero.heroId === "left-bruiser")!;
+    const right = planSquad(buildSquadView(match, SquadId.Right)).heroes.find((hero) => hero.heroId === "right-bruiser")!;
+    const destinations = (queue: typeof left.queue) => queue.flatMap((action) => (action.kind === ActionKind.Move ? [action.destination] : []));
+    expect(destinations(right.queue)).toEqual(destinations(left.queue).map(mirror));
+  });
+
+  it("does not let one side win nearly every match", () => {
+    const wins = { [SquadId.Left]: 0, [SquadId.Right]: 0 };
+    for (const seed of SEEDS) {
+      const winner = playAiMatch(seed, MAX_ROUNDS).match.result?.winner;
+      if (winner) wins[winner] += 1;
+    }
+    expect(Math.min(wins[SquadId.Left], wins[SquadId.Right])).toBeGreaterThanOrEqual(3);
+  });
+});
+
 describe("AI-versus-AI smoke test", () => {
   const outcomes = SEEDS.map((seed) => ({ seed, ...playAiMatch(seed, MAX_ROUNDS) }));
 
