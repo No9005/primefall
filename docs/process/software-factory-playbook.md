@@ -215,6 +215,18 @@ What replaced it, and what to copy when you rebuild:
 
 Pitfalls that came with the new design: the Claude action refuses to run when its workflow differs from `main`, so a new workflow can only be tested after it is merged; a rework agent denied `git rm` cannot remove a file and pushes nothing (the stalled comment now lists the denied commands); a manual start with a default issue number `0` failed, which is why the new workflow has no input at all.
 
+### Observations from the first session (2026-11-01)
+
+The first factory was built in one long cloud session (planning, tickets, the factory and its first runs). What carried over from it:
+
+- A factory should fail loudly. Every silent failure (invalid token, a skipped action, denied commands, lost work) cost more time than the failure itself. A report on the issue or pull request is worth more than extra logging.
+- Keep agent tool permissions narrow but test them with the exact way an agent formulates commands (working directory, `git -C`, chaining).
+- Rules that must hold for the owner's own identity (never merge, never push to `main`) cannot be enforced by repository settings alone: the chat agent acts as the owner and the owner's bypass applies to it. They live in `CLAUDE.md`.
+- GraphQL was blocked and `gh` old in the cloud container: use the REST endpoints for issue dependencies and sub-issues (`docs/agents/issue-tracker.md`). The proxy refuses deleting remote branches; the owner deletes them.
+- A free private repository has no rulesets or native auto-merge; the repository was made public. Rules that blocked merges unexpectedly: a required approval for every pull request (an author cannot approve their own), required linear history, and required conversation resolution (one stale inline thread blocked a fixed pull request).
+- Factory changes are best merged one at a time, in order, by the owner, and checked on the first real run.
+- Specification gaps (sight range, distance metric, Cover occupancy, queue length, what Overdrive replaces) surfaced only while specifying tickets and reading the first reviews; numbered grilling rounds with a recommended answer per question settled most of them in one pass.
+
 ## 6. Open points
 
 - Thread resolution through GraphQL is verified only by the unit tests of its decisions; confirm it at the first rework that passes.

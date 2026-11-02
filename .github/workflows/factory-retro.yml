@@ -88,7 +88,7 @@ jobs:
             - You cannot push workflow files. If a workflow prompt should change, describe the change in the pull request body instead.
             - Never edit `tools/factory/blast-radius-rules.json`, `.github/CODEOWNERS`, the ruleset or any ADR, spec or `GLOSSARY.md`, and never propose lowering a pull request's blast radius. Describe gaps in those files in the pull request body.
             - If you find no repeated pattern, open no pull request. Post a short summary of what you looked at on the most recent pull request of the list with `gh pr comment`.
-            - Your working directory is the repository root. Run every command from there, on its own: never `git -C <path>`, no chaining and no heredoc scripts (these are denied). Change files with the Edit and Write tools, not with sed or python. Never merge and never push to `main`.
+            - Follow the command rules under "Software factory" in CLAUDE.md. Never merge and never push to `main`.
           claude_args: |
             --model claude-sonnet-5-5
             --effort medium

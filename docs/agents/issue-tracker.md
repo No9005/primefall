@@ -24,12 +24,12 @@ Create a GitHub issue. "Fetch the relevant ticket" means read it as above.
 
 ## Factory labels
 
-Set by the software factory (`docs/agents/software-factory.md`); the owner sets `ready-for-agent` and `high-risk`.
+The single source for the factory's labels (other docs link here). Set by the software factory (`docs/agents/software-factory.md`); the owner sets `ready-for-agent` and `high-risk`.
 
 | Label | Meaning |
 |---|---|
-| `agent-working` | An implement run is working on the issue |
-| `needs-human` | On a pull request: the automated review failed twice. On an issue: an implement run ended without a pull request. No further automatic runs until the owner acts (on an issue: remove the label to retry) |
+| `agent-working` | A factory run is working on the issue |
+| `needs-human` | On a pull request: the automated review failed twice or the rework pushed nothing. On an issue: the factory run failed or ended without a pull request. No further automatic runs until the owner acts (remove the label to retry) |
 | `needs-human-merge` | High blast radius pull request waiting for the owner to review and merge |
 | `blast-radius:low`, `blast-radius:high` | Class of a pull request |
 | `high-risk` | Owner marks a ticket or pull request as high blast radius |
