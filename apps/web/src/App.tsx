@@ -10,12 +10,14 @@ const PLAYER_SQUAD = SquadId.Left;
 const newSeed = () => Date.now() >>> 0;
 
 export function App() {
-  // A fresh seed per match; the end screen shows it for bug reports.
+  // A fresh seed per match; the start and end screens show it for bug reports.
   const [seed, setSeed] = useState(newSeed);
+  const [started, setStarted] = useState(false);
   const host = useMemo(() => createLocalHost(seed), [seed]);
   const [view, setView] = useState<SquadView>();
 
   useEffect(() => {
+    if (!started) return;
     let cancelled = false;
     setView(undefined);
     void host.getSquadView(PLAYER_SQUAD).then((squadView) => {
@@ -24,12 +26,22 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [host]);
+  }, [host, started]);
 
   return (
     <main className="app">
       <div className="rotate-notice">Rotate your device</div>
-      {!view ? (
+      {!started ? (
+        <section className="end-screen" aria-label="Start" data-testid="start-screen">
+          <h1>Primefall</h1>
+          <button type="button" onClick={() => setStarted(true)}>
+            Play
+          </button>
+          <p className="seed" data-testid="start-seed">
+            Seed {seed}
+          </p>
+        </section>
+      ) : !view ? (
         <p className="loading">Loading…</p>
       ) : view.result ? (
         <EndScreen result={view.result} squad={PLAYER_SQUAD} seed={seed} onPlayAgain={() => setSeed(newSeed())} />

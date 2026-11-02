@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HAND_SIZE } from "./cards";
 import { ROUND_LIMIT, SquadId } from "./host";
-import { ActionKind } from "./plan";
+import { ActionKind, type SquadPlan } from "./plan";
 import { createLocalHost } from "./local-host";
 
 describe("local host", () => {
@@ -66,6 +66,29 @@ describe("local host", () => {
     expect(after.position).toEqual({ col: 3, row: before.position.row });
     expect(after.hand).toHaveLength(HAND_SIZE);
     expect(after.hand).not.toContain(before.hand[0]);
+  });
+
+  it("replays a recorded seed and plans to the same final state", async () => {
+    async function play(seed: number, recorded?: SquadPlan[]) {
+      const host = createLocalHost(seed);
+      const plans: SquadPlan[] = [];
+      const events = [];
+      let view = await host.getSquadView(SquadId.Left);
+      while (!view.result) {
+        // Timeout plans (empty Queues) for the first Hero, recorded as they were submitted.
+        const plan = recorded?.[plans.length] ?? { squad: SquadId.Left, heroes: [{ heroId: view.heroes[0]!.id, queue: [] }] };
+        plans.push(plan);
+        const result = await host.submitPlan(plan);
+        events.push(result.events);
+        view = result.view;
+      }
+      return { plans, events, view };
+    }
+    const first = await play(2024);
+    const replay = await play(2024, first.plans);
+    expect(replay.view).toEqual(first.view);
+    expect(replay.events).toEqual(first.events);
+    expect(first.view.result).toBeDefined();
   });
 
   it("rejects an invalid plan", async () => {

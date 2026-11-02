@@ -19,6 +19,7 @@ import {
   type HeroView,
   type QueuedAction,
   REACTOR_DECK,
+  PLANNING_TIMER_SECONDS,
   PRIME_ZONE_WIN_RESOLUTIONS,
   ROUND_LIMIT,
   SquadId,
@@ -457,8 +458,31 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     setArmed(undefined);
   }
 
-  async function commit() {
-    const result = await submitPlan(plan);
+  // Planning ends early on Commit, or when the timer runs out; a timeout leaves the player's Queues empty.
+  const [secondsLeft, setSecondsLeft] = useState(PLANNING_TIMER_SECONDS);
+  const commitRef = useRef<((toSubmit: SquadPlan) => Promise<void>) | undefined>(undefined);
+  commitRef.current = commit;
+  useEffect(() => {
+    setSecondsLeft(PLANNING_TIMER_SECONDS);
+    const deadline = Date.now() + PLANNING_TIMER_SECONDS * 1000;
+    const interval = setInterval(() => {
+      const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setSecondsLeft(left);
+      if (left === 0) {
+        clearInterval(interval);
+        const emptyPlan: SquadPlan = {
+          squad: view.squad,
+          heroes: view.heroes.filter((hero) => hero.heroClass === PLAYER_HERO_CLASS).map((hero) => ({ heroId: hero.id, queue: [], pitched: [] })),
+        };
+        void commitRef.current?.(emptyPlan);
+      }
+    }, 250);
+    return () => clearInterval(interval);
+  }, [view]);
+
+  async function commit(toSubmit: SquadPlan) {
+    if (playback !== undefined) return;
+    const result = await submitPlan(toSubmit);
     const positions: Record<string, GridPosition> = {};
     const shields: Record<string, number> = {};
     const deckDamage: Record<string, number> = {};
@@ -523,6 +547,11 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
           Prime Zone · You {view.primeProgress[view.squad]} / {PRIME_ZONE_WIN_RESOLUTIONS} · Enemy{" "}
           {view.primeProgress[view.squad === SquadId.Left ? SquadId.Right : SquadId.Left]} / {PRIME_ZONE_WIN_RESOLUTIONS}
         </span>
+        {!playing && (
+          <span data-testid="timer" aria-label="Planning time left">
+            {secondsLeft}s
+          </span>
+        )}
         {playing && (
           <span data-testid="tick" className="tick">
             Tick {Math.max(playback.tick, 1)} / {Math.max(playback.tickCount, 1)}
@@ -601,7 +630,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
             ))}
           </ul>
         )}
-        <button type="button" className="commit" disabled={issues.length > 0 || playing} onClick={() => void commit()}>
+        <button type="button" className="commit" disabled={issues.length > 0 || playing} onClick={() => void commit(plan)}>
           Commit
         </button>
       </section>
