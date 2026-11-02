@@ -8,7 +8,9 @@ button { font: inherit; color: inherit; }
 /* The board fills the screen; HUD panels overlay it at the edges (UI spec). */
 .planning { position: absolute; inset: 0; }
 .board { position: absolute; inset: 0; overflow: hidden; }
-.board canvas { display: block; }
+.board canvas { display: block; touch-action: none; }
+/* Zoom / Fit: round, thumb-sized, at the right edge in the vertical middle (between the enemy panel and the commit column). */
+.board-zoom { position: absolute; z-index: 1; right: calc(10px + env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 2px solid #3d5a73; background: #1b222b; color: #dbe4ec; font: 600 14px Rajdhani, sans-serif; cursor: pointer; }
 
 .hud { position: absolute; background: #1b222bdd; border: 1px solid #3d5a73; border-radius: 6px; box-sizing: border-box; }
 /* HUD placement (UI spec): at 844 x 390 and 667 x 375 the fitted board leaves the bottom corners and a strip at the

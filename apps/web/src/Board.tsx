@@ -12,7 +12,23 @@ import {
 } from "game-core";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
-import { buildPlacements, computeCamera, gridToWorld, Layer, pickTileAt, resolveTap, TILE_HEIGHT, TILE_WIDTH, viewToWorld } from "./board-layout";
+import {
+  buildPlacements,
+  type Camera,
+  type CameraView,
+  fitCamera,
+  gridToWorld,
+  isZoomed,
+  Layer,
+  panBy,
+  pickTileAt,
+  resolveTap,
+  TILE_HEIGHT,
+  TILE_WIDTH,
+  viewToWorld,
+  zoomAt,
+  zoomOnPoint,
+} from "./board-layout";
 
 interface Manifest {
   bundles: { name: string; assets: { alias: string; src: string; data?: { anchor?: [number, number] } }[] }[];
@@ -119,6 +135,10 @@ export function Board({
   const enemyIdsRef = useRef(new Set<string>());
   enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
   const [pressed, setPressed] = useState<GridPosition>();
+  const [zoomed, setZoomed] = useState(false);
+  const cameraControl = useRef<{ toggle: () => void } | undefined>(undefined);
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
 
   useEffect(() => {
     if (!overlay) return;
@@ -277,20 +297,94 @@ export function Board({
 
       setTerrain({ floor, objects, planning, anchors });
 
+      const size = (): CameraView => ({ width: app.screen.width, height: app.screen.height });
+      let camera = fitCamera(size());
+      const setCamera = (next: Camera) => {
+        camera = next;
+        world.scale.set(camera.scale);
+        world.position.set(camera.x, camera.y);
+        setZoomed(isZoomed(camera, size()));
+      };
+      cameraControl.current = {
+        toggle: () => {
+          const hero = candidatesRef.current.heroes.find((h) => h.id === selectedIdRef.current);
+          if (isZoomed(camera, size()) || !hero) setCamera(fitCamera(size()));
+          else setCamera(zoomOnPoint(gridToWorld(hero.position), size()));
+        },
+      };
+
       const pick = (viewX: number, viewY: number) => {
-        const { x, y } = viewToWorld(viewX, viewY, app.screen.width, app.screen.height);
+        const { x, y } = viewToWorld(viewX, viewY, app.screen.width, app.screen.height, undefined, camera);
         return { x, y, target: resolveTap(x, y, candidatesRef.current) };
       };
+      // Fingers (or the mouse button) currently down, by pointer id; two of them pinch, one pans a zoomed board.
+      const down = new Map<number, { x: number; y: number }>();
+      let dragStart = { x: 0, y: 0 };
+      let dragged = false;
+      // A drag or pinch is not a tap.
+      let suppressTap = false;
+      const DRAG_THRESHOLD = 8;
       app.stage.eventMode = "static";
       app.stage.hitArea = app.screen;
       app.stage.on("pointerdown", (event) => {
-        const { x, y, target } = pick(event.global.x, event.global.y);
-        setPressed(target.kind === "tile" ? target.tile : pickTileAt(x, y));
+        down.set(event.pointerId, { x: event.global.x, y: event.global.y });
+        if (down.size === 1) {
+          suppressTap = false;
+          dragged = false;
+          dragStart = { x: event.global.x, y: event.global.y };
+          const { x, y, target } = pick(event.global.x, event.global.y);
+          setPressed(target.kind === "tile" ? target.tile : pickTileAt(x, y));
+        } else {
+          suppressTap = true;
+          setPressed(undefined);
+        }
       });
-      const release = () => setPressed(undefined);
+      app.stage.on("globalpointermove", (event) => {
+        const previous = down.get(event.pointerId);
+        if (!previous) return;
+        const current = { x: event.global.x, y: event.global.y };
+        if (down.size >= 2) {
+          const [a, b] = [...down.entries()].map(([id, point]) => (id === event.pointerId ? current : point));
+          const [oldA, oldB] = [...down.values()];
+          const oldDistance = Math.hypot(oldA!.x - oldB!.x, oldA!.y - oldB!.y);
+          const distance = Math.hypot(a!.x - b!.x, a!.y - b!.y);
+          const oldMid = { x: (oldA!.x + oldB!.x) / 2, y: (oldA!.y + oldB!.y) / 2 };
+          const mid = { x: (a!.x + b!.x) / 2, y: (a!.y + b!.y) / 2 };
+          down.set(event.pointerId, current);
+          if (oldDistance === 0) return;
+          const zoomedCamera = zoomAt(camera, (camera.scale * distance) / oldDistance, oldMid.x, oldMid.y, size());
+          setCamera(panBy(zoomedCamera, mid.x - oldMid.x, mid.y - oldMid.y, size()));
+          return;
+        }
+        down.set(event.pointerId, current);
+        if (!isZoomed(camera, size())) return;
+        if (!dragged && Math.hypot(current.x - dragStart.x, current.y - dragStart.y) > DRAG_THRESHOLD) {
+          dragged = true;
+          suppressTap = true;
+          setPressed(undefined);
+        }
+        if (dragged) setCamera(panBy(camera, current.x - previous.x, current.y - previous.y, size()));
+      });
+      const release = (event: { pointerId: number }) => {
+        down.delete(event.pointerId);
+        // The finger left after a pinch pans from where it is.
+        if (down.size === 1) dragged = true;
+        setPressed(undefined);
+      };
       app.stage.on("pointerup", release);
       app.stage.on("pointerupoutside", release);
+      app.stage.on("pointercancel", release);
+      app.canvas.addEventListener(
+        "wheel",
+        (event) => {
+          event.preventDefault();
+          const rect = app.canvas.getBoundingClientRect();
+          setCamera(zoomAt(camera, camera.scale * Math.exp(-event.deltaY * 0.0015), event.clientX - rect.left, event.clientY - rect.top, size()));
+        },
+        { passive: false },
+      );
       app.stage.on("pointertap", (event) => {
+        if (suppressTap) return;
         const { target } = pick(event.global.x, event.global.y);
         if (target.kind === "tile") onTileTapRef.current(target.tile);
         else if (target.kind === "hero") {
@@ -300,13 +394,9 @@ export function Board({
         }
       });
 
-      const frame = () => {
-        const camera = computeCamera(app.screen.width, app.screen.height);
-        world.scale.set(camera.scale);
-        world.position.set(camera.x, camera.y);
-      };
-      frame();
-      app.renderer.on("resize", frame);
+      // After a resize or rotation the view starts fitted again.
+      setCamera(camera);
+      app.renderer.on("resize", () => setCamera(fitCamera(size())));
     })();
 
     return () => {
@@ -315,5 +405,17 @@ export function Board({
     };
   }, []);
 
-  return <div ref={host} className="board" role="img" aria-label="Reactor Deck" />;
+  return (
+    <div ref={host} className="board" role="img" aria-label="Reactor Deck">
+      <button
+        type="button"
+        className="board-zoom"
+        aria-label={zoomed ? "Fit board" : "Zoom on selected Hero"}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={() => cameraControl.current?.toggle()}
+      >
+        {zoomed ? "Fit" : "Zoom"}
+      </button>
+    </div>
+  );
 }
