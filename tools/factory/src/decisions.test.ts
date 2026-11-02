@@ -14,7 +14,11 @@ import {
   type ReviewThread,
   isIssueStartable,
   closingReferences,
+  formatHealthEntry,
   isRetroBranch,
+  parseHealthEntries,
+  summarizeHealthLog,
+  type HealthEntry,
   ReviewState,
   ReviveAction,
   reviveSteps,
@@ -433,5 +437,32 @@ describe("reviveSteps", () => {
   it("keeps the order: close issues, handle pull requests, then start a ticket", () => {
     const steps = reviveSteps(state({ issuesToClose: [1], openAgentPullRequests: [pr()], startableIssue: 2 }));
     expect(steps.map((s) => s.action)).toEqual([ReviveAction.CloseIssue, ReviveAction.RunPipeline, ReviveAction.StartImplement]);
+  });
+});
+
+describe("the health log", () => {
+  const entry = (over: Partial<HealthEntry> = {}): HealthEntry => ({ time: "2026-11-02T06:00:00Z", action: ReviveAction.StartImplement, target: 64, reason: "a ticket is startable and no implement run is active", ...over });
+
+  it("formats an entry and reads it back", () => {
+    expect(parseHealthEntries([formatHealthEntry(entry())])).toEqual([entry()]);
+    expect(parseHealthEntries([formatHealthEntry(entry({ target: undefined }))])).toEqual([entry({ target: undefined })]);
+  });
+
+  it("ignores comments that are not health entries", () => {
+    expect(parseHealthEntries(["just a comment", "<!-- factory:health -->\nnot a line", `<!-- factory:health -->\n2026-11-02T06:00:00Z unknown-action #1: x`])).toEqual([]);
+  });
+
+  it("counts causes, most frequent first, and keeps only those that repeat", () => {
+    const entries = [
+      entry({ target: 64 }),
+      entry({ target: 65, time: "2026-11-02T07:00:00Z" }),
+      entry({ action: ReviveAction.CloseIssue, target: 43, reason: "its pull request was merged but the issue is still open" }),
+      entry({ target: 64 }),
+    ];
+    expect(summarizeHealthLog(entries)).toEqual([
+      { action: ReviveAction.StartImplement, reason: entry().reason, count: 3, lastTime: "2026-11-02T07:00:00Z", targets: [64, 65] },
+      { action: ReviveAction.CloseIssue, reason: "its pull request was merged but the issue is still open", count: 1, lastTime: "2026-11-02T06:00:00Z", targets: [43] },
+    ]);
+    expect(summarizeHealthLog(entries, 2).map((cause) => cause.count)).toEqual([3]);
   });
 });

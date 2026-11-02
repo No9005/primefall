@@ -10,6 +10,7 @@ export const Label = {
   BlastRadiusLow: "blast-radius:low",
   BlastRadiusHigh: "blast-radius:high",
   HighRisk: "high-risk",
+  FactoryHealth: "factory-health",
 } as const;
 
 /**
@@ -24,6 +25,7 @@ export const CommentMarker = {
   ImplementFailed: "<!-- factory:implement-failed -->",
   ReworkStalled: "<!-- factory:rework-stalled -->",
   ReviveHandOver: "<!-- factory:revive-hand-over -->",
+  Health: "<!-- factory:health -->",
 } as const;
 
 export const ReviewVerdict = { Pass: "pass", Fail: "fail" } as const;
@@ -237,6 +239,60 @@ export function reviveSteps(state: ReviveState): ReviveStep[] {
     steps.push({ action: ReviveAction.StartImplement, target: state.startableIssue, reason: "a ticket is startable and no implement run is active" });
   }
   return steps;
+}
+
+/**
+ * The health log is one issue with the label `factory-health`; every time the revive job has to restart
+ * something it adds one comment. The retro reads it to find causes that keep coming back.
+ */
+export interface HealthEntry {
+  time: string;
+  action: ReviveAction;
+  target?: number;
+  reason: string;
+}
+
+export function formatHealthEntry(entry: HealthEntry): string {
+  const target = entry.target === undefined ? "" : ` #${entry.target}`;
+  return `${CommentMarker.Health}\n${entry.time} ${entry.action}${target}: ${entry.reason}`;
+}
+
+const HEALTH_LINE = /^(\S+) (\S+?)(?: #(\d+))?: (.+)$/;
+
+/** Reads the entries back from the issue's comments; other comments are ignored. */
+export function parseHealthEntries(commentBodies: readonly string[]): HealthEntry[] {
+  const entries: HealthEntry[] = [];
+  for (const body of commentBodies) {
+    if (!body.includes(CommentMarker.Health)) continue;
+    const line = body.split("\n").find((l) => HEALTH_LINE.test(l));
+    const match = line === undefined ? null : HEALTH_LINE.exec(line);
+    const action = Object.values(ReviveAction).find((a) => a === match?.[2]);
+    if (!match || action === undefined) continue;
+    entries.push({ time: match[1] as string, action, target: match[3] === undefined ? undefined : Number(match[3]), reason: match[4] as string });
+  }
+  return entries;
+}
+
+export interface HealthCause {
+  action: ReviveAction;
+  reason: string;
+  count: number;
+  lastTime: string;
+  targets: number[];
+}
+
+/** A cause is an action with its reason; the most frequent come first. Causes below `minCount` are left out. */
+export function summarizeHealthLog(entries: readonly HealthEntry[], minCount = 1): HealthCause[] {
+  const causes = new Map<string, HealthCause>();
+  for (const entry of entries) {
+    const key = `${entry.action}|${entry.reason}`;
+    const cause = causes.get(key) ?? { action: entry.action, reason: entry.reason, count: 0, lastTime: entry.time, targets: [] };
+    cause.count += 1;
+    if (entry.time > cause.lastTime) cause.lastTime = entry.time;
+    if (entry.target !== undefined && !cause.targets.includes(entry.target)) cause.targets.push(entry.target);
+    causes.set(key, cause);
+  }
+  return [...causes.values()].filter((cause) => cause.count >= minCount).sort((a, b) => b.count - a.count || a.reason.localeCompare(b.reason));
 }
 
 export const ReworkAction = { Rework: "rework", NeedsHuman: "needs-human" } as const;
