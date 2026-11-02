@@ -32,6 +32,8 @@ export interface DropLayout {
   board: Rect;
   blockChip: Rect;
   energyOrb: Rect;
+  /** HUD panels drawn over the board (the Hand, Squad panel, Commit panel): a release over them cancels. */
+  hud: readonly Rect[];
   pickBoard: (point: Point) => BoardPick;
 }
 
@@ -85,7 +87,7 @@ export function probeDrop(
   };
   if (rectContains(layout.energyOrb, point)) return place({ use: CardUse.Pitch }, "PITCH +1");
   if (rectContains(layout.blockChip, point)) return place({ use: CardUse.Block }, "BLOCK 2");
-  if (!rectContains(layout.board, point)) return {};
+  if (!rectContains(layout.board, point) || layout.hud.some((rect) => rectContains(rect, point))) return {};
 
   const { target, ground } = layout.pickBoard(point);
   if (target.kind === "hero" && places.heroIds.includes(target.id)) {

@@ -535,9 +535,10 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   function probeAt(card: CardIndex, point: Point): DropProbe {
     const definition = HERO_DECKS[selected.heroClass][card]!;
     const rectOf = (element: HTMLElement | null): Rect => element?.getBoundingClientRect() ?? { left: 0, top: 0, right: 0, bottom: 0 };
+    const hud = [...(planningRef.current?.querySelectorAll<HTMLElement>(".hud, .squad-panel, .commit-panel") ?? [])].map((element) => rectOf(element));
     return probeDrop(
       point,
-      { board: rectOf(planningRef.current), blockChip: rectOf(blockChipRef.current), energyOrb: rectOf(energyRef.current), pickBoard: (at) => pickBoard.current?.(at) ?? { target: { kind: "none" }, ground: undefined } },
+      { board: rectOf(planningRef.current), hud, blockChip: rectOf(blockChipRef.current), energyOrb: rectOf(energyRef.current), pickBoard: (at) => pickBoard.current?.(at) ?? { target: { kind: "none" }, ground: undefined } },
       dropPlacesOf(definition),
       cardUseReasons(selected.heroClass, card, queue, pitched),
       definition.type === CardType.Attack ? "ATTACK" : "USE",

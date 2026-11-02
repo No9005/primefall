@@ -31,6 +31,7 @@ const layout: DropLayout = {
   board: { left: 300, top: 0, right: 1000, bottom: 500 },
   blockChip: { left: 10, top: 100, right: 130, bottom: 140 },
   energyOrb: { left: 10, top: 400, right: 50, bottom: 440 },
+  hud: [{ left: 300, top: 400, right: 1000, bottom: 500 }],
   pickBoard: ({ x }) => board[x] ?? { target: { kind: "none" }, ground: undefined },
 };
 const at = (x: number, y = 250): Point => ({ x, y });
@@ -69,6 +70,12 @@ describe("resolveDrop", () => {
   it("does nothing outside every zone", () => {
     expect(resolveDrop(at(200, 300), layout, places, allowed)).toBeUndefined();
     expect(resolveDrop(at(1200), layout, places, allowed)).toBeUndefined();
+  });
+
+  it("cancels a release over a HUD panel such as the Hand, even where the board has a target underneath", () => {
+    expect(resolveDrop(at(500, 450), layout, places, allowed)).toBeUndefined();
+    expect(resolveDrop(at(540, 450), layout, places, allowed)).toBeUndefined();
+    expect(resolveDrop(at(500, 350), layout, places, allowed)).toEqual({ use: CardUse.Primary, heroId: "right-assassin" });
   });
 
   it("returns none for a use that is not allowed and says why", () => {
