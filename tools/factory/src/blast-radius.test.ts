@@ -65,17 +65,13 @@ describe("classifyPullRequest", () => {
     ["tools/factory/blast-radius-rules.json"],
     ["tools/factory/src/cli.ts"],
     ["eslint.config.js"],
+    ["packages/game-core/tsconfig.json"],
+    ["tsconfig.base.json"],
+    ["apps/web/package.json"],
     ["package-lock.json"],
   ])("is high when it touches the factory or tooling: %s", (filename) => {
     expect(classify([file(filename)]).level).toBe(BlastRadius.High);
   });
-
-  it.each([["packages/game-core/tsconfig.json"], ["tsconfig.base.json"], ["apps/web/package.json"], ["package.json"]])(
-    "is low during the MVP for package.json and tsconfig files on their own (a new dependency also changes the lockfile): %s",
-    (filename) => {
-      expect(classify([file(filename)]).level).toBe(BlastRadius.Low);
-    },
-  );
 
   it.each([
     ["packages/game-core/src/match.ts"],

@@ -1,5 +1,5 @@
 {
-  "note": "High blast radius means: design, decision, spec and agent files, the factory and tooling (CI, lint config, the lockfile: a new dependency changes it), or (switched off during the MVP, businessLogicPaths is empty) the business logic of the rules package. Everything else (package.json and tsconfig files on their own, other markdown such as READMEs and notes, UI, rendering, assets, card and map data, tests, exports) is low. Changing this file is itself high (it matches tools/factory/**). Keep .github/CODEOWNERS in sync. After the MVP, restore businessLogicPaths to [\"packages/game-core/src/**\"] and the matching CODEOWNERS lines.",
+  "note": "High blast radius means: design, decision, spec and agent files, the factory and tooling, or (switched off during the MVP, businessLogicPaths is empty) the business logic of the rules package. Everything else (other markdown such as READMEs and notes, UI, rendering, assets, card and map data, tests, exports) is low. Changing this file is itself high (it matches tools/factory/**). Keep .github/CODEOWNERS in sync. After the MVP, restore businessLogicPaths to [\"packages/game-core/src/**\"] and the matching CODEOWNERS lines.",
   "highRiskLabel": "high-risk",
   "documentationAndAgentPaths": [
     "CLAUDE.md",
@@ -14,6 +14,8 @@
     ".github/**",
     "tools/factory/**",
     "eslint.config.js",
+    "**/tsconfig*.json",
+    "**/package.json",
     "package-lock.json"
   ],
   "businessLogicPaths": [],

@@ -15,6 +15,8 @@
 /.github/ @No9005
 /tools/factory/ @No9005
 /eslint.config.js @No9005
+**/tsconfig*.json @No9005
+**/package.json @No9005
 /package-lock.json @No9005
 
 # Business logic of the rules package: no owner during the MVP (blast-radius-rules.json: businessLogicPaths is empty).
