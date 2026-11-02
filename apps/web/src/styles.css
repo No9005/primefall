@@ -21,9 +21,26 @@ button { font: inherit; color: inherit; }
 .enemy-panel .hero-row.ghost { opacity: 0.6; border-style: dashed; }
 .enemy-panel .hero-row.unknown { opacity: 0.45; border-style: dotted; }
 /* Free left strip between the Squad panel and the hand bar; the latest lines stay in view, older ones scroll. */
-.log { left: calc(6px + env(safe-area-inset-left)); bottom: calc(76px + env(safe-area-inset-bottom)); width: 124px; max-height: 84px; overflow-y: auto; margin: 0; padding: 3px 4px 3px 18px; font-family: "IBM Plex Mono", monospace; font-size: 10px; line-height: 1.25; color: #c8d3de; }
+.log { left: calc(6px + env(safe-area-inset-left)); bottom: calc(140px + env(safe-area-inset-bottom)); width: 124px; max-height: 84px; overflow-y: auto; margin: 0; padding: 3px 4px 3px 18px; font-family: "IBM Plex Mono", monospace; font-size: 10px; line-height: 1.25; color: #c8d3de; }
 .target-hint { margin: 0; color: #e5484d; font-size: 11px; font-weight: 600; line-height: 1.2; }
-.squad-panel { top: calc(6px + env(safe-area-inset-top)); left: calc(6px + env(safe-area-inset-left)); width: 124px; padding: 3px; display: flex; flex-direction: column; gap: 3px; }
+/* Top left: the Queue window of the selected Hero and the other Heroes as compact chips. */
+.squad-panel { position: absolute; top: calc(6px + env(safe-area-inset-top)); left: calc(6px + env(safe-area-inset-left)); display: flex; align-items: flex-start; gap: 3px; }
+.queue-window { position: static; width: 124px; flex: none; padding: 4px; display: flex; flex-direction: column; gap: 3px; }
+.queue-head { display: flex; flex-direction: column; }
+.queue-head .counts { flex-basis: auto; order: 0; }
+.queue-slots { margin: 0; padding: 0; list-style: none; display: flex; gap: 3px; }
+.queue-slots li { flex: 1; display: flex; }
+.queue-slot { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 32px; padding: 0; border-radius: 4px; font-family: "IBM Plex Mono", monospace; font-size: 11px; box-sizing: border-box; }
+.queue-slot.empty { border: 1px dashed #3d5a73; color: #8a99a8; }
+.queue-slot.filled { background: #12161c; border: 1px solid #2ec4b6; color: #2ec4b6; cursor: pointer; }
+.queue-slot.filled:disabled { cursor: default; opacity: 0.7; }
+.queue-tags { display: flex; flex-wrap: wrap; gap: 0 4px; }
+.queue-tags:empty { display: none; }
+.chips { display: flex; flex-direction: column; gap: 2px; width: 92px; }
+.chip { position: static; min-height: 18px; padding: 1px 4px; display: flex; align-items: baseline; gap: 4px; text-align: left; cursor: pointer; }
+.chip:disabled { cursor: default; opacity: 0.8; }
+.chip .hero-name { font-size: 11px; }
+.chip .counts { flex-basis: auto; order: 0; font-size: 9px; white-space: nowrap; }
 .hero-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 4px; min-height: 40px; padding: 2px 5px; background: #12161c; border: 1px solid #3d5a73; border-radius: 4px; text-align: left; cursor: pointer; }
 .hero-row[aria-pressed="true"] { border-color: #2ec4b6; box-shadow: 0 0 0 1px #2ec4b6; }
 .hero-row:disabled { cursor: default; opacity: 0.8; }
@@ -31,9 +48,9 @@ button { font: inherit; color: inherit; }
 .counts { flex-basis: 100%; order: 1; font-family: "IBM Plex Mono", monospace; font-size: 10px; line-height: 1.2; color: #8a99a8; }
 .tag { font-size: 10px; color: #8a99a8; }
 
-.energy { display: flex; flex-direction: column; justify-content: center; width: 64px; font-size: 10px; line-height: 1.3; color: #ff8a3d; white-space: nowrap; }
-.energy .available { font-weight: 700; }
-.card-sheet { bottom: calc(66px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: 520px; max-width: calc(100% - 12px); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+/* Energy orb next to the fan; Pitched and Spent are in its tooltip. */
+.energy { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: #12161c; border: 2px solid #ff8a3d; color: #ff8a3d; font-family: "IBM Plex Mono", monospace; font-size: 18px; font-weight: 700; }
+.card-sheet { bottom: calc(6px + env(safe-area-inset-bottom)); left: 270px; width: 400px; max-width: calc(100% - 400px); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 .sheet-header { display: flex; align-items: center; gap: 12px; }
 .sheet-header .card-name { flex: 1; font-size: 16px; }
 .sheet-close { min-width: 44px; min-height: 44px; background: #12161c; color: #dbe4ec; border: 1px solid #3d5a73; border-radius: 4px; font-size: 20px; cursor: pointer; }
@@ -42,15 +59,25 @@ button { font: inherit; color: inherit; }
 .use { display: flex; flex-direction: column; justify-content: center; min-width: 88px; min-height: 44px; padding: 4px 8px; background: #12161c; color: #dbe4ec; border: 1px solid #2ec4b6; border-radius: 4px; cursor: pointer; }
 .use:disabled { border-color: #3d5a73; opacity: 0.7; cursor: default; }
 .use-reason { font-size: 12px; color: #ff8a3d; }
-.hand-bar { bottom: calc(6px + env(safe-area-inset-bottom)); left: calc(6px + env(safe-area-inset-left)); padding: 4px; display: flex; gap: 4px; }
-.hand { margin: 0; padding: 0; list-style: none; display: flex; gap: 4px; }
-.hand li { display: contents; }
-.card { position: relative; display: flex; flex-direction: column; justify-content: space-between; width: 58px; min-height: 46px; padding: 3px 4px; background: #12161c; border: 1px solid #3d5a73; border-radius: 4px; text-align: left; cursor: pointer; }
-.hand .card-name { padding-right: 10px; font-size: 10px; line-height: 1.1; overflow-wrap: anywhere; }
-.hand .card-use { overflow: hidden; font-size: 9px; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; }
-.hand .card-cost { position: absolute; top: 2px; right: 4px; font-size: 11px; }
+/* The Hand is a fan of four 88 x 126 px cards in the free bottom left corner; the Energy orb sits right of it. */
+.hand-bar { background: none; border: 0; bottom: calc(4px + env(safe-area-inset-bottom)); left: calc(6px + env(safe-area-inset-left)); display: flex; align-items: flex-end; gap: 4px; }
+.hand { margin: 0; padding: 0; list-style: none; display: flex; width: 190px; height: 126px; position: relative; }
+.hand li { position: absolute; bottom: 0; left: calc(50% - 44px + var(--offset) * 34px); transform-origin: 50% 100%; transform: translateY(calc(var(--offset) * var(--offset) * 3px)) rotate(calc(var(--offset) * 7deg)); }
+.card { position: relative; display: block; width: 88px; height: 126px; padding: 4px 5px; box-sizing: border-box; overflow: hidden; background: #12161c; border: 1px solid #3d5a73; border-radius: 6px; text-align: left; cursor: pointer; }
+.card.attack { border-top: 3px solid #e5484d; }
+.card.utility { border-top: 3px solid #4da3ff; }
+.card.used { opacity: 0.55; }
+.hand li:hover, .hand li:focus-within { z-index: 2; }
+.hand .card-name { display: block; padding-right: 16px; font-size: 12px; line-height: 1.1; overflow-wrap: normal; word-break: normal; hyphens: none; }
+.hand .card-type { display: block; margin-top: 2px; font-size: 8px; letter-spacing: 0.08em; font-weight: 700; }
+.card.attack .card-type { color: #e5484d; }
+.card.utility .card-type { color: #4da3ff; }
+.hand .card-text { display: block; margin-top: 3px; font-size: 10px; line-height: 1.15; color: #c8d3de; overflow-wrap: normal; word-break: normal; }
+.hand .card-use { position: absolute; left: 4px; right: 4px; bottom: 3px; padding: 1px 3px; background: #2ec4b6; color: #12161c; border-radius: 3px; font-size: 9px; font-weight: 700; line-height: 1.2; text-align: center; }
+.hand .card-cost { position: absolute; top: 4px; right: 5px; font-size: 12px; font-weight: 700; }
 .card[aria-pressed="true"] { border-color: #2ec4b6; box-shadow: 0 0 0 1px #2ec4b6; }
 .card:disabled { cursor: default; opacity: 0.7; }
+.card.used:disabled { opacity: 0.4; }
 .card-use { font-size: 12px; color: #2ec4b6; }
 .card-name { font-family: Rajdhani, sans-serif; font-weight: 600; font-size: 14px; }
 .card-cost { align-self: flex-end; font-family: "IBM Plex Mono", monospace; font-size: 14px; color: #ff8a3d; }

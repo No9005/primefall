@@ -14,6 +14,7 @@ import {
   type Grid,
   HERO_DECKS,
   HeroClass,
+  MAX_QUEUE_LENGTH,
   moveDestinations,
   reachableMoveDestinations,
   type GridPosition,
@@ -30,10 +31,10 @@ import {
   validatePlan,
   Visibility,
 } from "game-core";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { Board, type TokenHero } from "./Board";
 import { buildPlaybackFrames, describeEvent, tickCountOf } from "./playback";
-import { CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, targetHint } from "./planning-selection";
+import { CARD_USE_LABELS, cardFace, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
 export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
@@ -61,44 +62,87 @@ interface PlaybackState {
   log: string[];
 }
 
+/** Top left: the Queue window of the selected Hero, with the other Heroes of the Squad as compact chips below it. */
 function SquadPanel({
   heroes,
-  selectedId,
+  selected,
+  queue,
   playback,
+  disabled,
   onSelect,
+  onRemove,
 }: {
   heroes: readonly HeroView[];
-  selectedId: string;
+  selected: HeroView;
+  queue: readonly QueuedAction[];
   playback: PlaybackState | undefined;
+  disabled: boolean;
   onSelect: (id: string) => void;
+  onRemove: (index: number) => void;
 }) {
+  const shield = playback?.shields[selected.id] ?? 0;
   return (
-    <aside className="hud squad-panel" aria-label="Squad">
-      {heroes.map((hero) => {
-        const playerControlled = hero.heroClass === PLAYER_HERO_CLASS;
-        const shield = playback?.shields[hero.id] ?? 0;
-        return (
-          <button
-            key={hero.id}
-            type="button"
-            className="hero-row"
-            aria-pressed={hero.id === selectedId}
-            disabled={!playerControlled || hero.exhausted}
-            onClick={() => onSelect(hero.id)}
-          >
-            <span className="hero-name">{HERO_NAMES[hero.heroClass]}</span>
-            <span className="counts">
-              Deck {hero.deckCount - (playback?.deckDamage[hero.id] ?? 0)} · Exile {hero.exileCount}
-              {shield > 0 && ` · Shield ${shield}`}
-            </span>
-            {!playerControlled && <span className="tag">AI</span>}
-            {hero.slowed && <span className="tag slow-tag">Slowed</span>}
-            {hero.marked && <span className="tag marked-tag">Marked</span>}
-            {hero.hidden && <span className="tag hidden-tag">Hidden · sight +2</span>}
-            {(hero.exhausted || playback?.exhausted.includes(hero.id)) && <span className="tag">Exhausted</span>}
-          </button>
-        );
-      })}
+    <aside className="squad-panel" aria-label="Squad">
+      <section className="hud queue-window" aria-label="Queue">
+        <div className="queue-head">
+          <span className="hero-name">{HERO_NAMES[selected.heroClass]}</span>
+          <span className="counts">
+            Deck {selected.deckCount - (playback?.deckDamage[selected.id] ?? 0)} · Exile {selected.exileCount}
+            {shield > 0 && ` · Shield ${shield}`}
+          </span>
+        </div>
+        <ol className="queue-slots">
+          {Array.from({ length: MAX_QUEUE_LENGTH }, (_, i) => {
+            const action = queue[i];
+            return (
+              <li key={i}>
+                {action ? (
+                  <button
+                    type="button"
+                    className="queue-slot filled"
+                    disabled={disabled}
+                    aria-label={`Remove action ${i + 1}`}
+                    onClick={() => onRemove(i)}
+                  >
+                    {queueSlotCode(selected.heroClass, action)}
+                  </button>
+                ) : (
+                  <span className="queue-slot empty">{i + 1}</span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+        <div className="queue-tags">
+          {selected.slowed && <span className="tag slow-tag">Slowed</span>}
+          {selected.marked && <span className="tag marked-tag">Marked</span>}
+          {selected.hidden && <span className="tag hidden-tag">Hidden · sight +2</span>}
+          {(selected.exhausted || playback?.exhausted.includes(selected.id)) && <span className="tag">Exhausted</span>}
+        </div>
+      </section>
+      <div className="chips">
+        {heroes
+          .filter((hero) => hero.id !== selected.id)
+          .map((hero) => {
+            const playerControlled = hero.heroClass === PLAYER_HERO_CLASS;
+            const exhausted = hero.exhausted || playback?.exhausted.includes(hero.id);
+            return (
+              <button
+                key={hero.id}
+                type="button"
+                className="hud chip"
+                disabled={!playerControlled || hero.exhausted}
+                onClick={() => onSelect(hero.id)}
+              >
+                <span className="hero-name">{HERO_NAMES[hero.heroClass]}</span>
+                <span className="counts">
+                  {playerControlled ? "" : "AI · "}Deck {hero.deckCount - (playback?.deckDamage[hero.id] ?? 0)}
+                  {exhausted && " · Exhausted"}
+                </span>
+              </button>
+            );
+          })}
+      </div>
     </aside>
   );
 }
@@ -184,10 +228,13 @@ const ACTION_USE_LABELS: Record<ActionKind, string> = {
 
 function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onCardTap }: HandProps) {
   const deck = HERO_DECKS[hero.heroClass];
+  const middle = (hero.hand.length - 1) / 2;
   return (
     <ul className="hand" aria-label="Hand">
-      {hero.hand.map((cardIndex) => {
+      {hero.hand.map((cardIndex, position) => {
         const card = deck[cardIndex]!;
+        const face = cardFace(card);
+        const offset = position - middle;
         const queuedAt = queue.findIndex((action) => action.card === cardIndex);
         const isPitched = pitched.includes(cardIndex);
         let use = "";
@@ -198,17 +245,19 @@ function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onC
         } else if (isPitched) use = CARD_USE_LABELS[CardUse.Pitch];
         else if (cardIndex === armed) use = armedLabel;
         return (
-          <li key={cardIndex}>
+          <li key={cardIndex} style={{ "--offset": offset } as CSSProperties}>
             <button
               type="button"
-              className="card"
+              className={`card ${card.type}${queued || isPitched ? " used" : ""}`}
               aria-pressed={cardIndex === armed || cardIndex === choosing || queuedAt >= 0 || isPitched}
               disabled={disabled}
               onClick={() => onCardTap(cardIndex)}
             >
               <span className="card-name">{card.name}</span>
-              <span className="card-use">{use}</span>
               <span className="card-cost">{card.energyCost}</span>
+              <span className="card-type">{face.type}</span>
+              <span className="card-text">{face.effectText}</span>
+              {use && <span className="card-use">{use}</span>}
             </button>
           </li>
         );
@@ -572,7 +621,20 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
           </span>
         )}
       </header>
-      <SquadPanel heroes={view.heroes} selectedId={selected.id} playback={playback} onSelect={changeSelection} />
+      <SquadPanel
+        heroes={view.heroes}
+        selected={selected}
+        queue={queue}
+        playback={playback}
+        disabled={playing}
+        onSelect={changeSelection}
+        onRemove={(index) => {
+          setQueue(removeQueueAction(queue, index));
+          setArmed(undefined);
+          setAiming(undefined);
+          setChoosing(undefined);
+        }}
+      />
       <EnemyPanel
         knownGrid={knownGrid}
         enemies={view.enemies}
@@ -602,10 +664,13 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         />
       )}
       <div className="hud hand-bar">
-        <div className="energy" data-testid="energy" aria-label="Energy">
-          <span>Pitched {energy.pitched}</span>
-          <span>Spent {energy.spent}</span>
-          <span className="available">Available {energy.available}</span>
+        <div
+          className="energy"
+          data-testid="energy"
+          aria-label={`Energy: ${energy.available} available`}
+          title={`Pitched ${energy.pitched} · Spent ${energy.spent}`}
+        >
+          {energy.available}
         </div>
         <Hand
           hero={selected}
