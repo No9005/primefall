@@ -50,7 +50,7 @@ runs:
           --model claude-sonnet-5-5
           --effort medium
           --max-turns 40
-          --allowedTools "Read,Glob,Grep,Edit,Write,Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git status:*),Bash(git add:*),Bash(git commit:*),Bash(git diff:*),Bash(git log:*),Bash(git push origin HEAD:${{ inputs.head-ref }}),Bash(gh pr view:*),Bash(gh api repos/${{ github.repository }}/pulls/${{ inputs.pr }}/reviews:*),Bash(gh api repos/${{ github.repository }}/pulls/${{ inputs.pr }}/comments:*)"
+          --allowedTools "Read,Glob,Grep,Edit,Write,Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git status:*),Bash(git add:*),Bash(git commit:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rm:*),Bash(git mv:*),Bash(git restore:*),Bash(git push origin HEAD:${{ inputs.head-ref }}),Bash(gh pr view:*),Bash(gh api repos/${{ github.repository }}/pulls/${{ inputs.pr }}/reviews:*),Bash(gh api repos/${{ github.repository }}/pulls/${{ inputs.pr }}/comments:*)"
     - name: Without a new commit there is nothing to review again
       id: after
       shell: bash
@@ -61,5 +61,5 @@ runs:
           echo "pushed=true" >> "$GITHUB_OUTPUT"
         else
           echo "pushed=false" >> "$GITHUB_OUTPUT"
-          node "${{ inputs.factory }}/src/cli.ts" rework-stalled "${{ inputs.pr }}"
+          node "${{ inputs.factory }}/src/cli.ts" rework-stalled "${{ inputs.pr }}" "$RUNNER_TEMP/claude-execution-output.json"
         fi
