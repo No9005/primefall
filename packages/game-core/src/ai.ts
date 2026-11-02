@@ -8,13 +8,13 @@ import {
   chebyshevDistance,
   type HeroPlan,
   MAX_QUEUE_LENGTH,
-  MOVE_DISTANCE,
   moveDestinations,
+  moveEnd,
   type QueuedAction,
   type SquadPlan,
   validatePlan,
 } from "./plan";
-import { findTiles, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind } from "./reactor-deck";
+import { findTiles, type GridPosition, isStepAllowed, REACTOR_DECK, TileKind } from "./reactor-deck";
 
 /** Actions the AI queues per Hero and Round; fewer than the Queue limit keeps Decks from draining fast. */
 const AI_QUEUE_LENGTH = 3;
@@ -42,17 +42,6 @@ const DISTANCE_TO_PRIME_ZONE: ReadonlyMap<number, number> = (() => {
 
 const distanceToPrimeZone = (tile: GridPosition) => DISTANCE_TO_PRIME_ZONE.get(tileKey(tile)) ?? Infinity;
 
-/** Where a Move 2 towards `destination` really ends: it stops before a Wall or Wall corner. */
-function walk(from: GridPosition, destination: GridPosition): GridPosition {
-  let position = from;
-  for (let step = 0; step < MOVE_DISTANCE; step++) {
-    const next = stepTowards(position, destination);
-    if (!isStepAllowed(position, next) || (next.col === position.col && next.row === position.row)) break;
-    position = next;
-  }
-  return position;
-}
-
 const mirrorTile = ({ col, row }: GridPosition): GridPosition => ({ col: REACTOR_DECK.width - 1 - col, row });
 
 /**
@@ -69,7 +58,7 @@ function stepTowardPrimeZone(from: GridPosition, squad: SquadId): GridPosition |
   let best: GridPosition | undefined;
   let bestDistance = distanceToPrimeZone(from);
   for (const destination of destinationsInOrder(from, squad)) {
-    const distance = distanceToPrimeZone(walk(from, destination));
+    const distance = distanceToPrimeZone(moveEnd(from, destination));
     if (distance < bestDistance) {
       best = destination;
       bestDistance = distance;
@@ -116,7 +105,7 @@ function planHero(view: SquadView, hero: HeroView): HeroPlan {
     const destination = stepTowardPrimeZone(position, view.squad);
     if (destination) {
       queue.push({ kind: ActionKind.Move, card, destination });
-      position = walk(position, destination);
+      position = moveEnd(position, destination);
     } else if (targets.length > 0) {
       queue.push({ kind: ActionKind.Block, card });
     } else {

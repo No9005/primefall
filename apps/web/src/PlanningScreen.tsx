@@ -15,6 +15,7 @@ import {
   HERO_DECKS,
   HeroClass,
   moveDestinations,
+  reachableMoveDestinations,
   type GridPosition,
   type HeroView,
   type QueuedAction,
@@ -320,7 +321,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   const needsSecondAlly = aimedCard?.effects.some(({ recipient }) => recipient === EffectRecipient.SecondTarget) === true;
   const highlights = useMemo(() => {
     if (playing) return [];
-    if (armed !== undefined) return moveDestinations(planningFrom);
+    if (armed !== undefined) return reachableMoveDestinations(planningFrom);
     if (aimsAtDeployTile) return moveDestinations(deployAllyHero.position);
     if (!aimsAtTile) return [];
     // Any tile within the Range can be aimed at; Line of Sight is checked in the Resolution. Deploy Cover needs an
