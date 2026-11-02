@@ -1,6 +1,6 @@
 import { ActionKind, cardInMode, HERO_DECKS, HeroClass, type QueuedAction } from "game-core";
 import { describe, expect, it } from "vitest";
-import { cardFace, CardUse, cardUseReasons, queueSlotCode, removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, targetHint } from "./planning-selection";
+import { cardFace, CardUse, cardUseReasons, modeChoiceFaces, primaryAction, queueSlotCode, removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, targetHint } from "./planning-selection";
 
 describe("rangeDamageLabel", () => {
   const longShotOverdrive = cardInMode(HERO_DECKS[HeroClass.Assassin][4]!, true);
@@ -135,6 +135,38 @@ describe("cardFace", () => {
         expect(["ATTACK", "UTILITY"]).toContain(type);
       }
     }
+  });
+});
+
+describe("modeChoiceFaces", () => {
+  it("offers the choice for every MVP card with an Overdrive mode and for no other", () => {
+    for (const heroClass of Object.values(HeroClass)) {
+      HERO_DECKS[heroClass].forEach((card, index) => {
+        const faces = modeChoiceFaces(heroClass, index, [], [1, 2, 3]);
+        if (!card.overdrive) {
+          expect(faces).toBeUndefined();
+          return;
+        }
+        expect(faces?.map((face) => face.overdrive)).toEqual([false, true]);
+        expect(faces?.[0]?.effectText).toBe(describeEffects(card.effects));
+        expect(faces?.[1]?.effectText).toBe(describeEffects(card.overdrive));
+        expect(faces?.map((face) => face.energyCost)).toEqual([card.energyCost, card.energyCost]);
+        expect(faces?.map((face) => face.exiled)).toEqual([false, true]);
+      });
+    }
+  });
+
+  it("builds the plain Queue entry for Normal and the one with `overdrive` for Overdrive", () => {
+    const [normal, overdrive] = modeChoiceFaces(HeroClass.Assassin, 4, [], [1, 2])!;
+    expect(primaryAction(4, "enemy", { overdrive: normal.overdrive })).toEqual({ kind: ActionKind.Primary, card: 4, target: "enemy" });
+    expect(primaryAction(4, "enemy", { overdrive: overdrive.overdrive })).toEqual({ kind: ActionKind.Primary, card: 4, target: "enemy", overdrive: true });
+  });
+
+  it("dims a face with its reason when it cannot be afforded or the target does not fit", () => {
+    const unaffordable = modeChoiceFaces(HeroClass.Assassin, 4, [], [])!;
+    expect(unaffordable.map((face) => face.reason)).toEqual(["needs 1 Energy", "needs 1 Energy"]);
+    const wrongTarget = modeChoiceFaces(HeroClass.Assassin, 4, [], [1], (overdrive) => !overdrive)!;
+    expect(wrongTarget.map((face) => face.reason)).toEqual([undefined, "needs another target"]);
   });
 });
 

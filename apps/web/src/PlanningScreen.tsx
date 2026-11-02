@@ -36,7 +36,7 @@ import { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObj
 import { Board, type TokenHero } from "./Board";
 import { applyDrop, type BoardPick, type DropPlaces, type DropProbe, type DropUse, type Point, probeDrop, type Rect } from "./card-drag";
 import { buildPlaybackFrames, describeEvent, tickCountOf } from "./playback";
-import { blockAction, CARD_USE_LABELS, cardFace, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
+import { blockAction, CARD_USE_LABELS, cardFace, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, type ModeFace, modeChoiceFaces, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
 export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
@@ -131,6 +131,7 @@ function SquadPanel({
                     onClick={() => onRemove(i)}
                   >
                     {queueSlotCode(selected.heroClass, action)}
+                    {action.kind === ActionKind.Primary && action.overdrive && <span className="od-marker">OD</span>}
                   </button>
                 ) : (
                   <span className="queue-slot empty">{i + 1}</span>
@@ -306,17 +307,13 @@ interface CardDetailSheetProps {
   card: CardDefinition;
   reasons: Record<CardUse, string | undefined>;
   onChoose: (use: CardUse) => void;
-  /** Only for cards that have an Overdrive: the switch applies to the Primary effect. */
-  overdrive: boolean;
-  onToggleOverdrive: () => void;
   onClose: () => void;
 }
 
-/** The card detail sheet over Planning (UI spec, screen 5): the four uses, Overdrive where the card has one. */
-function CardDetailSheet({ card, reasons, onChoose, overdrive, onToggleOverdrive, onClose }: CardDetailSheetProps) {
-  const overdriveText = describeEffects(card.overdrive);
+/** The card detail sheet over Planning (UI spec, screen 5): the four uses. Overdrive is chosen after the target. */
+function CardDetailSheet({ card, reasons, onChoose, onClose }: CardDetailSheetProps) {
   const useText: Record<CardUse, string | undefined> = {
-    [CardUse.Primary]: describeEffects(overdrive ? card.overdrive : card.effects),
+    [CardUse.Primary]: describeEffects(card.effects),
     [CardUse.Pitch]: "Adds 1 Energy",
     [CardUse.Move]: "Move up to 2 tiles",
     [CardUse.Block]: "Shield 2",
@@ -339,13 +336,42 @@ function CardDetailSheet({ card, reasons, onChoose, overdrive, onToggleOverdrive
           </button>
         ))}
       </div>
-      {overdriveText && (
-        <button type="button" className="use overdrive-switch" aria-pressed={overdrive} onClick={onToggleOverdrive}>
-          <span>Overdrive {overdrive ? "on" : "off"}: {overdriveText}</span>
-          <span className="use-reason">{overdrive ? "replaces the effect; the card is Exiled" : "tap to Exile this card for a stronger effect"}</span>
-        </button>
-      )}
     </section>
+  );
+}
+
+interface ModeChoiceProps {
+  card: CardDefinition;
+  faces: [ModeFace, ModeFace];
+  onPick: (face: ModeFace) => void;
+  onCancel: () => void;
+}
+
+/** The two faces of a card with an Overdrive, side by side; tapping a face confirms it, tapping elsewhere cancels. */
+function ModeChoice({ card, faces, onPick, onCancel }: ModeChoiceProps) {
+  return (
+    <div className="mode-choice" role="dialog" aria-label={`${card.name}: choose a version`}>
+      <div className="mode-backdrop" data-testid="mode-backdrop" onClick={onCancel} />
+      <div className="mode-faces">
+        {faces.map((face) => (
+          <button
+            key={String(face.overdrive)}
+            type="button"
+            className={`card mode-face ${card.type}${face.overdrive ? " overdrive" : ""}`}
+            disabled={face.reason !== undefined}
+            aria-label={`${card.name} ${face.overdrive ? "Overdrive" : "Normal"}`}
+            onClick={() => onPick(face)}
+          >
+            <span className="card-name">{card.name}</span>
+            <span className="card-cost">{face.energyCost}</span>
+            <span className="card-type">{face.overdrive ? "OVERDRIVE" : "NORMAL"}</span>
+            <span className="card-text">{face.effectText}</span>
+            {face.exiled && <span className="mode-note">Exiled: leaves the game after use</span>}
+            {face.reason && <span className="use-reason">{face.reason}</span>}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -370,8 +396,10 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   /** Log of the last Resolution; stays visible until the next one. */
   const [log, setLog] = useState<string[]>([]);
   const [choosing, setChoosing] = useState<CardIndex>();
-  /** Whether the card being chosen is used in Overdrive when its Primary effect is picked. */
-  const [overdrive, setOverdrive] = useState(false);
+  /** A card with an Overdrive that was played on a target; the player now picks its Normal or Overdrive face. */
+  const [modeChoice, setModeChoice] = useState<{ card: CardIndex; target: string; tile?: GridPosition }>();
+  /** An Overdrive that needs a second allied Hero was chosen; the first one is in `deployAlly`. */
+  const [pickingSecond, setPickingSecond] = useState(false);
   const [playback, setPlayback] = useState<PlaybackState>();
   const unmounted = useRef(false);
   useEffect(() => {
@@ -392,7 +420,9 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   const lastMove = queue.filter((action) => action.kind === ActionKind.Move).at(-1);
   const planningFrom = lastMove?.kind === ActionKind.Move ? lastMove.destination : selected.position;
   const knownGrid = useMemo(() => view.destroyedCover.reduce(destroyCover, REACTOR_DECK), [view.destroyedCover]);
-  const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, overdrive);
+  const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, pickingSecond);
+  // A card with an Overdrive can be aimed at what either of its modes targets; the face chosen afterwards must fit.
+  const aimedModes = aiming === undefined || aimedCard === undefined ? [] : pickingSecond || !aimedCard.overdrive ? [aimedCard] : [aimedCard, cardInMode(aimedCard, true)];
   // Tile cards (Breach Charge), area cards (Scout Drone) and Deploy Cover are confirmed by tapping a tile.
   const aimsAtTile =
     aimedCard?.target === CardTarget.Tile ||
@@ -430,7 +460,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     if (playing) return [];
     if (armed !== undefined) return reachableMoveDestinations(planningFrom);
     if (aimsAtDeployTile) return moveDestinations(deployAllyHero.position);
-    return tileTargetsOf(aimedCard);
+    return aimedModes.flatMap(tileTargetsOf).filter((tile, i, all) => all.findIndex((other) => other.col === tile.col && other.row === tile.row) === i);
   }, [armed, aimsAtDeployTile, deployAllyHero, aimedCard, playing, planningFrom, knownGrid, view.heroes, view.enemies, view.placedCover]);
   const markers = useMemo(
     () =>
@@ -460,14 +490,19 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   const aimsAtAlly =
     aimedCard?.type === CardType.Utility &&
     (aimedCard.target === CardTarget.AllyHero || aimedCard.target === CardTarget.AllyHeroTile);
-  const targetableIds = useMemo(() => {
-    if (aiming === undefined || playing) return [];
-    if (aimedCard?.target === CardTarget.SelfHero || aimedCard?.target === CardTarget.EnemiesInRange) return [selected.id];
-    if (aimsAtAlly) {
+  /** The Heroes a card in one mode can be aimed at. */
+  function heroTargetsOf(mode: CardDefinition): string[] {
+    if (mode.target === CardTarget.SelfHero || mode.target === CardTarget.EnemiesInRange) return [selected.id];
+    const modeAimsAtAlly = mode.type === CardType.Utility && (mode.target === CardTarget.AllyHero || mode.target === CardTarget.AllyHeroTile);
+    if (modeAimsAtAlly) {
       return view.heroes.filter((hero) => hero.id !== selected.id && !(needsSecondAlly && hero.id === deployAlly) && !hero.exhausted).map((hero) => hero.id);
     }
-    return enemyTargetsOf(aimedCard);
-  }, [aiming, aimedCard, aimsAtAlly, needsSecondAlly, playing, selected.id, deployAlly, view.heroes, view.enemies]);
+    return enemyTargetsOf(mode);
+  }
+  const targetableIds = useMemo(() => {
+    if (aiming === undefined || playing) return [];
+    return [...new Set(aimedModes.flatMap(heroTargetsOf))];
+  }, [aiming, aimedModes, needsSecondAlly, playing, selected.id, deployAlly, view.heroes, view.enemies]);
   const nameOf = (heroId: string) => {
     const unit = [...view.heroes, ...view.enemies].find((candidate) => candidate.id === heroId);
     return unit ? `${heroId.startsWith(view.squad) ? "" : "Enemy "}${HERO_NAMES[unit.heroClass]}` : heroId;
@@ -481,7 +516,8 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     setArmed(next.armed);
     setAiming(undefined);
     setChoosing(undefined);
-    setOverdrive(false);
+    setPickingSecond(false);
+    setModeChoice(undefined);
   }
 
   // Dragging a card out of the Hand: one gesture per action. Tapping stays as an alternative.
@@ -497,11 +533,14 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   const draggedCard = drag?.card;
   /** Where the dragged card could go; it is only lit and only takes a drop where its use is allowed. */
   function dropPlacesOf(card: CardDefinition): DropPlaces {
-    const singleEnemy = [CardTarget.VisibleEnemy, CardTarget.EnemyInSight, CardTarget.GhostEnemy].includes(card.target);
     const needsNoTarget = card.target === CardTarget.SelfHero || card.target === CardTarget.EnemiesInRange;
+    const modes = card.overdrive ? [card, cardInMode(card, true)] : [card];
+    const enemyIds = modes.flatMap((mode) =>
+      [CardTarget.VisibleEnemy, CardTarget.EnemyInSight, CardTarget.GhostEnemy].includes(mode.target) ? enemyTargetsOf(mode) : [],
+    );
     return {
       selfId: selected.id,
-      heroIds: singleEnemy ? enemyTargetsOf(card) : [],
+      heroIds: [...new Set(enemyIds)],
       primaryTiles: tileTargetsOf(card),
       moveTiles: reachableMoveDestinations(planningFrom),
       here: needsNoTarget ? { center: selected.position, radius: card.range ?? PLAY_HERE_RADIUS } : undefined,
@@ -545,14 +584,41 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     );
   }
   function dropCard(card: CardIndex, drop: DropUse) {
-    const next = applyDrop(card, drop, queue, pitched);
-    setQueue(next.queue);
-    setPitched(next.pitched);
     setArmed(undefined);
     setAiming(undefined);
     setDeployAlly(undefined);
     setChoosing(undefined);
-    setOverdrive(false);
+    setPickingSecond(false);
+    // A card with an Overdrive waits for the choice of its face before it reaches the Queue.
+    if (drop.use === CardUse.Primary && HERO_DECKS[selected.heroClass][card]!.overdrive) {
+      setModeChoice({ card, target: drop.heroId!, tile: drop.tile });
+      return;
+    }
+    const next = applyDrop(card, drop, queue, pitched);
+    setQueue(next.queue);
+    setPitched(next.pitched);
+  }
+
+  /** Whether the target of a pending choice is a valid target for the card in the given mode. */
+  function modeAccepts(choice: { card: CardIndex; target: string; tile?: GridPosition }, overdrive: boolean): boolean {
+    const mode = cardInMode(HERO_DECKS[selected.heroClass][choice.card]!, overdrive);
+    if (choice.tile) return tileTargetsOf(mode).some((tile) => tile.col === choice.tile!.col && tile.row === choice.tile!.row);
+    return heroTargetsOf(mode).includes(choice.target);
+  }
+  const modeFaces = modeChoice && modeChoiceFaces(selected.heroClass, modeChoice.card, queue, pitched, (overdrive) => modeAccepts(modeChoice, overdrive));
+  function pickFace(face: ModeFace) {
+    if (!modeChoice || face.reason) return;
+    const { card, target, tile } = modeChoice;
+    setModeChoice(undefined);
+    const definition = cardInMode(HERO_DECKS[selected.heroClass][card]!, face.overdrive);
+    if (face.overdrive && definition.effects.some(({ recipient }) => recipient === EffectRecipient.SecondTarget)) {
+      // Continue with the second-target step.
+      setAiming(card);
+      setDeployAlly(target);
+      setPickingSecond(true);
+      return;
+    }
+    setQueue([...queue, primaryAction(card, target, { tile, overdrive: face.overdrive })]);
   }
   // The window listeners must be the same functions when added and removed, so they call the latest handlers.
   const dragHandlers = useRef<{ move: (event: PointerEvent) => void; end: (event: PointerEvent) => void }>({ move: () => {}, end: () => {} });
@@ -602,9 +668,10 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   // Tapping a used card frees it again; tapping a free card opens the use chooser.
   function tapCard(card: CardIndex) {
     if (dragEnded.current) return;
+    setModeChoice(undefined);
     setArmed(undefined);
     setAiming(undefined);
-    setOverdrive(false);
+    setPickingSecond(false);
     if (queue.some((action) => action.card === card) || pitched.includes(card)) {
       setQueue(queue.filter((action) => action.card !== card));
       setPitched(pitched.filter((pitchedCard) => pitchedCard !== card));
@@ -623,7 +690,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       setAiming(choosing);
       setDeployAlly(undefined);
     }
-    else setOverdrive(false);
+    else setPickingSecond(false);
     setChoosing(undefined);
   }
 
@@ -633,20 +700,16 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       setDeployAlly(targetId);
       return;
     }
-    if (needsSecondAlly) {
-      if (deployAlly === undefined) {
-        setDeployAlly(targetId);
-        return;
-      }
-      setQueue([...queue, { kind: ActionKind.Primary, card: aiming, target: deployAlly, secondTarget: targetId, overdrive: true }]);
+    if (pickingSecond) {
+      setQueue([...queue, { kind: ActionKind.Primary, card: aiming, target: deployAlly!, secondTarget: targetId, overdrive: true }]);
       setAiming(undefined);
       setDeployAlly(undefined);
-      setOverdrive(false);
+      setPickingSecond(false);
       return;
     }
-    setQueue([...queue, primaryAction(aiming, targetId, { overdrive })]);
+    if (HERO_DECKS[selected.heroClass][aiming]!.overdrive) setModeChoice({ card: aiming, target: targetId });
+    else setQueue([...queue, primaryAction(aiming, targetId)]);
     setAiming(undefined);
-    setOverdrive(false);
   }
 
   function tapTile(destination: GridPosition) {
@@ -657,9 +720,9 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       return;
     }
     if (aiming !== undefined && aimsAtTile) {
-      setQueue([...queue, primaryAction(aiming, selected.id, { tile: destination, overdrive })]);
+      if (HERO_DECKS[selected.heroClass][aiming]!.overdrive) setModeChoice({ card: aiming, target: selected.id, tile: destination });
+      else setQueue([...queue, primaryAction(aiming, selected.id, { tile: destination })]);
       setAiming(undefined);
-      setOverdrive(false);
       return;
     }
     if (armed === undefined) return;
@@ -818,15 +881,13 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       {choosing !== undefined && !playing && (
         <CardDetailSheet
           card={HERO_DECKS[selected.heroClass][choosing]!}
-          reasons={cardUseReasons(selected.heroClass, choosing, queue, pitched, overdrive)}
+          reasons={cardUseReasons(selected.heroClass, choosing, queue, pitched)}
           onChoose={chooseUse}
-          overdrive={overdrive}
-          onToggleOverdrive={() => setOverdrive(!overdrive)}
-          onClose={() => {
-            setChoosing(undefined);
-            setOverdrive(false);
-          }}
+          onClose={() => setChoosing(undefined)}
         />
+      )}
+      {modeChoice && modeFaces && !playing && (
+        <ModeChoice card={HERO_DECKS[selected.heroClass][modeChoice.card]!} faces={modeFaces} onPick={pickFace} onCancel={() => setModeChoice(undefined)} />
       )}
       <div className="hud hand-bar">
         <div

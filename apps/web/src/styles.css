@@ -61,6 +61,17 @@ button { font: inherit; color: inherit; }
 .use { display: flex; flex-direction: column; justify-content: center; min-width: 88px; min-height: 44px; padding: 4px 8px; background: #12161c; color: #dbe4ec; border: 1px solid #2ec4b6; border-radius: 4px; cursor: pointer; }
 .use:disabled { border-color: #3d5a73; opacity: 0.7; cursor: default; }
 .use-reason { font-size: 12px; color: #ff8a3d; }
+
+/* Overdrive choice: the Normal and the Overdrive face side by side. */
+.mode-choice { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; }
+.mode-backdrop { position: absolute; inset: 0; background: rgba(8, 10, 14, 0.55); }
+.mode-faces { position: relative; display: flex; gap: 12px; }
+.card.mode-face { width: 168px; height: auto; min-height: 150px; }
+.card.mode-face.overdrive { border-color: #ffb000; }
+.card.mode-face.overdrive .card-text, .card.mode-face.overdrive .card-type { color: #ffb000; }
+.card.mode-face:disabled { opacity: 0.55; cursor: default; }
+.mode-note { display: block; font-size: 12px; color: #ffb000; }
+.od-marker { margin-left: 3px; padding: 0 2px; border-radius: 2px; background: #ffb000; color: #12161c; font-size: 9px; }
 /* The Hand is a fan of four 88 x 126 px cards in the free bottom left corner; the Energy orb sits right of it. */
 .hand-bar { background: none; border: 0; bottom: calc(4px + env(safe-area-inset-bottom)); left: calc(6px + env(safe-area-inset-left)); display: flex; align-items: flex-end; gap: 4px; }
 .hand { margin: 0; padding: 0; list-style: none; display: flex; width: 190px; height: 126px; position: relative; }

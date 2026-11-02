@@ -147,6 +147,40 @@ export function primaryAction(card: CardIndex, target: string, { tile, overdrive
   return { kind: ActionKind.Primary, card, target, ...(tile ? { tile } : {}), ...(overdrive ? { overdrive } : {}) };
 }
 
+/** One of the two faces offered when a card with an Overdrive mode is played on a target. */
+export interface ModeFace {
+  overdrive: boolean;
+  effectText: string;
+  energyCost: number;
+  /** Set when this face cannot be chosen: why not. */
+  reason?: string;
+  /** Overdrive only: the card leaves the game after use (ADR 0003). */
+  exiled: boolean;
+}
+
+/**
+ * The Normal and the Overdrive face of a card played on a target, or `undefined` for a card without an
+ * Overdrive mode (it plays immediately). `acceptsTarget` tells whether the chosen target is valid for a mode.
+ */
+export function modeChoiceFaces(
+  heroClass: HeroClass,
+  card: CardIndex,
+  queue: readonly QueuedAction[],
+  pitched: readonly CardIndex[],
+  acceptsTarget: (overdrive: boolean) => boolean = () => true,
+): [ModeFace, ModeFace] | undefined {
+  const definition = HERO_DECKS[heroClass][card]!;
+  if (!describeEffects(definition.overdrive)) return undefined;
+  const face = (overdrive: boolean): ModeFace => ({
+    overdrive,
+    effectText: describeEffects(overdrive ? definition.overdrive : definition.effects) ?? "",
+    energyCost: definition.energyCost,
+    reason: cardUseReasons(heroClass, card, queue, pitched, overdrive)[CardUse.Primary] ?? (acceptsTarget(overdrive) ? undefined : "needs another target"),
+    exiled: overdrive,
+  });
+  return [face(false), face(true)];
+}
+
 export enum CardUse {
   Primary = "primary",
   Pitch = "pitch",
