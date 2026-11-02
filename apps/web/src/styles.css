@@ -11,14 +11,18 @@ button { font: inherit; color: inherit; }
 .board canvas { display: block; }
 
 .hud { position: absolute; background: #1b222bdd; border: 1px solid #3d5a73; border-radius: 6px; box-sizing: border-box; }
-.top-bar { top: 6px; left: 50%; transform: translateX(-50%); padding: 6px 16px; font-family: Rajdhani, sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 0.08em; }
+/* HUD placement (UI spec): at 844 x 390 and 667 x 375 the fitted board leaves the bottom corners and a strip at the
+   top free. The hand bar stays within ~330 px of the left edge and the commit column within 110 px of the right edge,
+   below the lower board edges; keep these sizes small when changing them. */
+.top-bar { top: calc(4px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); padding: 2px 10px; display: flex; gap: 10px; white-space: nowrap; font-family: Rajdhani, sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
 
 .enemy-panel { top: calc(6px + env(safe-area-inset-top)); right: calc(6px + env(safe-area-inset-right)); width: 124px; padding: 3px; display: flex; flex-direction: column; gap: 3px; }
 .enemy-panel .hero-row { cursor: default; }
 .enemy-panel .hero-row.ghost { opacity: 0.6; border-style: dashed; }
 .enemy-panel .hero-row.unknown { opacity: 0.45; border-style: dotted; }
-.log { right: 6px; bottom: 6px; width: 260px; max-height: 30%; overflow-y: auto; margin: 0; padding: 6px 6px 6px 24px; font-family: "IBM Plex Mono", monospace; font-size: 11px; color: #c8d3de; }
-.target-hint { top: 52px; left: 50%; transform: translateX(-50%); padding: 4px 12px; color: #e5484d; font-weight: 600; }
+/* Free left strip between the Squad panel and the hand bar; the latest lines stay in view, older ones scroll. */
+.log { left: calc(6px + env(safe-area-inset-left)); bottom: calc(76px + env(safe-area-inset-bottom)); width: 124px; max-height: 84px; overflow-y: auto; margin: 0; padding: 3px 4px 3px 18px; font-family: "IBM Plex Mono", monospace; font-size: 10px; line-height: 1.25; color: #c8d3de; }
+.target-hint { margin: 0; color: #e5484d; font-size: 11px; font-weight: 600; line-height: 1.2; }
 .squad-panel { top: calc(6px + env(safe-area-inset-top)); left: calc(6px + env(safe-area-inset-left)); width: 124px; padding: 3px; display: flex; flex-direction: column; gap: 3px; }
 .hero-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 4px; min-height: 40px; padding: 2px 5px; background: #12161c; border: 1px solid #3d5a73; border-radius: 4px; text-align: left; cursor: pointer; }
 .hero-row[aria-pressed="true"] { border-color: #2ec4b6; box-shadow: 0 0 0 1px #2ec4b6; }
@@ -27,8 +31,9 @@ button { font: inherit; color: inherit; }
 .counts { flex-basis: 100%; order: 1; font-family: "IBM Plex Mono", monospace; font-size: 10px; line-height: 1.2; color: #8a99a8; }
 .tag { font-size: 10px; color: #8a99a8; }
 
-.energy { bottom: 108px; left: 50%; transform: translateX(-50%); padding: 4px 12px; font-family: "IBM Plex Mono", monospace; font-size: 12px; color: #ff8a3d; white-space: nowrap; }
-.card-sheet { bottom: 100px; left: 50%; transform: translateX(-50%); width: 520px; max-width: calc(100% - 12px); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.energy { display: flex; flex-direction: column; justify-content: center; width: 64px; font-size: 10px; line-height: 1.3; color: #ff8a3d; white-space: nowrap; }
+.energy .available { font-weight: 700; }
+.card-sheet { bottom: calc(66px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: 520px; max-width: calc(100% - 12px); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 .sheet-header { display: flex; align-items: center; gap: 12px; }
 .sheet-header .card-name { flex: 1; font-size: 16px; }
 .sheet-close { min-width: 44px; min-height: 44px; background: #12161c; color: #dbe4ec; border: 1px solid #3d5a73; border-radius: 4px; font-size: 20px; cursor: pointer; }
@@ -37,23 +42,29 @@ button { font: inherit; color: inherit; }
 .use { display: flex; flex-direction: column; justify-content: center; min-width: 88px; min-height: 44px; padding: 4px 8px; background: #12161c; color: #dbe4ec; border: 1px solid #2ec4b6; border-radius: 4px; cursor: pointer; }
 .use:disabled { border-color: #3d5a73; opacity: 0.7; cursor: default; }
 .use-reason { font-size: 12px; color: #ff8a3d; }
-.hand { bottom: 6px; left: 50%; transform: translateX(-50%); margin: 0; padding: 6px; list-style: none; display: flex; gap: 6px; }
+.hand-bar { bottom: calc(6px + env(safe-area-inset-bottom)); left: calc(6px + env(safe-area-inset-left)); padding: 4px; display: flex; gap: 4px; }
+.hand { margin: 0; padding: 0; list-style: none; display: flex; gap: 4px; }
 .hand li { display: contents; }
-.card { display: flex; flex-direction: column; justify-content: space-between; width: 96px; min-height: 84px; padding: 6px; background: #12161c; border: 1px solid #3d5a73; border-radius: 4px; text-align: left; cursor: pointer; }
+.card { position: relative; display: flex; flex-direction: column; justify-content: space-between; width: 58px; min-height: 46px; padding: 3px 4px; background: #12161c; border: 1px solid #3d5a73; border-radius: 4px; text-align: left; cursor: pointer; }
+.hand .card-name { padding-right: 10px; font-size: 10px; line-height: 1.1; overflow-wrap: anywhere; }
+.hand .card-use { overflow: hidden; font-size: 9px; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; }
+.hand .card-cost { position: absolute; top: 2px; right: 4px; font-size: 11px; }
 .card[aria-pressed="true"] { border-color: #2ec4b6; box-shadow: 0 0 0 1px #2ec4b6; }
 .card:disabled { cursor: default; opacity: 0.7; }
 .card-use { font-size: 12px; color: #2ec4b6; }
 .card-name { font-family: Rajdhani, sans-serif; font-weight: 600; font-size: 14px; }
 .card-cost { align-self: flex-end; font-family: "IBM Plex Mono", monospace; font-size: 14px; color: #ff8a3d; }
 
-.tick { margin-left: 16px; color: #ff8a3d; font-family: "IBM Plex Mono", monospace; }
+.tick {color: #ff8a3d; font-family: "IBM Plex Mono", monospace; }
 
-.commit-panel { bottom: 6px; right: 6px; width: 200px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
-.issues { margin: 0; padding: 0 0 0 16px; font-size: 13px; color: #ff8a3d; }
+/* Bottom-right corner: target hint and plan issues (at most ~56 px, scrollable) above a compact primary button. */
+.commit-panel { position: absolute; bottom: calc(6px + env(safe-area-inset-bottom)); right: calc(6px + env(safe-area-inset-right)); width: 110px; display: flex; flex-direction: column; gap: 3px; }
+.commit-info { max-height: 56px; overflow-y: auto; padding: 2px 4px; background: #1b222bdd; border: 1px solid #3d5a73; border-radius: 4px; }
+.issues { margin: 0; padding: 0 0 0 12px; font-size: 10px; line-height: 1.2; color: #ff8a3d; }
 .commit { min-height: 44px; background: #2ec4b6; color: #12161c; border: 0; border-radius: 4px; font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 18px; cursor: pointer; }
 .commit:disabled { background: #3d5a73; color: #8a99a8; cursor: default; }
 
-.top-bar [data-testid="prime-progress"] { margin-left: 16px; color: #2ec4b6; }
+.top-bar [data-testid="prime-progress"] { color: #2ec4b6; }
 
 .end-screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 16px; }
 .end-screen h1 { margin: 0; font-family: Rajdhani, sans-serif; font-size: 48px; letter-spacing: 0.08em; }

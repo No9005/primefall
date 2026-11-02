@@ -1,6 +1,6 @@
 import { ActionKind, cardInMode, HERO_DECKS, HeroClass, type QueuedAction } from "game-core";
 import { describe, expect, it } from "vitest";
-import { CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero } from "./planning-selection";
+import { CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, targetHint } from "./planning-selection";
 
 describe("rangeDamageLabel", () => {
   const longShotOverdrive = cardInMode(HERO_DECKS[HeroClass.Assassin][4]!, true);
@@ -13,6 +13,30 @@ describe("rangeDamageLabel", () => {
 
   it("shows nothing for a card whose damage does not depend on Range", () => {
     expect(rangeDamageLabel(HERO_DECKS[HeroClass.Assassin][0]!, from, { col: 8, row: 1 })).toBeUndefined();
+  });
+});
+
+describe("targetHint", () => {
+  const card = HERO_DECKS[HeroClass.Assassin][0]!;
+  const base = { card, aimsAtTile: false, aimsAtAlly: false, aimsAtDeployTile: false, needsSecondAlly: false, allyPicked: false };
+
+  it("tells the player to pick an enemy by default and an ally for ally cards", () => {
+    expect(targetHint(base)).toBe("Tap an enemy Hero to attack");
+    expect(targetHint({ ...base, aimsAtAlly: true })).toBe("Tap an allied Hero");
+  });
+
+  it("asks for the first and then the second ally when a card needs two", () => {
+    expect(targetHint({ ...base, needsSecondAlly: true })).toBe("Tap the first allied Hero");
+    expect(targetHint({ ...base, needsSecondAlly: true, allyPicked: true })).toBe("Tap the second allied Hero");
+  });
+
+  it("asks for a tile for tile cards and the Deploy tile", () => {
+    expect(targetHint({ ...base, aimsAtTile: true })).toContain("highlighted tile");
+    expect(targetHint({ ...base, aimsAtDeployTile: true })).toBe("Tap the tile the ally moves to");
+  });
+
+  it("stays short enough for a 110 px corner box", () => {
+    expect(targetHint({ ...base, aimsAtTile: true }).length).toBeLessThanOrEqual(50);
   });
 });
 
