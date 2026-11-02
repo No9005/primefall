@@ -1,8 +1,9 @@
 html, body, #root { height: 100%; margin: 0; }
-body { background: #12161c; color: #dbe4ec; font-family: Barlow, system-ui, sans-serif; overflow: hidden; }
-button { font: inherit; color: inherit; }
+:root { --edge-top: max(6px, env(safe-area-inset-top)); --edge-right: max(6px, env(safe-area-inset-right)); --edge-bottom: max(6px, env(safe-area-inset-bottom)); --edge-left: max(6px, env(safe-area-inset-left)); }
+body { background: #12161c; color: #dbe4ec; font-family: Barlow, system-ui, sans-serif; overflow: hidden; overscroll-behavior: none; touch-action: none; }
+button { font: inherit; color: inherit; touch-action: manipulation; }
 
-.app { height: 100%; position: relative; }
+.app { height: 100dvh; position: relative; }
 .loading { padding: 16px; }
 
 /* The board fills the screen; HUD panels overlay it at the edges (UI spec). */
@@ -11,15 +12,15 @@ button { font: inherit; color: inherit; }
 .board canvas { display: block; }
 
 .hud { position: absolute; background: #1b222bdd; border: 1px solid #3d5a73; border-radius: 6px; box-sizing: border-box; }
-.top-bar { top: 6px; left: 50%; transform: translateX(-50%); padding: 6px 16px; font-family: Rajdhani, sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 0.08em; }
+.top-bar { top: var(--edge-top); left: 50%; transform: translateX(-50%); padding: 6px 16px; font-family: Rajdhani, sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 0.08em; }
 
-.enemy-panel { top: 6px; right: 6px; width: 190px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+.enemy-panel { top: var(--edge-top); right: var(--edge-right); width: 190px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
 .enemy-panel .hero-row { cursor: default; }
 .enemy-panel .hero-row.ghost { opacity: 0.6; border-style: dashed; }
 .enemy-panel .hero-row.unknown { opacity: 0.45; border-style: dotted; }
-.log { right: 6px; bottom: 6px; width: 260px; max-height: 30%; overflow-y: auto; margin: 0; padding: 6px 6px 6px 24px; font-family: "IBM Plex Mono", monospace; font-size: 11px; color: #c8d3de; }
-.target-hint { top: 52px; left: 50%; transform: translateX(-50%); padding: 4px 12px; color: #e5484d; font-weight: 600; }
-.squad-panel { top: 6px; left: 6px; width: 190px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+.log { right: var(--edge-right); bottom: var(--edge-bottom); width: 260px; max-height: 30%; overflow-y: auto; touch-action: pan-y; margin: 0; padding: 6px 6px 6px 24px; font-family: "IBM Plex Mono", monospace; font-size: 11px; color: #c8d3de; }
+.target-hint { top: calc(var(--edge-top) + 46px); left: 50%; transform: translateX(-50%); padding: 4px 12px; color: #e5484d; font-weight: 600; }
+.squad-panel { top: var(--edge-top); left: var(--edge-left); width: 190px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
 .hero-row { display: grid; grid-template-columns: 1fr auto; align-items: center; min-height: 44px; padding: 4px 8px; background: #12161c; border: 1px solid #3d5a73; border-radius: 4px; text-align: left; cursor: pointer; }
 .hero-row[aria-pressed="true"] { border-color: #2ec4b6; box-shadow: 0 0 0 1px #2ec4b6; }
 .hero-row:disabled { cursor: default; opacity: 0.8; }
@@ -27,8 +28,8 @@ button { font: inherit; color: inherit; }
 .counts { grid-column: 1; font-family: "IBM Plex Mono", monospace; font-size: 12px; color: #8a99a8; }
 .tag { grid-column: 2; grid-row: 1; font-size: 12px; color: #8a99a8; }
 
-.energy { bottom: 108px; left: 50%; transform: translateX(-50%); padding: 4px 12px; font-family: "IBM Plex Mono", monospace; font-size: 12px; color: #ff8a3d; white-space: nowrap; }
-.card-sheet { bottom: 100px; left: 50%; transform: translateX(-50%); width: 520px; max-width: calc(100% - 12px); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.energy { bottom: calc(var(--edge-bottom) + 102px); left: 50%; transform: translateX(-50%); padding: 4px 12px; font-family: "IBM Plex Mono", monospace; font-size: 12px; color: #ff8a3d; white-space: nowrap; }
+.card-sheet { bottom: calc(var(--edge-bottom) + 94px); left: 50%; transform: translateX(-50%); width: 520px; max-width: calc(100% - 12px); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 .sheet-header { display: flex; align-items: center; gap: 12px; }
 .sheet-header .card-name { flex: 1; font-size: 16px; }
 .sheet-close { min-width: 44px; min-height: 44px; background: #12161c; color: #dbe4ec; border: 1px solid #3d5a73; border-radius: 4px; font-size: 20px; cursor: pointer; }
@@ -37,7 +38,7 @@ button { font: inherit; color: inherit; }
 .use { display: flex; flex-direction: column; justify-content: center; min-width: 88px; min-height: 44px; padding: 4px 8px; background: #12161c; color: #dbe4ec; border: 1px solid #2ec4b6; border-radius: 4px; cursor: pointer; }
 .use:disabled { border-color: #3d5a73; opacity: 0.7; cursor: default; }
 .use-reason { font-size: 12px; color: #ff8a3d; }
-.hand { bottom: 6px; left: 50%; transform: translateX(-50%); margin: 0; padding: 6px; list-style: none; display: flex; gap: 6px; }
+.hand { bottom: var(--edge-bottom); left: 50%; transform: translateX(-50%); margin: 0; padding: 6px; list-style: none; display: flex; gap: 6px; }
 .hand li { display: contents; }
 .card { display: flex; flex-direction: column; justify-content: space-between; width: 96px; min-height: 84px; padding: 6px; background: #12161c; border: 1px solid #3d5a73; border-radius: 4px; text-align: left; cursor: pointer; }
 .card[aria-pressed="true"] { border-color: #2ec4b6; box-shadow: 0 0 0 1px #2ec4b6; }
@@ -48,14 +49,14 @@ button { font: inherit; color: inherit; }
 
 .tick { margin-left: 16px; color: #ff8a3d; font-family: "IBM Plex Mono", monospace; }
 
-.commit-panel { bottom: 6px; right: 6px; width: 200px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+.commit-panel { bottom: var(--edge-bottom); right: var(--edge-right); width: 200px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
 .issues { margin: 0; padding: 0 0 0 16px; font-size: 13px; color: #ff8a3d; }
 .commit { min-height: 44px; background: #2ec4b6; color: #12161c; border: 0; border-radius: 4px; font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 18px; cursor: pointer; }
 .commit:disabled { background: #3d5a73; color: #8a99a8; cursor: default; }
 
 .top-bar [data-testid="prime-progress"] { margin-left: 16px; color: #2ec4b6; }
 
-.end-screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 16px; }
+.end-screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
 .end-screen h1 { margin: 0; font-family: Rajdhani, sans-serif; font-size: 48px; letter-spacing: 0.08em; }
 .end-screen .label { margin: 0; color: #8a99a8; text-transform: uppercase; letter-spacing: 0.12em; }
 .end-screen button { min-height: 44px; padding: 0 24px; background: #2ec4b6; color: #12161c; border: 0; border-radius: 4px; font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 18px; cursor: pointer; }
