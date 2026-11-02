@@ -149,10 +149,78 @@ export function pickTileAt(x: number, y: number, grid: Grid = REACTOR_DECK): Gri
   return inside ? tile : undefined;
 }
 
-/** Inverse of `computeCamera`: a point in view pixels to world pixels. */
-export function viewToWorld(viewX: number, viewY: number, viewWidth: number, viewHeight: number, grid: Grid = REACTOR_DECK) {
-  const camera = computeCamera(viewWidth, viewHeight, grid);
+/** Inverse of a camera: a point in view pixels to world pixels. Without a camera, the fitted one. */
+export function viewToWorld(
+  viewX: number,
+  viewY: number,
+  viewWidth: number,
+  viewHeight: number,
+  grid: Grid = REACTOR_DECK,
+  camera: Camera = computeCamera(viewWidth, viewHeight, grid),
+) {
   return { x: (viewX - camera.x) / camera.scale, y: (viewY - camera.y) / camera.scale };
+}
+
+// Zoom and pan: a small pure model on top of the fitted camera; the Pixi code only applies it.
+
+/** Largest zoom, as a multiple of the fitted scale. */
+export const MAX_ZOOM = 3;
+/** Zoom of the Hero view, as a multiple of the fitted scale. */
+export const HERO_ZOOM = 2.5;
+
+export interface CameraView {
+  width: number;
+  height: number;
+  grid?: Grid;
+}
+
+export function fitCamera(view: CameraView): Camera {
+  return computeCamera(view.width, view.height, view.grid);
+}
+
+/** True when the camera is zoomed in past the fitted view (so the board can be panned). */
+export function isZoomed(camera: Camera, { width, height, grid }: CameraView): boolean {
+  return camera.scale > computeCamera(width, height, grid).scale * 1.001;
+}
+
+/** Keeps the scale within fitted..MAX_ZOOM times fitted and the view within the board plus its margin (centred when the board is smaller than the view). */
+export function clampCamera(camera: Camera, view: CameraView): Camera {
+  const { width, height, grid = REACTOR_DECK } = view;
+  const fitted = computeCamera(width, height, grid);
+  const scale = Math.min(Math.max(camera.scale, fitted.scale), fitted.scale * MAX_ZOOM);
+  const bounds = boardBounds(grid);
+  const marginX = (bounds.right - bounds.left) * CAMERA_MARGIN;
+  const marginY = (bounds.bottom - bounds.top) * CAMERA_MARGIN;
+  const clampAxis = (offset: number, viewSize: number, low: number, high: number, margin: number) => {
+    const min = viewSize - (high + margin) * scale; // the view's far edge at the board's far edge plus margin
+    const max = -(low - margin) * scale; // the view's near edge at the board's near edge minus margin
+    return min > max ? (min + max) / 2 : Math.min(Math.max(offset, min), max);
+  };
+  return {
+    scale,
+    x: clampAxis(camera.x, width, bounds.left, bounds.right, marginX),
+    y: clampAxis(camera.y, height, bounds.top, bounds.bottom, marginY),
+  };
+}
+
+/** Sets the scale (clamped) so that the world point under the view point stays under it. */
+export function zoomAt(camera: Camera, scale: number, viewX: number, viewY: number, view: CameraView): Camera {
+  const worldX = (viewX - camera.x) / camera.scale;
+  const worldY = (viewY - camera.y) / camera.scale;
+  const clamped = clampCamera({ scale, x: camera.x, y: camera.y }, view).scale;
+  return clampCamera({ scale: clamped, x: viewX - worldX * clamped, y: viewY - worldY * clamped }, view);
+}
+
+/** Moves the board by a view-pixel delta; does nothing at the fitted scale, where the whole board is visible. */
+export function panBy(camera: Camera, dx: number, dy: number, view: CameraView): Camera {
+  if (!isZoomed(camera, view)) return camera;
+  return clampCamera({ ...camera, x: camera.x + dx, y: camera.y + dy }, view);
+}
+
+/** The Hero view: HERO_ZOOM times the fitted scale with the world point in the middle of the view (as far as the board allows). */
+export function zoomOnPoint(world: { x: number; y: number }, view: CameraView): Camera {
+  const scale = computeCamera(view.width, view.height, view.grid).scale * HERO_ZOOM;
+  return clampCamera({ scale, x: view.width / 2 - world.x * scale, y: view.height / 2 - world.y * scale }, view);
 }
 
 export type TapTarget = { kind: "hero"; id: string } | { kind: "tile"; tile: GridPosition } | { kind: "none" };

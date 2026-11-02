@@ -9,7 +9,7 @@ Clickable mockups: `docs/design/mockups.html` (open in a browser). Assets: `docs
 - Commit must feel consequential.
 - The replay must explain cause and effect.
 - Orientation: **landscape first** (Grid is 21 x 11 tiles, about 2:1). In portrait the app shows a "Rotate your device" notice. Desktop scales the same layout.
-- The board fills the whole screen as the bottom layer; HUD panels overlay it at the edges. The camera always shows the whole board (all 21 by 11 tiles, including tall props such as Walls), as large as fits and centred, also after a resize or rotation. Pan, zoom and re-centring on a Hero are not part of the prototype.
+- The board fills the whole screen as the bottom layer; HUD panels overlay it at the edges. The camera always shows the whole board (all 21 by 11 tiles, including tall props such as Walls), as large as fits and centred, also after a resize or rotation. The player can zoom in: pinch (or the mouse wheel) between the fitted scale and about 3 times it, and drag with one finger to pan, only while zoomed (at the fitted scale a drag does nothing; the view never shows more than the board plus its margin). A round Zoom button at the right edge switches between the fitted view and a zoom on the selected Hero (about 2.5 times the fitted scale, the Hero in the middle); its label says where the next tap goes ("Zoom" or "Fit"). Resizing or rotating returns to the fitted view.
 
 ## Screens
 

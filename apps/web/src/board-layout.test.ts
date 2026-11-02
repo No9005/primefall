@@ -6,12 +6,19 @@ import {
   AssetAlias,
   boardBounds,
   buildPlacements,
+  clampCamera,
   computeCamera,
   gridToWorld,
   HERO_PICK_TOLERANCE,
+  HERO_ZOOM,
+  isZoomed,
   Layer,
+  MAX_ZOOM,
+  panBy,
   pickTileAt,
   resolveTap,
+  zoomAt,
+  zoomOnPoint,
   TILE_HEIGHT,
   TILE_WIDTH,
   viewToWorld,
@@ -239,5 +246,81 @@ describe("resolveTap", () => {
   it("selects an own Hero by tapping its tile", () => {
     const point = world(4, 4);
     expect(resolveTap(point.x, point.y, candidates)).toEqual({ kind: "hero", id: "own" });
+  });
+});
+
+describe("zoom and pan camera", () => {
+  const view = { width: 844, height: 390 };
+  const fitted = computeCamera(view.width, view.height);
+  const bounds = boardBounds(REACTOR_DECK);
+  const margin = (bounds.right - bounds.left) * 0.03;
+
+  it("limits the zoom to the fitted scale and about three times it", () => {
+    expect(zoomAt(fitted, fitted.scale * 0.5, 400, 200, view).scale).toBeCloseTo(fitted.scale);
+    expect(zoomAt(fitted, fitted.scale * 10, 400, 200, view).scale).toBeCloseTo(fitted.scale * MAX_ZOOM);
+  });
+
+  it("keeps the world point under the pinch centre", () => {
+    const centre = { x: 600, y: 150 };
+    const before = viewToWorld(centre.x, centre.y, view.width, view.height);
+    const zoomed = zoomAt(fitted, fitted.scale * 2, centre.x, centre.y, view);
+    const after = viewToWorld(centre.x, centre.y, view.width, view.height, undefined, zoomed);
+    expect(after.x).toBeCloseTo(before.x);
+    expect(after.y).toBeCloseTo(before.y);
+  });
+
+  it("does not pan at the fitted scale but pans when zoomed", () => {
+    expect(isZoomed(fitted, view)).toBe(false);
+    expect(panBy(fitted, 100, 50, view)).toEqual(fitted);
+    const zoomed = zoomAt(fitted, fitted.scale * 2, 422, 195, view);
+    expect(isZoomed(zoomed, view)).toBe(true);
+    const moved = panBy(zoomed, -40, 20, view);
+    expect(moved.x).toBeCloseTo(zoomed.x - 40);
+    expect(moved.y).toBeCloseTo(zoomed.y + 20);
+  });
+
+  it("clamps the pan so no more than the board plus its margin shows", () => {
+    const zoomed = zoomAt(fitted, fitted.scale * 2, 422, 195, view);
+    const right = panBy(zoomed, 1e6, 1e6, view);
+    expect(-right.x / right.scale).toBeCloseTo(bounds.left - margin);
+    const left = panBy(zoomed, -1e6, -1e6, view);
+    expect((view.width - left.x) / left.scale).toBeCloseTo(bounds.right + margin);
+  });
+
+  it("jumps to the Hero view and back to the fitted view", () => {
+    const hero = gridToWorld({ col: 10, row: 5 });
+    const zoomed = zoomOnPoint(hero, view);
+    expect(zoomed.scale).toBeCloseTo(fitted.scale * HERO_ZOOM);
+    expect(zoomed.x + hero.x * zoomed.scale).toBeCloseTo(view.width / 2);
+    expect(zoomed.y + hero.y * zoomed.scale).toBeCloseTo(view.height / 2);
+    const back = clampCamera({ scale: 0.01, x: 5, y: 5 }, view);
+    expect(back.scale).toBeCloseTo(fitted.scale);
+    expect(back.x).toBeCloseTo(fitted.x);
+    expect(back.y).toBeCloseTo(fitted.y);
+  });
+});
+
+describe("tile picking at zoomed and panned cameras", () => {
+  const view = { width: 844, height: 390 };
+  const tiles = [
+    { col: 10, row: 5 },
+    { col: 7, row: 8 },
+  ];
+  const fitted = computeCamera(view.width, view.height);
+  const cameras = [
+    zoomAt(fitted, fitted.scale * 1.8, 300, 200, view),
+    panBy(zoomAt(fitted, fitted.scale * 3, 500, 100, view), -60, 40, view),
+  ];
+
+  it.each(cameras.map((camera, i) => ({ camera, name: `zoom level ${i + 1}` })))("picks the same tile and Hero as at the fitted scale ($name)", ({ camera }) => {
+    for (const tile of tiles) {
+      const { x, y } = gridToWorld(tile);
+      for (const dx of [0, 0.4 * TILE_WIDTH]) {
+        const world = viewToWorld((x + dx) * camera.scale + camera.x, y * camera.scale + camera.y, view.width, view.height, undefined, camera);
+        expect(pickTileAt(world.x, world.y)).toEqual(tile);
+        const candidates = { heroes: [{ id: "h", position: tile }], targetableIds: ["h"], highlights: [] };
+        expect(resolveTap(world.x, world.y, candidates)).toEqual({ kind: "hero", id: "h" });
+      }
+    }
   });
 });
