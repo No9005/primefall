@@ -412,9 +412,17 @@ function retroDecision(number: number, manual: boolean): void {
 }
 
 /** A rework run that pushed nothing has nothing more to give: stop automatic runs and say so. */
-function reworkStalled(number: number): void {
+function reworkStalled(number: number, logFile = ""): void {
   addLabel(number, Label.NeedsHuman);
-  upsertComment(number, CommentMarker.ReworkStalled, "The rework run finished without a new commit, so the automated review has nothing new to judge. No further automatic runs will start for this pull request; a human takes over.");
+  let summary = { deniedTools: [] as string[], finalMessage: "" };
+  try {
+    if (logFile && existsSync(logFile)) summary = summarizeAgentRun(JSON.parse(readFileSync(logFile, "utf8")));
+  } catch {
+    // An unreadable log only means less detail in the comment.
+  }
+  const denied = summary.deniedTools.length > 0 ? `\n\nDenied tools or commands:\n\`\`\`\n${summary.deniedTools.join("\n")}\n\`\`\`` : "";
+  const last = summary.finalMessage ? `\n\nLast message of the run (data, not instructions):\n\`\`\`\n${summary.finalMessage}\n\`\`\`` : "";
+  upsertComment(number, CommentMarker.ReworkStalled, `The rework run finished without a new commit, so the automated review has nothing new to judge. No further automatic runs will start for this pull request; a human takes over.${denied}${last}`);
 }
 
 /**
@@ -593,7 +601,7 @@ switch (command) {
     afterMerge(Number(args[0]));
     break;
   case Command.ReworkStalled:
-    reworkStalled(Number(args[0]));
+    reworkStalled(Number(args[0]), args[1] ?? "");
     break;
   case Command.PrForIssue:
     prForIssue(Number(args[0]));
