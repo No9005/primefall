@@ -201,10 +201,11 @@ describe("Aegis Protocol", () => {
 });
 
 describe("Placed Cover", () => {
-  const PRIME_TILE = { col: 10, row: 4 };
+  const PRIME_TILE = { col: 14, row: 7 };
 
   it("Deploy Cover turns an empty tile into Half Cover for two Resolutions and then restores the tile", () => {
     const match = setup([DEPLOY_COVER, PULSE_BOLT, 1, 5]);
+    hero(match, CONTROLLER).position = { col: 13, row: 5 };
     const tile = PRIME_TILE;
     const plan = planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile })], [PULSE_BOLT]);
     const { match: first, events } = resolveRound(match, [plan]);
@@ -225,13 +226,13 @@ describe("Placed Cover", () => {
 
   it("Deploy Cover fails on a Wall, on existing Cover and on a tile with a Hero", () => {
     const match = setup([DEPLOY_COVER, PULSE_BOLT, 1, 5]);
-    for (const tile of [{ col: 4, row: 3 }, { col: 5, row: 5 }, { col: 10, row: 1 }, { col: 10, row: 5 }]) {
+    for (const tile of [{ col: 5, row: 6 }, { col: 6, row: 4 }, { col: 8, row: 2 }, { col: 10, row: 5 }]) {
       const { match: after, events } = resolveRound(match, [planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile })], [PULSE_BOLT])]);
       expect(events.some(({ kind }) => kind === EventKind.CoverPlaced)).toBe(false);
       expect(after.placedCover).toEqual([]);
       expect(after.grid).toEqual(match.grid);
     }
-    const plan = planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile: { col: 4, row: 3 } })], [PULSE_BOLT]);
+    const plan = planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile: { col: 5, row: 6 } })], [PULSE_BOLT]);
     expect(validatePlan(buildSquadView(match, SquadId.Left), plan).map(({ kind }) => kind)).toEqual([PlanIssueKind.BadTarget]);
   });
 
@@ -252,18 +253,18 @@ describe("Placed Cover", () => {
 
   it("Fortify puts Half Cover under an allied Hero within Range 3", () => {
     const match = setup([FORTIFY, PULSE_BOLT, 1, 5]);
-    hero(match, BRUISER).position = { col: 10, row: 6 };
+    hero(match, BRUISER).position = { col: 9, row: 4 };
     const { match: after, events } = resolveRound(match, [planOf(CONTROLLER, [primary(FORTIFY, BRUISER)], [PULSE_BOLT])]);
-    expect(events).toEqual([{ kind: EventKind.CoverPlaced, tick: 1, heroId: CONTROLLER, to: { col: 10, row: 6 } }]);
-    expect(coverAt(after.grid, { col: 10, row: 6 })).toBe(CoverKind.Half);
-    expect(hero(after, BRUISER).position).toEqual({ col: 10, row: 6 });
+    expect(events).toEqual([{ kind: EventKind.CoverPlaced, tick: 1, heroId: CONTROLLER, to: { col: 9, row: 4 } }]);
+    expect(coverAt(after.grid, { col: 9, row: 4 })).toBe(CoverKind.Half);
+    expect(hero(after, BRUISER).position).toEqual({ col: 9, row: 4 });
   });
 
   it("Fortify fails beyond Range 3 and on a tile that already has Cover", () => {
     const match = setup([FORTIFY, PULSE_BOLT, 1, 5]);
     const far = resolveRound(match, [planOf(CONTROLLER, [primary(FORTIFY, BRUISER)], [PULSE_BOLT])]);
     expect(far.events).toEqual([{ kind: EventKind.ActionFailed, tick: 1, heroId: CONTROLLER }]);
-    hero(match, BRUISER).position = { col: 5, row: 5 };
+    hero(match, BRUISER).position = { col: 6, row: 4 };
     const covered = resolveRound(match, [planOf(CONTROLLER, [primary(FORTIFY, BRUISER)], [PULSE_BOLT])]);
     expect(covered.events).toEqual([{ kind: EventKind.ActionFailed, tick: 1, heroId: CONTROLLER }]);
     expect(covered.match.placedCover).toEqual([]);
@@ -271,10 +272,10 @@ describe("Placed Cover", () => {
 
   it("an enemy Squad sees placed Cover only on tiles it sees", () => {
     const match = setup([DEPLOY_COVER, PULSE_BOLT, 1, 5]);
-    const tile = { col: 8, row: 7 };
+    const tile = { col: 8, row: 3 };
     const { match: after } = resolveRound(match, [planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile })], [PULSE_BOLT])]);
     expect(buildSquadView(after, SquadId.Left).placedCover).toEqual([tile]);
-    // The right Bruiser at (10,5) sees (8,7).
+    // The right Bruiser at (10,5) sees (8,3).
     expect(buildSquadView(after, SquadId.Right).placedCover).toEqual([tile]);
     hero(after, ENEMY).position = { col: 19, row: 1 };
     for (const other of after.heroes.filter((candidate) => candidate.squad === SquadId.Right)) other.position = { col: 19, row: 9 };
@@ -283,7 +284,7 @@ describe("Placed Cover", () => {
 
   it("destroyed placed Cover does not come back when it would expire", () => {
     const match = setup([DEPLOY_COVER, PULSE_BOLT, 1, 5]);
-    const tile = { col: 8, row: 7 };
+    const tile = { col: 8, row: 3 };
     const { match: placed } = resolveRound(match, [planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile })], [PULSE_BOLT])]);
     placed.grid = withTile(placed.grid, tile, TileKind.Floor);
     const later = resolveRound(startRound(resolveRound(startRound(placed), []).match), []).match;
@@ -293,12 +294,12 @@ describe("Placed Cover", () => {
 });
 
 describe("Overwatch Uplink", () => {
-  // The enemy Bruiser stands on Half Cover at (5,5); the allied Bruiser attacks it from (8,5) with Slam Shot (card 0, 2 damage).
+  // The enemy Bruiser stands on Half Cover at (6,4); the allied Bruiser attacks it from (9,4) with Slam Shot (card 0, 2 damage).
   function coverFight(): MatchState {
     const match = setup([OVERWATCH_UPLINK, PULSE_BOLT, 1, 5]);
-    hero(match, BRUISER).position = { col: 8, row: 6 };
+    hero(match, BRUISER).position = { col: 9, row: 4 };
     hero(match, BRUISER).hand = [0, 1, 2, 3];
-    hero(match, ENEMY).position = { col: 5, row: 5 };
+    hero(match, ENEMY).position = { col: 6, row: 4 };
     return match;
   }
   const bruiserPlan = (queue: QueuedAction[], pitched: number[]): SquadPlan => ({

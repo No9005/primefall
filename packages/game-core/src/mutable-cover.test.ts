@@ -22,8 +22,8 @@ const RIGHT_BRUISER = "right-bruiser";
 const BREACH_CHARGE = 4;
 const SLAM_SHOT = 0;
 
-const HALF_COVER_TILE = { col: 5, row: 5 };
-const NEST_TILE = { col: 10, row: 1 };
+const HALF_COVER_TILE = { col: 14, row: 5 };
+const NEST_TILE = { col: 15, row: 1 };
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 
@@ -47,7 +47,7 @@ const breachPlan = (tile: GridPosition): SquadPlan => ({
 
 describe("Breach Charge", () => {
   it("damages the enemy on Half Cover through the Cover and destroys it", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 5, row: 8 }, [RIGHT_BRUISER]: HALF_COVER_TILE });
+    const match = setup({ [LEFT_BRUISER]: { col: 14, row: 8 }, [RIGHT_BRUISER]: HALF_COVER_TILE });
     const { match: after, events } = resolveRound(match, [breachPlan(HALF_COVER_TILE)]);
     expect(events.map(({ kind }) => kind)).toEqual([EventKind.AttackHit, EventKind.CoverDestroyed]);
     // Half Cover still reduces the 2 damage of the charge itself by 1.
@@ -58,7 +58,7 @@ describe("Breach Charge", () => {
   });
 
   it("leaves Full Cover standing and blocks the damage to a Hero on it", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 10, row: 4 }, [RIGHT_BRUISER]: NEST_TILE });
+    const match = setup({ [LEFT_BRUISER]: { col: 15, row: 4 }, [RIGHT_BRUISER]: NEST_TILE });
     const { match: after, events } = resolveRound(match, [breachPlan(NEST_TILE)]);
     expect(events.map(({ kind }) => kind)).toEqual([EventKind.AttackFailed]);
     expect(coverAt(after.grid, NEST_TILE)).toBe(CoverKind.Full);
@@ -66,8 +66,8 @@ describe("Breach Charge", () => {
   });
 
   it("deals full damage on open ground and changes no Cover", () => {
-    const target = { col: 8, row: 8 };
-    const match = setup({ [LEFT_BRUISER]: { col: 5, row: 8 }, [RIGHT_BRUISER]: target });
+    const target = { col: 8, row: 3 };
+    const match = setup({ [LEFT_BRUISER]: { col: 5, row: 3 }, [RIGHT_BRUISER]: target });
     const { match: after, events } = resolveRound(match, [breachPlan(target)]);
     expect(events.map(({ kind }) => kind)).toEqual([EventKind.AttackHit]);
     expect(events[0]).toMatchObject({ damage: 2 });
@@ -75,21 +75,21 @@ describe("Breach Charge", () => {
   });
 
   it("destroys Half Cover on an empty tile, and fails beyond Range", () => {
-    const empty = setup({ [LEFT_BRUISER]: { col: 5, row: 8 } });
+    const empty = setup({ [LEFT_BRUISER]: { col: 14, row: 8 } });
     expect(coverAt(resolveRound(empty, [breachPlan(HALF_COVER_TILE)]).match.grid, HALF_COVER_TILE)).toBe(CoverKind.None);
-    const far = setup({ [LEFT_BRUISER]: { col: 5, row: 9 } });
+    const far = setup({ [LEFT_BRUISER]: { col: 14, row: 9 } });
     const { match: after, events } = resolveRound(far, [breachPlan(HALF_COVER_TILE)]);
     expect(events.map(({ kind }) => kind)).toEqual([EventKind.AttackFailed]);
     expect(coverAt(after.grid, HALF_COVER_TILE)).toBe(CoverKind.Half);
   });
 
   it("no longer protects the tile in later Resolutions", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 5, row: 8 }, [RIGHT_BRUISER]: HALF_COVER_TILE });
+    const match = setup({ [LEFT_BRUISER]: { col: 14, row: 8 }, [RIGHT_BRUISER]: HALF_COVER_TILE });
     const destroyed = resolveRound(match, [breachPlan(HALF_COVER_TILE)]).match;
-    expect(coverAgainst(destroyed.grid, { col: 5, row: 8 }, HALF_COVER_TILE)).toBe(CoverKind.None);
+    expect(coverAgainst(destroyed.grid, { col: 14, row: 8 }, HALF_COVER_TILE)).toBe(CoverKind.None);
     const next = startRound(destroyed);
     hero(next, LEFT_BRUISER).hand = [SLAM_SHOT, 1, 2, 3];
-    hero(next, LEFT_BRUISER).position = { col: 5, row: 7 };
+    hero(next, LEFT_BRUISER).position = { col: 14, row: 7 };
     const slam: SquadPlan = {
       squad: SquadId.Left,
       heroes: [{ heroId: LEFT_BRUISER, queue: [{ kind: ActionKind.Primary, card: SLAM_SHOT, target: RIGHT_BRUISER }], pitched: [1] }],
@@ -118,7 +118,7 @@ describe("destroyed Cover", () => {
 
 describe("destroyed Cover and the Fog of War", () => {
   it("shows the Squad View of the Squad that sees the tile, and not of the Squad that does not", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 5, row: 8 } });
+    const match = setup({ [LEFT_BRUISER]: { col: 14, row: 8 } });
     const { match: after } = resolveRound(match, [breachPlan(HALF_COVER_TILE)]);
     expect(buildSquadView(after, SquadId.Left).destroyedCover).toEqual([HALF_COVER_TILE]);
     // The right Squad stands on its Spawn tiles, far away from the tile.
@@ -126,18 +126,18 @@ describe("destroyed Cover and the Fog of War", () => {
   });
 
   it("reaches the other Squad once it sees the tile, and keeps it afterwards", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 5, row: 8 } });
+    const match = setup({ [LEFT_BRUISER]: { col: 14, row: 8 } });
     const { match: after } = resolveRound(match, [breachPlan(HALF_COVER_TILE)]);
     hero(after, RIGHT_BRUISER).position = { col: 8, row: 5 };
     recordSightings(after);
     expect(buildSquadView(after, SquadId.Right).destroyedCover).toEqual([HALF_COVER_TILE]);
-    hero(after, RIGHT_BRUISER).position = { col: 19, row: 5 };
+    hero(after, RIGHT_BRUISER).position = { col: 29, row: 5 };
     recordSightings(after);
     expect(buildSquadView(after, SquadId.Right).destroyedCover).toEqual([HALF_COVER_TILE]);
   });
 
   it("only sends the CoverDestroyed event to Squads that see the tile", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 5, row: 8 } });
+    const match = setup({ [LEFT_BRUISER]: { col: 14, row: 8 } });
     const result = resolveRound(match, [breachPlan(HALF_COVER_TILE)]);
     expect(getSquadEvents(SquadId.Left, result).map(({ kind }) => kind)).toEqual([EventKind.CoverDestroyed]);
     expect(getSquadEvents(SquadId.Right, result)).toEqual([]);
@@ -148,7 +148,7 @@ describe("planning Breach Charge", () => {
   const view = (match: MatchState) => buildSquadView(match, SquadId.Left);
 
   it("accepts a tile target and rejects a missing tile or a Wall", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 5, row: 8 } });
+    const match = setup({ [LEFT_BRUISER]: { col: 14, row: 8 } });
     expect(validatePlan(view(match), breachPlan(HALF_COVER_TILE))).toEqual([]);
     const withoutTile = breachPlan(HALF_COVER_TILE);
     delete (withoutTile.heroes[0]!.queue[0] as { tile?: GridPosition }).tile;

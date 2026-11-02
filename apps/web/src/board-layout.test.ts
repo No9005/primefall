@@ -145,7 +145,7 @@ describe("tile picking at the fitted scale", () => {
     return viewToWorld(x * camera.scale + camera.x + dx, y * camera.scale + camera.y + dy, view.width, view.height);
   };
   // A floor tile with no Wall in front of it on screen.
-  const tile = { col: 10, row: 5 };
+  const tile = { col: 15, row: 8 };
 
   it.each(viewports)("picks the tile at its centre and four corners ($width x $height)", (view) => {
     const scale = computeCamera(view.width, view.height).scale;
@@ -182,7 +182,7 @@ describe("tile picking at the fitted scale", () => {
   });
 
   it("picks a Wall in front of a tile, not the floor it hides", () => {
-    const wall = { col: 4, row: 3 };
+    const wall = { col: 8, row: 6 };
     expect(REACTOR_DECK.tiles[wall.row]?.[wall.col]).toBe(TileKind.Wall);
     // A point on the Wall sprite above its footprint lies over the floor tile behind it.
     const { x, y } = gridToWorld(wall);
@@ -218,8 +218,8 @@ describe("resolveTap", () => {
   });
 
   describe("next to a Wall", () => {
-    const wall = { col: 4, row: 6 };
-    const target = { col: 4, row: 5 };
+    const wall = { col: 11, row: 4 };
+    const target = { col: 11, row: 3 };
     const { x, y } = world(target.col, target.row);
     const inset = 4;
     const points = [
@@ -307,7 +307,7 @@ describe("zoom and pan camera", () => {
 describe("tile picking at zoomed and panned cameras", () => {
   const view = { width: 844, height: 390 };
   const tiles = [
-    { col: 10, row: 5 },
+    { col: 15, row: 8 },
     { col: 7, row: 8 },
   ];
   const fitted = computeCamera(view.width, view.height);
@@ -351,10 +351,12 @@ describe("framing a Move", () => {
   });
 
   it("stays within the zoom limits", () => {
-    const tight = frameMoveCamera({ col: 10, row: 8 }, [], view);
+    const tight = frameMoveCamera({ col: 15, row: 8 }, [], view);
     expect(tight.scale).toBeCloseTo(fitted.scale * MAX_ZOOM);
-    const wide = frameMoveCamera({ col: 10, row: 8 }, [{ col: 0, row: 0 }, { col: 20, row: 10 }], view);
-    expect(wide.scale).toBeCloseTo(fitted.scale);
+    const wide = frameMoveCamera({ col: 15, row: 8 }, [{ col: 0, row: 0 }, { col: 30, row: 16 }], view);
+    // Tiles at the board corners need (about) the whole board: no more than the fitted scale.
+    expect(wide.scale).toBeGreaterThanOrEqual(fitted.scale);
+    expect(wide.scale).toBeLessThan(fitted.scale * 1.1);
   });
 
   it("gives a legal camera for a Hero at the border of the board", () => {

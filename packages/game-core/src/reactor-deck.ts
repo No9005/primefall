@@ -152,19 +152,25 @@ export function hasLineOfSight(grid: Grid, a: GridPosition, b: GridPosition): bo
 }
 
 /**
- * The Reactor Deck: 21 by 11 tiles, mirror-symmetric around column 10.
- * `#` Wall, `H` Half Cover, `P` Prime Zone, `O` Overwatch Nest, `S` Spawn, `.` open floor (ADR 0016).
+ * The Reactor Deck: 31 by 17 tiles, mirror-symmetric around the centre column (ADR 0016).
+ * `#` Wall, `H` Half Cover, `P` Prime Zone, `O` Overwatch Nest, `S` Spawn, `.` open floor.
  */
 export const REACTOR_DECK: Grid = parseGrid([
-  "#####################",
-  "#.........O.........#",
-  "#...##.........##...#",
-  "#...#...........#...#",
-  "#S..#....PPP....#..S#",
-  "#S...H...PPP...H...S#",
-  "#S..#....PPP....#..S#",
-  "#...#...........#...#",
-  "#...##.........##...#",
-  "#...................#",
-  "#####################",
+  "###############################",
+  "#..............O..............#",
+  "#...H...HH...HH.HH...HH...H...#",
+  "#.............................#",
+  "#.....HH..##.H...H.##..HH.....#",
+  "#.............H.H.............#",
+  "#....#######HH...HH#######....#",
+  "#S............PPP............S#",
+  "#S............PPP............S#",
+  "#S............PPP............S#",
+  "#....#######HH...HH#######....#",
+  "#.............H.H.............#",
+  "#.....HH..##.H...H.##..HH.....#",
+  "#.............................#",
+  "#...H...HH...HH.HH...HH...H...#",
+  "#.............................#",
+  "###############################",
 ]);

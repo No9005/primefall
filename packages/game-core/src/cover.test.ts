@@ -26,44 +26,44 @@ function attackFrom(attacker: GridPosition, target: GridPosition) {
 }
 
 describe("Cover against Attacks", () => {
-  // The Reactor Deck has Half Cover at (5,5).
-  const halfCover = { col: 5, row: 5 };
+  // The Reactor Deck has Half Cover at (14,5).
+  const halfCover = { col: 14, row: 5 };
+  const nest = { col: 15, row: 1 };
 
   it("reduces damage by 1 for a target on Half Cover attacked from Range 2 or more", () => {
-    expect(attackFrom({ col: 8, row: 5 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 1 });
-    expect(attackFrom({ col: 7, row: 5 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 1 });
+    expect(attackFrom({ col: 17, row: 5 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 1 });
+    expect(attackFrom({ col: 16, row: 5 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 1 });
   });
 
   it("ignores Half Cover for an attacker at Range 1", () => {
-    expect(attackFrom({ col: 6, row: 5 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
-    expect(attackFrom({ col: 6, row: 4 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
+    expect(attackFrom({ col: 15, row: 5 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
+    expect(attackFrom({ col: 15, row: 4 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
   });
 
   it("has no facing: Half Cover protects from every side", () => {
-    expect(attackFrom({ col: 5, row: 8 }, halfCover)).toMatchObject({ damage: 1 });
-    expect(attackFrom({ col: 5, row: 2 }, halfCover)).toMatchObject({ damage: 1 });
+    expect(attackFrom({ col: 14, row: 8 }, halfCover)).toMatchObject({ damage: 1 });
+    expect(attackFrom({ col: 14, row: 3 }, halfCover)).toMatchObject({ damage: 1 });
   });
 
   it("blocks Attacks from Range 2 or more against a Hero on the Overwatch Nest", () => {
-    const nest = { col: 10, row: 1 };
-    expect(attackFrom({ col: 10, row: 3 }, nest).kind).toBe(EventKind.AttackFailed);
-    expect(attackFrom({ col: 10, row: 4 }, nest).kind).toBe(EventKind.AttackFailed);
-    expect(attackFrom({ col: 12, row: 3 }, nest).kind).toBe(EventKind.AttackFailed);
+    expect(attackFrom({ col: 15, row: 3 }, nest).kind).toBe(EventKind.AttackFailed);
+    expect(attackFrom({ col: 15, row: 4 }, nest).kind).toBe(EventKind.AttackFailed);
+    expect(attackFrom({ col: 17, row: 3 }, nest).kind).toBe(EventKind.AttackFailed);
   });
 
   it("lets an attacker at Range 1 hit a Hero on the Overwatch Nest", () => {
-    expect(attackFrom({ col: 10, row: 2 }, { col: 10, row: 1 })).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
+    expect(attackFrom({ col: 15, row: 2 }, nest)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
   });
 
   it("lets a Hero on Cover attack out of it", () => {
-    expect(attackFrom({ col: 10, row: 1 }, { col: 10, row: 4 }).kind).toBe(EventKind.AttackHit);
+    expect(attackFrom(nest, { col: 15, row: 4 }).kind).toBe(EventKind.AttackHit);
   });
 
   it("classifies tiles", () => {
     expect(coverAt(REACTOR_DECK, halfCover)).toBe(CoverKind.Half);
-    expect(coverAt(REACTOR_DECK, { col: 10, row: 1 })).toBe(CoverKind.Full);
+    expect(coverAt(REACTOR_DECK, nest)).toBe(CoverKind.Full);
     expect(coverAt(REACTOR_DECK, { col: 8, row: 5 })).toBe(CoverKind.None);
-    expect(coverAgainst(REACTOR_DECK, { col: 6, row: 5 }, halfCover)).toBe(CoverKind.None);
+    expect(coverAgainst(REACTOR_DECK, { col: 15, row: 5 }, halfCover)).toBe(CoverKind.None);
   });
 });
 

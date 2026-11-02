@@ -52,8 +52,8 @@ describe("Visible, Ghost and Unknown", () => {
   });
 
   it("does not see through a Wall even within sight range", () => {
-    // The Wall at (4,4) blocks the straight line from (3,4) to (6,4).
-    const match = setup({ [LEFT_BRUISER]: { col: 3, row: 4 }, [RIGHT_BRUISER]: { col: 6, row: 4 } });
+    // The Wall at (8,6) blocks the straight line from (8,5) to (8,7).
+    const match = setup({ [LEFT_BRUISER]: { col: 8, row: 5 }, [RIGHT_BRUISER]: { col: 8, row: 7 } });
     expect(enemyOf(match, SquadId.Left, RIGHT_BRUISER).visibility).toBe(Visibility.Unknown);
   });
 
@@ -66,11 +66,11 @@ describe("Visible, Ghost and Unknown", () => {
   });
 
   it("shares vision: one Hero seeing an enemy is enough", () => {
-    const enemy = { [RIGHT_BRUISER]: { col: 8, row: 5 } };
+    const enemy = { [RIGHT_BRUISER]: { col: 10, row: 5 } };
     const alone = setup({ [LEFT_BRUISER]: { col: 1, row: 1 }, ...enemy });
     expect(enemyOf(alone, SquadId.Left, RIGHT_BRUISER).visibility).toBe(Visibility.Unknown);
     const together = setup({ [LEFT_BRUISER]: { col: 1, row: 1 }, [LEFT_CONTROLLER]: { col: 3, row: 5 }, ...enemy });
-    expect(enemyOf(together, SquadId.Left, RIGHT_BRUISER)).toMatchObject({ visibility: Visibility.Visible, position: { col: 8, row: 5 } });
+    expect(enemyOf(together, SquadId.Left, RIGHT_BRUISER)).toMatchObject({ visibility: Visibility.Visible, position: { col: 10, row: 5 } });
   });
 
   it("turns Visible into Ghost at the position where the enemy was last seen, then back to Visible", () => {

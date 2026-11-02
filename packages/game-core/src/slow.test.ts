@@ -29,8 +29,8 @@ const leftPlan = (queue: QueuedAction[], pitched: number[] = []): SquadPlan => (
 
 function duel(): MatchState {
   const match = startRound(createMatch(5));
-  hero(match, BRUISER).position = { col: 8, row: 5 };
-  hero(match, RIGHT_BRUISER).position = { col: 11, row: 5 };
+  hero(match, BRUISER).position = { col: 8, row: 3 };
+  hero(match, RIGHT_BRUISER).position = { col: 11, row: 3 };
   hero(match, BRUISER).hand = [CONCUSSION_ROUND, SUPPRESS, SLAM_SHOT, 1];
   hero(match, RIGHT_BRUISER).hand = [0, 1, 2, 3];
   return match;
@@ -53,7 +53,7 @@ describe("Slow", () => {
 
   it("a failed Concussion Round does not Slow", () => {
     const match = duel();
-    hero(match, RIGHT_BRUISER).position = { col: 14, row: 5 };
+    hero(match, RIGHT_BRUISER).position = { col: 14, row: 3 };
     const { match: after, events } = resolveRound(match, [leftPlan([use(CONCUSSION_ROUND, RIGHT_BRUISER)], [SLAM_SHOT])]);
     expect(events.map(({ kind }) => kind)).toEqual([EventKind.AttackFailed]);
     expect(hero(after, RIGHT_BRUISER).slow).toBe(0);
@@ -67,15 +67,15 @@ describe("Slow", () => {
 
   it("Suppress fails against an enemy that is not visible, an ally or an Exhausted Hero", () => {
     const hidden = duel();
-    hero(hidden, RIGHT_BRUISER).position = { col: 19, row: 5 };
+    hero(hidden, RIGHT_BRUISER).position = { col: 19, row: 3 };
     const failed = [{ kind: EventKind.ActionFailed, tick: 1, heroId: BRUISER }];
     expect(resolveRound(hidden, [leftPlan([use(SUPPRESS, RIGHT_BRUISER)], [SLAM_SHOT])]).events).toEqual(failed);
     expect(resolveRound(duel(), [leftPlan([use(SUPPRESS, "left-controller")], [SLAM_SHOT])]).events).toEqual(failed);
   });
 
   it("a Slowed Hero's Move 2 becomes a Move 1 and uses the Slow up", () => {
-    const { match: after, events } = resolveRound(slowedByConcussion(), [rightPlan([move(0, 11, 7), move(1, 11, 9)])]);
-    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 11, row: 8 });
+    const { match: after, events } = resolveRound(slowedByConcussion(), [rightPlan([move(0, 13, 3), move(1, 15, 3)])]);
+    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 14, row: 3 });
     expect(events.filter(({ kind }) => kind === EventKind.SlowUsed)).toEqual([
       { kind: EventKind.SlowUsed, tick: 1, heroId: RIGHT_BRUISER },
     ]);
@@ -85,9 +85,9 @@ describe("Slow", () => {
   it("Slow also applies to a Move planned in the Resolution that Slows, after the Slow", () => {
     const { match: after } = resolveRound(duel(), [
       leftPlan([use(SUPPRESS, RIGHT_BRUISER)], [SLAM_SHOT]),
-      rightPlan([{ kind: ActionKind.Block, card: 0 }, move(1, 11, 7)]),
+      rightPlan([{ kind: ActionKind.Block, card: 0 }, move(1, 13, 3)]),
     ]);
-    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 11, row: 6 });
+    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 12, row: 3 });
   });
 
   it("Slow lasts until the end of the next Resolution when no Move uses it", () => {
@@ -95,8 +95,8 @@ describe("Slow", () => {
     expect(hero(afterApplied, RIGHT_BRUISER).slow).toBeGreaterThan(0);
     const afterNext = resolveRound(afterApplied, [rightPlan([{ kind: ActionKind.Block, card: 0 }])]).match;
     expect(hero(afterNext, RIGHT_BRUISER).slow).toBe(0);
-    const { match: moved } = resolveRound(afterNext, [rightPlan([move(1, 11, 7)])]);
-    expect(hero(moved, RIGHT_BRUISER).position).toEqual({ col: 11, row: 7 });
+    const { match: moved } = resolveRound(afterNext, [rightPlan([move(1, 13, 3)])]);
+    expect(hero(moved, RIGHT_BRUISER).position).toEqual({ col: 13, row: 3 });
   });
 });
 
@@ -110,7 +110,7 @@ describe("Slow in the Squad View (Fog of War)", () => {
 
   it("tells nothing about Slow once the enemy is out of sight", () => {
     const after = slowedByConcussion();
-    hero(after, RIGHT_BRUISER).position = { col: 19, row: 5 };
+    hero(after, RIGHT_BRUISER).position = { col: 19, row: 3 };
     const enemy = buildSquadView(after, SquadId.Left).enemies.find(({ id }) => id === RIGHT_BRUISER)!;
     expect(enemy.visibility).toBe(Visibility.Ghost);
     expect(enemy).not.toHaveProperty("slowed");

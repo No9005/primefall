@@ -6,14 +6,14 @@ import { resolveRound } from "./resolution";
 /** Prime Zone tiles used by each Squad, so that the two Squads never share a tile. */
 const ZONE_TILES = {
   [SquadId.Left]: [
-    { col: 9, row: 4 },
-    { col: 9, row: 5 },
-    { col: 9, row: 6 },
+    { col: 14, row: 7 },
+    { col: 14, row: 8 },
+    { col: 14, row: 9 },
   ],
   [SquadId.Right]: [
-    { col: 11, row: 4 },
-    { col: 11, row: 5 },
-    { col: 11, row: 6 },
+    { col: 16, row: 7 },
+    { col: 16, row: 8 },
+    { col: 16, row: 9 },
   ],
 };
 
@@ -25,7 +25,7 @@ function matchWithHeroesInZone(left: number, right: number): MatchState {
     match.heroes
       .filter((hero) => hero.squad === squad)
       .forEach((hero, i) => {
-        hero.position = i < count ? ZONE_TILES[squad][i]! : { col: squad === SquadId.Left ? 1 : 19, row: 1 + i };
+        hero.position = i < count ? ZONE_TILES[squad][i]! : { col: squad === SquadId.Left ? 1 : 29, row: 1 + i };
       });
   }
   return match;
