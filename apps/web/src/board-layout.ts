@@ -1,4 +1,4 @@
-import { TileKind, type Grid, type GridPosition } from "game-core";
+import { REACTOR_DECK, TileKind, type Grid, type GridPosition } from "game-core";
 
 // Pure layout of the isometric board: which sprite goes where and in what depth order.
 // 2:1 projection with 128 x 64 px tiles (asset contract, skill isometric-grid-math).
@@ -6,9 +6,10 @@ import { TileKind, type Grid, type GridPosition } from "game-core";
 export const TILE_WIDTH = 128;
 export const TILE_HEIGHT = 64;
 
-/** World size the default camera frames: roughly the central 13 columns around the Prime Zone. */
-export const CAMERA_FRAME = { width: 1250, height: 620 };
-export const CAMERA_FOCUS: GridPosition = { col: 10, row: 5 };
+/** Height of the tallest prop sprite (Wall, 128 px), drawn upwards from its tile's bottom vertex. */
+const PROP_HEIGHT = 128;
+/** Share of the view left empty on each side of the board. */
+const CAMERA_MARGIN = 0.03;
 
 export enum Layer {
   Floor = "floor",
@@ -89,9 +90,25 @@ export interface Camera {
   y: number;
 }
 
-/** Scale and offset of the world container so the focus tile sits in the middle of the view. */
-export function computeCamera(viewWidth: number, viewHeight: number): Camera {
-  const scale = Math.min(viewWidth / CAMERA_FRAME.width, viewHeight / CAMERA_FRAME.height);
-  const focus = gridToWorld(CAMERA_FOCUS);
-  return { scale, x: viewWidth / 2 - focus.x * scale, y: viewHeight / 2 - focus.y * scale };
+/** World rectangle covering every tile footprint of the grid plus the height of tall props. */
+export function boardBounds({ width, height }: Grid): { left: number; right: number; top: number; bottom: number } {
+  return {
+    left: gridToWorld({ col: 0, row: height - 1 }).x - TILE_WIDTH / 2,
+    right: gridToWorld({ col: width - 1, row: 0 }).x + TILE_WIDTH / 2,
+    top: gridToWorld({ col: 0, row: 0 }).y + TILE_HEIGHT / 2 - PROP_HEIGHT,
+    bottom: gridToWorld({ col: width - 1, row: height - 1 }).y + TILE_HEIGHT / 2,
+  };
+}
+
+/** Scale and offset of the world container so the whole board is shown, as large as fits, centred. */
+export function computeCamera(viewWidth: number, viewHeight: number, grid: Grid = REACTOR_DECK): Camera {
+  const bounds = boardBounds(grid);
+  const boardWidth = bounds.right - bounds.left;
+  const boardHeight = bounds.bottom - bounds.top;
+  const scale = Math.min(viewWidth / boardWidth, viewHeight / boardHeight) * (1 - 2 * CAMERA_MARGIN);
+  return {
+    scale,
+    x: viewWidth / 2 - ((bounds.left + bounds.right) / 2) * scale,
+    y: viewHeight / 2 - ((bounds.top + bounds.bottom) / 2) * scale,
+  };
 }

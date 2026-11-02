@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { REACTOR_DECK } from "game-core";
 import { describe, expect, it } from "vitest";
-import { AssetAlias, buildPlacements, CAMERA_FOCUS, computeCamera, gridToWorld, Layer } from "./board-layout";
+import { AssetAlias, boardBounds, buildPlacements, computeCamera, gridToWorld, Layer, TILE_HEIGHT, TILE_WIDTH } from "./board-layout";
 
 const assetsDir = path.resolve(__dirname, "../public/assets");
 const manifest = JSON.parse(readFileSync(path.join(assetsDir, "manifest.json"), "utf8")) as {
@@ -60,19 +60,50 @@ describe("buildPlacements for the Reactor Deck", () => {
 });
 
 describe("computeCamera", () => {
-  it.each([
+  const viewports = [
     [844, 390],
-    [1280, 720],
-    [1920, 1080],
-  ])("centres the focus tile on a %i x %i viewport", (width, height) => {
+    [667, 375],
+    [2000, 920],
+  ];
+  const lastCol = REACTOR_DECK.width - 1;
+  const lastRow = REACTOR_DECK.height - 1;
+  const corners = [
+    { col: 0, row: 0 },
+    { col: lastCol, row: 0 },
+    { col: 0, row: lastRow },
+    { col: lastCol, row: lastRow },
+  ];
+
+  it.each(viewports)("shows every corner tile, including Wall height, on a %i x %i viewport", (width, height) => {
     const camera = computeCamera(width, height);
-    const focus = gridToWorld(CAMERA_FOCUS);
-    expect(focus.x * camera.scale + camera.x).toBeCloseTo(width / 2);
-    expect(focus.y * camera.scale + camera.y).toBeCloseTo(height / 2);
-    expect(camera.scale).toBeGreaterThan(0);
+    for (const corner of corners) {
+      const { x, y } = gridToWorld(corner);
+      // Tile footprint (left, right, bottom vertex) and the top of a 128 px tall prop.
+      const points = [
+        { px: x - TILE_WIDTH / 2, py: y },
+        { px: x + TILE_WIDTH / 2, py: y },
+        { px: x, py: y + TILE_HEIGHT / 2 },
+        { px: x, py: y + TILE_HEIGHT / 2 - 128 },
+      ];
+      for (const { px, py } of points) {
+        const screenX = px * camera.scale + camera.x;
+        const screenY = py * camera.scale + camera.y;
+        expect(screenX).toBeGreaterThanOrEqual(0);
+        expect(screenX).toBeLessThanOrEqual(width);
+        expect(screenY).toBeGreaterThanOrEqual(0);
+        expect(screenY).toBeLessThanOrEqual(height);
+      }
+    }
   });
 
-  it("scales the frame down to fit a small viewport", () => {
-    expect(computeCamera(844, 390).scale).toBeLessThan(computeCamera(1920, 1080).scale);
+  it.each(viewports)("uses the largest scale that fits and stays centred on %i x %i", (width, height) => {
+    const camera = computeCamera(width, height);
+    const bounds = boardBounds(REACTOR_DECK);
+    const screenWidth = (bounds.right - bounds.left) * camera.scale;
+    const screenHeight = (bounds.bottom - bounds.top) * camera.scale;
+    // One axis is filled up to the margin, the other fits.
+    expect(Math.max(screenWidth / width, screenHeight / height)).toBeCloseTo(1 - 2 * 0.03);
+    expect(bounds.left * camera.scale + camera.x).toBeCloseTo(width - (bounds.right * camera.scale + camera.x));
+    expect(bounds.top * camera.scale + camera.y).toBeCloseTo(height - (bounds.bottom * camera.scale + camera.y));
   });
 });
