@@ -61,7 +61,8 @@ runs:
     - name: Job summary of the review run
       if: always()
       shell: bash
-      run: node "${{ inputs.factory }}/src/cli.ts" run-summary "Review #${{ inputs.pr }}" "$RUNNER_TEMP/claude-execution-output.json"
+      run: |
+        node "${{ inputs.factory }}/src/cli.ts" run-summary "Review #${{ inputs.pr }}" "$RUNNER_TEMP/claude-execution-output.json"
     - name: Report the review
       id: report
       shell: bash

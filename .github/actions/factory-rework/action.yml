@@ -53,7 +53,8 @@ runs:
     - name: Job summary of the rework run
       if: always()
       shell: bash
-      run: node "${{ inputs.factory }}/src/cli.ts" run-summary "Rework #${{ inputs.pr }}" "$RUNNER_TEMP/claude-execution-output.json"
+      run: |
+        node "${{ inputs.factory }}/src/cli.ts" run-summary "Rework #${{ inputs.pr }}" "$RUNNER_TEMP/claude-execution-output.json"
     - name: Without a new commit there is nothing to review again
       id: after
       shell: bash
