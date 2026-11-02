@@ -223,6 +223,42 @@ export function zoomOnPoint(world: { x: number; y: number }, view: CameraView): 
   return clampCamera({ scale, x: view.width / 2 - world.x * scale, y: view.height / 2 - world.y * scale }, view);
 }
 
+/**
+ * The camera for placing a Move: the Hero and its highlighted tiles, with a margin of one tile, as large as fits
+ * and within the zoom limits. At the border of the board the clamp keeps the camera legal.
+ */
+export function frameMoveCamera(hero: GridPosition, highlights: readonly GridPosition[], view: CameraView): Camera {
+  const points = [hero, ...highlights].map(gridToWorld);
+  const left = Math.min(...points.map((p) => p.x)) - TILE_WIDTH / 2 - TILE_WIDTH;
+  const right = Math.max(...points.map((p) => p.x)) + TILE_WIDTH / 2 + TILE_WIDTH;
+  const top = Math.min(...points.map((p) => p.y)) - TILE_HEIGHT / 2 - TILE_HEIGHT;
+  const bottom = Math.max(...points.map((p) => p.y)) + TILE_HEIGHT / 2 + TILE_HEIGHT;
+  // Limit the scale first, so the offset below centres the box at the scale that is really used.
+  const scale = clampCamera({ ...fitCamera(view), scale: Math.min(view.width / (right - left), view.height / (bottom - top)) }, view).scale;
+  const centreX = (left + right) / 2;
+  const centreY = (top + bottom) / 2;
+  return clampCamera({ scale, x: view.width / 2 - centreX * scale, y: view.height / 2 - centreY * scale }, view);
+}
+
+/** Automatic framing of an armed Move: remembers the view to return to, and stops once the player moves the camera by hand. */
+export interface MoveFraming {
+  restore: Camera;
+  automatic: boolean;
+}
+
+export function beginMoveFraming(camera: Camera): MoveFraming {
+  return { restore: camera, automatic: true };
+}
+
+export function takeOverFraming(framing: MoveFraming | undefined): MoveFraming | undefined {
+  return framing && { ...framing, automatic: false };
+}
+
+/** The camera after the Move is placed or cancelled: the previous view, unless the player has moved the camera since. */
+export function endMoveFraming(framing: MoveFraming, current: Camera): Camera {
+  return framing.automatic ? framing.restore : current;
+}
+
 export type TapTarget = { kind: "hero"; id: string } | { kind: "tile"; tile: GridPosition } | { kind: "none" };
 
 export interface TapCandidates {

@@ -4,6 +4,10 @@ import { REACTOR_DECK, TileKind } from "game-core";
 import { describe, expect, it } from "vitest";
 import {
   AssetAlias,
+  beginMoveFraming,
+  endMoveFraming,
+  frameMoveCamera,
+  takeOverFraming,
   boardBounds,
   buildPlacements,
   clampCamera,
@@ -322,5 +326,57 @@ describe("tile picking at zoomed and panned cameras", () => {
         expect(resolveTap(world.x, world.y, candidates)).toEqual({ kind: "hero", id: "h" });
       }
     }
+  });
+});
+
+describe("framing a Move", () => {
+  const view = { width: 844, height: 390 };
+  const fitted = computeCamera(view.width, view.height);
+
+  it("shows the Hero and every highlight with a margin of one tile", () => {
+    const hero = { col: 10, row: 8 };
+    const highlights = [{ col: 11, row: 8 }, { col: 9, row: 8 }, { col: 10, row: 9 }, { col: 10, row: 7 }, { col: 11, row: 9 }];
+    const camera = frameMoveCamera(hero, highlights, view);
+    for (const tile of [hero, ...highlights]) {
+      const { x, y } = gridToWorld(tile);
+      const sx = x * camera.scale + camera.x;
+      const sy = y * camera.scale + camera.y;
+      const marginX = TILE_WIDTH * 1.5 * camera.scale;
+      const marginY = TILE_HEIGHT * 1.5 * camera.scale;
+      expect(sx - marginX).toBeGreaterThanOrEqual(-1e-6);
+      expect(sx + marginX).toBeLessThanOrEqual(view.width + 1e-6);
+      expect(sy - marginY).toBeGreaterThanOrEqual(-1e-6);
+      expect(sy + marginY).toBeLessThanOrEqual(view.height + 1e-6);
+    }
+  });
+
+  it("stays within the zoom limits", () => {
+    const tight = frameMoveCamera({ col: 10, row: 8 }, [], view);
+    expect(tight.scale).toBeCloseTo(fitted.scale * MAX_ZOOM);
+    const wide = frameMoveCamera({ col: 10, row: 8 }, [{ col: 0, row: 0 }, { col: 20, row: 10 }], view);
+    expect(wide.scale).toBeCloseTo(fitted.scale);
+  });
+
+  it("gives a legal camera for a Hero at the border of the board", () => {
+    const hero = { col: 0, row: 0 };
+    const camera = frameMoveCamera(hero, [{ col: 1, row: 0 }, { col: 0, row: 1 }], view);
+    expect(clampCamera(camera, view)).toEqual(camera);
+    const { x, y } = gridToWorld(hero);
+    expect(x * camera.scale + camera.x).toBeGreaterThanOrEqual(0);
+    expect(y * camera.scale + camera.y).toBeGreaterThanOrEqual(0);
+  });
+
+  it("restores the previous camera after the Move is placed or cancelled", () => {
+    const before = zoomAt(fitted, fitted.scale * 1.5, 300, 200, view);
+    const framing = beginMoveFraming(before);
+    const framed = frameMoveCamera({ col: 10, row: 8 }, [{ col: 11, row: 8 }], view);
+    expect(endMoveFraming(framing, framed)).toEqual(before);
+  });
+
+  it("stops framing automatically once the player pans or zooms", () => {
+    const framing = takeOverFraming(beginMoveFraming(fitted));
+    const byHand = zoomAt(fitted, fitted.scale * 2, 100, 100, view);
+    expect(framing?.automatic).toBe(false);
+    expect(endMoveFraming(framing!, byHand)).toEqual(byHand);
   });
 });
