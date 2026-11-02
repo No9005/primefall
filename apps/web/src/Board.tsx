@@ -12,7 +12,7 @@ import {
 } from "game-core";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
-import { buildPlacements, computeCamera, gridToWorld, Layer, TILE_HEIGHT, TILE_WIDTH } from "./board-layout";
+import { buildPlacements, computeCamera, gridToWorld, Layer, pickTileAt, resolveTap, TILE_HEIGHT, TILE_WIDTH, viewToWorld } from "./board-layout";
 
 interface Manifest {
   bundles: { name: string; assets: { alias: string; src: string; data?: { anchor?: [number, number] } }[] }[];
@@ -113,19 +113,31 @@ export function Board({
   onTargetTapRef.current = onTargetTap;
   const onTileTapRef = useRef(onTileTap);
   onTileTapRef.current = onTileTap;
+  // One tap handler on the stage picks in isometric space; it reads the latest candidates from here.
+  const candidatesRef = useRef({ heroes: [...heroes, ...enemies], targetableIds, highlights });
+  candidatesRef.current = { heroes: [...heroes, ...enemies], targetableIds, highlights };
+  const enemyIdsRef = useRef(new Set<string>());
+  enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
+  const [pressed, setPressed] = useState<GridPosition>();
 
   useEffect(() => {
     if (!overlay) return;
     const created: Container[] = [];
     for (const tile of highlights) {
       const { x, y } = gridToWorld(tile);
-      const diamond = new Graphics().poly(tileDiamond()).fill({ color: 0x2ec4b6, alpha: 0.35 }).stroke({ width: 2, color: 0x2ec4b6 });
+      const diamond = new Graphics().poly(tileDiamond()).fill({ color: 0x2ec4b6, alpha: 0.35 }).stroke({ width: 4, color: 0x2ec4b6 });
       diamond.position.set(x, y);
-      diamond.eventMode = "static";
-      diamond.cursor = "pointer";
-      diamond.on("pointertap", () => onTileTapRef.current(tile));
       overlay.addChild(diamond);
       created.push(diamond);
+    }
+    if (pressed) {
+      // The tile under the finger, drawn larger than the tile so the finger does not hide it.
+      const { x, y } = gridToWorld(pressed);
+      const preview = new Graphics().poly(tileDiamond()).fill({ color: 0xffffff, alpha: 0.3 }).stroke({ width: 6, color: 0xffffff });
+      preview.position.set(x, y);
+      preview.scale.set(1.15);
+      overlay.addChild(preview);
+      created.push(preview);
     }
     markers.forEach(({ position, label }) => {
       const { x, y } = gridToWorld(position);
@@ -139,7 +151,7 @@ export function Board({
       created.push(marker);
     });
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [overlay, highlights, markers]);
+  }, [overlay, highlights, markers, pressed]);
 
   useEffect(() => {
     if (!tokens) return;
@@ -173,9 +185,6 @@ export function Board({
         indicator.anchor.set(0.5, 1);
         token.addChild(indicator);
       }
-      token.eventMode = "static";
-      token.cursor = "pointer";
-      token.on("pointertap", () => (enemy || targetable ? onTargetTapRef.current(hero.id) : onSelectRef.current(hero.id)));
       tokens.addChild(token);
       created.push(token);
     };
@@ -267,6 +276,29 @@ export function Board({
       setOverlay(planning);
 
       setTerrain({ floor, objects, planning, anchors });
+
+      const pick = (viewX: number, viewY: number) => {
+        const { x, y } = viewToWorld(viewX, viewY, app.screen.width, app.screen.height);
+        return { x, y, target: resolveTap(x, y, candidatesRef.current) };
+      };
+      app.stage.eventMode = "static";
+      app.stage.hitArea = app.screen;
+      app.stage.on("pointerdown", (event) => {
+        const { x, y, target } = pick(event.global.x, event.global.y);
+        setPressed(target.kind === "tile" ? target.tile : pickTileAt(x, y));
+      });
+      const release = () => setPressed(undefined);
+      app.stage.on("pointerup", release);
+      app.stage.on("pointerupoutside", release);
+      app.stage.on("pointertap", (event) => {
+        const { target } = pick(event.global.x, event.global.y);
+        if (target.kind === "tile") onTileTapRef.current(target.tile);
+        else if (target.kind === "hero") {
+          const targetable = candidatesRef.current.targetableIds.includes(target.id);
+          if (enemyIdsRef.current.has(target.id) || targetable) onTargetTapRef.current(target.id);
+          else onSelectRef.current(target.id);
+        }
+      });
 
       const frame = () => {
         const camera = computeCamera(app.screen.width, app.screen.height);

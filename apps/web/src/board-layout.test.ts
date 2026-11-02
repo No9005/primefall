@@ -1,8 +1,22 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { REACTOR_DECK } from "game-core";
+import { REACTOR_DECK, TileKind } from "game-core";
 import { describe, expect, it } from "vitest";
-import { AssetAlias, boardBounds, buildPlacements, computeCamera, gridToWorld, Layer, TILE_HEIGHT, TILE_WIDTH } from "./board-layout";
+import {
+  AssetAlias,
+  boardBounds,
+  buildPlacements,
+  computeCamera,
+  gridToWorld,
+  HERO_PICK_TOLERANCE,
+  Layer,
+  pickTileAt,
+  resolveTap,
+  TILE_HEIGHT,
+  TILE_WIDTH,
+  viewToWorld,
+  worldToGrid,
+} from "./board-layout";
 
 const assetsDir = path.resolve(__dirname, "../public/assets");
 const manifest = JSON.parse(readFileSync(path.join(assetsDir, "manifest.json"), "utf8")) as {
@@ -105,5 +119,95 @@ describe("computeCamera", () => {
     expect(Math.max(screenWidth / width, screenHeight / height)).toBeCloseTo(1 - 2 * 0.03);
     expect(bounds.left * camera.scale + camera.x).toBeCloseTo(width - (bounds.right * camera.scale + camera.x));
     expect(bounds.top * camera.scale + camera.y).toBeCloseTo(height - (bounds.bottom * camera.scale + camera.y));
+  });
+});
+
+describe("tile picking at the fitted scale", () => {
+  const viewports = [
+    { width: 844, height: 390 },
+    { width: 667, height: 375 },
+  ];
+  // A point given in view pixels relative to the tile centre, converted back through the camera.
+  const at = (tile: { col: number; row: number }, dx: number, dy: number, view: { width: number; height: number }) => {
+    const camera = computeCamera(view.width, view.height);
+    const { x, y } = gridToWorld(tile);
+    return viewToWorld(x * camera.scale + camera.x + dx, y * camera.scale + camera.y + dy, view.width, view.height);
+  };
+  // A floor tile with no Wall in front of it on screen.
+  const tile = { col: 10, row: 5 };
+
+  it.each(viewports)("picks the tile at its centre and four corners ($width x $height)", (view) => {
+    const scale = computeCamera(view.width, view.height).scale;
+    const halfW = (TILE_WIDTH / 2) * scale;
+    const halfH = (TILE_HEIGHT / 2) * scale;
+    for (const [dx, dy] of [
+      [0, 0],
+      [halfW * 0.98, 0],
+      [-halfW * 0.98, 0],
+      [0, halfH * 0.98],
+      [0, -halfH * 0.98],
+    ]) {
+      const point = at(tile, dx!, dy!, view);
+      expect(pickTileAt(point.x, point.y)).toEqual(tile);
+    }
+  });
+
+  it.each(viewports)("picks the neighbour just outside the diamond ($width x $height)", (view) => {
+    const scale = computeCamera(view.width, view.height).scale;
+    const halfW = (TILE_WIDTH / 2) * scale;
+    const halfH = (TILE_HEIGHT / 2) * scale;
+    // Just beyond the midpoint of each of the four edges.
+    const beyond = 0.52;
+    const cases = [
+      { dx: halfW * beyond, dy: halfH * beyond, tile: { col: tile.col + 1, row: tile.row } },
+      { dx: -halfW * beyond, dy: halfH * beyond, tile: { col: tile.col, row: tile.row + 1 } },
+      { dx: -halfW * beyond, dy: -halfH * beyond, tile: { col: tile.col - 1, row: tile.row } },
+      { dx: halfW * beyond, dy: -halfH * beyond, tile: { col: tile.col, row: tile.row - 1 } },
+    ];
+    for (const { dx, dy, tile: expected } of cases) {
+      const point = at(tile, dx, dy, view);
+      expect(pickTileAt(point.x, point.y)).toEqual(expected);
+    }
+  });
+
+  it("picks a Wall in front of a tile, not the floor it hides", () => {
+    const wall = { col: 4, row: 3 };
+    expect(REACTOR_DECK.tiles[wall.row]?.[wall.col]).toBe(TileKind.Wall);
+    // A point on the Wall sprite above its footprint lies over the floor tile behind it.
+    const { x, y } = gridToWorld(wall);
+    expect(pickTileAt(x, y - TILE_HEIGHT * 1.5)).toEqual(wall);
+    expect(Math.round(worldToGrid(x, y - TILE_HEIGHT * 1.5).col)).not.toBe(wall.col);
+  });
+
+  it("returns nothing outside the grid", () => {
+    expect(pickTileAt(0, -TILE_HEIGHT * 5)).toBeUndefined();
+  });
+});
+
+describe("resolveTap", () => {
+  const heroes = [
+    { id: "own", position: { col: 4, row: 4 } },
+    { id: "enemy", position: { col: 6, row: 4 } },
+  ];
+  const candidates = { heroes, targetableIds: ["enemy"], highlights: [{ col: 5, row: 4 }] };
+  const world = (col: number, row: number) => gridToWorld({ col, row });
+
+  it("picks a targetable Hero on the neighbouring tile's edge, within HERO_PICK_TOLERANCE only", () => {
+    const near = world(6 - HERO_PICK_TOLERANCE * 0.9, 4);
+    expect(resolveTap(near.x, near.y, candidates)).toEqual({ kind: "hero", id: "enemy" });
+    const far = world(6 - HERO_PICK_TOLERANCE * 1.1, 4);
+    expect(resolveTap(far.x, far.y, { ...candidates, highlights: [] }).kind).toBe("none");
+  });
+
+  it("picks a highlighted tile and ignores tiles that are not valid targets", () => {
+    const valid = world(5, 4);
+    expect(resolveTap(valid.x, valid.y, { ...candidates, targetableIds: [] })).toEqual({ kind: "tile", tile: { col: 5, row: 4 } });
+    const other = world(5, 6);
+    expect(resolveTap(other.x, other.y, candidates)).toEqual({ kind: "none" });
+  });
+
+  it("selects an own Hero by tapping its tile", () => {
+    const point = world(4, 4);
+    expect(resolveTap(point.x, point.y, candidates)).toEqual({ kind: "hero", id: "own" });
   });
 });
