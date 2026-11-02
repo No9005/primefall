@@ -2,7 +2,7 @@
 // It only ever sees the Squad View, so it cannot read enemy Hands or unseen Heroes: no cheating.
 
 import { type CardIndex, HERO_DECKS, isSimpleAttack } from "./cards";
-import { type HeroView, type SquadView, Visibility, type VisibleEnemyView } from "./host";
+import { type HeroView, SquadId, type SquadView, Visibility, type VisibleEnemyView } from "./host";
 import {
   ActionKind,
   chebyshevDistance,
@@ -53,11 +53,22 @@ function walk(from: GridPosition, destination: GridPosition): GridPosition {
   return position;
 }
 
+const mirrorTile = ({ col, row }: GridPosition): GridPosition => ({ col: REACTOR_DECK.width - 1 - col, row });
+
+/**
+ * The Move 2 destinations in the order they are tried. The Reactor Deck is mirrored around the Prime Zone, so the
+ * Right Squad tries them in the mirrored order: with the same order for both, the tie between equally good
+ * destinations always went to the one with the lowest column, which is a longer advance for the Right Squad and
+ * made it win nearly every match (issue 87).
+ */
+const destinationsInOrder = (from: GridPosition, squad: SquadId): GridPosition[] =>
+  squad === SquadId.Left ? moveDestinations(from) : moveDestinations(mirrorTile(from)).map(mirrorTile);
+
 /** The Move 2 destination that ends closest to the Prime Zone by walking distance; undefined if none gets closer. */
-function stepTowardPrimeZone(from: GridPosition): GridPosition | undefined {
+function stepTowardPrimeZone(from: GridPosition, squad: SquadId): GridPosition | undefined {
   let best: GridPosition | undefined;
   let bestDistance = distanceToPrimeZone(from);
-  for (const destination of moveDestinations(from)) {
+  for (const destination of destinationsInOrder(from, squad)) {
     const distance = distanceToPrimeZone(walk(from, destination));
     if (distance < bestDistance) {
       best = destination;
@@ -102,7 +113,7 @@ function planHero(view: SquadView, hero: HeroView): HeroPlan {
     }
     const card = spare()[0];
     if (card === undefined || cardsLeft - 1 < 0) break;
-    const destination = stepTowardPrimeZone(position);
+    const destination = stepTowardPrimeZone(position, view.squad);
     if (destination) {
       queue.push({ kind: ActionKind.Move, card, destination });
       position = walk(position, destination);
