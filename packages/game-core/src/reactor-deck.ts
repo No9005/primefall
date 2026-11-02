@@ -83,16 +83,20 @@ export function coverAt(grid: Grid, position: GridPosition): CoverKind {
   }
 }
 
+/** A copy of the Grid with the tile at `position` set to `kind`. */
+export function withTile(grid: Grid, position: GridPosition, kind: TileKind): Grid {
+  const tiles = grid.tiles.map((line, row) =>
+    row === position.row ? line.map((current, col) => (col === position.col ? kind : current)) : line,
+  );
+  return { ...grid, tiles };
+}
+
 /**
  * A copy of the Grid with the Cover on `position` destroyed: the tile becomes open floor, so it can still be
  * occupied but no longer protects or blocks Line of Sight. Tiles without Cover stay as they are.
  */
 export function destroyCover(grid: Grid, position: GridPosition): Grid {
-  if (coverAt(grid, position) === CoverKind.None) return grid;
-  const tiles = grid.tiles.map((line, row) =>
-    row === position.row ? line.map((kind, col) => (col === position.col ? TileKind.Floor : kind)) : line,
-  );
-  return { ...grid, tiles };
+  return coverAt(grid, position) === CoverKind.None ? grid : withTile(grid, position, TileKind.Floor);
 }
 
 /** The Cover tiles of the original map that are no longer Cover in `grid`. */

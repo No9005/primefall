@@ -21,6 +21,15 @@ describe("buildPlaybackFrames", () => {
     expect(frames[1]!.moves.a).toEqual({ col: 2, row: 0 });
   });
 
+  it("does not move a Hero that places Cover or reveals an area on a tile", () => {
+    const frames = buildPlaybackFrames([
+      { kind: EventKind.CoverPlaced, tick: 1, heroId: "a", to: { col: 3, row: 3 } },
+      { kind: EventKind.AreaRevealed, tick: 2, heroId: "a", to: { col: 6, row: 3 }, amount: 3 },
+    ]);
+    expect(frames.map((frame) => frame.moves)).toEqual([{}, {}]);
+    expect(describeEvent(frames[1]!.events[0]!, (id) => id)).toContain("3 by 3");
+  });
+
   it("shows a pushed Hero moving one tile per frame", () => {
     const push = (to: number): MatchEvent => ({
       kind: EventKind.Knockback,

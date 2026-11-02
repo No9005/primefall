@@ -5,8 +5,11 @@ import {
   CardTarget,
   cardInMode,
   CardType,
+  CoverKind,
+  coverAt,
   destroyCover,
   EffectKind,
+  EffectRecipient,
   type EnemyView,
   type Grid,
   HERO_DECKS,
@@ -88,6 +91,7 @@ function SquadPanel({
             </span>
             {!playerControlled && <span className="tag">AI</span>}
             {hero.slowed && <span className="tag slow-tag">Slowed</span>}
+            {hero.marked && <span className="tag marked-tag">Marked</span>}
             {hero.hidden && <span className="tag hidden-tag">Hidden · sight +2</span>}
             {(hero.exhausted || playback?.exhausted.includes(hero.id)) && <span className="tag">Exhausted</span>}
           </button>
@@ -143,6 +147,7 @@ function EnemyPanel({
             {damage && <span className="tag range-tag">{damage}</span>}
             {attackerPosition && !enemy.exhausted && cover && <span className="tag cover-tag">{cover}</span>}
             {enemy.slowed && <span className="tag slow-tag">Slowed</span>}
+            {enemy.marked && <span className="tag marked-tag">Marked</span>}
             <span className="counts">
               Deck {enemy.deckCount - (playback?.deckDamage[enemy.id] ?? 0)} · Discard {enemy.discardCount} · Exile{" "}
               {enemy.exileCount}
@@ -301,18 +306,34 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   const planningFrom = lastMove?.kind === ActionKind.Move ? lastMove.destination : selected.position;
   const knownGrid = useMemo(() => view.destroyedCover.reduce(destroyCover, REACTOR_DECK), [view.destroyedCover]);
   const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, overdrive);
-  const aimsAtTile = aimedCard?.target === CardTarget.Tile;
+  // Tile cards (Breach Charge), area cards (Scout Drone) and Deploy Cover are confirmed by tapping a tile.
+  const aimsAtTile =
+    aimedCard?.target === CardTarget.Tile ||
+    aimedCard?.target === CardTarget.Area ||
+    aimedCard?.target === CardTarget.EmptyTile;
   // Forward Deploy first picks the ally, then the tile it moves towards.
   const deployAllyHero = view.heroes.find((hero) => hero.id === deployAlly);
   const aimsAtDeployTile =
     aimedCard?.effects.some(({ kind }) => kind === EffectKind.GrantExtraMove) === true && deployAllyHero !== undefined;
+  // Aegis Protocol's Overdrive first picks one ally, then a second one.
+  const needsSecondAlly = aimedCard?.effects.some(({ recipient }) => recipient === EffectRecipient.SecondTarget) === true;
   const highlights = useMemo(() => {
     if (playing) return [];
     if (armed !== undefined) return moveDestinations(planningFrom);
     if (aimsAtDeployTile) return moveDestinations(deployAllyHero.position);
-    // A tile card (Breach Charge) can be aimed at any tile within its Range; Line of Sight is checked in the Resolution.
-    return aimsAtTile ? moveDestinations(planningFrom, REACTOR_DECK, aimedCard?.range) : [];
-  }, [armed, aimsAtTile, aimsAtDeployTile, deployAllyHero, aimedCard, playing, planningFrom]);
+    if (!aimsAtTile) return [];
+    // Any tile within the Range can be aimed at; Line of Sight is checked in the Resolution. Deploy Cover needs an
+    // empty tile, so Cover and Heroes known to the Squad are left out.
+    const reachable = moveDestinations(planningFrom, REACTOR_DECK, aimedCard?.range ?? Math.max(REACTOR_DECK.width, REACTOR_DECK.height));
+    if (aimedCard?.target !== CardTarget.EmptyTile) return reachable;
+    const occupied = [...view.heroes, ...view.enemies.filter((enemy) => enemy.visibility === Visibility.Visible)].map((unit) => unit.position);
+    return reachable.filter(
+      (tile) =>
+        coverAt(knownGrid, tile) === CoverKind.None &&
+        !view.placedCover.some((cover) => cover.col === tile.col && cover.row === tile.row) &&
+        !occupied.some((position) => position.col === tile.col && position.row === tile.row),
+    );
+  }, [armed, aimsAtTile, aimsAtDeployTile, deployAllyHero, aimedCard, playing, planningFrom, knownGrid, view.heroes, view.enemies, view.placedCover]);
   const markers = useMemo(
     () =>
       queue.flatMap((action, i) =>
@@ -338,7 +359,9 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       }),
     [view.enemies, playback],
   );
-  const aimsAtAlly = aimedCard?.type === CardType.Utility && aimedCard.target === CardTarget.AllyHero;
+  const aimsAtAlly =
+    aimedCard?.type === CardType.Utility &&
+    (aimedCard.target === CardTarget.AllyHero || aimedCard.target === CardTarget.AllyHeroTile);
   const targetableIds = useMemo(() => {
     if (aiming === undefined || playing) return [];
     if (aimedCard?.target === CardTarget.SelfHero || aimedCard?.target === CardTarget.EnemiesInRange) return [selected.id];
@@ -346,9 +369,11 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     if (aimedCard?.target === CardTarget.GhostEnemy) {
       return view.enemies.filter((enemy) => enemy.visibility === Visibility.Ghost).map((enemy) => enemy.id);
     }
-    if (aimsAtAlly) return view.heroes.filter((hero) => hero.id !== selected.id && !hero.exhausted).map((hero) => hero.id);
+    if (aimsAtAlly) {
+      return view.heroes.filter((hero) => hero.id !== selected.id && !(needsSecondAlly && hero.id === deployAlly) && !hero.exhausted).map((hero) => hero.id);
+    }
     return view.enemies.filter((enemy) => enemy.visibility === Visibility.Visible && !enemy.exhausted).map((enemy) => enemy.id);
-  }, [aiming, aimedCard, aimsAtAlly, playing, selected.id, view.heroes, view.enemies]);
+  }, [aiming, aimedCard, aimsAtAlly, needsSecondAlly, playing, selected.id, deployAlly, view.heroes, view.enemies]);
   const nameOf = (heroId: string) => {
     const unit = [...view.heroes, ...view.enemies].find((candidate) => candidate.id === heroId);
     return unit ? `${heroId.startsWith(view.squad) ? "" : "Enemy "}${HERO_NAMES[unit.heroClass]}` : heroId;
@@ -396,6 +421,17 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     if (aiming === undefined || playing || !targetableIds.includes(targetId)) return;
     if (aimedCard?.effects.some(({ kind }) => kind === EffectKind.GrantExtraMove)) {
       setDeployAlly(targetId);
+      return;
+    }
+    if (needsSecondAlly) {
+      if (deployAlly === undefined) {
+        setDeployAlly(targetId);
+        return;
+      }
+      setQueue([...queue, { kind: ActionKind.Primary, card: aiming, target: deployAlly, secondTarget: targetId, overdrive: true }]);
+      setAiming(undefined);
+      setDeployAlly(undefined);
+      setOverdrive(false);
       return;
     }
     setQueue([...queue, { kind: ActionKind.Primary, card: aiming, target: targetId, ...(overdrive ? { overdrive } : {}) }]);
@@ -466,6 +502,8 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     <div className="planning">
       <Board
         destroyedCover={view.destroyedCover}
+        placedCover={view.placedCover}
+        revealedAreas={view.revealedAreas}
         heroes={boardHeroes}
         enemies={boardEnemies}
         selectedId={selected.id}
@@ -508,8 +546,14 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       )}
       {aiming !== undefined && !playing && (
         <div className="hud target-hint">
-          {aimsAtTile
+          {aimedCard?.target === CardTarget.Area
+            ? "Tap a highlighted tile: the area around it is revealed"
+            : aimedCard?.target === CardTarget.EmptyTile
+              ? "Tap a highlighted empty tile to place Half Cover"
+              : aimsAtTile
             ? "Tap a highlighted tile: it hurts the enemy Hero there and destroys Half Cover"
+            : needsSecondAlly
+              ? deployAlly === undefined ? "Tap the first allied Hero" : "Tap the second allied Hero"
             : aimedCard?.target === CardTarget.SelfHero
             ? "Tap this Hero to confirm"
             : aimedCard?.target === CardTarget.EnemiesInRange

@@ -75,19 +75,21 @@ describe("energyReadout and cardUseReasons", () => {
     expect(cardUseReasons(HeroClass.Assassin, 7, [], [1])[CardUse.Primary]).toBe("needs 2 Energy");
   });
 
-  it("allows the Primary effect of an affordable simple Attack and explains one that is not playable yet", () => {
+  it("allows the Primary effect of an affordable Attack or Utility card", () => {
     expect(cardUseReasons(HeroClass.Bruiser, 0, [], [1])[CardUse.Primary]).toBeUndefined();
-    // Bruiser card 6 is Bulwark (playable Utility); Controller card 7 is Fortify (no interpreter yet).
+    // Bruiser card 6 is Bulwark; Controller card 7 is Fortify and card 8 is Deploy Cover.
     expect(cardUseReasons(HeroClass.Bruiser, 6, [], [1])[CardUse.Primary]).toBeUndefined();
-    expect(cardUseReasons(HeroClass.Controller, 7, [], [1])[CardUse.Primary]).toBe("effect is not playable yet");
+    expect(cardUseReasons(HeroClass.Controller, 7, [], [1])[CardUse.Primary]).toBeUndefined();
+    expect(cardUseReasons(HeroClass.Controller, 8, [], [1])[CardUse.Primary]).toBeUndefined();
   });
 
-  it("allows the Overdrive of Long Shot and explains an Overdrive that is missing or not playable yet", () => {
-    // Assassin card 4 is Long Shot (playable Overdrive), card 0 is Precision Shot (none); Controller card 4 is
-    // Scout Drone (an area Overdrive without an interpreter yet).
+  it("allows an Overdrive that exists and explains one that is missing", () => {
+    // Assassin card 4 is Long Shot, card 0 is Precision Shot (no Overdrive); Controller card 4 is Scout Drone
+    // and card 6 is Aegis Protocol.
     expect(cardUseReasons(HeroClass.Assassin, 4, [], [1], true)[CardUse.Primary]).toBeUndefined();
     expect(cardUseReasons(HeroClass.Assassin, 0, [], [1], true)[CardUse.Primary]).toBe("Overdrive is not playable yet");
-    expect(cardUseReasons(HeroClass.Controller, 4, [], [1], true)[CardUse.Primary]).toBe("Overdrive is not playable yet");
+    expect(cardUseReasons(HeroClass.Controller, 4, [], [1], true)[CardUse.Primary]).toBeUndefined();
+    expect(cardUseReasons(HeroClass.Controller, 6, [], [1], true)[CardUse.Primary]).toBeUndefined();
   });
 
   it("allows Pitch, Move and Block while the Queue has room and disables them when it is full", () => {

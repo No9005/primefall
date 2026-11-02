@@ -1,4 +1,15 @@
-import { CoverKind, coverAt, destroyCover, type GridPosition, type HeroClass, REACTOR_DECK } from "game-core";
+import {
+  CoverKind,
+  coverAt,
+  destroyCover,
+  type GridPosition,
+  type HeroClass,
+  REACTOR_DECK,
+  type RevealedArea,
+  TileKind,
+  tileAt,
+  withTile,
+} from "game-core";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
 import { buildPlacements, computeCamera, gridToWorld, Layer, TILE_HEIGHT, TILE_WIDTH } from "./board-layout";
@@ -38,6 +49,8 @@ export interface TokenHero {
   hidden?: boolean;
   /** A Ghost: drawn faded at its last known position and not selectable as a target. */
   ghost?: boolean;
+  /** Marked: the enemy Squad sees this Hero; drawn with a marker above the token. */
+  marked?: boolean;
 }
 
 /** The containers the terrain is drawn into, and the sprite anchors from the asset manifest. */
@@ -51,6 +64,10 @@ interface Terrain {
 interface BoardProps {
   /** Cover tiles the Squad has seen destroyed; the board draws them as open floor. */
   destroyedCover: readonly GridPosition[];
+  /** Temporary Half Cover the Squad knows of: drawn as Half Cover with a cyan outline. */
+  placedCover: readonly GridPosition[];
+  /** Areas a Scout Drone reveals: tinted yellow. */
+  revealedAreas: readonly RevealedArea[];
   heroes: readonly TokenHero[];
   enemies: readonly TokenHero[];
   selectedId: string;
@@ -72,6 +89,8 @@ function tileDiamond(): number[] {
 
 export function Board({
   destroyedCover,
+  placedCover,
+  revealedAreas,
   heroes,
   enemies,
   selectedId,
@@ -143,6 +162,12 @@ export function Board({
       if (hero.ghost) sprite.alpha = 0.35;
       if (hero.hidden) sprite.alpha = 0.55;
       token.addChild(sprite);
+      if (hero.marked && !hero.exhausted && !hero.ghost) {
+        // A red downward marker above the head.
+        const mark = new Graphics().poly([-12, -8, 12, -8, 0, 12]).fill(0xe5484d).stroke({ width: 2, color: 0x12161c });
+        mark.position.set(0, -TILE_HEIGHT * 1.6);
+        token.addChild(mark);
+      }
       if (hero.slowed && !hero.exhausted) {
         const indicator = new Sprite(Assets.get("vfx.slow_indicator"));
         indicator.anchor.set(0.5, 1);
@@ -163,7 +188,8 @@ export function Board({
   useEffect(() => {
     if (!terrain) return;
     const { floor, objects, planning, anchors } = terrain;
-    const grid = destroyedCover.reduce(destroyCover, REACTOR_DECK);
+    const known = destroyedCover.reduce(destroyCover, REACTOR_DECK);
+    const grid = placedCover.reduce((current, tile) => withTile(current, tile, TileKind.HalfCover), known);
     const created: Container[] = [];
     for (const { alias, x, y, layer, depth } of buildPlacements(grid)) {
       const sprite = new Sprite(Assets.get(alias));
@@ -180,18 +206,35 @@ export function Board({
     grid.tiles.forEach((line, row) =>
       line.forEach((_, col) => {
         const cover = coverAt(grid, { col, row });
-        const destroyed = destroyedCover.some((tile) => tile.col === col && tile.row === row);
+        const isTile = (tile: GridPosition) => tile.col === col && tile.row === row;
+        const placed = placedCover.some(isTile);
+        const destroyed = !placed && destroyedCover.some(isTile);
         if (cover === CoverKind.None && !destroyed) return;
-        const color = destroyed ? 0x8a8f98 : cover === CoverKind.Full ? 0xff8a3d : 0x4aa3ff;
+        const color = destroyed ? 0x8a8f98 : placed ? 0x7be0ff : cover === CoverKind.Full ? 0xff8a3d : 0x4aa3ff;
         const { x, y } = gridToWorld({ col, row });
-        const outline = new Graphics().poly(tileDiamond()).stroke({ width: destroyed ? 2 : 3, color, alpha: destroyed ? 0.6 : 0.9 });
+        const outline = new Graphics().poly(tileDiamond()).stroke({ width: destroyed ? 2 : placed ? 5 : 3, color, alpha: destroyed ? 0.6 : 0.9 });
         outline.position.set(x, y);
         planning.addChild(outline);
         created.push(outline);
       }),
     );
+
+    // Revealed areas: every tile of the square, clipped to the Grid, gets a yellow tint.
+    for (const { center, size } of revealedAreas) {
+      const reach = Math.floor(size / 2);
+      for (let row = center.row - reach; row <= center.row + reach; row++) {
+        for (let col = center.col - reach; col <= center.col + reach; col++) {
+          if (tileAt(grid, { col, row }) === undefined) continue;
+          const { x, y } = gridToWorld({ col, row });
+          const tint = new Graphics().poly(tileDiamond()).fill({ color: 0xffd447, alpha: 0.22 }).stroke({ width: 1, color: 0xffd447, alpha: 0.5 });
+          tint.position.set(x, y);
+          planning.addChild(tint);
+          created.push(tint);
+        }
+      }
+    }
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [terrain, destroyedCover]);
+  }, [terrain, destroyedCover, placedCover, revealedAreas]);
 
   useEffect(() => {
     const element = host.current;

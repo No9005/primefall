@@ -42,6 +42,7 @@ import {
   REACTOR_DECK,
   TileKind,
   tileAt,
+  withTile,
 } from "./reactor-deck";
 
 export interface ResolutionResult {
@@ -78,6 +79,13 @@ function endHidden(tick: number, hero: HeroState, events: MatchEvent[]): void {
   if (hero.hidden === 0) return;
   hero.hidden = 0;
   events.push({ kind: EventKind.HiddenEnded, tick, heroId: hero.id });
+}
+
+/** Marked lasts until the end of the next Resolution, like Slow; it also reveals a Hidden Hero. */
+function applyMarked(tick: number, source: HeroState, target: HeroState, effect: CardEffect, events: MatchEvent[]): void {
+  target.marked = (effect.duration ?? 1) + 1;
+  events.push({ kind: EventKind.MarkedApplied, tick, heroId: source.id, targetId: target.id });
+  endHidden(tick, target, events);
 }
 
 /** Which Squads perceive the events from `first` on, judged by the current positions (see `getSquadEvents`). */
@@ -216,13 +224,17 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const target = match.heroes.find((candidate) => candidate.id === targetId)!;
     const distance = chebyshevDistance(hero.position, target.position);
     const ignoresHalfCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreHalfCover);
-    const halfCover = coverAgainst(match.grid, hero.position, target.position) === CoverKind.Half && !ignoresHalfCover;
+    const halfCover =
+      coverAgainst(match.grid, hero.position, target.position) === CoverKind.Half && !ignoresHalfCover && !hero.ignoresHalfCover;
     const damageEffect = card.effects.find(({ kind }) => kind === EffectKind.Damage || kind === EffectKind.DamageAtLongRange)!;
     const damage = damageAtDistance(damageEffect, distance) + hero.attackBonus;
     const incoming = Math.max(0, damage - (halfCover ? HALF_COVER_REDUCTION : 0));
     dealDamage(tick, hero, target, incoming, events);
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplySlow)) {
       applySlow(tick, hero, target, effect, events);
+    }
+    for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplyMarked)) {
+      applyMarked(tick, hero, target, effect, events);
     }
   }
   // Tile Attacks come after the other damage of the Tick, so Cover they destroy still protected against it.
@@ -256,7 +268,8 @@ function resolveTileAttack(match: MatchState, tick: number, { hero, card, tile }
       events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId: occupant.id });
     } else if (occupant) {
       const amount = (card.effects.find(({ kind }) => kind === EffectKind.Damage)?.amount ?? 0) + hero.attackBonus;
-      dealDamage(tick, hero, occupant, Math.max(0, amount - (cover === CoverKind.Half ? HALF_COVER_REDUCTION : 0)), events);
+      const reduced = cover === CoverKind.Half && !hero.ignoresHalfCover;
+      dealDamage(tick, hero, occupant, Math.max(0, amount - (reduced ? HALF_COVER_REDUCTION : 0)), events);
     }
   }
   const destroysAny = isTileBlast(card);
@@ -303,17 +316,61 @@ interface UtilityUse {
   caster: HeroState;
   /** The Hero the card is aimed at: the caster itself, an allied Hero or a visible enemy. */
   target: HeroState;
-  /** For Forward Deploy: the tile the allied Hero heads for. */
+  /** The second allied Hero of an Overdrive that affects two (Aegis Protocol). */
+  secondTarget?: HeroState;
+  /** For Forward Deploy: the tile the allied Hero heads for. For Scout Drone and Deploy Cover: the tile aimed at. */
   tile?: GridPosition;
   events: MatchEvent[];
 }
 
+/** Puts temporary Half Cover on a tile without Cover; the tile gets its kind back when `duration` Resolutions are over. */
+function placeHalfCover(use: UtilityUse, position: GridPosition, requireEmpty: boolean): void {
+  const { match, tick, effect, caster, events } = use;
+  const occupied = match.heroes.some((other) => samePosition(other.position, position));
+  if (isWall(position) || tileAt(match.grid, position) === undefined || coverAt(match.grid, position) !== CoverKind.None || (requireEmpty && occupied)) {
+    events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
+    return;
+  }
+  match.placedCover.push({
+    squad: caster.squad,
+    position: { ...position },
+    originalKind: tileAt(match.grid, position)!,
+    remaining: effect.duration ?? 1,
+  });
+  match.grid = withTile(match.grid, position, TileKind.HalfCover);
+  events.push({ kind: EventKind.CoverPlaced, tick, heroId: caster.id, to: { ...position } });
+}
+
 /** One interpreter per Utility effect kind (ADR 0018); new Utility effects add an entry here. */
 const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: UtilityUse) => void> = {
-  [EffectKind.GainShield]: ({ tick, effect, target, events }) => {
+  [EffectKind.GainShield]: ({ tick, effect, caster, target, secondTarget, events }) => {
+    const receiver =
+      effect.recipient === EffectRecipient.SecondTarget ? secondTarget! : effect.recipient === EffectRecipient.Self ? caster : target;
     const amount = effect.amount ?? 0;
-    target.shield += amount;
-    events.push({ kind: EventKind.ShieldGained, tick, heroId: target.id, amount });
+    receiver.shield += amount;
+    events.push({ kind: EventKind.ShieldGained, tick, heroId: receiver.id, amount });
+  },
+  // Scout Drone: the Squad sees the area for `duration` Resolutions, this one included; range was checked with the target.
+  [EffectKind.RevealArea]: ({ match, tick, effect, caster, tile, events }) => {
+    const size = effect.size ?? 1;
+    if (!tile || tileAt(match.grid, tile) === undefined) {
+      events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
+      return;
+    }
+    match.revealedAreas.push({ squad: caster.squad, center: { ...tile }, size, remaining: effect.duration ?? 1 });
+    events.push({ kind: EventKind.AreaRevealed, tick, heroId: caster.id, to: { ...tile }, amount: size });
+  },
+  // Deploy Cover needs an empty tile; Fortify covers the tile the allied Hero stands on.
+  [EffectKind.PlaceHalfCover]: (use) => {
+    const fortify = use.card.target === CardTarget.AllyHeroTile;
+    const position = fortify ? use.target.position : use.tile;
+    if (position) placeHalfCover(use, position, !fortify);
+    else use.events.push({ kind: EventKind.ActionFailed, tick: use.tick, heroId: use.caster.id });
+  },
+  // From this Tick on, so Attacks resolved in earlier Ticks of the Round keep the reduction.
+  [EffectKind.RemoveHalfCoverReduction]: ({ tick, caster, target, events }) => {
+    target.ignoresHalfCover = true;
+    events.push({ kind: EventKind.CoverReductionIgnored, tick, heroId: caster.id, targetId: target.id });
   },
   [EffectKind.ApplySlow]: ({ tick, effect, caster, target, events }) => applySlow(tick, caster, target, effect, events),
   [EffectKind.PreventHidden]: ({ target }) => {
@@ -346,12 +403,7 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
   [EffectKind.ExtendMove]: ({ effect, caster }) => {
     caster.extendedMove = effect.amount;
   },
-  // Marked lasts until the end of the next Resolution; it also reveals a Hidden Hero.
-  [EffectKind.ApplyMarked]: ({ tick, effect, caster, target, events }) => {
-    target.marked = (effect.duration ?? 1) + 1;
-    events.push({ kind: EventKind.MarkedApplied, tick, heroId: caster.id, targetId: target.id });
-    endHidden(tick, target, events);
-  },
+  [EffectKind.ApplyMarked]: ({ tick, effect, caster, target, events }) => applyMarked(tick, caster, target, effect, events),
   // Damage on a Utility card (Mark Target's Overdrive) ignores Cover; it only reaches `withinRange`.
   [EffectKind.Damage]: ({ tick, effect, caster, target, events }) => {
     const reaches = effect.withinRange === undefined || chebyshevDistance(caster.position, target.position) <= effect.withinRange;
@@ -369,32 +421,73 @@ function resolveUtility(
   caster: HeroState,
   card: CardDefinition,
   targetId: string,
+  secondTargetId: string | undefined,
   tile: GridPosition | undefined,
   events: MatchEvent[],
 ): void {
   const target = match.heroes.find((candidate) => candidate.id === targetId);
+  const secondTarget = match.heroes.find((candidate) => candidate.id === secondTargetId);
   // Mark Target needs the enemy within this Hero's own sight range (9 while Hidden), which also finds Hidden enemies.
   const inOwnSight = (enemy: HeroState) =>
     chebyshevDistance(caster.position, enemy.position) <= sightRange(caster) &&
     hasLineOfSight(match.grid, caster.position, enemy.position);
-  const validTarget =
-    target !== undefined &&
-    !target.exhausted &&
-    (card.target === CardTarget.VisibleEnemy
-      ? target.squad !== caster.squad && canSquadSeeHero(match, caster.squad, target)
-      : card.target === CardTarget.EnemyInSight
-        ? target.squad !== caster.squad && inOwnSight(target)
-        : target.squad === caster.squad && (card.target === CardTarget.SelfHero ? target === caster : target !== caster));
+  const isAlly = (hero: HeroState | undefined) => hero !== undefined && !hero.exhausted && hero.squad === caster.squad && hero !== caster;
+  // Scout Drone and Fortify reach as far as the card's Range (no Line of Sight needed).
+  const inCardRange = (position: GridPosition | undefined) =>
+    position !== undefined && chebyshevDistance(caster.position, position) <= (card.range ?? Infinity);
+  const needsSecond = card.effects.some(({ recipient }) => recipient === EffectRecipient.SecondTarget);
+  let validTarget: boolean;
+  switch (card.target) {
+    case CardTarget.VisibleEnemy:
+      validTarget = target !== undefined && !target.exhausted && target.squad !== caster.squad && canSquadSeeHero(match, caster.squad, target);
+      break;
+    case CardTarget.EnemyInSight:
+      validTarget = target !== undefined && !target.exhausted && target.squad !== caster.squad && inOwnSight(target);
+      break;
+    case CardTarget.SelfHero:
+      validTarget = target === caster;
+      break;
+    case CardTarget.Area:
+      validTarget = target === caster && inCardRange(tile);
+      break;
+    case CardTarget.EmptyTile:
+      validTarget = target === caster;
+      break;
+    case CardTarget.AllyHeroTile:
+      validTarget = isAlly(target) && inCardRange(target!.position);
+      break;
+    default:
+      validTarget = isAlly(target) && (!needsSecond || (isAlly(secondTarget) && secondTarget !== target));
+  }
   if (!validTarget || !isPlayableUtility(card)) {
     events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
     return;
   }
   for (const effect of card.effects) {
-    UTILITY_EFFECTS[effect.kind as (typeof PLAYABLE_UTILITY_EFFECTS)[number]]({ match, tick, card, effect, caster, target, tile, events });
+    UTILITY_EFFECTS[effect.kind as (typeof PLAYABLE_UTILITY_EFFECTS)[number]]({
+      match, tick, card, effect, caster, target: target!, secondTarget, tile, events,
+    });
   }
 }
 
-const otherSquad =(squad: SquadId) => (squad === SquadId.Left ? SquadId.Right : SquadId.Left);
+/**
+ * Ends one Resolution for placed Cover and revealed areas. Expired Cover gives the tile its kind back,
+ * unless the Cover was destroyed in the meantime (the tile then stays open floor).
+ */
+function expireTemporaryEffects(match: MatchState): void {
+  for (const cover of match.placedCover) {
+    cover.remaining -= 1;
+    if (cover.remaining > 0) continue;
+    if (coverAt(match.grid, cover.position) === CoverKind.Half) {
+      match.grid = withTile(match.grid, cover.position, cover.originalKind);
+    }
+  }
+  match.placedCover = match.placedCover.filter((cover) => cover.remaining > 0);
+  for (const area of match.revealedAreas) area.remaining -= 1;
+  match.revealedAreas = match.revealedAreas.filter((area) => area.remaining > 0);
+}
+
+const otherSquad = (squad: SquadId) => (squad === SquadId.Left ? SquadId.Right : SquadId.Left);
 
 /**
  * Updates Prime Zone control and checks the victory conditions at the end of a Resolution
@@ -523,7 +616,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     for (const { hero, action } of actions) {
       if (action.kind !== ActionKind.Primary) continue;
       const card = playedCard(hero, action);
-      if (card.type === CardType.Utility) resolveUtility(match, tick, hero, card, action.target, action.tile, events);
+      if (card.type === CardType.Utility) resolveUtility(match, tick, hero, card, action.target, action.secondTarget, action.tile, events);
     }
     const movers = actions.flatMap(({ hero, action }) => {
       if (action.kind !== ActionKind.Move) return [];
@@ -564,8 +657,10 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     hero.hidden = Math.max(0, hero.hidden - 1);
     hero.marked = Math.max(0, hero.marked - 1);
     hero.hiddenPrevented = false;
+    hero.ignoresHalfCover = false;
     delete hero.extendedMove;
   }
+  expireTemporaryEffects(match);
   // Exhaustion takes effect only now, so a Hero whose Deck ran out mid-Resolution finished its Queue (ADR 0006).
   for (const hero of match.heroes.filter((candidate) => !candidate.exhausted && candidate.deck.length === 0)) {
     hero.exhausted = true;

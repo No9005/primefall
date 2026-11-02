@@ -53,6 +53,8 @@ export enum EffectKind {
 export enum EffectRecipient {
   Self = "self",
   Target = "target",
+  /** The second allied Hero of an Overdrive that affects two (Aegis Protocol). */
+  SecondTarget = "secondTarget",
 }
 
 export interface CardEffect {
@@ -118,7 +120,12 @@ export function isSimpleAttack(card: CardDefinition): boolean {
     card.type === CardType.Attack &&
     card.target === CardTarget.VisibleEnemy &&
     (first?.kind === EffectKind.Damage || first?.kind === EffectKind.DamageAtLongRange) &&
-    rest.every((effect) => effect.kind === EffectKind.ApplySlow || effect.kind === EffectKind.IgnoreHalfCover)
+    rest.every(
+      (effect) =>
+        effect.kind === EffectKind.ApplySlow ||
+        effect.kind === EffectKind.IgnoreHalfCover ||
+        effect.kind === EffectKind.ApplyMarked,
+    )
   );
 }
 
@@ -145,14 +152,23 @@ export const PLAYABLE_UTILITY_EFFECTS = [
   EffectKind.Damage,
   EffectKind.GrantExtraMove,
   EffectKind.GainPermanentAttack,
+  EffectKind.RevealArea,
+  EffectKind.PlaceHalfCover,
+  EffectKind.RemoveHalfCoverReduction,
 ] as const;
 
-/** Utility cards aimed at this Hero, an allied Hero, a visible enemy or an enemy in sight whose effects all have an interpreter. */
+/**
+ * Utility cards whose effects all have an interpreter and that are aimed at this Hero, an allied Hero (or its
+ * tile), a visible enemy, an enemy in sight, a tile or an area. Tile and area cards are confirmed on this Hero.
+ */
 export function isPlayableUtility(card: CardDefinition): boolean {
   return (
     card.type === CardType.Utility &&
     (card.target === CardTarget.SelfHero ||
       card.target === CardTarget.AllyHero ||
+      card.target === CardTarget.AllyHeroTile ||
+      card.target === CardTarget.EmptyTile ||
+      card.target === CardTarget.Area ||
       card.target === CardTarget.EnemyInSight ||
       card.target === CardTarget.VisibleEnemy) &&
     card.effects.every((effect) => (PLAYABLE_UTILITY_EFFECTS as readonly EffectKind[]).includes(effect.kind))
@@ -216,7 +232,8 @@ export function isPlayableCard(card: CardDefinition, overdrive?: boolean): boole
       isGhostAttack(mode) ||
       isAreaAttack(mode) ||
       isTileBlast(mode) ||
-      ((mode.target === CardTarget.EnemyInSight || allyWithRecipients) && isPlayableUtility(mode))
+      ((mode.target === CardTarget.EnemyInSight || mode.target === CardTarget.Area || allyWithRecipients) &&
+        isPlayableUtility(mode))
     );
   }
   return isSimpleAttack(card) || isAreaAttack(card) || isTileAttack(card) || isPlayableUtility(card);
@@ -297,7 +314,11 @@ const scoutDrone: CardDefinition = {
 // Overdrive: two allied Heroes each gain Shield 3.
 const aegisProtocol: CardDefinition = {
   name: "Aegis Protocol", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.AllyHero, effects: [shield(3)], overdrive: [shield(3), shield(3)],
+  target: CardTarget.AllyHero, effects: [shield(3)],
+  overdrive: [
+    { ...shield(3), recipient: EffectRecipient.Target },
+    { ...shield(3), recipient: EffectRecipient.SecondTarget },
+  ],
 };
 const fortify: CardDefinition = {
   name: "Fortify", type: CardType.Utility, energyCost: 1, range: 3,
