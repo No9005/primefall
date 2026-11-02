@@ -10,12 +10,14 @@ import {
   damageAtDistance,
   CardType,
   EffectKind,
+  EffectRecipient,
   HERO_DECKS,
   isAreaAttack,
   isGhostAttack,
   isPlayableCard,
   isPlayableUtility,
   isTileAttack,
+  isTileBlast,
   type PLAYABLE_UTILITY_EFFECTS,
 } from "./cards";
 import { EventKind, MatchEndReason, type MatchEvent, PRIME_ZONE_WIN_RESOLUTIONS, ROUND_LIMIT, SquadId } from "./host";
@@ -187,8 +189,9 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     coverAgainst(match.grid, hero.position, target.position) !== CoverKind.Full;
   // An area Attack hits every enemy Hero it reaches and does nothing when there is none.
   // A Ghost Shot goes to a tile: it hits the enemy standing there when it resolves, or nobody.
-  const tileAttacks = attacks.filter(({ card }) => isTileAttack(card));
-  const aimed = attacks.filter(({ card }) => !isTileAttack(card)).flatMap((attack) => {
+  const isTileCard = (card: CardDefinition) => isTileAttack(card) || isTileBlast(card);
+  const tileAttacks = attacks.filter(({ card }) => isTileCard(card));
+  const aimed = attacks.filter(({ card }) => !isTileCard(card)).flatMap((attack) => {
     if (isAreaAttack(attack.card)) {
       return match.heroes.filter((target) => canReach(attack.hero, attack.card, target)).map((target) => ({ ...attack, targetId: target.id }));
     }
@@ -215,7 +218,8 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const ignoresHalfCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreHalfCover);
     const halfCover = coverAgainst(match.grid, hero.position, target.position) === CoverKind.Half && !ignoresHalfCover;
     const damageEffect = card.effects.find(({ kind }) => kind === EffectKind.Damage || kind === EffectKind.DamageAtLongRange)!;
-    const incoming = Math.max(0, damageAtDistance(damageEffect, distance) - (halfCover ? HALF_COVER_REDUCTION : 0));
+    const damage = damageAtDistance(damageEffect, distance) + hero.attackBonus;
+    const incoming = Math.max(0, damage - (halfCover ? HALF_COVER_REDUCTION : 0));
     dealDamage(tick, hero, target, incoming, events);
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplySlow)) {
       applySlow(tick, hero, target, effect, events);
@@ -240,15 +244,23 @@ function resolveTileAttack(match: MatchState, tick: number, { hero, card, tile }
     events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id });
     return;
   }
-  const occupant = match.heroes.find((other) => other.squad !== hero.squad && !other.exhausted && samePosition(other.position, tile));
-  const cover = coverAgainst(match.grid, hero.position, tile);
-  if (occupant && cover === CoverKind.Full) {
-    events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId: occupant.id });
-  } else if (occupant) {
-    const amount = card.effects.find(({ kind }) => kind === EffectKind.Damage)?.amount ?? 0;
-    dealDamage(tick, hero, occupant, Math.max(0, amount - (cover === CoverKind.Half ? HALF_COVER_REDUCTION : 0)), events);
+  if (isTileBlast(card)) {
+    // The blast hurts every Hero on the tile and the adjacent tiles, allies and the caster included; Cover does not protect.
+    const blast = card.effects.find(({ kind }) => kind === EffectKind.DamageHeroesAtAndAroundTarget)!;
+    const caught = match.heroes.filter((other) => !other.exhausted && chebyshevDistance(other.position, tile) <= 1);
+    for (const victim of caught) dealDamage(tick, hero, victim, (blast.amount ?? 0) + hero.attackBonus, events);
+  } else {
+    const occupant = match.heroes.find((other) => other.squad !== hero.squad && !other.exhausted && samePosition(other.position, tile));
+    const cover = coverAgainst(match.grid, hero.position, tile);
+    if (occupant && cover === CoverKind.Full) {
+      events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId: occupant.id });
+    } else if (occupant) {
+      const amount = (card.effects.find(({ kind }) => kind === EffectKind.Damage)?.amount ?? 0) + hero.attackBonus;
+      dealDamage(tick, hero, occupant, Math.max(0, amount - (cover === CoverKind.Half ? HALF_COVER_REDUCTION : 0)), events);
+    }
   }
-  if (coverAt(match.grid, tile) === CoverKind.Half) {
+  const destroysAny = isTileBlast(card);
+  if (destroysAny ? coverAt(match.grid, tile) !== CoverKind.None : coverAt(match.grid, tile) === CoverKind.Half) {
     match.grid = destroyCover(match.grid, tile);
     events.push({ kind: EventKind.CoverDestroyed, tick, heroId: hero.id, to: { ...tile } });
   }
@@ -291,6 +303,8 @@ interface UtilityUse {
   caster: HeroState;
   /** The Hero the card is aimed at: the caster itself, an allied Hero or a visible enemy. */
   target: HeroState;
+  /** For Forward Deploy: the tile the allied Hero heads for. */
+  tile?: GridPosition;
   events: MatchEvent[];
 }
 
@@ -313,6 +327,21 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
     }
     caster.hidden = effect.duration ?? 1;
     events.push({ kind: EventKind.HiddenGained, tick, heroId: caster.id });
+  },
+  // The ally takes an additional Move of `amount` tiles towards the tile; Slow cuts it like any Move.
+  [EffectKind.GrantExtraMove]: ({ match, tick, effect, caster, target, tile, events }) => {
+    if (!tile || tileAt(match.grid, tile) === undefined || isWall(tile)) {
+      events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
+      return;
+    }
+    resolveMoves(match, tick, [{ heroId: target.id, destination: tile, distance: effect.amount ?? MOVE_DISTANCE }], events);
+  },
+  // Without a recipient the effect goes to the card's target; Adrenal Surge's Overdrive names both Heroes.
+  [EffectKind.GainPermanentAttack]: ({ tick, effect, caster, target, events }) => {
+    const receiver = effect.recipient === EffectRecipient.Self ? caster : target;
+    const amount = effect.amount ?? 0;
+    receiver.attackBonus += amount;
+    events.push({ kind: EventKind.AttackBonusGained, tick, heroId: receiver.id, amount });
   },
   [EffectKind.ExtendMove]: ({ effect, caster }) => {
     caster.extendedMove = effect.amount;
@@ -340,6 +369,7 @@ function resolveUtility(
   caster: HeroState,
   card: CardDefinition,
   targetId: string,
+  tile: GridPosition | undefined,
   events: MatchEvent[],
 ): void {
   const target = match.heroes.find((candidate) => candidate.id === targetId);
@@ -360,7 +390,7 @@ function resolveUtility(
     return;
   }
   for (const effect of card.effects) {
-    UTILITY_EFFECTS[effect.kind as (typeof PLAYABLE_UTILITY_EFFECTS)[number]]({ match, tick, card, effect, caster, target, events });
+    UTILITY_EFFECTS[effect.kind as (typeof PLAYABLE_UTILITY_EFFECTS)[number]]({ match, tick, card, effect, caster, target, tile, events });
   }
 }
 
@@ -493,7 +523,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     for (const { hero, action } of actions) {
       if (action.kind !== ActionKind.Primary) continue;
       const card = playedCard(hero, action);
-      if (card.type === CardType.Utility) resolveUtility(match, tick, hero, card, action.target, events);
+      if (card.type === CardType.Utility) resolveUtility(match, tick, hero, card, action.target, action.tile, events);
     }
     const movers = actions.flatMap(({ hero, action }) => {
       if (action.kind !== ActionKind.Move) return [];

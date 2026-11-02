@@ -151,6 +151,8 @@ export enum EventKind {
   Knockback = "knockback",
   /** `heroId` destroyed the Cover on the tile `to` (Breach Charge). */
   CoverDestroyed = "coverDestroyed",
+  /** `heroId` permanently gained `amount` Attack (Adrenal Surge). */
+  AttackBonusGained = "attackBonusGained",
   /** A Hero's Deck is empty after the Resolution; it is removed from the match. */
   Exhausted = "exhausted",
 }

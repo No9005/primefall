@@ -83,7 +83,7 @@ describe("validatePlan: Pitch, Energy and Block", () => {
     expect(kindsFor([0, 1])).toEqual([]);
   });
 
-  it("needs an enemy Hero as the target of an Attack and rejects cards that are not playable yet", () => {
+  it("needs an enemy Hero as the target of an Attack", () => {
     const attack = (card: number, target: string): QueuedAction => ({ kind: ActionKind.Primary, card, target });
     const withHand: SquadView = {
       ...view,
@@ -96,8 +96,8 @@ describe("validatePlan: Pitch, Energy and Block", () => {
     expect(check([attack(0, "nobody")])).toEqual([PlanIssueKind.BadTarget]);
     // Only a Visible enemy can be targeted: right-controller is still Unknown.
     expect(check([attack(0, "right-controller")])).toEqual([PlanIssueKind.BadTarget]);
-    // Bruiser card 8 is Forward Deploy, a Utility card without an interpreter yet.
-    expect(check([attack(8, enemy.id)])).toEqual([PlanIssueKind.UnplayableCard]);
+    // Bruiser card 8 is Forward Deploy: an ally card, so an enemy is no target (and it needs a tile).
+    expect(check([attack(8, enemy.id)])).toEqual([PlanIssueKind.BadTarget, PlanIssueKind.BadTarget]);
   });
 
   it("plans Utility cards at this Hero or an allied Hero only", () => {

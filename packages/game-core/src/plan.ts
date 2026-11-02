@@ -46,7 +46,10 @@ export interface PrimaryAction {
    * when it resolves), this Hero or an allied Hero for a Utility card.
    */
   target: string;
-  /** For a card aimed at a tile (Breach Charge): the tile; `target` is then the casting Hero. */
+  /**
+   * For a card aimed at a tile (Breach Charge): the tile; `target` is then the casting Hero.
+   * For Forward Deploy: the tile the allied `target` moves towards.
+   */
   tile?: GridPosition;
   /** Play the card's Overdrive instead of its standard effect; the card is then Exiled (ADR 0003). */
   overdrive?: boolean;
@@ -200,6 +203,14 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
               heroId,
               message: isSelfCard ? `${card.name} can only target this Hero.` : `${card.name} needs an allied Hero as its target.`,
             });
+          }
+          // Forward Deploy also names the tile the ally heads for; where the ally stands by then is checked when it resolves.
+          const destination = action.tile && tileAt(REACTOR_DECK, action.tile);
+          if (
+            card.effects.some(({ kind }) => kind === EffectKind.GrantExtraMove) &&
+            (destination === undefined || destination === TileKind.Wall)
+          ) {
+            issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a destination tile that is not a Wall.` });
           }
         } else if (!view.enemies.some(
             (enemy) => enemy.id === action.target && enemy.visibility === Visibility.Visible && !enemy.exhausted,

@@ -29,6 +29,8 @@ export interface HeroState {
   marked: number;
   /** Suppress: this Hero cannot become Hidden for the rest of the Round. */
   hiddenPrevented: boolean;
+  /** Adrenal Surge: extra damage of every Attack this Hero plays; lasts until Exhaustion (ADR 0003). */
+  attackBonus: number;
   /** Reposition: the Hero's next Move action covers this many tiles; absent when none is pending. */
   extendedMove?: number;
   /** Set after a Resolution that leaves the Deck empty; an Exhausted Hero is out of the match (ADR 0006). */
@@ -130,6 +132,7 @@ export function createMatch(seed: number): MatchState {
         hidden: 0,
         marked: 0,
         hiddenPrevented: false,
+        attackBonus: 0,
         exhausted: false,
       });
     });

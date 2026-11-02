@@ -82,6 +82,8 @@ export function describeEvent(event: MatchEvent, nameOf: (heroId: string) => str
       return `Tick ${event.tick}: ${who} Marks ${nameOf(event.targetId!)}`;
     case EventKind.Knockback:
       return `Tick ${event.tick}: ${who} is pushed back`;
+    case EventKind.AttackBonusGained:
+      return `Tick ${event.tick}: ${who} permanently gains +${event.amount ?? 0} Attack`;
     case EventKind.Exhausted:
       return `${who} is Exhausted`;
     default:
