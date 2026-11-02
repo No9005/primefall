@@ -115,6 +115,11 @@ export interface SquadView {
   primeProgress: Record<SquadId, number>;
   /** Set once the match is over; no further plans are accepted. */
   result?: MatchResult;
+  /**
+   * Cover tiles of the Reactor Deck that this Squad has seen destroyed. Cover destroyed out of sight is
+   * not listed until the Squad sees that tile (Fog of War).
+   */
+  destroyedCover: readonly GridPosition[];
   heroes: readonly HeroView[];
   enemies: readonly EnemyView[];
 }
@@ -144,6 +149,8 @@ export enum EventKind {
   MarkedApplied = "markedApplied",
   /** Knockback pushed `heroId` one tile, from `from` to `to`; a push of two tiles gives two events. */
   Knockback = "knockback",
+  /** `heroId` destroyed the Cover on the tile `to` (Breach Charge). */
+  CoverDestroyed = "coverDestroyed",
   /** A Hero's Deck is empty after the Resolution; it is removed from the match. */
   Exhausted = "exhausted",
 }

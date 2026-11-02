@@ -83,6 +83,30 @@ export function coverAt(grid: Grid, position: GridPosition): CoverKind {
   }
 }
 
+/**
+ * A copy of the Grid with the Cover on `position` destroyed: the tile becomes open floor, so it can still be
+ * occupied but no longer protects or blocks Line of Sight. Tiles without Cover stay as they are.
+ */
+export function destroyCover(grid: Grid, position: GridPosition): Grid {
+  if (coverAt(grid, position) === CoverKind.None) return grid;
+  const tiles = grid.tiles.map((line, row) =>
+    row === position.row ? line.map((kind, col) => (col === position.col ? TileKind.Floor : kind)) : line,
+  );
+  return { ...grid, tiles };
+}
+
+/** The Cover tiles of the original map that are no longer Cover in `grid`. */
+export function destroyedCoverTiles(grid: Grid): GridPosition[] {
+  const destroyed: GridPosition[] = [];
+  REACTOR_DECK.tiles.forEach((line, row) =>
+    line.forEach((_, col) => {
+      const tile = { col, row };
+      if (coverAt(REACTOR_DECK, tile) !== CoverKind.None && coverAt(grid, tile) === CoverKind.None) destroyed.push(tile);
+    }),
+  );
+  return destroyed;
+}
+
 /** The Cover that protects `target` from an attacker standing at `attacker`; none at Range 1. */
 export function coverAgainst(grid: Grid, attacker: GridPosition, target: GridPosition): CoverKind {
   const range = Math.max(Math.abs(attacker.col - target.col), Math.abs(attacker.row - target.row));

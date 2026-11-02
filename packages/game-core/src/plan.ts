@@ -46,6 +46,8 @@ export interface PrimaryAction {
    * when it resolves), this Hero or an allied Hero for a Utility card.
    */
   target: string;
+  /** For a card aimed at a tile (Breach Charge): the tile; `target` is then the casting Hero. */
+  tile?: GridPosition;
   /** Play the card's Overdrive instead of its standard effect; the card is then Exiled (ADR 0003). */
   overdrive?: boolean;
 }
@@ -179,6 +181,12 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
         } else if (card.target === CardTarget.GhostEnemy) {
           if (!view.enemies.some((enemy) => enemy.id === action.target && enemy.visibility === Visibility.Ghost)) {
             issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Ghost as its target.` });
+          }
+        } else if (card.target === CardTarget.Tile) {
+          // Range and Line of Sight are checked when the card resolves, like for any Attack.
+          const kind = action.tile && tileAt(REACTOR_DECK, action.tile);
+          if (action.target !== heroId || kind === undefined || kind === TileKind.Wall) {
+            issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a tile that is not a Wall as its target.` });
           }
         } else if (card.target !== CardTarget.VisibleEnemy && card.target !== CardTarget.EnemyInSight) {
           // Self cards and area Attacks are confirmed on this Hero; ally cards need another Hero.
