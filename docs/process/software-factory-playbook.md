@@ -55,6 +55,7 @@ In the order it happened. Pull request numbers are `No9005/primefall`.
 | Merge gate job gets `contents: write` (#57) | The first low pull request that passed review was not auto-merged: `Resource not accessible by integration (mergePullRequest)` |
 | Implement prompt tells the agent that blockers are checked (#59) | `CLAUDE.md` step 2 made the agent look them up with `gh api`, which the run may not call, and a run stopped before it started |
 | Revive job every 5 minutes (`factory-revive.yml`) | The event chain broke whenever an event did not fire (merge by the workflow token, conflicted pull request); a scheduled job that reads the state and restarts what is stuck makes up for any missed event, with one retry and then `needs-human` |
+| Health log and retro over the revive job's interventions | The revive job only hides a recurring flaw; logging each restart as a comment gives the retro the evidence to open an issue for every cause that keeps coming back (three or more times) |
 | Ticket #16 split into groundwork tickets | A ticket whose blockers were closed still assumed groundwork that did not exist on `main` |
 
 ## 4. Pitfalls and checks

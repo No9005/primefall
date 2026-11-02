@@ -19,6 +19,10 @@ import {
   type ReviewThread,
   effectiveBlastRadius,
   closingReferences,
+  formatHealthEntry,
+  parseHealthEntries,
+  summarizeHealthLog,
+  type HealthEntry,
   reviveMarker,
   runNameIsForPullRequest,
   ReviewState,
@@ -65,6 +69,7 @@ const Command = {
   RetroDecision: "retro-decision",
   AfterMerge: "after-merge",
   Revive: "revive",
+  HealthLog: "health-log",
   ReworkStalled: "rework-stalled",
 } as const;
 
@@ -77,6 +82,7 @@ const LABEL_COLORS: Record<string, string> = {
   [Label.BlastRadiusLow]: "0e8a16",
   [Label.BlastRadiusHigh]: "b60205",
   [Label.HighRisk]: "b60205",
+  [Label.FactoryHealth]: "5319e7",
 };
 
 const repo = process.env.GITHUB_REPOSITORY ?? "";
@@ -468,6 +474,32 @@ function reviveState(): ReviveState {
   return { openAgentPullRequests, issuesToClose: [...new Set(issuesToClose)], implementRunning, startableIssue: implementRunning ? undefined : firstStartable(openReadyIssueNumbers()) };
 }
 
+/** The issue that collects the revive job's interventions; created on first use. */
+function healthIssue(create: boolean): number | undefined {
+  const existing = api<{ number: number; pull_request?: unknown }[]>(`repos/${repo}/issues?state=all&labels=${Label.FactoryHealth}&per_page=5`).find((issue) => !issue.pull_request);
+  if (existing || !create) return existing?.number;
+  ensureLabels();
+  return api<{ number: number }>(`repos/${repo}/issues`, ["-X", "POST", "-f", "title=Factory health log", "-f", `labels[]=${Label.FactoryHealth}`, "-f", `body=One comment per intervention of the revive job (see docs/agents/software-factory.md). The retro reads it to find causes that keep coming back. Do not close or edit this issue.${FOOTER}`]).number;
+}
+
+/** Logging must never stop the revive job. */
+function logHealth(entry: HealthEntry): void {
+  try {
+    const issue = healthIssue(true);
+    if (issue !== undefined) gh(["api", "-X", "POST", `repos/${repo}/issues/${issue}/comments`, "-f", `body=${formatHealthEntry(entry)}${FOOTER}`]);
+  } catch (error) {
+    console.log(`Could not write the health log: ${String(error).slice(0, 200)}`);
+  }
+}
+
+/** For the retro: writes the log's entries and its causes to a file. */
+function writeHealthLog(file: string): void {
+  const issue = healthIssue(false);
+  const entries = issue === undefined ? [] : parseHealthEntries(apiList<{ body: string }>(`repos/${repo}/issues/${issue}/comments`).map((comment) => comment.body));
+  writeFileSync(file, JSON.stringify({ issue: issue ?? null, entries: entries.length, causes: summarizeHealthLog(entries) }, null, 2));
+  console.log(`Health log: ${entries.length} entries.`);
+}
+
 /**
  * Every 5 minutes: restarts what the event chain dropped (a merge by the workflow token starts no workflow,
  * a pull request with a conflict gets none either). It reads the whole state, so a missed event is made up
@@ -480,6 +512,7 @@ function revive(dryRun: boolean): void {
   for (const step of steps) {
     console.log(`${dryRun ? "[dry run] " : ""}${step.action} ${step.target ?? ""}: ${step.reason}`);
     if (dryRun || step.target === undefined) continue;
+    logHealth({ time: new Date().toISOString().replace(/\.\d+Z$/, "Z"), action: step.action, target: step.target, reason: step.reason });
     if (step.action === ReviveAction.CloseIssue) gh(["api", "-X", "PATCH", `repos/${repo}/issues/${step.target}`, "-f", "state=closed", "-f", "state_reason=completed"]);
     if (step.action === ReviveAction.StartImplement) gh(["workflow", "run", "factory-implement.yml", "--repo", repo, "--ref", branch, "-f", "trigger=closed"]);
     if (step.action === ReviveAction.RunMergeGate) mergeGate(step.target);
@@ -529,6 +562,9 @@ switch (command) {
     break;
   case Command.RetroDecision:
     retroDecision(Number(args[0]), args[1] === "manual");
+    break;
+  case Command.HealthLog:
+    writeHealthLog(args[0] ?? "health-log.json");
     break;
   case Command.Revive:
     revive(args.includes("--dry-run"));
