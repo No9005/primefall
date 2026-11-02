@@ -103,6 +103,9 @@ jobs:
             --effort medium
             --max-turns 80
             --allowedTools "Read,Glob,Grep,Edit,Write,Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git fetch:*),Bash(git switch:*),Bash(git status:*),Bash(git add:*),Bash(git commit:*),Bash(git reset --soft:*),Bash(git merge-base:*),Bash(git rev-parse:*),Bash(git diff:*),Bash(git log:*),Bash(git push -u origin agent/*),Bash(git push origin agent/*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(gh issue comment:*)"
+      - name: Job summary of the implement run
+        if: always()
+        run: node "$FACTORY/src/cli.ts" run-summary "Implement #$ISSUE" "$RUNNER_TEMP/claude-execution-output.json"
       # The status of the agent step is not trusted: what counts is whether a branch and a pull request exist.
       - name: Check what the implement run produced
         run: node "$FACTORY/src/cli.ts" implement-report "$ISSUE" "$RUNNER_TEMP/claude-execution-output.json" "$RUN_URL"

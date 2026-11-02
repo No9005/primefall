@@ -38,6 +38,7 @@ import {
   ReviewOutcome,
   reviewOutcome,
   summarizeAgentRun,
+  formatRunSummary,
   ReviewVerdict,
   type IssueEvent,
   type ReviewResult,
@@ -56,6 +57,7 @@ const Command = {
   AfterMerge: "after-merge",
   ReworkStalled: "rework-stalled",
   PrForIssue: "pr-for-issue",
+  RunSummary: "run-summary",
   AwaitMerge: "await-merge",
 } as const;
 
@@ -414,6 +416,18 @@ function afterMerge(number: number): void {
   output("start", "true");
 }
 
+/** Appends one agent step (session, turns, cost, denied commands) to the job summary; never fails the job. */
+function runSummary(title: string, logFile: string): void {
+  try {
+    const log: unknown = existsSync(logFile) ? JSON.parse(readFileSync(logFile, "utf8")) : null;
+    const text = formatRunSummary(title, log);
+    if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${text}\n`);
+    console.log(text);
+  } catch (error) {
+    console.log(`Could not write the run summary: ${String(error).slice(0, 200)}`);
+  }
+}
+
 /** Output `pr`: the open pull request of an issue's agent branch, or empty. */
 function prForIssue(issue: number): void {
   const pr = apiList<{ number: number; head: { ref: string } }>(`repos/${repo}/pulls?state=open`).find((listed) => listed.head.ref.startsWith(`agent/issue-${issue}-`));
@@ -466,6 +480,9 @@ switch (command) {
     break;
   case Command.ReworkStalled:
     reworkStalled(Number(args[0]), args[1] ?? "");
+    break;
+  case Command.RunSummary:
+    runSummary(args[0] ?? "Agent run", args[1] ?? "");
     break;
   case Command.PrForIssue:
     prForIssue(Number(args[0]));

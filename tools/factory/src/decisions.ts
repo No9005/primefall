@@ -259,6 +259,32 @@ export function summarizeAgentRun(log: unknown): AgentRunSummary {
   return { deniedTools, finalMessage: truncate(text, 1500) };
 }
 
+/**
+ * One markdown block for the job summary of an agent step: the session id (to see that steps used separate
+ * sessions), turns, duration, cost and the denied commands. No agent text: the summary is for the owner
+ * reading the run, and the final message stays in the issue comment that already reports failures.
+ */
+export function formatRunSummary(title: string, log: unknown): string {
+  const messages = Array.isArray(log) ? (log as Record<string, unknown>[]) : [];
+  const result = messages.find((m) => m?.type === "result");
+  const init = messages.find((m) => m?.type === "system" && typeof m.session_id === "string");
+  const sessionId = [result?.session_id, init?.session_id].find((id) => typeof id === "string") as string | undefined;
+  const fact = (name: string, value: unknown): string => `- ${name}: ${typeof value === "string" || typeof value === "number" ? String(value) : "unknown"}`;
+  const seconds = typeof result?.duration_ms === "number" ? Math.round(result.duration_ms / 1000) : undefined;
+  const cost = typeof result?.total_cost_usd === "number" ? `$${result.total_cost_usd.toFixed(2)}` : undefined;
+  const denied = summarizeAgentRun(log).deniedTools;
+  return [
+    `### ${title}`,
+    fact("session", sessionId),
+    fact("turns", result?.num_turns),
+    fact("duration", seconds === undefined ? undefined : `${seconds} s`),
+    fact("cost", cost),
+    fact("result", result?.subtype),
+    ...(denied.length > 0 ? ["- denied:", ...denied.map((d) => `  - \`${d.replaceAll("`", "'")}\``)] : ["- denied: none"]),
+    "",
+  ].join("\n");
+}
+
 /** The factory posts its reviews with the workflow token, so GitHub reports this author. */
 const REVIEW_BOT_LOGIN = "github-actions";
 

@@ -58,6 +58,10 @@ runs:
           --effort medium
           --max-turns 30
           --allowedTools "Read,Glob,Grep,Write,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(git diff:*),Bash(git log:*)"
+    - name: Job summary of the review run
+      if: always()
+      shell: bash
+      run: node "${{ inputs.factory }}/src/cli.ts" run-summary "Review #${{ inputs.pr }}" "$RUNNER_TEMP/claude-execution-output.json"
     - name: Report the review
       id: report
       shell: bash
