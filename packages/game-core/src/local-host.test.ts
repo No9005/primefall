@@ -75,16 +75,37 @@ describe("local host", () => {
       const events = [];
       let view = await host.getSquadView(SquadId.Left);
       while (!view.result) {
-        // Timeout plans (empty Queues) for the first Hero, recorded as they were submitted.
-        const plan = recorded?.[plans.length] ?? { squad: SquadId.Left, heroes: [{ heroId: view.heroes[0]!.id, queue: [] }] };
-        plans.push(plan);
-        const result = await host.submitPlan(plan);
+        const recordedPlan = recorded?.[plans.length];
+        let result;
+        if (recordedPlan) {
+          result = await host.submitPlan(recordedPlan);
+          plans.push(recordedPlan);
+        } else {
+          // Scripted player: the first Hero steps one column along the Row each Round with its
+          // first card. If the host rejects the step, the Queue stays empty (as after a timeout).
+          const hero = view.heroes[0]!;
+          const step = { col: hero.position.col + (hero.position.col < 5 ? 1 : -1), row: hero.position.row };
+          const moving: SquadPlan = {
+            squad: SquadId.Left,
+            heroes: [{ heroId: hero.id, queue: [{ kind: ActionKind.Move as const, card: hero.hand[0]!, destination: step }] }],
+          };
+          const idle: SquadPlan = { squad: SquadId.Left, heroes: [{ heroId: hero.id, queue: [] }] };
+          let plan = moving;
+          try {
+            result = await host.submitPlan(moving);
+          } catch {
+            plan = idle;
+            result = await host.submitPlan(idle);
+          }
+          plans.push(plan);
+        }
         events.push(result.events);
         view = result.view;
       }
       return { plans, events, view };
     }
     const first = await play(2024);
+    expect(first.plans.some((plan) => plan.heroes.some((hero) => hero.queue.length > 0))).toBe(true);
     const replay = await play(2024, first.plans);
     expect(replay.view).toEqual(first.view);
     expect(replay.events).toEqual(first.events);

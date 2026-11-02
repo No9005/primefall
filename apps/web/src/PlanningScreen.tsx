@@ -462,7 +462,10 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   const [secondsLeft, setSecondsLeft] = useState(PLANNING_TIMER_SECONDS);
   const commitRef = useRef<((toSubmit: SquadPlan) => Promise<void>) | undefined>(undefined);
   commitRef.current = commit;
+  const committingRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   useEffect(() => {
+    committingRef.current = false;
     setSecondsLeft(PLANNING_TIMER_SECONDS);
     const deadline = Date.now() + PLANNING_TIMER_SECONDS * 1000;
     const interval = setInterval(() => {
@@ -477,12 +480,22 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         void commitRef.current?.(emptyPlan);
       }
     }, 250);
+    timerRef.current = interval;
     return () => clearInterval(interval);
   }, [view]);
 
   async function commit(toSubmit: SquadPlan) {
-    if (playback !== undefined) return;
-    const result = await submitPlan(toSubmit);
+    // Set synchronously so a timeout during a manual Commit's submitPlan cannot submit a second plan.
+    if (playback !== undefined || committingRef.current) return;
+    committingRef.current = true;
+    clearInterval(timerRef.current);
+    let result;
+    try {
+      result = await submitPlan(toSubmit);
+    } catch (error) {
+      committingRef.current = false;
+      throw error;
+    }
     const positions: Record<string, GridPosition> = {};
     const shields: Record<string, number> = {};
     const deckDamage: Record<string, number> = {};
