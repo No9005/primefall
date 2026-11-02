@@ -16,6 +16,20 @@ export default tseslint.config(
     languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
     rules: { "@typescript-eslint/no-unsafe-enum-comparison": "error" },
   },
+  {
+    // Leftover scratch work in tests is caught by lint, not by the reviewer (CODING_STANDARDS.md).
+    files: ["**/*.test.{ts,tsx}"],
+    rules: {
+      "no-console": "error",
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "CallExpression[callee.object.name=/^(describe|it|test)$/][callee.property.name=/^(only|skip)$/]",
+          message: "Do not commit .only or .skip tests.",
+        },
+      ],
+    },
+  },
   { files: ["*.js", "**/*.config.ts"], languageOptions: { globals: globals.node } },
   {
     // game-core is deterministic and pure: no browser APIs, no Math.random (use the seeded PRNG).
