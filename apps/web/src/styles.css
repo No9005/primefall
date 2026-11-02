@@ -28,7 +28,12 @@ button { font: inherit; color: inherit; }
 .tag { grid-column: 2; grid-row: 1; font-size: 12px; color: #8a99a8; }
 
 .energy { bottom: 108px; left: 50%; transform: translateX(-50%); padding: 4px 12px; font-family: "IBM Plex Mono", monospace; font-size: 12px; color: #ff8a3d; white-space: nowrap; }
-.use-chooser { bottom: 140px; left: 50%; transform: translateX(-50%); padding: 6px; display: flex; gap: 6px; }
+.card-sheet { bottom: 100px; left: 50%; transform: translateX(-50%); width: 520px; max-width: calc(100% - 12px); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.sheet-header { display: flex; align-items: center; gap: 12px; }
+.sheet-header .card-name { flex: 1; font-size: 16px; }
+.sheet-close { min-width: 44px; min-height: 44px; background: #12161c; color: #dbe4ec; border: 1px solid #3d5a73; border-radius: 4px; font-size: 20px; cursor: pointer; }
+.sheet-uses { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.use-text { font-size: 12px; color: #8a99a8; }
 .use { display: flex; flex-direction: column; justify-content: center; min-width: 88px; min-height: 44px; padding: 4px 8px; background: #12161c; color: #dbe4ec; border: 1px solid #2ec4b6; border-radius: 4px; cursor: pointer; }
 .use:disabled { border-color: #3d5a73; opacity: 0.7; cursor: default; }
 .use-reason { font-size: 12px; color: #ff8a3d; }

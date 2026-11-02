@@ -1,5 +1,6 @@
 import {
   type CardDefinition,
+  type CardEffect,
   type CardIndex,
   chebyshevDistance,
   CoverKind,
@@ -55,6 +56,57 @@ export function rangeDamageLabel(card: CardDefinition, attacker: GridPosition, t
   const distance = chebyshevDistance(attacker, target);
   const damage = damageAtDistance(effect, distance);
   return `Range ${distance} · ${damage} damage${distance >= LONG_RANGE_FROM ? " (long range bonus)" : ""}`;
+}
+
+function describeEffect(effect: CardEffect): string {
+  const { amount, duration, size, longRangeAmount, withinRange } = effect;
+  switch (effect.kind) {
+    case EffectKind.Damage:
+      return `${amount} damage`;
+    case EffectKind.DamageHeroesAtAndAroundTarget:
+      return `${amount} damage to Heroes at and around the target`;
+    case EffectKind.DamageAtLongRange:
+      return `${amount} damage, ${longRangeAmount} from Range ${LONG_RANGE_FROM}`;
+    case EffectKind.ApplySlow:
+      return `Slow for ${duration ?? 1} Resolution${duration === 1 || duration === undefined ? "" : "s"}`;
+    case EffectKind.ApplyMarked:
+      return `Marked, +${amount} damage taken${duration ? ` for ${duration} Resolutions` : ""}`;
+    case EffectKind.Knockback:
+      return `Knockback ${amount}${withinRange ? ` within ${withinRange} tiles` : ""}`;
+    case EffectKind.DestroyHalfCover:
+      return "destroys Half Cover";
+    case EffectKind.DestroyAnyCover:
+      return "destroys any Cover";
+    case EffectKind.IgnoreHalfCover:
+      return "ignores Half Cover";
+    case EffectKind.GainShield:
+      return `Shield ${amount}`;
+    case EffectKind.GrantExtraMove:
+      return `ally Moves ${amount} more tiles`;
+    case EffectKind.ExtendMove:
+      return `next Move covers ${amount} tiles`;
+    case EffectKind.PreventHidden:
+      return "prevents Hidden";
+    case EffectKind.GainPermanentAttack:
+      return `+${amount} Attack damage for the rest of the match`;
+    case EffectKind.RevealArea:
+      return `reveals a ${size}x${size} area`;
+    case EffectKind.PlaceHalfCover:
+      return "places Half Cover";
+    case EffectKind.BecomeHidden:
+      return "become Hidden";
+    case EffectKind.TargetGhost:
+      return "shoots a Ghost's last known position";
+    case EffectKind.RemoveHalfCoverReduction:
+      return "Half Cover does not reduce the damage";
+  }
+}
+
+/** One line of card text for a mode of a card: its effects in order, `undefined` for a card without that mode. */
+export function describeEffects(effects: readonly CardEffect[] | undefined): string | undefined {
+  if (!effects || effects.length === 0) return undefined;
+  const text = effects.map(describeEffect).join(", ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 export enum CardUse {
