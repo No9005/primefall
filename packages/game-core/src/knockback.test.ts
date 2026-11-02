@@ -39,17 +39,17 @@ const knockbacks = (events: readonly { kind: EventKind }[]) => events.filter(({ 
 describe("Shockwave: area damage and Knockback", () => {
   it("damages every enemy Hero in Range 1 and pushes each two tiles directly away", () => {
     const match = setup({
-      [LEFT_BRUISER]: { col: 8, row: 5 },
-      [RIGHT_BRUISER]: { col: 9, row: 5 },
-      [RIGHT_CONTROLLER]: { col: 9, row: 4 },
+      [LEFT_BRUISER]: { col: 3, row: 5 },
+      [RIGHT_BRUISER]: { col: 4, row: 5 },
+      [RIGHT_CONTROLLER]: { col: 4, row: 4 },
     });
     const decks = [RIGHT_BRUISER, RIGHT_CONTROLLER].map((id) => hero(match, id).deck.length);
     const { match: after, events } = resolveRound(match, [shockwavePlan()]);
     expect(hero(after, RIGHT_BRUISER).deck).toHaveLength(decks[0]! - 2);
     expect(hero(after, RIGHT_CONTROLLER).deck).toHaveLength(decks[1]! - 2);
-    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 11, row: 5 });
+    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 6, row: 5 });
     // A diagonal neighbour is pushed along the diagonal.
-    expect(hero(after, RIGHT_CONTROLLER).position).toEqual({ col: 11, row: 2 });
+    expect(hero(after, RIGHT_CONTROLLER).position).toEqual({ col: 6, row: 2 });
     expect(events.filter(({ kind }) => kind === EventKind.AttackHit)).toHaveLength(2);
     expect(knockbacks(events)).toHaveLength(4);
   });
@@ -77,25 +77,25 @@ describe("Shockwave: area damage and Knockback", () => {
   });
 
   it("stops at a Wall and ends early without error", () => {
-    // The Wall is at column 4, row 4: the target is pushed one tile, then stopped.
-    const match = setup({ [LEFT_BRUISER]: { col: 7, row: 4 }, [RIGHT_BRUISER]: { col: 6, row: 4 } });
+    // The Wall is at column 5, row 6: the target is pushed one tile, then stopped.
+    const match = setup({ [LEFT_BRUISER]: { col: 5, row: 3 }, [RIGHT_BRUISER]: { col: 5, row: 4 } });
     const { match: after, events } = resolveRound(match, [shockwavePlan()]);
-    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 5, row: 4 });
+    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 5, row: 5 });
     expect(knockbacks(events)).toHaveLength(1);
   });
 
   it("does not move a Hero that stands right in front of a Wall", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 6, row: 4 }, [RIGHT_BRUISER]: { col: 5, row: 4 } });
+    const match = setup({ [LEFT_BRUISER]: { col: 5, row: 4 }, [RIGHT_BRUISER]: { col: 5, row: 5 } });
     const { match: after, events } = resolveRound(match, [shockwavePlan()]);
-    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 5, row: 4 });
+    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 5, row: 5 });
     expect(knockbacks(events)).toHaveLength(0);
   });
 
   it("stops at a Full Cover tile", () => {
-    // The Overwatch Nest (Full Cover) is at column 10, row 1.
-    const match = setup({ [LEFT_BRUISER]: { col: 10, row: 3 }, [RIGHT_BRUISER]: { col: 10, row: 2 } });
+    // The Overwatch Nest (Full Cover) is at column 15, row 1.
+    const match = setup({ [LEFT_BRUISER]: { col: 15, row: 3 }, [RIGHT_BRUISER]: { col: 15, row: 2 } });
     const { match: after, events } = resolveRound(match, [shockwavePlan()]);
-    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 10, row: 2 });
+    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 15, row: 2 });
     expect(knockbacks(events)).toHaveLength(0);
   });
 

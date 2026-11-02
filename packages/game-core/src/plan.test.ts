@@ -7,7 +7,7 @@ import type { GridPosition } from "./reactor-deck";
 
 // The enemy Bruiser stands in sight of the Squad; the other enemies are still Unknown.
 const match = startRound(createMatch(9));
-match.heroes.find((hero) => hero.id === "right-bruiser")!.position = { col: 8, row: 5 };
+match.heroes.find((hero) => hero.id === "right-bruiser")!.position = { col: 7, row: 7 };
 const view = buildSquadView(match, SquadId.Left);
 const enemy = view.enemies.find((candidate) => candidate.id === "right-bruiser")!;
 const bruiser = view.heroes.find((hero) => hero.heroClass === HeroClass.Bruiser)!;
@@ -45,8 +45,8 @@ describe("validatePlan", () => {
     expect(kinds(move(bruiser.hand[0]!, near(3)))).toEqual([PlanIssueKind.BadDestination]);
     expect(kinds(move(bruiser.hand[0]!, near(0)))).toEqual([PlanIssueKind.BadDestination]);
     expect(kinds(move(bruiser.hand[0]!, { col: -1, row: 4 }))).toEqual([PlanIssueKind.BadDestination]);
-    // (0, 4) is a Wall, one tile away from the Bruiser's Spawn tile.
-    expect(kinds(move(bruiser.hand[0]!, { col: 0, row: 4 }))).toEqual([PlanIssueKind.BadDestination]);
+    // (0, 7) is a Wall, one tile away from the Bruiser's Spawn tile.
+    expect(kinds(move(bruiser.hand[0]!, { col: 0, row: 7 }))).toEqual([PlanIssueKind.BadDestination]);
   });
 
   it("rejects an unknown Hero and another Squad's plan", () => {

@@ -39,13 +39,13 @@ describe("createMatch", () => {
 
   it("places both Squads on their Spawn tiles", () => {
     const match = createMatch(1);
-    for (const [squad, col] of [[SquadId.Left, 1], [SquadId.Right, 19]] as const) {
+    for (const [squad, col] of [[SquadId.Left, 1], [SquadId.Right, 29]] as const) {
       const squadHeroes = match.heroes.filter((h) => h.squad === squad);
       expect(squadHeroes).toHaveLength(3);
       expect(squadHeroes.map((h) => h.position)).toEqual([
-        { col, row: 4 },
-        { col, row: 5 },
-        { col, row: 6 },
+        { col, row: 7 },
+        { col, row: 8 },
+        { col, row: 9 },
       ]);
     }
   });

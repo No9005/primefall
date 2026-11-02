@@ -88,15 +88,15 @@ describe("Range and Line of Sight", () => {
   });
 
   it("measures Range as Chebyshev distance", () => {
-    const near = duel({ [RIGHT_BRUISER]: { col: 11, row: 8 } });
+    const near = duel({ [LEFT_BRUISER]: { col: 8, row: 11 }, [RIGHT_BRUISER]: { col: 11, row: 14 } });
     expect(resolveRound(near, [leftAttacks()]).events[0]!.kind).toBe(EventKind.AttackHit);
-    const far = duel({ [RIGHT_BRUISER]: { col: 12, row: 8 } });
+    const far = duel({ [LEFT_BRUISER]: { col: 8, row: 11 }, [RIGHT_BRUISER]: { col: 12, row: 14 } });
     expect(resolveRound(far, [leftAttacks()]).events[0]!.kind).toBe(EventKind.AttackFailed);
   });
 
   it("is blocked by a Wall", () => {
-    // (4,4) is a Wall between (5,4) and (3,4).
-    const match = duel({ [LEFT_BRUISER]: { col: 5, row: 4 }, [RIGHT_BRUISER]: { col: 3, row: 4 } });
+    // (8,6) is a Wall between (8,5) and (8,7).
+    const match = duel({ [LEFT_BRUISER]: { col: 8, row: 5 }, [RIGHT_BRUISER]: { col: 8, row: 7 } });
     expect(resolveRound(match, [leftAttacks()]).events[0]!.kind).toBe(EventKind.AttackFailed);
   });
 

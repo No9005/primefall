@@ -17,10 +17,10 @@ const MARK_TARGET = 10;
 const REPOSITION = 11;
 const PITCH = 1;
 
-// Tiles on row 5 (the middle row): column 5 is Half Cover (H), (4, 4) is a Wall, row 1 is open floor.
+// Row 1 is open floor; (14,5) is Half Cover (H) with open floor on both sides; the Nest is at (15,1).
 const OPEN = { col: 2, row: 1 };
-const HALF_COVER = { col: 5, row: 5 };
-const OVERWATCH_NEST = { col: 10, row: 1 };
+const HALF_COVER = { col: 14, row: 5 };
+const OVERWATCH_NEST = { col: 15, row: 1 };
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 const primary = (card: number, target: string, overdrive?: boolean): QueuedAction => ({
@@ -54,7 +54,7 @@ describe("Precision Shot, Piercing Round and Execution Round", () => {
   });
 
   it("Piercing Round ignores Half Cover while a Precision Shot is reduced by it", () => {
-    const attacker = { col: 2, row: 5 };
+    const attacker = { col: 11, row: 5 };
     const hand = [PITCH, PIERCING_ROUND, 0, REPOSITION];
     const match = scene(attacker, HALF_COVER, hand);
     const piercing = resolveRound(match, [plan([primary(PIERCING_ROUND, ENEMY)])]).match;
@@ -140,7 +140,7 @@ describe("Hidden", () => {
   });
 
   it("Suppress, played earlier in the Round, prevents it", () => {
-    const match = scene(HALF_COVER, { col: 8, row: 5 }, [PITCH, VANISH, 0, REPOSITION]);
+    const match = scene(HALF_COVER, { col: 17, row: 5 }, [PITCH, VANISH, 0, REPOSITION]);
     hero(match, ENEMY).hand = [9, 0, 1, 2];
     // Tick 1: the enemy Bruiser Suppresses the Visible Assassin (Bruiser card 9); tick 2: the Assassin's Vanish.
     const block: QueuedAction = { kind: ActionKind.Block, card: 0 };
@@ -160,7 +160,7 @@ describe("Hidden", () => {
   });
 
   it("hides the Hero from enemies, also on a tile in their sight", () => {
-    const match = scene(HALF_COVER, { col: 8, row: 5 });
+    const match = scene(HALF_COVER, { col: 17, row: 5 });
     expect(buildSquadView(match, SquadId.Right).enemies.find(({ id }) => id === ASSASSIN)?.visibility).toBe(Visibility.Visible);
     const { match: after } = resolveRound(match, [plan([primary(VANISH, ASSASSIN)])]);
     const seen = buildSquadView(after, SquadId.Right).enemies.find(({ id }) => id === ASSASSIN);
@@ -169,7 +169,7 @@ describe("Hidden", () => {
   });
 
   it("ends when the Hero attacks", () => {
-    const match = scene(HALF_COVER, { col: 8, row: 5 }, [PITCH, VANISH, 0, REPOSITION]);
+    const match = scene(HALF_COVER, { col: 17, row: 5 }, [PITCH, VANISH, 0, REPOSITION]);
     hero(match, ASSASSIN).hidden = 2;
     // An enemy Hero cannot see a Hidden Assassin, but the Assassin sees the enemy and may attack it.
     const { match: after, events } = resolveRound(match, [plan([primary(0, ENEMY)])]);
@@ -178,11 +178,11 @@ describe("Hidden", () => {
   });
 
   it("ends when the Hero is Marked", () => {
-    const match = scene(HALF_COVER, { col: 8, row: 5 });
+    const match = scene(HALF_COVER, { col: 17, row: 5 });
     hero(match, ASSASSIN).hidden = 2;
     const enemyPlan = { squad: SquadId.Right, heroes: [{ heroId: "right-assassin", queue: [primary(MARK_TARGET, ASSASSIN)], pitched: [PITCH] }] };
     hero(match, "right-assassin").hand = [PITCH, MARK_TARGET, 0, 3];
-    hero(match, "right-assassin").position = { col: 9, row: 5 };
+    hero(match, "right-assassin").position = { col: 18, row: 5 };
     const { match: after, events } = resolveRound(match, [enemyPlan]);
     expect(events).toContainEqual({ kind: EventKind.HiddenEnded, tick: 1, heroId: ASSASSIN });
     expect(hero(after, ASSASSIN).hidden).toBe(0);
@@ -249,11 +249,11 @@ describe("Ghost Shot Overdrive", () => {
 
   it("is blocked by Full Cover and reduced by Half Cover", () => {
     const full = ghostScene(OVERWATCH_NEST, { col: 15, row: 5 });
-    hero(full, ASSASSIN).position = { col: 7, row: 1 };
+    hero(full, ASSASSIN).position = { col: 12, row: 1 };
     hero(full, ENEMY).position = OVERWATCH_NEST;
     expect(deckLoss(full, shoot(full).match)).toBe(0);
     const half = ghostScene(HALF_COVER, HALF_COVER);
-    hero(half, ASSASSIN).position = { col: 2, row: 5 };
+    hero(half, ASSASSIN).position = { col: 11, row: 5 };
     expect(deckLoss(half, shoot(half).match)).toBe(1);
   });
 

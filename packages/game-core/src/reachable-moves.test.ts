@@ -9,11 +9,11 @@ const BRUISER = "left-bruiser";
 
 describe("reachableMoveDestinations", () => {
   it("leaves out a tile behind a Wall corner but keeps straight paths", () => {
-    // The Wall at (4,4) blocks the diagonal first step (3,4) -> (4,5).
-    const offered = reachableMoveDestinations({ col: 3, row: 4 });
-    expect(offered).not.toContainEqual({ col: 5, row: 5 });
+    // The Wall at (5,6) blocks the diagonal first step (5,5) -> (4,6).
+    const offered = reachableMoveDestinations({ col: 5, row: 5 });
+    expect(offered).not.toContainEqual({ col: 3, row: 7 });
+    expect(offered).toContainEqual({ col: 4, row: 5 });
     expect(offered).toContainEqual({ col: 3, row: 5 });
-    expect(offered).toContainEqual({ col: 3, row: 6 });
   });
 
   it("only offers destinations that the Resolution reaches when nothing else is in the way", () => {

@@ -30,7 +30,7 @@ function fight(positions: Record<string, GridPosition> = {}): MatchState {
   const placed: Record<string, GridPosition> = {
     [BRUISER]: { col: 9, row: 5 },
     [ENEMY]: { col: 10, row: 5 },
-    [CONTROLLER]: { col: 9, row: 4 },
+    [CONTROLLER]: { col: 9, row: 3 },
     [ENEMY_CONTROLLER]: { col: 13, row: 8 },
     [ENEMY_ASSASSIN]: { col: 13, row: 9 },
     ...positions,
@@ -74,7 +74,7 @@ describe("Breach Charge Overdrive", () => {
     resolveRound(match, [play(match, BREACH_CHARGE, { target: BRUISER, tile, overdrive: true })]);
 
   it("hurts every Hero on and next to the tile, allies and the caster included, and no one further away", () => {
-    const match = fight({ [CONTROLLER]: { col: 10, row: 6 }, [ENEMY_CONTROLLER]: { col: 11, row: 4 }, [ENEMY_ASSASSIN]: { col: 12, row: 5 } });
+    const match = fight({ [CONTROLLER]: { col: 9, row: 4 }, [ENEMY_CONTROLLER]: { col: 11, row: 5 }, [ENEMY_ASSASSIN]: { col: 12, row: 5 } });
     const { match: after } = blast(match, { col: 10, row: 5 });
     for (const id of [ENEMY, CONTROLLER, ENEMY_CONTROLLER, BRUISER]) {
       expect(deckSize(match, id) - deckSize(after, id), id).toBe(2);
@@ -83,8 +83,8 @@ describe("Breach Charge Overdrive", () => {
   });
 
   it("destroys any Cover on the tile, Full Cover included", () => {
-    const nest = { col: 10, row: 1 };
-    const match = fight({ [BRUISER]: { col: 10, row: 4 }, [ENEMY]: { col: 13, row: 7 } });
+    const nest = { col: 15, row: 1 };
+    const match = fight({ [BRUISER]: { col: 15, row: 4 }, [ENEMY]: { col: 13, row: 7 } });
     expect(coverAt(match.grid, nest)).toBe(CoverKind.Full);
     const { match: after, events } = blast(match, nest);
     expect(coverAt(after.grid, nest)).toBe(CoverKind.None);
@@ -122,9 +122,9 @@ describe("Forward Deploy", () => {
   it("gives an allied Hero an additional Move 2 towards the chosen tile", () => {
     const match = fight();
     const { match: after, events } = resolveRound(match, [
-      play(match, FORWARD_DEPLOY, { target: CONTROLLER, tile: { col: 11, row: 4 } }, 1),
+      play(match, FORWARD_DEPLOY, { target: CONTROLLER, tile: { col: 11, row: 3 } }, 1),
     ]);
-    expect(hero(after, CONTROLLER).position).toEqual({ col: 11, row: 4 });
+    expect(hero(after, CONTROLLER).position).toEqual({ col: 11, row: 3 });
     expect(events.filter(({ kind }) => kind === EventKind.Step)).toHaveLength(2);
   });
 
@@ -135,7 +135,7 @@ describe("Forward Deploy", () => {
       return validatePlan(buildSquadView(match, SquadId.Left), plan);
     };
     expect(issues({}).map(({ kind }) => kind)).toEqual([PlanIssueKind.BadTarget]);
-    expect(issues({ tile: { col: 9, row: 6 } })).toEqual([]);
+    expect(issues({ tile: { col: 9, row: 4 } })).toEqual([]);
   });
 });
 

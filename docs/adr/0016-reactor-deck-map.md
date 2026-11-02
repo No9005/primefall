@@ -2,7 +2,9 @@
 
 The first Primefall map is the Reactor Deck: a damaged cargo ship whose central reactor is the Prime Zone. The map is horizontally oriented and mirror-symmetric: one squad spawns on the left edge and the other on the right edge.
 
-The map uses a 21 by 11 tile grid. It has no interactive doors and no vertical levels in the first prototype.
+The map uses a 31 by 17 tile grid. It has no interactive doors and no vertical levels in the first prototype.
+
+An earlier 21 by 11 layout was too small and offered too little tactical play. The 31 by 17 layout replaces it (issue 131) and gives three distinct ways to the Zone.
 
 ## Layout
 
@@ -10,45 +12,52 @@ Legend:
 
 - `S` — Spawn tile
 - `#` — Wall / Bulkhead
-- `F` — Full Cover
 - `H` — Half Cover
 - `P` — Prime Zone tile
 - `O` — Overwatch Nest (Full Cover)
 - `.` — Open floor
 
 ```text
-  012345678901234567890
- 0 #####################
- 1 #.........O.........#
- 2 #...##.........##...#
- 3 #...#...........#...#
- 4 #S..#....PPP....#..S#
- 5 #S...H...PPP...H...S#
- 6 #S..#....PPP....#..S#
- 7 #...#...........#...#
- 8 #...##.........##...#
- 9 #...................#
-10 #####################
+   0123456789012345678901234567890
+ 0 ###############################
+ 1 #..............O..............#
+ 2 #...H...HH...HH.HH...HH...H...#
+ 3 #.............................#
+ 4 #.....HH..##.H...H.##..HH.....#
+ 5 #.............H.H.............#
+ 6 #....#######HH...HH#######....#
+ 7 #S............PPP............S#
+ 8 #S............PPP............S#
+ 9 #S............PPP............S#
+10 #....#######HH...HH#######....#
+11 #.............H.H.............#
+12 #.....HH..##.H...H.##..HH.....#
+13 #.............................#
+14 #...H...HH...HH.HH...HH...H...#
+15 #.............................#
+16 ###############################
 ```
 
 ## Grid and symmetry
 
-The grid is 21 columns by 11 rows (columns 0–20, rows 0–10, border walls included). The odd width and height place the Prime Zone and the Overwatch Nest exactly on the central column (10) and the Zone on the central row (5), which makes the layout mirror-symmetric around column 10. Each Squad spawns on three tiles: column 1, rows 4–6 on the left and column 19, rows 4–6 on the right. An earlier 20 by 12 grid could not be mirror-symmetric with a 3 by 3 Zone.
+The grid is 31 columns by 17 rows (columns 0–30, rows 0–16, border walls included; the interior is 29 by 15). The odd width and height place the Prime Zone and the Overwatch Nest exactly on the central column (15) and the Zone on the central row (8). The layout is mirror-symmetric left-right around column 15 and top-bottom around row 8; the only exception is the Overwatch Nest in the top row. Each Squad spawns on three tiles: column 1, rows 7–9 on the left and column 29, rows 7–9 on the right. An earlier 20 by 12 grid could not be mirror-symmetric with a 3 by 3 Zone.
+
+Rules, AI, Spawn positions, camera fit and tile picking all read the grid; none of them hard-codes the size, the Zone position or the Spawn columns.
 
 ## Prime Zone
 
-The Prime Zone is the 3 by 3 reactor area at columns 9–11 and rows 4–6. It contains no permanent Cover.
+The Prime Zone is the 3 by 3 reactor area at columns 14–16 and rows 7–9. It is one open area and contains no permanent Cover.
 
 This makes Controller effects especially valuable:
 
 - Deploy Cover can protect an ally holding the open Zone.
-- Scout Drone can reveal the side corridors without exposing the Controller.
+- Scout Drone can reveal the flanks without exposing the Controller.
 - Aegis Protocol helps a Bruiser survive while holding the open center.
 - Marked effects create squad-wide information when the Assassin is not scouting.
 
 ## Overwatch Nest
 
-The Overwatch Nest is the single Full Cover tile at column 10, row 1. It has a direct, limited sightline south through the central corridor into the Prime Zone.
+The Overwatch Nest is the single Full Cover tile at column 15, row 1, in the top row on the central column. It has a direct, limited sightline south into the Prime Zone.
 
 It is the Assassin’s secondary objective:
 
@@ -61,11 +70,17 @@ There is intentionally only one Nest. This creates a secondary fight for informa
 
 ## Routes and Cover
 
-- The main route is the horizontal corridor on rows 5–6, connecting the left and right Spawn areas to the Prime Zone.
-- The Half Cover tiles at columns 5 and 15 on row 5 provide brief protection while crossing the main corridor; they do not create permanent safe sightlines into the Zone.
-- The upper and lower side corridors provide Half Cover, flanking routes, retreat paths, and Hidden movement options.
+Three ways lead from each Spawn to the Zone, and each has a reason to be used:
+
+- **Middle channel (rows 7–9):** a straight, three-tile-wide corridor from each Spawn to the Zone, bounded by continuous Walls (columns 5–11 and 19–25 on rows 6 and 10) and with no Cover. It is fast and direct, but everything in it can be seen and shot.
+- **Upper and lower flank (rows 1–5 and 11–15):** open ground with staggered Half Cover in short horizontal runs, so a Squad can stalk forward from Cover to Cover and trade fire. Two short Wall pieces per flank (columns 10–11 and 19–20 on rows 4 and 12) give Hidden and ambush options.
+- **Windows:** at the inner end of the channel Walls, next to the Zone, the Walls end in Half Cover (columns 12–13 and 17–18 on rows 6 and 10). Half Cover does not block Line of Sight, so a Squad on a flank can see and shoot into the channel and the Zone. The fight is about dominating the flanks to get a firing position on the enemy.
+
+Other rules of the layout:
+
+- There are no pillars: no mechanic for them exists yet.
 - No permanent Full Cover overlooks the Prime Zone except the Overwatch Nest.
-- Both squads spawn on opposite horizontal edges without direct Line of Sight into the Prime Zone, encouraging early scouting.
+- The Spawn areas are far outside sight range of the Zone, encouraging early scouting.
 
 ## Prototype rules
 

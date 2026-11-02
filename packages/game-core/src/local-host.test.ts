@@ -16,7 +16,7 @@ describe("local host", () => {
       expect(hero.hand).toHaveLength(HAND_SIZE);
       expect(hero.deckCount).toBe(12 - HAND_SIZE);
       expect(hero.exileCount).toBe(0);
-      expect(hero.position.col).toBeLessThan(10);
+      expect(hero.position.col).toBeLessThan(15);
     }
   });
 
@@ -56,14 +56,14 @@ describe("local host", () => {
     const before = (await host.getSquadView(SquadId.Left)).heroes[0]!;
     const plan = {
       squad: SquadId.Left,
-      heroes: [{ heroId: before.id, queue: [{ kind: ActionKind.Move as const, card: before.hand[0]!, destination: { col: 3, row: before.position.row } }] }],
+      heroes: [{ heroId: before.id, queue: [{ kind: ActionKind.Move as const, card: before.hand[0]!, destination: { col: 1, row: before.position.row - 2 } }] }],
     };
     const result = await host.submitPlan(plan);
     const own = result.events.filter((event) => event.heroId === before.id);
     expect(own.length).toBeGreaterThan(0);
     expect(own.every((event) => event.tick === 1)).toBe(true);
     const after = result.view.heroes[0]!;
-    expect(after.position).toEqual({ col: 3, row: before.position.row });
+    expect(after.position).toEqual({ col: 1, row: before.position.row - 2 });
     expect(after.hand).toHaveLength(HAND_SIZE);
     expect(after.hand).not.toContain(before.hand[0]);
   });

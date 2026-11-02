@@ -14,7 +14,7 @@ import {
   type SquadPlan,
   validatePlan,
 } from "./plan";
-import { findTiles, type GridPosition, isStepAllowed, REACTOR_DECK, TileKind } from "./reactor-deck";
+import { findTiles, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind } from "./reactor-deck";
 
 /** Actions the AI queues per Hero and Round; fewer than the Queue limit keeps Decks from draining fast. */
 const AI_QUEUE_LENGTH = 3;
@@ -53,12 +53,30 @@ const mirrorTile = ({ col, row }: GridPosition): GridPosition => ({ col: REACTOR
 const destinationsInOrder = (from: GridPosition, squad: SquadId): GridPosition[] =>
   squad === SquadId.Left ? moveDestinations(from) : moveDestinations(mirrorTile(from)).map(mirrorTile);
 
-/** The Move 2 destination that ends closest to the Prime Zone by walking distance; undefined if none gets closer. */
-function stepTowardPrimeZone(from: GridPosition, squad: SquadId): GridPosition | undefined {
+/** The tiles a Move enters on its way from `from` to `end`, one step at a time, `end` included. */
+function movePath(from: GridPosition, end: GridPosition): GridPosition[] {
+  const path: GridPosition[] = [];
+  for (let tile = from; tile.col !== end.col || tile.row !== end.row; ) {
+    tile = stepTowards(tile, end);
+    path.push(tile);
+  }
+  return path;
+}
+
+/** Tiles that Heroes planned earlier will end a Move on, per queue slot: two Heroes entering one tile both fail. */
+type ClaimedTiles = Map<number, Set<number>>;
+
+/**
+ * The Move 2 destination that ends closest to the Prime Zone by walking distance; undefined if none gets closer.
+ * A tile another Hero already claimed in the same queue slot is skipped.
+ */
+function stepTowardPrimeZone(from: GridPosition, squad: SquadId, claimed: ReadonlySet<number> | undefined): GridPosition | undefined {
   let best: GridPosition | undefined;
   let bestDistance = distanceToPrimeZone(from);
   for (const destination of destinationsInOrder(from, squad)) {
-    const distance = distanceToPrimeZone(moveEnd(from, destination));
+    const end = moveEnd(from, destination);
+    if (movePath(from, end).some((tile) => claimed?.has(tileKey(tile)))) continue;
+    const distance = distanceToPrimeZone(end);
     if (distance < bestDistance) {
       best = destination;
       bestDistance = distance;
@@ -67,7 +85,7 @@ function stepTowardPrimeZone(from: GridPosition, squad: SquadId): GridPosition |
   return best;
 }
 
-function planHero(view: SquadView, hero: HeroView): HeroPlan {
+function planHero(view: SquadView, hero: HeroView, claimed: ClaimedTiles): HeroPlan {
   const deck = HERO_DECKS[hero.heroClass];
   const isAttackCard = (card: CardIndex) => isSimpleAttack(deck[card]!);
   // Attacks are kept for attacking; other cards pay for Moves, Blocks and Pitch first.
@@ -102,10 +120,14 @@ function planHero(view: SquadView, hero: HeroView): HeroPlan {
     }
     const card = spare()[0];
     if (card === undefined || cardsLeft - 1 < 0) break;
-    const destination = stepTowardPrimeZone(position, view.squad);
+    const destination = stepTowardPrimeZone(position, view.squad, claimed.get(queue.length));
     if (destination) {
       queue.push({ kind: ActionKind.Move, card, destination });
+      const previous = position;
       position = moveEnd(position, destination);
+      const slotTiles = claimed.get(queue.length - 1) ?? new Set<number>();
+      for (const tile of movePath(previous, position)) slotTiles.add(tileKey(tile));
+      claimed.set(queue.length - 1, slotTiles);
     } else if (targets.length > 0) {
       queue.push({ kind: ActionKind.Block, card });
     } else {
@@ -125,9 +147,10 @@ function planHero(view: SquadView, hero: HeroView): HeroPlan {
  * nothing, so the result is always committable.
  */
 export function planSquad(view: SquadView, heroIds: readonly string[] = view.heroes.map((hero) => hero.id)): SquadPlan {
+  const claimed: ClaimedTiles = new Map();
   const heroes = view.heroes
     .filter((hero) => heroIds.includes(hero.id) && !hero.exhausted)
-    .map((hero) => planHero(view, hero));
+    .map((hero) => planHero(view, hero, claimed));
   const plan: SquadPlan = { squad: view.squad, heroes };
   const broken = new Set(validatePlan(view, plan).flatMap((issue) => (issue.heroId ? [issue.heroId] : [])));
   return broken.size === 0 ? plan : { squad: view.squad, heroes: heroes.filter((hero) => !broken.has(hero.heroId)) };
