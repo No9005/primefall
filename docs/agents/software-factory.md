@@ -38,7 +38,7 @@ Agents never merge. Only the merge gate enables auto-merge, and GitHub merges on
 
 ## A startable issue
 
-All of these must hold (`isIssueStartable`): it carries `ready-for-agent` and not `ready-for-human`; the latest `ready-for-agent` label was set by the repository owner; it has no open blocker; no run is marked `agent-working`; it has no open pull request from `agent/issue-<n>-…`; no `agent/issue-<n>-…` branch exists.
+All of these must hold (`isIssueStartable`): it carries `ready-for-agent` and not `ready-for-human`; the latest `ready-for-agent` label was set by the repository owner; it has no open blocker; it has no open pull request from `agent/issue-<n>-…`; no `agent/issue-<n>-…` branch exists.
 
 ## Blast radius
 

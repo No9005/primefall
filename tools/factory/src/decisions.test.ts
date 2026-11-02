@@ -29,7 +29,6 @@ import {
   reworkDecision,
   ReworkAction,
   ReviewVerdict,
-  SelectTrigger,
   type IssueState,
 } from "./decisions.ts";
 
@@ -45,7 +44,6 @@ describe("isIssueStartable", () => {
     ["with ready-for-human", { labels: [Label.ReadyForAgent, Label.ReadyForHuman] }],
     ["when the label was not set by the owner", { readyLabelSetByOwner: false }],
     ["with an open blocker", { openBlockers: 1 }],
-    ["while a run is working on it", { labels: [Label.ReadyForAgent, Label.AgentWorking] }],
     ["with an open pull request", { hasOpenPullRequest: true }],
     ["with an existing agent branch", { hasAgentBranch: true }],
     ["after a failed run (needs-human)", { labels: [Label.ReadyForAgent, Label.NeedsHuman] }],
@@ -55,15 +53,12 @@ describe("isIssueStartable", () => {
 });
 
 describe("candidateIssues", () => {
-  it("uses only the labelled or manually started issue", () => {
-    expect(candidateIssues(SelectTrigger.Labeled, 12, [8, 9, 12])).toEqual([12]);
-    expect(candidateIssues(SelectTrigger.Manual, 8, [8, 9])).toEqual([8]);
+  it("tries every open ready issue once, lowest number first", () => {
+    expect(candidateIssues([15, 13, 15, 22])).toEqual([13, 15, 22]);
   });
 
-  it("tries every open ready issue, lowest number first, when an issue closes", () => {
-    expect(candidateIssues(SelectTrigger.Closed, 12, [15, 13, 15, 22])).toEqual([13, 15, 22]);
-    expect(candidateIssues(SelectTrigger.Closed, 12, [])).toEqual([]);
-    expect(candidateIssues(SelectTrigger.Manual, 0, [9, 8])).toEqual([8, 9]);
+  it("has no candidate when no issue is ready", () => {
+    expect(candidateIssues([])).toEqual([]);
   });
 });
 

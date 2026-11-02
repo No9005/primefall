@@ -4,7 +4,6 @@ import { BlastRadius } from "./blast-radius.ts";
 export const Label = {
   ReadyForAgent: "ready-for-agent",
   ReadyForHuman: "ready-for-human",
-  AgentWorking: "agent-working",
   NeedsHuman: "needs-human",
   NeedsHumanMerge: "needs-human-merge",
   BlastRadiusLow: "blast-radius:low",
@@ -64,18 +63,12 @@ export function blastRadiusLabel(level: BlastRadius): string {
   return level === BlastRadius.High ? Label.BlastRadiusHigh : Label.BlastRadiusLow;
 }
 
-export const SelectTrigger = { Labeled: "labeled", Closed: "closed", Manual: "manual" } as const;
-export type SelectTrigger = (typeof SelectTrigger)[keyof typeof SelectTrigger];
-
 /**
- * Issues the implement run may start, in the order they are tried. A labelled or manually started
- * issue is the only candidate. When any issue closes, or a manual run names no issue, every open ready issue is a candidate (lowest
- * number first): a closed issue can free several tickets, and a ticket freed earlier but not
- * started must not be forgotten.
+ * Issues the run may start, in the order they are tried: every open ready issue, lowest number first. A
+ * run always scans all of them, so a ticket that was skipped earlier (blocked, or its run was replaced
+ * while waiting) is never forgotten.
  */
-export function candidateIssues(trigger: SelectTrigger, issueNumber: number, openReadyIssues: number[]): number[] {
-  const scanAll = trigger === SelectTrigger.Closed || (trigger === SelectTrigger.Manual && issueNumber <= 0);
-  if (!scanAll) return [issueNumber];
+export function candidateIssues(openReadyIssues: number[]): number[] {
   return [...new Set(openReadyIssues)].sort((a, b) => a - b);
 }
 
@@ -110,7 +103,6 @@ export function isIssueStartable(issue: IssueState): Startable {
   if (!issue.readyLabelSetByOwner) return { startable: false, reason: "ready-for-agent was not set by the repository owner" };
   if (issue.openBlockers > 0) return { startable: false, reason: `${issue.openBlockers} open blocker(s)` };
   if (issue.labels.includes(Label.NeedsHuman)) return { startable: false, reason: "labelled needs-human (a run failed; remove the label to retry)" };
-  if (issue.labels.includes(Label.AgentWorking)) return { startable: false, reason: "a run is already working on it" };
   if (issue.hasOpenPullRequest) return { startable: false, reason: "an open pull request exists" };
   if (issue.hasAgentBranch) return { startable: false, reason: "an agent branch already exists" };
   return { startable: true, reason: "ready" };

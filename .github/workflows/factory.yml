@@ -53,7 +53,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
       - name: Pick the lowest startable ticket
         id: select
-        run: node tools/factory/src/cli.ts select-issue manual 0
+        run: node tools/factory/src/cli.ts select-issue
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -84,7 +84,6 @@ jobs:
         run: |
           cp -r tools/factory "$RUNNER_TEMP/factory"
           echo "FACTORY=$RUNNER_TEMP/factory" >> "$GITHUB_ENV"
-      - run: node tools/factory/src/cli.ts mark-working "$ISSUE" on
       - run: npm ci
 
       - name: Implement
@@ -186,9 +185,6 @@ jobs:
           gh issue comment "$ISSUE" --body "The factory run failed before this ticket was done. The issue is labelled \`needs-human\`; remove the label to try again. [Run]($RUN_URL)"
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      - name: Remove the working marker
-        if: always()
-        run: node "$FACTORY/src/cli.ts" mark-working "$ISSUE" off
       # Whatever happened, go on with the next ticket. Every ticket ends merged, needs-human, or with an open
       # pull request, and none of these is startable again, so this ends when no ticket is left.
       - name: Start the next ticket
