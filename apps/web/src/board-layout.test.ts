@@ -3,20 +3,17 @@ import path from "node:path";
 import { REACTOR_DECK, TileKind } from "game-core";
 import { describe, expect, it } from "vitest";
 import {
-  AssetAlias,
   beginMoveFraming,
   endMoveFraming,
   frameMoveCamera,
   takeOverFraming,
   boardBounds,
-  buildPlacements,
   clampCamera,
   computeCamera,
   gridToWorld,
   HERO_PICK_TOLERANCE,
   HERO_ZOOM,
   isZoomed,
-  Layer,
   MAX_ZOOM,
   panBy,
   pickTileAt,
@@ -43,44 +40,11 @@ describe("gridToWorld", () => {
   });
 });
 
-describe("buildPlacements for the Reactor Deck", () => {
-  const placements = buildPlacements(REACTOR_DECK);
-  const floors = placements.filter((p) => p.layer === Layer.Floor);
-  const objects = placements.filter((p) => p.layer === Layer.Object);
-
-  it("draws one floor sprite per tile", () => {
-    expect(floors).toHaveLength(REACTOR_DECK.width * REACTOR_DECK.height);
-  });
-
-  it("only uses aliases that exist in the manifest with an existing file", () => {
-    for (const alias of new Set([...placements.map((p) => p.alias), ...Object.values(AssetAlias)])) {
-      const src = manifestAssets.get(alias);
-      expect(src, alias).toBeDefined();
-      expect(existsSync(path.join(assetsDir, src!)), alias).toBe(true);
-    }
-  });
-
-  it("uses every tile and prop kind the Reactor Deck contains", () => {
-    const used = new Set(placements.map((p) => p.alias));
-    const expected = [AssetAlias.Floor01, AssetAlias.Floor02, AssetAlias.FloorDamaged01, AssetAlias.ReactorFloor01, AssetAlias.ReactorEdge01, AssetAlias.SpawnMarker01, AssetAlias.Wall01, AssetAlias.CoverHalf01, AssetAlias.OverwatchNest01];
-    for (const alias of expected) {
-      expect(used.has(alias), alias).toBe(true);
-    }
-  });
-
-  it("puts props in front of objects further back, by column plus row", () => {
-    const wallBack = objects.find((p) => p.alias === AssetAlias.Wall01 && p.depth === 2);
-    const wallFront = objects.find((p) => p.alias === AssetAlias.Wall01 && p.depth === 20);
-    expect(wallBack).toBeDefined();
-    expect(wallFront).toBeDefined();
-    expect(wallFront!.depth).toBeGreaterThan(wallBack!.depth);
-    expect(wallFront!.y).toBeGreaterThan(wallBack!.y);
-  });
-
-  it("anchors a prop at the same bottom vertex as the floor tile below it", () => {
-    const nest = objects.find((p) => p.alias === AssetAlias.OverwatchNest01)!;
-    const floor = floors.find((p) => p.x === nest.x && p.y === nest.y);
-    expect(floor).toBeDefined();
+describe("the manifest", () => {
+  it("lists only existing files and no terrain sprites", () => {
+    const aliases = [...manifestAssets.keys()];
+    expect(aliases.some((alias) => alias.startsWith("tiles.") || alias.startsWith("props."))).toBe(false);
+    for (const [alias, src] of manifestAssets) expect(existsSync(path.join(assetsDir, src)), alias).toBe(true);
   });
 });
 
