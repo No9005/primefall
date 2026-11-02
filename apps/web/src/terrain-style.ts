@@ -9,6 +9,8 @@ export const TERRAIN_STYLE = {
   primeZone: { fill: 0x184648, edge: 0x2ec4b6 },
   primeZoneEdge: { fill: 0x1e3440, edge: 0x2ec4b6 },
   spawnMarker: 0x2ec4b6,
+  /** Floor outlines that mark Cover tiles while planning. */
+  coverOutline: { full: 0xff8a3d, half: 0x4aa3ff, placed: 0x7be0ff, destroyed: 0x8a8f98 },
   wall: { top: 0x52627a, left: 0x3e4b5e, right: 0x2c3646, edge: 0x6b7e99 },
   fullCover: { top: 0x5f7f9a, left: 0x486279, right: 0x364b5d, edge: 0xffc933 },
   halfCover: { top: 0x6f94b3, left: 0x547591, right: 0x3f5a71, edge: 0xffc933 },
