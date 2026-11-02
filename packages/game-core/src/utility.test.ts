@@ -8,7 +8,7 @@ const BRUISER = "left-bruiser";
 const CONTROLLER = "left-controller";
 const RIGHT_BRUISER = "right-bruiser";
 // Bruiser cards: 0 Slam Shot (Attack), 6 Bulwark (Shield 3 on self), 10 Reinforce (Shield 2 on an ally),
-// 8 Forward Deploy (a Utility effect without an interpreter yet).
+// 8 Forward Deploy.
 const SLAM_SHOT = 0;
 const BULWARK = 6;
 const FORWARD_DEPLOY = 8;
@@ -60,7 +60,7 @@ describe("Utility cards: Shield", () => {
     expect(failed(REINFORCE, RIGHT_BRUISER)).toEqual(action);
   });
 
-  it("fails for a Utility effect that has no interpreter yet", () => {
+  it("fails for Forward Deploy without a destination tile", () => {
     const events = resolveRound(duel(), [planOf(BRUISER, [use(FORWARD_DEPLOY, CONTROLLER)], [SLAM_SHOT])]).events;
     expect(events).toEqual([{ kind: EventKind.ActionFailed, tick: 1, heroId: BRUISER }]);
   });

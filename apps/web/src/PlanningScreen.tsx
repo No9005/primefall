@@ -6,6 +6,7 @@ import {
   cardInMode,
   CardType,
   destroyCover,
+  EffectKind,
   type EnemyView,
   type Grid,
   HERO_DECKS,
@@ -272,6 +273,8 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   const [armed, setArmed] = useState<CardIndex>();
   /** The card of a Primary effect that waits for the player to tap its target. */
   const [aiming, setAiming] = useState<CardIndex>();
+  /** Forward Deploy: the ally already picked, while the player still has to pick its tile. */
+  const [deployAlly, setDeployAlly] = useState<string>();
   /** Log of the last Resolution; stays visible until the next one. */
   const [log, setLog] = useState<string[]>([]);
   const [choosing, setChoosing] = useState<CardIndex>();
@@ -299,12 +302,17 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   const knownGrid = useMemo(() => view.destroyedCover.reduce(destroyCover, REACTOR_DECK), [view.destroyedCover]);
   const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, overdrive);
   const aimsAtTile = aimedCard?.target === CardTarget.Tile;
+  // Forward Deploy first picks the ally, then the tile it moves towards.
+  const deployAllyHero = view.heroes.find((hero) => hero.id === deployAlly);
+  const aimsAtDeployTile =
+    aimedCard?.effects.some(({ kind }) => kind === EffectKind.GrantExtraMove) === true && deployAllyHero !== undefined;
   const highlights = useMemo(() => {
     if (playing) return [];
     if (armed !== undefined) return moveDestinations(planningFrom);
+    if (aimsAtDeployTile) return moveDestinations(deployAllyHero.position);
     // A tile card (Breach Charge) can be aimed at any tile within its Range; Line of Sight is checked in the Resolution.
     return aimsAtTile ? moveDestinations(planningFrom, REACTOR_DECK, aimedCard?.range) : [];
-  }, [armed, aimsAtTile, aimedCard, playing, planningFrom]);
+  }, [armed, aimsAtTile, aimsAtDeployTile, deployAllyHero, aimedCard, playing, planningFrom]);
   const markers = useMemo(
     () =>
       queue.flatMap((action, i) =>
@@ -376,19 +384,32 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     if (use === CardUse.Pitch) setPitched([...pitched, choosing]);
     if (use === CardUse.Block) setQueue([...queue, { kind: ActionKind.Block, card: choosing }]);
     if (use === CardUse.Move) setArmed(choosing);
-    if (use === CardUse.Primary) setAiming(choosing);
+    if (use === CardUse.Primary) {
+      setAiming(choosing);
+      setDeployAlly(undefined);
+    }
     else setOverdrive(false);
     setChoosing(undefined);
   }
 
   function tapTarget(targetId: string) {
     if (aiming === undefined || playing || !targetableIds.includes(targetId)) return;
+    if (aimedCard?.effects.some(({ kind }) => kind === EffectKind.GrantExtraMove)) {
+      setDeployAlly(targetId);
+      return;
+    }
     setQueue([...queue, { kind: ActionKind.Primary, card: aiming, target: targetId, ...(overdrive ? { overdrive } : {}) }]);
     setAiming(undefined);
     setOverdrive(false);
   }
 
   function tapTile(destination: GridPosition) {
+    if (aiming !== undefined && aimsAtDeployTile) {
+      setQueue([...queue, { kind: ActionKind.Primary, card: aiming, target: deployAlly!, tile: destination }]);
+      setAiming(undefined);
+      setDeployAlly(undefined);
+      return;
+    }
     if (aiming !== undefined && aimsAtTile) {
       setQueue([...queue, { kind: ActionKind.Primary, card: aiming, target: selected.id, tile: destination, ...(overdrive ? { overdrive } : {}) }]);
       setAiming(undefined);
@@ -495,7 +516,9 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
               ? "Tap this Hero to hit every enemy Hero in Range"
               : aimedCard?.target === CardTarget.GhostEnemy
                 ? "Tap a Ghost to shoot its last known position; it hits only if an enemy stands there"
-                : aimsAtAlly
+                : aimsAtDeployTile
+                  ? "Tap the tile the ally moves towards"
+                  : aimsAtAlly
                   ? "Tap an allied Hero"
                   : "Tap an enemy Hero to attack"}
         </div>

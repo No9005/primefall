@@ -143,6 +143,8 @@ export const PLAYABLE_UTILITY_EFFECTS = [
   EffectKind.ExtendMove,
   EffectKind.ApplyMarked,
   EffectKind.Damage,
+  EffectKind.GrantExtraMove,
+  EffectKind.GainPermanentAttack,
 ] as const;
 
 /** Utility cards aimed at this Hero, an allied Hero, a visible enemy or an enemy in sight whose effects all have an interpreter. */
@@ -186,18 +188,35 @@ export function isTileAttack(card: CardDefinition): boolean {
   );
 }
 
+/** The Overdrive of Breach Charge: destroys any Cover on a tile and damages every Hero on and around it. */
+export function isTileBlast(card: CardDefinition): boolean {
+  const [first, second, ...rest] = card.effects;
+  return (
+    card.type === CardType.Attack &&
+    card.target === CardTarget.Tile &&
+    first?.kind === EffectKind.DestroyAnyCover &&
+    second?.kind === EffectKind.DamageHeroesAtAndAroundTarget &&
+    rest.length === 0
+  );
+}
+
 /**
- * Whether a card's Primary effect can be planned and resolved so far. Only simple Attacks, Ghost Shot and
- * Utility cards can be played in Overdrive so far; other Overdrives (for example two allied targets) follow
- * with their own tickets.
+ * Whether a card's Primary effect can be planned and resolved so far. Utility Overdrives with two allied
+ * targets of the same kind (Aegis Protocol) or an area follow with their own tickets; an Overdrive aimed at
+ * an ally is playable when every effect names its recipient (Adrenal Surge).
  */
 export function isPlayableCard(card: CardDefinition, overdrive?: boolean): boolean {
   if (overdrive) {
     if (card.overdrive === undefined) return false;
     const mode = cardInMode(card, true);
-    // Utility Overdrives with two allied targets or an area follow with their own tickets.
+    const allyWithRecipients =
+      mode.target === CardTarget.AllyHero && mode.effects.every((effect) => effect.recipient !== undefined);
     return (
-      isSimpleAttack(mode) || isGhostAttack(mode) || (mode.target === CardTarget.EnemyInSight && isPlayableUtility(mode))
+      isSimpleAttack(mode) ||
+      isGhostAttack(mode) ||
+      isAreaAttack(mode) ||
+      isTileBlast(mode) ||
+      ((mode.target === CardTarget.EnemyInSight || allyWithRecipients) && isPlayableUtility(mode))
     );
   }
   return isSimpleAttack(card) || isAreaAttack(card) || isTileAttack(card) || isPlayableUtility(card);
