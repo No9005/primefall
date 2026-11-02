@@ -23,8 +23,8 @@ describe("local host", () => {
   it("contains no enemy Hands, Deck order, seed or PRNG state", async () => {
     const view = await createLocalHost(123456).getSquadView(SquadId.Left);
     const json = JSON.stringify(view);
-    expect(Object.keys(view).sort()).toEqual(["destroyedCover", "enemies", "heroes", "primeProgress", "round", "roundLimit", "squad"]);
-    expect(Object.keys(view.heroes[0]!).sort()).toEqual(["deckCount", "exhausted", "exileCount", "hand", "heroClass", "hidden", "id", "position", "slowed"]);
+    expect(Object.keys(view).sort()).toEqual(["destroyedCover", "enemies", "heroes", "placedCover", "primeProgress", "revealedAreas", "round", "roundLimit", "squad"]);
+    expect(Object.keys(view.heroes[0]!).sort()).toEqual(["deckCount", "exhausted", "exileCount", "hand", "heroClass", "hidden", "id", "marked", "position", "slowed"]);
     expect(view.enemies).toHaveLength(3);
     // At the Spawn areas no enemy is in sight yet, so nothing but identity is delivered.
     expect(view.enemies.map((enemy) => Object.keys(enemy).sort())).toEqual(

@@ -1,7 +1,7 @@
 // Squad Plans and planning-time validation (ADR 0013, ADR 0020). Shared with clients: a plan is plain
 // data, and `validatePlan` lets the UI explain why a plan cannot be committed. The host validates again.
 
-import { type CardIndex, cardInMode, CardTarget, EffectKind, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
+import { type CardIndex, cardInMode, CardTarget, EffectKind, EffectRecipient, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type SquadId, type SquadView, Visibility } from "./host";
 import { type Grid, type GridPosition, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
 
@@ -47,10 +47,13 @@ export interface PrimaryAction {
    */
   target: string;
   /**
-   * For a card aimed at a tile (Breach Charge): the tile; `target` is then the casting Hero.
+   * For a card aimed at a tile or area (Breach Charge, Scout Drone, Deploy Cover): the tile (the centre of
+   * an area); `target` is then the casting Hero.
    * For Forward Deploy: the tile the allied `target` moves towards.
    */
   tile?: GridPosition;
+  /** For an Overdrive that affects two allied Heroes (Aegis Protocol): the second one, distinct from `target`. */
+  secondTarget?: string;
   /** Play the card's Overdrive instead of its standard effect; the card is then Exiled (ADR 0003). */
   overdrive?: boolean;
 }
@@ -185,8 +188,8 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
           if (!view.enemies.some((enemy) => enemy.id === action.target && enemy.visibility === Visibility.Ghost)) {
             issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Ghost as its target.` });
           }
-        } else if (card.target === CardTarget.Tile) {
-          // Range and Line of Sight are checked when the card resolves, like for any Attack.
+        } else if (card.target === CardTarget.Tile || card.target === CardTarget.EmptyTile || card.target === CardTarget.Area) {
+          // Range, Line of Sight and whether the tile is empty are checked when the card resolves.
           const kind = action.tile && tileAt(REACTOR_DECK, action.tile);
           if (action.target !== heroId || kind === undefined || kind === TileKind.Wall) {
             issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a tile that is not a Wall as its target.` });
@@ -203,6 +206,12 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
               heroId,
               message: isSelfCard ? `${card.name} can only target this Hero.` : `${card.name} needs an allied Hero as its target.`,
             });
+          }
+          if (card.effects.some(({ recipient }) => recipient === EffectRecipient.SecondTarget)) {
+            const second = view.heroes.find((ally) => ally.id === action.secondTarget);
+            if (!second || second.id === heroId || second.id === action.target || second.exhausted) {
+              issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a second, different allied Hero.` });
+            }
           }
           // Forward Deploy also names the tile the ally heads for; where the ally stands by then is checked when it resolves.
           const destination = action.tile && tileAt(REACTOR_DECK, action.tile);

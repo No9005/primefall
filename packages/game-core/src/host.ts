@@ -52,6 +52,16 @@ export interface HeroView {
   slowed: boolean;
   /** Hidden: enemies do not see this Hero, and an Assassin sees 2 tiles further. */
   hidden: boolean;
+  /** Marked: the enemy Squad sees this Hero until the end of the next Resolution. */
+  marked: boolean;
+}
+
+/** A square of tiles a Scout Drone shows the Squad for a while, regardless of walls and Cover. */
+export interface RevealedArea {
+  /** The centre tile. */
+  center: GridPosition;
+  /** Side length in tiles (3 or 5). */
+  size: number;
 }
 
 /** How much a Squad knows about one enemy Hero (Fog of War, ADR 0005). */
@@ -84,6 +94,8 @@ export interface VisibleEnemyView extends EnemyIdentity {
   exhausted: boolean;
   /** Slowed: shown only while the enemy is Visible. */
   slowed: boolean;
+  /** Marked: shown only while the enemy is Visible, which a Marked Hero always is. */
+  marked: boolean;
 }
 
 /** The last known position and counts of an enemy Hero that is no longer Visible. */
@@ -120,6 +132,10 @@ export interface SquadView {
    * not listed until the Squad sees that tile (Fog of War).
    */
   destroyedCover: readonly GridPosition[];
+  /** Temporary Half Cover this Squad placed or currently sees (Deploy Cover, Fortify). */
+  placedCover: readonly GridPosition[];
+  /** The areas this Squad's Scout Drones still reveal. */
+  revealedAreas: readonly RevealedArea[];
   heroes: readonly HeroView[];
   enemies: readonly EnemyView[];
 }
@@ -151,6 +167,12 @@ export enum EventKind {
   Knockback = "knockback",
   /** `heroId` destroyed the Cover on the tile `to` (Breach Charge). */
   CoverDestroyed = "coverDestroyed",
+  /** `heroId` placed temporary Half Cover on the tile `to`. */
+  CoverPlaced = "coverPlaced",
+  /** `heroId` sent a Scout Drone to reveal the area of `amount` by `amount` tiles centred on `to`. */
+  AreaRevealed = "areaRevealed",
+  /** `targetId` ignores the Half Cover damage reduction until the end of the Round (Overwatch Uplink). */
+  CoverReductionIgnored = "coverReductionIgnored",
   /** `heroId` permanently gained `amount` Attack (Adrenal Surge). */
   AttackBonusGained = "attackBonusGained",
   /** A Hero's Deck is empty after the Resolution; it is removed from the match. */

@@ -41,8 +41,8 @@ export function buildPlaybackFrames(events: readonly MatchEvent[]): PlaybackFram
       tickFrames[occurrence] ??= { tick, moves: {}, shields: {}, hits: [], exhausted: [], events: [] };
       const frame = tickFrames[occurrence];
       frame.events.push(event);
-      // `to` of a CoverDestroyed event is the Cover's tile, not a place the Hero moves to.
-      if (event.to && event.kind !== EventKind.CoverDestroyed) frame.moves[event.heroId] = event.to;
+      // `to` of a Cover or area event is a tile of the board, not a place the Hero moves to.
+      if (event.to && !TILE_EVENTS.includes(event.kind)) frame.moves[event.heroId] = event.to;
       if (event.kind === EventKind.ShieldGained) frame.shields[event.heroId] = event.amount ?? 0;
       if (event.kind === EventKind.AttackHit) {
         frame.hits.push({ targetId: event.targetId!, damage: event.damage ?? 0, absorbed: event.absorbed ?? 0 });
@@ -53,6 +53,9 @@ export function buildPlaybackFrames(events: readonly MatchEvent[]): PlaybackFram
   }
   return frames;
 }
+
+/** Events whose `to` names a tile they act on, not the Hero's destination. */
+const TILE_EVENTS = [EventKind.CoverDestroyed, EventKind.CoverPlaced, EventKind.AreaRevealed];
 
 /** The highest Tick of the Resolution, shown as the total in the Tick indicator. */
 export function tickCountOf(events: readonly MatchEvent[]): number {
@@ -80,6 +83,12 @@ export function describeEvent(event: MatchEvent, nameOf: (heroId: string) => str
       return `Tick ${event.tick}: ${who} is no longer Hidden`;
     case EventKind.MarkedApplied:
       return `Tick ${event.tick}: ${who} Marks ${nameOf(event.targetId!)}`;
+    case EventKind.CoverPlaced:
+      return `Tick ${event.tick}: ${who} places Half Cover on column ${event.to!.col}, row ${event.to!.row}`;
+    case EventKind.AreaRevealed:
+      return `Tick ${event.tick}: ${who} reveals a ${event.amount} by ${event.amount} area around column ${event.to!.col}, row ${event.to!.row}`;
+    case EventKind.CoverReductionIgnored:
+      return `Tick ${event.tick}: ${nameOf(event.targetId!)} ignores Half Cover reduction this Round`;
     case EventKind.Knockback:
       return `Tick ${event.tick}: ${who} is pushed back`;
     case EventKind.AttackBonusGained:

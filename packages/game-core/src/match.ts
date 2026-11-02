@@ -2,9 +2,18 @@
 // every function returns a new Match State and all randomness comes from the seeded PRNG in it.
 
 import { type CardIndex, HAND_SIZE, HERO_DECKS, HeroClass } from "./cards";
-import { type EnemyView, type MatchResult, ROUND_LIMIT, SquadId, type HeroView, type SquadView, Visibility } from "./host";
+import {
+  type EnemyView,
+  type MatchResult,
+  type RevealedArea,
+  ROUND_LIMIT,
+  SquadId,
+  type HeroView,
+  type SquadView,
+  Visibility,
+} from "./host";
 import { chebyshevDistance } from "./plan";
-import { destroyedCoverTiles, findTiles, type Grid, GridPosition, hasLineOfSight, REACTOR_DECK, TileKind } from "./reactor-deck";
+import { destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, REACTOR_DECK, TileKind } from "./reactor-deck";
 
 export interface HeroState {
   id: string;
@@ -31,6 +40,8 @@ export interface HeroState {
   hiddenPrevented: boolean;
   /** Adrenal Surge: extra damage of every Attack this Hero plays; lasts until Exhaustion (ADR 0003). */
   attackBonus: number;
+  /** Overwatch Uplink: this Hero's Attacks ignore the Half Cover damage reduction until the end of the Round. */
+  ignoresHalfCover: boolean;
   /** Reposition: the Hero's next Move action covers this many tiles; absent when none is pending. */
   extendedMove?: number;
   /** Set after a Resolution that leaves the Deck empty; an Exhausted Hero is out of the match (ADR 0006). */
@@ -56,6 +67,23 @@ export function sightRange(hero: HeroState): number {
   return SIGHT_RANGE + (hero.hidden > 0 && hero.heroClass === HeroClass.Assassin ? HIDDEN_SIGHT_BONUS : 0);
 }
 
+/** Temporary Half Cover (Deploy Cover, Fortify) that gives the tile back its kind when it expires. */
+export interface PlacedCover {
+  squad: SquadId;
+  position: GridPosition;
+  /** The tile kind to restore on expiry. */
+  originalKind: TileKind;
+  /** Resolution ends left before the Cover expires. */
+  remaining: number;
+}
+
+/** An area a Squad's Scout Drone reveals. */
+export interface ActiveReveal extends RevealedArea {
+  squad: SquadId;
+  /** Resolution ends left before the area is hidden again. */
+  remaining: number;
+}
+
 /** Plain serializable data: it survives `JSON.stringify` / `JSON.parse` unchanged. */
 export interface MatchState {
   seed: number;
@@ -69,6 +97,8 @@ export interface MatchState {
   grid: Grid;
   /** Per Squad: the destroyed Cover tiles it has seen destroyed or looked at since (Fog of War). */
   knownDestroyedCover: Record<SquadId, GridPosition[]>;
+  placedCover: PlacedCover[];
+  revealedAreas: ActiveReveal[];
   /** The Squad that controls the Prime Zone and for how many consecutive Resolutions (ADR 0010). */
   primeZone: { controller?: SquadId; progress: number };
   /** Set when a victory condition is met; the match accepts no further Rounds. */
@@ -111,6 +141,8 @@ export function createMatch(seed: number): MatchState {
     ghosts: { [SquadId.Left]: {}, [SquadId.Right]: {} },
     grid: REACTOR_DECK,
     knownDestroyedCover: { [SquadId.Left]: [], [SquadId.Right]: [] },
+    placedCover: [],
+    revealedAreas: [],
     primeZone: { progress: 0 },
   };
   for (const squad of [SquadId.Left, SquadId.Right]) {
@@ -133,6 +165,7 @@ export function createMatch(seed: number): MatchState {
         marked: 0,
         hiddenPrevented: false,
         attackBonus: 0,
+        ignoresHalfCover: false,
         exhausted: false,
       });
     });
@@ -162,17 +195,27 @@ export function startRound(previous: MatchState): MatchState {
   return match;
 }
 
+/** Whether a revealed area of the Squad covers the tile; walls and Cover do not matter inside it. */
+function isRevealed(match: MatchState, squad: SquadId, tile: GridPosition): boolean {
+  return match.revealedAreas.some(
+    (area) => area.squad === squad && chebyshevDistance(area.center, tile) <= Math.floor(area.size / 2),
+  );
+}
+
 /**
  * Whether the Squad sees a tile right now: vision is shared, so one non-Exhausted Hero of the Squad
- * with the tile in sight range and Line of Sight is enough.
+ * with the tile in sight range and Line of Sight is enough, or a Scout Drone area of the Squad covers it.
  */
 export function canSquadSee(match: MatchState, squad: SquadId, tile: GridPosition): boolean {
-  return match.heroes.some(
-    (hero) =>
-      hero.squad === squad &&
-      !hero.exhausted &&
-      chebyshevDistance(hero.position, tile) <= sightRange(hero) &&
-      hasLineOfSight(match.grid, hero.position, tile),
+  return (
+    isRevealed(match, squad, tile) ||
+    match.heroes.some(
+      (hero) =>
+        hero.squad === squad &&
+        !hero.exhausted &&
+        chebyshevDistance(hero.position, tile) <= sightRange(hero) &&
+        hasLineOfSight(match.grid, hero.position, tile),
+    )
   );
 }
 
@@ -226,6 +269,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
       exhausted: hero.exhausted,
       slowed: hero.slow > 0,
       hidden: hero.hidden > 0,
+      marked: hero.marked > 0,
     }));
   const enemies: EnemyView[] = match.heroes
     .filter((hero) => hero.squad !== squad)
@@ -242,6 +286,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
           exileCount: hero.exile.length,
           exhausted: hero.exhausted,
           slowed: hero.slow > 0,
+          marked: hero.marked > 0,
         };
       }
       const ghost = match.ghosts[squad][hero.id];
@@ -256,5 +301,14 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   const result = match.result ? { result: structuredClone(match.result) } : {};
   // Cover that was destroyed out of sight still looks intact to this Squad.
   const destroyedCover = match.knownDestroyedCover[squad].map((tile) => ({ ...tile }));
-  return { squad, round: match.round, roundLimit: ROUND_LIMIT, primeProgress, ...result, destroyedCover, heroes, enemies };
+  // Placed Cover is known to the Squad that placed it and to a Squad that sees the tile.
+  const placedCover = match.placedCover
+    .filter((cover) => cover.squad === squad || canSquadSee(match, squad, cover.position))
+    .map((cover) => ({ ...cover.position }));
+  const revealedAreas = match.revealedAreas
+    .filter((area) => area.squad === squad)
+    .map(({ center, size }) => ({ center: { ...center }, size }));
+  return {
+    squad, round: match.round, roundLimit: ROUND_LIMIT, primeProgress, ...result, destroyedCover, placedCover, revealedAreas, heroes, enemies,
+  };
 }
