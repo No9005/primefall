@@ -308,7 +308,13 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   const revealedAreas = match.revealedAreas
     .filter((area) => area.squad === squad)
     .map(({ center, size }) => ({ center: { ...center }, size }));
+  const visibleTiles: GridPosition[] = [];
+  for (let row = 0; row < match.grid.height; row++) {
+    for (let col = 0; col < match.grid.width; col++) {
+      if (canSquadSee(match, squad, { col, row })) visibleTiles.push({ col, row });
+    }
+  }
   return {
-    squad, round: match.round, roundLimit: ROUND_LIMIT, primeProgress, ...result, destroyedCover, placedCover, revealedAreas, heroes, enemies,
+    squad, round: match.round, roundLimit: ROUND_LIMIT, primeProgress, ...result, destroyedCover, placedCover, revealedAreas, visibleTiles, heroes, enemies,
   };
 }
