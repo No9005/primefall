@@ -112,3 +112,73 @@ export function computeCamera(viewWidth: number, viewHeight: number, grid: Grid 
     y: viewHeight / 2 - ((bounds.top + bounds.bottom) / 2) * scale,
   };
 }
+
+/** Hero tap tolerance in tile units: a finger within this distance of a targetable Hero's tile centre picks that Hero, even on a neighbouring tile's edge. */
+export const HERO_PICK_TOLERANCE = 0.75;
+
+/** Tile units (col, row as fractions) under a world point; the inverse of `gridToWorld`. */
+export function worldToGrid(x: number, y: number): { col: number; row: number } {
+  const a = x / (TILE_WIDTH / 2);
+  const b = y / (TILE_HEIGHT / 2);
+  return { col: (a + b) / 2, row: (b - a) / 2 };
+}
+
+/**
+ * The tile under a world point, or undefined outside the grid. A Wall stands in front of the tiles behind it,
+ * so a point on a Wall sprite picks the Wall's tile (the nearest one wins), not the floor it hides.
+ */
+export function pickTileAt(x: number, y: number, grid: Grid = REACTOR_DECK): GridPosition | undefined {
+  let wall: (GridPosition & { depth: number; offset: number }) | undefined;
+  grid.tiles.forEach((line, row) =>
+    line.forEach((kind, col) => {
+      if (kind !== TileKind.Wall) return;
+      const { x: tx, y: ty } = gridToWorld({ col, row });
+      const bottom = ty + TILE_HEIGHT / 2;
+      const offset = Math.abs(x - tx);
+      const onSprite = offset < TILE_WIDTH / 2 && y <= bottom && y >= bottom - PROP_HEIGHT;
+      // The nearest Wall wins; of two equally near ones, the one the point is horizontally closer to.
+      if (onSprite && (!wall || col + row > wall.depth || (col + row === wall.depth && offset < wall.offset)))
+        wall = { col, row, depth: col + row, offset };
+    }),
+  );
+  if (wall) return { col: wall.col, row: wall.row };
+  // A tile is a unit square in grid space, which is exactly the diamond on screen.
+  const fraction = worldToGrid(x, y);
+  const tile = { col: Math.round(fraction.col), row: Math.round(fraction.row) };
+  const inside = tile.col >= 0 && tile.row >= 0 && tile.col < grid.width && tile.row < grid.height;
+  return inside ? tile : undefined;
+}
+
+/** Inverse of `computeCamera`: a point in view pixels to world pixels. */
+export function viewToWorld(viewX: number, viewY: number, viewWidth: number, viewHeight: number, grid: Grid = REACTOR_DECK) {
+  const camera = computeCamera(viewWidth, viewHeight, grid);
+  return { x: (viewX - camera.x) / camera.scale, y: (viewY - camera.y) / camera.scale };
+}
+
+export type TapTarget = { kind: "hero"; id: string } | { kind: "tile"; tile: GridPosition } | { kind: "none" };
+
+export interface TapCandidates {
+  /** Heroes drawn on the board (own, allied and visible enemies). */
+  heroes: readonly { id: string; position: GridPosition }[];
+  /** Heroes that are valid targets right now. */
+  targetableIds: readonly string[];
+  /** Tiles that are valid targets right now. */
+  highlights: readonly GridPosition[];
+}
+
+/** What a tap at a world point selects: a valid target Hero within tolerance first, then a valid tile, then any Hero on the picked tile. */
+export function resolveTap(x: number, y: number, { heroes, targetableIds, highlights }: TapCandidates, grid: Grid = REACTOR_DECK): TapTarget {
+  const point = worldToGrid(x, y);
+  let nearest: { id: string; distance: number } | undefined;
+  for (const hero of heroes) {
+    if (!targetableIds.includes(hero.id)) continue;
+    const distance = Math.hypot(point.col - hero.position.col, point.row - hero.position.row);
+    if (distance <= HERO_PICK_TOLERANCE && (!nearest || distance < nearest.distance)) nearest = { id: hero.id, distance };
+  }
+  if (nearest) return { kind: "hero", id: nearest.id };
+  const tile = pickTileAt(x, y, grid);
+  if (!tile) return { kind: "none" };
+  if (highlights.some((h) => h.col === tile.col && h.row === tile.row)) return { kind: "tile", tile };
+  const hero = heroes.find((h) => h.position.col === tile.col && h.position.row === tile.row);
+  return hero ? { kind: "hero", id: hero.id } : { kind: "none" };
+}
