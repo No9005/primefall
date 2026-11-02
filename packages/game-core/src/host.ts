@@ -139,6 +139,11 @@ export interface SquadView {
   placedCover: readonly GridPosition[];
   /** The areas this Squad's Scout Drones still reveal. */
   revealedAreas: readonly RevealedArea[];
+  /**
+   * The tiles this Squad sees right now (own Heroes' sight and Scout Drone areas). Tiles seen earlier are
+   * not listed; only current sight is lit.
+   */
+  visibleTiles: readonly GridPosition[];
   heroes: readonly HeroView[];
   enemies: readonly EnemyView[];
 }
