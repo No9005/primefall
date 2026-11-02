@@ -14,17 +14,7 @@ import {
   type ReviewThread,
   isIssueStartable,
   closingReferences,
-  formatHealthEntry,
   isRetroBranch,
-  parseHealthEntries,
-  summarizeHealthLog,
-  type HealthEntry,
-  ReviewState,
-  ReviveAction,
-  reviveSteps,
-  runNameIsForPullRequest,
-  type RevivePullRequest,
-  type ReviveState,
   reviewRetryDue,
   retroDue,
   retroInterval,
@@ -87,14 +77,6 @@ describe("readyLabelSetByOwner", () => {
     expect(readyLabelSetByOwner(events, "owner")).toBe(true);
     expect(readyLabelSetByOwner(events.slice(0, 1), "owner")).toBe(false);
     expect(readyLabelSetByOwner([], "owner")).toBe(false);
-  });
-});
-
-describe("runNameIsForPullRequest", () => {
-  it("matches the whole pull request number only", () => {
-    expect(runNameIsForPullRequest("Factory pull request #76", 76)).toBe(true);
-    expect(runNameIsForPullRequest("Factory pull request #76", 7)).toBe(false);
-    expect(runNameIsForPullRequest("Factory pull request #10", 1)).toBe(false);
   });
 });
 
@@ -374,96 +356,5 @@ describe("reviewRetryDue", () => {
     expect(reviewRetryDue(1)).toBe(true);
     expect(reviewRetryDue(2)).toBe(false);
     expect(reviewRetryDue(3)).toBe(false);
-  });
-});
-
-describe("reviveSteps", () => {
-  const pr = (over: Partial<RevivePullRequest> = {}): RevivePullRequest => ({
-    number: 7,
-    labels: [],
-    hasConflict: false,
-    review: ReviewState.None,
-    pipelineRunning: false,
-    idleMinutes: 30,
-    revivedForHead: 0,
-    autoMergeEnabled: false,
-    ...over,
-  });
-  const state = (over: Partial<ReviveState> = {}): ReviveState => ({ openAgentPullRequests: [], issuesToClose: [], implementRunning: false, startableIssue: undefined, ...over });
-  const actions = (s: ReviveState) => reviveSteps(s).map((step) => [step.action, step.target]);
-
-  it("does nothing when nothing is open, merged or startable", () => {
-    expect(reviveSteps(state())).toEqual([]);
-  });
-
-  it("closes the issue of a merged pull request that is still open", () => {
-    expect(actions(state({ issuesToClose: [43] }))).toEqual([[ReviveAction.CloseIssue, 43]]);
-  });
-
-  it("starts the next ticket only when no implement run is active", () => {
-    expect(actions(state({ startableIssue: 64 }))).toEqual([[ReviveAction.StartImplement, 64]]);
-    expect(reviveSteps(state({ startableIssue: 64, implementRunning: true }))).toEqual([]);
-  });
-
-  it("restarts the pipeline once for a pull request without a review that has been quiet", () => {
-    expect(actions(state({ openAgentPullRequests: [pr()] }))).toEqual([[ReviveAction.RunPipeline, 7]]);
-    expect(actions(state({ openAgentPullRequests: [pr({ review: ReviewState.Error })] }))).toEqual([[ReviveAction.RunPipeline, 7]]);
-  });
-
-  it("gives the normal events time first", () => {
-    expect(reviveSteps(state({ openAgentPullRequests: [pr({ idleMinutes: 3 })] }))).toEqual([]);
-    expect(reviveSteps(state({ openAgentPullRequests: [pr({ review: ReviewState.Fail, idleMinutes: 15 })] }))).toEqual([]);
-    expect(actions(state({ openAgentPullRequests: [pr({ review: ReviewState.Fail, idleMinutes: 25 })] }))).toEqual([[ReviveAction.RunPipeline, 7]]);
-  });
-
-  it("hands over after one restart for the same commit", () => {
-    expect(actions(state({ openAgentPullRequests: [pr({ revivedForHead: 1 })] }))).toEqual([[ReviveAction.HandOver, 7]]);
-  });
-
-  it("does nothing while a pipeline runs or when a human is needed", () => {
-    expect(reviveSteps(state({ openAgentPullRequests: [pr({ pipelineRunning: true })] }))).toEqual([]);
-    expect(reviveSteps(state({ openAgentPullRequests: [pr({ labels: ["needs-human"] })] }))).toEqual([]);
-  });
-
-  it("hands a pull request with a conflict to a human instead of restarting it", () => {
-    expect(actions(state({ openAgentPullRequests: [pr({ hasConflict: true })] }))).toEqual([[ReviveAction.HandOver, 7]]);
-  });
-
-  it("runs the merge gate when the review passed but no auto-merge or human label followed", () => {
-    expect(actions(state({ openAgentPullRequests: [pr({ review: ReviewState.Pass })] }))).toEqual([[ReviveAction.RunMergeGate, 7]]);
-    expect(reviveSteps(state({ openAgentPullRequests: [pr({ review: ReviewState.Pass, autoMergeEnabled: true })] }))).toEqual([]);
-    expect(reviveSteps(state({ openAgentPullRequests: [pr({ review: ReviewState.Pass, labels: ["needs-human-merge"] })] }))).toEqual([]);
-  });
-
-  it("keeps the order: close issues, handle pull requests, then start a ticket", () => {
-    const steps = reviveSteps(state({ issuesToClose: [1], openAgentPullRequests: [pr()], startableIssue: 2 }));
-    expect(steps.map((s) => s.action)).toEqual([ReviveAction.CloseIssue, ReviveAction.RunPipeline, ReviveAction.StartImplement]);
-  });
-});
-
-describe("the health log", () => {
-  const entry = (over: Partial<HealthEntry> = {}): HealthEntry => ({ time: "2026-11-02T06:00:00Z", action: ReviveAction.StartImplement, target: 64, reason: "a ticket is startable and no implement run is active", ...over });
-
-  it("formats an entry and reads it back", () => {
-    expect(parseHealthEntries([formatHealthEntry(entry())])).toEqual([entry()]);
-    expect(parseHealthEntries([formatHealthEntry(entry({ target: undefined }))])).toEqual([entry({ target: undefined })]);
-  });
-
-  it("ignores comments that are not health entries", () => {
-    expect(parseHealthEntries(["just a comment", "<!-- factory:health -->\nnot a line", `<!-- factory:health -->\n2026-11-02T06:00:00Z unknown-action #1: x`])).toEqual([]);
-  });
-
-  it("counts causes, most frequent first, and keeps only those that repeat", () => {
-    const entries = [
-      entry({ target: 64 }),
-      entry({ target: 65, time: "2026-11-02T07:00:00Z" }),
-      entry({ action: ReviveAction.CloseIssue, target: 43, reason: "its pull request was merged but the issue is still open" }),
-      entry({ target: 64 }),
-    ];
-    expect(summarizeHealthLog(entries)).toEqual([
-      { action: ReviveAction.StartImplement, reason: entry().reason, count: 3, lastTime: "2026-11-02T07:00:00Z", targets: [64, 65] },
-      { action: ReviveAction.CloseIssue, reason: "its pull request was merged but the issue is still open", count: 1, lastTime: "2026-11-02T06:00:00Z", targets: [43] },
-    ]);
-    expect(summarizeHealthLog(entries, 2).map((cause) => cause.count)).toEqual([3]);
   });
 });

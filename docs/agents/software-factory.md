@@ -12,20 +12,27 @@ The factory turns unblocked `ready-for-agent` issues into pull requests and merg
 | Continuous deployment | Vercel (preview per pull request, deploy from `main`) |
 | Observability platform | None on purpose: the Actions run pages suffice |
 
-The factory code (decisions and CLI) lives in `tools/factory`. The workflows are `factory-implement.yml`, `factory-pull-request.yml`, `factory-retro.yml`, `factory-after-merge.yml` and `factory-revive.yml` next to `ci.yml`. The workflows always run the factory code and rules from the default branch, never from the pull request they judge.
+The factory code (decisions and CLI) lives in `tools/factory`. The workflows are `factory.yml` (the pipeline) and `factory-retro.yml` next to `ci.yml`; the review and rework steps are composite actions in `.github/actions`, always loaded from `main`. The factory code and rules that judge a pull request come from a copy of the default branch taken before the agent runs, never from the pull request.
 
-## Tasks
+## How it runs
 
-| Task | Trigger | Does | Triggers next |
-|---|---|---|---|
-| **Implement** | The owner labels an issue `ready-for-agent`, or any issue closes, or the owner starts it by hand (Actions, "Factory implement", issue number) | Picks the first startable issue (below), then runs the agent. When an issue closes, every open `ready-for-agent` issue is checked, lowest number first, so tickets that became free earlier are not forgotten: own branch `agent/issue-<n>-<slug>` from `origin/main`, build, test, lint, pull request with `Closes #<n>` | Blast radius and Review (the pull request) |
-| **Blast radius** | Pull request from an `agent/` branch opened or updated | Computes `low` or `high` from the diff with the rules in `tools/factory/blast-radius-rules.json`; sets one `blast-radius:*` label and a comment with the reasons | Review |
-| **Review** | Same | A separate read-only run in a fresh context reviews the diff against the issue, `CLAUDE.md`, the ADRs, the glossary and the specs. It writes a result file; the CLI posts it as a review with inline comments and sets the status `agent-review`. It may raise the class to high, never lower it. It also runs for high-risk pull requests | Rework on fail, Merge gate on pass |
-| **Rework** | `agent-review` failed and fewer than 2 reviews have failed | Fixes only what the review named, pushes, and runs the pipeline again for the new commit. A rework run that pushes nothing is reported and labelled `needs-human` instead of stalling | Review. After the second failed review: label `needs-human`, no more runs |
-| **Merge gate** | Review passed | Low and `AUTOMERGE_ENABLED=true`: enables GitHub's native auto-merge (squash). High: label `needs-human-merge` with a comment, no auto-merge | The merge closes the issue, which triggers Implement for the tickets it unblocked. The merge gate passes the closing keywords of the pull request (`Closes #n`) as the body of the squash commit, because a pull request merged by auto-merge did not close its issue from the description alone; check the issue after the first auto-merge and close it by hand if it stays open |
-| **Retro** | An `agent/` pull request is merged and the number of merged `agent/` pull requests (retro pull requests not counted) is a multiple of `RETRO_EVERY` (default 10, `0` = off), or the owner starts it by hand (Actions, "Factory retro") | A run reads the last N merged agent pull requests (issues, reviews, rework, labels, the owner's comments) and looks for a mistake that appears at least twice or that the owner corrected. If it finds one, it opens `agent/retro-<n>` with changes to `CLAUDE.md` or other agent instructions, each tied to the pull requests that motivated it; otherwise it only comments on the latest pull request. It also reads the factory health log (what the revive job had to restart): for each cause with a count of at least 3 it opens an issue (`needs-triage`, `high-risk`) with the evidence, the likely root cause and a proposed fix, at most three per run; a fix in `tools/factory` may come as a pull request. It cannot push workflow files and never touches the blast radius rules, `CODEOWNERS`, ADRs, specs or the glossary | Review. The merge gate never enables auto-merge for a retro pull request: the owner decides |
-| **Next ticket** | An `agent/` pull request is merged | Closes the issues the pull request names if they are still open, then starts "Factory implement" for the next ticket by an explicit dispatch (a close with the workflow token starts no workflow, so the chain would stop after every auto-merge) | Implement |
-| **Revive** | Every 5 minutes (schedule), or by hand (Actions, "Factory revive", optionally a dry run) | Reads the whole state and restarts what the events dropped: closes the issue of a merged agent pull request, starts "Factory implement" when a ticket is startable and no implement run is active, restarts the pipeline for an open agent pull request that has had no review for 10 minutes (20 after a failed review) and no running pipeline, runs the merge gate again when a review passed and nothing followed. A pull request with a merge conflict, or one that was restarted once for the same commit without result, gets `needs-human` and a comment. It does nothing while a run is in progress. Every intervention is added as one comment to the issue "Factory health log" (label `factory-health`, created on first use) | Implement, Review, Merge gate |
+One run of `factory.yml` takes one ticket from start to end; nothing is handed over between workflows. Events caused by the workflow token (a merge by auto-merge, a closed issue, a push) start no workflows, so every step that used to rely on such an event is now a step inside the same run. When a run is done it starts itself again with `workflow_dispatch`, which the workflow token may do, and it ends when no ticket is startable.
+
+**Triggers** (all by the owner): the label `ready-for-agent` is set; the label `needs-human` is removed; an `agent/` pull request is merged by the owner; "Run workflow" by hand (no input; it scans all tickets). The run before it, if any, finishes first (one concurrency group, GitHub keeps one waiting run, and every run scans all tickets, so no event is lost).
+
+## Steps of a run
+
+| Step | Does |
+|---|---|
+| **Select** | Picks the lowest startable issue (below). None: the run ends |
+| **Implement** | The agent works on its own branch `agent/issue-<n>-<slug>` from `origin/main`: build, test, lint, pull request with `Closes #<n>`. The status of the agent step is not trusted; a check afterwards looks for the branch and the pull request. None: the issue gets `needs-human` with the denied commands and the agent's last message |
+| **Blast radius** | Computes `low` or `high` from the diff with the rules in `tools/factory/blast-radius-rules.json`; one `blast-radius:*` label and a comment with the reasons |
+| **Review** | A separate read-only agent session (a new session for every step) reviews the diff against the issue, `CLAUDE.md`, the ADRs, the glossary and the specs. The CLI posts it as a review with inline comments and sets the status `agent-review`. It may raise the class to high, never lower it. A review that wrote no usable result did not run: it is repeated once, then a human takes over |
+| **Rework** | After a failed review: a new session fixes only what the review named and pushes. No new commit: the pull request gets `needs-human` with what the run was denied. Then a second review. A second failed review: `needs-human` |
+| **Merge gate** | Review passed. Low and `AUTOMERGE_ENABLED=true`: enables native auto-merge (squash, with the closing keywords as body); the run waits up to 40 minutes for the merge, closes the issue and tells the retro. High: label `needs-human-merge`, the owner merges |
+| **Next** | A failed run labels the issue `needs-human`. Whatever happened, the run starts the next ticket |
+
+**Retro** (`factory-retro.yml`): after an `agent/` pull request is merged, by the owner (event) or by the pipeline (dispatch), and the number of merged `agent/` pull requests (retro pull requests not counted) is a multiple of `RETRO_EVERY` (default 10, `0` = off), or when the owner starts it by hand. A run reads the last N merged agent pull requests (issues, reviews, rework, labels, the owner's comments) and looks for a mistake that appears at least twice or that the owner corrected. If it finds one it opens `agent/retro-<n>` with changes to `CLAUDE.md` or other agent instructions, each tied to the pull requests that motivated it; otherwise it only comments on the latest pull request. It cannot push workflow files and never touches the blast radius rules, `CODEOWNERS`, ADRs, specs or the glossary. The pipeline does not handle the retro pull request: the owner decides.
 
 Agents never merge. Only the merge gate enables auto-merge, and GitHub merges once the rules of `main` are satisfied (CI, `agent-review`, Vercel preview, resolved conversations, code owner review where required).
 
@@ -55,24 +62,20 @@ The repository variable `BLAST_RADIUS_ENABLED` set to `false` switches the ratin
 ## Brakes
 
 - **Automated checks:** CI (lint, type check, tests) on every pull request.
-- **Automated review:** the separate review run above.
+- **Automated review:** the separate review session above.
 - **Human review:** every high-risk pull request, and every pull request while `AUTOMERGE_ENABLED` is not `true` (phase 0).
-- **Throttle and caps:** one implement run at a time; at most one run per issue; two failed reviews hand over to a human; a kill switch (`FACTORY_ENABLED`).
-- **Run limits:** every Claude run uses `claude-sonnet-5-5` with medium effort. Implement 30 minutes and 80 turns, Rework 20 minutes and 40 turns, Review 15 minutes and 30 turns. These are starting values: change `timeout-minutes` and `--max-turns` in the workflows after the first runs.
+- **Throttle and caps:** one ticket at a time; one rework per pull request; a kill switch (`FACTORY_RUN_ENABLED`).
+- **Run limits:** every Claude step uses `claude-sonnet-5-5` with medium effort. Implement 80 turns, Rework 40, Review 30; the whole job times out after 150 minutes. Change `--max-turns` and `timeout-minutes` in the workflow if the first runs need it.
 
-## The five questions per task
+## Where a human re-enters
 
-1. **Trigger:** see the table. All triggers react only to the owner (label events, manual starts) or to pull requests from `agent/` branches of this repository.
-2. **Reads and writes:** issues, labels, comments, pull requests, reviews and commit statuses on GitHub; branches and commits for Implement and Rework.
-3. **Triggers next:** see the table.
-4. **Where a human re-enters:** setting `ready-for-agent`; every high-risk merge; `needs-human` pull requests; the switch to automatic merging; the kill switch. A run never waits for a human: it ends, and the human's change starts the next run.
-5. **What stops duplicates:** one global implement run at a time, `agent-working` label, the open-pull-request and agent-branch checks, and one concurrency group per pull request (a newer run cancels an older one). GitHub keeps only the newest waiting run per concurrency group, so a ticket whose run was replaced while waiting starts at the next closed issue, or when it is started by hand.
+Setting `ready-for-agent`; every high-risk merge; `needs-human` issues and pull requests (remove the label to try again); the switch to automatic merging; the kill switch. A run never waits for a human: it ends, and the human's change starts the next run.
 
 ## Known limits
 
-- The pipeline files are validated by reading and by unit tests of the decision logic, not by real runs. The setup guide has a first-run checklist.
-- An implement run that ends without a branch or pull request (for example because the agent was denied a command it needed) is reported on the issue: a comment with the run link, the denied commands and the agent's last message, and the label `needs-human`. A `needs-human` issue is not started again automatically; remove the label to retry.
-- A review run that writes no result file, or one with unusable content, did not run: it is reported as `agent-review: error` with a comment, does not count as a failed review and does not start a rework (a failed review hands findings to a rework run, and there are none). The review is repeated once automatically for the same commit; after that a human takes over (start "Factory pull request" by hand). The Claude action skips itself when the workflow files of the branch differ from the default branch (for example for pull requests that change a workflow, or an agent branch that was cut before the workflows changed on `main`); update the branch with `main` or start "Factory pull request" by hand.
-- The retro task and the other agent runs cannot push `.github/workflows/*`: the Claude GitHub App has no `workflows` permission, and giving it that permission would let an agent change what runs with the repository's secrets before any review. Workflow changes are made by the owner or in a chat session and reviewed by the owner. An implement run that needs one ends without a pull request and is reported on the issue.
-- The revive job is a scheduled workflow: GitHub may delay it under load, and disables scheduled workflows of a repository with no activity for 60 days (start it by hand or push a commit to re-enable it). "Factory revive" with the input "dry run" prints what it would do; the same works locally with `GITHUB_REPOSITORY=<owner>/<repo> GITHUB_REPOSITORY_OWNER=<owner> node tools/factory/src/cli.ts revive --dry-run` and a logged-in `gh`.
-- Only pull requests from `agent/` branches of this repository are handled. Pull requests from other branches are not.
+- A run that dies midway (a cancelled or crashed job) leaves its ticket with a branch or a pull request, so it is not startable again; handle it by hand and start the factory with "Run workflow". A failing step inside a run is handled (`needs-human`).
+- The Claude action skips itself when the workflow files differ from the default branch. A change to `factory.yml` or to the actions can therefore only be tested after it is on `main`.
+- The review and rework composite actions are referenced as `No9005/primefall/.github/actions/...@main`; a fork or rename needs these two references changed.
+- The agents cannot push `.github/workflows/*`: the Claude GitHub App has no `workflows` permission, and granting it would let an agent change what runs with the repository's secrets before any review. Workflow changes are made by the owner or in a chat session and reviewed by the owner. An implement run that needs one ends without a pull request and is reported on the issue.
+- Only pull requests from `agent/` branches of this repository are handled.
+- The merge by auto-merge needs CI and the other required checks to pass; the run waits 40 minutes at most and then leaves the pull request to GitHub (the issue is then closed by the owner's or the next run's scan only if its pull request closed it).

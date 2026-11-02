@@ -133,6 +133,8 @@ Read this before building. Each row is something that cost a run, a pull request
 
 ## 5. Rebuild guide
 
+> This guide describes the first, event-driven design. For a new project build the single-run design of section 7 instead; sections 5.1 to 5.4, 5.6 and 5.7 still apply.
+
 For a new repository, in this order.
 
 ### 5.1 Prerequisites
@@ -196,6 +198,22 @@ Check these on the first real runs; they cannot be tested outside Actions:
 ### 5.9 Operating phases
 
 Phase 0: a human merges every pull request; watch the reports. Phase 1: auto-merge for low blast radius after about five clean pull requests. Lower the rating (for example the game rules count as low during the MVP) only by changing the rules file in a pull request the owner merges; raise it again when the product leaves its early phase.
+
+## 7. The second design: one run per ticket (2026-11-02)
+
+The event-driven design above stalled again and again. Every hand-over between workflows (pull request opened, review finished, merge, issue closed) is an event, and GitHub starts **no** workflow for an event that the workflow token caused (an auto-merge, a close by the token, a push by the token; only `workflow_dispatch` is allowed). A pull request with a merge conflict starts none either. We added repairs (a retry for a review that did not run, a rework-stalled check, a workflow after every merge, a revive job every 5 minutes with a health log) and each repair needed its own trigger. The revive schedule never started reliably (GitHub delays or skips scheduled runs), so we dropped timers.
+
+What replaced it, and what to copy when you rebuild:
+
+- **One workflow, one run per ticket** (`factory.yml`): select, implement, check the result, blast radius, review, rework once, review, merge gate, wait for the auto-merge, close the issue, start the next run with `workflow_dispatch`. No step depends on an event that the run caused itself.
+- **Owner events only start the run**: the label `ready-for-agent` set, `needs-human` removed, an agent pull request merged, or a manual start without input (it scans all tickets). One concurrency group without cancel; every run scans all tickets, so a replaced waiting run loses nothing.
+- **A failure of a step does not stop the factory**: the ticket gets `needs-human` and a comment with the run link, and the run goes on with the next ticket. The factory ends when no ticket is startable.
+- **Fresh sessions per role**: every agent step is its own action call and therefore its own session (verified by the session ids in the logs of a run: implement, review, rework, second review all differ), so the reviewer does not see the implementer's reasoning.
+- **Trust**: the CLI that judges the agent is copied before the agent runs; the review and rework steps are composite actions loaded from `main`.
+- **Do not trust the status of an agent step**: it can end in failure although the work is done, or in success without a pull request. Check the result (branch, pull request, result file) instead.
+- **Removed**: the implement, pull request, after-merge and revive workflows, the revive logic, the health log and its labels.
+
+Pitfalls that came with the new design: the Claude action refuses to run when its workflow differs from `main`, so a new workflow can only be tested after it is merged; a rework agent denied `git rm` cannot remove a file and pushes nothing (the stalled comment now lists the denied commands); a manual start with a default issue number `0` failed, which is why the new workflow has no input at all.
 
 ## 6. Open points
 
