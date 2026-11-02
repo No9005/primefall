@@ -28,7 +28,6 @@ The single source for the factory's labels (other docs link here). Set by the so
 
 | Label | Meaning |
 |---|---|
-| `agent-working` | A factory run is working on the issue |
 | `needs-human` | On a pull request: the automated review failed twice or the rework pushed nothing. On an issue: the factory run failed or ended without a pull request. No further automatic runs until the owner acts (remove the label to retry) |
 | `needs-human-merge` | High blast radius pull request waiting for the owner to review and merge |
 | `blast-radius:low`, `blast-radius:high` | Class of a pull request |
