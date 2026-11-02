@@ -13,10 +13,15 @@ import {
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
 import {
+  beginMoveFraming,
   buildPlacements,
   type Camera,
   type CameraView,
+  endMoveFraming,
   fitCamera,
+  frameMoveCamera,
+  type MoveFraming,
+  takeOverFraming,
   gridToWorld,
   isZoomed,
   Layer,
@@ -97,7 +102,12 @@ interface BoardProps {
   highlights: readonly GridPosition[];
   markers: readonly BoardMarker[];
   onTileTap: (tile: GridPosition) => void;
+  /** Position of the Hero whose Move is armed: while set, the camera eases to it and its highlights. */
+  moveFrameHero?: GridPosition;
 }
+
+/** Length of the camera ease when a Move is armed, placed or cancelled. */
+const FRAME_MS = 250;
 
 function tileDiamond(): number[] {
   return [0, -TILE_HEIGHT / 2, TILE_WIDTH / 2, 0, 0, TILE_HEIGHT / 2, -TILE_WIDTH / 2, 0];
@@ -117,6 +127,7 @@ export function Board({
   highlights,
   markers,
   onTileTap,
+  moveFrameHero,
 }: BoardProps) {
   const host = useRef<HTMLDivElement>(null);
   const [tokens, setTokens] = useState<Container>();
@@ -136,9 +147,18 @@ export function Board({
   enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
   const [pressed, setPressed] = useState<GridPosition>();
   const [zoomed, setZoomed] = useState(false);
-  const cameraControl = useRef<{ toggle: () => void } | undefined>(undefined);
+  const cameraControl = useRef<{ toggle: () => void; frame: (hero: GridPosition) => void; release: () => void } | undefined>(undefined);
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
+
+  // Arming a Move frames the Hero and its highlights; placing or cancelling it returns to the previous view.
+  const frameCol = moveFrameHero?.col;
+  const frameRow = moveFrameHero?.row;
+  useEffect(() => {
+    if (frameCol === undefined || frameRow === undefined) return;
+    cameraControl.current?.frame({ col: frameCol, row: frameRow });
+    return () => cameraControl.current?.release();
+  }, [frameCol, frameRow]);
 
   useEffect(() => {
     if (!overlay) return;
@@ -305,11 +325,49 @@ export function Board({
         world.position.set(camera.x, camera.y);
         setZoomed(isZoomed(camera, size()));
       };
+      // Eases to a camera in FRAME_MS; jumps when the player prefers reduced motion.
+      let animation: number | undefined;
+      const stopAnimation = () => {
+        if (animation !== undefined) cancelAnimationFrame(animation);
+        animation = undefined;
+      };
+      const animateTo = (target: Camera) => {
+        stopAnimation();
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setCamera(target);
+        const from = camera;
+        const start = performance.now();
+        const step = (now: number) => {
+          const t = Math.min((now - start) / FRAME_MS, 1);
+          const eased = 1 - (1 - t) ** 3;
+          setCamera({
+            scale: from.scale + (target.scale - from.scale) * eased,
+            x: from.x + (target.x - from.x) * eased,
+            y: from.y + (target.y - from.y) * eased,
+          });
+          animation = t < 1 ? requestAnimationFrame(step) : undefined;
+        };
+        animation = requestAnimationFrame(step);
+      };
+      // The camera of an armed Move; a manual camera change ends the automatic framing for that Move.
+      let framing: MoveFraming | undefined;
+      const setCameraByHand = (next: Camera) => {
+        stopAnimation();
+        framing = takeOverFraming(framing);
+        setCamera(next);
+      };
       cameraControl.current = {
         toggle: () => {
           const hero = candidatesRef.current.heroes.find((h) => h.id === selectedIdRef.current);
-          if (isZoomed(camera, size()) || !hero) setCamera(fitCamera(size()));
-          else setCamera(zoomOnPoint(gridToWorld(hero.position), size()));
+          if (isZoomed(camera, size()) || !hero) setCameraByHand(fitCamera(size()));
+          else setCameraByHand(zoomOnPoint(gridToWorld(hero.position), size()));
+        },
+        frame: (hero) => {
+          framing ??= beginMoveFraming(camera);
+          if (framing.automatic) animateTo(frameMoveCamera(hero, candidatesRef.current.highlights, size()));
+        },
+        release: () => {
+          if (framing?.automatic) animateTo(endMoveFraming(framing, camera));
+          framing = undefined;
         },
       };
 
@@ -353,7 +411,7 @@ export function Board({
           down.set(event.pointerId, current);
           if (oldDistance === 0) return;
           const zoomedCamera = zoomAt(camera, (camera.scale * distance) / oldDistance, oldMid.x, oldMid.y, size());
-          setCamera(panBy(zoomedCamera, mid.x - oldMid.x, mid.y - oldMid.y, size()));
+          setCameraByHand(panBy(zoomedCamera, mid.x - oldMid.x, mid.y - oldMid.y, size()));
           return;
         }
         down.set(event.pointerId, current);
@@ -363,7 +421,7 @@ export function Board({
           suppressTap = true;
           setPressed(undefined);
         }
-        if (dragged) setCamera(panBy(camera, current.x - previous.x, current.y - previous.y, size()));
+        if (dragged) setCameraByHand(panBy(camera, current.x - previous.x, current.y - previous.y, size()));
       });
       const release = (event: { pointerId: number }) => {
         down.delete(event.pointerId);
@@ -379,7 +437,7 @@ export function Board({
         (event) => {
           event.preventDefault();
           const rect = app.canvas.getBoundingClientRect();
-          setCamera(zoomAt(camera, camera.scale * Math.exp(-event.deltaY * 0.0015), event.clientX - rect.left, event.clientY - rect.top, size()));
+          setCameraByHand(zoomAt(camera, camera.scale * Math.exp(-event.deltaY * 0.0015), event.clientX - rect.left, event.clientY - rect.top, size()));
         },
         { passive: false },
       );
@@ -396,7 +454,7 @@ export function Board({
 
       // After a resize or rotation the view starts fitted again.
       setCamera(camera);
-      app.renderer.on("resize", () => setCamera(fitCamera(size())));
+      app.renderer.on("resize", () => setCameraByHand(fitCamera(size())));
     })();
 
     return () => {

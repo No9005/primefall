@@ -601,6 +601,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         highlights={highlights}
         markers={markers}
         onTileTap={tapTile}
+        moveFrameHero={armed !== undefined && !playing ? planningFrom : undefined}
       />
       <header className="hud top-bar">
         <span data-testid="round">
