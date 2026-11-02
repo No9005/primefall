@@ -72,12 +72,13 @@ export type SelectTrigger = (typeof SelectTrigger)[keyof typeof SelectTrigger];
 
 /**
  * Issues the implement run may start, in the order they are tried. A labelled or manually started
- * issue is the only candidate. When any issue closes, every open ready issue is a candidate (lowest
+ * issue is the only candidate. When any issue closes, or a manual run names no issue, every open ready issue is a candidate (lowest
  * number first): a closed issue can free several tickets, and a ticket freed earlier but not
  * started must not be forgotten.
  */
 export function candidateIssues(trigger: SelectTrigger, issueNumber: number, openReadyIssues: number[]): number[] {
-  if (trigger !== SelectTrigger.Closed) return [issueNumber];
+  const scanAll = trigger === SelectTrigger.Closed || (trigger === SelectTrigger.Manual && issueNumber <= 0);
+  if (!scanAll) return [issueNumber];
   return [...new Set(openReadyIssues)].sort((a, b) => a - b);
 }
 

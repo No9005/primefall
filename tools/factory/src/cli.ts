@@ -182,7 +182,7 @@ const openReadyIssueNumbers = (): number[] =>
 function selectIssue(triggerName: string, number: number): void {
   const trigger = Object.values(SelectTrigger).find((t) => t === triggerName);
   if (!trigger) throw new Error(`Unknown trigger: ${triggerName}`);
-  const openReadyIssues = trigger === SelectTrigger.Closed ? openReadyIssueNumbers() : [];
+  const openReadyIssues = trigger === SelectTrigger.Closed || number <= 0 ? openReadyIssueNumbers() : [];
   output("issue", String(firstStartable(candidateIssues(trigger, number, openReadyIssues)) ?? ""));
 }
 
