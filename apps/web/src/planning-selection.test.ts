@@ -1,6 +1,6 @@
 import { ActionKind, cardInMode, HERO_DECKS, HeroClass, type QueuedAction } from "game-core";
 import { describe, expect, it } from "vitest";
-import { CardUse, cardUseReasons, coverProtectionLabel, energyReadout, rangeDamageLabel, selectHero } from "./planning-selection";
+import { CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero } from "./planning-selection";
 
 describe("rangeDamageLabel", () => {
   const longShotOverdrive = cardInMode(HERO_DECKS[HeroClass.Assassin][4]!, true);
@@ -13,6 +13,18 @@ describe("rangeDamageLabel", () => {
 
   it("shows nothing for a card whose damage does not depend on Range", () => {
     expect(rangeDamageLabel(HERO_DECKS[HeroClass.Assassin][0]!, from, { col: 8, row: 1 })).toBeUndefined();
+  });
+});
+
+describe("describeEffects", () => {
+  it("describes the standard effects and the Overdrive of Long Shot", () => {
+    const longShot = HERO_DECKS[HeroClass.Assassin][4]!;
+    expect(describeEffects(longShot.effects)).toBeTruthy();
+    expect(describeEffects(longShot.overdrive)).toBe("2 damage, 4 from Range 6");
+  });
+
+  it("returns nothing for a card without Overdrive", () => {
+    expect(describeEffects(undefined)).toBeUndefined();
   });
 });
 

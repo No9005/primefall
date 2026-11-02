@@ -27,7 +27,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Board, type TokenHero } from "./Board";
 import { buildPlaybackFrames, describeEvent, tickCountOf } from "./playback";
-import { CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, energyReadout, rangeDamageLabel, selectHero } from "./planning-selection";
+import { CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
 export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
@@ -209,31 +209,50 @@ function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onC
   );
 }
 
-interface UseChooserProps {
+interface CardDetailSheetProps {
+  card: CardDefinition;
   reasons: Record<CardUse, string | undefined>;
   onChoose: (use: CardUse) => void;
   /** Only for cards that have an Overdrive: the switch applies to the Primary effect. */
-  hasOverdrive: boolean;
   overdrive: boolean;
   onToggleOverdrive: () => void;
+  onClose: () => void;
 }
 
-function UseChooser({ reasons, onChoose, hasOverdrive, overdrive, onToggleOverdrive }: UseChooserProps) {
+/** The card detail sheet over Planning (UI spec, screen 5): the four uses, Overdrive where the card has one. */
+function CardDetailSheet({ card, reasons, onChoose, overdrive, onToggleOverdrive, onClose }: CardDetailSheetProps) {
+  const overdriveText = describeEffects(card.overdrive);
+  const useText: Record<CardUse, string | undefined> = {
+    [CardUse.Primary]: describeEffects(overdrive ? card.overdrive : card.effects),
+    [CardUse.Pitch]: "Adds 1 Energy",
+    [CardUse.Move]: "Move up to 2 tiles",
+    [CardUse.Block]: "Shield 2",
+  };
   return (
-    <div className="hud use-chooser" role="group" aria-label="Use card as">
-      {hasOverdrive && (
+    <section className="hud card-sheet" role="dialog" aria-label={`${card.name} details`}>
+      <header className="sheet-header">
+        <span className="card-name">{card.name}</span>
+        <span className="card-cost">Cost {card.energyCost}</span>
+        <button type="button" className="sheet-close" aria-label="Close card details" onClick={onClose}>
+          ×
+        </button>
+      </header>
+      <div className="sheet-uses" role="group" aria-label="Use card as">
+        {Object.values(CardUse).map((use) => (
+          <button key={use} type="button" className="use" disabled={reasons[use] !== undefined} onClick={() => onChoose(use)}>
+            <span>{CARD_USE_LABELS[use]}</span>
+            {useText[use] && <span className="use-text">{useText[use]}</span>}
+            {reasons[use] && <span className="use-reason">{reasons[use]}</span>}
+          </button>
+        ))}
+      </div>
+      {overdriveText && (
         <button type="button" className="use overdrive-switch" aria-pressed={overdrive} onClick={onToggleOverdrive}>
-          <span>Overdrive {overdrive ? "on" : "off"}</span>
+          <span>Overdrive {overdrive ? "on" : "off"}: {overdriveText}</span>
           <span className="use-reason">{overdrive ? "replaces the effect; the card is Exiled" : "tap to Exile this card for a stronger effect"}</span>
         </button>
       )}
-      {Object.values(CardUse).map((use) => (
-        <button key={use} type="button" className="use" disabled={reasons[use] !== undefined} onClick={() => onChoose(use)}>
-          <span>{CARD_USE_LABELS[use]}</span>
-          {reasons[use] && <span className="use-reason">{reasons[use]}</span>}
-        </button>
-      ))}
-    </div>
+    </section>
   );
 }
 
@@ -485,12 +504,16 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         Energy · Pitched {energy.pitched} · Spent {energy.spent} · Available {energy.available}
       </div>
       {choosing !== undefined && !playing && (
-        <UseChooser
+        <CardDetailSheet
+          card={HERO_DECKS[selected.heroClass][choosing]!}
           reasons={cardUseReasons(selected.heroClass, choosing, queue, pitched, overdrive)}
           onChoose={chooseUse}
-          hasOverdrive={HERO_DECKS[selected.heroClass][choosing]!.overdrive !== undefined}
           overdrive={overdrive}
           onToggleOverdrive={() => setOverdrive(!overdrive)}
+          onClose={() => {
+            setChoosing(undefined);
+            setOverdrive(false);
+          }}
         />
       )}
       <Hand
