@@ -23,7 +23,7 @@ Root scripts, all run from the repository root: `dev`, `build`, `test`, `lint`, 
 ## How to work on a ticket
 
 1. Read the whole issue, including its comments, and the spec, ADRs and glossary parts it touches.
-2. Check the issue's blocking relationships (see `docs/agents/issue-tracker.md`). If a blocking issue is still open, stop and comment on the issue instead of starting.
+2. Check the issue's blocking relationships (see `docs/agents/issue-tracker.md`). If a blocking issue is still open, stop and comment on the issue instead of starting. (A factory run has already checked this: skip the step, `gh api` and `gh issue list` are not available to it.)
 3. Work on your own new branch named `agent/issue-<number>-<short-slug>`, cut from the latest `origin/main` (`git fetch origin main`, then `git switch -c <branch> origin/main`). See _Git rules_ below.
 4. Keep the change small and limited to the ticket. Do not fix unrelated things; mention them in the pull request.
 5. Write tests as the issue asks. Test behaviour through the public interface (for the simulation: the Match Simulation seam), not internals.
@@ -44,7 +44,7 @@ If the issue is unclear or contradicts the spec, an ADR or the glossary, do not 
 
 - **Code must be readable first.** Clear names, small focused functions, comments only where the _why_ is not obvious.
 - **No file-per-function.** Do not put every function in its own file. Keep related code together in one cohesive module.
-- **Model fixed sets of values as enums** (string-valued if serialized) or `as const` objects, not string unions; ESLint then flags string comparisons against them.
+- **A check in code beats a rule in prose.** If a program can verify a rule (lint, types, a test, CI), build that check; write a rule here or in `CODING_STANDARDS.md` only for judgement calls.
 - **Extract only when DRY is violated.** Move code into a shared module only when it is actually duplicated (for example business logic repeated in several places) or when a function is used from several different files. Do not extract speculatively "for reuse later".
 
 ## Rules that matter for this project
@@ -59,7 +59,10 @@ If the issue is unclear or contradicts the spec, an ADR or the glossary, do not 
 
 Unblocked `ready-for-agent` issues are started automatically and their pull requests are reviewed by a separate agent run. Pull requests with a **high blast radius** are always merged by the product owner; only low ones may get auto-merge, and only when the owner has switched it on. Agents never merge and never change the factory's rules to lower a pull request's class. The rules, switches and setup are in `docs/agents/software-factory.md` and `docs/agents/factory-setup.md`; the path rules are only in `tools/factory/blast-radius-rules.json`.
 
-In a factory run, the issue named in the run prompt is your ticket (there is no chat to name one); everything else in this file applies unchanged.
+In a factory run, the issue named in the run prompt is your ticket (there is no chat to name one); everything else in this file applies unchanged. The agent's tool permissions are narrow, so run commands exactly like this or they are denied and the work is lost:
+
+- Work from the repository root. Run every command on its own: no chaining (`&&`, `;`), no `git -C <path>`, no heredoc scripts. Change files with the Edit and Write tools, not with `sed` or `python`.
+- Push with the full branch name, as its own command: `git push -u origin agent/issue-<number>-<short-slug>`. Never push `HEAD`.
 
 ## Agent skills
 

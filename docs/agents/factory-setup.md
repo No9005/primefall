@@ -41,7 +41,7 @@ Settings, Secrets and variables, Actions, Variables:
 | `RETRO_EVERY` | positive integer / `0` | The retro task runs after every Nth merged agent pull request. Unset or invalid: 10. `0`: off |
 | `AUTOMERGE_ENABLED` | `true` / anything else | Phase 0 (not `true`): a human merges every pull request. Phase 1: low blast radius pull requests get auto-merge |
 
-The workflows create these labels when they are missing: `agent-working`, `needs-human`, `needs-human-merge`, `blast-radius:low`, `blast-radius:high`, `high-risk`.
+The workflows create the factory's labels when they are missing; their meaning is in `docs/agents/issue-tracker.md`.
 
 **Early MVP mode, merging everything.** The variable only controls the factory. GitHub still enforces the code owner review from the ruleset for the paths in `.github/CODEOWNERS`. To let those pull requests merge without your review too, switch off "Require review from code owners" in the ruleset (or empty `.github/CODEOWNERS`) for the time being, and switch it back on when you set `BLAST_RADIUS_ENABLED` back. Together with `AUTOMERGE_ENABLED=true` a pull request then merges once CI, `agent-review` and the preview pass.
 
@@ -56,17 +56,11 @@ The workflows create these labels when they are missing: `agent-working`, `needs
 
 The Claude Pro subscription has usage limits, not a money budget. Runs that use the subscription token count against those limits and fail when the limit is reached. Extra paid usage is optional and has its own monthly cap in the account's usage settings on claude.ai. With an API key instead of the subscription token, set limits per workspace in the Anthropic Console. A Pro plan can run out quickly under automation. Check the current limits and where the settings are today; they change.
 
-## 8. First run checklist
+## 8. Checks after a change to the workflows
 
-These could not be tested without real runs; verify them on the first runs and fix the workflows if needed:
+The Claude action cannot be tested before a workflow is on `main` (it refuses workflow files that differ from the default branch). After merging a change, start "Factory" once and check the run:
 
-- The action accepts the `prompt` input and the options in `claude_args` (`--model`, `--effort medium`, `--max-turns`, `--allowedTools`), and the Actions copy of Claude Code knows `--effort`. Effort levels of the CLI: low, medium, high, xhigh, max.
-- The agent runs git from the repository root. `git -C <path> …`, chained commands and heredoc scripts do not match the tool patterns and are denied (a run for #10 lost its work because its push used `git -C`); the prompts say so. If a run ends without a pull request, the comment on the issue lists the denied commands.
-- The `--allowedTools` patterns match the commands the agent needs (a denied command shows up in the run log); the pattern `git push -u origin agent/*` accepts the agent's branch.
-- Pull requests and pushes made by the agent start the CI and pipeline workflows. The implement run uses the Claude GitHub App token via the action; if events do not start, the workflows' manual start still works.
-- The Claude action refuses to run when the workflow was started by a bot (for example the pull request that the agent opened itself); the workflows list `claude` and `github-actions` in `allowed_bots`, nothing else. If a run fails with "Workflow initiated by non-human actor", a bot name is missing there.
-- After a rework, a passing review resolves the bot's fixed threads (with a reply that gives the reason) and collapses its earlier failed reviews. These are GraphQL calls with the workflow token and could not be tested outside Actions; check the run log of the review job for "Resolved thread" or "Could not tidy review threads".
-- The review run writes a valid `review-result.json`. A pull request that changes a factory workflow, or a branch that is behind `main` in its workflow files, gets `agent-review: error` ("did not run"), because the Claude action refuses to run when the workflow differs from the default branch; update the branch with `main` and run the pipeline again.
-- The retro task: after the first N merged agent pull requests (or "Factory retro", "Run workflow"), the run either opens a pull request `agent/retro-<n>` with changes tied to the pull requests that motivated them, or comments on the latest pull request that it found no repeated pattern. A change to a workflow prompt must arrive as text in the pull request body, because the agent cannot push workflow files.
+- A denied command shows up in the comment on the issue (implement) or pull request (rework). Agents run git from the repository root, one command at a time (`CLAUDE.md`, "Software factory"); `--allowedTools` patterns must match exactly how agents formulate commands.
+- The action refuses bot-started runs unless `allowed_bots` lists them (`claude,github-actions`); "Workflow initiated by non-human actor" means a name is missing.
+- A review run writes a valid `review-result.json`; otherwise the status `agent-review: error` and a comment say it did not run.
 - The Vercel status name matches the required check in the ruleset.
-- After the first merge, closing the issue starts the next unblocked ticket.
