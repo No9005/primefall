@@ -71,6 +71,8 @@ const Command = {
   Revive: "revive",
   HealthLog: "health-log",
   ReworkStalled: "rework-stalled",
+  PrForIssue: "pr-for-issue",
+  AwaitMerge: "await-merge",
 } as const;
 
 const REVIEW_STATUS_CONTEXT = "agent-review";
@@ -528,6 +530,24 @@ function revive(dryRun: boolean): void {
   }
 }
 
+/** Output `pr`: the open pull request of an issue's agent branch, or empty. */
+function prForIssue(issue: number): void {
+  const pr = apiList<{ number: number; head: { ref: string } }>(`repos/${repo}/pulls?state=open`).find((listed) => listed.head.ref.startsWith(`agent/issue-${issue}-`));
+  output("pr", pr === undefined ? "" : String(pr.number));
+  output("head_ref", pr === undefined ? "" : pr.head.ref);
+}
+
+/** Waits (polling) until the pull request is merged or closed, at most `minutes`. Output `merged`. */
+function awaitMerge(number: number, minutes: number): void {
+  const deadline = Date.now() + minutes * 60_000;
+  for (;;) {
+    const pr = api<{ merged_at: string | null; state: string }>(`repos/${repo}/pulls/${number}`);
+    if (pr.merged_at !== null) return output("merged", "true");
+    if (pr.state !== "open" || Date.now() >= deadline) return output("merged", "false");
+    execFileSync("sleep", ["20"]);
+  }
+}
+
 const [command, ...args] = process.argv.slice(2);
 switch (command) {
   case Command.EnsureLabels:
@@ -574,6 +594,12 @@ switch (command) {
     break;
   case Command.ReworkStalled:
     reworkStalled(Number(args[0]));
+    break;
+  case Command.PrForIssue:
+    prForIssue(Number(args[0]));
+    break;
+  case Command.AwaitMerge:
+    awaitMerge(Number(args[0]), Number(args[1] ?? 30));
     break;
   default:
     console.error(`Unknown command: ${command ?? "(none)"}`);

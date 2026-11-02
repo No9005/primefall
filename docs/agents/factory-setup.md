@@ -70,3 +70,9 @@ These could not be tested without real runs; verify them on the first runs and f
 - The retro task: after the first N merged agent pull requests (or "Factory retro", "Run workflow"), the run either opens a pull request `agent/retro-<n>` with changes tied to the pull requests that motivated them, or comments on the latest pull request that it found no repeated pattern. A change to a workflow prompt must arrive as text in the pull request body, because the agent cannot push workflow files.
 - The Vercel status name matches the required check in the ruleset.
 - After the first merge, closing the issue starts the next unblocked ticket.
+
+## Single-run factory (`factory.yml`)
+
+`factory.yml` takes one ticket from start to end in one workflow run (implement, review, rework once, merge gate, wait for auto-merge, close the issue) and then starts itself for the next ticket. It needs no timers and hands nothing over between workflows. It is started by the owner: label `ready-for-agent` set, label `needs-human` removed, an agent pull request merged, or "Run workflow" by hand (scans all tickets).
+
+To switch from the older workflows to this one: set the repository variable `FACTORY_RUN_ENABLED` to `true` and `FACTORY_ENABLED` to `false` (both at once would run two pipelines). The retro workflow runs with either variable. The review and rework steps are composite actions in `.github/actions`, referenced from `main`.
