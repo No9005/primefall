@@ -11,7 +11,8 @@ import {
   withTile,
 } from "game-core";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
-import { useEffect, useRef, useState } from "react";
+import { type MutableRefObject, useEffect, useRef, useState } from "react";
+import type { BoardPick, Point } from "./card-drag";
 import {
   beginMoveFraming,
   buildPlacements,
@@ -104,6 +105,12 @@ interface BoardProps {
   onTileTap: (tile: GridPosition) => void;
   /** Position of the Hero whose Move is armed: while set, the camera eases to it and its highlights. */
   moveFrameHero?: GridPosition;
+  /** While a card is dragged: short labels on the Heroes or tiles that take a drop. */
+  zoneLabels: readonly { position: GridPosition; text: string }[];
+  /** While a card is dragged: a tinted area (the Range of a card played here). */
+  areaTiles: readonly GridPosition[];
+  /** Filled with a function that tells what the board has under a viewport point, for dropping a dragged card. */
+  pickRef: MutableRefObject<((point: Point) => BoardPick) | undefined>;
 }
 
 /** Length of the camera ease when a Move is armed, placed or cancelled. */
@@ -128,6 +135,9 @@ export function Board({
   markers,
   onTileTap,
   moveFrameHero,
+  zoneLabels,
+  areaTiles,
+  pickRef,
 }: BoardProps) {
   const host = useRef<HTMLDivElement>(null);
   const [tokens, setTokens] = useState<Container>();
@@ -163,6 +173,13 @@ export function Board({
   useEffect(() => {
     if (!overlay) return;
     const created: Container[] = [];
+    for (const tile of areaTiles) {
+      const { x, y } = gridToWorld(tile);
+      const tint = new Graphics().poly(tileDiamond()).fill({ color: 0xff8a3d, alpha: 0.2 }).stroke({ width: 1, color: 0xff8a3d, alpha: 0.5 });
+      tint.position.set(x, y);
+      overlay.addChild(tint);
+      created.push(tint);
+    }
     for (const tile of highlights) {
       const { x, y } = gridToWorld(tile);
       const diamond = new Graphics().poly(tileDiamond()).fill({ color: 0x2ec4b6, alpha: 0.35 }).stroke({ width: 4, color: 0x2ec4b6 });
@@ -190,8 +207,19 @@ export function Board({
       overlay.addChild(marker);
       created.push(marker);
     });
+    zoneLabels.forEach(({ position, text }) => {
+      // Above the token's head, so the label is not hidden by the Hero.
+      const { x, y } = gridToWorld(position);
+      const label = new Container();
+      label.position.set(x, y - TILE_HEIGHT * 1.5);
+      const caption = new Text({ text, style: { fill: 0x12161c, fontSize: 22, fontWeight: "700" } });
+      caption.anchor.set(0.5);
+      label.addChild(new Graphics().roundRect(-caption.width / 2 - 8, -16, caption.width + 16, 32, 6).fill(0xffffff), caption);
+      overlay.addChild(label);
+      created.push(label);
+    });
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [overlay, highlights, markers, pressed]);
+  }, [overlay, highlights, markers, pressed, zoneLabels, areaTiles]);
 
   useEffect(() => {
     if (!tokens) return;
@@ -374,6 +402,11 @@ export function Board({
       const pick = (viewX: number, viewY: number) => {
         const { x, y } = viewToWorld(viewX, viewY, app.screen.width, app.screen.height, undefined, camera);
         return { x, y, target: resolveTap(x, y, candidatesRef.current) };
+      };
+      pickRef.current = ({ x: clientX, y: clientY }) => {
+        const rect = app.canvas.getBoundingClientRect();
+        const { x, y, target } = pick(clientX - rect.left, clientY - rect.top);
+        return { target, ground: pickTileAt(x, y) };
       };
       // Fingers (or the mouse button) currently down, by pointer id; two of them pinch, one pans a zoomed board.
       const down = new Map<number, { x: number; y: number }>();
