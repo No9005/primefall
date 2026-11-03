@@ -71,8 +71,8 @@ test("start a match, play a Move card onto a tile, Commit", async ({ page }) => 
     [0.45, 0.55],
     [0.65, 0.33],
   ];
-  // The HUD has made room: the hand is collapsed to a chip, and no HUD element lies where a tile is lit.
-  await expect(page.getByRole("button", { name: /^Cancel / })).toBeVisible();
+  // The HUD has made room: the used card floats in the middle, and no HUD element lies where a tile is lit.
+  await expect(page.getByTestId("floating-card")).toContainText("Tap a lit tile");
   await expect(hand).toBeHidden();
   const hud = await page
     .locator(".hand-bar, .squad-panel, .enemy-panel, .commit-panel")

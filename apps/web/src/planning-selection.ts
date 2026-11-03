@@ -226,18 +226,15 @@ export interface AimState {
   allyPicked: boolean;
 }
 
-/** One short line telling the player what to tap next while a card is aimed. */
-export function targetHint({ card, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked }: AimState): string {
-  if (card.target === CardTarget.Area) return "Tap a highlighted tile to reveal the area";
-  if (card.target === CardTarget.EmptyTile) return "Tap a highlighted empty tile for Half Cover";
-  if (aimsAtTile) return "Tap a highlighted tile to hit the Hero there";
-  if (needsSecondAlly) return allyPicked ? "Tap the second allied Hero" : "Tap the first allied Hero";
-  if (card.target === CardTarget.SelfHero) return "Tap this Hero to confirm";
-  if (card.target === CardTarget.EnemiesInRange) return "Tap this Hero to hit all enemies in Range";
-  if (card.target === CardTarget.GhostEnemy) return "Tap a Ghost to shoot its last position";
-  if (aimsAtDeployTile) return "Tap the tile the ally moves to";
-  if (aimsAtAlly) return "Tap an allied Hero";
-  return "Tap an enemy Hero to attack";
+/** The one-line instruction on the floating card: what to tap next while a card is aimed. */
+export function pickInstruction({ card, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked }: AimState): string {
+  if (card.target === CardTarget.Area || card.target === CardTarget.EmptyTile || aimsAtTile) return "Tap a lit tile";
+  if (needsSecondAlly) return allyPicked ? "Tap the second ally" : "Tap the first ally";
+  if (card.target === CardTarget.SelfHero || card.target === CardTarget.EnemiesInRange) return "Tap your Hero";
+  if (card.target === CardTarget.GhostEnemy) return "Tap a Ghost";
+  if (aimsAtDeployTile) return "Tap a lit tile";
+  if (aimsAtAlly) return "Tap an ally";
+  return "Tap an enemy";
 }
 
 export interface EnergyReadout {
