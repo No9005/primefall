@@ -1,7 +1,46 @@
+/* Design tokens of the UI: use these, never new hex values. */
+:root {
+  --graphite: #12161c;
+  --panel: #1b222b;
+  --ink: #0b1016;
+  --steel: #3d5a73;
+  --teal: #2ec4b6;
+  --orange: #ff8a3d;
+  --red: #e5484d;
+  --blue: #4da3ff;
+  --yellow: #e5b429;
+  --amber: #ffb347;
+  --overdrive: #ffb000;
+  --gold: #ffd24a;
+  --text: #dbe4ec;
+  --text-soft: #c8d3de;
+  --muted: #8a99a8;
+  --muted-light: #aebccb;
+
+  --font-label: Rajdhani, sans-serif;
+  --font-number: "IBM Plex Mono", monospace;
+
+  --radius-s: 6px;
+  --radius-m: 8px;
+
+  /* Stacking: the Hand is above every other HUD element, callouts above everything. */
+  --z-board: 0;
+  --z-hud: 1;
+  --z-hand: 2;
+  --z-floating: 20;
+  --z-callout: 30;
+
+  --dim: 0.55;
+  --ghost: 0.3;
+
+  --dur-fast: 150ms;
+  --dur-ui: 300ms;
+}
+
 html, body, #root { height: 100%; margin: 0; }
 /* The page never scrolls, bounces or pull-to-refreshes during play; dvh follows the browser bars on phones. */
 html, body { overscroll-behavior: none; }
-body { background: #12161c; color: #dbe4ec; font-family: Barlow, system-ui, sans-serif; overflow: hidden; position: fixed; width: 100%; }
+body { background: var(--graphite); color: var(--text); font-family: Barlow, system-ui, sans-serif; overflow: hidden; position: fixed; width: 100%; }
 button { font: inherit; color: inherit; touch-action: manipulation; }
 
 .app { height: 100dvh; position: relative; }
@@ -12,17 +51,17 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .board { position: absolute; inset: 0; overflow: hidden; }
 .board canvas { display: block; touch-action: none; }
 /* Zoom / Fit: round, thumb-sized, at the right edge in the vertical middle (between the enemy panel and the commit column). */
-.board-zoom { position: absolute; z-index: 1; right: calc(10px + env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 2px solid #3d5a73; background: #1b222b; color: #dbe4ec; font: 600 14px Rajdhani, sans-serif; cursor: pointer; }
+.board-zoom { position: absolute; z-index: 1; right: calc(10px + env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--steel); background: var(--panel); color: var(--text); font: 600 14px Rajdhani, sans-serif; cursor: pointer; }
 
 /* Lines: the small toggle for the target lines, below the turn buttons; it shows lit while the lines are on. */
-.board-lines { position: absolute; z-index: 1; right: calc(14px + env(safe-area-inset-right)); top: calc(50% + 128px - 22px); width: 44px; height: 44px; border-radius: 50%; border: 2px solid #3d5a73; background: #1b222b; color: #dbe4ec; font: 600 11px Rajdhani, sans-serif; cursor: pointer; }
-.board-lines[aria-pressed="true"] { border-color: #2ec4b6; color: #2ec4b6; }
+.board-lines { position: absolute; z-index: 1; right: calc(14px + env(safe-area-inset-right)); top: calc(50% + 128px - 22px); width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--steel); background: var(--panel); color: var(--text); font: 600 11px Rajdhani, sans-serif; cursor: pointer; }
+.board-lines[aria-pressed="true"] { border-color: var(--teal); color: var(--teal); }
 
-.board-turn { position: absolute; z-index: 1; right: calc(10px + env(safe-area-inset-right)); width: 52px; height: 52px; border-radius: 50%; border: 2px solid #3d5a73; background: #1b222b; color: #dbe4ec; font-size: 24px; line-height: 1; cursor: pointer; }
+.board-turn { position: absolute; z-index: 1; right: calc(10px + env(safe-area-inset-right)); width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--steel); background: var(--panel); color: var(--text); font-size: 24px; line-height: 1; cursor: pointer; }
 .board-turn-left { top: calc(50% - 64px - 26px); }
 .board-turn-right { top: calc(50% + 64px - 26px); }
 
-.hud { position: absolute; background: #1b222bdd; border: 1px solid #3d5a73; border-radius: 6px; box-sizing: border-box; }
+.hud { position: absolute; background: color-mix(in srgb, var(--panel) 87%, transparent); border: 1px solid var(--steel); border-radius: 6px; box-sizing: border-box; }
 /* HUD placement (UI spec): at 844 x 390 and 667 x 375 the fitted board leaves the bottom corners and a strip at the
    top free. The hand bar stays within ~330 px of the left edge and the commit column within 110 px of the right edge,
    below the lower board edges; keep these sizes small when changing them. */
@@ -33,8 +72,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .enemy-panel .hero-row.ghost { opacity: 0.6; border-style: dashed; }
 .enemy-panel .hero-row.unknown { opacity: 0.45; border-style: dotted; }
 /* Free left strip between the Squad panel and the hand bar; the latest lines stay in view, older ones scroll. */
-.log { left: calc(6px + env(safe-area-inset-left)); bottom: calc(140px + env(safe-area-inset-bottom)); width: 124px; max-height: 84px; overflow-y: auto; margin: 0; padding: 3px 4px 3px 18px; font-family: "IBM Plex Mono", monospace; font-size: 10px; line-height: 1.25; color: #c8d3de; }
-.target-hint { margin: 0; color: #e5484d; font-size: 11px; font-weight: 600; line-height: 1.2; }
+.log { left: calc(6px + env(safe-area-inset-left)); bottom: calc(140px + env(safe-area-inset-bottom)); width: 124px; max-height: 84px; overflow-y: auto; margin: 0; padding: 3px 4px 3px 18px; font-family: "IBM Plex Mono", monospace; font-size: 10px; line-height: 1.25; color: var(--text-soft); }
+.target-hint { margin: 0; color: var(--red); font-size: 11px; font-weight: 600; line-height: 1.2; }
 /* Top left: the Queue window of the selected Hero and the other Heroes as compact chips. */
 .squad-panel { position: absolute; top: calc(6px + env(safe-area-inset-top)); left: calc(6px + env(safe-area-inset-left)); display: flex; align-items: flex-start; gap: 3px; }
 .queue-window { position: static; width: 124px; flex: none; padding: 4px; display: flex; flex-direction: column; gap: 3px; }
@@ -43,10 +82,10 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .queue-slots { margin: 0; padding: 0; list-style: none; display: flex; gap: 3px; }
 .queue-slots li { flex: 1; display: flex; }
 .queue-slot { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 32px; padding: 0; border-radius: 4px; font-family: "IBM Plex Mono", monospace; font-size: 11px; box-sizing: border-box; }
-.queue-slot.empty { border: 1px dashed #3d5a73; color: #8a99a8; }
-.queue-slot.filled { background: #12161c; border: 1px solid #2ec4b6; color: #2ec4b6; cursor: pointer; }
+.queue-slot.empty { border: 1px dashed var(--steel); color: var(--muted); }
+.queue-slot.filled { background: var(--graphite); border: 1px solid var(--teal); color: var(--teal); cursor: pointer; }
 .queue-slot.filled:disabled { cursor: default; opacity: 0.7; }
-.wait-button { align-self: flex-start; min-height: 32px; padding: 0 10px; border-radius: 4px; border: 1px solid #3d5a73; background: #12161c; color: #c9d4de; font-size: 11px; cursor: pointer; }
+.wait-button { align-self: flex-start; min-height: 32px; padding: 0 10px; border-radius: 4px; border: 1px solid var(--steel); background: var(--graphite); color: #c9d4de; font-size: 11px; cursor: pointer; }
 .wait-button:disabled { cursor: default; opacity: 0.5; }
 .queue-tags { display: flex; flex-wrap: wrap; gap: 0 4px; }
 .queue-tags:empty { display: none; }
@@ -56,32 +95,32 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .chip:disabled { cursor: default; opacity: 0.8; }
 .chip .hero-name { font-size: 11px; }
 .chip .counts { flex-basis: auto; order: 0; font-size: 9px; white-space: nowrap; }
-.hero-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 4px; min-height: 40px; padding: 2px 5px; background: #12161c; border: 1px solid #3d5a73; border-radius: 4px; text-align: left; cursor: pointer; }
-.hero-row[aria-pressed="true"] { border-color: #2ec4b6; box-shadow: 0 0 0 1px #2ec4b6; }
+.hero-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 4px; min-height: 40px; padding: 2px 5px; background: var(--graphite); border: 1px solid var(--steel); border-radius: 4px; text-align: left; cursor: pointer; }
+.hero-row[aria-pressed="true"] { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal); }
 .hero-row:disabled { cursor: default; opacity: 0.8; }
 .hero-name { font-family: Rajdhani, sans-serif; font-weight: 600; font-size: 13px; }
-.counts { flex-basis: 100%; order: 1; font-family: "IBM Plex Mono", monospace; font-size: 10px; line-height: 1.2; color: #8a99a8; }
-.tag { font-size: 10px; color: #8a99a8; }
+.counts { flex-basis: 100%; order: 1; font-family: "IBM Plex Mono", monospace; font-size: 10px; line-height: 1.2; color: var(--muted); }
+.tag { font-size: 10px; color: var(--muted); }
 
 /* Energy orb next to the fan; Pitched and Spent are in its tooltip. */
-.energy { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: #12161c; border: 2px solid #ff8a3d; color: #ff8a3d; font-family: "IBM Plex Mono", monospace; font-size: 18px; font-weight: 700; }
+.energy { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: var(--graphite); border: 2px solid var(--orange); color: var(--orange); font-family: "IBM Plex Mono", monospace; font-size: 18px; font-weight: 700; }
 /* The use chooser: only the 2 x 2 buttons, placed by cardSheetRect (hud-layout.ts) beside the Hero, clear of the hand and the buttons. */
 .card-sheet { box-sizing: border-box; padding: 4px; display: flex; flex-direction: column; }
-.sheet-close { position: absolute; top: -12px; right: -12px; width: 32px; height: 32px; background: #12161c; color: #dbe4ec; border: 1px solid #3d5a73; border-radius: 50%; font-size: 18px; line-height: 1; cursor: pointer; }
+.sheet-close { position: absolute; top: -12px; right: -12px; width: 32px; height: 32px; background: var(--graphite); color: var(--text); border: 1px solid var(--steel); border-radius: 50%; font-size: 18px; line-height: 1; cursor: pointer; }
 .sheet-uses { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; }
-.use-text { font-size: 10px; line-height: 1.1; color: #8a99a8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.use { display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: 44px; padding: 2px 8px; background: #12161c; color: #dbe4ec; border: 1px solid #2ec4b6; border-radius: 4px; text-align: left; cursor: pointer; }
-.use:disabled { border-color: #3d5a73; opacity: 0.7; cursor: default; }
-.use-reason { font-size: 10px; line-height: 1.1; color: #ff8a3d; }
+.use-text { font-size: 10px; line-height: 1.1; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.use { display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: 44px; padding: 2px 8px; background: var(--graphite); color: var(--text); border: 1px solid var(--teal); border-radius: 4px; text-align: left; cursor: pointer; }
+.use:disabled { border-color: var(--steel); opacity: 0.7; cursor: default; }
+.use-reason { font-size: 10px; line-height: 1.1; color: var(--orange); }
 
 /* A target is being picked: the HUD shrinks to what hud-layout.ts keeps out of the free board area. */
 .hand.collapsed { position: absolute; left: 0; bottom: 0; pointer-events: none; visibility: hidden; transition: visibility 0s 150ms; }
 .hand.collapsed li { transform: translateX(-160px); opacity: 0; transition: transform 150ms, opacity 150ms; }
-.selected-card-chip { position: relative; width: 88px; box-sizing: border-box; padding: 3px 34px 3px 5px; background: #12161c; border: 2px solid #2ec4b6; border-radius: 6px; display: flex; flex-direction: column; min-height: 44px; }
+.selected-card-chip { position: relative; width: 88px; box-sizing: border-box; padding: 3px 34px 3px 5px; background: var(--graphite); border: 2px solid var(--teal); border-radius: 6px; display: flex; flex-direction: column; min-height: 44px; }
 .chip-name { font: 600 11px/1.1 Rajdhani, sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chip-cost { font: 10px "IBM Plex Mono", monospace; color: #ff8a3d; }
-.chip-hint { font-size: 9px; color: #2ec4b6; }
-.chip-cancel { position: absolute; top: 0; right: 0; width: 32px; height: 100%; min-height: 44px; background: none; border: 0; border-left: 1px solid #3d5a73; color: #dbe4ec; font-size: 20px; cursor: pointer; }
+.chip-cost { font: 10px "IBM Plex Mono", monospace; color: var(--orange); }
+.chip-hint { font-size: 9px; color: var(--teal); }
+.chip-cancel { position: absolute; top: 0; right: 0; width: 32px; height: 100%; min-height: 44px; background: none; border: 0; border-left: 1px solid var(--steel); color: var(--text); font-size: 20px; cursor: pointer; }
 .squad-panel.collapsed { flex-direction: column; gap: 2px; }
 .squad-panel.collapsed .queue-head, .squad-panel.collapsed .wait-button, .squad-panel.collapsed .queue-tags, .squad-panel.collapsed .chip .counts, .squad-panel.collapsed .chip .collision-tag { display: none; }
 .squad-panel.collapsed .chips { flex-direction: row; width: 124px; }
@@ -98,11 +137,11 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .mode-backdrop { position: absolute; inset: 0; background: rgba(8, 10, 14, 0.55); }
 .mode-faces { position: relative; display: flex; gap: 12px; }
 .card.mode-face { width: 168px; height: auto; min-height: 150px; }
-.card.mode-face.overdrive { border-color: #ffb000; }
-.card.mode-face.overdrive .card-text, .card.mode-face.overdrive .card-type { color: #ffb000; }
+.card.mode-face.overdrive { border-color: var(--overdrive); }
+.card.mode-face.overdrive .card-text, .card.mode-face.overdrive .card-type { color: var(--overdrive); }
 .card.mode-face:disabled { opacity: 0.55; cursor: default; }
-.mode-note { display: block; font-size: 12px; color: #ffb000; }
-.od-marker { margin-left: 3px; padding: 0 2px; border-radius: 2px; background: #ffb000; color: #12161c; font-size: 9px; }
+.mode-note { display: block; font-size: 12px; color: var(--overdrive); }
+.od-marker { margin-left: 3px; padding: 0 2px; border-radius: 2px; background: var(--overdrive); color: var(--graphite); font-size: 9px; }
 /* The Hand is a fan of four 88 x 126 px cards in the free bottom left corner; the Energy orb sits right of it. */
 .hand-bar { background: none; border: 0; bottom: calc(4px + env(safe-area-inset-bottom)); left: calc(6px + env(safe-area-inset-left)); display: flex; align-items: flex-end; gap: 4px; }
 .hand { margin: 0; padding: 0; list-style: none; display: flex; height: 126px; position: relative; }
@@ -110,56 +149,91 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .hand li { position: absolute; bottom: 0; left: calc(var(--position) * var(--step)); transform-origin: 50% 100%; transition: transform 80ms; transform: translateY(calc(var(--offset) * var(--offset) * 3px)) rotate(calc(var(--offset) * 7deg)); }
 /* The card held down lifts a little so the player sees which one is meant. */
 .hand li:has(.card:active) { transform: translateY(calc(var(--offset) * var(--offset) * 3px - 10px)) rotate(calc(var(--offset) * 7deg)); }
-.card { position: relative; display: block; width: var(--card-w, 88px); height: 126px; padding: 4px 5px; box-sizing: border-box; overflow: hidden; background: #12161c; border: 1px solid #3d5a73; border-radius: 6px; text-align: left; cursor: pointer; }
-.card.attack { border-top: 3px solid #e5484d; }
-.card.utility { border-top: 3px solid #4da3ff; }
+.card { position: relative; display: block; width: var(--card-w, 88px); height: 126px; padding: 4px 5px; box-sizing: border-box; overflow: hidden; background: var(--graphite); border: 1px solid var(--steel); border-radius: 6px; text-align: left; cursor: pointer; }
+.card.attack { border-top: 3px solid var(--red); }
+.card.utility { border-top: 3px solid var(--blue); }
 .card.used { opacity: 0.55; }
 .hand .card-name { display: block; padding-right: 16px; font-size: 12px; line-height: 1.1; overflow-wrap: normal; word-break: normal; hyphens: none; }
 .hand .card-type { display: block; margin-top: 2px; font-size: 8px; letter-spacing: 0.08em; font-weight: 700; }
-.card.attack .card-type { color: #e5484d; }
-.card.utility .card-type { color: #4da3ff; }
-.hand .card-text { display: block; margin-top: 3px; font-size: 10px; line-height: 1.15; color: #c8d3de; overflow-wrap: normal; word-break: normal; }
-.hand .card-use { position: absolute; left: 4px; right: 4px; bottom: 3px; padding: 1px 3px; background: #2ec4b6; color: #12161c; border-radius: 3px; font-size: 9px; font-weight: 700; line-height: 1.2; text-align: center; }
+.card.attack .card-type { color: var(--red); }
+.card.utility .card-type { color: var(--blue); }
+.hand .card-text { display: block; margin-top: 3px; font-size: 10px; line-height: 1.15; color: var(--text-soft); overflow-wrap: normal; word-break: normal; }
+.hand .card-use { position: absolute; left: 4px; right: 4px; bottom: 3px; padding: 1px 3px; background: var(--teal); color: var(--graphite); border-radius: 3px; font-size: 9px; font-weight: 700; line-height: 1.2; text-align: center; }
 .hand .card-cost { position: absolute; top: 4px; right: 5px; font-size: 12px; font-weight: 700; }
-.card[aria-pressed="true"] { border-color: #2ec4b6; box-shadow: 0 0 0 1px #2ec4b6; }
+.card[aria-pressed="true"] { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal); }
 .card:disabled { cursor: default; opacity: 0.7; }
 .card.used:disabled { opacity: 0.4; }
-.card-use { font-size: 12px; color: #2ec4b6; }
+.card-use { font-size: 12px; color: var(--teal); }
 .card-name { font-family: Rajdhani, sans-serif; font-weight: 600; font-size: 14px; }
-.card-cost { align-self: flex-end; font-family: "IBM Plex Mono", monospace; font-size: 14px; color: #ff8a3d; }
+.card-cost { align-self: flex-end; font-family: "IBM Plex Mono", monospace; font-size: 14px; color: var(--orange); }
 
-.tick {color: #ff8a3d; font-family: "IBM Plex Mono", monospace; }
+.tick {color: var(--orange); font-family: "IBM Plex Mono", monospace; }
 
 /* Bottom-right corner: target hint and plan issues (at most ~56 px, scrollable) above a compact primary button. */
 .commit-panel { position: absolute; bottom: calc(6px + env(safe-area-inset-bottom)); right: calc(6px + env(safe-area-inset-right)); width: 110px; display: flex; flex-direction: column; gap: 3px; }
-.commit-info { max-height: 56px; overflow-y: auto; padding: 2px 4px; background: #1b222bdd; border: 1px solid #3d5a73; border-radius: 4px; }
-.issues { margin: 0; padding: 0 0 0 12px; font-size: 10px; line-height: 1.2; color: #ff8a3d; }
-.commit { min-height: 44px; background: #2ec4b6; color: #12161c; border: 0; border-radius: 4px; font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 18px; cursor: pointer; }
-.commit:disabled { background: #3d5a73; color: #8a99a8; cursor: default; }
+.commit-info { max-height: 56px; overflow-y: auto; padding: 2px 4px; background: color-mix(in srgb, var(--panel) 87%, transparent); border: 1px solid var(--steel); border-radius: 4px; }
+.issues { margin: 0; padding: 0 0 0 12px; font-size: 10px; line-height: 1.2; color: var(--orange); }
+.commit { min-height: 44px; background: var(--teal); color: var(--graphite); border: 0; border-radius: 4px; font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 18px; cursor: pointer; }
+.commit:disabled { background: var(--steel); color: var(--muted); cursor: default; }
 
-.top-bar [data-testid="prime-progress"] { color: #2ec4b6; }
+.top-bar [data-testid="prime-progress"] { color: var(--teal); }
 
 .end-screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 16px; }
 .end-screen h1 { margin: 0; font-family: Rajdhani, sans-serif; font-size: 48px; letter-spacing: 0.08em; }
-.end-screen .label { margin: 0; color: #8a99a8; text-transform: uppercase; letter-spacing: 0.12em; }
-.end-screen button { min-height: 44px; padding: 0 24px; background: #2ec4b6; color: #12161c; border: 0; border-radius: 4px; font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 18px; cursor: pointer; }
-.end-screen .seed { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: #8a99a8; }
+.end-screen .label { margin: 0; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
+.end-screen button { min-height: 44px; padding: 0 24px; background: var(--teal); color: var(--graphite); border: 0; border-radius: 4px; font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 18px; cursor: pointer; }
+.end-screen .seed { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted); }
 
 /* Dragging a card out of the Hand: the ghost follows the finger, the card's place in the fan is outlined. */
 .card { touch-action: none; user-select: none; -webkit-user-select: none; }
 .card.dragging { border-style: dashed; opacity: 0.35; }
-.drag-ghost { position: fixed; z-index: 20; transform: translate(-50%, -110%); padding: 6px 10px; background: #12161c; border: 2px solid #2ec4b6; border-radius: 6px; font: 600 14px Rajdhani, sans-serif; pointer-events: none; }
-.drag-label { position: fixed; z-index: 21; transform: translate(-50%, 30%); padding: 2px 8px; background: #2ec4b6; color: #12161c; border-radius: 4px; font: 700 13px Rajdhani, sans-serif; letter-spacing: 0.06em; pointer-events: none; white-space: nowrap; }
-.drag-label.blocked { background: #ff8a3d; }
+.drag-ghost { position: fixed; z-index: 20; transform: translate(-50%, -110%); padding: 6px 10px; background: var(--graphite); border: 2px solid var(--teal); border-radius: 6px; font: 600 14px Rajdhani, sans-serif; pointer-events: none; }
+.drag-label { position: fixed; z-index: 21; transform: translate(-50%, 30%); padding: 2px 8px; background: var(--teal); color: var(--graphite); border-radius: 4px; font: 700 13px Rajdhani, sans-serif; letter-spacing: 0.06em; pointer-events: none; white-space: nowrap; }
+.drag-label.blocked { background: var(--orange); }
 .queue-column { display: flex; flex-direction: column; gap: 3px; }
 .drop-chip { width: 124px; min-height: 32px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; border-radius: 6px; font: 700 14px Rajdhani, sans-serif; letter-spacing: 0.06em; }
-.drop-chip.lit { background: #2ec4b633; border: 2px solid #2ec4b6; color: #2ec4b6; }
-.drop-chip.off { background: #1b222bdd; border: 2px dashed #3d5a73; color: #8a99a8; opacity: 0.6; }
-.drop-chip.active { background: #2ec4b6; color: #12161c; }
-.energy.drop-lit { box-shadow: 0 0 0 3px #2ec4b666; }
-.energy.drop-lit.active { background: #ff8a3d; color: #12161c; }
+.drop-chip.lit { background: color-mix(in srgb, var(--teal) 20%, transparent); border: 2px solid var(--teal); color: var(--teal); }
+.drop-chip.off { background: color-mix(in srgb, var(--panel) 87%, transparent); border: 2px dashed var(--steel); color: var(--muted); opacity: 0.6; }
+.drop-chip.active { background: var(--teal); color: var(--graphite); }
+.energy.drop-lit { box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 40%, transparent); }
+.energy.drop-lit.active { background: var(--orange); color: var(--graphite); }
 
 .rotate-notice { display: none; }
 @media (orientation: portrait) {
-  .rotate-notice { display: flex; position: absolute; inset: 0; z-index: 10; align-items: center; justify-content: center; background: #12161c; font-size: 20px; }
+  .rotate-notice { display: flex; position: absolute; inset: 0; z-index: 10; align-items: center; justify-content: center; background: var(--graphite); font-size: 20px; }
+}
+
+/* Big centre callout (Callout.tsx): never takes input. The duration comes from the --callout-ms property. */
+.callout { position: fixed; inset: 0; z-index: var(--z-callout); pointer-events: none; }
+.callout-word, .callout-number { position: absolute; left: 0; right: 0; text-align: center; white-space: nowrap; opacity: 0; animation-duration: var(--callout-ms); animation-timing-function: ease-out; animation-fill-mode: both; }
+.callout-word { top: 50%; height: 80px; margin-top: -40px; font: 700 58px/80px var(--font-label); letter-spacing: 0.2em; background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--ink) 93%, transparent) 20%, color-mix(in srgb, var(--ink) 93%, transparent) 80%, transparent 100%); animation-name: callout-word; }
+.callout-number { top: 14%; font: 500 130px/1 var(--font-number); text-shadow: 0 0 24px var(--ink), 0 0 8px var(--ink); animation-name: callout-number; }
+.callout-tone-teal { color: var(--teal); }
+.callout-tone-amber { color: var(--amber); }
+.callout-tone-red { color: var(--red); }
+.callout-tone-gold { color: var(--gold); }
+@keyframes callout-word {
+  0% { opacity: 0; transform: scale(1.5); }
+  15%, 78% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.96); }
+}
+@keyframes callout-number {
+  0% { opacity: 0; transform: scale(1.9); }
+  15%, 70% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.88); }
+}
+
+/* Slide-in row: add class "slide-in" and style={{ "--i": index }} so rows arrive one after the other
+   (0 for the first row). A new React key restarts it. */
+.slide-in { animation: slide-in var(--dur-ui) ease-out calc(var(--i, 0) * 150ms + 80ms) both; }
+@keyframes slide-in {
+  from { transform: translateX(-260px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* Reduced motion: no scaling and no movement, only the fade stays. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes callout-word { 0% { opacity: 0; } 15%, 78% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes callout-number { 0% { opacity: 0; } 15%, 70% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes slide-in { from { opacity: 0; } to { opacity: 1; } }
 }
