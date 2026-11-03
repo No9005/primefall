@@ -3,3 +3,5 @@ dist/
 *.tsbuildinfo
 .vite/
 .scratch/
+e2e-results/
+playwright-report/

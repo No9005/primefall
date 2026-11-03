@@ -63,6 +63,7 @@ The repository variable `BLAST_RADIUS_ENABLED` set to `false` switches the ratin
 ## Brakes
 
 - **Automated checks:** CI (lint, type check, tests) on every pull request.
+- **Browser smoke test:** the `e2e` job in `ci.yml` builds the web app and plays a few actions in Chrome (landscape 844 x 390: board drawn, a card tapped onto a tile, Commit advances the Round, no console error). A first job, `changes`, compares the pull request diff and sets `changed=true` when it touches `apps/web/**` or `packages/game-core/src/reactor-deck.ts` (the map data); `e2e` runs only then. There is no workflow-level `paths:` filter, so a pull request that touches neither (docs, `tools/factory`, ...) still gets a green check, because the job is skipped. On pushes to `main` the job always runs. A failed run uploads a screenshot and the Playwright trace as the artifact `e2e-results`. Locally: `npm run test:e2e` (builds first); `npm test` never starts a browser.
 - **Automated review:** the separate review session above.
 - **Human review:** every high-risk pull request, and every pull request while `AUTOMERGE_ENABLED` is not `true` (phase 0).
 - **Throttle and caps:** one ticket at a time; one rework per pull request; a kill switch (`FACTORY_RUN_ENABLED`).
