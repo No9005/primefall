@@ -1,5 +1,6 @@
 import type { CardDefinition } from "game-core";
 import type { ReactNode, Ref } from "react";
+import type { Face, FaceView } from "./card-pull";
 import { cardFace, type ModeFace } from "./planning-selection";
 
 // The card face and the drop targets of the game, shared by Planning and the Tutorial so that a change to one
@@ -16,6 +17,44 @@ export function CardFace({ card, use }: { card: CardDefinition; use?: string }) 
       <span className="card-text">{face.effectText}</span>
       {use && <span className="card-use">{use}</span>}
     </>
+  );
+}
+
+/**
+ * A card pressed or pulled out of the Hand: shown large in the middle of the free board area, with the faces of its
+ * uses above it once they are shown. A face is chosen by tap or by dropping the card on it (`data-face` is how the
+ * drop finds it); tapping anywhere else puts the card back.
+ */
+export function PulledCard({ card, faces, onFace, onOutside }: { card: CardDefinition; faces: FaceView[] | undefined; onFace: (face: Face) => void; onOutside: () => void }) {
+  return (
+    <div className="pull" data-testid="pulled-card">
+      <div className="pull-backdrop" onClick={onOutside} />
+      <div className="pull-card card" aria-label={`${card.name} held`}>
+        <CardFace card={card} />
+      </div>
+      {faces && (
+        <div className="pull-faces" role="group" aria-label="Use card as">
+          {faces.map((face) => (
+            <button
+              key={face.face}
+              type="button"
+              data-face={face.face}
+              className={`pull-face${face.face === "overdrive" ? " overdrive" : ""}`}
+              aria-disabled={face.reason !== undefined}
+              aria-label={face.title}
+              onClick={() => face.reason === undefined && onFace(face.face)}
+            >
+              <span className="face-title">
+                {face.title}
+                {face.cost !== undefined && <span className="face-cost">{face.cost}</span>}
+              </span>
+              <span className="face-effect">{face.effect}</span>
+              {face.reason && <span className="face-reason">{face.reason}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
