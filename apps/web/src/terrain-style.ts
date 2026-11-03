@@ -3,9 +3,16 @@
 
 export const TERRAIN_STYLE = {
   floor: { fill: 0x2c3440, fillAlt: 0x303944, edge: 0x465262 },
-  /** Floor tiles in view of a Hero and out of it; the visibility ticket switches between them. */
+  /** Floor tiles the Squad sees and the fog over the rest. */
   floorLit: { fill: 0x3a4a5e, edge: 0x56708c },
   floorDark: { fill: 0x1e252e, edge: 0x2f3946 },
+  /** Landmarks in the fog: known, but dark. */
+  primeZoneDark: { fill: 0x12292c, edge: 0x1d6b66 },
+  spawnMarkerDark: 0x1d6b66,
+  /** How much of a standing piece shows in the fog (0 to 1). */
+  fogPieceAlpha: 0.45,
+  /** Soft light around an own Hero. */
+  heroLight: { color: 0x9fc4e8, alpha: 0.18 },
   primeZone: { fill: 0x184648, edge: 0x2ec4b6 },
   primeZoneEdge: { fill: 0x1e3440, edge: 0x2ec4b6 },
   spawnMarker: 0x2ec4b6,

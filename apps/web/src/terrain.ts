@@ -61,6 +61,8 @@ export interface TerrainTile {
   kind: TileKind;
   /** Rotated depth of the tile; larger is nearer the viewer. */
   depth: number;
+  /** Whether the Squad sees the tile; false is drawn dark (the fog). Always true when no sight is given. */
+  lit: boolean;
   floor: Face;
   /** A Spawn marker lying on the floor. */
   marker?: { points: number[]; color: number };
@@ -87,7 +89,19 @@ function isNextToPrimeZone(grid: Grid, { col, row }: GridPosition): boolean {
   return false;
 }
 
-function floorStyle(kind: TileKind, { col, row }: GridPosition, nextToZone: boolean): { fill: number; edge: number } {
+/** The tiles drawn lit: those the Squad sees, and the tiles its Heroes stand on. */
+export function litTiles(visibleTiles: readonly GridPosition[], heroPositions: readonly GridPosition[]): ReadonlySet<string> {
+  return new Set([...visibleTiles, ...heroPositions].map(tileKey));
+}
+
+const tileKey = ({ col, row }: GridPosition) => `${col},${row}`;
+
+/** `lit` undefined means no sight is applied: plain colours. */
+function floorStyle(kind: TileKind, { col, row }: GridPosition, nextToZone: boolean, lit: boolean | undefined): { fill: number; edge: number } {
+  if (lit !== undefined) {
+    if (!lit) return kind === TileKind.PrimeZone ? TERRAIN_STYLE.primeZoneDark : TERRAIN_STYLE.floorDark;
+    return kind === TileKind.PrimeZone ? TERRAIN_STYLE.primeZone : TERRAIN_STYLE.floorLit;
+  }
   if (kind === TileKind.PrimeZone) return TERRAIN_STYLE.primeZone;
   if (kind === TileKind.Floor && nextToZone) return TERRAIN_STYLE.primeZoneEdge;
   const { fill, fillAlt, edge } = TERRAIN_STYLE.floor;
@@ -201,7 +215,7 @@ function pieceFaces(proj: Projection, position: GridPosition, choice: PieceChoic
 }
 
 /** Every tile of the grid as drawing primitives, sorted so that nearer tiles come last. */
-export function buildTerrain(grid: Grid, angle: number = VIEW_ANGLE): TerrainTile[] {
+export function buildTerrain(grid: Grid, angle: number = VIEW_ANGLE, lit?: ReadonlySet<string>): TerrainTile[] {
   const proj = projection(angle);
   const tiles: TerrainTile[] = [];
   grid.tiles.forEach((line, row) =>
@@ -209,14 +223,16 @@ export function buildTerrain(grid: Grid, angle: number = VIEW_ANGLE): TerrainTil
       const position = { col, row };
       const ground = (dCol: number, dRow: number, scale = 1) => proj.point(col + dCol * scale, row + dRow * scale);
       const diamond = (scale: number) => flat([ground(-0.5, -0.5, scale), ground(0.5, -0.5, scale), ground(0.5, 0.5, scale), ground(-0.5, 0.5, scale)]);
-      const style = floorStyle(kind, position, isNextToPrimeZone(grid, position));
+      const isLit = lit?.has(tileKey(position));
+      const style = floorStyle(kind, position, isNextToPrimeZone(grid, position), isLit);
       const tile: TerrainTile = {
         position,
         kind,
         depth: proj.depth(col, row),
+        lit: isLit ?? true,
         floor: { role: FaceRole.Floor, points: diamond(1), ...style },
       };
-      if (kind === TileKind.Spawn) tile.marker = { points: diamond(0.5), color: TERRAIN_STYLE.spawnMarker };
+      if (kind === TileKind.Spawn) tile.marker = { points: diamond(0.5), color: tile.lit ? TERRAIN_STYLE.spawnMarker : TERRAIN_STYLE.spawnMarkerDark };
       const choice = choosePiece(grid, position);
       if (choice) tile.piece = pieceFaces(proj, position, choice);
       tiles.push(tile);

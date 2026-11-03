@@ -1,6 +1,6 @@
 import { parseGrid, REACTOR_DECK, TileKind } from "game-core";
 import { describe, expect, it } from "vitest";
-import { buildTerrain, choosePiece, FaceRole, gridToWorld, Join, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE } from "./terrain";
+import { buildTerrain, choosePiece, FaceRole, gridToWorld, Join, litTiles, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE } from "./terrain";
 import { PIECE_SHAPE, TERRAIN_STYLE } from "./terrain-style";
 
 const flatPoints = (points: number[]) => Array.from({ length: points.length / 2 }, (_, i) => ({ x: points[i * 2]!, y: points[i * 2 + 1]! }));
@@ -154,5 +154,40 @@ describe("pickWallAt", () => {
     expect(pickWallAt(x + 50, y - 10, grid)).toBeUndefined();
     expect(pickWallAt(x - 60, y - 90, grid)).toBeUndefined();
     expect(pickWallAt(x + 60, y - 90, grid)).toBeUndefined();
+  });
+});
+
+describe("tile brightness from sight", () => {
+  const grid = parseGrid(["S.#.P", "....."]);
+  const seen = [
+    { col: 0, row: 0 },
+    { col: 1, row: 0 },
+    { col: 1, row: 1 },
+  ];
+  const tiles = buildTerrain(grid, VIEW_ANGLE, litTiles(seen, [{ col: 0, row: 1 }]));
+  const at = (col: number, row: number) => tiles.find((t) => t.position.col === col && t.position.row === row)!;
+
+  it("draws a visible tile lit and the tile of an own Hero lit even when it is not visible", () => {
+    expect(at(1, 0).lit).toBe(true);
+    expect(at(1, 0).floor.fill).toBe(TERRAIN_STYLE.floorLit.fill);
+    expect(at(0, 1).lit).toBe(true);
+  });
+
+  it("draws a tile that is not visible, such as the one behind a Wall, dark", () => {
+    expect(at(3, 0).lit).toBe(false);
+    expect(at(3, 0).floor.fill).toBe(TERRAIN_STYLE.floorDark.fill);
+  });
+
+  it("keeps the Prime Zone, Spawns and Walls faintly visible in the fog", () => {
+    expect(at(4, 0).floor.fill).toBe(TERRAIN_STYLE.primeZoneDark.fill);
+    expect(at(4, 0).floor.fill).not.toBe(TERRAIN_STYLE.floorDark.fill);
+    expect(at(2, 0).lit).toBe(false);
+    expect(at(2, 0).piece).toBeDefined();
+    const dark = buildTerrain(grid, VIEW_ANGLE, litTiles([], []));
+    expect(dark.find((t) => t.kind === TileKind.Spawn)?.marker?.color).toBe(TERRAIN_STYLE.spawnMarkerDark);
+  });
+
+  it("draws every tile lit when no sight is given", () => {
+    expect(buildTerrain(grid).every((t) => t.lit)).toBe(true);
   });
 });
