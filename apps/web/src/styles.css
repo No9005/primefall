@@ -183,6 +183,21 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   .burn-minus { animation: burn-fade 900ms ease-out forwards; }
   @keyframes burn-fade { 0% { opacity: 1; } 100% { opacity: 0; } }
 }
+/* The shuffle animation (issue 204): a small stack flies from the Discard to the Deck pile and is riffled into it twice. */
+.deck-shuffle, .shuffle-flash { position: absolute; inset: 0; pointer-events: none; }
+.shuffle-card { position: absolute; inset: 0; border-radius: var(--radius-s); background: var(--panel) repeating-linear-gradient(45deg, var(--panel) 0 6px, var(--graphite) 6px 12px); border: 2px solid var(--teal); box-sizing: border-box; opacity: 0; animation: shuffle-card 1900ms ease-in-out forwards; }
+/* 0 to 26 %: fly in from the Discard; then per riffle split (45 %, 82 %) and merge (63 %, 100 %). Mirrors SHUFFLE_TIMELINE. */
+@keyframes shuffle-card {
+  0% { opacity: 1; transform: translate(-6px, -48px) scale(0.7); }
+  26% { opacity: 1; transform: translate(0, var(--lift)) scale(0.95); }
+  45% { opacity: 1; transform: translate(calc(var(--side) * 22px), var(--lift)) rotate(calc(var(--side) * 6deg)) scale(0.95); }
+  63% { opacity: 1; transform: translate(0, var(--lift)) scale(0.95); }
+  82% { opacity: 1; transform: translate(calc(var(--side) * 22px), var(--lift)) rotate(calc(var(--side) * 6deg)) scale(0.95); }
+  98% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(0, 0) scale(1); }
+}
+.shuffle-flash { border-radius: var(--radius-s); box-shadow: 0 0 0 3px var(--amber); opacity: 0; animation: shuffle-flash 400ms ease-out forwards; }
+@keyframes shuffle-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
 .deck-count { font: 500 24px/1 var(--font-number); color: var(--text); }
 .hand { margin: 0; padding: 12px 0 0; list-style: none; display: flex; height: 146px; position: relative; }
 /* --step and --card-w come from fanSpacing (hand-fan.ts). */

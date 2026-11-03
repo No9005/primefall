@@ -11,6 +11,7 @@ import {
   EffectKind,
   EffectRecipient,
   type EnemyView,
+  EventKind,
   type Grid,
   HERO_DECKS,
   HeroClass,
@@ -45,6 +46,8 @@ import { cardAtX, FAN_WIDTH, fanSpacing } from "./hand-fan";
 import { drawSchedule, newCards, shownDeckCount } from "./hand-draw";
 import { addBurn, type BurnBatch, NO_BURN_PENDING, settleBurn, shownBurnCounts } from "./deck-burn";
 import { DeckBurn } from "./DeckBurn";
+import { addShuffle, NO_SHUFFLE_PENDING, settleShuffle, shownDeckAfterShuffle, shownDiscardCount, SHUFFLE_MS, type ShuffleStep, shuffledWhileDrawing } from "./deck-shuffle";
+import { DeckShuffle } from "./DeckShuffle";
 import type { BoardPick, Point } from "./card-drag";
 import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
 import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
@@ -74,6 +77,8 @@ interface PlaybackState {
   shields: Record<string, number>;
   /** Cards removed from each Hero's Deck so far in the playback (Deck Damage). */
   deckDamage: Record<string, number>;
+  /** Cards shuffled from the Discard into each Hero's Deck so far in the playback. */
+  shuffled: Record<string, number>;
   exhausted: string[];
   /** Heroes hit in the frame being shown. */
   hit: string[];
@@ -377,6 +382,7 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
 }
 
 const NO_CARDS: readonly CardIndex[] = [];
+const noop = () => {};
 
 interface DrawState {
   view: SquadView;
@@ -387,14 +393,23 @@ interface DrawState {
   cards: readonly CardIndex[];
   /** How many of them have left the Deck pile. */
   departed: number;
+  /** Cards the draw shuffled from the Discard into the Deck before it went on (0 for none), with the Deck count before. */
+  shuffled: number;
+  deckBefore: number;
+  /** The shuffle has ended; the cards fly only after it. */
+  shuffleDone: boolean;
   done: boolean;
 }
 
-/** The draw of a Round: nothing flies with reduced motion, or when no card is new. */
-function startDraw(view: SquadView, previousHand: readonly CardIndex[] | undefined): DrawState {
+/**
+ * The draw of a Round: nothing flies with reduced motion, or when no card is new. `deckBefore` is the Deck count the
+ * Resolution left; when the draw needed more cards than that, the Discard was shuffled in first.
+ */
+function startDraw(view: SquadView, previousHand: readonly CardIndex[] | undefined, deckBefore: number | undefined): DrawState {
   const hero = view.heroes.find((candidate) => candidate.heroClass === PLAYER_HERO_CLASS)!;
   const cards = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? [] : newCards(previousHand, hero.hand);
-  return { view, heroId: hero.id, hand: hero.hand, cards, departed: 0, done: cards.length === 0 };
+  const shuffled = deckBefore === undefined ? 0 : shuffledWhileDrawing(deckBefore, cards.length, hero.deckCount);
+  return { view, heroId: hero.id, hand: hero.hand, cards, departed: 0, shuffled, deckBefore: deckBefore ?? 0, shuffleDone: shuffled === 0, done: cards.length === 0 };
 }
 
 interface PlanningScreenProps {
@@ -425,8 +440,12 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   const [overdriveAim, setOverdriveAim] = useState(false);
   const [playback, setPlayback] = useState<PlaybackState>();
   // The Deck Damage animation (issue 203): hits on the player's Heroes wait in a queue and burn one batch at a time.
-  const [burnQueue, setBurnQueue] = useState<readonly BurnBatch[]>([]);
+  // The shuffle animation (issue 204) waits in the same line, so it plays after the cards burned before it.
+  const [burnQueue, setBurnQueue] = useState<readonly (BurnBatch | ShuffleStep)[]>([]);
+  const burnQueueRef = useRef(burnQueue);
+  burnQueueRef.current = burnQueue;
   const [burnPending, setBurnPending] = useState(NO_BURN_PENDING);
+  const [shufflePending, setShufflePending] = useState(NO_SHUFFLE_PENDING);
   const burnId = useRef(0);
   const unmounted = useRef(false);
   useEffect(() => {
@@ -445,18 +464,23 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
 
   // The draw animation: the cards new in the player's Hand fly in one after the other (hand-draw.ts). The state is
   // derived while rendering the first time a view is seen, so no card shows face up before it has flown.
-  const [draw, setDraw] = useState(() => startDraw(view, undefined));
-  if (draw.view !== view) setDraw(startDraw(view, draw.hand));
+  // The Deck count the last Resolution left for the player's Hero, to see whether the draw shuffled the Discard in.
+  const deckAfterResolution = useRef<number | undefined>(undefined);
+  const [draw, setDraw] = useState(() => startDraw(view, undefined, undefined));
+  if (draw.view !== view) setDraw(startDraw(view, draw.hand, deckAfterResolution.current));
   const drawing = !draw.done && selected.id === draw.heroId;
   useEffect(() => {
     if (draw.done || draw.view !== view) return;
     const forThisView = (change: (state: DrawState) => DrawState) => (state: DrawState) => (state.view === view ? change(state) : state);
+    // The cards fly only after a shuffle that the draw needed has ended.
+    const wait = draw.shuffled > 0 ? SHUFFLE_MS : 0;
     const timers = draw.cards.map((_, order) =>
-      setTimeout(() => setDraw(forThisView((state) => ({ ...state, departed: Math.max(state.departed, order + 1) }))), drawSchedule(order).start),
+      setTimeout(() => setDraw(forThisView((state) => ({ ...state, departed: Math.max(state.departed, order + 1) }))), wait + drawSchedule(order).start),
     );
-    timers.push(setTimeout(() => setDraw(forThisView((state) => ({ ...state, done: true }))), drawSchedule(draw.cards.length - 1).landed));
+    timers.push(setTimeout(() => setDraw(forThisView((state) => ({ ...state, shuffleDone: true }))), wait));
+    timers.push(setTimeout(() => setDraw(forThisView((state) => ({ ...state, done: true }))), wait + drawSchedule(draw.cards.length - 1).landed));
     // A tap anywhere finishes the animation at once.
-    const skip = () => setDraw(forThisView((state) => ({ ...state, departed: state.cards.length, done: true })));
+    const skip = () => setDraw(forThisView((state) => ({ ...state, departed: state.cards.length, shuffleDone: true, done: true })));
     window.addEventListener("pointerdown", skip, true);
     return () => {
       timers.forEach(clearTimeout);
@@ -466,11 +490,15 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
 
   const burning = burnQueue[0];
   const burnCounts = shownBurnCounts(
-    selected.deckCount - (playback?.deckDamage[selected.id] ?? 0),
+    selected.deckCount - (playback?.deckDamage[selected.id] ?? 0) + (playback?.shuffled[selected.id] ?? 0),
     selected.exileCount + (playback?.deckDamage[selected.id] ?? 0),
     burnPending,
     selected.id,
   );
+  const shownDeck = shownDeckAfterShuffle(burnCounts.deck, shufflePending, selected.id);
+  const shownDiscard = shownDiscardCount(selected.discardCount, playback?.shuffled[selected.id] ?? 0, shufflePending, selected.id);
+  const shuffleWhileDrawing = drawing && draw.shuffled > 0 && !draw.shuffleDone;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // The AI allies plan from the same view, so their plan is known before Commit and does not change with ours.
   const [allyPlan, setAllyPlan] = useState<SquadPlan>();
@@ -839,20 +867,36 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     );
     const shields: Record<string, number> = {};
     const deckDamage: Record<string, number> = {};
+    const shuffled: Record<string, number> = {};
+    const playerHero = view.heroes.find((hero) => hero.heroClass === PLAYER_HERO_CLASS)!;
     const exhausted: string[] = [];
     const lines: string[] = [];
     const tickCount = tickCountOf(result.events);
     setLog([]);
-    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, exhausted, hit: [], log: lines, lines: [] });
+    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], log: lines, lines: [] });
     for (const frame of buildPlaybackFrames(result.events)) {
       Object.assign(positions, frame.moves);
       for (const [heroId, amount] of Object.entries(frame.shields)) shields[heroId] = (shields[heroId] ?? 0) + amount;
       for (const { targetId, damage, absorbed } of frame.hits) {
         shields[targetId] = Math.max(0, (shields[targetId] ?? 0) - absorbed);
         deckDamage[targetId] = (deckDamage[targetId] ?? 0) + damage;
-        if (damage > 0 && view.heroes.some((hero) => hero.id === targetId)) {
-          setBurnPending((pending) => addBurn(pending, targetId, damage));
-          setBurnQueue((queued) => [...queued, { id: burnId.current++, heroId: targetId, cards: damage }]);
+      }
+      // Burns and shuffles queue in the order of the events, so a shuffle in the middle of a hit plays after the cards
+      // burned before it and before the cards that burn after it.
+      for (const event of frame.events) {
+        const isOwn = view.heroes.some((hero) => hero.id === (event.targetId ?? event.heroId));
+        if (event.kind === EventKind.AttackHit && (event.damage ?? 0) > 0 && isOwn) {
+          const heroId = event.targetId!;
+          setBurnPending((pending) => addBurn(pending, heroId, event.damage!));
+          setBurnQueue((queued) => [...queued, { kind: "burn", id: burnId.current++, heroId, cards: event.damage! }]);
+        }
+        if (event.kind === EventKind.DeckShuffled) {
+          shuffled[event.heroId] = (shuffled[event.heroId] ?? 0) + (event.amount ?? 0);
+          if (event.heroId === playerHero.id) {
+            const cards = event.amount ?? 0;
+            setShufflePending((pending) => addShuffle(pending, event.heroId, cards));
+            setBurnQueue((queued) => [...queued, { kind: "shuffle", id: burnId.current++, heroId: event.heroId, cards }]);
+          }
         }
       }
       exhausted.push(...frame.exhausted);
@@ -863,6 +907,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         positions: { ...positions },
         shields: { ...shields },
         deckDamage: { ...deckDamage },
+        shuffled: { ...shuffled },
         exhausted: [...exhausted],
         hit: frame.hits.map((hit) => hit.targetId),
         log: [...lines],
@@ -871,9 +916,17 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       await new Promise((resolve) => setTimeout(resolve, STEP_MS));
       if (unmounted.current) return;
     }
+    // Let the pile animations that are still queued (a shuffle at the very end of the Resolution) play out.
+    const patience = Date.now() + 10_000;
+    while (burnQueueRef.current.length > 0 && Date.now() < patience) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (unmounted.current) return;
+    }
+    deckAfterResolution.current = playerHero.deckCount - (deckDamage[playerHero.id] ?? 0) + (shuffled[playerHero.id] ?? 0);
     setLog(lines);
     setBurnQueue([]);
     setBurnPending(NO_BURN_PENDING);
+    setShufflePending(NO_SHUFFLE_PENDING);
     setPlayback(undefined);
     setQueue([]);
     setPitched([]);
@@ -978,22 +1031,38 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       )}
       <div className={`hud hand-bar${picking ? " collapsed" : ""}`}>
         <PilePanel
-          deck={shownDeckCount(burnCounts.deck, drawing ? draw.cards.length : 0, draw.departed)}
-          discard={selected.discardCount}
+          deck={shuffleWhileDrawing ? draw.deckBefore : shownDeckCount(shownDeck, drawing ? draw.cards.length : 0, draw.departed)}
+          discard={shownDiscard}
           exile={burnCounts.exile}
           opacity={focus.deck}
           burn={
-            burning && (
-              <DeckBurn
-                key={burning.id}
-                cards={burning.cards}
-                visible={burning.heroId === selected.id}
-                reducedMotion={window.matchMedia("(prefers-reduced-motion: reduce)").matches}
-                onLifted={() => setBurnPending((pending) => settleBurn(pending, burning.heroId, "lifted"))}
-                onBurned={() => setBurnPending((pending) => settleBurn(pending, burning.heroId, "burned"))}
-                onDone={() => setBurnQueue((queued) => queued.filter((batch) => batch.id !== burning.id))}
-              />
-            )
+            <>
+              {burning?.kind === "burn" && (
+                <DeckBurn
+                  key={burning.id}
+                  cards={burning.cards}
+                  visible={burning.heroId === selected.id}
+                  reducedMotion={reducedMotion}
+                  onLifted={() => setBurnPending((pending) => settleBurn(pending, burning.heroId, "lifted"))}
+                  onBurned={() => setBurnPending((pending) => settleBurn(pending, burning.heroId, "burned"))}
+                  onDone={() => setBurnQueue((queued) => queued.filter((batch) => batch.id !== burning.id))}
+                />
+              )}
+              {burning?.kind === "shuffle" && (
+                <DeckShuffle
+                  key={burning.id}
+                  cards={burning.cards}
+                  visible={burning.heroId === selected.id}
+                  reducedMotion={reducedMotion}
+                  onStart={() => setShufflePending((pending) => settleShuffle(pending, burning.heroId, "started", burning.cards))}
+                  onDone={() => {
+                    setShufflePending((pending) => settleShuffle(pending, burning.heroId, "ended", burning.cards));
+                    setBurnQueue((queued) => queued.filter((step) => step.id !== burning.id));
+                  }}
+                />
+              )}
+              {shuffleWhileDrawing && <DeckShuffle cards={draw.shuffled} visible reducedMotion={false} onStart={noop} onDone={noop} />}
+            </>
           }
         />
         <div className="hand-column">

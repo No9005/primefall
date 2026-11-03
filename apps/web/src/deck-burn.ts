@@ -13,6 +13,7 @@ export function burnSchedule(order: number): { lift: number; burned: number } {
 
 /** A hit that removes `cards` cards from the Deck of a Hero; batches wait in line so one burn starts after the other. */
 export interface BurnBatch {
+  kind: "burn";
   id: number;
   heroId: string;
   cards: number;
