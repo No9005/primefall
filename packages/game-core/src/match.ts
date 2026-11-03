@@ -13,7 +13,9 @@ import {
   Visibility,
 } from "./host";
 import { chebyshevDistance } from "./plan";
-import { destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, REACTOR_DECK, TileKind } from "./reactor-deck";
+import { destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, REACTOR_DECK, TileKind } from "./reactor-deck";
+
+const samePosition = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
 
 export interface HeroState {
   id: string;
@@ -97,6 +99,8 @@ export interface MatchState {
   grid: Grid;
   /** Per Squad: the destroyed Cover tiles it has seen destroyed or looked at since (Fog of War). */
   knownDestroyedCover: Record<SquadId, GridPosition[]>;
+  /** Per Squad: the Cover left by Exhausted Heroes (`grid.wrecks`) that it has seen and not seen destroyed since. */
+  knownWrecks: Record<SquadId, GridPosition[]>;
   placedCover: PlacedCover[];
   revealedAreas: ActiveReveal[];
   /** The Squad that controls the Prime Zone and for how many consecutive Resolutions (ADR 0010). */
@@ -141,6 +145,7 @@ export function createMatch(seed: number): MatchState {
     ghosts: { [SquadId.Left]: {}, [SquadId.Right]: {} },
     grid: REACTOR_DECK,
     knownDestroyedCover: { [SquadId.Left]: [], [SquadId.Right]: [] },
+    knownWrecks: { [SquadId.Left]: [], [SquadId.Right]: [] },
     placedCover: [],
     revealedAreas: [],
     primeZone: { progress: 0 },
@@ -242,6 +247,14 @@ export function recordSightings(match: MatchState): void {
         known.push(tile);
       }
     }
+    // A Squad's own wrecks are known at once, others when seen; a seen wreck that is gone is forgotten.
+    const own = (tile: GridPosition) =>
+      match.heroes.some((hero) => hero.squad === squad && hero.exhausted && samePosition(hero.position, tile));
+    const wrecks = (match.grid.wrecks ?? []).filter((tile) => own(tile) || canSquadSee(match, squad, tile));
+    match.knownWrecks[squad] = [
+      ...match.knownWrecks[squad].filter((tile) => !canSquadSee(match, squad, tile) || isWreck(match.grid, tile)),
+      ...wrecks,
+    ].filter((tile, i, all) => all.findIndex((other) => samePosition(other, tile)) === i);
     for (const enemy of match.heroes.filter((hero) => hero.squad !== squad)) {
       if (!canSquadSeeHero(match, squad, enemy)) continue;
       match.ghosts[squad][enemy.id] = {
@@ -302,6 +315,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   // Cover that was destroyed out of sight still looks intact to this Squad.
   const destroyedCover = match.knownDestroyedCover[squad].map((tile) => ({ ...tile }));
   // Placed Cover is known to the Squad that placed it and to a Squad that sees the tile.
+  const wreckCover = match.knownWrecks[squad].map((tile) => ({ ...tile }));
   const placedCover = match.placedCover
     .filter((cover) => cover.squad === squad || canSquadSee(match, squad, cover.position))
     .map((cover) => ({ ...cover.position }));
@@ -315,6 +329,6 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
     }
   }
   return {
-    squad, round: match.round, roundLimit: ROUND_LIMIT, primeProgress, ...result, destroyedCover, placedCover, revealedAreas, visibleTiles, heroes, enemies,
+    squad, round: match.round, roundLimit: ROUND_LIMIT, primeProgress, ...result, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, enemies,
   };
 }

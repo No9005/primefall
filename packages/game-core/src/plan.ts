@@ -381,7 +381,7 @@ const SLOWED_MOVE_DISTANCE = 1;
  * by a Wall is not a collision. Heroes that stop short start their next Move from where they stopped.
  */
 export function findMoveCollisions(heroes: readonly HeroView[], plans: readonly SquadPlan[]): MoveCollision[] {
-  const positions = new Map(heroes.map((hero) => [hero.id, { ...hero.position }]));
+  const positions = new Map(heroes.filter((hero) => !hero.exhausted).map((hero) => [hero.id, { ...hero.position }]));
   const slowed = new Set(heroes.filter((hero) => hero.slowed).map((hero) => hero.id));
   const extended = new Map<string, number>();
   const queues = plans.flatMap((plan) => plan.heroes).filter(({ heroId }) => positions.has(heroId));

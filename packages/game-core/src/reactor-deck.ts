@@ -21,6 +21,11 @@ export interface Grid {
   height: number;
   /** Indexed as `tiles[row][col]`. */
   tiles: readonly (readonly TileKind[])[];
+  /**
+   * Half Cover left by Exhausted Heroes, kept apart from `tiles` so a Prime Zone tile stays a Prime Zone tile.
+   * Absent when there is none.
+   */
+  wrecks?: readonly GridPosition[];
 }
 
 // Raw characters only exist here, at the parsing boundary.
@@ -72,6 +77,12 @@ export const COVER_IGNORED_RANGE = 1;
 
 /** The Overwatch Nest is a Full Cover tile (ADR 0016). */
 export function coverAt(grid: Grid, position: GridPosition): CoverKind {
+  const tileCover = tileCoverAt(grid, position);
+  return tileCover === CoverKind.None && isWreck(grid, position) ? CoverKind.Half : tileCover;
+}
+
+/** The Cover of the tile itself, without wrecks. */
+function tileCoverAt(grid: Grid, position: GridPosition): CoverKind {
   switch (tileAt(grid, position)) {
     case TileKind.FullCover:
     case TileKind.OverwatchNest:
@@ -81,6 +92,15 @@ export function coverAt(grid: Grid, position: GridPosition): CoverKind {
     default:
       return CoverKind.None;
   }
+}
+
+/** Whether an Exhausted Hero left Half Cover on the tile (and it has not been destroyed). */
+export const isWreck = (grid: Grid, position: GridPosition): boolean =>
+  grid.wrecks?.some((wreck) => wreck.col === position.col && wreck.row === position.row) ?? false;
+
+/** A copy of the Grid with Half Cover left on `position` by an Exhausted Hero; better Cover on the tile stays. */
+export function withWreck(grid: Grid, position: GridPosition): Grid {
+  return isWreck(grid, position) ? grid : { ...grid, wrecks: [...(grid.wrecks ?? []), { ...position }] };
 }
 
 /** A copy of the Grid with the tile at `position` set to `kind`. */
@@ -96,7 +116,11 @@ export function withTile(grid: Grid, position: GridPosition, kind: TileKind): Gr
  * occupied but no longer protects or blocks Line of Sight. Tiles without Cover stay as they are.
  */
 export function destroyCover(grid: Grid, position: GridPosition): Grid {
-  return coverAt(grid, position) === CoverKind.None ? grid : withTile(grid, position, TileKind.Floor);
+  if (coverAt(grid, position) === CoverKind.None) return grid;
+  const wrecks = grid.wrecks?.filter((wreck) => wreck.col !== position.col || wreck.row !== position.row);
+  const cleared: Grid = wrecks ? { ...grid, wrecks } : grid;
+  // A wreck on a Prime Zone (or any tile without Cover of its own) only loses the wreck; the tile keeps its kind.
+  return tileCoverAt(cleared, position) === CoverKind.None ? cleared : withTile(cleared, position, TileKind.Floor);
 }
 
 export const isWall = (position: GridPosition) => tileAt(REACTOR_DECK, position) === TileKind.Wall;

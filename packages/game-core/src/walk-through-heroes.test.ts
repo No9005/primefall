@@ -85,7 +85,7 @@ describe("Heroes that move do not hinder each other (ADR 0013)", () => {
     expect(events.map(({ kind }) => kind)).toEqual([EventKind.MoveBlocked]);
   });
 
-  it("does not let a Hero walk through a Hero on a Wait or an Exhausted Hero", () => {
+  it("does not let a Hero walk through a Hero on a Wait, but an Exhausted Hero is no obstacle", () => {
     const match = matchWith({ [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(9) });
     const bruiser = movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(10) });
     const wait = { heroId: LEFT_CONTROLLER, queue: [{ kind: ActionKind.Wait as const }] };
@@ -96,7 +96,7 @@ describe("Heroes that move do not hinder each other (ADR 0013)", () => {
     const exhausted = matchWith({ [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(9) });
     exhausted.heroes.find((hero) => hero.id === LEFT_CONTROLLER)!.exhausted = true;
     const { match: afterExhausted } = resolveRound(exhausted, [movePlan(exhausted, SquadId.Left, { [LEFT_BRUISER]: at(10) })]);
-    expect(positionOf(afterExhausted, LEFT_BRUISER)).toEqual(at(8));
+    expect(positionOf(afterExhausted, LEFT_BRUISER)).toEqual(at(10));
   });
 
   it("makes the Hero behind a Hero whose step fails fail too", () => {

@@ -1,4 +1,4 @@
-import { type Grid, type GridPosition, TileKind } from "game-core";
+import { type Grid, type GridPosition, isWreck, TileKind } from "game-core";
 import { OUTLINE, PIECE_SHAPE, type PieceStyle, TERRAIN_STYLE } from "./terrain-style";
 
 // The terrain as shapes: the grid and a view angle in, drawing primitives out (floor polygons, and for each
@@ -205,7 +205,10 @@ export interface PieceChoice {
 /** Which standing piece to draw on a tile, chosen from its four neighbours; undefined for open tiles. */
 export function choosePiece(grid: Grid, { col, row }: GridPosition): PieceChoice | undefined {
   const kind = PIECE_KINDS[grid.tiles[row]?.[col] as TileKind];
-  if (!kind) return undefined;
+  if (!kind) {
+    // Half Cover left by an Exhausted Hero is a low slab of its own that joins no neighbour.
+    return isWreck(grid, { col, row }) ? { kind: "halfCover", form: FORM_BY_MASK[0]!, joins: 0 } : undefined;
+  }
   const neighbours = [
     [Join.West, col - 1, row],
     [Join.North, col, row - 1],

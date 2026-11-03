@@ -113,7 +113,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Spawn one Squad on the left edge (column 1, rows 7–9) and the other on the right edge (column 29, rows 7–9), without direct Line of Sight into the Prime Zone.
 - Implement three Hero classes: Bruiser/Vanguard, Controller/Tactician, and Assassin/Striker.
 - Give each Hero a fixed 12-card Deck with no Flex cards.
-- Implement Deck-as-Life: unblocked damage removes cards from the top of the target’s Deck; an empty Deck causes Exhaustion.
+- Implement Deck-as-Life: unblocked damage removes cards from the top of the target’s Deck; an empty Deck causes Exhaustion. An Exhausted Hero is out of the match and its tile becomes Half Cover (it does not obstruct Moves; Cover-destroying effects such as Breach Charge destroy it; a Prime Zone tile stays a Prime Zone tile).
 - Implement Shield as a round-scoped defensive value created through Block 2.
 - A **Wait** button next to the Queue slots of the selected Hero adds a Wait (an hourglass slot that needs no card and no Energy and can be removed like any other slot) to the first free slot.
 - Distances use Chebyshev distance and movement is 8-directional; Cover is occupiable and ignored by attackers at Range 1; Pitch is a planning step; a Hero's queue has at most 4 actions (ADR 0020).

@@ -9,6 +9,7 @@ import {
   TileKind,
   tileAt,
   withTile,
+  withWreck,
 } from "game-core";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
 import { type MutableRefObject, useEffect, useRef, useState } from "react";
@@ -208,6 +209,8 @@ interface BoardProps {
   destroyedCover: readonly GridPosition[];
   /** Temporary Half Cover the Squad knows of: drawn as Half Cover with a cyan outline. */
   placedCover: readonly GridPosition[];
+  /** Half Cover left by Exhausted Heroes the Squad knows of: a low slab under the downed figure. */
+  wreckCover: readonly GridPosition[];
   /** Areas a Scout Drone reveals: tinted yellow. */
   revealedAreas: readonly RevealedArea[];
   /** Tiles the Squad sees; every other tile is drawn dark. */
@@ -270,6 +273,7 @@ const FRAME_MS = 250;
 export function Board({
   destroyedCover,
   placedCover,
+  wreckCover,
   revealedAreas,
   visibleTiles,
   heroes,
@@ -462,7 +466,8 @@ export function Board({
     if (!terrain) return;
     const { floor, objects, planning } = terrain;
     const known = destroyedCover.reduce(destroyCover, REACTOR_DECK);
-    const grid = placedCover.reduce((current, tile) => withTile(current, tile, TileKind.HalfCover), known);
+    const withPlaced = placedCover.reduce((current, tile) => withTile(current, tile, TileKind.HalfCover), known);
+    const grid = wreckCover.reduce(withWreck, withPlaced);
     const created: Container[] = [];
     // Floor tiles share one shape layer; standing pieces are drawn per tile and sort with the Heroes by depth.
     const ground = new Graphics();
@@ -518,7 +523,7 @@ export function Board({
       }
     }
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [terrain, angle, strokeScale, destroyedCover, placedCover, revealedAreas, visibleTiles, heroes]);
+  }, [terrain, angle, strokeScale, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes]);
 
   useEffect(() => {
     const element = host.current;

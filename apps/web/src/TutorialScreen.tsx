@@ -41,6 +41,7 @@ function SightBoard() {
       <Board
         destroyedCover={NOTHING}
         placedCover={NOTHING}
+        wreckCover={NOTHING}
         revealedAreas={NOTHING}
         visibleTiles={SIGHT_SCENE.visibleTiles}
         heroes={SIGHT_HEROES}
