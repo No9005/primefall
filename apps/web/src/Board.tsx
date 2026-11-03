@@ -147,6 +147,8 @@ interface BoardProps {
   zoneLabels: readonly { position: GridPosition; text: string }[];
   /** While a card is dragged: a tinted area (the Range of a card played here). */
   areaTiles: readonly GridPosition[];
+  /** The tile a dragged card would be dropped on (after snapping), drawn like a pressed tile. */
+  dropTile?: GridPosition;
   /** While aiming an Attack: the lines of fire to Visible enemies. A target whose shot cannot hit is not ringed. */
   shotLines: readonly ShotDrawing[];
   /** Filled with a function that tells what the board has under a viewport point, for dropping a dragged card. */
@@ -174,6 +176,7 @@ export function Board({
   moveFrameHero,
   zoneLabels,
   areaTiles,
+  dropTile,
   shotLines,
   pickRef,
 }: BoardProps) {
@@ -231,9 +234,10 @@ export function Board({
       overlay.addChild(highlight);
       created.push(highlight);
     }
-    if (pressed) {
+    const previewTile = dropTile ?? pressed;
+    if (previewTile) {
       // The tile under the finger, drawn larger than the tile so the finger does not hide it.
-      const { x, y } = gridToWorld(pressed, angle);
+      const { x, y } = gridToWorld(previewTile, angle);
       const preview = new Graphics().poly(diamond).fill({ color: 0xffffff, alpha: 0.3 }).stroke({ width: 6, color: 0xffffff });
       preview.position.set(x, y);
       preview.scale.set(1.15);
@@ -268,7 +272,7 @@ export function Board({
       created.push(line);
     }
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [overlay, angle, highlights, markers, pressed, zoneLabels, areaTiles, shotLines]);
+  }, [overlay, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, shotLines]);
 
   useEffect(() => {
     if (!tokens) return;
@@ -505,7 +509,7 @@ export function Board({
 
       const pick = (viewX: number, viewY: number) => {
         const { x, y } = viewToWorld(viewX, viewY, app.screen.width, app.screen.height, undefined, camera);
-        return { x, y, target: resolveTap(x, y, candidatesRef.current, undefined, angleRef.current) };
+        return { x, y, target: resolveTap(x, y, candidatesRef.current, undefined, angleRef.current, camera.scale) };
       };
       pickRef.current = ({ x: clientX, y: clientY }) => {
         const rect = app.canvas.getBoundingClientRect();

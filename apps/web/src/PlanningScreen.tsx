@@ -810,6 +810,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         highlights={dragLit?.tiles ?? highlights}
         zoneLabels={dragLit?.labels ?? NO_LABELS}
         areaTiles={dragLit?.area ?? NO_TILES}
+        dropTile={drag?.probe.drop?.tile}
         shotLines={shotLines}
         pickRef={pickBoard}
         markers={markers}
