@@ -71,8 +71,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .enemy-panel .hero-row { cursor: default; }
 .enemy-panel .hero-row.ghost { opacity: 0.6; border-style: dashed; }
 .enemy-panel .hero-row.unknown { opacity: 0.45; border-style: dotted; }
-/* Free left strip between the Squad panel and the hand bar; the latest lines stay in view, older ones scroll. */
-.commentary { position: absolute; z-index: var(--z-hud); left: calc(6px + env(safe-area-inset-left)); top: calc(6px + env(safe-area-inset-top)); width: 236px; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+/* Resolution commentary: a column at the top, right of the Squad panel (about 230 px wide) and left of the enemy panel, so it covers neither; entries slide in per Tick. */
+.commentary { position: absolute; z-index: var(--z-hud); left: calc(240px + env(safe-area-inset-left)); top: calc(6px + env(safe-area-inset-top)); width: 236px; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
 .commentary-entry { height: 36px; box-sizing: border-box; padding: 3px 8px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; background: color-mix(in srgb, var(--panel) 94%, transparent); border-left: 4px solid var(--steel); border-radius: var(--radius-s); white-space: nowrap; }
 .commentary-entry.own { border-left-color: var(--teal); }
 .commentary-entry.ally { border-left-color: var(--yellow); }
