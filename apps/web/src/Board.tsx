@@ -35,7 +35,8 @@ import {
   zoomOnPoint,
 } from "./board-layout";
 import { buildTerrain, depthOf, type Face, floorOutline, footOffset, litTiles, turnView, VIEW_ANGLE, VIEW_STEP } from "./terrain";
-import { SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
+import { chestOf, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
+import { PathOwner, type PlannedPath } from "./ally-paths";
 import { SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
 
 /** Strokes `segment` as a run of dashes: long for a clear shot, dots for the stopped part, grey after a block. */
@@ -50,6 +51,50 @@ function strokeShotSegment(graphics: Graphics, { from, to, style }: ShotInWorld[
     graphics.lineTo(from.x + ((to.x - from.x) * end) / length, from.y + ((to.y - from.y) * end) / length);
   }
   graphics.stroke({ width: SHOT_STYLE.width, color, alpha: style === SegmentStyle.Beyond ? 0.6 : 1, cap: "round" });
+}
+
+const PATH_COLORS = { [PathOwner.Ally]: 0xffd23f, [PathOwner.Player]: 0x2ec4b6 } as const;
+const COLLISION_COLOR = 0xe5484d;
+
+/** A planned path: a line from the Hero's tile through its Move destinations, a ring with the role letter and Tick at each. */
+function pathGraphics({ owner, letter, from, stops }: PlannedPath, angle: number): Container {
+  const color = PATH_COLORS[owner];
+  const container = new Container();
+  const line = new Graphics();
+  const start = chestOf(from, angle);
+  line.moveTo(start.x, start.y);
+  for (const { tile } of stops) {
+    const point = chestOf(tile, angle);
+    line.lineTo(point.x, point.y);
+  }
+  line.stroke({ width: 5, color, alpha: 0.9, cap: "round", join: "round" });
+  container.addChild(line);
+  for (const { tile, tick } of stops) {
+    const point = chestOf(tile, angle);
+    const marker = new Container();
+    marker.position.set(point.x, point.y);
+    marker.addChild(new Graphics().circle(0, 0, 16).fill({ color: 0x12161c, alpha: 0.55 }).stroke({ width: 4, color }));
+    const role = new Text({ text: letter, style: { fill: color, fontSize: 18, fontWeight: "700" } });
+    role.anchor.set(0.5);
+    const number = new Text({ text: String(tick), style: { fill: 0x12161c, fontSize: 14, fontWeight: "700" } });
+    number.anchor.set(0.5);
+    number.position.set(14, -14);
+    marker.addChild(role, new Graphics().circle(14, -14, 9).fill(color), number);
+    container.addChild(marker);
+  }
+  return container;
+}
+
+/** The red cross on the destination of a Move that will fail through another Hero of the Squad. */
+function collisionCross(tile: GridPosition, angle: number): Graphics {
+  const { x, y } = chestOf(tile, angle);
+  const size = 12;
+  return new Graphics()
+    .moveTo(x - size, y - size)
+    .lineTo(x + size, y + size)
+    .moveTo(x + size, y - size)
+    .lineTo(x - size, y + size)
+    .stroke({ width: 6, color: COLLISION_COLOR, cap: "round" });
 }
 
 function shotGraphics(drawing: ShotDrawing, angle: number): Graphics {
@@ -151,6 +196,10 @@ interface BoardProps {
   dropTile?: GridPosition;
   /** While aiming an Attack: the lines of fire to Visible enemies. A target whose shot cannot hit is not ringed. */
   shotLines: readonly ShotDrawing[];
+  /** Planning only: the queued Moves of the player's Hero (teal) and the AI allies (yellow). */
+  paths: readonly PlannedPath[];
+  /** Planning only: destinations of Moves that will fail through another Hero of the Squad. */
+  collisionTiles: readonly GridPosition[];
   /** Filled with a function that tells what the board has under a viewport point, for dropping a dragged card. */
   pickRef: MutableRefObject<((point: Point) => BoardPick) | undefined>;
 }
@@ -178,6 +227,8 @@ export function Board({
   areaTiles,
   dropTile,
   shotLines,
+  paths,
+  collisionTiles,
   pickRef,
 }: BoardProps) {
   const host = useRef<HTMLDivElement>(null);
@@ -271,8 +322,18 @@ export function Board({
       overlay.addChild(line);
       created.push(line);
     }
+    for (const path of paths) {
+      const drawn = pathGraphics(path, angle);
+      overlay.addChild(drawn);
+      created.push(drawn);
+    }
+    for (const tile of collisionTiles) {
+      const cross = collisionCross(tile, angle);
+      overlay.addChild(cross);
+      created.push(cross);
+    }
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [overlay, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, shotLines]);
+  }, [overlay, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, shotLines, paths, collisionTiles]);
 
   useEffect(() => {
     if (!tokens) return;

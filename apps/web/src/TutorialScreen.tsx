@@ -56,6 +56,8 @@ function SightBoard() {
         zoneLabels={NOTHING}
         areaTiles={NOTHING}
         shotLines={SIGHT_SHOTS}
+        paths={[]}
+        collisionTiles={[]}
         pickRef={pickRef}
       />
     </div>

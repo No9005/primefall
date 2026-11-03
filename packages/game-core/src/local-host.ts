@@ -49,6 +49,9 @@ function hostFor(initial: MatchState): LocalMatchHost {
     async getSquadView(squad: SquadId): Promise<SquadView> {
       return buildSquadView(match, squad);
     },
+    async getAllyPlan(squad: SquadId, heroIds: readonly string[]): Promise<SquadPlan> {
+      return planSquad(buildSquadView(match, squad), heroIds);
+    },
     async submitPlan(plan: SquadPlan): Promise<SubmitResult> {
       if (match.result) throw new Error("The match is over.");
       const issues =validatePlan(buildSquadView(match, plan.squad), plan);

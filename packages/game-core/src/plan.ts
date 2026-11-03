@@ -2,7 +2,7 @@
 // data, and `validatePlan` lets the UI explain why a plan cannot be committed. The host validates again.
 
 import { type CardIndex, cardInMode, CardTarget, EffectKind, EffectRecipient, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
-import { type SquadId, type SquadView, Visibility } from "./host";
+import { type HeroView, type SquadId, type SquadView, Visibility } from "./host";
 import { type Grid, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind, tileAt } from "./reactor-deck";
 
 /** A Hero's Queue holds at most 4 actions (the maximum Hand size, ADR 0020). */
@@ -257,4 +257,75 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
     }
   }
   return issues;
+}
+
+/** A planned Move that fails because of another Hero of the same Squad (ADR 0013). */
+export interface MoveCollision {
+  heroId: string;
+  /** 1-based Tick of the Move action. */
+  tick: number;
+  /** The destination of the Move, where the warning is drawn. */
+  destination: GridPosition;
+  /** The Squad Hero in the way: standing on the route, or entering the same tile in the same step. */
+  blockedBy: string;
+}
+
+/** A Slowed Hero's first Move 2 becomes a Move 1 (mirrors the Resolution). */
+const SLOWED_MOVE_DISTANCE = 1;
+
+/**
+ * The planned Moves that will fail because of another Hero of the Squad, judged like the Resolution does
+ * for own Heroes: all Heroes take step n before any takes step n+1, a Hero cannot enter an occupied tile,
+ * and two Heroes entering the same free tile in the same step both stay. Enemies are not considered, and a
+ * Move stopped by a Wall is not a collision. Heroes that fail a Move stay where they are, so later Moves of
+ * their Queue start from there.
+ */
+export function findMoveCollisions(heroes: readonly HeroView[], plans: readonly SquadPlan[]): MoveCollision[] {
+  const positions = new Map(heroes.map((hero) => [hero.id, { ...hero.position }]));
+  const slowed = new Set(heroes.filter((hero) => hero.slowed).map((hero) => hero.id));
+  const extended = new Map<string, number>();
+  const queues = plans.flatMap((plan) => plan.heroes).filter(({ heroId }) => positions.has(heroId));
+  const collisions: MoveCollision[] = [];
+  const ticks = Math.max(0, ...queues.map(({ queue }) => queue.length));
+  const same = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
+
+  for (let tick = 1; tick <= ticks; tick++) {
+    const movers = queues.flatMap(({ heroId, queue }) => {
+      const hero = heroes.find((candidate) => candidate.id === heroId)!;
+      const action = queue[tick - 1];
+      if (!action || hero.exhausted) return [];
+      if (action.kind === ActionKind.Primary) {
+        const card = HERO_DECKS[hero.heroClass][action.card];
+        const extend = card && cardInMode(card, action.overdrive).effects.find(({ kind }) => kind === EffectKind.ExtendMove);
+        if (extend) extended.set(heroId, extend.amount ?? MOVE_DISTANCE);
+      }
+      if (action.kind !== ActionKind.Move) return [];
+      let distance = extended.get(heroId) ?? MOVE_DISTANCE;
+      extended.delete(heroId);
+      if (slowed.delete(heroId)) distance = SLOWED_MOVE_DISTANCE;
+      return [{ heroId, destination: action.destination, distance }];
+    });
+    const flagged = new Map<string, MoveCollision>();
+    let active = movers;
+    for (let step = 0; step < Math.max(0, ...movers.map(({ distance }) => distance)) && active.length > 0; step++) {
+      active = active.filter(({ distance }) => step < distance);
+      const attempts = active.flatMap((mover) => {
+        const from = positions.get(mover.heroId)!;
+        return same(from, mover.destination) ? [] : [{ mover, from, to: stepTowards(from, mover.destination) }];
+      });
+      const open = attempts.filter(({ from, to }) => isStepAllowed(from, to));
+      const free = open.filter(({ to }) => ![...positions.values()].some((position) => same(position, to)));
+      const moving = free.filter(({ to }) => free.filter((other) => same(other.to, to)).length === 1);
+      for (const { mover, to } of open) {
+        if (moving.some((entry) => entry.mover === mover) || flagged.has(mover.heroId)) continue;
+        const occupant = [...positions].find(([, position]) => same(position, to))?.[0];
+        const rival = free.find((other) => other.mover !== mover && same(other.to, to))?.mover.heroId;
+        flagged.set(mover.heroId, { heroId: mover.heroId, tick, destination: mover.destination, blockedBy: (occupant ?? rival)! });
+      }
+      for (const { mover, to } of moving) positions.set(mover.heroId, to);
+      active = moving.map(({ mover }) => mover);
+    }
+    collisions.push(...flagged.values());
+  }
+  return collisions;
 }

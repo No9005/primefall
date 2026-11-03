@@ -33,6 +33,7 @@ import {
   Visibility,
 } from "game-core";
 import { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
 import { Board } from "./Board";
 import { BlockChip, CardFace, EnergyOrb, ModeFaceCard } from "./game-parts";
 import { drawShots, type ShotDrawing } from "./shot-lines";
@@ -51,6 +52,7 @@ const PLAY_HERE_RADIUS = 2;
 
 const NO_TILES: readonly GridPosition[] = [];
 const NO_SHOTS: readonly ShotDrawing[] = [];
+const NO_PATHS: readonly PlannedPath[] = [];
 const NO_LABELS: readonly { position: GridPosition; text: string }[] = [];
 
 /** Every tile of the Reactor Deck within `radius` tiles of `center`. */
@@ -97,7 +99,10 @@ function SquadPanel({
   onRemove,
   blockChip,
   blockChipRef,
+  warningsOf,
 }: {
+  /** The collision warnings of a Hero's planned Moves, e.g. "Collides with Controller at Tick 2". */
+  warningsOf: (heroId: string) => string[];
   /** While a card is dragged: the Block 2 chip next to the Queue window, lit when Block is allowed. */
   blockChip: { allowed: boolean; active: boolean } | undefined;
   blockChipRef: RefObject<HTMLDivElement | null>;
@@ -145,6 +150,11 @@ function SquadPanel({
           })}
         </ol>
         <div className="queue-tags">
+          {warningsOf(selected.id).map((text) => (
+            <span key={text} className="tag collision-tag" role="alert">
+              ⚠ {text}
+            </span>
+          ))}
           {selected.slowed && <span className="tag slow-tag">Slowed</span>}
           {selected.marked && <span className="tag marked-tag">Marked</span>}
           {selected.hidden && <span className="tag hidden-tag">Hidden · sight +2</span>}
@@ -174,6 +184,11 @@ function SquadPanel({
                   {playerControlled ? "" : "AI · "}Deck {hero.deckCount - (playback?.deckDamage[hero.id] ?? 0)}
                   {exhausted && " · Exhausted"}
                 </span>
+                {warningsOf(hero.id).length > 0 && (
+                  <span className="collision-tag" title={warningsOf(hero.id).join(" ")}>
+                    ⚠ {warningsOf(hero.id).join(" ")}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -373,11 +388,13 @@ function ModeChoice({ card, faces, onPick, onCancel }: ModeChoiceProps) {
 interface PlanningScreenProps {
   view: SquadView;
   submitPlan: (plan: SquadPlan) => Promise<SubmitResult>;
+  /** What the AI plans for the given allied Heroes this Round, to draw their paths. */
+  getAllyPlan: (heroIds: readonly string[]) => Promise<SquadPlan>;
   /** Called with the view of the next Round once the playback has finished. */
   onResolved: (view: SquadView) => void;
 }
 
-export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenProps) {
+export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: PlanningScreenProps) {
   const initial = view.heroes.find((hero) => hero.heroClass === PLAYER_HERO_CLASS)!;
   const [selectedId, setSelectedId] = useState(initial.id);
   const selected = view.heroes.find((hero) => hero.id === selectedId) ?? initial;
@@ -410,6 +427,35 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
   );
   const issues = useMemo(() => validatePlan(view, plan), [view, plan]);
   const playing = playback !== undefined;
+
+  // The AI allies plan from the same view, so their plan is known before Commit and does not change with ours.
+  const [allyPlan, setAllyPlan] = useState<SquadPlan>();
+  const getAllyPlanRef = useRef(getAllyPlan);
+  getAllyPlanRef.current = getAllyPlan;
+  useEffect(() => {
+    let cancelled = false;
+    setAllyPlan(undefined);
+    const allyIds = view.heroes.filter((hero) => hero.heroClass !== PLAYER_HERO_CLASS).map((hero) => hero.id);
+    void getAllyPlanRef.current(allyIds).then((planned) => {
+      if (!cancelled) setAllyPlan(planned);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [view]);
+  const playerHeroId = view.heroes.find((hero) => hero.heroClass === PLAYER_HERO_CLASS)!.id;
+  const squadPlans = useMemo(
+    () => [{ ...plan, heroes: plan.heroes.filter((planned) => planned.heroId === playerHeroId) }, ...(allyPlan ? [allyPlan] : [])],
+    [plan, allyPlan, playerHeroId],
+  );
+  const paths = useMemo(() => (playing ? NO_PATHS : plannedPaths(view.heroes, squadPlans, playerHeroId)), [playing, view.heroes, squadPlans, playerHeroId]);
+  const warnings = useMemo(
+    () => collisionWarnings(view.heroes, squadPlans, Object.fromEntries(view.heroes.map((hero) => [hero.id, HERO_NAMES[hero.heroClass]]))),
+    [view.heroes, squadPlans],
+  );
+  const collisionTiles = useMemo(() => (playing ? NO_TILES : warnings.collisions.map(({ destination }) => destination)), [playing, warnings]);
+  const warningsOf = (heroId: string) =>
+    warnings.collisions.filter((collision) => collision.heroId === heroId).flatMap(({ tick }) => warnings.textFor(heroId, tick) ?? []);
   const energy = energyReadout(selected.heroClass, queue, pitched);
 
   const lastMove = queue.filter((action) => action.kind === ActionKind.Move).at(-1);
@@ -825,6 +871,8 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         areaTiles={dragLit?.area ?? NO_TILES}
         dropTile={drag?.probe.drop?.tile}
         shotLines={shotLines}
+        paths={paths}
+        collisionTiles={collisionTiles}
         pickRef={pickBoard}
         markers={markers}
         onTileTap={tapTile}
@@ -851,6 +899,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
       </header>
       <SquadPanel
         heroes={view.heroes}
+        warningsOf={warningsOf}
         selected={selected}
         queue={queue}
         playback={playback}

@@ -82,7 +82,12 @@ export function App() {
       ) : view.result ? (
         <EndScreen result={view.result} squad={PLAYER_SQUAD} seed={seed} onPlayAgain={() => setHost(createLocalHost(newSeed()))} />
       ) : (
-        <PlanningScreen view={view} submitPlan={(plan) => host.submitPlan(plan)} onResolved={setView} />
+        <PlanningScreen
+          view={view}
+          submitPlan={(plan) => host.submitPlan(plan)}
+          getAllyPlan={(heroIds) => host.getAllyPlan(PLAYER_SQUAD, heroIds)}
+          onResolved={setView}
+        />
       )}
     </main>
   );
