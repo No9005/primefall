@@ -10,9 +10,12 @@ import {
   parseGrid,
   type QueuedAction,
   type SquadPlan,
+  SquadId,
   Visibility,
 } from "game-core";
+import { createLocalHost } from "game-core/local-host";
 import { describe, expect, it } from "vitest";
+import { buildPlaybackFrames } from "./playback";
 import { SegmentStyle } from "./shot-lines";
 import { LineKind, LineTone, plannedTargetLines, replayTargetLines } from "./target-lines";
 
@@ -141,5 +144,37 @@ describe("replayTargetLines", () => {
   it("draws nothing for events that are not actions on a target", () => {
     const events = [event({ kind: EventKind.Step, heroId: "b", to: { col: 2, row: 1 } }), event({ kind: EventKind.ShieldGained, heroId: "b", amount: 2 })];
     expect(replayTargetLines(events, heroes, [], positionOf)).toEqual([]);
+  });
+});
+
+describe("replayTargetLines over a recorded Resolution", () => {
+  it("draws a line in its Tick for every resolved attack and Cover event the simulation emits", async () => {
+    const host = createLocalHost(7);
+    let attackLines = 0;
+    for (let round = 0; round < 4; round++) {
+      const left = await host.getSquadView(SquadId.Left);
+      const right = await host.getSquadView(SquadId.Right);
+      if (left.result) break;
+      // Both Squads' start tiles, so every Hero has a position; all enemies count as Visible to isolate the event mapping.
+      const positions: Record<string, GridPosition> = {};
+      for (const h of [...left.heroes, ...right.heroes]) positions[h.id] = h.position;
+      const enemies = right.heroes.map((h) => visible(h.id, h.position));
+      const ownPlan = await host.getAllyPlan(SquadId.Left, left.heroes.map((h) => h.id));
+      const { events } = await host.submitPlan(ownPlan);
+
+      for (const frame of buildPlaybackFrames(events)) {
+        Object.assign(positions, frame.moves);
+        const lines = replayTargetLines(frame.events, left.heroes, enemies, (id) => positions[id]);
+        const drawn = frame.events.filter((e) =>
+          [EventKind.AttackHit, EventKind.AttackFailed, EventKind.CoverDestroyed, EventKind.CoverPlaced].includes(e.kind),
+        );
+        for (const e of drawn) {
+          expect(lines.some((l) => l.heroId === e.heroId && l.tick === e.tick)).toBe(true);
+        }
+        for (const l of lines) expect(l.tick).toBe(frame.tick);
+        attackLines += lines.filter((l) => l.kind === LineKind.Attack).length;
+      }
+    }
+    expect(attackLines).toBeGreaterThan(0);
   });
 });
