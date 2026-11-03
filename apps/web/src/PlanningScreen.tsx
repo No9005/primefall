@@ -21,6 +21,7 @@ import {
   reachableMoveDestinations,
   type GridPosition,
   type HeroView,
+  type PlanIssue,
   type QueuedAction,
   REACTOR_DECK,
   PLANNING_TIMER_SECONDS,
@@ -51,7 +52,7 @@ import { DeckShuffle } from "./DeckShuffle";
 import { exhaustionHud } from "./exhaustion-hud";
 import type { BoardPick, Point } from "./card-drag";
 import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
-import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
+import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
 export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
@@ -88,16 +89,76 @@ interface PlaybackState {
   lines: TargetLine[];
 }
 
-/** Top left: the Queue window of the selected Hero, with the other Heroes of the Squad as compact chips below it. */
+/** Bottom right, above Commit: the Queue of the selected Hero, tick 1 on top. Each row shows the action, its target and why it is invalid. */
+function QueueColumn({
+  queue,
+  heroClass,
+  heroId,
+  issues,
+  disabled,
+  nameOf,
+  onRemove,
+}: {
+  queue: readonly QueuedAction[];
+  heroClass: HeroClass;
+  heroId: string;
+  issues: readonly PlanIssue[];
+  disabled: boolean;
+  nameOf: (heroId: string) => string;
+  onRemove: (index: number) => void;
+}) {
+  // An issue without a slot of its own (a whole-Queue rule) is shown on the last row.
+  const reasonsAt = (slot: number) =>
+    issues.filter((issue) => (issue.slot ?? queue.length - 1) === slot).map((issue) => issue.message);
+  return (
+    <section className="queue" aria-label="Queue">
+      <ol className="queue-rows">
+        {Array.from({ length: Math.max(MAX_QUEUE_LENGTH, queue.length) }, (_, slot) => {
+          const action = queue[slot];
+          if (!action) return <li key={slot} className="queue-row empty" aria-label={`Empty slot ${slot + 1}`} />;
+          const { name, target } = queueRowLabel(heroClass, heroId, action, nameOf);
+          const reasons = reasonsAt(slot);
+          return (
+            <li key={slot} className={`queue-row${reasons.length > 0 ? " invalid" : ""}`} title={reasons.join(" ")}>
+              <span className="queue-number">{slot + 1}</span>
+              <span className="queue-text">
+                <span className="queue-name">
+                  {name}
+                  {action.kind === ActionKind.Primary && action.overdrive && <span className="od-marker">OD</span>}
+                </span>
+                {target && <span className="queue-target">{target}</span>}
+                {reasons.length > 0 && (
+                  <span className="queue-reason" role="alert">
+                    {reasons.join(" ")}
+                  </span>
+                )}
+              </span>
+              <button type="button" className="queue-remove" disabled={disabled} aria-label={`Remove action ${slot + 1}`} onClick={() => onRemove(slot)}>
+                ×
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+/** Right of the Hand: the Wait action as a card. */
+function WaitCard({ dimmed, disabled, onWait }: { dimmed: boolean; disabled: boolean; onWait: () => void }) {
+  return (
+    <button type="button" className="card wait-card" style={{ opacity: dimmed ? 0.35 : undefined }} disabled={disabled || dimmed} onClick={onWait}>
+      Wait
+    </button>
+  );
+}
+
+/** Top left: the selected Hero's name and status, with the other Heroes of the Squad as compact chips below it. */
 function SquadPanel({
   heroes,
   selected,
-  queue,
   playback,
-  disabled,
   onSelect,
-  onRemove,
-  onWait,
   warningsOf,
   collapsed,
 }: {
@@ -107,49 +168,18 @@ function SquadPanel({
   warningsOf: (heroId: string) => string[];
   heroes: readonly HeroView[];
   selected: HeroView;
-  queue: readonly QueuedAction[];
   playback: PlaybackState | undefined;
-  disabled: boolean;
   onSelect: (id: string) => void;
-  onRemove: (index: number) => void;
-  onWait: () => void;
 }) {
   const shield = playback?.shields[selected.id] ?? 0;
   return (
     <aside className={`squad-panel${collapsed ? " collapsed" : ""}`} aria-label="Squad">
       <div className="queue-column">
-      <section className="hud queue-window" aria-label="Queue">
+      <section className="hud queue-window" aria-label="Selected Hero">
         <div className="queue-head">
           <span className="hero-name">{HERO_NAMES[selected.heroClass]}</span>
           {shield > 0 && <span className="counts">Shield {shield}</span>}
         </div>
-        <ol className="queue-slots">
-          {Array.from({ length: MAX_QUEUE_LENGTH }, (_, i) => {
-            const action = queue[i];
-            return (
-              <li key={i}>
-                {action ? (
-                  <button
-                    type="button"
-                    className="queue-slot filled"
-                    disabled={disabled}
-                    aria-label={`Remove action ${i + 1}`}
-                    onClick={() => onRemove(i)}
-                  >
-                    {action.kind === ActionKind.Wait && <span aria-hidden="true">⌛ </span>}
-                    {queueSlotCode(selected.heroClass, action)}
-                    {action.kind === ActionKind.Primary && action.overdrive && <span className="od-marker">OD</span>}
-                  </button>
-                ) : (
-                  <span className="queue-slot empty">{i + 1}</span>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-        <button type="button" className="wait-button" disabled={disabled || queue.length >= MAX_QUEUE_LENGTH} onClick={onWait}>
-          ⌛ Wait
-        </button>
         <div className="queue-tags">
           {warningsOf(selected.id).map((text) => (
             <span key={text} className="tag collision-tag" role="alert">
@@ -1025,23 +1055,9 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         heroes={view.heroes}
         warningsOf={warningsOf}
         selected={selected}
-        queue={queue}
         playback={playback}
         collapsed={picking}
-        disabled={playing}
         onSelect={changeSelection}
-        onWait={() => {
-          setQueue(addWaitAction(queue));
-          setArmed(undefined);
-          setAiming(undefined);
-          setPull(IDLE);
-        }}
-        onRemove={(index) => {
-          setQueue(removeQueueAction(queue, index));
-          setArmed(undefined);
-          setAiming(undefined);
-          setPull(IDLE);
-        }}
       />
       <EnemyPanel
         knownGrid={knownGrid}
@@ -1129,6 +1145,18 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
             collapsed={picking}
           />
         </div>
+        {!picking && (
+          <WaitCard
+            dimmed={queue.length >= MAX_QUEUE_LENGTH}
+            disabled={playing || drawing || exhaustion.greyed}
+            onWait={() => {
+              setQueue(addWaitAction(queue));
+              setArmed(undefined);
+              setAiming(undefined);
+              setPull(IDLE);
+            }}
+          />
+        )}
         {picking && (armed ?? aiming) !== undefined && (
           <SelectedCardChip
             card={HERO_DECKS[selected.heroClass][(armed ?? aiming)!]!}
@@ -1138,23 +1166,28 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         )}
       </div>
       <section className="commit-panel" aria-label="Commit" style={{ opacity: focus.commit }}>
-        {((aiming !== undefined && !playing) || issues.length > 0) && (
+        {aiming !== undefined && !playing && aimedCard && (
           <div className="commit-info">
-            {aiming !== undefined && !playing && aimedCard && (
-              <p className="target-hint">
-                {targetHint({ card: aimedCard, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked: deployAlly !== undefined })}
-              </p>
-            )}
-            {issues.length > 0 && (
-              <ul className="issues" role="alert">
-                {issues.map((issue) => (
-                  <li key={issue.message}>{issue.message}</li>
-                ))}
-              </ul>
-            )}
+            <p className="target-hint">
+              {targetHint({ card: aimedCard, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked: deployAlly !== undefined })}
+            </p>
           </div>
         )}
-        <button type="button" className="commit" disabled={issues.length > 0 || playing || exhaustion.greyed} onClick={() => void commit(plan)}>
+        <QueueColumn
+          queue={queue}
+          heroClass={selected.heroClass}
+          heroId={selected.id}
+          issues={issues}
+          disabled={playing}
+          nameOf={nameOf}
+          onRemove={(index) => {
+            setQueue(removeQueueAction(queue, index));
+            setArmed(undefined);
+            setAiming(undefined);
+            setPull(IDLE);
+          }}
+        />
+        <button type="button" className="commit" disabled={queue.length === 0 || issues.length > 0 || playing || exhaustion.greyed} onClick={() => void commit(plan)}>
           Commit
         </button>
       </section>

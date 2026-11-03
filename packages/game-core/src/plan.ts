@@ -114,6 +114,8 @@ export interface PlanIssue {
   heroId?: string;
   /** Human-readable reason, shown to the player. */
   message: string;
+  /** The Queue slot (0-based) of the action that causes the issue, when it belongs to one. */
+  slot?: number;
 }
 
 export function chebyshevDistance(a: GridPosition, b: GridPosition): number {
@@ -159,6 +161,16 @@ export const reachableMoveDestinations = (from: GridPosition): GridPosition[] =>
     return end.col === destination.col && end.row === destination.row;
   });
 
+/** The Queue slot whose cost first takes the running total above the pitched Energy. */
+function firstUnaffordableSlot(heroClass: HeroClass, queue: readonly QueuedAction[], pool: number): number | undefined {
+  let spent = 0;
+  for (const [slot, action] of queue.entries()) {
+    spent += queueEnergyCost(heroClass, [action]);
+    if (spent > pool) return slot;
+  }
+  return undefined;
+}
+
 /** Returns every rule the plan breaks against the Squad View; an empty list means it can be committed. */
 export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
   const issues: PlanIssue[] = [];
@@ -194,13 +206,15 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
       issues.push({
         kind: PlanIssueKind.NotEnoughEnergy,
         heroId,
+        slot: firstUnaffordableSlot(hero.heroClass, queue, energyPool(pitched)),
         message: `The Queue needs ${cost} Energy but only ${energyPool(pitched)} is pitched.`,
       });
     }
     let position = hero.position;
     // Reposition stretches the next Move of the Queue to the distance on its card.
     let moveDistance = MOVE_DISTANCE;
-    for (const action of queue) {
+    for (const [slot, action] of queue.entries()) {
+      const report = (issue: PlanIssue) => issues.push({ ...issue, slot });
       if (action.kind === ActionKind.Wait) continue;
       useCard(action.card);
       if (action.kind === ActionKind.Primary) {
@@ -213,18 +227,18 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
         const base = HERO_DECKS[hero.heroClass][action.card];
         const card = base && cardInMode(base, action.overdrive);
         if (base && action.overdrive && !base.overdrive) {
-          issues.push({ kind: PlanIssueKind.NoOverdrive, heroId, message: `${base.name} has no Overdrive.` });
+          report({ kind: PlanIssueKind.NoOverdrive, heroId, message: `${base.name} has no Overdrive.` });
         } else if (!card || !isPlayableCard(base!, action.overdrive)) {
-          issues.push({ kind: PlanIssueKind.UnplayableCard, heroId, message: "This card's effect cannot be played yet." });
+          report({ kind: PlanIssueKind.UnplayableCard, heroId, message: "This card's effect cannot be played yet." });
         } else if (card.target === CardTarget.GhostEnemy) {
           if (!view.enemies.some((enemy) => enemy.id === action.target && enemy.visibility === Visibility.Ghost)) {
-            issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Ghost as its target.` });
+            report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Ghost as its target.` });
           }
         } else if (card.target === CardTarget.Tile || card.target === CardTarget.EmptyTile || card.target === CardTarget.Area) {
           // Range, Line of Sight and whether the tile is empty are checked when the card resolves.
           const kind = action.tile && tileAt(REACTOR_DECK, action.tile);
           if (action.target !== heroId || kind === undefined || kind === TileKind.Wall) {
-            issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a tile that is not a Wall as its target.` });
+            report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a tile that is not a Wall as its target.` });
           }
         } else if (card.target !== CardTarget.VisibleEnemy && card.target !== CardTarget.EnemyInSight) {
           // Self cards and area Attacks are confirmed on this Hero; ally cards need another Hero.
@@ -233,7 +247,7 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
             ? action.target === heroId
             : view.heroes.some((ally) => ally.id === action.target && ally.id !== heroId && !ally.exhausted);
           if (!validTarget) {
-            issues.push({
+            report({
               kind: PlanIssueKind.BadTarget,
               heroId,
               message: isSelfCard ? `${card.name} can only target this Hero.` : `${card.name} needs an allied Hero as its target.`,
@@ -242,7 +256,7 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
           if (card.effects.some(({ recipient }) => recipient === EffectRecipient.SecondTarget)) {
             const second = view.heroes.find((ally) => ally.id === action.secondTarget);
             if (!second || second.id === heroId || second.id === action.target || second.exhausted) {
-              issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a second, different allied Hero.` });
+              report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a second, different allied Hero.` });
             }
           }
           // Forward Deploy also names the tile the ally heads for; where the ally stands by then is checked when it resolves.
@@ -251,12 +265,12 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
             card.effects.some(({ kind }) => kind === EffectKind.GrantExtraMove) &&
             (destination === undefined || destination === TileKind.Wall)
           ) {
-            issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a destination tile that is not a Wall.` });
+            report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a destination tile that is not a Wall.` });
           }
         } else if (!view.enemies.some(
             (enemy) => enemy.id === action.target && enemy.visibility === Visibility.Visible && !enemy.exhausted,
           )) {
-          issues.push({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Visible enemy Hero as its target.` });
+          report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Visible enemy Hero as its target.` });
         }
       }
       if (action.kind !== ActionKind.Move) continue;
@@ -264,7 +278,7 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
         (tile) => tile.col === action.destination.col && tile.row === action.destination.row,
       );
       if (!reachable) {
-        issues.push({ kind: PlanIssueKind.BadDestination, heroId, message: "Move 2 needs a free destination 1 or 2 tiles away." });
+        report({ kind: PlanIssueKind.BadDestination, heroId, message: "Move 2 needs a free destination 1 or 2 tiles away." });
       }
       position = action.destination;
       moveDistance = MOVE_DISTANCE;

@@ -122,12 +122,20 @@ export function cardFace(card: CardDefinition): { type: string; effectText: stri
   };
 }
 
-/** The short code a filled Queue slot shows. */
-export function queueSlotCode(heroClass: HeroClass, action: QueuedAction): string {
-  if (action.kind === ActionKind.Move) return "MOVE";
-  if (action.kind === ActionKind.Block) return "BLK";
-  if (action.kind === ActionKind.Wait) return "Wait";
-  return HERO_DECKS[heroClass][action.card]!.type === CardType.Attack ? "ATK" : "UTL";
+/** What a Queue row shows: the action name in bold and, below it, its target (empty for Block and Wait). */
+export function queueRowLabel(
+  heroClass: HeroClass,
+  selfId: string,
+  action: QueuedAction,
+  nameOf: (heroId: string) => string,
+): { name: string; target: string } {
+  const tile = (position: GridPosition) => `to ${position.col} · ${position.row}`;
+  if (action.kind === ActionKind.Move) return { name: "Move 2", target: tile(action.destination) };
+  if (action.kind === ActionKind.Block) return { name: "Block 2", target: "" };
+  if (action.kind === ActionKind.Wait) return { name: "Wait", target: "" };
+  const name = HERO_DECKS[heroClass][action.card]!.name;
+  if (action.tile) return { name, target: tile(action.tile) };
+  return { name, target: action.target === selfId ? "" : nameOf(action.target) };
 }
 
 /** The Queue without the action in slot `index`; its Energy is available again because Spent follows the Queue. */

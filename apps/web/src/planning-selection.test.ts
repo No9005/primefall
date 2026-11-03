@@ -1,6 +1,6 @@
 import { ActionKind, cardInMode, HERO_DECKS, HeroClass, type QueuedAction } from "game-core";
 import { describe, expect, it } from "vitest";
-import { actionUsesCard, addWaitAction, cardFace, CardUse, cardUseReasons, modeChoiceFaces, primaryAction, queueSlotCode, removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, targetHint } from "./planning-selection";
+import { actionUsesCard, addWaitAction, cardFace, CardUse, cardUseReasons, modeChoiceFaces, primaryAction, queueRowLabel,removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, targetHint } from "./planning-selection";
 
 describe("rangeDamageLabel", () => {
   const longShotOverdrive = cardInMode(HERO_DECKS[HeroClass.Assassin][4]!, true);
@@ -176,9 +176,15 @@ describe("Queue window", () => {
     { kind: ActionKind.Move, card: 2, destination: { col: 3, row: 3 } },
   ];
 
-  it("shows short codes per action", () => {
-    expect(queueSlotCode(HeroClass.Bruiser, queue[0]!)).toBe("BLK");
-    expect(queueSlotCode(HeroClass.Bruiser, queue[1]!)).toBe("MOVE");
+  it("shows the action name and its target per row", () => {
+    const nameOf = (id: string) => (id === "right-bruiser" ? "Enemy Bruiser" : id);
+    const label = (action: QueuedAction) => queueRowLabel(HeroClass.Bruiser, "left-bruiser", action, nameOf);
+    expect(label(queue[0]!)).toEqual({ name: "Block 2", target: "" });
+    expect(label(queue[1]!)).toEqual({ name: "Move 2", target: "to 3 · 3" });
+    expect(label({ kind: ActionKind.Wait })).toEqual({ name: "Wait", target: "" });
+    // Bruiser card 0 is Slam Shot.
+    expect(label({ kind: ActionKind.Primary, card: 0, target: "right-bruiser" })).toEqual({ name: "Slam Shot", target: "Enemy Bruiser" });
+    expect(label({ kind: ActionKind.Primary, card: 0, target: "left-bruiser" }).target).toBe("");
   });
 
   it("gives the Energy of a removed action back", () => {
@@ -195,7 +201,6 @@ describe("Queue window", () => {
   it("adds a Wait to the first free slot, spends no card or Energy, and can remove it again", () => {
     const withWait = addWaitAction(queue);
     expect(withWait).toEqual([...queue, { kind: ActionKind.Wait }]);
-    expect(queueSlotCode(HeroClass.Bruiser, withWait[2]!)).toBe("Wait");
     expect(actionUsesCard(withWait[2]!, 0)).toBe(false);
     expect(energyReadout(HeroClass.Bruiser, withWait, [5])).toEqual(energyReadout(HeroClass.Bruiser, queue, [5]));
     expect(removeQueueAction(withWait, 2)).toEqual(queue);

@@ -6,8 +6,8 @@ export const CARD_WIDTH = 108;
 export const STRIP = 86;
 /** A strip, and with it a card, never gets narrower than this (CSS pixels). */
 export const MIN_STRIP = 44;
-/** The space the fan may use next to the Squad panel and the Energy orb on a landscape phone. */
-export const FAN_WIDTH = 370;
+/** The space the fan may use next to the piles on a landscape phone; the Wait card and the Queue column must still fit right of it at 667 px. */
+export const FAN_WIDTH = 336;
 
 export interface FanSpacing {
   /** Width of one card. */

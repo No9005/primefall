@@ -50,16 +50,16 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .planning { position: absolute; inset: 0; }
 .board { position: absolute; inset: 0; overflow: hidden; }
 .board canvas { display: block; touch-action: none; }
-/* Zoom / Fit: round, thumb-sized, at the right edge in the vertical middle (between the enemy panel and the commit column). */
-.board-zoom { position: absolute; z-index: 1; right: calc(10px + env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--steel); background: var(--panel); color: var(--text); font: 600 14px Rajdhani, sans-serif; cursor: pointer; }
+/* Zoom / Fit: round, thumb-sized, stacked from the top (26 to 232 px) in a column left of the Queue column (136 px from the right edge), clear of the Wait card below and the enemy panel. Mirrored by zoomColumnRect in hud-layout.ts. */
+.board-zoom { position: absolute; z-index: 1; right: calc(136px + env(safe-area-inset-right)); top: 80px; width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--steel); background: var(--panel); color: var(--text); font: 600 14px Rajdhani, sans-serif; cursor: pointer; }
 
 /* Lines: the small toggle for the target lines, below the turn buttons; it shows lit while the lines are on. */
-.board-lines { position: absolute; z-index: 1; right: calc(14px + env(safe-area-inset-right)); top: calc(50% + 128px - 22px); width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--steel); background: var(--panel); color: var(--text); font: 600 11px Rajdhani, sans-serif; cursor: pointer; }
+.board-lines { position: absolute; z-index: 1; right: calc(140px + env(safe-area-inset-right)); top: 188px; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--steel); background: var(--panel); color: var(--text); font: 600 11px Rajdhani, sans-serif; cursor: pointer; }
 .board-lines[aria-pressed="true"] { border-color: var(--teal); color: var(--teal); }
 
-.board-turn { position: absolute; z-index: 1; right: calc(10px + env(safe-area-inset-right)); width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--steel); background: var(--panel); color: var(--text); font-size: 24px; line-height: 1; cursor: pointer; }
-.board-turn-left { top: calc(50% - 64px - 26px); }
-.board-turn-right { top: calc(50% + 64px - 26px); }
+.board-turn { position: absolute; z-index: 1; right: calc(136px + env(safe-area-inset-right)); width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--steel); background: var(--panel); color: var(--text); font-size: 24px; line-height: 1; cursor: pointer; }
+.board-turn-left { top: 26px; }
+.board-turn-right { top: 134px; }
 
 .hud { position: absolute; background: color-mix(in srgb, var(--panel) 87%, transparent); border: 1px solid var(--steel); border-radius: 6px; box-sizing: border-box; }
 /* HUD placement (UI spec): at 844 x 390 and 667 x 375 the fitted board leaves the bottom corners and a strip at the
@@ -79,14 +79,6 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .queue-window { position: static; width: 124px; flex: none; padding: 4px; display: flex; flex-direction: column; gap: 3px; }
 .queue-head { display: flex; flex-direction: column; }
 .queue-head .counts { flex-basis: auto; order: 0; }
-.queue-slots { margin: 0; padding: 0; list-style: none; display: flex; gap: 3px; }
-.queue-slots li { flex: 1; display: flex; }
-.queue-slot { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 32px; padding: 0; border-radius: 4px; font-family: "IBM Plex Mono", monospace; font-size: 11px; box-sizing: border-box; }
-.queue-slot.empty { border: 1px dashed var(--steel); color: var(--muted); }
-.queue-slot.filled { background: var(--graphite); border: 1px solid var(--teal); color: var(--teal); cursor: pointer; }
-.queue-slot.filled:disabled { cursor: default; opacity: 0.7; }
-.wait-button { align-self: flex-start; min-height: 32px; padding: 0 10px; border-radius: 4px; border: 1px solid var(--steel); background: var(--graphite); color: #c9d4de; font-size: 11px; cursor: pointer; }
-.wait-button:disabled { cursor: default; opacity: 0.5; }
 .queue-tags { display: flex; flex-wrap: wrap; gap: 0 4px; }
 .queue-tags:empty { display: none; }
 .collision-tag { color: #ff6b70; font-size: 10px; }
@@ -139,7 +131,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .chip-hint { font-size: 9px; color: var(--teal); }
 .chip-cancel { position: absolute; top: 0; right: 0; width: 32px; height: 100%; min-height: 44px; background: none; border: 0; border-left: 1px solid var(--steel); color: var(--text); font-size: 20px; cursor: pointer; }
 .squad-panel.collapsed { flex-direction: column; gap: 2px; }
-.squad-panel.collapsed .queue-head, .squad-panel.collapsed .wait-button, .squad-panel.collapsed .queue-tags, .squad-panel.collapsed .chip .counts, .squad-panel.collapsed .chip .collision-tag { display: none; }
+.squad-panel.collapsed .queue-head,.squad-panel.collapsed .queue-tags, .squad-panel.collapsed .chip .counts, .squad-panel.collapsed .chip .collision-tag { display: none; }
 .squad-panel.collapsed .chips { flex-direction: row; width: 124px; }
 .squad-panel.collapsed .chip { flex: 1; min-height: 20px; opacity: 0.7; }
 .enemy-panel.collapsed .hero-row { min-height: 20px; padding: 0 5px; }
@@ -258,12 +250,27 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 
 .tick {color: var(--orange); font-family: "IBM Plex Mono", monospace; }
 
-/* Bottom-right corner: target hint and plan issues (at most ~56 px, scrollable) above a compact primary button. */
-.commit-panel { position: absolute; bottom: calc(6px + env(safe-area-inset-bottom)); right: calc(6px + env(safe-area-inset-right)); width: 110px; display: flex; flex-direction: column; gap: 3px; }
-.commit-info { max-height: 56px; overflow-y: auto; padding: 2px 4px; background: color-mix(in srgb, var(--panel) 87%, transparent); border: 1px solid var(--steel); border-radius: 4px; }
-.issues { margin: 0; padding: 0 0 0 12px; font-size: 10px; line-height: 1.2; color: var(--orange); }
-.commit { min-height: 44px; background: var(--teal); color: var(--graphite); border: 0; border-radius: 4px; font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 18px; cursor: pointer; }
-.commit:disabled { background: var(--steel); color: var(--muted); cursor: default; }
+/* Bottom-right corner (issue 206): the Queue column (4 rows of 28 px, a 5th with Forward Deploy) directly above a pill-shaped Commit,
+   124 px wide. The target hint sits left of it, below the board controls. Mirrored by commitRect in hud-layout.ts. */
+.commit-panel { position: absolute; bottom: calc(6px + env(safe-area-inset-bottom)); right: calc(6px + env(safe-area-inset-right)); width: 124px; display: flex; flex-direction: column; gap: 4px; }
+.commit-info { position: absolute; right: calc(100% + 12px); bottom: 0; width: 150px; max-height: 56px; overflow-y: auto; padding: 2px 4px; background: color-mix(in srgb, var(--ink) 93%, transparent); border: 1.5px solid var(--steel); border-radius: var(--radius-s); }
+.queue { display: flex; flex-direction: column; }
+.queue-rows { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.queue-row { display: flex; align-items: center; gap: 4px; min-height: 28px; box-sizing: border-box; padding: 2px 4px; background: color-mix(in srgb, var(--ink) 93%, transparent); border: 1.5px solid var(--steel); border-radius: var(--radius-s); }
+.queue-row.empty { background: none; border-style: dashed; }
+.queue-row.invalid { border-color: var(--red); }
+.queue-number { flex: none; width: 16px; height: 16px; border-radius: 50%; background: var(--teal); color: var(--graphite); display: flex; align-items: center; justify-content: center; font: 500 10px/1 var(--font-number); }
+.queue-row.invalid .queue-number { background: var(--red); }
+.queue-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.queue-name { font: 700 12px/1 var(--font-label); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue-target { font: 10px/1.1 var(--font-label); color: var(--muted-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue-reason { font: 700 10px/1.1 var(--font-label); color: var(--red); }
+.queue-remove { flex: none; width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 1.5px solid var(--steel); background: var(--panel); color: var(--text); font: 14px/1 var(--font-label); cursor: pointer; }
+.queue-remove:disabled { cursor: default; opacity: 0.5; }
+.commit { height: 46px; background: var(--teal); color: var(--graphite); border: 0; border-radius: 23px; font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 18px; cursor: pointer; }
+.commit:disabled { background: var(--panel); color: var(--muted); cursor: default; }
+/* The Wait action as a card right of the Hand fan. */
+.wait-card { flex: none; width: 108px; margin-left: 6px; padding: 8px 0 0; text-align: center; font: 700 22px/1 var(--font-label); color: var(--text); }
 
 .top-bar [data-testid="prime-progress"] { color: var(--teal); }
 

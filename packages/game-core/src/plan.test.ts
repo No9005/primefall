@@ -49,6 +49,11 @@ describe("validatePlan", () => {
     expect(kinds(move(bruiser.hand[0]!, { col: 0, row: 7 }))).toEqual([PlanIssueKind.BadDestination]);
   });
 
+  it("names the Queue slot of the action that breaks a rule", () => {
+    const issues = validatePlan(view, planFor(move(bruiser.hand[0]!, near(2)), move(bruiser.hand[1]!, near(9))));
+    expect(issues.map((issue) => issue.slot)).toEqual([1]);
+  });
+
   it("rejects an unknown Hero and another Squad's plan", () => {
     expect(validatePlan(view, { squad: SquadId.Left, heroes: [{ heroId: "x", queue: [] }] })[0]!.kind).toBe(PlanIssueKind.UnknownHero);
     expect(validatePlan(view, { squad: SquadId.Right, heroes: [] })[0]!.kind).toBe(PlanIssueKind.WrongSquad);
