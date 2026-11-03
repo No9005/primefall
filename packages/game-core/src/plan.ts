@@ -136,13 +136,20 @@ export function moveDestinations(from: GridPosition, grid: Grid = REACTOR_DECK, 
 
 /** Where a Move 2 towards `destination` really ends: it stops before a Wall or Wall corner (ADR 0020). */
 export function moveEnd(from: GridPosition, destination: GridPosition): GridPosition {
+  return movePath(from, destination).at(-1) ?? from;
+}
+
+/** The tiles a Move 2 towards `destination` stands on after step 1 and step 2, without other Heroes in the way. */
+export function movePath(from: GridPosition, destination: GridPosition): GridPosition[] {
+  const path: GridPosition[] = [];
   let position = from;
   for (let step = 0; step < MOVE_DISTANCE; step++) {
     const next = stepTowards(position, destination);
     if (!isStepAllowed(position, next) || (next.col === position.col && next.row === position.row)) break;
     position = next;
+    path.push(position);
   }
-  return position;
+  return path;
 }
 
 /** The Move 2 destinations the Hero reaches completely: `moveDestinations` minus tiles behind a Wall or Wall corner. */
@@ -277,73 +284,78 @@ export interface WalkOutcome {
   heroId: string;
   /** The tiles the Hero stood on after each step, starting with its own tile; the last one is where it stops. */
   path: GridPosition[];
-  /** The Hero stops before its destination: a Wall or a Wall corner is in the way, or the tiles it could end on are occupied. */
+  /** The Hero stops before its destination: a Wall or a Wall corner is in the way, or a step failed because of another Hero. */
   blocked: boolean;
-  /** For a Move stopped by Heroes: one of the Heroes that stand on the tile the Move would have reached. */
+  /** For a Move stopped by Heroes: the Hero that was on the tile of the failed step (standing there or stepping onto it too). */
   occupiedBy?: string;
 }
 
 const sameTile = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
 
 /**
- * Decides where Moves end (ADR 0013). `standing` has every Hero. A Move walks straight towards its destination,
- * up to its distance, stopping at a Wall or Wall corner, and may pass through Heroes. All Heroes take step n
- * before any takes step n+1. A Move must end on a tile no other Hero stands on at the end of that step; if its
- * last tile is occupied, the Hero stops on the last free tile of its walk (its own tile when all are occupied).
- * Two Heroes ending on the same tile therefore both stop short. Everything is decided together, so the result
- * does not depend on the order of the requests or on which Squad a Hero belongs to.
+ * Decides where Moves end (ADR 0013). `standing` has every Hero. Steps are taken one after the other: in each
+ * step every walking Hero tries the next tile towards its destination (a Wall or Wall corner ends its walk).
+ * Heroes that move do not hinder each other, but a Hero cannot step onto a tile where a Hero stays, and no two
+ * Heroes may be on one tile after the step. A Hero whose step fails stops for the rest of its Move and counts as
+ * standing, which may make the Heroes behind it fail too; this is repeated until nothing changes. The result does
+ * not depend on the order of the requests or on which Squad a Hero belongs to.
  */
 export function resolveWalks(standing: ReadonlyMap<string, GridPosition>, requests: readonly WalkRequest[]): Map<string, WalkOutcome> {
-  const walks = new Map<string, { path: GridPosition[]; wallBlocked: boolean }>();
-  for (const [heroId, position] of standing) walks.set(heroId, { path: [{ ...position }], wallBlocked: false });
-  for (const { heroId, destination, distance } of requests) {
-    const walk = walks.get(heroId)!;
-    for (let step = 0; step < distance && !sameTile(walk.path.at(-1)!, destination); step++) {
+  const walks = new Map<string, { path: GridPosition[]; wallBlocked: boolean; failedAgainst?: string; done: boolean }>();
+  for (const [heroId, position] of standing) walks.set(heroId, { path: [{ ...position }], wallBlocked: false, done: true });
+  for (const { heroId } of requests) walks.get(heroId)!.done = false;
+  const furthest = Math.max(0, ...requests.map(({ distance }) => distance));
+
+  for (let step = 0; step < furthest; step++) {
+    const candidates = new Map<string, GridPosition>();
+    for (const { heroId, destination, distance } of requests) {
+      const walk = walks.get(heroId)!;
+      if (walk.done) continue;
       const from = walk.path.at(-1)!;
+      if (step >= distance || sameTile(from, destination)) {
+        walk.done = true;
+        continue;
+      }
       const next = stepTowards(from, destination);
-      if (!isStepAllowed(from, next)) {
+      if (isStepAllowed(from, next)) {
+        candidates.set(heroId, next);
+      } else {
         walk.wallBlocked = true;
-        break;
-      }
-      walk.path.push(next);
-    }
-  }
-  const ends = new Map([...walks].map(([heroId, { path }]) => [heroId, path.length - 1]));
-  const tileAtStep = (heroId: string, step: number) => {
-    const { path } = walks.get(heroId)!;
-    return path[Math.min(step, ends.get(heroId)!)]!;
-  };
-  const isTaken = (heroId: string, step: number) =>
-    [...walks.keys()].find((other) => other !== heroId && sameTile(tileAtStep(other, step), walks.get(heroId)!.path[step]!));
-  // Ends only ever move back, so this settles; the Heroes that stop short may free tiles for nobody until the next round.
-  for (let changed = true; changed; ) {
-    changed = false;
-    const settled = new Map(ends);
-    for (const [heroId, end] of ends) {
-      let step = end;
-      while (step > 0 && isTaken(heroId, step) !== undefined) step--;
-      if (step !== end) {
-        settled.set(heroId, step);
-        changed = true;
+        walk.done = true;
       }
     }
-    for (const [heroId, end] of settled) ends.set(heroId, end);
+    // Failures only ever get added, so this settles.
+    const failed = new Map<string, string>();
+    for (let changed = true; changed; ) {
+      changed = false;
+      const after = new Map(
+        [...walks].map(([heroId, { path }]) => [heroId, failed.has(heroId) ? path.at(-1)! : (candidates.get(heroId) ?? path.at(-1)!)]),
+      );
+      for (const heroId of candidates.keys()) {
+        if (failed.has(heroId)) continue;
+        const tile = after.get(heroId)!;
+        const other = [...after].find(([otherId, otherTile]) => otherId !== heroId && sameTile(otherTile, tile));
+        if (other) {
+          failed.set(heroId, other[0]);
+          changed = true;
+        }
+      }
+    }
+    for (const [heroId, tile] of candidates) {
+      const walk = walks.get(heroId)!;
+      if (failed.has(heroId)) {
+        walk.failedAgainst = failed.get(heroId);
+        walk.done = true;
+      } else {
+        walk.path.push({ ...tile });
+      }
+    }
   }
   return new Map(
     requests.map(({ heroId }) => {
-      const { path, wallBlocked } = walks.get(heroId)!;
-      const end = ends.get(heroId)!;
-      const stoppedByHeroes = end < path.length - 1;
-      const outcome: WalkOutcome = { heroId, path: path.slice(0, end + 1), blocked: stoppedByHeroes || wallBlocked };
-      if (stoppedByHeroes) {
-        // Whoever is on the first tile it could not take; failing that, any Hero whose walk touches that tile.
-        const missed = path[end + 1]!;
-        const others = [...walks.keys()].filter((other) => other !== heroId);
-        outcome.occupiedBy =
-          others.find((other) => sameTile(tileAtStep(other, end + 1), missed)) ??
-          others.find((other) => walks.get(other)!.path.some((tile) => sameTile(tile, missed))) ??
-          others[0];
-      }
+      const { path, wallBlocked, failedAgainst } = walks.get(heroId)!;
+      const outcome: WalkOutcome = { heroId, path, blocked: wallBlocked || failedAgainst !== undefined };
+      if (failedAgainst !== undefined) outcome.occupiedBy = failedAgainst;
       return [heroId, outcome];
     }),
   );

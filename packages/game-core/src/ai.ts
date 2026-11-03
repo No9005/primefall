@@ -11,6 +11,7 @@ import {
   MOVE_DISTANCE,
   moveDestinations,
   moveEnd,
+  movePath,
   type QueuedAction,
   type SquadPlan,
   validatePlan,
@@ -28,8 +29,7 @@ const isPrimeZoneTile = (tile: GridPosition) => PRIME_ZONE_TILES.some((zone) => 
 
 /**
  * Walking distance in steps from every tile to the nearest Prime Zone tile that is not in `blocked`, going around
- * Walls and the blocked tiles (a Move may cross them, but it cannot end on one, so planning with the way round is
- * a safe estimate). Exhausted Heroes keep their tile, so a Squad that only counted the Zone as a place to walk to
+ * Walls and the blocked tiles (a Move can neither cross nor end on one). Exhausted Heroes keep their tile, so a Squad that only counted the Zone as a place to walk to
  * froze at its edge behind them (issue 147).
  */
 function distancesToPrimeZone(blocked: ReadonlySet<number>): ReadonlyMap<number, number> {
@@ -72,18 +72,30 @@ const mirrorTile = ({ col, row }: GridPosition): GridPosition => ({ col: REACTOR
 const destinationsInOrder = (from: GridPosition, squad: SquadId): GridPosition[] =>
   squad === SquadId.Left ? moveDestinations(from) : moveDestinations(mirrorTile(from)).map(mirrorTile);
 
-/** Tiles that Heroes planned earlier will end a Move on, per queue slot: two Heroes ending on one tile both stop short. */
+/**
+ * Tiles that Heroes planned earlier stand on after each step of a queue slot (key: `claimKey`). Two Heroes
+ * stepping onto one tile, or onto a tile where a Hero stays, both fail that step (ADR 0013).
+ */
 type ClaimedTiles = Map<number, Set<number>>;
+
+const claimKey = (slot: number, step: number) => slot * MOVE_DISTANCE + step - 1;
+
+/** The tile a Hero stands on after step 1 and step 2 of a Move from `from` to `destination`. */
+const tilesAfterSteps = (from: GridPosition, destination: GridPosition): GridPosition[] => {
+  const path = movePath(from, destination);
+  return Array.from({ length: MOVE_DISTANCE }, (_, step) => path[step] ?? path.at(-1) ?? from);
+};
 
 /**
  * The Move 2 destination that ends closest to the Prime Zone by walking distance; undefined if none gets closer.
- * Heroes are walked through, but a Move must end on a free tile: the end may not be a blocked tile or one another
- * Hero already claimed in the same queue slot.
+ * Moving Heroes do not hinder each other, but a Move cannot step onto a blocked tile (a Hero stays there) or a
+ * tile another Hero already claimed for the same step of the queue slot.
  */
 function stepTowardPrimeZone(
   from: GridPosition,
   squad: SquadId,
-  claimed: ReadonlySet<number> | undefined,
+  slot: number,
+  claimed: ClaimedTiles,
   blocked: ReadonlySet<number>,
   distances: ReadonlyMap<number, number>,
 ): GridPosition | undefined {
@@ -92,7 +104,9 @@ function stepTowardPrimeZone(
   let bestDistance = isPrimeZoneTile(from) ? 0 : distanceTo(from);
   for (const destination of destinationsInOrder(from, squad)) {
     const end = moveEnd(from, destination);
-    if (claimed?.has(tileKey(end)) || blocked.has(tileKey(end))) continue;
+    const steps = tilesAfterSteps(from, destination);
+    if (blocked.has(tileKey(end)) || steps.some((tile) => blocked.has(tileKey(tile)))) continue;
+    if (steps.some((tile, step) => claimed.get(claimKey(slot, step + 1))?.has(tileKey(tile)))) continue;
     const distance = distanceTo(end);
     if (distance < bestDistance) {
       best = destination;
@@ -100,6 +114,13 @@ function stepTowardPrimeZone(
     }
   }
   return best;
+}
+
+function claimSteps(claimed: ClaimedTiles, slot: number, tiles: readonly GridPosition[]): void {
+  tiles.forEach((tile, step) => {
+    const key = claimKey(slot, step + 1);
+    claimed.set(key, (claimed.get(key) ?? new Set<number>()).add(tileKey(tile)));
+  });
 }
 
 function planHero(
@@ -150,21 +171,22 @@ function planHero(
       const cost = deck[attackCard]!.energyCost;
       const target = inRangeTargets(position, attackCard).sort((a, b) => a.deckCount - b.deckCount)[0]!;
       attackCards.splice(attackCards.indexOf(attackCard), 1);
+      claimSteps(claimed, queue.length, [position, position]);
       queue.push({ kind: ActionKind.Primary, card: attackCard, target: target.id });
       energyNeeded += cost;
       continue;
     }
     const card = spare()[0];
     if (card === undefined || cardsLeft - 1 < 0) break;
-    const destination = stepTowardPrimeZone(position, view.squad, claimed.get(queue.length), unavailable, distances);
+    const slot = queue.length;
+    const destination = stepTowardPrimeZone(position, view.squad, slot, claimed, unavailable, distances);
     if (destination) {
       queue.push({ kind: ActionKind.Move, card, destination });
+      claimSteps(claimed, slot, tilesAfterSteps(position, destination));
       position = moveEnd(position, destination);
-      const slotTiles = claimed.get(queue.length - 1) ?? new Set<number>();
-      slotTiles.add(tileKey(position));
-      claimed.set(queue.length - 1, slotTiles);
     } else if (targets.length > 0) {
       queue.push({ kind: ActionKind.Block, card });
+      claimSteps(claimed, slot, [position, position]);
     } else {
       break;
     }

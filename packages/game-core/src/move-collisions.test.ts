@@ -52,9 +52,14 @@ describe("findMoveCollisions", () => {
     expect(result).toEqual([{ heroId: "x", tick: 1, destination: c, blockedBy: "y" }]);
   });
 
-  it("does not flag a Move that walks through a standing ally", () => {
+  it("flags a Move that would walk through a standing ally", () => {
     const heroes = [hero("x", a), hero("y", b)];
-    expect(findMoveCollisions(heroes, [planOf({ x: [move(c)] })])).toEqual([]);
+    expect(findMoveCollisions(heroes, [planOf({ x: [move(c)] })])).toEqual([{ heroId: "x", tick: 1, destination: c, blockedBy: "y" }]);
+  });
+
+  it("does not flag a Hero that follows an ally walking away in the same Tick", () => {
+    const heroes = [hero("x", a), hero("y", b)];
+    expect(findMoveCollisions(heroes, [planOf({ x: [move(c)], y: [move(d)] })])).toEqual([]);
   });
 
   it("does not flag a Move through a tile an ally has just left", () => {
