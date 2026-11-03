@@ -13,9 +13,15 @@ export interface AiMatchOutcome {
   plans: SquadPlan[];
 }
 
-/** Plays up to `maxRounds` Rounds; the match ends earlier when a victory condition is met. */
-export function playAiMatch(seed: number, maxRounds: number): AiMatchOutcome {
-  let match = startRound(createMatch(seed));
+/**
+ * Plays up to `maxRounds` Rounds; the match ends earlier when a victory condition is met. `firstRound` is the number
+ * of the first Round: the AI Squads take turns at yielding by the parity of the Round number (see `planHero`), so
+ * balance checks play half of their matches with an odd and half with an even first Round.
+ */
+export function playAiMatch(seed: number, maxRounds: number, firstRound = 1): AiMatchOutcome {
+  const created = createMatch(seed);
+  created.round = firstRound - 1;
+  let match = startRound(created);
   const issues: PlanIssue[] = [];
   const plans: SquadPlan[] = [];
   for (let round = 1; round <= maxRounds && !match.result; round++) {

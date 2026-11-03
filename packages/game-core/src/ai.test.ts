@@ -70,6 +70,17 @@ describe("AI symmetry", () => {
     const destinations = (queue: typeof left.queue) => queue.flatMap((action) => (action.kind === ActionKind.Move ? [action.destination] : []));
     expect(destinations(right.queue)).toEqual(destinations(left.queue).map(mirror));
   });
+
+  it("does not let one side win nearly every match", () => {
+    const wins = { [SquadId.Left]: 0, [SquadId.Right]: 0 };
+    for (const seed of SEEDS) {
+      // The Squads take turns at yielding by Round parity, and every match follows the same early timeline, so the parity
+      // of the Round of the first contest decides who wins it. Half of the seeds start one Round later to cancel that out.
+      const winner = playAiMatch(seed, MAX_ROUNDS, seed % 2 === 0 ? 1 : 2).match.result?.winner;
+      if (winner) wins[winner] += 1;
+    }
+    expect(Math.max(wins[SquadId.Left], wins[SquadId.Right])).toBeLessThanOrEqual(SEEDS.length - 3);
+  });
 });
 
 describe("AI does not freeze", () => {
