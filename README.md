@@ -31,4 +31,4 @@ These settings are not verified yet; check them when the Vercel project is first
 
 ## License
 
-Primefall is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International license](LICENSE) (CC BY-NC 4.0). You may share and adapt it with attribution and for non-commercial purposes only.
+Primefall is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE). You may use, study and change it for any noncommercial purpose; commercial use is not allowed.

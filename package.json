@@ -1,7 +1,7 @@
 {
   "name": "primefall",
   "private": true,
-  "license": "CC-BY-NC-4.0",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "workspaces": [
     "packages/*",
