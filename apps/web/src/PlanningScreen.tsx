@@ -33,7 +33,8 @@ import {
   validatePlan,
   Visibility,
 } from "game-core";
-import { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { cardSheetRect } from "./hud-layout";
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
 import { Board } from "./Board";
 import { BlockChip, CardFace, EnergyOrb, ModeFaceCard } from "./game-parts";
@@ -105,7 +106,10 @@ function SquadPanel({
   blockChip,
   blockChipRef,
   warningsOf,
+  collapsed,
 }: {
+  /** A target is being picked: only the Queue slots and thin name pills stay, so the board is free. */
+  collapsed: boolean;
   /** The collision warnings of a Hero's planned Moves, e.g. "Collides with Controller at Tick 2". */
   warningsOf: (heroId: string) => string[];
   /** While a card is dragged: the Block 2 chip next to the Queue window, lit when Block is allowed. */
@@ -122,7 +126,7 @@ function SquadPanel({
 }) {
   const shield = playback?.shields[selected.id] ?? 0;
   return (
-    <aside className="squad-panel" aria-label="Squad">
+    <aside className={`squad-panel${collapsed ? " collapsed" : ""}`} aria-label="Squad">
       <div className="queue-column">
       <section className="hud queue-window" aria-label="Queue">
         <div className="queue-head">
@@ -213,7 +217,10 @@ function EnemyPanel({
   attackerPosition,
   aimedCard,
   knownGrid,
+  collapsed,
 }: {
+  /** A target is being picked: thin pills with the names (and the tags that help aiming). */
+  collapsed: boolean;
   /** The Reactor Deck as the Squad knows it: Cover it has seen destroyed is gone. */
   knownGrid: Grid;
   enemies: readonly EnemyView[];
@@ -224,7 +231,7 @@ function EnemyPanel({
   aimedCard: CardDefinition | undefined;
 }) {
   return (
-    <aside className="hud enemy-panel" aria-label="Enemy Squad">
+    <aside className={`hud enemy-panel${collapsed ? " collapsed" : ""}`} aria-label="Enemy Squad">
       {enemies.map((enemy) => {
         if (enemy.visibility === Visibility.Unknown) {
           return (
@@ -281,6 +288,22 @@ interface HandProps {
   /** The card being dragged out of the fan: its place shows a dashed outline. */
   dragging: CardIndex | undefined;
   onCardPointerDown: (card: CardIndex, event: ReactPointerEvent) => void;
+  /** A target is being picked: the fan slides away (the selected card is shown as a chip beside it). */
+  collapsed: boolean;
+}
+
+/** The selected card while its target is picked: name, cost and a button that cancels the use. */
+function SelectedCardChip({ card, hint, onCancel }: { card: CardDefinition; hint: string; onCancel: () => void }) {
+  return (
+    <div className="selected-card-chip" aria-label={`${card.name} selected`}>
+      <span className="chip-name">{card.name}</span>
+      <span className="chip-cost">Cost {card.energyCost}</span>
+      <span className="chip-hint">{hint}</span>
+      <button type="button" className="chip-cancel" aria-label={`Cancel ${card.name}`} onClick={onCancel}>
+        ×
+      </button>
+    </div>
+  );
 }
 
 const ACTION_USE_LABELS: Record<Exclude<ActionKind, ActionKind.Wait>, string> = {
@@ -289,7 +312,7 @@ const ACTION_USE_LABELS: Record<Exclude<ActionKind, ActionKind.Wait>, string> = 
   [ActionKind.Primary]: CARD_USE_LABELS[CardUse.Primary],
 };
 
-function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onCardTap, dragging, onCardPointerDown }: HandProps) {
+function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onCardTap, dragging, onCardPointerDown, collapsed }: HandProps) {
   const deck = HERO_DECKS[hero.heroClass];
   const middle = (hero.hand.length - 1) / 2;
   const spacing = fanSpacing(FAN_WIDTH, hero.hand.length);
@@ -302,7 +325,7 @@ function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onC
   };
   return (
     <ul
-      className="hand"
+      className={`hand${collapsed ? " collapsed" : ""}`}
       aria-label="Hand"
       style={{ "--card-w": `${spacing.cardWidth}px`, "--step": `${spacing.step}px`, width: spacing.width } as CSSProperties}
     >
@@ -340,12 +363,14 @@ function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onC
 interface CardDetailSheetProps {
   card: CardDefinition;
   reasons: Record<CardUse, string | undefined>;
+  /** Where the sheet goes (hud-layout.ts): beside the Hero, clear of the hand and the buttons. */
+  rect: Rect;
   onChoose: (use: CardUse) => void;
   onClose: () => void;
 }
 
 /** The card detail sheet over Planning (UI spec, screen 5): the four uses. Overdrive is chosen after the target. */
-function CardDetailSheet({ card, reasons, onChoose, onClose }: CardDetailSheetProps) {
+function CardDetailSheet({ card, reasons, rect, onChoose, onClose }: CardDetailSheetProps) {
   const useText: Record<CardUse, string | undefined> = {
     [CardUse.Primary]: describeEffects(card.effects),
     [CardUse.Pitch]: "Adds 1 Energy",
@@ -353,14 +378,15 @@ function CardDetailSheet({ card, reasons, onChoose, onClose }: CardDetailSheetPr
     [CardUse.Block]: "Shield 2",
   };
   return (
-    <section className="hud card-sheet" role="dialog" aria-label={`${card.name} details`}>
-      <header className="sheet-header">
-        <span className="card-name">{card.name}</span>
-        <span className="card-cost">Cost {card.energyCost}</span>
-        <button type="button" className="sheet-close" aria-label="Close card details" onClick={onClose}>
-          ×
-        </button>
-      </header>
+    <section
+      className="hud card-sheet"
+      role="dialog"
+      aria-label={`${card.name} details`}
+      style={{ left: rect.left, top: rect.top, width: rect.right - rect.left, height: rect.bottom - rect.top }}
+    >
+      <button type="button" className="sheet-close" aria-label="Close card details" onClick={onClose}>
+        ×
+      </button>
       <div className="sheet-uses" role="group" aria-label="Use card as">
         {Object.values(CardUse).map((use) => (
           <button key={use} type="button" className="use" disabled={reasons[use] !== undefined} onClick={() => onChoose(use)}>
@@ -584,6 +610,17 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   // The click that follows the release of a drag is not a tap.
   const dragEnded = useRef(false);
 
+  // The HUD makes room while a target is picked by tapping (a drag keeps the full HUD, its ghost needs the drop zones).
+  const picking = (armed !== undefined || aiming !== undefined) && !playing;
+  const heroScreenRef = useRef<((heroId: string) => Point | undefined) | undefined>(undefined);
+  const [sheetRect, setSheetRect] = useState<Rect>();
+  useLayoutEffect(() => {
+    const box = planningRef.current?.getBoundingClientRect();
+    setSheetRect(choosing !== undefined && box ? cardSheetRect({ width: box.width, height: box.height }, heroScreenRef.current?.(selected.id)) : undefined);
+  }, [choosing, selected.id]);
+  /** The hero whose surroundings the camera frames while a tile is picked. */
+  const frameHero = !picking ? undefined : armed !== undefined ? planningFrom : aimsAtDeployTile ? deployAllyHero.position : aimsAtTile ? planningFrom : undefined;
+
   const draggedCard = drag?.card;
   /** Where the dragged card could go; it is only lit and only takes a drop where its use is allowed. */
   function dropPlacesOf(card: CardDefinition): DropPlaces {
@@ -747,6 +784,14 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     }
   }
 
+  function cancelUse() {
+    setArmed(undefined);
+    setAiming(undefined);
+    setDeployAlly(undefined);
+    setPickingSecond(false);
+    setChoosing(undefined);
+  }
+
   function chooseUse(use: CardUse) {
     if (choosing === undefined) return;
     if (use === CardUse.Pitch) setPitched([...pitched, choosing]);
@@ -903,7 +948,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         pickRef={pickBoard}
         markers={markers}
         onTileTap={tapTile}
-        moveFrameHero={armed !== undefined && !playing ? planningFrom : undefined}
+        moveFrameHero={frameHero}
+        heroScreenRef={heroScreenRef}
       />
       <header className="hud top-bar">
         <span data-testid="round">
@@ -930,6 +976,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         selected={selected}
         queue={queue}
         playback={playback}
+        collapsed={picking}
         disabled={playing}
         onSelect={changeSelection}
         blockChip={dragLit ? { allowed: dragLit.blockAllowed, active: drag?.probe.drop?.use === CardUse.Block } : undefined}
@@ -951,6 +998,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         knownGrid={knownGrid}
         enemies={view.enemies}
         playback={playback}
+        collapsed={picking}
         attackerPosition={aiming !== undefined && !aimsAtAlly && !playing ? planningFrom : undefined}
         aimedCard={aimedCard}
       />
@@ -962,10 +1010,11 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
           ))}
         </ol>
       )}
-      {choosing !== undefined && !playing && (
+      {choosing !== undefined && !playing && sheetRect && (
         <CardDetailSheet
           card={HERO_DECKS[selected.heroClass][choosing]!}
           reasons={cardUseReasons(selected.heroClass, choosing, queue, pitched)}
+          rect={sheetRect}
           onChoose={chooseUse}
           onClose={() => setChoosing(undefined)}
         />
@@ -973,7 +1022,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       {modeChoice && modeFaces && !playing && (
         <ModeChoice card={HERO_DECKS[selected.heroClass][modeChoice.card]!} faces={modeFaces} onPick={pickFace} onCancel={() => setModeChoice(undefined)} />
       )}
-      <div className="hud hand-bar">
+      <div className={`hud hand-bar${picking ? " collapsed" : ""}`}>
         <EnergyOrb
           orbRef={energyRef}
           available={energy.available}
@@ -992,7 +1041,15 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
           onCardTap={tapCard}
           dragging={drag?.card}
           onCardPointerDown={startCardPress}
+          collapsed={picking}
         />
+        {picking && (armed ?? aiming) !== undefined && (
+          <SelectedCardChip
+            card={HERO_DECKS[selected.heroClass][(armed ?? aiming)!]!}
+            hint={aiming !== undefined ? "Pick a target" : "Pick a tile"}
+            onCancel={cancelUse}
+          />
+        )}
       </div>
       {drag && (
         <>
