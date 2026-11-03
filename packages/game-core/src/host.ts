@@ -49,7 +49,7 @@ export interface HeroView {
   exileCount: number;
   /** Cards in the Hand, as indices into the Hero's fixed Deck list (`HERO_DECKS`). */
   hand: readonly number[];
-  /** An Exhausted Hero is removed from the match: it plans and acts no more. */
+  /** An Exhausted Hero is out of the match: it plans and acts no more, occupies no tile and leaves Half Cover. */
   exhausted: boolean;
   /** Slowed: the next Move 2 becomes a Move 1. */
   slowed: boolean;
@@ -135,6 +135,11 @@ export interface SquadView {
    * not listed until the Squad sees that tile (Fog of War).
    */
   destroyedCover: readonly GridPosition[];
+  /**
+   * Half Cover left by Exhausted Heroes that this Squad has seen (its own at once) and not seen destroyed since.
+   * Used like other Half Cover; a wreck the Squad has not seen is not listed (Fog of War).
+   */
+  wreckCover: readonly GridPosition[];
   /** Temporary Half Cover this Squad placed or currently sees (Deploy Cover, Fortify). */
   placedCover: readonly GridPosition[];
   /** The areas this Squad's Scout Drones still reveal. */

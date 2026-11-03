@@ -46,6 +46,7 @@ import {
   TileKind,
   tileAt,
   withTile,
+  withWreck,
 } from "./reactor-deck";
 
 export interface ResolutionResult {
@@ -142,7 +143,7 @@ function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: 
     events.push({ kind: EventKind.SlowUsed, tick, heroId });
   }
   const outcomes = resolveWalks(
-    new Map(match.heroes.map((hero) => [hero.id, hero.position])),
+    new Map(match.heroes.filter((hero) => !hero.exhausted).map((hero) => [hero.id, hero.position])),
     movers.map((mover) => ({ ...mover, distance: slowedIds.has(mover.heroId) ? SLOWED_MOVE_DISTANCE : mover.distance })),
   );
   const furthest = Math.max(0, ...[...outcomes.values()].map(({ path, blocked }) => path.length - 1 + (blocked ? 1 : 0)));
@@ -185,6 +186,7 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const occupant = match.heroes.find(
       (other) =>
         other.squad !== attack.hero.squad &&
+        !other.exhausted &&
         attack.ghostTile !== undefined &&
         samePosition(other.position, attack.ghostTile),
     );
@@ -278,7 +280,7 @@ function knockBack(
     const blocked =
       !isStepAllowed(target.position, to) ||
       coverAt(match.grid, to) === CoverKind.Full ||
-      match.heroes.some((other) => samePosition(other.position, to));
+      match.heroes.some((other) => !other.exhausted && samePosition(other.position, to));
     if (blocked) return;
     events.push({ kind: EventKind.Knockback, tick, heroId: target.id, from: { ...target.position }, to });
     target.position = to;
@@ -304,7 +306,7 @@ interface UtilityUse {
 /** Puts temporary Half Cover on a tile without Cover; the tile gets its kind back when `duration` Resolutions are over. */
 function placeHalfCover(use: UtilityUse, position: GridPosition, requireEmpty: boolean): void {
   const { match, tick, effect, caster, events } = use;
-  const occupied = match.heroes.some((other) => samePosition(other.position, position));
+  const occupied = match.heroes.some((other) => !other.exhausted && samePosition(other.position, position));
   if (isWall(position) || tileAt(match.grid, position) === undefined || coverAt(match.grid, position) !== CoverKind.None || (requireEmpty && occupied)) {
     events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
     return;
@@ -646,6 +648,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
   // Exhaustion takes effect only now, so a Hero whose Deck ran out mid-Resolution finished its Queue (ADR 0006).
   for (const hero of match.heroes.filter((candidate) => !candidate.exhausted && candidate.deck.length === 0)) {
     hero.exhausted = true;
+    match.grid = withWreck(match.grid, hero.position);
     events.push({ kind: EventKind.Exhausted, tick: Math.max(ticks, 1), heroId: hero.id });
   }
   evaluateMatchEnd(match);

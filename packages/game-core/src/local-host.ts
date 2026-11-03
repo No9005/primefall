@@ -3,8 +3,9 @@
 
 import { planSquad } from "./ai";
 import { type MatchHost, SquadId, type SquadView, type SubmitResult } from "./host";
-import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
+import { buildSquadView, createMatch, type MatchState, recordSightings, startRound } from "./match";
 import { type SquadPlan, validatePlan } from "./plan";
+import { withWreck } from "./reactor-deck";
 import { getSquadEvents, resolveRound } from "./resolution";
 import { SERVER_ENTRY } from "./server";
 
@@ -35,10 +36,22 @@ export function restoreLocalHost(snapshot: string): LocalMatchHost | undefined {
     const { version, match } = saved as { version?: unknown; match?: Partial<MatchState> };
     if (version !== SNAPSHOT_VERSION || typeof match !== "object" || match === null) return undefined;
     if (!Array.isArray(match.heroes) || typeof match.round !== "number" || typeof match.rngState !== "number") return undefined;
-    return hostFor(match as MatchState);
+    return hostFor(upgradeSavedMatch(match as MatchState));
   } catch {
     return undefined;
   }
+}
+
+/**
+ * A match saved before Exhausted Heroes left Half Cover has no wrecks: every Exhausted Hero in it leaves Half
+ * Cover on its tile now, and each Squad knows the wrecks it could have seen.
+ */
+function upgradeSavedMatch(match: MatchState): MatchState {
+  if (match.knownWrecks !== undefined) return match;
+  const grid = match.heroes.filter((hero) => hero.exhausted).reduce((current, hero) => withWreck(current, hero.position), match.grid);
+  const upgraded: MatchState = { ...match, grid, knownWrecks: { [SquadId.Left]: [], [SquadId.Right]: [] } };
+  recordSightings(upgraded);
+  return upgraded;
 }
 
 function hostFor(initial: MatchState): LocalMatchHost {

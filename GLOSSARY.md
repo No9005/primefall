@@ -15,7 +15,7 @@ A group of three Heroes fighting together.
 _Avoid_: Team, faction
 
 **Exhaustion**:
-The state of a Hero whose Deck is empty. An exhausted Hero is removed from the match.
+The state of a Hero whose Deck is empty. An exhausted Hero is out of the match: it acts no more, is no obstacle to Moves, and its tile becomes Half Cover until that Cover is destroyed.
 _Avoid_: Death, KO, defeat
 
 ### Cards and resources

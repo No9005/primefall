@@ -29,8 +29,8 @@ const isPrimeZoneTile = (tile: GridPosition) => PRIME_ZONE_TILES.some((zone) => 
 
 /**
  * Walking distance in steps from every tile to the nearest Prime Zone tile that is not in `blocked`, going around
- * Walls and the blocked tiles (a Move can neither cross nor end on one). Exhausted Heroes keep their tile, so a Squad that only counted the Zone as a place to walk to
- * froze at its edge behind them (issue 147).
+ * Walls and the blocked tiles (a Move can neither cross nor end on one). A Squad that only counted the Zone as a place to walk to
+ * froze at its edge behind Squad mates standing in it (issue 147).
  */
 function distancesToPrimeZone(blocked: ReadonlySet<number>): ReadonlyMap<number, number> {
   const free = PRIME_ZONE_TILES.filter((tile) => !blocked.has(tileKey(tile)));
@@ -49,14 +49,14 @@ function distancesToPrimeZone(blocked: ReadonlySet<number>): ReadonlyMap<number,
   return distances;
 }
 
-/** Tiles no Move should end on: enemies, Exhausted Heroes and Squad mates that already stand in the Zone. */
+/** Tiles no Move should end on: enemies and Squad mates that already stand in the Zone. */
 function blockedTiles(view: SquadView): Set<number> {
   const blocked = new Set<number>();
   for (const hero of view.heroes) {
-    if (hero.exhausted || isPrimeZoneTile(hero.position)) blocked.add(tileKey(hero.position));
+    if (!hero.exhausted && isPrimeZoneTile(hero.position)) blocked.add(tileKey(hero.position));
   }
   for (const enemy of view.enemies) {
-    if (enemy.visibility === Visibility.Visible) blocked.add(tileKey(enemy.position));
+    if (enemy.visibility === Visibility.Visible && !enemy.exhausted) blocked.add(tileKey(enemy.position));
   }
   return blocked;
 }

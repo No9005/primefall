@@ -16,6 +16,7 @@ import {
   HERO_DECKS,
   HeroClass,
   MAX_QUEUE_LENGTH,
+  withWreck,
   moveDestinations,
   reachableMoveDestinations,
   type GridPosition,
@@ -469,7 +470,10 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
 
   const lastMove = queue.filter((action) => action.kind === ActionKind.Move).at(-1);
   const planningFrom = lastMove?.kind === ActionKind.Move ? lastMove.destination : selected.position;
-  const knownGrid = useMemo(() => view.destroyedCover.reduce(destroyCover, REACTOR_DECK), [view.destroyedCover]);
+  const knownGrid = useMemo(
+    () => view.wreckCover.reduce(withWreck, view.destroyedCover.reduce(destroyCover, REACTOR_DECK)),
+    [view.destroyedCover, view.wreckCover],
+  );
   // Who targets whom: the queued actions of the Squad while planning, the actions of the current Tick in the replay.
   const targetLines = useMemo(
     () =>
@@ -878,6 +882,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       <Board
         destroyedCover={view.destroyedCover}
         placedCover={view.placedCover}
+        wreckCover={view.wreckCover}
         revealedAreas={view.revealedAreas}
         visibleTiles={view.visibleTiles}
         heroes={boardHeroes}
