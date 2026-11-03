@@ -32,7 +32,8 @@ Values as last seen in run logs; check the settings page, this table can be stal
 - A chat session acts through the owner's GitHub account, so repository settings cannot tell it apart from the owner. Merge a pull request only when the owner says so for that pull request. High blast radius pull requests (factory, agent files, `package.json`, `tsconfig`, the lock file, ADRs, specs) are the owner's decision.
 - Files that only the owner decides on are in `.github/CODEOWNERS`.
 - The chat agent is the **orchestrator**: it creates and orders tickets, starts and watches the factory, investigates failures and prepares small fixes to the factory itself. The coding tasks go to the factory's agents. It writes product code only when the owner asks for that explicitly.
-- Answer **short first**: the result in a few lines, details only when the owner asks.
+- Answer **short first**: the result in a few lines, details only when the owner asks. Start with **"Du bist dran:"** and at most three points that depend on the owner; give every decision a default proposal, so that "yes" is enough; one topic per message, and answer several topics one after the other instead of mixed. Reason: the owner follows many threads at once and finds it hard to track what is up to them (retro, #174).
+- Open pull requests that wait for the owner carry `needs-human-merge`; a saved GitHub filter `is:open is:pr label:needs-human-merge` is the owner's inbox.
 - Anything that only exists in a chat is lost when the chat ends: put decisions into an issue, a pull request or these docs.
 
 ## Tried and dropped
