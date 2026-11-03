@@ -42,7 +42,7 @@ test("start a match, play a Move card onto a tile, Commit", async ({ page }) => 
   await page.goto("/");
   await page.getByRole("button", { name: "Play" }).click();
 
-  await expect(page.getByTestId("round")).toHaveText(/^Round 1\//);
+  await expect(page.getByTestId("round")).toHaveText("ROUND 1");
   const canvas = page.locator(".board canvas");
   await expect(canvas).toBeVisible();
   // On a runner without a GPU one canvas screenshot waits for a software-rendered frame and takes several seconds.
@@ -92,7 +92,7 @@ test("start a match, play a Move card onto a tile, Commit", async ({ page }) => 
   // The Resolution starts with the big callout; the Commit button then follows the Ticks.
   await expect(page.getByText("RESOLUTION", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /^(Waiting\.\.\.|Tick \d+|Done)$/ })).toBeDisabled();
-  await expect(page.getByTestId("round")).toHaveText(/^Round 2\//, { timeout: 20_000 });
+  await expect(page.getByTestId("round")).toHaveText("ROUND 2", { timeout: 20_000 });
 
   expect(errors).toEqual([]);
 });

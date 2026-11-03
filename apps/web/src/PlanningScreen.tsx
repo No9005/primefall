@@ -52,6 +52,7 @@ import { DeckShuffle } from "./DeckShuffle";
 import { exhaustionHud } from "./exhaustion-hud";
 import type { BoardPick, Point } from "./card-drag";
 import { Callout } from "./Callout";
+import { COUNTDOWN_CALLOUT_MS, countdownCallout, formatTimer, timerTone } from "./callout";
 import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionCommitLabel } from "./resolution-hud";
 import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
 import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
@@ -1059,19 +1060,26 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         heroScreenRef={heroScreenRef}
       />
       <header className="hud top-bar">
-        <span data-testid="round">
-          Round {view.round}/{ROUND_LIMIT}
-        </span>
         <span data-testid="prime-progress" aria-label="Prime Zone control">
           Zone · You {view.primeProgress[view.squad]}/{PRIME_ZONE_WIN_RESOLUTIONS} · Enemy{" "}
           {view.primeProgress[view.squad === SquadId.Left ? SquadId.Right : SquadId.Left]}/{PRIME_ZONE_WIN_RESOLUTIONS}
         </span>
-        {!playing && (
-          <span data-testid="timer" aria-label="Planning time left">
-            {secondsLeft}s
-          </span>
-        )}
       </header>
+      <div
+        className={`timer-pill timer-${timerTone(secondsLeft)}`}
+        title={`Round ${view.round} / ${ROUND_LIMIT}`}
+        aria-label={`Round ${view.round} of ${ROUND_LIMIT}`}
+      >
+        <span data-testid="round" className="timer-round">
+          ROUND {view.round}
+        </span>
+        <span data-testid="timer" className="timer-time" aria-label="Planning time left">
+          {secondsLeft === 0 || playing ? "LOCKED" : formatTimer(secondsLeft)}
+        </span>
+      </div>
+      {!playing && countdownCallout(secondsLeft) !== undefined && (
+        <Callout kind="number" text={countdownCallout(secondsLeft)!.text} tone={countdownCallout(secondsLeft)!.tone} durationMs={COUNTDOWN_CALLOUT_MS} />
+      )}
       {resolutionStage === "callout" && <Callout kind="word" text="RESOLUTION" tone="teal" durationMs={RESOLUTION_CALLOUT_MS} />}
       <SquadPanel
         heroes={view.heroes}

@@ -278,6 +278,17 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 
 .top-bar [data-testid="prime-progress"] { color: var(--teal); }
 
+/* Timer pill: left of the turn buttons, clear of the enemy panel. */
+.timer-pill { position: absolute; z-index: var(--z-hud); top: calc(4px + env(safe-area-inset-top)); right: calc(194px + env(safe-area-inset-right)); height: 34px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--steel); border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
+.timer-round { font: 600 12px var(--font-label); letter-spacing: 0.08em; color: var(--muted); }
+.timer-time { font: 500 20px var(--font-number); color: var(--text); }
+.timer-amber { border-color: var(--amber); }
+.timer-amber .timer-time { color: var(--amber); }
+.timer-red { border-color: var(--red); animation: timer-pulse 0.5s ease-in-out infinite alternate; }
+.timer-red .timer-time { color: var(--red); }
+@keyframes timer-pulse { from { opacity: 1; } to { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .timer-red { animation: none; } }
+
 .end-screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 16px; }
 .end-screen h1 { margin: 0; font-family: Rajdhani, sans-serif; font-size: 48px; letter-spacing: 0.08em; }
 .end-screen .label { margin: 0; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
