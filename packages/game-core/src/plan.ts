@@ -3,7 +3,7 @@
 
 import { type CardIndex, cardInMode, CardTarget, EffectKind, EffectRecipient, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type HeroView, type SquadId, type SquadView, Visibility } from "./host";
-import { type Grid, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind, tileAt } from "./reactor-deck";
+import { type Grid, type GridPosition, isStepAllowed, nextStep, REACTOR_DECK, stepTowards, TileKind, tileAt } from "./reactor-deck";
 
 /** A Hero's Queue holds at most 4 actions (the maximum Hand size, ADR 0020). */
 export const MAX_QUEUE_LENGTH = 4;
@@ -311,7 +311,8 @@ export function findMoveCollisions(heroes: readonly HeroView[], plans: readonly 
       active = active.filter(({ distance }) => step < distance);
       const attempts = active.flatMap((mover) => {
         const from = positions.get(mover.heroId)!;
-        return same(from, mover.destination) ? [] : [{ mover, from, to: stepTowards(from, mover.destination) }];
+        const occupied = (tile: GridPosition) => [...positions.values()].some((position) => same(position, tile));
+        return same(from, mover.destination) ? [] : [{ mover, from, to: nextStep(from, mover.destination, occupied) }];
       });
       const open = attempts.filter(({ from, to }) => isStepAllowed(from, to));
       const free = open.filter(({ to }) => ![...positions.values()].some((position) => same(position, to)));

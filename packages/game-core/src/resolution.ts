@@ -39,7 +39,7 @@ import {
   type GridPosition,
   isStepAllowed,
   isWall,
-  stepTowards,
+  nextStep,
   HALF_COVER_REDUCTION,
   hasLineOfSight,
   REACTOR_DECK,
@@ -150,7 +150,8 @@ function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: 
     const attempts = active.flatMap((mover) => {
       const hero = match.heroes.find((candidate) => candidate.id === mover.heroId)!;
       if (samePosition(hero.position, mover.destination)) return [];
-      return [{ mover, hero, to: stepTowards(hero.position, mover.destination) }];
+      const occupied = (tile: GridPosition) => match.heroes.some((other) => samePosition(other.position, tile));
+      return [{ mover, hero, to: nextStep(hero.position, mover.destination, occupied) }];
     });
     const allowed = attempts.filter(({ hero, to }) => {
       const occupied = match.heroes.some((other) => samePosition(other.position, to));
