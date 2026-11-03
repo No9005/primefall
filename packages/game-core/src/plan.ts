@@ -293,69 +293,63 @@ export interface WalkOutcome {
 const sameTile = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
 
 /**
- * Decides where Moves end (ADR 0013). `standing` has every Hero. Steps are taken one after the other: in each
- * step every walking Hero tries the next tile towards its destination (a Wall or Wall corner ends its walk).
- * Heroes that move do not hinder each other, but a Hero cannot step onto a tile where a Hero stays, and no two
- * Heroes may be on one tile after the step. A Hero whose step fails stops for the rest of its Move and counts as
- * standing, which may make the Heroes behind it fail too; this is repeated until nothing changes. The result does
- * not depend on the order of the requests or on which Squad a Hero belongs to.
+ * Decides where Moves end (ADR 0013). `standing` has every Hero. Each walking Hero plans its walk towards the
+ * destination (a Wall or Wall corner ends it). Walking Heroes may cross each other's tiles in the middle of the
+ * Tick, but a Hero cannot walk through a Hero that stays, and no two Heroes may be on one tile when the movement
+ * ends. A walk is cut one step shorter, for all Heroes at once, when it passes a tile where a Hero stays or ends
+ * on a tile another Hero ends on; a Hero left without a step stays, which may cut other walks. This is repeated
+ * until nothing changes. The result does not depend on the order of the requests or on the Squad of a Hero.
  */
 export function resolveWalks(standing: ReadonlyMap<string, GridPosition>, requests: readonly WalkRequest[]): Map<string, WalkOutcome> {
-  const walks = new Map<string, { path: GridPosition[]; wallBlocked: boolean; failedAgainst?: string; done: boolean }>();
-  for (const [heroId, position] of standing) walks.set(heroId, { path: [{ ...position }], wallBlocked: false, done: true });
-  for (const { heroId } of requests) walks.get(heroId)!.done = false;
-  const furthest = Math.max(0, ...requests.map(({ distance }) => distance));
-
-  for (let step = 0; step < furthest; step++) {
-    const candidates = new Map<string, GridPosition>();
-    for (const { heroId, destination, distance } of requests) {
-      const walk = walks.get(heroId)!;
-      if (walk.done) continue;
-      const from = walk.path.at(-1)!;
-      if (step >= distance || sameTile(from, destination)) {
-        walk.done = true;
-        continue;
+  const planned = new Map<string, { path: GridPosition[]; wallBlocked: boolean }>();
+  for (const { heroId, destination, distance } of requests) {
+    const path = [{ ...standing.get(heroId)! }];
+    let wallBlocked = false;
+    for (let step = 0; step < distance && !sameTile(path.at(-1)!, destination); step++) {
+      const next = stepTowards(path.at(-1)!, destination);
+      if (!isStepAllowed(path.at(-1)!, next)) {
+        wallBlocked = true;
+        break;
       }
-      const next = stepTowards(from, destination);
-      if (isStepAllowed(from, next)) {
-        candidates.set(heroId, next);
-      } else {
-        walk.wallBlocked = true;
-        walk.done = true;
-      }
+      path.push(next);
     }
-    // Failures only ever get added, so this settles.
-    const failed = new Map<string, string>();
-    for (let changed = true; changed; ) {
-      changed = false;
-      const after = new Map(
-        [...walks].map(([heroId, { path }]) => [heroId, failed.has(heroId) ? path.at(-1)! : (candidates.get(heroId) ?? path.at(-1)!)]),
-      );
-      for (const heroId of candidates.keys()) {
-        if (failed.has(heroId)) continue;
-        const tile = after.get(heroId)!;
-        const other = [...after].find(([otherId, otherTile]) => otherId !== heroId && sameTile(otherTile, tile));
-        if (other) {
-          failed.set(heroId, other[0]);
-          changed = true;
+    planned.set(heroId, { path, wallBlocked });
+  }
+
+  const length = new Map([...planned].map(([heroId, { path }]) => [heroId, path.length - 1]));
+  const stoppedBy = new Map<string, string>();
+  const tileOf = (heroId: string) => planned.get(heroId)?.path[length.get(heroId)!] ?? standing.get(heroId)!;
+  for (let changed = true; changed; ) {
+    changed = false;
+    const cuts = new Map<string, { newLength: number; by: string }>();
+    // Heroes that stay for the whole Tick: not moving, or left without a step.
+    const stayers = [...standing.keys()].filter((heroId) => (length.get(heroId) ?? 0) === 0).sort();
+    for (const [heroId, { path }] of planned) {
+      const steps = length.get(heroId)!;
+      if (steps === 0) continue;
+      for (let index = 1; index <= steps; index++) {
+        const stayer = stayers.find((other) => other !== heroId && sameTile(standing.get(other)!, path[index]!));
+        if (stayer !== undefined) {
+          cuts.set(heroId, { newLength: index - 1, by: stayer });
+          break;
         }
       }
+      if (cuts.has(heroId)) continue;
+      const end = tileOf(heroId);
+      const sharing = [...standing.keys()].filter((other) => other !== heroId && sameTile(tileOf(other), end)).sort();
+      if (sharing.length > 0) cuts.set(heroId, { newLength: steps - 1, by: sharing[0]! });
     }
-    for (const [heroId, tile] of candidates) {
-      const walk = walks.get(heroId)!;
-      if (failed.has(heroId)) {
-        walk.failedAgainst = failed.get(heroId);
-        walk.done = true;
-      } else {
-        walk.path.push({ ...tile });
-      }
+    for (const [heroId, { newLength, by }] of cuts) {
+      length.set(heroId, newLength);
+      stoppedBy.set(heroId, by);
+      changed = true;
     }
   }
   return new Map(
     requests.map(({ heroId }) => {
-      const { path, wallBlocked, failedAgainst } = walks.get(heroId)!;
-      const outcome: WalkOutcome = { heroId, path, blocked: wallBlocked || failedAgainst !== undefined };
-      if (failedAgainst !== undefined) outcome.occupiedBy = failedAgainst;
+      const { path, wallBlocked } = planned.get(heroId)!;
+      const outcome: WalkOutcome = { heroId, path: path.slice(0, length.get(heroId)! + 1), blocked: wallBlocked || stoppedBy.has(heroId) };
+      if (stoppedBy.has(heroId)) outcome.occupiedBy = stoppedBy.get(heroId)!;
       return [heroId, outcome];
     }),
   );
