@@ -48,6 +48,7 @@ import { addBurn, type BurnBatch, NO_BURN_PENDING, settleBurn, shownBurnCounts }
 import { DeckBurn } from "./DeckBurn";
 import { addShuffle, NO_SHUFFLE_PENDING, settleShuffle, shownDeckAfterShuffle, shownDiscardCount, SHUFFLE_MS, type ShuffleStep, shuffledWhileDrawing } from "./deck-shuffle";
 import { DeckShuffle } from "./DeckShuffle";
+import { exhaustionHud } from "./exhaustion-hud";
 import type { BoardPick, Point } from "./card-drag";
 import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
 import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
@@ -259,15 +260,43 @@ function EnemyPanel({
 }
 
 /** The piles of the selected Hero: the Deck as a stack with its count on top, Discard and Exile as a tiny grey row. */
-function PilePanel({ deck, discard, exile, opacity, burn }: { deck: number; discard: number; exile: number; opacity: number; burn?: ReactNode }) {
+/** Exhaustion (issue 205): a red skull replaces the Deck count; it drops in and shakes once. */
+function Skull() {
   return (
-    <div className="piles" style={{ opacity }}>
+    <svg className="deck-skull" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="Exhausted" data-testid="deck-skull">
+      <path
+        fill="currentColor"
+        d="M16 2C8.8 2 4 7 4 13.5c0 4 1.9 6.6 4.5 8.2V27h4v-3h2v3h3v-3h2v3h4v-5.3c2.6-1.6 4.5-4.2 4.5-8.2C28 7 23.2 2 16 2Zm-5.5 17a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm11 0a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"
+      />
+    </svg>
+  );
+}
+
+function PilePanel({
+  deck,
+  discard,
+  exile,
+  opacity,
+  burn,
+  skull,
+  greyed,
+}: {
+  deck: number;
+  discard: number;
+  exile: number;
+  opacity: number;
+  burn?: ReactNode;
+  skull: boolean;
+  greyed: boolean;
+}) {
+  return (
+    <div className={`piles${greyed ? " exhausted-hud" : ""}`} style={greyed ? undefined : { opacity }}>
       <div className="pile-minor">
         <span data-testid="discard-count">Discard {discard}</span>
         <span data-testid="exile-count">Exile {exile}</span>
       </div>
       <div className="deck-pile" data-testid="deck-pile" aria-label={`Deck: ${deck} cards`}>
-        <span className="deck-count">{deck}</span>
+        {skull ? <Skull /> : <span className="deck-count">{deck}</span>}
         {burn}
       </div>
     </div>
@@ -499,6 +528,11 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   const shownDiscard = shownDiscardCount(selected.discardCount, playback?.shuffled[selected.id] ?? 0, shufflePending, selected.id);
   const shuffleWhileDrawing = drawing && draw.shuffled > 0 && !draw.shuffleDone;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const exhaustion = exhaustionHud({
+    exhausted: selected.exhausted,
+    exhaustedInPlayback: playback?.exhausted.includes(selected.id) ?? false,
+    animationsQueued: burnQueue.length > 0,
+  });
 
   // The AI allies plan from the same view, so their plan is known before Commit and does not change with ours.
   const [allyPlan, setAllyPlan] = useState<SquadPlan>();
@@ -1035,6 +1069,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
           discard={shownDiscard}
           exile={burnCounts.exile}
           opacity={focus.deck}
+          skull={exhaustion.skull}
+          greyed={exhaustion.greyed}
           burn={
             <>
               {burning?.kind === "burn" && (
@@ -1065,7 +1101,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
             </>
           }
         />
-        <div className="hand-column">
+        <div className={`hand-column${exhaustion.greyed ? " exhausted-hud" : ""}`}>
           <EnergyPill
             available={energy.available}
             lit={false}
@@ -1082,7 +1118,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
             held={heldInHand}
             inUse={cardInUse}
             otherOpacity={focus.otherCards}
-            disabled={playing || drawing}
+            disabled={playing || drawing || exhaustion.greyed}
             arriving={drawing ? draw.cards : NO_CARDS}
             onCardClick={clickCard}
             onCardPointerDown={startCardPress}
@@ -1114,7 +1150,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
             )}
           </div>
         )}
-        <button type="button" className="commit" disabled={issues.length > 0 || playing} onClick={() => void commit(plan)}>
+        <button type="button" className="commit" disabled={issues.length > 0 || playing || exhaustion.greyed} onClick={() => void commit(plan)}>
           Commit
         </button>
       </section>

@@ -198,6 +198,19 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 }
 .shuffle-flash { border-radius: var(--radius-s); box-shadow: 0 0 0 3px var(--amber); opacity: 0; animation: shuffle-flash 400ms ease-out forwards; }
 @keyframes shuffle-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+/* Exhaustion (issue 205): the Deck group and the Hand are greyed out and inert; a red skull drops onto the Deck pile. */
+.exhausted-hud { opacity: 0.3; filter: grayscale(1); pointer-events: none; }
+.deck-skull { color: var(--red); animation: skull-drop 400ms ease-out; }
+@keyframes skull-drop {
+  0% { transform: scale(1.8); opacity: 0; }
+  60% { transform: scale(1); opacity: 1; }
+  72% { transform: translateX(-3px); }
+  84% { transform: translateX(3px); }
+  100% { transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .deck-skull { animation: none; }
+}
 .deck-count { font: 500 24px/1 var(--font-number); color: var(--text); }
 .hand { margin: 0; padding: 12px 0 0; list-style: none; display: flex; height: 146px; position: relative; }
 /* --step and --card-w come from fanSpacing (hand-fan.ts). */
