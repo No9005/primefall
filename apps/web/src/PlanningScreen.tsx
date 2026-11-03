@@ -42,6 +42,7 @@ import { drawShots, type ShotDrawing } from "./shot-lines";
 import { heroMarks } from "./shield-marks";
 import { plannedTargetLines, replayTargetLines, type TargetLine } from "./target-lines";
 import { cardAtX, FAN_WIDTH, fanSpacing } from "./hand-fan";
+import { drawSchedule, newCards, shownDeckCount } from "./hand-draw";
 import type { BoardPick, Point } from "./card-drag";
 import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
 import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
@@ -282,7 +283,13 @@ interface HandProps {
   onCardPointerDown: (card: CardIndex, event: ReactPointerEvent) => void;
   /** A target is being picked: the fan slides away (the selected card is shown as a chip beside it). */
   collapsed: boolean;
+  /** Cards still flying in from the Deck pile (the draw animation): they start face down at the pile. */
+  arriving: readonly CardIndex[];
 }
+
+/** Where the centre of the Deck pile lies relative to the left edge of the fan and to the centre of a card (CSS pixels). */
+const PILE_CENTRE_X = -39;
+const PILE_TO_CARD_Y = 22;
 
 /** The selected card while its target is picked: name, cost and a button that cancels the use. */
 function SelectedCardChip({ card, hint, onCancel }: { card: CardDefinition; hint: string; onCancel: () => void }) {
@@ -304,7 +311,7 @@ const ACTION_USE_LABELS: Record<Exclude<ActionKind, ActionKind.Wait>, string> = 
   [ActionKind.Primary]: CARD_USE_LABELS[CardUse.Primary],
 };
 
-function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpacity, disabled, onCardClick, onCardPointerDown, collapsed }: HandProps) {
+function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpacity, disabled, onCardClick, onCardPointerDown, collapsed, arriving }: HandProps) {
   const deck = HERO_DECKS[hero.heroClass];
   const middle = (hero.hand.length - 1) / 2;
   const spacing = fanSpacing(FAN_WIDTH, hero.hand.length);
@@ -317,7 +324,7 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
   };
   return (
     <ul
-      className={`hand${collapsed ? " collapsed" : ""}`}
+      className={`hand${collapsed ? " collapsed" : ""}${arriving.length > 0 ? " drawing" : ""}`}
       aria-label="Hand"
       style={{ "--card-w": `${spacing.cardWidth}px`, "--step": `${spacing.step}px`, width: spacing.width } as CSSProperties}
     >
@@ -333,8 +340,21 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
           use = `${overdriven ? "Overdrive" : ACTION_USE_LABELS[queued.kind]} · #${queuedAt + 1}`;
         } else if (isPitched) use = CARD_USE_LABELS[CardUse.Pitch];
         else if (cardIndex === armed) use = armedLabel;
+        const arrivalOrder = arriving.indexOf(cardIndex);
+        const arrival =
+          arrivalOrder < 0
+            ? ({} as CSSProperties)
+            : ({
+                "--from-x": `${PILE_CENTRE_X - (position * spacing.step + spacing.cardWidth / 2)}px`,
+                "--from-y": `${PILE_TO_CARD_Y}px`,
+                "--draw-delay": `${drawSchedule(arrivalOrder).start}ms`,
+              } as CSSProperties);
         return (
-          <li key={cardIndex} style={{ "--offset": offset, "--position": position, "--dim": inUse !== undefined && cardIndex !== inUse ? otherOpacity : 1 } as CSSProperties}>
+          <li
+            key={cardIndex}
+            className={arrivalOrder >= 0 ? "arriving" : undefined}
+            style={{ "--offset": offset, "--position": position, "--dim": inUse !== undefined && cardIndex !== inUse ? otherOpacity : 1, ...arrival } as CSSProperties}
+          >
             <button
               type="button"
               className={`card ${card.type}${queued || isPitched ? " used" : ""}${cardIndex === held ? " lifted" : ""}`}
@@ -344,12 +364,34 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
               onPointerDown={(event) => onCardPointerDown(pressedCard(event, cardIndex), event)}
             >
               <CardFace card={card} use={use} />
+              {arrivalOrder >= 0 && <span className="card-back" aria-hidden="true" />}
             </button>
           </li>
         );
       })}
     </ul>
   );
+}
+
+const NO_CARDS: readonly CardIndex[] = [];
+
+interface DrawState {
+  view: SquadView;
+  heroId: string;
+  /** The player's Hand in `view`, to find the new cards of the next Round. */
+  hand: readonly CardIndex[];
+  /** The cards that fly in, in Hand order. */
+  cards: readonly CardIndex[];
+  /** How many of them have left the Deck pile. */
+  departed: number;
+  done: boolean;
+}
+
+/** The draw of a Round: nothing flies with reduced motion, or when no card is new. */
+function startDraw(view: SquadView, previousHand: readonly CardIndex[] | undefined): DrawState {
+  const hero = view.heroes.find((candidate) => candidate.heroClass === PLAYER_HERO_CLASS)!;
+  const cards = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? [] : newCards(previousHand, hero.hand);
+  return { view, heroId: hero.id, hand: hero.hand, cards, departed: 0, done: cards.length === 0 };
 }
 
 interface PlanningScreenProps {
@@ -393,6 +435,27 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   );
   const issues = useMemo(() => validatePlan(view, plan), [view, plan]);
   const playing = playback !== undefined;
+
+  // The draw animation: the cards new in the player's Hand fly in one after the other (hand-draw.ts). The state is
+  // derived while rendering the first time a view is seen, so no card shows face up before it has flown.
+  const [draw, setDraw] = useState(() => startDraw(view, undefined));
+  if (draw.view !== view) setDraw(startDraw(view, draw.hand));
+  const drawing = !draw.done && selected.id === draw.heroId;
+  useEffect(() => {
+    if (draw.done || draw.view !== view) return;
+    const forThisView = (change: (state: DrawState) => DrawState) => (state: DrawState) => (state.view === view ? change(state) : state);
+    const timers = draw.cards.map((_, order) =>
+      setTimeout(() => setDraw(forThisView((state) => ({ ...state, departed: Math.max(state.departed, order + 1) }))), drawSchedule(order).start),
+    );
+    timers.push(setTimeout(() => setDraw(forThisView((state) => ({ ...state, done: true }))), drawSchedule(draw.cards.length - 1).landed));
+    // A tap anywhere finishes the animation at once.
+    const skip = () => setDraw(forThisView((state) => ({ ...state, departed: state.cards.length, done: true })));
+    window.addEventListener("pointerdown", skip, true);
+    return () => {
+      timers.forEach(clearTimeout);
+      window.removeEventListener("pointerdown", skip, true);
+    };
+  }, [draw.view, draw.done, view]);
 
   // The AI allies plan from the same view, so their plan is known before Commit and does not change with ours.
   const [allyPlan, setAllyPlan] = useState<SquadPlan>();
@@ -894,7 +957,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       )}
       <div className={`hud hand-bar${picking ? " collapsed" : ""}`}>
         <PilePanel
-          deck={selected.deckCount - (playback?.deckDamage[selected.id] ?? 0)}
+          deck={shownDeckCount(selected.deckCount - (playback?.deckDamage[selected.id] ?? 0), drawing ? draw.cards.length : 0, draw.departed)}
           discard={selected.discardCount}
           exile={selected.exileCount}
           opacity={focus.deck}
@@ -916,7 +979,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
             held={heldInHand}
             inUse={cardInUse}
             otherOpacity={focus.otherCards}
-            disabled={playing}
+            disabled={playing || drawing}
+            arriving={drawing ? draw.cards : NO_CARDS}
             onCardClick={clickCard}
             onCardPointerDown={startCardPress}
             collapsed={picking}
