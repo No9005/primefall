@@ -1,0 +1,34 @@
+/* Tutorial: a small demo board driven by static data (tutorial.ts). */
+.tutorial { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px; box-sizing: border-box; }
+.tutorial-title { margin: 0; font: 700 20px Rajdhani, sans-serif; letter-spacing: 0.08em; }
+.tutorial-stage { position: relative; display: flex; align-items: center; gap: 12px; }
+.tutorial-board { display: grid; width: 330px; height: 190px; gap: 2px; position: relative; }
+.tutorial-tile { background: #1b222b; border-radius: 2px; transition: background 0.4s; }
+.tutorial-tile.prime { background: #24424a; }
+.tutorial-tile.prime.glow { background: #2ec4b6; animation: tutorial-glow 1s infinite alternate; }
+.tutorial-tile.move-target { outline: 2px solid #2ec4b6; background: #2ec4b633; }
+.tutorial-tile.lit { background: #3a4a5a; }
+.tutorial-tile.dark { background: #07090c; }
+.tutorial-tile.blocker { background: #5b6672; }
+.tutorial-hero { z-index: 1; display: flex; align-items: center; justify-content: center; border-radius: 50%; font: 600 11px Rajdhani, sans-serif; }
+.tutorial-hero.ally { background: #2ec4b6; color: #12161c; }
+.tutorial-hero.enemy { background: #e5484d; color: #12161c; }
+.tutorial-hero.enemy.unseen { background: #07090c; color: #8a99a8; border: 1px dashed #3d5a73; }
+.tutorial-sight-line { position: absolute; left: 7%; top: 50%; width: 88%; height: 0; border-top: 2px dashed #ff8a3d; transform-origin: left center; transform: rotate(-22deg); pointer-events: none; }
+.tutorial-counter { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 700 28px "IBM Plex Mono", monospace; color: #12161c; }
+.tutorial-side { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.tutorial-hand { display: flex; gap: 6px; }
+.tutorial-card { animation: tutorial-drag 2s ease-in-out forwards; }
+.card.mode-face.chosen { box-shadow: 0 0 0 2px #ffb000; }
+.tutorial-caption { margin: 0; max-width: 560px; text-align: center; font-size: 14px; line-height: 1.25; }
+.tutorial-controls { display: flex; align-items: center; gap: 10px; }
+.tutorial-controls button { min-height: 44px; padding: 0 18px; background: #1b222b; border: 1px solid #3d5a73; border-radius: 4px; cursor: pointer; }
+.tutorial-controls button:disabled { opacity: 0.4; cursor: default; }
+.tutorial-controls button.primary { background: #2ec4b6; color: #12161c; border: 0; font-weight: 700; }
+.tutorial-progress { font: 12px "IBM Plex Mono", monospace; color: #8a99a8; }
+@keyframes tutorial-glow { to { background: #1f8f85; } }
+@keyframes tutorial-drag { 0% { transform: translate(0, 0); } 100% { transform: translate(var(--drag-x, -150px), var(--drag-y, -80px)) scale(0.6); } }
+.tutorial-card.drop-tile { --drag-x: -260px; --drag-y: -60px; }
+.tutorial-card.drop-blockChip { --drag-x: 180px; --drag-y: -120px; }
+.tutorial-card.drop-energyOrb { --drag-x: 180px; --drag-y: -50px; }
+.tutorial-card.drop-enemyHero { --drag-x: -60px; --drag-y: -80px; }

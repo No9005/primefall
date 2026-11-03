@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { EndScreen } from "./EndScreen";
 import { clearSavedMatch, loadSavedMatch, saveMatch } from "./match-storage";
 import { PlanningScreen } from "./PlanningScreen";
+import { TutorialScreen } from "./TutorialScreen";
 
 /** The player's Squad in the offline prototype. */
 const PLAYER_SQUAD = SquadId.Left;
@@ -15,6 +16,8 @@ export function App() {
   const [host, setHost] = useState(() => createLocalHost(newSeed()));
   const seed = host.seed;
   const [started, setStarted] = useState(false);
+  // The Tutorial runs from static data; it never touches the host or the saved match.
+  const [tutorial, setTutorial] = useState(false);
   // A match saved by an earlier visit, offered for Resume on the start screen.
   const [saved] = useState(loadSavedMatch);
   const [view, setView] = useState<SquadView>();
@@ -41,7 +44,15 @@ export function App() {
   return (
     <main className="app">
       <div className="rotate-notice">Rotate your device</div>
-      {!started ? (
+      {!started && tutorial ? (
+        <TutorialScreen
+          onPlay={() => {
+            setTutorial(false);
+            setStarted(true);
+          }}
+          onClose={() => setTutorial(false)}
+        />
+      ) : !started ? (
         <section className="end-screen" aria-label="Start" data-testid="start-screen">
           <h1>Primefall</h1>
           <button type="button" onClick={() => setStarted(true)}>
@@ -59,6 +70,9 @@ export function App() {
               Resume
             </button>
           )}
+          <button type="button" data-testid="tutorial-button" onClick={() => setTutorial(true)}>
+            Tutorial
+          </button>
           <p className="seed" data-testid="start-seed">
             Seed {seed}
           </p>
