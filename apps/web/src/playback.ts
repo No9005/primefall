@@ -107,7 +107,7 @@ export function describeEvent(event: MatchEvent, nameOf: (heroId: string) => str
     case EventKind.AttackBonusGained:
       return `Tick ${event.tick}: ${who} permanently gains +${event.amount ?? 0} Attack`;
     case EventKind.MoveBlocked:
-      return `Tick ${event.tick}: ${who}'s Move is blocked`;
+      return `Tick ${event.tick}: ${who}'s Move is blocked and stops on column ${event.from!.col}, row ${event.from!.row}`;
     case EventKind.Exhausted:
       return `${who} is Exhausted`;
     default:
