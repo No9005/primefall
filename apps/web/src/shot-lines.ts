@@ -75,6 +75,15 @@ export function shotInWorld({ segments, cross }: ShotDrawing, angle: number = VI
   };
 }
 
+/** The dashes of a straight line: `dash` long runs separated by `gap`, the last one cut at the end of the line. */
+export function dashRuns(from: Point, to: Point, dash: number, gap: number): { from: Point; to: Point }[] {
+  const length = Math.hypot(to.x - from.x, to.y - from.y);
+  const at = (distance: number): Point => ({ x: from.x + ((to.x - from.x) * distance) / length, y: from.y + ((to.y - from.y) * distance) / length });
+  const runs: { from: Point; to: Point }[] = [];
+  for (let start = 0; length > 0 && start < length; start += dash + gap) runs.push({ from: at(start), to: at(Math.min(start + dash, length)) });
+  return runs;
+}
+
 /**
  * The shots to draw at the given enemies. Only Visible enemies get a line: an Unknown enemy has no position the
  * Squad may know, and a Ghost is not a target of a shot.

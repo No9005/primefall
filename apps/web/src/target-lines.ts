@@ -50,7 +50,11 @@ export interface TargetLine {
   to: GridPosition;
   /** For an Attack: the drawing of the shot with its block, cross and Cover tile. */
   shot?: ShotDrawing;
-  /** Drawn fainter: the line of an allied Hero that is not the selected one. */
+  /** A line of a queued action (planning), as opposed to one of the replay. */
+  planned?: boolean;
+  /** Planned Attack that cannot reach its target from the planned position: out of Range or no Line of Sight. */
+  unreachable?: boolean;
+  /** An allied Hero's plan: drawn very faint in yellow, without badge or ring. */
   faint?: boolean;
 }
 
@@ -89,7 +93,7 @@ function linesOfAction(
     if (!target) return [];
     const shot = drawShot(grid, from, target, card.range ?? NO_RANGE_LIMIT);
     const clear = shot.segments.every((segment) => segment.style === SegmentStyle.Clear) && shot.ringed;
-    return [{ ...base, kind: LineKind.Attack, tone: clear ? LineTone.Clear : LineTone.Red, from, to: target.position, shot }];
+    return [{ ...base, kind: LineKind.Attack, tone: clear ? LineTone.Clear : LineTone.Red, from, to: target.position, shot, unreachable: !clear }];
   }
   if (ALLY_TARGETS.includes(card.target)) {
     const ally = heroes.find((candidate) => candidate.id === action.target);
@@ -121,7 +125,7 @@ export function plannedTargetLines(
       const hero = heroes.find((candidate) => candidate.id === heroId);
       if (!hero || hero.exhausted) return [];
       return queue.flatMap((action, index) =>
-        linesOfAction(grid, hero, positionBefore(hero, queue, index), action, index + 1, heroes, enemies),
+        linesOfAction(grid, hero, positionBefore(hero, queue, index), action, index + 1, heroes, enemies).map((line) => ({ ...line, planned: true })),
       );
     }),
   );

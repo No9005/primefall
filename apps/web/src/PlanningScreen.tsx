@@ -609,8 +609,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     () =>
       playback
         ? playback.lines
-        : plannedTargetLines(knownGrid, view.heroes, view.enemies, squadPlans).map((line) => ({ ...line, faint: line.heroId !== selected.id })),
-    [playback, knownGrid, view.heroes, view.enemies, squadPlans, selected.id],
+        : plannedTargetLines(knownGrid, view.heroes, view.enemies, squadPlans).map((line) => ({ ...line, faint: line.heroId !== playerHeroId })),
+    [playback, knownGrid, view.heroes, view.enemies, squadPlans, playerHeroId],
   );
   // Shield rubies, bubble and planned icons above the Heroes the Squad may see (own Heroes and Visible enemies).
   const marks = useMemo(() => {
@@ -622,7 +622,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         heroClass: hero.heroClass,
         // Shield lasts only for the Round (ADR 0002): an own Hero holds none outside the Resolution.
         shield: held(hero.id, 0),
-        queue: squadPlans.flatMap((squadPlan) => squadPlan.heroes).find((planned) => planned.heroId === hero.id)?.queue,
+        // Only the player's own plan gets marks; allied plans are drawn as faint lines only.
+        queue: hero.id === playerHeroId ? squadPlans.flatMap((squadPlan) => squadPlan.heroes).find((planned) => planned.heroId === hero.id)?.queue : undefined,
         resolving: playback !== undefined,
       }),
     ]);
@@ -637,7 +638,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       }),
     ]);
     return Object.fromEntries([...own, ...enemies]);
-  }, [view.heroes, view.enemies, squadPlans, playback]);
+  }, [view.heroes, view.enemies, squadPlans, playback, playerHeroId]);
   const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, overdriveAim);
   const aimedModes = aimedCard === undefined ? [] : [aimedCard];
   // Tile cards (Breach Charge), area cards (Scout Drone) and Deploy Cover are confirmed by tapping a tile.

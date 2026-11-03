@@ -44,6 +44,17 @@ describe("plannedTargetLines", () => {
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatchObject({ kind: LineKind.Attack, tone: LineTone.Clear, tick: 2, own: true, from: bruiser.position, to: { col: 4, row: 1 } });
     expect(lines[0]!.shot?.cross).toBeUndefined();
+    expect(lines[0]).toMatchObject({ planned: true, unreachable: false });
+  });
+
+  it("checks an Attack from the position after the Moves before it", () => {
+    const far = parseGrid(["####################", "#..................#", "####################"]);
+    const target = [visible("e", { col: 18, row: 1 })];
+    const move: QueuedAction = { kind: ActionKind.Move, card: 0, destination: { col: 15, row: 1 } };
+    const [before] = plannedTargetLines(far, [bruiser], target, [plan("b", [attack("e")])]);
+    const [after] = plannedTargetLines(far, [bruiser], target, [plan("b", [move, attack("e")])]);
+    expect(before).toMatchObject({ unreachable: true, tone: LineTone.Red });
+    expect(after).toMatchObject({ unreachable: false, tone: LineTone.Clear, from: { col: 15, row: 1 } });
   });
 
   it("draws a red line with the blocked tile where a Wall stops the shot", () => {
