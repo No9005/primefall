@@ -51,6 +51,8 @@ import { addShuffle, NO_SHUFFLE_PENDING, settleShuffle, shownDeckAfterShuffle, s
 import { DeckShuffle } from "./DeckShuffle";
 import { exhaustionHud } from "./exhaustion-hud";
 import type { BoardPick, Point } from "./card-drag";
+import { Callout } from "./Callout";
+import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionCommitLabel } from "./resolution-hud";
 import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
 import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
 
@@ -96,6 +98,7 @@ function QueueColumn({
   heroId,
   issues,
   disabled,
+  resolutionTick,
   nameOf,
   onRemove,
 }: {
@@ -104,6 +107,8 @@ function QueueColumn({
   heroId: string;
   issues: readonly PlanIssue[];
   disabled: boolean;
+  /** Set during the Resolution (0 before the first Tick): the Queue is read-only and the row of the current Tick is lit. */
+  resolutionTick: number | undefined;
   nameOf: (heroId: string) => string;
   onRemove: (index: number) => void;
 }) {
@@ -119,7 +124,11 @@ function QueueColumn({
           const { name, target } = queueRowLabel(heroClass, heroId, action, nameOf);
           const reasons = reasonsAt(slot);
           return (
-            <li key={slot} className={`queue-row${reasons.length > 0 ? " invalid" : ""}`} title={reasons.join(" ")}>
+            <li
+              key={slot}
+              className={`queue-row${reasons.length > 0 ? " invalid" : ""}${resolutionTick === undefined ? "" : ` ${queueRowState(slot, resolutionTick)}`}`}
+              title={reasons.join(" ")}
+            >
               <span className="queue-number">{slot + 1}</span>
               <span className="queue-text">
                 <span className="queue-name">
@@ -133,9 +142,11 @@ function QueueColumn({
                   </span>
                 )}
               </span>
-              <button type="button" className="queue-remove" disabled={disabled} aria-label={`Remove action ${slot + 1}`} onClick={() => onRemove(slot)}>
-                ×
-              </button>
+              {resolutionTick === undefined && (
+                <button type="button" className="queue-remove" disabled={disabled} aria-label={`Remove action ${slot + 1}`} onClick={() => onRemove(slot)}>
+                  ×
+                </button>
+              )}
             </li>
           );
         })}
@@ -310,7 +321,10 @@ export function PilePanel({
   burn,
   skull,
   greyed,
+  resolving,
 }: {
+  /** The Resolution runs: the Deck group is dimmed, but not the pile animations inside it. */
+  resolving?: boolean;
   deck: number;
   discard: number;
   exile: number;
@@ -320,7 +334,7 @@ export function PilePanel({
   greyed: boolean;
 }) {
   return (
-    <div className="piles" style={greyed ? undefined : { opacity }}>
+    <div className={`piles${resolving ? " resolving" : ""}`} style={greyed ? undefined : { opacity }}>
       <div className={`pile-minor${greyed ? " exhausted-hud" : ""}`}>
         <span data-testid="discard-count">Discard {discard}</span>
         <span data-testid="exile-count">Exile {exile}</span>
@@ -523,7 +537,9 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     [view.squad, selected.id, queue, pitched],
   );
   const issues = useMemo(() => validatePlan(view, plan), [view, plan]);
-  const playing = playback !== undefined;
+  /** Set from Commit until the next Round: Waiting..., the RESOLUTION callout, the Ticks, Done. */
+  const [resolutionStage, setResolutionStage] = useState<ResolutionStage>();
+  const playing = resolutionStage !== undefined;
 
   // The draw animation: the cards new in the player's Hand fly in one after the other (hand-draw.ts). The state is
   // derived while rendering the first time a view is seen, so no card shows face up before it has flown.
@@ -607,10 +623,10 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   // Who targets whom: the queued actions of the Squad while planning, the actions of the current Tick in the replay.
   const targetLines = useMemo(
     () =>
-      playback
-        ? playback.lines
+      playing
+        ? (playback?.lines ?? [])
         : plannedTargetLines(knownGrid, view.heroes, view.enemies, squadPlans).map((line) => ({ ...line, faint: line.heroId !== playerHeroId })),
-    [playback, knownGrid, view.heroes, view.enemies, squadPlans, playerHeroId],
+    [playing, playback, knownGrid, view.heroes, view.enemies, squadPlans, playerHeroId],
   );
   // Shield rubies, bubble and planned icons above the Heroes the Squad may see (own Heroes and Visible enemies).
   const marks = useMemo(() => {
@@ -624,7 +640,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         shield: held(hero.id, 0),
         // Only the player's own plan gets marks; allied plans are drawn as faint lines only.
         queue: hero.id === playerHeroId ? squadPlans.flatMap((squadPlan) => squadPlan.heroes).find((planned) => planned.heroId === hero.id)?.queue : undefined,
-        resolving: playback !== undefined,
+        resolving: playing,
       }),
     ]);
     const enemies = view.enemies.map((enemy) => [
@@ -634,11 +650,11 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         heroClass: enemy.heroClass,
         visibility: enemy.visibility,
         shield: enemy.visibility === Visibility.Visible ? held(enemy.id, enemy.shield) : 0,
-        resolving: playback !== undefined,
+        resolving: playing,
       }),
     ]);
     return Object.fromEntries([...own, ...enemies]);
-  }, [view.heroes, view.enemies, squadPlans, playback, playerHeroId]);
+  }, [view.heroes, view.enemies, squadPlans, playback, playing, playerHeroId]);
   const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, overdriveAim);
   const aimedModes = aimedCard === undefined ? [] : [aimedCard];
   // Tile cards (Breach Charge), area cards (Scout Drone) and Deploy Cover are confirmed by tapping a tile.
@@ -907,6 +923,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       setSecondsLeft(left);
       if (left === 0) {
         clearInterval(interval);
+        setQueue([]);
         const emptyPlan: SquadPlan = {
           squad: view.squad,
           heroes: view.heroes.filter((hero) => hero.heroClass === PLAYER_HERO_CLASS).map((hero) => ({ heroId: hero.id, queue: [], pitched: [] })),
@@ -923,13 +940,19 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     if (playback !== undefined || committingRef.current) return;
     committingRef.current = true;
     clearInterval(timerRef.current);
+    setResolutionStage("waiting");
     let result;
     try {
       result = await submitPlan(toSubmit);
     } catch (error) {
       committingRef.current = false;
+      setResolutionStage(undefined);
       throw error;
     }
+    setResolutionStage("callout");
+    await new Promise((resolve) => setTimeout(resolve, RESOLUTION_CALLOUT_MS));
+    if (unmounted.current) return;
+    setResolutionStage("ticks");
     const positions: Record<string, GridPosition> = {};
     const startPositions: Record<string, GridPosition> = Object.fromEntries(
       [...view.heroes, ...view.enemies].flatMap((unit) => ("position" in unit ? [[unit.id, unit.position]] : [])),
@@ -985,6 +1008,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       await new Promise((resolve) => setTimeout(resolve, STEP_MS));
       if (unmounted.current) return;
     }
+    setResolutionStage("done");
     // Let the pile animations that are still queued (a shuffle at the very end of the Resolution) play out.
     const patience = Date.now() + 10_000;
     while (burnQueueRef.current.length > 0 && Date.now() < patience) {
@@ -997,6 +1021,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     setBurnPending(NO_BURN_PENDING);
     setShufflePending(NO_SHUFFLE_PENDING);
     setPlayback(undefined);
+    setResolutionStage(undefined);
     setQueue([]);
     setPitched([]);
     setArmed(undefined);
@@ -1046,12 +1071,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
             {secondsLeft}s
           </span>
         )}
-        {playing && (
-          <span data-testid="tick" className="tick">
-            Tick {Math.max(playback.tick, 1)}/{Math.max(playback.tickCount, 1)}
-          </span>
-        )}
       </header>
+      {resolutionStage === "callout" && <Callout kind="word" text="RESOLUTION" tone="teal" durationMs={RESOLUTION_CALLOUT_MS} />}
       <SquadPanel
         heroes={view.heroes}
         warningsOf={warningsOf}
@@ -1090,6 +1111,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
           discard={shownDiscard}
           exile={burnCounts.exile}
           opacity={focus.deck}
+          resolving={playing}
           skull={exhaustion.skull}
           greyed={exhaustion.greyed}
           burn={
@@ -1122,7 +1144,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
             </>
           }
         />
-        <div className={`hand-column${exhaustion.greyed ? " exhausted-hud" : ""}`}>
+        <div className={`hand-column${exhaustion.greyed ? " exhausted-hud" : ""}`} style={playing ? { opacity: RESOLUTION_DIM } : undefined}>
           <EnergyPill
             available={energy.available}
             lit={false}
@@ -1180,6 +1202,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
           heroId={selected.id}
           issues={issues}
           disabled={playing}
+          resolutionTick={playing ? (playback?.tick ?? 0) : undefined}
           nameOf={nameOf}
           onRemove={(index) => {
             setQueue(removeQueueAction(queue, index));
@@ -1188,8 +1211,13 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
             setPull(IDLE);
           }}
         />
-        <button type="button" className="commit" disabled={queue.length === 0 || issues.length > 0 || playing || exhaustion.greyed} onClick={() => void commit(plan)}>
-          Commit
+        <button
+          type="button"
+          className={`commit${resolutionStage ? " resolving" : ""}`}
+          disabled={queue.length === 0 || issues.length > 0 || playing || exhaustion.greyed}
+          onClick={() => void commit(plan)}
+        >
+          {resolutionStage ? resolutionCommitLabel(resolutionStage,playback?.tick ?? 0) : "Commit"}
         </button>
       </section>
     </div>

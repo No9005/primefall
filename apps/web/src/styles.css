@@ -248,8 +248,6 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .card-name { font-family: Rajdhani, sans-serif; font-weight: 600; font-size: 14px; }
 .card-cost { align-self: flex-end; font-family: "IBM Plex Mono", monospace; font-size: 14px; color: var(--orange); }
 
-.tick {color: var(--orange); font-family: "IBM Plex Mono", monospace; }
-
 /* Bottom-right corner (issue 206): the Queue column (4 rows of 28 px, a 5th with Forward Deploy) directly above a pill-shaped Commit,
    124 px wide. The target hint sits left of it, below the board controls. Mirrored by commitRect in hud-layout.ts. */
 .commit-panel { position: absolute; bottom: calc(6px + env(safe-area-inset-bottom)); right: calc(6px + env(safe-area-inset-right)); width: 124px; display: flex; flex-direction: column; gap: 4px; }
@@ -259,6 +257,12 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .queue-row { display: flex; align-items: center; gap: 4px; min-height: 28px; box-sizing: border-box; padding: 2px 4px; background: color-mix(in srgb, var(--ink) 93%, transparent); border: 1.5px solid var(--steel); border-radius: var(--radius-s); }
 .queue-row.empty { background: none; border-style: dashed; }
 .queue-row.invalid { border-color: var(--red); }
+/* The Resolution (issue 210): the row of the current Tick is lit, earlier rows fade, later rows stay as they are. */
+.queue-row.current { border-color: var(--teal); background: #1d3a3f; box-shadow: 0 0 8px color-mix(in srgb, var(--teal) 60%, transparent); }
+.queue-row.past { opacity: 0.35; }
+.piles.resolving .pile-minor, .piles.resolving .deck-count { opacity: 0.55; }
+.piles.resolving .deck-pile { border-color: color-mix(in srgb, var(--teal) 55%, transparent); }
+.commit.resolving:disabled { color: var(--muted); }
 .queue-number { flex: none; width: 16px; height: 16px; border-radius: 50%; background: var(--teal); color: var(--graphite); display: flex; align-items: center; justify-content: center; font: 500 10px/1 var(--font-number); }
 .queue-row.invalid .queue-number { background: var(--red); }
 .queue-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
