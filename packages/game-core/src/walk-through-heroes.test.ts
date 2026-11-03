@@ -165,8 +165,8 @@ describe("the movement rule is symmetric and independent of the order of the Her
       [standing]: place(at(10)),
     });
     if (reverse) match.heroes.reverse();
-    const plan = movePlan(match, squad, { [first]: place(at(10)), [second]: place(at(11)) });
-    if (reverse) plan.heroes.reverse();
+    const ordered = movePlan(match, squad, { [first]: place(at(10)), [second]: place(at(11)) });
+    const plan = reverse ? { ...ordered, heroes: [...ordered.heroes].reverse() } : ordered;
     const { match: after } = resolveRound(match, [plan]);
     return [first, second, standing].map((id) => positionOf(after, id));
   }
