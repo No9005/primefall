@@ -12,6 +12,10 @@ button { font: inherit; color: inherit; }
 /* Zoom / Fit: round, thumb-sized, at the right edge in the vertical middle (between the enemy panel and the commit column). */
 .board-zoom { position: absolute; z-index: 1; right: calc(10px + env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 2px solid #3d5a73; background: #1b222b; color: #dbe4ec; font: 600 14px Rajdhani, sans-serif; cursor: pointer; }
 
+.board-turn { position: absolute; z-index: 1; right: calc(10px + env(safe-area-inset-right)); width: 52px; height: 52px; border-radius: 50%; border: 2px solid #3d5a73; background: #1b222b; color: #dbe4ec; font-size: 24px; line-height: 1; cursor: pointer; }
+.board-turn-left { top: calc(50% - 64px - 26px); }
+.board-turn-right { top: calc(50% + 64px - 26px); }
+
 .hud { position: absolute; background: #1b222bdd; border: 1px solid #3d5a73; border-radius: 6px; box-sizing: border-box; }
 /* HUD placement (UI spec): at 844 x 390 and 667 x 375 the fitted board leaves the bottom corners and a strip at the
    top free. The hand bar stays within ~330 px of the left edge and the commit column within 110 px of the right edge,

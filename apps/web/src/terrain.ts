@@ -8,12 +8,62 @@ import { PIECE_SHAPE, type PieceStyle, TERRAIN_STYLE } from "./terrain-style";
 export const TILE_WIDTH = 128;
 export const TILE_HEIGHT = 64;
 
-/** The view angle of today's board, in degrees. The rotation ticket only changes this value. */
+/** The view angle the camera starts in, in degrees: today's diamond. */
 export const VIEW_ANGLE = 45;
 
-/** Centre of a tile in world pixels at the view angle of `VIEW_ANGLE`. */
-export function gridToWorld({ col, row }: GridPosition): { x: number; y: number } {
-  return { x: ((col - row) * TILE_WIDTH) / 2, y: ((col + row) * TILE_HEIGHT) / 2 };
+/** Degrees between two neighbouring views; there are eight. */
+export const VIEW_STEP = 45;
+
+/** The view one step to the right (`1`) or left (`-1`) of `angle`. */
+export function turnView(angle: number, steps: 1 | -1): number {
+  return (((angle + steps * VIEW_STEP) % 360) + 360) % 360;
+}
+
+/** Centre of a tile in world pixels at a view angle. */
+export function gridToWorld({ col, row }: GridPosition, angle: number = VIEW_ANGLE): { x: number; y: number } {
+  return projection(angle).point(col, row);
+}
+
+/** Tile units (col, row as fractions) under a world point at a view angle; the inverse of `gridToWorld`. */
+export function worldToGrid(x: number, y: number, angle: number = VIEW_ANGLE): { col: number; row: number } {
+  const turnedCol = (x / (TILE_WIDTH / 2) + y / (TILE_HEIGHT / 2)) / 2;
+  const turnedRow = (y / (TILE_HEIGHT / 2) - x / (TILE_WIDTH / 2)) / 2;
+  const { cos, sin } = turnOf(angle);
+  return { col: turnedCol * cos + turnedRow * sin, row: -turnedCol * sin + turnedRow * cos };
+}
+
+/** Distance from the viewer of a tile at a view angle: larger is nearer, so drawing in this order puts nearer things on top. */
+export function depthOf({ col, row }: GridPosition, angle: number = VIEW_ANGLE): number {
+  return projection(angle).depth(col, row);
+}
+
+/** The floor polygon of a tile (flat x, y pairs) relative to the tile's centre, at a view angle. */
+export function floorOutline(angle: number): number[] {
+  const proj = projection(angle);
+  return [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]].flatMap(([c, r]) => {
+    const p = proj.point(c!, r!);
+    return [p.x, p.y];
+  });
+}
+
+/**
+ * Distance in world pixels from a tile's centre down to where a Hero token stands: the lower vertex of the tile.
+ * 32 px in the diagonal view, less in the flat-fronted views where a tile is lower on screen.
+ */
+export function footOffset(angle: number): number {
+  const proj = projection(angle);
+  return Math.max(...[-0.5, 0.5].flatMap((c) => [-0.5, 0.5].map((r) => proj.point(c, r).y)));
+}
+
+/** The four outer corners of the grid's footprint in world pixels at a view angle. */
+export function footprintCorners({ width, height }: Grid, angle: number): { x: number; y: number }[] {
+  const proj = projection(angle);
+  return [proj.point(-0.5, -0.5), proj.point(width - 0.5, -0.5), proj.point(width - 0.5, height - 0.5), proj.point(-0.5, height - 0.5)];
+}
+
+function turnOf(angle: number): { cos: number; sin: number } {
+  const turn = ((angle - VIEW_ANGLE) * Math.PI) / 180;
+  return { cos: Math.cos(turn), sin: Math.sin(turn) };
 }
 
 interface Projection {
@@ -25,9 +75,7 @@ interface Projection {
 
 /** The board turned from `VIEW_ANGLE` to `angle` about the grid origin; at `VIEW_ANGLE` it is `gridToWorld`. */
 function projection(angle: number): Projection {
-  const turn = ((angle - VIEW_ANGLE) * Math.PI) / 180;
-  const cos = Math.cos(turn);
-  const sin = Math.sin(turn);
+  const { cos, sin } = turnOf(angle);
   const turned = (col: number, row: number) => ({ col: col * cos - row * sin, row: col * sin + row * cos });
   return {
     point: (col, row, lift = 0) => {
@@ -78,6 +126,8 @@ const PIECE_KINDS: Partial<Record<TileKind, PieceKind>> = {
   [TileKind.HalfCover]: "halfCover",
   [TileKind.OverwatchNest]: "overwatchNest",
 };
+
+const EPSILON = 1e-6;
 
 const flat = (points: { x: number; y: number }[]) => points.flatMap((p) => [p.x, p.y]);
 
@@ -193,7 +243,7 @@ function boxFaces(proj: Projection, box: Box, height: number, style: PieceStyle)
       const lifted = (p: { x: number; y: number }) => ({ x: p.x, y: p.y - height });
       return { middleX: (a.x + b.x) / 2, middleY: (a.y + b.y) / 2, points: flat([a, b, lifted(b), lifted(a)]) };
     })
-    .filter((side) => side.middleY > centre.y)
+    .filter((side) => side.middleY > centre.y + EPSILON)
     .sort((a, b) => a.middleX - b.middleX);
   const roles = [
     { role: FaceRole.Left, fill: style.left },
@@ -241,8 +291,6 @@ export function buildTerrain(grid: Grid, angle: number = VIEW_ANGLE, lit?: Reado
   return tiles.sort((a, b) => a.depth - b.depth);
 }
 
-const EPSILON = 1e-6;
-
 /** Whether a point lies inside (or on the border of) a convex polygon. */
 function insideConvex(points: readonly number[], x: number, y: number): boolean {
   let sign = 0;
@@ -264,7 +312,7 @@ export function pickWallAt(x: number, y: number, grid: Grid, angle: number = VIE
   let best: { position: GridPosition; depth: number; offset: number } | undefined;
   for (const tile of buildTerrain(grid, angle)) {
     if (tile.kind !== TileKind.Wall || !tile.piece?.some((face) => insideConvex(face.points, x, y))) continue;
-    const offset = Math.abs(x - gridToWorld(tile.position).x);
+    const offset = Math.abs(x - gridToWorld(tile.position, angle).x);
     if (!best || tile.depth > best.depth || (tile.depth === best.depth && offset < best.offset)) best = { position: tile.position, depth: tile.depth, offset };
   }
   return best?.position;

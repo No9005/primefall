@@ -22,6 +22,7 @@ import {
   frameMoveCamera,
   type MoveFraming,
   takeOverFraming,
+  turnCamera,
   gridToWorld,
   isZoomed,
   panBy,
@@ -33,12 +34,12 @@ import {
   zoomAt,
   zoomOnPoint,
 } from "./board-layout";
-import { buildTerrain, type Face, litTiles } from "./terrain";
-import { SegmentStyle, type ShotDrawing, type ShotSegment } from "./shot-lines";
+import { buildTerrain, depthOf, type Face, floorOutline, footOffset, litTiles, VIEW_ANGLE, VIEW_STEP } from "./terrain";
+import { SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
 import { SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
 
 /** Strokes `segment` as a run of dashes: long for a clear shot, dots for the stopped part, grey after a block. */
-function strokeShotSegment(graphics: Graphics, { from, to, style }: ShotSegment): void {
+function strokeShotSegment(graphics: Graphics, { from, to, style }: ShotInWorld["segments"][number]): void {
   const length = Math.hypot(to.x - from.x, to.y - from.y);
   if (length === 0) return;
   const dash = style === SegmentStyle.Stopped ? SHOT_STYLE.dot : SHOT_STYLE.dash;
@@ -51,11 +52,12 @@ function strokeShotSegment(graphics: Graphics, { from, to, style }: ShotSegment)
   graphics.stroke({ width: SHOT_STYLE.width, color, alpha: style === SegmentStyle.Beyond ? 0.6 : 1, cap: "round" });
 }
 
-function shotGraphics({ segments, cross, coverTile }: ShotDrawing): Graphics {
+function shotGraphics(drawing: ShotDrawing, angle: number): Graphics {
+  const { segments, cross } = shotInWorld(drawing, angle);
   const graphics = new Graphics();
-  if (coverTile) {
-    const { x, y } = gridToWorld(coverTile);
-    graphics.poly(tileDiamond().map((value, index) => value + (index % 2 === 0 ? x : y))).stroke({ width: 5, color: SHOT_STYLE.cover });
+  if (drawing.coverTile) {
+    const { x, y } = gridToWorld(drawing.coverTile, angle);
+    graphics.poly(floorOutline(angle).map((value, index) => value + (index % 2 === 0 ? x : y))).stroke({ width: 5, color: SHOT_STYLE.cover });
   }
   segments.forEach((segment) => strokeShotSegment(graphics, segment));
   if (cross) {
@@ -154,10 +156,6 @@ interface BoardProps {
 /** Length of the camera ease when a Move is armed, placed or cancelled. */
 const FRAME_MS = 250;
 
-function tileDiamond(): number[] {
-  return [0, -TILE_HEIGHT / 2, TILE_WIDTH / 2, 0, 0, TILE_HEIGHT / 2, -TILE_WIDTH / 2, 0];
-}
-
 export function Board({
   destroyedCover,
   placedCover,
@@ -197,7 +195,12 @@ export function Board({
   enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
   const [pressed, setPressed] = useState<GridPosition>();
   const [zoomed, setZoomed] = useState(false);
-  const cameraControl = useRef<{ toggle: () => void; frame: (hero: GridPosition) => void; release: () => void } | undefined>(undefined);
+  // The angle the board is drawn at right now; it changes every frame of a turn.
+  const [angle, setAngle] = useState(VIEW_ANGLE);
+  const angleRef = useRef(VIEW_ANGLE);
+  const cameraControl = useRef<{ toggle: () => void; frame: (hero: GridPosition) => void; release: () => void; turn: (steps: 1 | -1) => void } | undefined>(
+    undefined,
+  );
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
 
@@ -213,31 +216,32 @@ export function Board({
   useEffect(() => {
     if (!overlay) return;
     const created: Container[] = [];
+    const diamond = floorOutline(angle);
     for (const tile of areaTiles) {
-      const { x, y } = gridToWorld(tile);
-      const tint = new Graphics().poly(tileDiamond()).fill({ color: 0xff8a3d, alpha: 0.2 }).stroke({ width: 1, color: 0xff8a3d, alpha: 0.5 });
+      const { x, y } = gridToWorld(tile, angle);
+      const tint = new Graphics().poly(diamond).fill({ color: 0xff8a3d, alpha: 0.2 }).stroke({ width: 1, color: 0xff8a3d, alpha: 0.5 });
       tint.position.set(x, y);
       overlay.addChild(tint);
       created.push(tint);
     }
     for (const tile of highlights) {
-      const { x, y } = gridToWorld(tile);
-      const diamond = new Graphics().poly(tileDiamond()).fill({ color: 0x2ec4b6, alpha: 0.35 }).stroke({ width: 4, color: 0x2ec4b6 });
-      diamond.position.set(x, y);
-      overlay.addChild(diamond);
-      created.push(diamond);
+      const { x, y } = gridToWorld(tile, angle);
+      const highlight = new Graphics().poly(diamond).fill({ color: 0x2ec4b6, alpha: 0.35 }).stroke({ width: 4, color: 0x2ec4b6 });
+      highlight.position.set(x, y);
+      overlay.addChild(highlight);
+      created.push(highlight);
     }
     if (pressed) {
       // The tile under the finger, drawn larger than the tile so the finger does not hide it.
-      const { x, y } = gridToWorld(pressed);
-      const preview = new Graphics().poly(tileDiamond()).fill({ color: 0xffffff, alpha: 0.3 }).stroke({ width: 6, color: 0xffffff });
+      const { x, y } = gridToWorld(pressed, angle);
+      const preview = new Graphics().poly(diamond).fill({ color: 0xffffff, alpha: 0.3 }).stroke({ width: 6, color: 0xffffff });
       preview.position.set(x, y);
       preview.scale.set(1.15);
       overlay.addChild(preview);
       created.push(preview);
     }
     markers.forEach(({ position, label }) => {
-      const { x, y } = gridToWorld(position);
+      const { x, y } = gridToWorld(position, angle);
       const marker = new Container();
       marker.position.set(x, y);
       marker.addChild(new Graphics().circle(0, 0, 16).fill(0xff8a3d).stroke({ width: 2, color: 0x12161c }));
@@ -249,7 +253,7 @@ export function Board({
     });
     zoneLabels.forEach(({ position, text }) => {
       // Above the token's head, so the label is not hidden by the Hero.
-      const { x, y } = gridToWorld(position);
+      const { x, y } = gridToWorld(position, angle);
       const label = new Container();
       label.position.set(x, y - TILE_HEIGHT * 1.5);
       const caption = new Text({ text, style: { fill: 0x12161c, fontSize: 22, fontWeight: "700" } });
@@ -259,12 +263,12 @@ export function Board({
       created.push(label);
     });
     for (const shot of shotLines) {
-      const line = shotGraphics(shot);
+      const line = shotGraphics(shot, angle);
       overlay.addChild(line);
       created.push(line);
     }
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [overlay, highlights, markers, pressed, zoneLabels, areaTiles, shotLines]);
+  }, [overlay, angle, highlights, markers, pressed, zoneLabels, areaTiles, shotLines]);
 
   useEffect(() => {
     if (!tokens) return;
@@ -272,10 +276,10 @@ export function Board({
     const ring = (color: number) =>
       new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color });
     const addToken = (hero: TokenHero, enemy: boolean) => {
-      const { x, y } = gridToWorld(hero.position);
+      const { x, y } = gridToWorld(hero.position, angle);
       const token = new Container();
-      token.position.set(x, y + TILE_HEIGHT / 2);
-      token.zIndex = hero.position.col + hero.position.row + 0.5;
+      token.position.set(x, y + footOffset(angle));
+      token.zIndex = depthOf(hero.position, angle) + 0.5;
       const targetable = targetableIds.includes(hero.id);
       if (hero.id === selectedId) token.addChild(ring(0x2ec4b6));
       const cannotHit = shotLines.some((shot) => shot.targetId === hero.id && !shot.ringed);
@@ -304,7 +308,7 @@ export function Board({
     };
     for (const hero of heroes) {
       // A soft light on the floor around each own Hero.
-      const { x, y } = gridToWorld(hero.position);
+      const { x, y } = gridToWorld(hero.position, angle);
       const light = new Graphics().ellipse(0, 0, TILE_WIDTH * 0.9, TILE_HEIGHT * 0.9).fill(TERRAIN_STYLE.heroLight);
       light.position.set(x, y);
       light.zIndex = -1;
@@ -314,7 +318,7 @@ export function Board({
     heroes.forEach((hero) => addToken(hero, false));
     enemies.forEach((hero) => addToken(hero, true));
     return () => created.forEach((token) => token.destroy({ children: true }));
-  }, [tokens, heroes, enemies, selectedId, targetableIds, hitIds, shotLines]);
+  }, [tokens, angle, heroes, enemies, selectedId, targetableIds, hitIds, shotLines]);
 
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
   useEffect(() => {
@@ -331,7 +335,7 @@ export function Board({
       visibleTiles,
       heroes.map((hero) => hero.position),
     );
-    for (const tile of buildTerrain(grid, undefined, lit)) {
+    for (const tile of buildTerrain(grid, angle, lit)) {
       fillFace(ground, tile.floor);
       if (tile.marker) ground.poly(tile.marker.points).stroke({ width: 2, color: tile.marker.color, alpha: 0.9 });
       if (!tile.piece) continue;
@@ -354,8 +358,8 @@ export function Board({
         if (cover === CoverKind.None && !destroyed) return;
         const outlines = TERRAIN_STYLE.coverOutline;
         const color = destroyed ? outlines.destroyed : placed ? outlines.placed : cover === CoverKind.Full ? outlines.full : outlines.half;
-        const { x, y } = gridToWorld({ col, row });
-        const outline = new Graphics().poly(tileDiamond()).stroke({ width: destroyed ? 2 : placed ? 5 : 3, color, alpha: destroyed ? 0.6 : 0.9 });
+        const { x, y } = gridToWorld({ col, row }, angle);
+        const outline = new Graphics().poly(floorOutline(angle)).stroke({ width: destroyed ? 2 : placed ? 5 : 3, color, alpha: destroyed ? 0.6 : 0.9 });
         outline.position.set(x, y);
         planning.addChild(outline);
         created.push(outline);
@@ -368,8 +372,8 @@ export function Board({
       for (let row = center.row - reach; row <= center.row + reach; row++) {
         for (let col = center.col - reach; col <= center.col + reach; col++) {
           if (tileAt(grid, { col, row }) === undefined) continue;
-          const { x, y } = gridToWorld({ col, row });
-          const tint = new Graphics().poly(tileDiamond()).fill({ color: 0xffd447, alpha: 0.22 }).stroke({ width: 1, color: 0xffd447, alpha: 0.5 });
+          const { x, y } = gridToWorld({ col, row }, angle);
+          const tint = new Graphics().poly(floorOutline(angle)).fill({ color: 0xffd447, alpha: 0.22 }).stroke({ width: 1, color: 0xffd447, alpha: 0.5 });
           tint.position.set(x, y);
           planning.addChild(tint);
           created.push(tint);
@@ -377,7 +381,7 @@ export function Board({
       }
     }
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [terrain, destroyedCover, placedCover, revealedAreas, visibleTiles, heroes]);
+  }, [terrain, angle, destroyedCover, placedCover, revealedAreas, visibleTiles, heroes]);
 
   useEffect(() => {
     const element = host.current;
@@ -410,7 +414,7 @@ export function Board({
 
       setTerrain({ floor, objects, planning });
 
-      const size = (): CameraView => ({ width: app.screen.width, height: app.screen.height });
+      const size = (): CameraView => ({ width: app.screen.width, height: app.screen.height, angle: angleRef.current });
       let camera = fitCamera(size());
       const setCamera = (next: Camera) => {
         camera = next;
@@ -448,11 +452,35 @@ export function Board({
         framing = takeOverFraming(framing);
         setCamera(next);
       };
+      // Turns the board to `target` degrees (unwrapped, so a turn always takes the short way round). The terrain is
+      // redrawn at the in-between angles; the camera is refitted (or, when zoomed, kept on the same tile) each frame.
+      let turnTarget = angleRef.current;
+      const showAngle = (next: number) => {
+        const turned = turnCamera(camera, size(), next);
+        angleRef.current = next;
+        setAngle(next);
+        setCamera(turned);
+      };
+      const turnTo = (target: number) => {
+        stopAnimation();
+        framing = takeOverFraming(framing);
+        turnTarget = target;
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return showAngle(target);
+        const from = angleRef.current;
+        const start = performance.now();
+        const step = (now: number) => {
+          const t = Math.min((now - start) / FRAME_MS, 1);
+          showAngle(from + (target - from) * (1 - (1 - t) ** 3));
+          animation = t < 1 ? requestAnimationFrame(step) : undefined;
+        };
+        animation = requestAnimationFrame(step);
+      };
       cameraControl.current = {
+        turn: (steps) => turnTo(turnTarget + steps * VIEW_STEP),
         toggle: () => {
           const hero = candidatesRef.current.heroes.find((h) => h.id === selectedIdRef.current);
           if (isZoomed(camera, size()) || !hero) setCameraByHand(fitCamera(size()));
-          else setCameraByHand(zoomOnPoint(gridToWorld(hero.position), size()));
+          else setCameraByHand(zoomOnPoint(gridToWorld(hero.position, angleRef.current), size()));
         },
         frame: (hero) => {
           framing ??= beginMoveFraming(camera);
@@ -466,12 +494,12 @@ export function Board({
 
       const pick = (viewX: number, viewY: number) => {
         const { x, y } = viewToWorld(viewX, viewY, app.screen.width, app.screen.height, undefined, camera);
-        return { x, y, target: resolveTap(x, y, candidatesRef.current) };
+        return { x, y, target: resolveTap(x, y, candidatesRef.current, undefined, angleRef.current) };
       };
       pickRef.current = ({ x: clientX, y: clientY }) => {
         const rect = app.canvas.getBoundingClientRect();
         const { x, y, target } = pick(clientX - rect.left, clientY - rect.top);
-        return { target, ground: pickTileAt(x, y) };
+        return { target, ground: pickTileAt(x, y, undefined, angleRef.current) };
       };
       // Fingers (or the mouse button) currently down, by pointer id; two of them pinch, one pans a zoomed board.
       const down = new Map<number, { x: number; y: number }>();
@@ -489,7 +517,7 @@ export function Board({
           dragged = false;
           dragStart = { x: event.global.x, y: event.global.y };
           const { x, y, target } = pick(event.global.x, event.global.y);
-          setPressed(target.kind === "tile" ? target.tile : pickTileAt(x, y));
+          setPressed(target.kind === "tile" ? target.tile : pickTileAt(x, y, undefined, angleRef.current));
         } else {
           suppressTap = true;
           setPressed(undefined);
@@ -563,6 +591,24 @@ export function Board({
 
   return (
     <div ref={host} className="board" role="img" aria-label="Reactor Deck">
+      <button
+        type="button"
+        className="board-turn board-turn-left"
+        aria-label="Turn board left"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={() => cameraControl.current?.turn(-1)}
+      >
+        ⟲
+      </button>
+      <button
+        type="button"
+        className="board-turn board-turn-right"
+        aria-label="Turn board right"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={() => cameraControl.current?.turn(1)}
+      >
+        ⟳
+      </button>
       <button
         type="button"
         className="board-zoom"

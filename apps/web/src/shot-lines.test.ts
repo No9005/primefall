@@ -1,6 +1,6 @@
 import { CoverKind, type EnemyView, parseGrid, Visibility } from "game-core";
 import { describe, expect, it } from "vitest";
-import { drawShot, drawShots, SegmentStyle } from "./shot-lines";
+import { drawShot, drawShots, SegmentStyle, shotInWorld } from "./shot-lines";
 import { gridToWorld } from "./terrain";
 
 const grid = parseGrid(["#########", "#.......#", "#...#...#", "#.H...F.#", "#.......#", "#########"]);
@@ -29,10 +29,10 @@ describe("drawShot", () => {
     expect(shot.coverTile).toBeUndefined();
   });
 
-  it("starts and ends at the chests of the Heroes, drawn from the terrain's projection", () => {
-    const shot = drawShot(grid, attacker, { id: "e", position: { col: 5, row: 1 } }, 6);
-    const from = gridToWorld(attacker);
-    const to = gridToWorld({ col: 5, row: 1 });
+  it.each([0, 45, 90, 135, 180, 225, 270, 315])("starts and ends at the chests of the Heroes, drawn from the terrain's projection at %i degrees", (angle) => {
+    const shot = shotInWorld(drawShot(grid, attacker, { id: "e", position: { col: 5, row: 1 } }, 6), angle);
+    const from = gridToWorld(attacker, angle);
+    const to = gridToWorld({ col: 5, row: 1 }, angle);
     const [segment] = shot.segments;
     expect(segment!.to.x - segment!.from.x).toBeCloseTo(to.x - from.x);
     expect(segment!.to.y - segment!.from.y).toBeCloseTo(to.y - from.y);
@@ -44,6 +44,7 @@ describe("drawShot", () => {
     expect(shot.cross).toBeDefined();
     expect(shot.ringed).toBe(false);
     expect(shot.segments[0]!.to).toEqual(shot.cross);
+    expect(shotInWorld(shot).segments[0]!.to).toEqual(shotInWorld(shot).cross);
   });
 
   it("marks the Cover tile of a target on Half Cover", () => {
