@@ -34,7 +34,7 @@ import {
   zoomAt,
   zoomOnPoint,
 } from "./board-layout";
-import { buildTerrain, depthOf, type Face, floorOutline, footOffset, litTiles, VIEW_ANGLE, VIEW_STEP } from "./terrain";
+import { buildTerrain, depthOf, type Face, floorOutline, footOffset, litTiles, turnView, VIEW_ANGLE, VIEW_STEP } from "./terrain";
 import { SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
 import { SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
 
@@ -424,9 +424,14 @@ export function Board({
       };
       // Eases to a camera in FRAME_MS; jumps when the player prefers reduced motion.
       let animation: number | undefined;
+      // Set while a turn is animating; cancelling the animation then snaps to the turn's end view.
+      let finishTurn: (() => void) | undefined;
       const stopAnimation = () => {
         if (animation !== undefined) cancelAnimationFrame(animation);
         animation = undefined;
+        const finish = finishTurn;
+        finishTurn = undefined;
+        finish?.();
       };
       const animateTo = (target: Camera) => {
         stopAnimation();
@@ -452,31 +457,37 @@ export function Board({
         framing = takeOverFraming(framing);
         setCamera(next);
       };
-      // Turns the board to `target` degrees (unwrapped, so a turn always takes the short way round). The terrain is
+      // Turns the board one step (the angle rests in 0..359; a cancelled turn snaps to its end view). The terrain is
       // redrawn at the in-between angles; the camera is refitted (or, when zoomed, kept on the same tile) each frame.
-      let turnTarget = angleRef.current;
       const showAngle = (next: number) => {
         const turned = turnCamera(camera, size(), next);
         angleRef.current = next;
         setAngle(next);
         setCamera(turned);
       };
-      const turnTo = (target: number) => {
-        stopAnimation();
+      const turnBy = (steps: 1 | -1) => {
+        stopAnimation(); // finishes a turn still running, so `from` is a resting view
         framing = takeOverFraming(framing);
-        turnTarget = target;
-        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return showAngle(target);
         const from = angleRef.current;
+        const end = turnView(from, steps);
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return showAngle(end);
+        finishTurn = () => showAngle(end);
         const start = performance.now();
         const step = (now: number) => {
           const t = Math.min((now - start) / FRAME_MS, 1);
-          showAngle(from + (target - from) * (1 - (1 - t) ** 3));
-          animation = t < 1 ? requestAnimationFrame(step) : undefined;
+          if (t < 1) {
+            showAngle(from + steps * VIEW_STEP * (1 - (1 - t) ** 3));
+            animation = requestAnimationFrame(step);
+          } else {
+            animation = undefined;
+            finishTurn = undefined;
+            showAngle(end);
+          }
         };
         animation = requestAnimationFrame(step);
       };
       cameraControl.current = {
-        turn: (steps) => turnTo(turnTarget + steps * VIEW_STEP),
+        turn: turnBy,
         toggle: () => {
           const hero = candidatesRef.current.heroes.find((h) => h.id === selectedIdRef.current);
           if (isZoomed(camera, size()) || !hero) setCameraByHand(fitCamera(size()));
