@@ -48,7 +48,7 @@ test("start a match, play a Move card onto a tile, Commit", async ({ page }) => 
   // On a runner without a GPU one canvas screenshot waits for a software-rendered frame and takes several seconds.
   await expect.poll(() => canvasIsDrawn(page, canvas), { timeout: 30_000 }).toBe(true);
 
-  // Tap flow: card, "Move" in the detail sheet, then a tile. Which tiles are legal is the game's call, so tap
+  // Tap flow: card, the "Move 2" face, then a tile. Which tiles are legal is the game's call, so tap
   // a grid of points over the board until the card shows up in the queue.
   const hand = page.getByRole("list", { name: "Hand" });
   const queue = page.getByRole("region", { name: "Queue" });
@@ -59,7 +59,7 @@ test("start a match, play a Move card onto a tile, Commit", async ({ page }) => 
   await expect(page.getByTestId("exile-count")).toHaveText(/^Exile \d+$/);
   // The hand is a fan of overlapping cards; the last one is fully visible.
   await hand.getByRole("button").last().click();
-  await page.getByRole("dialog", { name: /details$/ }).getByRole("button", { name: /^Move/ }).click();
+  await page.getByRole("group", { name: "Use card as" }).getByRole("button", { name: /^Move/ }).click();
   // Arming a Move zooms the camera on the Hero; wait for that, then tap the lit tiles right of the Hero.
   await expect(page.getByRole("button", { name: "Fit board" })).toBeVisible();
   const lit = [

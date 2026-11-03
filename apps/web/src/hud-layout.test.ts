@@ -2,7 +2,7 @@ import { reachableMoveDestinations } from "game-core";
 import { describe, expect, it } from "vitest";
 import type { Rect } from "./card-drag";
 import { computeCamera, frameMoveCamera, gridToWorld } from "./board-layout";
-import { cardSheetRect, commitRect, freeBoardArea, handRect, zoomColumnRect } from "./hud-layout";
+import { commitRect, freeBoardArea, handRect, zoomColumnRect } from "./hud-layout";
 
 const VIEWS = [
   { width: 844, height: 390 },
@@ -19,12 +19,11 @@ describe("the free board area", () => {
       const inView = (rect: Rect) => rect.left >= 0 && rect.top >= 0 && rect.right <= view.width && rect.bottom <= view.height;
 
       it("is a non-empty part of the view in every HUD state", () => {
-        const sheet = cardSheetRect(view, undefined);
-        for (const state of [{ kind: "idle" }, { kind: "sheet", sheet }, { kind: "picking" }] as const) {
+        for (const state of [{ kind: "idle" }, { kind: "picking" }] as const) {
           const free = freeBoardArea(view, state);
           expect(inView(free)).toBe(true);
           expect(free.right - free.left).toBeGreaterThan(200);
-          expect(free.bottom - free.top).toBeGreaterThan(state.kind === "sheet" ? 50 : 100);
+          expect(free.bottom - free.top).toBeGreaterThan(100);
         }
       });
 
@@ -35,48 +34,12 @@ describe("the free board area", () => {
         expect(area(picking)).toBeGreaterThan(area(idle));
       });
 
-      it("starts below the card sheet while the sheet is open", () => {
-        const sheet = cardSheetRect(view, undefined);
-        const free = freeBoardArea(view, { kind: "sheet", sheet });
-        expect(free.top).toBeGreaterThan(sheet.bottom);
-        expect(overlaps(free, sheet)).toBe(false);
-      });
-
       it("keeps clear of the hand, Commit and the zoom buttons while a target is picked", () => {
         const free = freeBoardArea(view, { kind: "picking" });
         // The hand collapses to the Energy orb and a chip of 88 px, which the left inset leaves room for.
         for (const hud of [commitRect(view), zoomColumnRect(view), { ...handRect(view), right: 6 + 40 + 6 + 88 }]) {
           expect(overlaps(free, hud)).toBe(false);
         }
-      });
-    });
-  }
-});
-
-describe("the card sheet", () => {
-  for (const view of VIEWS) {
-    describe(`at ${view.width} x ${view.height}`, () => {
-      const heroes = [undefined, { x: 150, y: 200 }, { x: view.width / 2, y: 120 }, { x: view.width - 150, y: 200 }];
-
-      it("is at most 45 % of the width wide and covers neither the hand, Commit nor the zoom and rotate buttons", () => {
-        for (const hero of heroes) {
-          const sheet = cardSheetRect(view, hero);
-          expect(sheet.right - sheet.left).toBeLessThanOrEqual(view.width * 0.45 + 1e-6);
-          expect(sheet.bottom - sheet.top).toBeLessThanOrEqual(112);
-          for (const hud of [handRect(view), commitRect(view), zoomColumnRect(view)]) {
-            expect(overlaps(sheet, hud)).toBe(false);
-          }
-        }
-      });
-
-      it("is on the side the Hero is not on", () => {
-        const heroLeft = { x: 240, y: 100 };
-        const heroRight = { x: view.width - 160, y: 100 };
-        const besideLeftHero = cardSheetRect(view, heroLeft);
-        const besideRightHero = cardSheetRect(view, heroRight);
-        expect(contains(besideLeftHero, heroLeft)).toBe(false);
-        expect(contains(besideRightHero, heroRight)).toBe(false);
-        expect(besideLeftHero.left).toBeGreaterThan(besideRightHero.left);
       });
     });
   }
