@@ -102,8 +102,15 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .counts { flex-basis: 100%; order: 1; font-family: "IBM Plex Mono", monospace; font-size: 10px; line-height: 1.2; color: var(--muted); }
 .tag { font-size: 10px; color: var(--muted); }
 
-/* Energy orb next to the fan; Pitched and Spent are in its tooltip. */
-.energy { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: var(--graphite); border: 2px solid var(--orange); color: var(--orange); font-family: "IBM Plex Mono", monospace; font-size: 18px; font-weight: 700; }
+/* Energy pill above the fan; Pitched and Spent are in its tooltip. */
+.energy { display: inline-flex; align-items: center; gap: 6px; height: 26px; box-sizing: border-box; padding: 0 10px; border-radius: 13px; background: color-mix(in srgb, var(--panel) 87%, transparent); border: 1px solid var(--steel); color: var(--orange); transition: opacity 150ms; }
+.energy-label { font: 700 12px/1 Rajdhani, sans-serif; letter-spacing: 0.1em; color: var(--muted); }
+.energy-dots { display: flex; gap: 3px; }
+.energy-dot { width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--orange); }
+.energy-dot.full { background: var(--orange); }
+.energy-count { font: 700 15px/1 var(--font-number); color: var(--orange); }
+.hand-column { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.piles, .commit-panel { transition: opacity 150ms; }
 /* The use chooser: only the 2 x 2 buttons, placed by cardSheetRect (hud-layout.ts) beside the Hero, clear of the hand and the buttons. */
 .card-sheet { box-sizing: border-box; padding: 4px; display: flex; flex-direction: column; }
 .sheet-close { position: absolute; top: -12px; right: -12px; width: 32px; height: 32px; background: var(--graphite); color: var(--text); border: 1px solid var(--steel); border-radius: 50%; font-size: 18px; line-height: 1; cursor: pointer; }
@@ -142,7 +149,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .card.mode-face:disabled { opacity: 0.55; cursor: default; }
 .mode-note { display: block; font-size: 12px; color: var(--overdrive); }
 .od-marker { margin-left: 3px; padding: 0 2px; border-radius: 2px; background: var(--overdrive); color: var(--graphite); font-size: 9px; }
-/* The Hand is a fan of 108 x 134 px cards in the free bottom left corner; the piles sit left of it, the Energy orb between. */
+/* The Hand is a fan of 108 x 134 px cards in the free bottom left corner; the piles sit left of it, the Energy pill above it. */
 .hand-bar { z-index: var(--z-hand); background: none; border: 0; bottom: calc(4px + env(safe-area-inset-bottom)); left: calc(6px + env(safe-area-inset-left)); display: flex; align-items: flex-end; gap: 6px; }
 .piles { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .pile-minor { display: flex; gap: 8px; font: 500 10px/1 var(--font-number); color: var(--muted); }
@@ -151,7 +158,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .deck-count { font: 500 24px/1 var(--font-number); color: var(--text); }
 .hand { margin: 0; padding: 12px 0 0; list-style: none; display: flex; height: 146px; position: relative; }
 /* --step and --card-w come from fanSpacing (hand-fan.ts). */
-.hand li { position: absolute; bottom: 0; left: calc(var(--position) * var(--step)); transform-origin: 50% 100%; transition: transform 80ms; transform: translateY(calc(var(--offset) * var(--offset) * 3px)) rotate(calc(var(--offset) * 7deg)); }
+.hand li { position: absolute; bottom: 0; left: calc(var(--position) * var(--step)); transform-origin: 50% 100%; opacity: var(--dim, 1); transition: transform 80ms, opacity 150ms; transform: translateY(calc(var(--offset) * var(--offset) * 3px)) rotate(calc(var(--offset) * 7deg)); }
 /* The card held down lifts a little so the player sees which one is meant. */
 .hand li:has(.card:active) { transform: translateY(calc(var(--offset) * var(--offset) * 3px - 10px)) rotate(calc(var(--offset) * 7deg)); }
 .card { position: relative; display: block; width: var(--card-w, 108px); height: 134px; padding: 6px 7px; box-sizing: border-box; background: var(--graphite); border: 1.5px solid var(--steel); border-radius: var(--radius-m); text-align: left; cursor: pointer; }
@@ -200,7 +207,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .drop-chip.off { background: color-mix(in srgb, var(--panel) 87%, transparent); border: 2px dashed var(--steel); color: var(--muted); opacity: 0.6; }
 .drop-chip.active { background: var(--teal); color: var(--graphite); }
 .energy.drop-lit { box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 40%, transparent); }
-.energy.drop-lit.active { background: var(--orange); color: var(--graphite); }
+.energy.drop-lit.active { background: var(--orange); }
+.energy.drop-lit.active .energy-label, .energy.drop-lit.active .energy-count { color: var(--graphite); }
 
 .rotate-notice { display: none; }
 @media (orientation: portrait) {

@@ -31,7 +31,7 @@ describe("Tutorial steps", () => {
   it("reuses the game's own card face, drop targets and Board instead of defining its own", () => {
     const screen = readFileSync(path.resolve(__dirname, "TutorialScreen.tsx"), "utf8");
     expect(screen).toMatch(/import \{[^}]*\bCardFace\b[^}]*\bModeFaceCard\b[^}]*\} from "\.\/game-parts"/);
-    expect(screen).toMatch(/import \{[^}]*\bBlockChip\b[^}]*\bEnergyOrb\b[^}]*\} from "\.\/game-parts"/);
+    expect(screen).toMatch(/import \{[^}]*\bBlockChip\b[^}]*\bEnergyPill\b[^}]*\} from "\.\/game-parts"/);
     expect(screen).toContain('from "./Board"');
     expect(screen).not.toMatch(/className="card-(name|cost|text|type)"/);
     expect(screen).not.toMatch(/inShadow|tutorial-sight-line/);

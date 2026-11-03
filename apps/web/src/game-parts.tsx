@@ -49,23 +49,40 @@ export function BlockChip({ allowed, active, chipRef }: { allowed: boolean; acti
   );
 }
 
-/** The Energy orb, the drop target for Pitch; `lit` while a card is dragged, `active` under the dragged card. */
-export function EnergyOrb({
+const ENERGY_CAPACITY = 5;
+
+/** The Energy pill above the Hand, the drop target for Pitch; `lit` while a card is dragged, `active` under the dragged card. */
+export function EnergyPill({
   available,
   lit,
   active,
-  orbRef,
+  pillRef,
   title,
+  opacity,
 }: {
   available: number;
   lit: boolean;
   active: boolean;
-  orbRef?: Ref<HTMLDivElement>;
+  pillRef?: Ref<HTMLDivElement>;
   title?: string;
+  opacity?: number;
 }): ReactNode {
   return (
-    <div ref={orbRef} className={`energy${lit ? " drop-lit" : ""}${active ? " active" : ""}`} data-testid="energy" aria-label={`Energy: ${available} available`} title={title}>
-      {available}
+    <div
+      ref={pillRef}
+      className={`energy${lit ? " drop-lit" : ""}${active ? " active" : ""}`}
+      style={opacity === undefined ? undefined : { opacity }}
+      data-testid="energy"
+      aria-label={`Energy: ${available} available`}
+      title={title}
+    >
+      <span className="energy-label">ENERGY</span>
+      <span className="energy-dots" aria-hidden="true">
+        {Array.from({ length: ENERGY_CAPACITY }, (_, i) => (
+          <span key={i} className={`energy-dot${i < available ? " full" : ""}`} />
+        ))}
+      </span>
+      <span className="energy-count">{available}</span>
     </div>
   );
 }

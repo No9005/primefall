@@ -2,7 +2,7 @@ import { HeroClass } from "game-core";
 import { useEffect, useRef, useState } from "react";
 import { Board, type TokenHero } from "./Board";
 import type { BoardPick, Point } from "./card-drag";
-import { BlockChip, CardFace, EnergyOrb, ModeFaceCard } from "./game-parts";
+import { BlockChip, CardFace, EnergyPill, ModeFaceCard } from "./game-parts";
 import "./tutorial.css";
 import { OVERDRIVE_FACES, SIGHT_SCENE, TUTORIAL_STEP_SECONDS, TUTORIAL_STEPS, TutorialDrop, TutorialTopic } from "./tutorial";
 
@@ -128,7 +128,7 @@ export function TutorialScreen({ onPlay, onClose }: { onPlay: () => void; onClos
         )}
         <div className="tutorial-side">
           <BlockChip allowed={step.drop === TutorialDrop.BlockChip} active={step.drop === TutorialDrop.BlockChip && dropped} />
-          <EnergyOrb available={step.drop === TutorialDrop.EnergyOrb && dropped ? 1 : 0} lit={step.drop === TutorialDrop.EnergyOrb} active={step.drop === TutorialDrop.EnergyOrb && dropped} />
+          <EnergyPill available={step.drop === TutorialDrop.EnergyOrb && dropped ? 1 : 0} lit={step.drop === TutorialDrop.EnergyOrb} active={step.drop === TutorialDrop.EnergyOrb && dropped} />
         </div>
         {step.card && (
           <div className="tutorial-hand">
