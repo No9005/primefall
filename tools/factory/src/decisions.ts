@@ -22,6 +22,7 @@ export const CommentMarker = {
   ReviewNotRun: "<!-- factory:review-not-run -->",
   ImplementFailed: "<!-- factory:implement-failed -->",
   ReworkStalled: "<!-- factory:rework-stalled -->",
+  MergeBlocked: "<!-- factory:merge-blocked -->",
   /** Contract with the dashboard (#176): it shows this comment as the recommendation. */
   OwnerBrief: "<!-- factory:owner-brief -->",
 } as const;
@@ -385,6 +386,55 @@ export interface PostedReview {
   nodeId: string;
   body: string | null;
   commitId: string;
+}
+
+export interface MergeBlockInput {
+  /** Unresolved review threads, each with a link to its first comment. */
+  unresolvedThreads: { url: string }[];
+  /** Check runs of the head commit. */
+  checks: { name: string; status: string; conclusion: string | null }[];
+  mergeableState: string;
+  autoMergeEnabled: boolean;
+}
+
+const FAILED_CONCLUSIONS = new Set(["failure", "cancelled", "timed_out", "action_required", "startup_failure"]);
+
+/** Plain-words reasons, one per finding, why an open pull request with auto-merge did not merge. */
+export function mergeBlockReasons(input: MergeBlockInput): string[] {
+  const reasons: string[] = [];
+  const threads = input.unresolvedThreads;
+  if (threads.length > 0) {
+    reasons.push(`${threads.length} review thread${threads.length === 1 ? " is" : "s are"} unresolved (the ruleset requires all resolved), first: ${threads[0]?.url ?? ""}`);
+  }
+  for (const check of input.checks) {
+    if (check.status !== "completed") reasons.push(`the check \`${check.name}\` is still pending (${check.status})`);
+    else if (FAILED_CONCLUSIONS.has(check.conclusion ?? "")) reasons.push(`the check \`${check.name}\` failed (${check.conclusion})`);
+  }
+  if (input.mergeableState === "dirty") reasons.push("the branch has merge conflicts with the default branch");
+  if (input.mergeableState === "behind") reasons.push("the branch is behind the default branch");
+  if (!input.autoMergeEnabled) reasons.push("auto-merge is not enabled on the pull request");
+  if (reasons.length === 0) reasons.push("blocked for an unknown reason, see the pull request checks");
+  return reasons;
+}
+
+/** The marker comes first, then one line per reason. */
+export function formatMergeBlockedComment(reasons: string[], handedOverAt: string): string {
+  const list = reasons.map((reason) => `- ${reason}`).join("\n");
+  return `${CommentMarker.MergeBlocked}\nThe automatic merge did not happen within the wait time, so this pull request is handed to the owner (label \`needs-human-merge\`). Why it did not merge:\n\n${list}\n\nThis was handed over at ${handedOverAt}; ignore if merged.`;
+}
+
+export interface AwaitMergeActions {
+  /** Loads the pull request state; a merged or closed pull request needs no hand-over. */
+  loadState: () => { open: boolean; merged: boolean };
+  handOver: () => void;
+}
+
+/** Called when the wait ends: only a pull request that is still open is handed to the owner. */
+export function handOverIfStillOpen(actions: AwaitMergeActions): boolean {
+  const state = actions.loadState();
+  if (state.merged || !state.open) return false;
+  actions.handOver();
+  return true;
 }
 
 /** Earlier failed reviews of the factory for other commits, to be collapsed once a review passes. */

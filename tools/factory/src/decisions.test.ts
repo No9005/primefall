@@ -28,6 +28,10 @@ import {
   summarizeAgentRun,
   formatRunSummary,
   formatOwnerBrief,
+  formatMergeBlockedComment,
+  handOverIfStillOpen,
+  mergeBlockReasons,
+  type MergeBlockInput,
   reworkDecision,
   ReworkAction,
   ReviewVerdict,
@@ -146,6 +150,70 @@ describe("reviewOutcome", () => {
   it("uses the verdict of a valid result", () => {
     expect(reviewOutcome({ resultFileExists: true, parsed })).toBe(ReviewOutcome.Pass);
     expect(reviewOutcome({ resultFileExists: true, parsed: { ...parsed, verdict: ReviewVerdict.Fail } })).toBe(ReviewOutcome.Fail);
+  });
+});
+
+describe("mergeBlockReasons", () => {
+  const clean: MergeBlockInput = { unresolvedThreads: [], checks: [{ name: "check", status: "completed", conclusion: "success" }], mergeableState: "blocked", autoMergeEnabled: true };
+
+  it("names unresolved threads with a link to the first one", () => {
+    const reasons = mergeBlockReasons({ ...clean, unresolvedThreads: [{ url: "https://x/1" }, { url: "https://x/2" }] });
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toContain("2 review threads are unresolved");
+    expect(reasons[0]).toContain("https://x/1");
+  });
+
+  it("names a failed check", () => {
+    const reasons = mergeBlockReasons({ ...clean, checks: [{ name: "check", status: "completed", conclusion: "failure" }] });
+    expect(reasons).toEqual(["the check `check` failed (failure)"]);
+  });
+
+  it("names a pending check", () => {
+    const reasons = mergeBlockReasons({ ...clean, checks: [{ name: "Vercel", status: "in_progress", conclusion: null }] });
+    expect(reasons).toEqual(["the check `Vercel` is still pending (in_progress)"]);
+  });
+
+  it("reports conflicts and a branch that is behind", () => {
+    expect(mergeBlockReasons({ ...clean, mergeableState: "dirty" })).toEqual(["the branch has merge conflicts with the default branch"]);
+    expect(mergeBlockReasons({ ...clean, mergeableState: "behind" })).toEqual(["the branch is behind the default branch"]);
+  });
+
+  it("reports auto-merge that is off", () => {
+    expect(mergeBlockReasons({ ...clean, autoMergeEnabled: false })).toEqual(["auto-merge is not enabled on the pull request"]);
+  });
+
+  it("lists several reasons together", () => {
+    const reasons = mergeBlockReasons({ unresolvedThreads: [{ url: "u" }], checks: [{ name: "check", status: "queued", conclusion: null }], mergeableState: "dirty", autoMergeEnabled: false });
+    expect(reasons).toHaveLength(4);
+  });
+
+  it("says so when no reason is found", () => {
+    expect(mergeBlockReasons(clean)).toEqual(["blocked for an unknown reason, see the pull request checks"]);
+  });
+});
+
+describe("formatMergeBlockedComment", () => {
+  it("starts with the marker and has one line per reason", () => {
+    const lines = formatMergeBlockedComment(["reason one", "reason two"], "2026-01-01T00:00:00Z").split("\n");
+    expect(lines[0]).toBe(CommentMarker.MergeBlocked);
+    expect(lines.filter((line) => line.startsWith("- "))).toEqual(["- reason one", "- reason two"]);
+  });
+});
+
+describe("handOverIfStillOpen", () => {
+  const run = (state: { open: boolean; merged: boolean }) => {
+    let handedOver = 0;
+    const result = handOverIfStillOpen({ loadState: () => state, handOver: () => handedOver++ });
+    return { result, handedOver };
+  };
+
+  it("hands an open pull request to the owner", () => {
+    expect(run({ open: true, merged: false })).toEqual({ result: true, handedOver: 1 });
+  });
+
+  it("does nothing when the pull request is merged or closed", () => {
+    expect(run({ open: false, merged: true })).toEqual({ result: false, handedOver: 0 });
+    expect(run({ open: false, merged: false })).toEqual({ result: false, handedOver: 0 });
   });
 });
 
