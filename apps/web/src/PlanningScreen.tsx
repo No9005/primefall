@@ -39,7 +39,7 @@ import { Board } from "./Board";
 import { BlockChip, CardFace, EnergyOrb, ModeFaceCard } from "./game-parts";
 import { drawShots, type ShotDrawing } from "./shot-lines";
 import { heroMarks } from "./shield-marks";
-import { plannedTargetLines,replayTargetLines, type TargetLine } from "./target-lines";
+import { plannedTargetLines, replayTargetLines, type TargetLine } from "./target-lines";
 import { cardAtX, FAN_WIDTH, fanSpacing } from "./hand-fan";
 import { applyDrop, type BoardPick, type DropPlaces, type DropProbe, type DropUse, type Point, probeDrop, type Rect } from "./card-drag";
 import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";

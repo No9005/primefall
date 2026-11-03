@@ -288,6 +288,20 @@ function animateAppear(shape: Graphics, ms: number): () => void {
   return () => cancelAnimationFrame(frame);
 }
 
+/** Fades a shape from full to transparent in `ms`. Returns a cancel function. */
+function animateFadeOut(shape: Graphics, ms: number): () => void {
+  const start = performance.now();
+  let frame = 0;
+  const step = (now: number) => {
+    const t = Math.min(1, (now - start) / ms);
+    shape.alpha = 1 - t;
+    shape.scale.set(1 + 0.2 * t);
+    if (t < 1) frame = requestAnimationFrame(step);
+  };
+  frame = requestAnimationFrame(step);
+  return () => cancelAnimationFrame(frame);
+}
+
 /** Length of the camera ease when a Move is armed, placed or cancelled. */
 const FRAME_MS = 250;
 
@@ -460,6 +474,11 @@ export function Board({
         const bubble = shieldBubble(strokeScale);
         token.addChild(bubble);
         if (!bubbleSeen.current.has(hero.id)) cancels.push(animateAppear(bubble, HERO_STYLE.marks.bubble.appearMs));
+      } else if (bubbleSeen.current.has(hero.id) && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        // The Shield was used up or expired: the bubble fades away (not with reduced motion).
+        const bubble = shieldBubble(strokeScale);
+        token.addChild(bubble);
+        cancels.push(animateFadeOut(bubble, HERO_STYLE.marks.bubble.appearMs));
       }
       if (hero.marked && !hero.exhausted && !hero.ghost) {
         // A red downward marker above the head.
