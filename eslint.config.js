@@ -30,6 +30,20 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Readability warnings for product code (CODING_STANDARDS.md, "Readability"). They become errors file by
+    // file once the cleanup ticket has removed the existing hits. Tests are excluded.
+    files: ["**/*.{ts,tsx}"],
+    ignores: ["**/*.test.{ts,tsx}", "apps/web/e2e/**"],
+    rules: {
+      "no-nested-ternary": "warn",
+      complexity: ["warn", 15],
+      "max-depth": ["warn", 4],
+      "max-params": ["warn", 5],
+      "max-lines-per-function": ["warn", { max: 80, skipBlankLines: true, skipComments: true }],
+      "max-statements": ["warn", 30],
+    },
+  },
   { files: ["*.js", "**/*.config.ts"], languageOptions: { globals: globals.node } },
   {
     // game-core is deterministic and pure: no browser APIs, no Math.random (use the seeded PRNG).
