@@ -147,6 +147,49 @@ describe("Heroes that move do not hinder each other (ADR 0013)", () => {
   });
 });
 
+describe("Moves may cross in the middle of a walk; only the tile where a Move ends must be free (issue 184)", () => {
+  it("lets two Heroes whose paths pass the same tile in the first step both arrive", () => {
+    const { match, events } = play(
+      { [LEFT_BRUISER]: at(8, 3), [LEFT_CONTROLLER]: at(9, 2) },
+      { [LEFT_BRUISER]: at(10, 3), [LEFT_CONTROLLER]: at(9, 4) },
+    );
+    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(10, 3));
+    expect(positionOf(match, LEFT_CONTROLLER)).toEqual(at(9, 4));
+    expect(events.map(({ kind }) => kind)).not.toContain(EventKind.MoveBlocked);
+  });
+
+  it("stops two Heroes that end on the same tile one step earlier on their own path", () => {
+    const { match } = play(
+      { [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(12) },
+      { [LEFT_BRUISER]: at(10), [LEFT_CONTROLLER]: at(10) },
+    );
+    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(9));
+    expect(positionOf(match, LEFT_CONTROLLER)).toEqual(at(11));
+  });
+
+  it("shortens a walk again when a shortened walk makes it collide", () => {
+    // Bruiser and Assassin both end on 10 and stop on 9 and 11, which is where the Controller ends, so they collide
+    // again: the Assassin cannot move at all, and then the Controller cannot walk through it.
+    const { match } = play(
+      { [LEFT_BRUISER]: at(8), [LEFT_ASSASSIN]: at(12), [LEFT_CONTROLLER]: at(13) },
+      { [LEFT_BRUISER]: at(10), [LEFT_ASSASSIN]: at(10), [LEFT_CONTROLLER]: at(11) },
+    );
+    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(9));
+    expect(positionOf(match, LEFT_ASSASSIN)).toEqual(at(12));
+    expect(positionOf(match, LEFT_CONTROLLER)).toEqual(at(13));
+  });
+
+  it("does not let a Hero walk through a Hero whose own Move ends where it started", () => {
+    // A Move towards a Wall corner ends on the start tile, so that Hero stays.
+    const { match } = play(
+      { [LEFT_BRUISER]: at(4, 5), [LEFT_CONTROLLER]: at(5, 5) },
+      { [LEFT_BRUISER]: at(6, 5), [LEFT_CONTROLLER]: at(4, 6) },
+    );
+    expect(positionOf(match, LEFT_CONTROLLER)).toEqual(at(5, 5));
+    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(4, 5));
+  });
+});
+
 describe("the movement rule is symmetric and independent of the order of the Heroes", () => {
   const crossing = (squadMirrored: boolean) => {
     const place = squadMirrored ? mirror : (tile: GridPosition) => tile;

@@ -73,8 +73,8 @@ const destinationsInOrder = (from: GridPosition, squad: SquadId): GridPosition[]
   squad === SquadId.Left ? moveDestinations(from) : moveDestinations(mirrorTile(from)).map(mirrorTile);
 
 /**
- * Tiles that Heroes planned earlier stand on after each step of a queue slot (key: `claimKey`). Two Heroes
- * stepping onto one tile, or onto a tile where a Hero stays, both fail that step (ADR 0013).
+ * Tiles that Heroes planned earlier stand on after each step of a queue slot (key: `claimKey`). Only the tile
+ * where a Move ends is checked: two Heroes ending on one tile both stop one step early (ADR 0013).
  */
 type ClaimedTiles = Map<number, Set<number>>;
 
@@ -106,7 +106,8 @@ function stepTowardPrimeZone(
     const end = moveEnd(from, destination);
     const steps = tilesAfterSteps(from, destination);
     if (blocked.has(tileKey(end)) || steps.some((tile) => blocked.has(tileKey(tile)))) continue;
-    if (steps.some((tile, step) => claimed.get(claimKey(slot, step + 1))?.has(tileKey(tile)))) continue;
+    // Crossing in the middle of a walk is allowed; only the tile where the Move ends must not be claimed.
+    if (claimed.get(claimKey(slot, MOVE_DISTANCE))?.has(tileKey(steps.at(-1)!))) continue;
     const distance = distanceTo(end);
     if (distance < bestDistance) {
       best = destination;
