@@ -1,6 +1,7 @@
 import { parseGrid, REACTOR_DECK, TileKind } from "game-core";
 import { describe, expect, it } from "vitest";
-import { buildTerrain, FaceRole, gridToWorld, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE } from "./terrain";
+import { buildTerrain, choosePiece, FaceRole, gridToWorld, Join, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE } from "./terrain";
+import { PIECE_SHAPE, TERRAIN_STYLE } from "./terrain-style";
 
 const flatPoints = (points: number[]) => Array.from({ length: points.length / 2 }, (_, i) => ({ x: points[i * 2]!, y: points[i * 2 + 1]! }));
 
@@ -20,27 +21,39 @@ describe("buildTerrain at 45 degrees", () => {
     }
   });
 
-  it("gives a Wall a left side, a right side and a top, drawn in that order", () => {
-    const wall = tiles.find((t) => t.kind === TileKind.Wall)!;
-    expect(wall.piece?.map((face) => face.role)).toEqual([FaceRole.Left, FaceRole.Right, FaceRole.Top]);
-    const { x, y } = gridToWorld(wall.position);
-    const [left, right, top] = wall.piece!;
-    // A full-tile Wall: sides stand on the lower edges of the diamond, the top is the diamond lifted by the Wall height.
+  it("gives a lone Wall a left side, a right side and a top, drawn in that order, as a pillar", () => {
+    const [wall] = buildTerrain(parseGrid(["...", ".#.", "..."])).filter((t) => t.kind === TileKind.Wall);
+    expect(wall!.piece?.map((face) => face.role)).toEqual([FaceRole.Left, FaceRole.Right, FaceRole.Top]);
+    const { x, y } = gridToWorld(wall!.position);
+    const [left, right, top] = wall!.piece!;
+    // A pillar half a tile wide: its sides stand on the lower edges of the half-size diamond.
     expect(flatPoints(left!.points).slice(0, 2)).toEqual([
-      { x, y: y + TILE_HEIGHT / 2 },
-      { x: x - TILE_WIDTH / 2, y },
+      { x, y: y + TILE_HEIGHT / 4 },
+      { x: x - TILE_WIDTH / 4, y },
     ]);
     expect(flatPoints(right!.points).slice(0, 2)).toEqual([
-      { x: x + TILE_WIDTH / 2, y },
-      { x, y: y + TILE_HEIGHT / 2 },
+      { x: x + TILE_WIDTH / 4, y },
+      { x, y: y + TILE_HEIGHT / 4 },
     ]);
-    expect(flatPoints(top!.points)[0]).toEqual({ x, y: y - TILE_HEIGHT / 2 - 64 });
+    expect(flatPoints(top!.points)[0]).toEqual({ x, y: y - TILE_HEIGHT / 4 - 64 });
+  });
+
+  it("draws a Wall run thinner than the tile and joined to the tile edge", () => {
+    const [, wall] = buildTerrain(parseGrid(["...", "###", "..."])).filter((t) => t.kind === TileKind.Wall);
+    const { col, row } = wall!.position;
+    const tops = wall!.piece!.filter((face) => face.role === FaceRole.Top);
+    // Three boxes (middle post and two arms); the east arm ends on the tile edge, a third of a tile wide.
+    expect(tops).toHaveLength(3);
+    const at = (c: number, r: number) => ({ x: ((c - r) * TILE_WIDTH) / 2, y: ((c + r) * TILE_HEIGHT) / 2 - 64 });
+    const corner = at(col + 0.5, row - 1 / 6);
+    const points = tops.flatMap((face) => flatPoints(face.points));
+    expect(points.some((p) => Math.abs(p.x - corner.x) < 1e-6 && Math.abs(p.y - corner.y) < 1e-6)).toBe(true);
   });
 
   it("gives Cover and the Overwatch Nest a standing piece and open floor none", () => {
     for (const kind of [TileKind.HalfCover, TileKind.FullCover, TileKind.OverwatchNest]) {
       const tile = tiles.find((t) => t.kind === kind);
-      if (tile) expect(tile.piece, kind).toHaveLength(3);
+      if (tile) expect(tile.piece?.length, kind).toBeGreaterThanOrEqual(3);
     }
     expect(tiles.find((t) => t.kind === TileKind.OverwatchNest)).toBeDefined();
     expect(tiles.find((t) => t.kind === TileKind.Floor)?.piece).toBeUndefined();
@@ -87,17 +100,58 @@ describe("buildTerrain at another angle", () => {
   });
 });
 
+describe("choosePiece", () => {
+  const choose = (rows: string[], col: number, row: number) => choosePiece(parseGrid(rows), { col, row });
+  const center = ["...", ".#.", "..."];
+
+  it("draws an isolated Wall as a pillar and open floor as nothing", () => {
+    expect(choose(center, 1, 1)).toEqual({ kind: "wall", form: "pillar", joins: 0 });
+    expect(choose(center, 0, 0)).toBeUndefined();
+  });
+
+  it("draws the ends and the middle of a straight run", () => {
+    const run = ["...", "###", "..."];
+    expect(choose(run, 0, 1)).toEqual({ kind: "wall", form: "end", joins: Join.East });
+    expect(choose(run, 1, 1)).toEqual({ kind: "wall", form: "straight", joins: Join.West | Join.East });
+    expect(choose(["#", "#", "#"], 0, 1)).toEqual({ kind: "wall", form: "straight", joins: Join.North | Join.South });
+  });
+
+  it("draws an L at a right angle, a T and a cross", () => {
+    expect(choose(["...", ".##", ".#."], 1, 1)).toEqual({ kind: "wall", form: "corner", joins: Join.East | Join.South });
+    expect(choose(["...", "###", ".#."], 1, 1)).toEqual({ kind: "wall", form: "tee", joins: Join.West | Join.East | Join.South });
+    expect(choose([".#.", "###", ".#."], 1, 1)).toEqual({ kind: "wall", form: "cross", joins: 15 });
+  });
+
+  it("does not join a Wall to Cover, and joins Cover of the same kind", () => {
+    expect(choose(["#H"], 0, 0)?.form).toBe("pillar");
+    expect(choose(["HH"], 0, 0)).toEqual({ kind: "halfCover", form: "end", joins: Join.East });
+    expect(choose(["FF"], 1, 0)).toEqual({ kind: "fullCover", form: "end", joins: Join.West });
+    expect(choose(["HF"], 0, 0)?.form).toBe("pillar");
+  });
+
+  it("keeps the Overwatch Nest alone", () => {
+    expect(choose(["OO"], 0, 0)).toEqual({ kind: "overwatchNest", form: "pillar", joins: 0 });
+  });
+
+  it("draws Full Cover taller than Half Cover, both with the warning edge", () => {
+    expect(PIECE_SHAPE.fullCover.height).toBeGreaterThan(PIECE_SHAPE.halfCover.height);
+    expect(TERRAIN_STYLE.halfCover.edge).toBe(TERRAIN_STYLE.fullCover.edge);
+  });
+});
+
 describe("pickWallAt", () => {
   const grid = parseGrid(["...", ".#.", "..."]);
   const { x, y } = gridToWorld({ col: 1, row: 1 });
 
   it("picks a Wall by its top and its side faces", () => {
     expect(pickWallAt(x, y - 64, grid)).toEqual({ col: 1, row: 1 });
-    expect(pickWallAt(x - 50, y - 10, grid)).toEqual({ col: 1, row: 1 });
-    expect(pickWallAt(x + 50, y - 10, grid)).toEqual({ col: 1, row: 1 });
+    expect(pickWallAt(x - 20, y - 10, grid)).toEqual({ col: 1, row: 1 });
+    expect(pickWallAt(x + 20, y - 10, grid)).toEqual({ col: 1, row: 1 });
   });
 
-  it("does not pick the empty corners of the sprite rectangle", () => {
+  it("leaves the floor around a thin Wall tappable", () => {
+    expect(pickWallAt(x - 50, y - 10, grid)).toBeUndefined();
+    expect(pickWallAt(x + 50, y - 10, grid)).toBeUndefined();
     expect(pickWallAt(x - 60, y - 90, grid)).toBeUndefined();
     expect(pickWallAt(x + 60, y - 90, grid)).toBeUndefined();
   });

@@ -24,10 +24,14 @@ export interface PieceStyle {
   edge: number;
 }
 
-/** Footprint share of the tile and height in world pixels of each standing piece. */
+/**
+ * Standing pieces: `thickness` is the share of a tile that a joined slab is wide, `pillar` the share of a piece
+ * with no neighbour to join, `height` is in world pixels. A Wall slab is a third of a tile thick;
+ * the Overwatch Nest never joins.
+ */
 export const PIECE_SHAPE = {
-  wall: { inset: 1, height: 64 },
-  fullCover: { inset: 0.62, height: 44 },
-  halfCover: { inset: 0.62, height: 20 },
-  overwatchNest: { inset: 0.8, height: 72 },
+  wall: { thickness: 1 / 3, pillar: 0.5, height: 64 },
+  fullCover: { thickness: 0.4, pillar: 0.62, height: 44 },
+  halfCover: { thickness: 0.4, pillar: 0.62, height: 20 },
+  overwatchNest: { thickness: 0.8, pillar: 0.8, height: 72 },
 } as const;

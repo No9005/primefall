@@ -134,3 +134,36 @@ describe("parseGrid", () => {
     expect(() => parseGrid(["###", "##"])).toThrow("width");
   });
 });
+
+describe("blocked tiles (the wall kit only changes how Walls are drawn)", () => {
+  it("blocks Movement and Line of Sight on exactly the Wall tiles of the layout", () => {
+    const wallRows = REACTOR_DECK.tiles.map((line) => line.map((kind) => (kind === TileKind.Wall ? "#" : ".")).join(""));
+    expect(wallRows).toEqual([
+      "###############################",
+      "#.............................#",
+      "#.............................#",
+      "#.............................#",
+      "#.........##.......##.........#",
+      "#.............................#",
+      "#....#######.......#######....#",
+      "#.............................#",
+      "#.............................#",
+      "#.............................#",
+      "#....#######.......#######....#",
+      "#.............................#",
+      "#.........##.......##.........#",
+      "#.............................#",
+      "#.............................#",
+      "#.............................#",
+      "###############################",
+    ]);
+    REACTOR_DECK.tiles.forEach((line, row) =>
+      line.forEach((kind, col) => {
+        const open = isStepAllowed({ col: 15, row: 7 }, { col, row });
+        if (kind === TileKind.Wall) expect(open).toBe(false);
+      }),
+    );
+    expect(hasLineOfSight(REACTOR_DECK, { col: 8, row: 5 }, { col: 8, row: 11 })).toBe(false);
+    expect(hasLineOfSight(REACTOR_DECK, { col: 1, row: 7 }, { col: 8, row: 7 })).toBe(true);
+  });
+});
