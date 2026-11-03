@@ -24,6 +24,7 @@ const hero = (id: string, position: GridPosition): HeroView => ({
   heroClass: HeroClass.Bruiser,
   position,
   deckCount: 0,
+  discardCount: 0,
   exileCount: 0,
   hand: [],
   exhausted: false,

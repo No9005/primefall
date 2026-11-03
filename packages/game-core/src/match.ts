@@ -286,6 +286,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
       heroClass: hero.heroClass,
       position: { ...hero.position },
       deckCount: hero.deck.length,
+      discardCount: hero.discard.length,
       exileCount: hero.exile.length,
       hand: [...hero.hand],
       exhausted: hero.exhausted,

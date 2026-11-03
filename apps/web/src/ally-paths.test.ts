@@ -7,6 +7,7 @@ const hero = (id: string, heroClass: HeroClass, col: number, row: number): HeroV
   heroClass,
   position: { col, row },
   deckCount: 8,
+  discardCount: 0,
   exileCount: 0,
   hand: [],
   exhausted: false,

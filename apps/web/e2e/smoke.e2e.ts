@@ -53,6 +53,10 @@ test("start a match, play a Move card onto a tile, Commit", async ({ page }) => 
   const hand = page.getByRole("list", { name: "Hand" });
   const queue = page.getByRole("region", { name: "Queue" });
   const box = (await canvas.boundingBox())!;
+  // The piles of the selected Hero sit next to the fan.
+  await expect(page.getByTestId("deck-pile")).toBeVisible();
+  await expect(page.getByTestId("discard-count")).toHaveText(/^Discard \d+$/);
+  await expect(page.getByTestId("exile-count")).toHaveText(/^Exile \d+$/);
   // The hand is a fan of overlapping cards; the last one is fully visible.
   await hand.getByRole("button").last().click();
   await page.getByRole("dialog", { name: /details$/ }).getByRole("button", { name: /^Move/ }).click();

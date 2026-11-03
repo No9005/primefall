@@ -46,6 +46,7 @@ export interface HeroView {
   heroClass: HeroClass;
   position: GridPosition;
   deckCount: number;
+  discardCount: number;
   exileCount: number;
   /** Cards in the Hand, as indices into the Hero's fixed Deck list (`HERO_DECKS`). */
   hand: readonly number[];
