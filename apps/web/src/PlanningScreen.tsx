@@ -132,10 +132,7 @@ function SquadPanel({
       <section className="hud queue-window" aria-label="Queue">
         <div className="queue-head">
           <span className="hero-name">{HERO_NAMES[selected.heroClass]}</span>
-          <span className="counts">
-            Deck {selected.deckCount - (playback?.deckDamage[selected.id] ?? 0)} · Exile {selected.exileCount}
-            {shield > 0 && ` · Shield ${shield}`}
-          </span>
+          {shield > 0 && <span className="counts">Shield {shield}</span>}
         </div>
         <ol className="queue-slots">
           {Array.from({ length: MAX_QUEUE_LENGTH }, (_, i) => {
@@ -196,8 +193,8 @@ function SquadPanel({
               >
                 <span className="hero-name">{HERO_NAMES[hero.heroClass]}</span>
                 <span className="counts">
-                  {playerControlled ? "" : "AI · "}Deck {hero.deckCount - (playback?.deckDamage[hero.id] ?? 0)}
-                  {exhausted && " · Exhausted"}
+                  {playerControlled ? "" : "AI"}
+                  {exhausted && `${playerControlled ? "" : " · "}Exhausted`}
                 </span>
                 {warningsOf(hero.id).length > 0 && (
                   <span className="collision-tag" title={warningsOf(hero.id).join(" ")}>
@@ -273,6 +270,21 @@ function EnemyPanel({
         );
       })}
     </aside>
+  );
+}
+
+/** The piles of the selected Hero: the Deck as a stack with its count on top, Discard and Exile as a tiny grey row. */
+function PilePanel({ deck, discard, exile }: { deck: number; discard: number; exile: number }) {
+  return (
+    <div className="piles">
+      <div className="pile-minor">
+        <span data-testid="discard-count">Discard {discard}</span>
+        <span data-testid="exile-count">Exile {exile}</span>
+      </div>
+      <div className="deck-pile" data-testid="deck-pile" aria-label={`Deck: ${deck} cards`}>
+        <span className="deck-count">{deck}</span>
+      </div>
+    </div>
   );
 }
 
@@ -1051,6 +1063,11 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         <ModeChoice card={HERO_DECKS[selected.heroClass][modeChoice.card]!} faces={modeFaces} onPick={pickFace} onCancel={() => setModeChoice(undefined)} />
       )}
       <div className={`hud hand-bar${picking ? " collapsed" : ""}`}>
+        <PilePanel
+          deck={selected.deckCount - (playback?.deckDamage[selected.id] ?? 0)}
+          discard={selected.discardCount}
+          exile={selected.exileCount}
+        />
         <EnergyOrb
           orbRef={energyRef}
           available={energy.available}

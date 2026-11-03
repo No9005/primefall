@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardAtX, fanSpacing, MIN_STRIP } from "./hand-fan";
+import { CARD_WIDTH, cardAtX, fanSpacing, MIN_STRIP, STRIP } from "./hand-fan";
 
 describe("fanSpacing", () => {
   for (const width of [310, 250]) {
@@ -15,6 +15,10 @@ describe("fanSpacing", () => {
   it("fits the space whenever 44 px strips allow it", () => {
     expect(fanSpacing(310, 6).width).toBeLessThanOrEqual(310);
     expect(fanSpacing(250, 5).width).toBeLessThanOrEqual(250);
+  });
+
+  it("keeps full-size cards with the normal strip while the space allows it", () => {
+    expect(fanSpacing(370, 4)).toEqual({ cardWidth: CARD_WIDTH, step: STRIP, width: 3 * STRIP + CARD_WIDTH });
   });
 
   it("shrinks the cards once the strips are at their minimum", () => {

@@ -20,7 +20,7 @@ interface Insets {
 }
 
 /** Idle: Queue window with the squad chips top left, enemy panel top right, commit column and zoom buttons right, hand fan bottom left. */
-const IDLE_INSETS: Insets = { left: 231, right: 136, top: 30, bottom: 136 };
+const IDLE_INSETS: Insets = { left: 231, right: 136, top: 30, bottom: 150 };
 /** Picking: the Queue slots with name pills and the hand chip at the left, the enemy pills, zoom buttons and Commit at the right. */
 const PICKING_INSETS: Insets = { left: 140, right: 136, top: 30, bottom: 6 };
 
@@ -39,9 +39,11 @@ export function freeBoardArea(view: ViewSize, state: HudState): Rect {
 
 // The HUD elements the card sheet and the camera must keep clear of, as the layout in styles.css puts them.
 
-/** The hand fan and the Energy orb next to it. */
+const PILES_WIDTH = 66;
+
+/** The piles, the Energy orb and the hand fan (146 px high: the cost badges stick out above the cards). */
 export function handRect(view: ViewSize): Rect {
-  return { left: 6, top: view.height - 4 - 126, right: 6 + 40 + 4 + FAN_WIDTH, bottom: view.height - 4 };
+  return { left: 6, top: view.height - 4 - 146, right: 6 + PILES_WIDTH + 6 + 40 + 6 + FAN_WIDTH, bottom: view.height - 4 };
 }
 
 /** The Commit button with the hint above it. */

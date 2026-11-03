@@ -45,7 +45,7 @@ describe("the free board area", () => {
       it("keeps clear of the hand, Commit and the zoom buttons while a target is picked", () => {
         const free = freeBoardArea(view, { kind: "picking" });
         // The hand collapses to the Energy orb and a chip of 88 px, which the left inset leaves room for.
-        for (const hud of [commitRect(view), zoomColumnRect(view), { ...handRect(view), right: 6 + 40 + 4 + 88 }]) {
+        for (const hud of [commitRect(view), zoomColumnRect(view), { ...handRect(view), right: 6 + 40 + 6 + 88 }]) {
           expect(overlaps(free, hud)).toBe(false);
         }
       });
