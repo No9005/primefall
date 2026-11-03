@@ -2,9 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { playAiMatch } from "./ai-match";
 import { planSquad } from "./ai";
-import { SquadId } from "./host";
+import { MatchEndReason, SquadId } from "./host";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { ActionKind, validatePlan } from "./plan";
+import { resolveRound } from "./resolution";
 
 const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
 const MAX_ROUNDS = 60;
@@ -76,9 +77,28 @@ describe("AI symmetry", () => {
       const winner = playAiMatch(seed, MAX_ROUNDS).match.result?.winner;
       if (winner) wins[winner] += 1;
     }
-    // On the mirror-symmetric Reactor Deck most AI matches end level (a draw), which is fair; what must not
-    // happen is one side taking nearly all the decided matches.
     expect(Math.max(wins[SquadId.Left], wins[SquadId.Right])).toBeLessThanOrEqual(SEEDS.length - 3);
+  });
+});
+
+describe("AI does not freeze", () => {
+  it("keeps moving or acting while the Prime Zone is not held", () => {
+    let match = startRound(createMatch(3));
+    const snapshots: string[] = [];
+    for (let round = 1; round <= 8 && !match.result; round++) {
+      const plans = [SquadId.Left, SquadId.Right].map((squad) => planSquad(buildSquadView(match, squad)));
+      const resolution = resolveRound(match, plans);
+      match = resolution.match.result ? resolution.match : startRound(resolution.match);
+      snapshots.push(JSON.stringify(match.heroes.map((hero) => [hero.position, hero.deck.length, hero.exhausted])));
+    }
+    // Before the fix every Round from the 4th on was identical: the Controllers kept planning a Move onto
+    // a tile that an Exhausted Hero occupied.
+    expect(new Set(snapshots.slice(3)).size).toBeGreaterThan(1);
+  });
+
+  it("decides at least half of the matches before the Round limit", () => {
+    const decided = SEEDS.filter((seed) => playAiMatch(seed, MAX_ROUNDS).match.result?.reason !== MatchEndReason.RoundLimit);
+    expect(decided.length).toBeGreaterThanOrEqual(SEEDS.length / 2);
   });
 });
 

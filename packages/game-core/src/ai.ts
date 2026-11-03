@@ -23,24 +23,41 @@ const PRIME_ZONE_TILES = findTiles(REACTOR_DECK, TileKind.PrimeZone);
 
 const tileKey = ({ col, row }: GridPosition) => row * REACTOR_DECK.width + col;
 
-/** Walking distance in steps from every tile to the nearest Prime Zone tile, going around Walls. */
-const DISTANCE_TO_PRIME_ZONE: ReadonlyMap<number, number> = (() => {
-  const distances = new Map<number, number>(PRIME_ZONE_TILES.map((tile) => [tileKey(tile), 0]));
-  const queue = [...PRIME_ZONE_TILES];
+const isPrimeZoneTile = (tile: GridPosition) => PRIME_ZONE_TILES.some((zone) => zone.col === tile.col && zone.row === tile.row);
+
+/**
+ * Walking distance in steps from every tile to the nearest Prime Zone tile that is not in `blocked`, going around
+ * Walls and the blocked tiles. Exhausted Heroes keep their tile, so a Squad that only counted the Zone as a place
+ * to walk to froze at its edge behind them (issue 147).
+ */
+function distancesToPrimeZone(blocked: ReadonlySet<number>): ReadonlyMap<number, number> {
+  const free = PRIME_ZONE_TILES.filter((tile) => !blocked.has(tileKey(tile)));
+  const distances = new Map<number, number>(free.map((tile) => [tileKey(tile), 0]));
+  const queue = [...free];
   for (const tile of queue) {
     for (let row = tile.row - 1; row <= tile.row + 1; row++) {
       for (let col = tile.col - 1; col <= tile.col + 1; col++) {
         const next = { col, row };
-        if (distances.has(tileKey(next)) || !isStepAllowed(tile, next)) continue;
+        if (distances.has(tileKey(next)) || blocked.has(tileKey(next)) || !isStepAllowed(tile, next)) continue;
         distances.set(tileKey(next), distances.get(tileKey(tile))! + 1);
         queue.push(next);
       }
     }
   }
   return distances;
-})();
+}
 
-const distanceToPrimeZone = (tile: GridPosition) => DISTANCE_TO_PRIME_ZONE.get(tileKey(tile)) ?? Infinity;
+/** Tiles no Move can end on or cross: enemies, Exhausted Heroes and Squad mates that already stand in the Zone. */
+function blockedTiles(view: SquadView): Set<number> {
+  const blocked = new Set<number>();
+  for (const hero of view.heroes) {
+    if (hero.exhausted || isPrimeZoneTile(hero.position)) blocked.add(tileKey(hero.position));
+  }
+  for (const enemy of view.enemies) {
+    if (enemy.visibility === Visibility.Visible) blocked.add(tileKey(enemy.position));
+  }
+  return blocked;
+}
 
 const mirrorTile = ({ col, row }: GridPosition): GridPosition => ({ col: REACTOR_DECK.width - 1 - col, row });
 
@@ -70,13 +87,20 @@ type ClaimedTiles = Map<number, Set<number>>;
  * The Move 2 destination that ends closest to the Prime Zone by walking distance; undefined if none gets closer.
  * A tile another Hero already claimed in the same queue slot is skipped.
  */
-function stepTowardPrimeZone(from: GridPosition, squad: SquadId, claimed: ReadonlySet<number> | undefined): GridPosition | undefined {
+function stepTowardPrimeZone(
+  from: GridPosition,
+  squad: SquadId,
+  claimed: ReadonlySet<number> | undefined,
+  distances: ReadonlyMap<number, number>,
+): GridPosition | undefined {
+  const distanceTo = (tile: GridPosition) => distances.get(tileKey(tile)) ?? Infinity;
   let best: GridPosition | undefined;
-  let bestDistance = distanceToPrimeZone(from);
+  let bestDistance = isPrimeZoneTile(from) ? 0 : distanceTo(from);
   for (const destination of destinationsInOrder(from, squad)) {
     const end = moveEnd(from, destination);
-    if (movePath(from, end).some((tile) => claimed?.has(tileKey(tile)))) continue;
-    const distance = distanceToPrimeZone(end);
+    // `distances` has no entry for blocked tiles, so a Move across an enemy or an Exhausted Hero is skipped too.
+    if (movePath(from, end).some((tile) => claimed?.has(tileKey(tile)) || !distances.has(tileKey(tile)))) continue;
+    const distance = distanceTo(end);
     if (distance < bestDistance) {
       best = destination;
       bestDistance = distance;
@@ -85,7 +109,7 @@ function stepTowardPrimeZone(from: GridPosition, squad: SquadId, claimed: Readon
   return best;
 }
 
-function planHero(view: SquadView, hero: HeroView, claimed: ClaimedTiles): HeroPlan {
+function planHero(view: SquadView, hero: HeroView, claimed: ClaimedTiles, distances: ReadonlyMap<number, number>): HeroPlan {
   const deck = HERO_DECKS[hero.heroClass];
   const isAttackCard = (card: CardIndex) => isSimpleAttack(deck[card]!);
   // Attacks are kept for attacking; other cards pay for Moves, Blocks and Pitch first.
@@ -120,7 +144,7 @@ function planHero(view: SquadView, hero: HeroView, claimed: ClaimedTiles): HeroP
     }
     const card = spare()[0];
     if (card === undefined || cardsLeft - 1 < 0) break;
-    const destination = stepTowardPrimeZone(position, view.squad, claimed.get(queue.length));
+    const destination = stepTowardPrimeZone(position, view.squad, claimed.get(queue.length), distances);
     if (destination) {
       queue.push({ kind: ActionKind.Move, card, destination });
       const previous = position;
@@ -148,9 +172,10 @@ function planHero(view: SquadView, hero: HeroView, claimed: ClaimedTiles): HeroP
  */
 export function planSquad(view: SquadView, heroIds: readonly string[] = view.heroes.map((hero) => hero.id)): SquadPlan {
   const claimed: ClaimedTiles = new Map();
+  const distances = distancesToPrimeZone(blockedTiles(view));
   const heroes = view.heroes
     .filter((hero) => heroIds.includes(hero.id) && !hero.exhausted)
-    .map((hero) => planHero(view, hero, claimed));
+    .map((hero) => planHero(view, hero, claimed, distances));
   const plan: SquadPlan = { squad: view.squad, heroes };
   const broken = new Set(validatePlan(view, plan).flatMap((issue) => (issue.heroId ? [issue.heroId] : [])));
   return broken.size === 0 ? plan : { squad: view.squad, heroes: heroes.filter((hero) => !broken.has(hero.heroId)) };
