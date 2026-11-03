@@ -46,7 +46,7 @@ export interface HeroState {
   ignoresHalfCover: boolean;
   /** Reposition: the Hero's next Move action covers this many tiles; absent when none is pending. */
   extendedMove?: number;
-  /** Set after a Resolution that leaves the Deck empty; an Exhausted Hero is out of the match (ADR 0006). */
+  /** Set after a Resolution that leaves the Deck and the Discard empty; an Exhausted Hero is out of the match (ADR 0006). */
   exhausted: boolean;
 }
 
@@ -180,20 +180,29 @@ export function createMatch(seed: number): MatchState {
 }
 
 /**
+ * When the Hero's Deck is empty and the Discard is not, shuffles the Discard (never the Exile) into the Deck.
+ * Returns the number of cards shuffled, 0 when nothing happened.
+ */
+export function refillDeck(match: MatchState, hero: HeroState): number {
+  if (hero.deck.length > 0 || hero.discard.length === 0) return 0;
+  hero.deck = hero.discard;
+  hero.discard = [];
+  shuffle(match, hero.deck);
+  return hero.deck.length;
+}
+
+/**
  * Starts the next Round: every Hero draws up to a Hand of 4 and keeps unused cards. When the Deck runs
- * out, the Discard (never the Exile) is shuffled into a new Deck cycle; drawing resumes next Round.
+ * out while drawing, the Discard is shuffled into it at once and drawing goes on.
  */
 export function startRound(previous: MatchState): MatchState {
   const match = structuredClone(previous);
   match.round += 1;
   for (const hero of match.heroes.filter((candidate) => !candidate.exhausted)) {
-    while (hero.hand.length < HAND_SIZE && hero.deck.length > 0) {
+    while (hero.hand.length < HAND_SIZE) {
+      refillDeck(match, hero);
+      if (hero.deck.length === 0) break;
       hero.hand.push(hero.deck.pop()!);
-    }
-    if (hero.deck.length === 0 && hero.discard.length > 0) {
-      hero.deck = hero.discard;
-      hero.discard = [];
-      shuffle(match, hero.deck);
     }
   }
   recordSightings(match);

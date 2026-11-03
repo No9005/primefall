@@ -21,7 +21,7 @@ import {
   type PLAYABLE_UTILITY_EFFECTS,
 } from "./cards";
 import { EventKind, MatchEndReason, type MatchEvent, PRIME_ZONE_WIN_RESOLUTIONS, ROUND_LIMIT, SquadId } from "./host";
-import { canSquadSee, canSquadSeeHero, type HeroState, type MatchState, recordSightings, sightRange } from "./match";
+import { canSquadSee, canSquadSeeHero, type HeroState, type MatchState, recordSightings, refillDeck, sightRange } from "./match";
 import {
   ActionKind,
   BLOCK_SHIELD,
@@ -69,13 +69,32 @@ function applySlow(tick: number, source: HeroState, target: HeroState, effect: C
   events.push({ kind: EventKind.SlowApplied, tick, heroId: source.id, targetId: target.id });
 }
 
-/** Shield absorbs first; the rest is Deck Damage: the top cards, one per point, leave the cycle (Exile) so the damage lasts. */
-function dealDamage(tick: number, source: HeroState, target: HeroState, incoming: number, events: MatchEvent[]): void {
+/**
+ * Shield absorbs first; the rest is Deck Damage: the top cards, one per point, leave the cycle (Exile) so the
+ * damage lasts. When the Deck runs out on the way, the Discard is shuffled into it and the damage goes on.
+ * Then the events read: AttackHit (cards burned so far), DeckShuffled, AttackHit (the rest).
+ */
+function dealDamage(match: MatchState, tick: number, source: HeroState, target: HeroState, incoming: number, events: MatchEvent[]): void {
   const absorbed = Math.min(target.shield, incoming);
   target.shield -= absorbed;
-  const removed = target.deck.splice(Math.max(0, target.deck.length - (incoming - absorbed)));
-  target.exile.push(...removed);
-  events.push({ kind: EventKind.AttackHit, tick, heroId: source.id, targetId: target.id, absorbed, damage: removed.length });
+  let remaining = incoming - absorbed;
+  let burned = 0;
+  let alreadyAbsorbed = absorbed;
+  const reportHit = () => {
+    events.push({ kind: EventKind.AttackHit, tick, heroId: source.id, targetId: target.id, absorbed: alreadyAbsorbed, damage: burned });
+    alreadyAbsorbed = 0;
+    burned = 0;
+  };
+  while (remaining > 0) {
+    const removed = target.deck.splice(Math.max(0, target.deck.length - remaining));
+    target.exile.push(...removed);
+    burned += removed.length;
+    remaining -= removed.length;
+    if (remaining === 0 || target.discard.length === 0) break;
+    reportHit();
+    events.push({ kind: EventKind.DeckShuffled, tick, heroId: target.id, amount: refillDeck(match, target) });
+  }
+  reportHit();
 }
 
 /** A Hero stops being Hidden when it attacks or is revealed (Marked). */
@@ -209,7 +228,7 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const damageEffect = card.effects.find(({ kind }) => kind === EffectKind.Damage || kind === EffectKind.DamageAtLongRange)!;
     const damage = damageAtDistance(damageEffect, distance) + hero.attackBonus;
     const incoming = Math.max(0, damage - (halfCover ? HALF_COVER_REDUCTION : 0));
-    dealDamage(tick, hero, target, incoming, events);
+    dealDamage(match, tick, hero, target, incoming, events);
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplySlow)) {
       applySlow(tick, hero, target, effect, events);
     }
@@ -240,7 +259,7 @@ function resolveTileAttack(match: MatchState, tick: number, { hero, card, tile }
     // The blast hurts every Hero on the tile and the adjacent tiles, allies and the caster included; Cover does not protect.
     const blast = card.effects.find(({ kind }) => kind === EffectKind.DamageHeroesAtAndAroundTarget)!;
     const caught = match.heroes.filter((other) => !other.exhausted && chebyshevDistance(other.position, tile) <= 1);
-    for (const victim of caught) dealDamage(tick, hero, victim, (blast.amount ?? 0) + hero.attackBonus, events);
+    for (const victim of caught) dealDamage(match, tick, hero, victim, (blast.amount ?? 0) + hero.attackBonus, events);
   } else {
     const occupant = match.heroes.find((other) => other.squad !== hero.squad && !other.exhausted && samePosition(other.position, tile));
     const cover = coverAgainst(match.grid, hero.position, tile);
@@ -249,7 +268,7 @@ function resolveTileAttack(match: MatchState, tick: number, { hero, card, tile }
     } else if (occupant) {
       const amount = (card.effects.find(({ kind }) => kind === EffectKind.Damage)?.amount ?? 0) + hero.attackBonus;
       const reduced = cover === CoverKind.Half && !hero.ignoresHalfCover;
-      dealDamage(tick, hero, occupant, Math.max(0, amount - (reduced ? HALF_COVER_REDUCTION : 0)), events);
+      dealDamage(match, tick, hero, occupant, Math.max(0, amount - (reduced ? HALF_COVER_REDUCTION : 0)), events);
     }
   }
   const destroysAny = isTileBlast(card);
@@ -385,9 +404,9 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
   },
   [EffectKind.ApplyMarked]: ({ tick, effect, caster, target, events }) => applyMarked(tick, caster, target, effect, events),
   // Damage on a Utility card (Mark Target's Overdrive) ignores Cover; it only reaches `withinRange`.
-  [EffectKind.Damage]: ({ tick, effect, caster, target, events }) => {
+  [EffectKind.Damage]: ({ match, tick, effect, caster, target, events }) => {
     const reaches = effect.withinRange === undefined || chebyshevDistance(caster.position, target.position) <= effect.withinRange;
-    if (reaches) dealDamage(tick, caster, target, effect.amount ?? 0, events);
+    if (reaches) dealDamage(match, tick, caster, target, effect.amount ?? 0, events);
   },
 };
 
@@ -645,7 +664,12 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     delete hero.extendedMove;
   }
   expireTemporaryEffects(match);
-  // Exhaustion takes effect only now, so a Hero whose Deck ran out mid-Resolution finished its Queue (ADR 0006).
+  // An empty Deck is refilled from the Discard right now. Exhaustion takes effect only after that, when no
+  // card is left to take or draw, so a Hero whose cards ran out mid-Resolution finished its Queue (ADR 0006).
+  for (const hero of match.heroes.filter((candidate) => !candidate.exhausted)) {
+    const shuffled = refillDeck(match, hero);
+    if (shuffled > 0) events.push({ kind: EventKind.DeckShuffled, tick: Math.max(ticks, 1), heroId: hero.id, amount: shuffled });
+  }
   for (const hero of match.heroes.filter((candidate) => !candidate.exhausted && candidate.deck.length === 0)) {
     hero.exhausted = true;
     match.grid = withWreck(match.grid, hero.position);

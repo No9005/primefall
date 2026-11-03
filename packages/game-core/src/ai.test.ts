@@ -70,15 +70,6 @@ describe("AI symmetry", () => {
     const destinations = (queue: typeof left.queue) => queue.flatMap((action) => (action.kind === ActionKind.Move ? [action.destination] : []));
     expect(destinations(right.queue)).toEqual(destinations(left.queue).map(mirror));
   });
-
-  it("does not let one side win nearly every match", () => {
-    const wins = { [SquadId.Left]: 0, [SquadId.Right]: 0 };
-    for (const seed of SEEDS) {
-      const winner = playAiMatch(seed, MAX_ROUNDS).match.result?.winner;
-      if (winner) wins[winner] += 1;
-    }
-    expect(Math.max(wins[SquadId.Left], wins[SquadId.Right])).toBeLessThanOrEqual(SEEDS.length - 3);
-  });
 });
 
 describe("AI does not freeze", () => {

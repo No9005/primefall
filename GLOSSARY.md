@@ -15,7 +15,7 @@ A group of three Heroes fighting together.
 _Avoid_: Team, faction
 
 **Exhaustion**:
-The state of a Hero whose Deck is empty. An exhausted Hero is out of the match: it acts no more, is no obstacle to Moves, and its tile becomes Half Cover until that Cover is destroyed.
+The state of a Hero that has no card left in its Deck and its Discard at the end of a Resolution (cards in the Hand do not count). An exhausted Hero is out of the match: it acts no more, is no obstacle to Moves, and its tile becomes Half Cover until that Cover is destroyed.
 _Avoid_: Death, KO, defeat
 
 ### Cards and resources
@@ -33,7 +33,7 @@ Taking cards from the Deck into the Hand at the start of a round, up to a maximu
 _Avoid_: Refill, reload
 
 **Discard**:
-The pile of used, pitched, blocked, or otherwise spent cards that can later be shuffled into a new Deck cycle.
+The pile of used, pitched, blocked, or otherwise spent cards. When the Deck is empty and a card must be taken from it, or at the end of a Resolution, the Discard is shuffled into the Deck (never the Exile).
 _Avoid_: Trash, graveyard
 
 **Exile**:
@@ -63,7 +63,7 @@ Using any card to create Shield 2 instead of playing its primary effect.
 _Avoid_: Defend, guard, parry
 
 **Deck Damage**:
-Unblocked damage that removes cards from the top of the target’s Deck. One damage removes one card.
+Unblocked damage that removes cards from the top of the target’s Deck. One damage removes one card into the Exile; if the Deck runs out on the way, the Discard is shuffled into it and the damage goes on.
 _Avoid_: HP damage, wound
 
 **Cover**:

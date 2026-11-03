@@ -188,9 +188,11 @@ export enum EventKind {
   CoverReductionIgnored = "coverReductionIgnored",
   /** `heroId` permanently gained `amount` Attack (Adrenal Surge). */
   AttackBonusGained = "attackBonusGained",
+  /** The Discard of `heroId` was shuffled into its empty Deck; `amount` is the number of cards shuffled. */
+  DeckShuffled = "deckShuffled",
   /** A Hero waited: it did nothing in this Tick (`ActionKind.Wait`). */
   Wait = "wait",
-  /** A Hero's Deck is empty after the Resolution; it is removed from the match. */
+  /** A Hero has no card left in its Deck and Discard after the Resolution; it is removed from the match. */
   Exhausted = "exhausted",
 }
 
@@ -204,13 +206,16 @@ export interface MatchEvent {
   from?: GridPosition;
   /** The tile entered; absent when blocked. */
   to?: GridPosition;
-  /** Shield gained, for `ShieldGained`. */
+  /** Shield gained, for `ShieldGained`; cards shuffled, for `DeckShuffled`. */
   amount?: number;
   /** The Hero attacked, for `AttackHit` and `AttackFailed`. */
   targetId?: string;
   /** Damage absorbed by Shield, for `AttackHit`. */
   absorbed?: number;
-  /** Cards removed from the target's Deck (Deck Damage), for `AttackHit`. */
+  /**
+   * Cards removed from the target's Deck (Deck Damage), for `AttackHit`. An Attack that empties the Deck
+   * gives AttackHit, DeckShuffled, AttackHit: the damage is the sum, the order is the order of the piles.
+   */
   damage?: number;
 }
 
