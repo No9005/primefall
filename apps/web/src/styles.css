@@ -14,6 +14,10 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 /* Zoom / Fit: round, thumb-sized, at the right edge in the vertical middle (between the enemy panel and the commit column). */
 .board-zoom { position: absolute; z-index: 1; right: calc(10px + env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 2px solid #3d5a73; background: #1b222b; color: #dbe4ec; font: 600 14px Rajdhani, sans-serif; cursor: pointer; }
 
+/* Lines: the small toggle for the target lines, below the turn buttons; it shows lit while the lines are on. */
+.board-lines { position: absolute; z-index: 1; right: calc(14px + env(safe-area-inset-right)); top: calc(50% + 128px - 22px); width: 44px; height: 44px; border-radius: 50%; border: 2px solid #3d5a73; background: #1b222b; color: #dbe4ec; font: 600 11px Rajdhani, sans-serif; cursor: pointer; }
+.board-lines[aria-pressed="true"] { border-color: #2ec4b6; color: #2ec4b6; }
+
 .board-turn { position: absolute; z-index: 1; right: calc(10px + env(safe-area-inset-right)); width: 52px; height: 52px; border-radius: 50%; border: 2px solid #3d5a73; background: #1b222b; color: #dbe4ec; font-size: 24px; line-height: 1; cursor: pointer; }
 .board-turn-left { top: calc(50% - 64px - 26px); }
 .board-turn-right { top: calc(50% + 64px - 26px); }

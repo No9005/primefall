@@ -56,7 +56,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 38. As a player, I want Resolution to process one action from every non-exhausted Hero’s queue per Tick, so that action order matters.
 39. As a player, I want actions to be validated when they execute, so that illegal actions fail without disrupting later planned actions.
 40. As a player, I want simultaneous attacks to both resolve, so that aggression remains risky and consequential.
-41. As a player, I want two Heroes attempting to enter the same free tile in the same Tick to both fail, so that movement conflicts have a clear rule.
+41. As a player, I want Heroes to walk through each other while a Move is walking, but never to stand on the same tile when it ends: a Move that would end on an occupied tile, or on the same tile as another Move, stops on the last free tile of its walk, so that movement conflicts have a clear rule (ADR 0013).
 42. As a player, I want a Block to take effect immediately in its Tick, so that I can protect against an attack resolved in that same Tick.
 43. As a player, I want a Hero that becomes Exhausted during Resolution to complete its already committed action, so that planning remains meaningful.
 44. As a player, I want Exhaustion to take effect after Resolution, so that a Hero’s final committed action is not silently cancelled.

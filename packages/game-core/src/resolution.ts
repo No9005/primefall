@@ -29,6 +29,7 @@ import {
   MAX_QUEUE_LENGTH,
   MOVE_DISTANCE,
   type QueuedAction,
+  resolveWalks,
   type SquadPlan,
 } from "./plan";
 import {
@@ -39,7 +40,6 @@ import {
   type GridPosition,
   isStepAllowed,
   isWall,
-  nextStep,
   HALF_COVER_REDUCTION,
   hasLineOfSight,
   REACTOR_DECK,
@@ -128,8 +128,8 @@ interface Attack {
 const samePosition = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
 
 /**
- * Resolves one Tick of Move actions. All Heroes take their first step before any takes the second, so
- * Heroes entering the same free tile in the same step both stay (ADR 0013).
+ * Resolves one Tick of Move actions. Heroes walk through each other, but a Move must end on a free tile; where
+ * it stops is decided by `resolveWalks` (ADR 0013). Positions change only after the whole Tick is decided.
  */
 function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: MatchEvent[]): void {
   // A Slowed Hero's Move 2 becomes a Move 1, and that uses the Slow up.
@@ -141,34 +141,23 @@ function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: 
     slowedIds.add(heroId);
     events.push({ kind: EventKind.SlowUsed, tick, heroId });
   }
-  let active = movers;
-  const furthest = Math.max(0, ...movers.map(({ distance }) => distance));
-  for (let step = 0; step < furthest && active.length > 0; step++) {
-    active = active.filter(
-      ({ heroId, distance }) => step < (slowedIds.has(heroId) ? SLOWED_MOVE_DISTANCE : distance),
-    );
-    const attempts = active.flatMap((mover) => {
-      const hero = match.heroes.find((candidate) => candidate.id === mover.heroId)!;
-      if (samePosition(hero.position, mover.destination)) return [];
-      const occupied = (tile: GridPosition) => match.heroes.some((other) => samePosition(other.position, tile));
-      return [{ mover, hero, to: nextStep(hero.position, mover.destination, occupied) }];
-    });
-    const allowed = attempts.filter(({ hero, to }) => {
-      const occupied = match.heroes.some((other) => samePosition(other.position, to));
-      return isStepAllowed(hero.position, to) && !occupied;
-    });
-    const blockedIds = new Set(attempts.map(({ mover }) => mover.heroId));
-    const moving = allowed.filter(({ to }) => allowed.filter((other) => samePosition(other.to, to)).length === 1);
-    for (const { mover, hero, to } of moving) {
-      blockedIds.delete(mover.heroId);
-      events.push({ kind: EventKind.Step, tick, heroId: hero.id, from: { ...hero.position }, to });
+  const outcomes = resolveWalks(
+    new Map(match.heroes.map((hero) => [hero.id, hero.position])),
+    movers.map((mover) => ({ ...mover, distance: slowedIds.has(mover.heroId) ? SLOWED_MOVE_DISTANCE : mover.distance })),
+  );
+  const furthest = Math.max(0, ...[...outcomes.values()].map(({ path, blocked }) => path.length - 1 + (blocked ? 1 : 0)));
+  for (let step = 1; step <= furthest; step++) {
+    for (const { heroId } of movers) {
+      const { path, blocked } = outcomes.get(heroId)!;
+      if (step < path.length) {
+        events.push({ kind: EventKind.Step, tick, heroId, from: { ...path[step - 1]! }, to: { ...path[step]! } });
+      } else if (step === path.length && blocked) {
+        events.push({ kind: EventKind.MoveBlocked, tick, heroId, from: { ...path[step - 1]! } });
+      }
     }
-    for (const { hero } of attempts.filter(({ mover }) => blockedIds.has(mover.heroId))) {
-      events.push({ kind: EventKind.MoveBlocked, tick, heroId: hero.id, from: { ...hero.position } });
-    }
-    // Positions change only after every Hero of this step has been decided.
-    for (const { hero, to } of moving) hero.position = to;
-    active = moving.map(({ mover }) => mover);
+  }
+  for (const { heroId } of movers) {
+    match.heroes.find((hero) => hero.id === heroId)!.position = { ...outcomes.get(heroId)!.path.at(-1)! };
   }
 }
 

@@ -3,7 +3,7 @@
 
 import { type CardIndex, cardInMode, CardTarget, EffectKind, EffectRecipient, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type HeroView, type SquadId, type SquadView, Visibility } from "./host";
-import { type Grid, type GridPosition, isStepAllowed, nextStep, REACTOR_DECK, stepTowards, TileKind, tileAt } from "./reactor-deck";
+import { type Grid, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind, tileAt } from "./reactor-deck";
 
 /** A Hero's Queue holds at most 4 actions (the maximum Hand size, ADR 0020). */
 export const MAX_QUEUE_LENGTH = 4;
@@ -266,14 +266,97 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
   return issues;
 }
 
-/** A planned Move that fails because of another Hero of the same Squad (ADR 0013). */
+export interface WalkRequest {
+  heroId: string;
+  destination: GridPosition;
+  /** Tiles the Move covers at most. */
+  distance: number;
+}
+
+export interface WalkOutcome {
+  heroId: string;
+  /** The tiles the Hero stood on after each step, starting with its own tile; the last one is where it stops. */
+  path: GridPosition[];
+  /** The Hero stops before its destination: a Wall or a Wall corner is in the way, or the tiles it could end on are occupied. */
+  blocked: boolean;
+  /** For a Move stopped by Heroes: one of the Heroes that stand on the tile the Move would have reached. */
+  occupiedBy?: string;
+}
+
+const sameTile = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
+
+/**
+ * Decides where Moves end (ADR 0013). `standing` has every Hero. A Move walks straight towards its destination,
+ * up to its distance, stopping at a Wall or Wall corner, and may pass through Heroes. All Heroes take step n
+ * before any takes step n+1. A Move must end on a tile no other Hero stands on at the end of that step; if its
+ * last tile is occupied, the Hero stops on the last free tile of its walk (its own tile when all are occupied).
+ * Two Heroes ending on the same tile therefore both stop short. Everything is decided together, so the result
+ * does not depend on the order of the requests or on which Squad a Hero belongs to.
+ */
+export function resolveWalks(standing: ReadonlyMap<string, GridPosition>, requests: readonly WalkRequest[]): Map<string, WalkOutcome> {
+  const walks = new Map<string, { path: GridPosition[]; wallBlocked: boolean }>();
+  for (const [heroId, position] of standing) walks.set(heroId, { path: [{ ...position }], wallBlocked: false });
+  for (const { heroId, destination, distance } of requests) {
+    const walk = walks.get(heroId)!;
+    for (let step = 0; step < distance && !sameTile(walk.path.at(-1)!, destination); step++) {
+      const from = walk.path.at(-1)!;
+      const next = stepTowards(from, destination);
+      if (!isStepAllowed(from, next)) {
+        walk.wallBlocked = true;
+        break;
+      }
+      walk.path.push(next);
+    }
+  }
+  const ends = new Map([...walks].map(([heroId, { path }]) => [heroId, path.length - 1]));
+  const tileAtStep = (heroId: string, step: number) => {
+    const { path } = walks.get(heroId)!;
+    return path[Math.min(step, ends.get(heroId)!)]!;
+  };
+  const isTaken = (heroId: string, step: number) =>
+    [...walks.keys()].find((other) => other !== heroId && sameTile(tileAtStep(other, step), walks.get(heroId)!.path[step]!));
+  // Ends only ever move back, so this settles; the Heroes that stop short may free tiles for nobody until the next round.
+  for (let changed = true; changed; ) {
+    changed = false;
+    const settled = new Map(ends);
+    for (const [heroId, end] of ends) {
+      let step = end;
+      while (step > 0 && isTaken(heroId, step) !== undefined) step--;
+      if (step !== end) {
+        settled.set(heroId, step);
+        changed = true;
+      }
+    }
+    for (const [heroId, end] of settled) ends.set(heroId, end);
+  }
+  return new Map(
+    requests.map(({ heroId }) => {
+      const { path, wallBlocked } = walks.get(heroId)!;
+      const end = ends.get(heroId)!;
+      const stoppedByHeroes = end < path.length - 1;
+      const outcome: WalkOutcome = { heroId, path: path.slice(0, end + 1), blocked: stoppedByHeroes || wallBlocked };
+      if (stoppedByHeroes) {
+        // Whoever is on the first tile it could not take; failing that, any Hero whose walk touches that tile.
+        const missed = path[end + 1]!;
+        const others = [...walks.keys()].filter((other) => other !== heroId);
+        outcome.occupiedBy =
+          others.find((other) => sameTile(tileAtStep(other, end + 1), missed)) ??
+          others.find((other) => walks.get(other)!.path.some((tile) => sameTile(tile, missed))) ??
+          others[0];
+      }
+      return [heroId, outcome];
+    }),
+  );
+}
+
+/** A planned Move that stops short because of another Hero of the same Squad (ADR 0013). */
 export interface MoveCollision {
   heroId: string;
   /** 1-based Tick of the Move action. */
   tick: number;
   /** The destination of the Move, where the warning is drawn. */
   destination: GridPosition;
-  /** The Squad Hero in the way: standing on the route, or entering the same tile in the same step. */
+  /** A Squad Hero on the tile the Move would reach: standing there, or ending its own Move there. */
   blockedBy: string;
 }
 
@@ -281,11 +364,9 @@ export interface MoveCollision {
 const SLOWED_MOVE_DISTANCE = 1;
 
 /**
- * The planned Moves that will fail because of another Hero of the Squad, judged like the Resolution does
- * for own Heroes: all Heroes take step n before any takes step n+1, a Hero cannot enter an occupied tile,
- * and two Heroes entering the same free tile in the same step both stay. Enemies are not considered, and a
- * Move stopped by a Wall is not a collision. Heroes that fail a Move stay where they are, so later Moves of
- * their Queue start from there.
+ * The planned Moves that stop short of their destination because another Hero of the Squad is on the tile they
+ * would end on, judged by `resolveWalks` like the Resolution does. Enemies are not considered, and a Move stopped
+ * by a Wall is not a collision. Heroes that stop short start their next Move from where they stopped.
  */
 export function findMoveCollisions(heroes: readonly HeroView[], plans: readonly SquadPlan[]): MoveCollision[] {
   const positions = new Map(heroes.map((hero) => [hero.id, { ...hero.position }]));
@@ -294,7 +375,6 @@ export function findMoveCollisions(heroes: readonly HeroView[], plans: readonly 
   const queues = plans.flatMap((plan) => plan.heroes).filter(({ heroId }) => positions.has(heroId));
   const collisions: MoveCollision[] = [];
   const ticks = Math.max(0, ...queues.map(({ queue }) => queue.length));
-  const same = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
 
   for (let tick = 1; tick <= ticks; tick++) {
     const movers = queues.flatMap(({ heroId, queue }) => {
@@ -312,28 +392,13 @@ export function findMoveCollisions(heroes: readonly HeroView[], plans: readonly 
       if (slowed.delete(heroId)) distance = SLOWED_MOVE_DISTANCE;
       return [{ heroId, destination: action.destination, distance }];
     });
-    const flagged = new Map<string, MoveCollision>();
-    let active = movers;
-    for (let step = 0; step < Math.max(0, ...movers.map(({ distance }) => distance)) && active.length > 0; step++) {
-      active = active.filter(({ distance }) => step < distance);
-      const attempts = active.flatMap((mover) => {
-        const from = positions.get(mover.heroId)!;
-        const occupied = (tile: GridPosition) => [...positions.values()].some((position) => same(position, tile));
-        return same(from, mover.destination) ? [] : [{ mover, from, to: nextStep(from, mover.destination, occupied) }];
-      });
-      const open = attempts.filter(({ from, to }) => isStepAllowed(from, to));
-      const free = open.filter(({ to }) => ![...positions.values()].some((position) => same(position, to)));
-      const moving = free.filter(({ to }) => free.filter((other) => same(other.to, to)).length === 1);
-      for (const { mover, to } of open) {
-        if (moving.some((entry) => entry.mover === mover) || flagged.has(mover.heroId)) continue;
-        const occupant = [...positions].find(([, position]) => same(position, to))?.[0];
-        const rival = free.find((other) => other.mover !== mover && same(other.to, to))?.mover.heroId;
-        flagged.set(mover.heroId, { heroId: mover.heroId, tick, destination: mover.destination, blockedBy: (occupant ?? rival)! });
-      }
-      for (const { mover, to } of moving) positions.set(mover.heroId, to);
-      active = moving.map(({ mover }) => mover);
+    // A Slowed Hero's walk is shorter, so the Resolution's Slow rule is already in `distance`.
+    const outcomes = resolveWalks(positions, movers);
+    for (const { heroId, destination } of movers) {
+      const { path, occupiedBy } = outcomes.get(heroId)!;
+      if (occupiedBy !== undefined) collisions.push({ heroId, tick, destination, blockedBy: occupiedBy });
+      positions.set(heroId, path.at(-1)!);
     }
-    collisions.push(...flagged.values());
   }
   return collisions;
 }

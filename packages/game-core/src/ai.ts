@@ -8,13 +8,14 @@ import {
   chebyshevDistance,
   type HeroPlan,
   MAX_QUEUE_LENGTH,
+  MOVE_DISTANCE,
   moveDestinations,
   moveEnd,
   type QueuedAction,
   type SquadPlan,
   validatePlan,
 } from "./plan";
-import { findTiles, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind } from "./reactor-deck";
+import { findTiles, type GridPosition, isStepAllowed, REACTOR_DECK, TileKind } from "./reactor-deck";
 
 /** Actions the AI queues per Hero and Round; fewer than the Queue limit keeps Decks from draining fast. */
 const AI_QUEUE_LENGTH = 3;
@@ -27,8 +28,9 @@ const isPrimeZoneTile = (tile: GridPosition) => PRIME_ZONE_TILES.some((zone) => 
 
 /**
  * Walking distance in steps from every tile to the nearest Prime Zone tile that is not in `blocked`, going around
- * Walls and the blocked tiles. Exhausted Heroes keep their tile, so a Squad that only counted the Zone as a place
- * to walk to froze at its edge behind them (issue 147).
+ * Walls and the blocked tiles (a Move may cross them, but it cannot end on one, so planning with the way round is
+ * a safe estimate). Exhausted Heroes keep their tile, so a Squad that only counted the Zone as a place to walk to
+ * froze at its edge behind them (issue 147).
  */
 function distancesToPrimeZone(blocked: ReadonlySet<number>): ReadonlyMap<number, number> {
   const free = PRIME_ZONE_TILES.filter((tile) => !blocked.has(tileKey(tile)));
@@ -47,7 +49,7 @@ function distancesToPrimeZone(blocked: ReadonlySet<number>): ReadonlyMap<number,
   return distances;
 }
 
-/** Tiles no Move can end on or cross: enemies, Exhausted Heroes and Squad mates that already stand in the Zone. */
+/** Tiles no Move should end on: enemies, Exhausted Heroes and Squad mates that already stand in the Zone. */
 function blockedTiles(view: SquadView): Set<number> {
   const blocked = new Set<number>();
   for (const hero of view.heroes) {
@@ -70,27 +72,19 @@ const mirrorTile = ({ col, row }: GridPosition): GridPosition => ({ col: REACTOR
 const destinationsInOrder = (from: GridPosition, squad: SquadId): GridPosition[] =>
   squad === SquadId.Left ? moveDestinations(from) : moveDestinations(mirrorTile(from)).map(mirrorTile);
 
-/** The tiles a Move enters on its way from `from` to `end`, one step at a time, `end` included. */
-function movePath(from: GridPosition, end: GridPosition): GridPosition[] {
-  const path: GridPosition[] = [];
-  for (let tile = from; tile.col !== end.col || tile.row !== end.row; ) {
-    tile = stepTowards(tile, end);
-    path.push(tile);
-  }
-  return path;
-}
-
-/** Tiles that Heroes planned earlier will end a Move on, per queue slot: two Heroes entering one tile both fail. */
+/** Tiles that Heroes planned earlier will end a Move on, per queue slot: two Heroes ending on one tile both stop short. */
 type ClaimedTiles = Map<number, Set<number>>;
 
 /**
  * The Move 2 destination that ends closest to the Prime Zone by walking distance; undefined if none gets closer.
- * A tile another Hero already claimed in the same queue slot is skipped.
+ * Heroes are walked through, but a Move must end on a free tile: the end may not be a blocked tile or one another
+ * Hero already claimed in the same queue slot.
  */
 function stepTowardPrimeZone(
   from: GridPosition,
   squad: SquadId,
   claimed: ReadonlySet<number> | undefined,
+  blocked: ReadonlySet<number>,
   distances: ReadonlyMap<number, number>,
 ): GridPosition | undefined {
   const distanceTo = (tile: GridPosition) => distances.get(tileKey(tile)) ?? Infinity;
@@ -98,8 +92,7 @@ function stepTowardPrimeZone(
   let bestDistance = isPrimeZoneTile(from) ? 0 : distanceTo(from);
   for (const destination of destinationsInOrder(from, squad)) {
     const end = moveEnd(from, destination);
-    // `distances` has no entry for blocked tiles, so a Move across an enemy or an Exhausted Hero is skipped too.
-    if (movePath(from, end).some((tile) => claimed?.has(tileKey(tile)) || !distances.has(tileKey(tile)))) continue;
+    if (claimed?.has(tileKey(end)) || blocked.has(tileKey(end))) continue;
     const distance = distanceTo(end);
     if (distance < bestDistance) {
       best = destination;
@@ -109,7 +102,13 @@ function stepTowardPrimeZone(
   return best;
 }
 
-function planHero(view: SquadView, hero: HeroView, claimed: ClaimedTiles, distances: ReadonlyMap<number, number>): HeroPlan {
+function planHero(
+  view: SquadView,
+  hero: HeroView,
+  claimed: ClaimedTiles,
+  blocked: ReadonlySet<number>,
+  distances: ReadonlyMap<number, number>,
+): HeroPlan {
   const deck = HERO_DECKS[hero.heroClass];
   const isAttackCard = (card: CardIndex) => isSimpleAttack(deck[card]!);
   // Attacks are kept for attacking; other cards pay for Moves, Blocks and Pitch first.
@@ -122,6 +121,19 @@ function planHero(view: SquadView, hero: HeroView, claimed: ClaimedTiles, distan
   );
   const inRangeTargets = (position: GridPosition, card: CardIndex) =>
     targets.filter((enemy) => chebyshevDistance(position, enemy.position) <= (deck[card]!.range ?? 0));
+
+  // Two Heroes that would end a Move on the same tile both stop short. Mirrored Squads plan mirrored Moves, so
+  // without a tie-break they would block each other for ever: the Squads take turns, one per Round, at keeping
+  // away from the tiles an enemy can reach too.
+  const yieldsThisRound = (view.round + (view.squad === SquadId.Left ? 0 : 1)) % 2 === 0;
+  const unavailable = new Set(blocked);
+  if (yieldsThisRound) {
+    for (const row of REACTOR_DECK.tiles.keys()) {
+      for (let col = 0; col < REACTOR_DECK.width; col++) {
+        if (targets.some((enemy) => chebyshevDistance(enemy.position, { col, row }) <= MOVE_DISTANCE)) unavailable.add(tileKey({ col, row }));
+      }
+    }
+  }
 
   const queue: QueuedAction[] = [];
   let position = hero.position;
@@ -144,13 +156,12 @@ function planHero(view: SquadView, hero: HeroView, claimed: ClaimedTiles, distan
     }
     const card = spare()[0];
     if (card === undefined || cardsLeft - 1 < 0) break;
-    const destination = stepTowardPrimeZone(position, view.squad, claimed.get(queue.length), distances);
+    const destination = stepTowardPrimeZone(position, view.squad, claimed.get(queue.length), unavailable, distances);
     if (destination) {
       queue.push({ kind: ActionKind.Move, card, destination });
-      const previous = position;
       position = moveEnd(position, destination);
       const slotTiles = claimed.get(queue.length - 1) ?? new Set<number>();
-      for (const tile of movePath(previous, position)) slotTiles.add(tileKey(tile));
+      slotTiles.add(tileKey(position));
       claimed.set(queue.length - 1, slotTiles);
     } else if (targets.length > 0) {
       queue.push({ kind: ActionKind.Block, card });
@@ -172,10 +183,11 @@ function planHero(view: SquadView, hero: HeroView, claimed: ClaimedTiles, distan
  */
 export function planSquad(view: SquadView, heroIds: readonly string[] = view.heroes.map((hero) => hero.id)): SquadPlan {
   const claimed: ClaimedTiles = new Map();
-  const distances = distancesToPrimeZone(blockedTiles(view));
+  const blocked = blockedTiles(view);
+  const distances = distancesToPrimeZone(blocked);
   const heroes = view.heroes
     .filter((hero) => heroIds.includes(hero.id) && !hero.exhausted)
-    .map((hero) => planHero(view, hero, claimed, distances));
+    .map((hero) => planHero(view, hero, claimed, blocked, distances));
   const plan: SquadPlan = { squad: view.squad, heroes };
   const broken = new Set(validatePlan(view, plan).flatMap((issue) => (issue.heroId ? [issue.heroId] : [])));
   return broken.size === 0 ? plan : { squad: view.squad, heroes: heroes.filter((hero) => !broken.has(hero.heroId)) };
