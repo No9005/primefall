@@ -192,28 +192,74 @@ export interface TapCandidates {
   highlights: readonly GridPosition[];
 }
 
-/** What a tap at a world point selects: a valid target Hero within tolerance first, then a valid tile, then any Hero on the picked tile. */
+/** Smallest finger area, as a radius in CSS pixels on screen, whatever the zoom: Heroes and highlighted tiles count as hit within it. */
+export const MIN_TOUCH_RADIUS = 22;
+
+/** Distance from a point to a convex polygon (0 inside). */
+function distanceToPolygon(point: { x: number; y: number }, corners: readonly { x: number; y: number }[]): number {
+  let inside = true;
+  let nearest = Infinity;
+  corners.forEach((a, i) => {
+    const b = corners[(i + 1) % corners.length]!;
+    const ex = b.x - a.x;
+    const ey = b.y - a.y;
+    const along = Math.min(Math.max(((point.x - a.x) * ex + (point.y - a.y) * ey) / (ex * ex + ey * ey), 0), 1);
+    nearest = Math.min(nearest, Math.hypot(point.x - (a.x + along * ex), point.y - (a.y + along * ey)));
+    if (ex * (point.y - a.y) - ey * (point.x - a.x) < 0) inside = false;
+  });
+  return inside ? 0 : nearest;
+}
+
+/**
+ * What a tap at a world point selects: a valid target Hero within tolerance first, then a valid tile, then any Hero on the picked tile,
+ * and last the nearest valid tile within the minimum touch radius. `scale` is the camera scale, which turns that radius into world pixels.
+ */
 export function resolveTap(
   x: number,
   y: number,
   { heroes, targetableIds, highlights }: TapCandidates,
   grid: Grid = REACTOR_DECK,
   angle: number = VIEW_ANGLE,
+  scale = 1,
 ): TapTarget {
   const point = worldToGrid(x, y, angle);
+  const touchRadius = MIN_TOUCH_RADIUS / scale;
   let nearest: { id: string; distance: number } | undefined;
   for (const hero of heroes) {
     if (!targetableIds.includes(hero.id)) continue;
-    const distance = Math.hypot(point.col - hero.position.col, point.row - hero.position.row);
-    if (distance <= HERO_PICK_TOLERANCE && (!nearest || distance < nearest.distance)) nearest = { id: hero.id, distance };
+    const gridDistance = Math.hypot(point.col - hero.position.col, point.row - hero.position.row);
+    const centre = gridToWorld(hero.position, angle);
+    const pixelDistance = Math.hypot(x - centre.x, y - centre.y);
+    if (gridDistance > HERO_PICK_TOLERANCE && pixelDistance > touchRadius) continue;
+    // Rank by the distance in world pixels, which is what the finger sees.
+    if (!nearest || pixelDistance < nearest.distance) nearest = { id: hero.id, distance: pixelDistance };
   }
   if (nearest) return { kind: "hero", id: nearest.id };
   // A highlighted tile is a valid target, so its floor diamond wins over a Wall sprite whose rectangle also covers the point.
   const floor = { col: Math.round(point.col) + 0, row: Math.round(point.row) + 0 };
   if (highlights.some((h) => h.col === floor.col && h.row === floor.row)) return { kind: "tile", tile: floor };
   const tile = pickTileAt(x, y, grid, angle);
-  if (!tile) return { kind: "none" };
-  if (highlights.some((h) => h.col === tile.col && h.row === tile.row)) return { kind: "tile", tile };
-  const hero = heroes.find((h) => h.position.col === tile.col && h.position.row === tile.row);
-  return hero ? { kind: "hero", id: hero.id } : { kind: "none" };
+  if (tile) {
+    if (highlights.some((h) => h.col === tile.col && h.row === tile.row)) return { kind: "tile", tile };
+    const hero = heroes.find((h) => h.position.col === tile.col && h.position.row === tile.row);
+    if (hero) return { kind: "hero", id: hero.id };
+  }
+  return nearestHighlight(x, y, highlights, touchRadius, angle);
+}
+
+/** The highlighted tile whose floor is nearest to the point, if within the radius (world pixels). */
+function nearestHighlight(x: number, y: number, highlights: readonly GridPosition[], radius: number, angle: number): TapTarget {
+  let best: { tile: GridPosition; distance: number } | undefined;
+  for (const tile of highlights) {
+    const corners = [
+      { col: tile.col - 0.5, row: tile.row - 0.5 },
+      { col: tile.col + 0.5, row: tile.row - 0.5 },
+      { col: tile.col + 0.5, row: tile.row + 0.5 },
+      { col: tile.col - 0.5, row: tile.row + 0.5 },
+    ].map((corner) => gridToWorld(corner, angle));
+    // Corners run clockwise on screen or not depending on the angle; the inside test needs one winding.
+    const distance = Math.min(distanceToPolygon({ x, y }, corners), distanceToPolygon({ x, y }, [...corners].reverse()));
+    if (distance <= radius && (!best || distance < best.distance)) best = { tile, distance };
+  }
+  return best ? { kind: "tile", tile: best.tile } : { kind: "none" };
 }
