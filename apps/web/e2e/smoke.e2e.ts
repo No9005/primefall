@@ -65,11 +65,20 @@ test("start a match, play a Move card onto a tile, Commit", async ({ page }) => 
     [0.45, 0.55],
     [0.65, 0.33],
   ];
+  // The HUD has made room: the hand is collapsed to a chip, and no HUD element lies where a tile is lit.
+  await expect(page.getByRole("button", { name: /^Cancel / })).toBeVisible();
+  await expect(hand).toBeHidden();
+  const hud = await page
+    .locator(".hand-bar, .squad-panel, .enemy-panel, .commit-panel")
+    .evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().toJSON() as DOMRect));
+  const under = (x: number, y: number) => hud.some((rect) => x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom);
   let queued = false;
   for (const [x, y] of lit) {
     if (queued) break;
-    await page.mouse.click(box.x + box.width * x!, box.y + box.height * y!);
+    const point = { x: box.x + box.width * x!, y: box.y + box.height * y! };
+    await page.mouse.click(point.x, point.y);
     queued = (await queue.getByRole("button", { name: /^Remove action/ }).count()) > 0;
+    if (queued) expect(under(point.x, point.y), "the lit tile is not under the HUD").toBe(false);
   }
   expect(queued, "a card was queued on a legal tile").toBe(true);
 

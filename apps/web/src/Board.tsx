@@ -35,6 +35,7 @@ import {
   zoomAt,
   zoomOnPoint,
 } from "./board-layout";
+import { freeBoardArea } from "./hud-layout";
 import { buildTerrain, depthOf, type Face, floorOutline, footOffset, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
 import { heroFigure } from "./hero-figure";
 import { chestOf, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
@@ -228,7 +229,7 @@ interface BoardProps {
   highlights: readonly GridPosition[];
   markers: readonly BoardMarker[];
   onTileTap: (tile: GridPosition) => void;
-  /** Position of the Hero whose Move is armed: while set, the camera eases to it and its highlights. */
+  /** Position of the Hero whose Move (or tile pick) is armed: while set, the camera eases to it and its highlights, inside the free area. */
   moveFrameHero?: GridPosition;
   /** While a card is dragged: short labels on the Heroes or tiles that take a drop. */
   zoneLabels: readonly { position: GridPosition; text: string }[];
@@ -246,6 +247,8 @@ interface BoardProps {
   collisionTiles: readonly GridPosition[];
   /** Filled with a function that tells what the board has under a viewport point, for dropping a dragged card. */
   pickRef: MutableRefObject<((point: Point) => BoardPick) | undefined>;
+  /** Filled with a function that tells where a Hero is on screen (viewport pixels), to place the card sheet beside it. */
+  heroScreenRef?: MutableRefObject<((heroId: string) => Point | undefined) | undefined>;
 }
 
 const LINES_KEY = "primefall.targetLines";
@@ -295,6 +298,7 @@ export function Board({
   paths,
   collisionTiles,
   pickRef,
+  heroScreenRef,
 }: BoardProps) {
   const [showLines, setShowLines] = useState(readLinesSetting);
   const host = useRef<HTMLDivElement>(null);
@@ -638,13 +642,23 @@ export function Board({
         },
         frame: (hero) => {
           framing ??= beginMoveFraming(camera);
-          if (framing.automatic) animateTo(frameMoveCamera(hero, candidatesRef.current.highlights, size()));
+          if (framing.automatic) animateTo(frameMoveCamera(hero, candidatesRef.current.highlights, size(), freeBoardArea(size(), { kind: "picking" })));
         },
         release: () => {
           if (framing?.automatic) animateTo(endMoveFraming(framing, camera));
           framing = undefined;
         },
       };
+
+      if (heroScreenRef) {
+        heroScreenRef.current = (heroId) => {
+          const hero = candidatesRef.current.heroes.find((h) => h.id === heroId);
+          if (!hero) return undefined;
+          const world = gridToWorld(hero.position, angleRef.current);
+          const rect = app.canvas.getBoundingClientRect();
+          return { x: rect.left + world.x * camera.scale + camera.x, y: rect.top + world.y * camera.scale + camera.y };
+        };
+      }
 
       const pick = (viewX: number, viewY: number) => {
         const { x, y } = viewToWorld(viewX, viewY, app.screen.width, app.screen.height, undefined, camera);

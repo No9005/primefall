@@ -1,4 +1,5 @@
 import { REACTOR_DECK, type Grid, type GridPosition } from "game-core";
+import type { Rect } from "./card-drag";
 import { footprintCorners, gridToWorld, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE, worldToGrid } from "./terrain";
 
 // Pure layout of the isometric board: camera, zoom and pan, and what a tap picks.
@@ -107,21 +108,26 @@ export function turnCamera(camera: Camera, view: CameraView, toAngle: number): C
 
 /** Keeps the scale within fitted..MAX_ZOOM times fitted and the view within the board plus its margin (centred when the board is smaller than the view). */
 export function clampCamera(camera: Camera, view: CameraView): Camera {
+  return clampCameraIn(camera, view, { left: 0, top: 0, right: view.width, bottom: view.height });
+}
+
+/** Like clampCamera, but the board only has to cover `area` (a part of the view) instead of the whole view. */
+function clampCameraIn(camera: Camera, view: CameraView, area: Rect): Camera {
   const { width, height, grid = REACTOR_DECK, angle } = view;
   const fitted = computeCamera(width, height, grid, angle);
   const scale = Math.min(Math.max(camera.scale, fitted.scale), fitted.scale * MAX_ZOOM);
   const bounds = boardBounds(grid, angle);
   const marginX = (bounds.right - bounds.left) * CAMERA_MARGIN;
   const marginY = (bounds.bottom - bounds.top) * CAMERA_MARGIN;
-  const clampAxis = (offset: number, viewSize: number, low: number, high: number, margin: number) => {
-    const min = viewSize - (high + margin) * scale; // the view's far edge at the board's far edge plus margin
-    const max = -(low - margin) * scale; // the view's near edge at the board's near edge minus margin
+  const clampAxis = (offset: number, near: number, far: number, low: number, high: number, margin: number) => {
+    const min = far - (high + margin) * scale; // the area's far edge at the board's far edge plus margin
+    const max = near - (low - margin) * scale; // the area's near edge at the board's near edge minus margin
     return min > max ? (min + max) / 2 : Math.min(Math.max(offset, min), max);
   };
   return {
     scale,
-    x: clampAxis(camera.x, width, bounds.left, bounds.right, marginX),
-    y: clampAxis(camera.y, height, bounds.top, bounds.bottom, marginY),
+    x: clampAxis(camera.x, area.left, area.right, bounds.left, bounds.right, marginX),
+    y: clampAxis(camera.y, area.top, area.bottom, bounds.top, bounds.bottom, marginY),
   };
 }
 
@@ -146,20 +152,26 @@ export function zoomOnPoint(world: { x: number; y: number }, view: CameraView): 
 }
 
 /**
- * The camera for placing a Move: the Hero and its highlighted tiles, with a margin of one tile, as large as fits
- * and within the zoom limits. At the border of the board the clamp keeps the camera legal.
+ * The camera for placing a Move (or another pick of a tile): the Hero and its highlighted tiles, with a margin of one tile,
+ * as large as fits into `free` (the part of the view no HUD element covers; the whole view when missing) and within the
+ * zoom limits, centred in it. At the border of the board the board edge, not the view edge, ends the camera, so the
+ * tiles stay inside `free`.
  */
-export function frameMoveCamera(hero: GridPosition, highlights: readonly GridPosition[], view: CameraView): Camera {
+export function frameMoveCamera(hero: GridPosition, highlights: readonly GridPosition[], view: CameraView, free?: Rect): Camera {
+  const area = free ?? { left: 0, top: 0, right: view.width, bottom: view.height };
   const points = [hero, ...highlights].map((tile) => gridToWorld(tile, view.angle));
   const left = Math.min(...points.map((p) => p.x)) - TILE_WIDTH / 2 - TILE_WIDTH;
   const right = Math.max(...points.map((p) => p.x)) + TILE_WIDTH / 2 + TILE_WIDTH;
   const top = Math.min(...points.map((p) => p.y)) - TILE_HEIGHT / 2 - TILE_HEIGHT;
   const bottom = Math.max(...points.map((p) => p.y)) + TILE_HEIGHT / 2 + TILE_HEIGHT;
   // Limit the scale first, so the offset below centres the box at the scale that is really used.
-  const scale = clampCamera({ ...fitCamera(view), scale: Math.min(view.width / (right - left), view.height / (bottom - top)) }, view).scale;
+  const wanted = Math.min((area.right - area.left) / (right - left), (area.bottom - area.top) / (bottom - top));
+  const scale = clampCamera({ ...fitCamera(view), scale: wanted }, view).scale;
   const centreX = (left + right) / 2;
   const centreY = (top + bottom) / 2;
-  return clampCamera({ scale, x: view.width / 2 - centreX * scale, y: view.height / 2 - centreY * scale }, view);
+  const x = (area.left + area.right) / 2 - centreX * scale;
+  const y = (area.top + area.bottom) / 2 - centreY * scale;
+  return clampCameraIn({ scale, x, y }, view, area);
 }
 
 /** Automatic framing of an armed Move: remembers the view to return to, and stops once the player moves the camera by hand. */

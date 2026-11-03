@@ -65,15 +65,33 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 
 /* Energy orb next to the fan; Pitched and Spent are in its tooltip. */
 .energy { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: #12161c; border: 2px solid #ff8a3d; color: #ff8a3d; font-family: "IBM Plex Mono", monospace; font-size: 18px; font-weight: 700; }
-.card-sheet { bottom: calc(6px + env(safe-area-inset-bottom)); left: 270px; width: 400px; max-width: calc(100% - 400px); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
-.sheet-header { display: flex; align-items: center; gap: 12px; }
-.sheet-header .card-name { flex: 1; font-size: 16px; }
-.sheet-close { min-width: 44px; min-height: 44px; background: #12161c; color: #dbe4ec; border: 1px solid #3d5a73; border-radius: 4px; font-size: 20px; cursor: pointer; }
-.sheet-uses { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.use-text { font-size: 12px; color: #8a99a8; }
-.use { display: flex; flex-direction: column; justify-content: center; min-width: 88px; min-height: 44px; padding: 4px 8px; background: #12161c; color: #dbe4ec; border: 1px solid #2ec4b6; border-radius: 4px; cursor: pointer; }
+/* The use chooser: only the 2 x 2 buttons, placed by cardSheetRect (hud-layout.ts) beside the Hero, clear of the hand and the buttons. */
+.card-sheet { box-sizing: border-box; padding: 4px; display: flex; flex-direction: column; }
+.sheet-close { position: absolute; top: -12px; right: -12px; width: 32px; height: 32px; background: #12161c; color: #dbe4ec; border: 1px solid #3d5a73; border-radius: 50%; font-size: 18px; line-height: 1; cursor: pointer; }
+.sheet-uses { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; }
+.use-text { font-size: 10px; line-height: 1.1; color: #8a99a8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.use { display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: 44px; padding: 2px 8px; background: #12161c; color: #dbe4ec; border: 1px solid #2ec4b6; border-radius: 4px; text-align: left; cursor: pointer; }
 .use:disabled { border-color: #3d5a73; opacity: 0.7; cursor: default; }
-.use-reason { font-size: 12px; color: #ff8a3d; }
+.use-reason { font-size: 10px; line-height: 1.1; color: #ff8a3d; }
+
+/* A target is being picked: the HUD shrinks to what hud-layout.ts keeps out of the free board area. */
+.hand.collapsed { position: absolute; left: 0; bottom: 0; pointer-events: none; visibility: hidden; transition: visibility 0s 150ms; }
+.hand.collapsed li { transform: translateX(-160px); opacity: 0; transition: transform 150ms, opacity 150ms; }
+.selected-card-chip { position: relative; width: 88px; box-sizing: border-box; padding: 3px 34px 3px 5px; background: #12161c; border: 2px solid #2ec4b6; border-radius: 6px; display: flex; flex-direction: column; min-height: 44px; }
+.chip-name { font: 600 11px/1.1 Rajdhani, sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip-cost { font: 10px "IBM Plex Mono", monospace; color: #ff8a3d; }
+.chip-hint { font-size: 9px; color: #2ec4b6; }
+.chip-cancel { position: absolute; top: 0; right: 0; width: 32px; height: 100%; min-height: 44px; background: none; border: 0; border-left: 1px solid #3d5a73; color: #dbe4ec; font-size: 20px; cursor: pointer; }
+.squad-panel.collapsed { flex-direction: column; gap: 2px; }
+.squad-panel.collapsed .queue-head, .squad-panel.collapsed .wait-button, .squad-panel.collapsed .queue-tags, .squad-panel.collapsed .chip .counts, .squad-panel.collapsed .chip .collision-tag { display: none; }
+.squad-panel.collapsed .chips { flex-direction: row; width: 124px; }
+.squad-panel.collapsed .chip { flex: 1; min-height: 20px; opacity: 0.7; }
+.enemy-panel.collapsed .hero-row { min-height: 20px; padding: 0 5px; }
+.enemy-panel.collapsed .hero-row .counts, .enemy-panel.collapsed .hero-row .tag:not(.range-tag):not(.cover-tag) { display: none; }
+.enemy-panel.collapsed { opacity: 0.85; }
+@media (prefers-reduced-motion: reduce) {
+  .hand.collapsed, .hand.collapsed li { transition: none; }
+}
 
 /* Overdrive choice: the Normal and the Overdrive face side by side. */
 .mode-choice { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; }
