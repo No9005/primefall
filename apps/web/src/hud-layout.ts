@@ -41,9 +41,11 @@ export function freeBoardArea(view: ViewSize, state: HudState): Rect {
 
 const PILES_WIDTH = 66;
 
-/** The piles, the Energy orb and the hand fan (146 px high: the cost badges stick out above the cards). */
+const ENERGY_PILL_HEIGHT = 26;
+
+/** The piles, the hand fan (146 px high: the cost badges stick out above the cards) and the Energy pill above it. */
 export function handRect(view: ViewSize): Rect {
-  return { left: 6, top: view.height - 4 - 146, right: 6 + PILES_WIDTH + 6 + 40 + 6 + FAN_WIDTH, bottom: view.height - 4 };
+  return { left: 6, top: view.height - 4 - 146 - 2 - ENERGY_PILL_HEIGHT, right: 6 + PILES_WIDTH + 6 + FAN_WIDTH, bottom: view.height - 4 };
 }
 
 /** The Commit button with the hint above it. */

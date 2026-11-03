@@ -37,7 +37,8 @@ import { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObj
 import { cardSheetRect } from "./hud-layout";
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
 import { Board } from "./Board";
-import { BlockChip, CardFace, EnergyOrb, ModeFaceCard } from "./game-parts";
+import { BlockChip, CardFace, EnergyPill, ModeFaceCard } from "./game-parts";
+import { CardUseStage, hudFocus } from "./hud-focus";
 import { drawShots, type ShotDrawing } from "./shot-lines";
 import { heroMarks } from "./shield-marks";
 import { plannedTargetLines, replayTargetLines, type TargetLine } from "./target-lines";
@@ -274,9 +275,9 @@ function EnemyPanel({
 }
 
 /** The piles of the selected Hero: the Deck as a stack with its count on top, Discard and Exile as a tiny grey row. */
-function PilePanel({ deck, discard, exile }: { deck: number; discard: number; exile: number }) {
+function PilePanel({ deck, discard, exile, opacity }: { deck: number; discard: number; exile: number; opacity: number }) {
   return (
-    <div className="piles">
+    <div className="piles" style={{ opacity }}>
       <div className="pile-minor">
         <span data-testid="discard-count">Discard {discard}</span>
         <span data-testid="exile-count">Exile {exile}</span>
@@ -296,6 +297,9 @@ interface HandProps {
   armed: CardIndex | undefined;
   armedLabel: string;
   choosing: CardIndex | undefined;
+  /** The card whose use is in progress keeps full opacity; the others get `otherOpacity`. */
+  inUse: CardIndex | undefined;
+  otherOpacity: number;
   disabled: boolean;
   onCardTap: (card: CardIndex) => void;
   /** The card being dragged out of the fan: its place shows a dashed outline. */
@@ -325,7 +329,7 @@ const ACTION_USE_LABELS: Record<Exclude<ActionKind, ActionKind.Wait>, string> = 
   [ActionKind.Primary]: CARD_USE_LABELS[CardUse.Primary],
 };
 
-function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onCardTap, dragging, onCardPointerDown, collapsed }: HandProps) {
+function Hand({ hero, queue, pitched, armed, armedLabel, choosing, inUse, otherOpacity, disabled, onCardTap, dragging, onCardPointerDown, collapsed }: HandProps) {
   const deck = HERO_DECKS[hero.heroClass];
   const middle = (hero.hand.length - 1) / 2;
   const spacing = fanSpacing(FAN_WIDTH, hero.hand.length);
@@ -355,7 +359,7 @@ function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onC
         } else if (isPitched) use = CARD_USE_LABELS[CardUse.Pitch];
         else if (cardIndex === armed) use = armedLabel;
         return (
-          <li key={cardIndex} style={{ "--offset": offset, "--position": position } as CSSProperties}>
+          <li key={cardIndex} style={{ "--offset": offset, "--position": position, "--dim": inUse !== undefined && cardIndex !== inUse ? otherOpacity : 1 } as CSSProperties}>
             <button
               type="button"
               className={`card ${card.type}${queued || isPitched ? " used" : ""}${cardIndex === dragging ? " dragging" : ""}`}
@@ -644,6 +648,11 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   const planningRef = useRef<HTMLDivElement>(null);
   const blockChipRef = useRef<HTMLDivElement>(null);
   const energyRef = useRef<HTMLDivElement>(null);
+  // The card whose use is in progress: selected for a tile or target, the use chooser or the mode choice open.
+  const cardInUse = playing ? undefined : (armed ?? aiming ?? choosing ?? modeChoice?.card);
+  let stage = CardUseStage.Idle;
+  if (cardInUse !== undefined) stage = choosing !== undefined || modeChoice ? CardUseStage.UseChosen : CardUseStage.Selected;
+  const focus = hudFocus({ energy: energy.available, stage });
   const pickBoard = useRef<((point: Point) => BoardPick) | undefined>(undefined);
   const gesture = useRef<{ card: CardIndex; pointerId: number; start: Point; active: boolean } | undefined>(undefined);
   // The click that follows the release of a drag is not a tap.
@@ -1067,27 +1076,33 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
           deck={selected.deckCount - (playback?.deckDamage[selected.id] ?? 0)}
           discard={selected.discardCount}
           exile={selected.exileCount}
+          opacity={focus.deck}
         />
-        <EnergyOrb
-          orbRef={energyRef}
-          available={energy.available}
-          lit={drag !== undefined}
-          active={drag?.probe.drop?.use === CardUse.Pitch}
-          title={`Pitched ${energy.pitched} · Spent ${energy.spent}`}
-        />
-        <Hand
-          hero={selected}
-          queue={queue}
-          pitched={pitched}
-          armed={armed ?? aiming}
-          armedLabel={aiming !== undefined ? "Pick a target" : "Pick a tile"}
-          choosing={choosing}
-          disabled={playing}
-          onCardTap={tapCard}
-          dragging={drag?.card}
-          onCardPointerDown={startCardPress}
-          collapsed={picking}
-        />
+        <div className="hand-column">
+          <EnergyPill
+            pillRef={energyRef}
+            available={energy.available}
+            lit={drag !== undefined}
+            active={drag?.probe.drop?.use === CardUse.Pitch}
+            title={`Pitched ${energy.pitched} · Spent ${energy.spent}`}
+            opacity={focus.energyPill}
+          />
+          <Hand
+            hero={selected}
+            queue={queue}
+            pitched={pitched}
+            armed={armed ?? aiming}
+            armedLabel={aiming !== undefined ? "Pick a target" : "Pick a tile"}
+            choosing={choosing}
+            inUse={cardInUse}
+            otherOpacity={focus.otherCards}
+            disabled={playing}
+            onCardTap={tapCard}
+            dragging={drag?.card}
+            onCardPointerDown={startCardPress}
+            collapsed={picking}
+          />
+        </div>
         {picking && (armed ?? aiming) !== undefined && (
           <SelectedCardChip
             card={HERO_DECKS[selected.heroClass][(armed ?? aiming)!]!}
@@ -1108,7 +1123,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
           )}
         </>
       )}
-      <section className="commit-panel" aria-label="Commit">
+      <section className="commit-panel" aria-label="Commit" style={{ opacity: focus.commit }}>
         {((aiming !== undefined && !playing) || issues.length > 0) && (
           <div className="commit-info">
             {aiming !== undefined && !playing && aimedCard && (
