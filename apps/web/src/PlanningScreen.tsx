@@ -36,6 +36,7 @@ import { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObj
 import { Board } from "./Board";
 import { BlockChip, CardFace, EnergyOrb, ModeFaceCard } from "./game-parts";
 import { drawShots, type ShotDrawing } from "./shot-lines";
+import { cardAtX, FAN_WIDTH, fanSpacing } from "./hand-fan";
 import { applyDrop, type BoardPick, type DropPlaces, type DropProbe, type DropUse, type Point, probeDrop, type Rect } from "./card-drag";
 import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
 import { blockAction, CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, type ModeFace, modeChoiceFaces, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
@@ -266,8 +267,20 @@ const ACTION_USE_LABELS: Record<ActionKind, string> = {
 function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onCardTap, dragging, onCardPointerDown }: HandProps) {
   const deck = HERO_DECKS[hero.heroClass];
   const middle = (hero.hand.length - 1) / 2;
+  const spacing = fanSpacing(FAN_WIDTH, hero.hand.length);
+  // The card under the finger is the one whose strip it is on, however the rotated card boxes overlap.
+  const pressedCard = (event: ReactPointerEvent<HTMLElement>, fallback: CardIndex): CardIndex => {
+    const fan = event.currentTarget.closest("ul");
+    if (!fan) return fallback;
+    const position = cardAtX(spacing, hero.hand.length, event.clientX - fan.getBoundingClientRect().left);
+    return hero.hand[position] ?? fallback;
+  };
   return (
-    <ul className="hand" aria-label="Hand">
+    <ul
+      className="hand"
+      aria-label="Hand"
+      style={{ "--card-w": `${spacing.cardWidth}px`, "--step": `${spacing.step}px`, width: spacing.width } as CSSProperties}
+    >
       {hero.hand.map((cardIndex, position) => {
         const card = deck[cardIndex]!;
         const offset = position - middle;
@@ -281,14 +294,14 @@ function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onC
         } else if (isPitched) use = CARD_USE_LABELS[CardUse.Pitch];
         else if (cardIndex === armed) use = armedLabel;
         return (
-          <li key={cardIndex} style={{ "--offset": offset } as CSSProperties}>
+          <li key={cardIndex} style={{ "--offset": offset, "--position": position } as CSSProperties}>
             <button
               type="button"
               className={`card ${card.type}${queued || isPitched ? " used" : ""}${cardIndex === dragging ? " dragging" : ""}`}
               aria-pressed={cardIndex === armed || cardIndex === choosing || queuedAt >= 0 || isPitched}
               disabled={disabled}
               onClick={() => onCardTap(cardIndex)}
-              onPointerDown={(event) => onCardPointerDown(cardIndex, event)}
+              onPointerDown={(event) => onCardPointerDown(pressedCard(event, cardIndex), event)}
             >
               <CardFace card={card} use={use} />
             </button>
