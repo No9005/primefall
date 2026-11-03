@@ -49,6 +49,7 @@ describe("classifyPullRequest", () => {
     ["CLAUDE.md"],
     ["CODING_STANDARDS.md"],
     ["GLOSSARY.md"],
+    ["LICENSE"],
     ["docs/adr/0021-new.md"],
     ["docs/specs/mvp-card-set.md"],
     ["docs/design/ui-spec.md"],

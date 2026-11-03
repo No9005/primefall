@@ -2,7 +2,8 @@
 # (software factory: docs/agents/software-factory.md). Keep in sync with
 # tools/factory/blast-radius-rules.json. Later lines override earlier ones.
 
-# Design, decision, spec and agent files (other markdown such as READMEs and notes is low)
+# Design, decision, spec and agent files, and the license (other markdown such as READMEs and notes is low)
+/LICENSE @No9005
 /CLAUDE.md @No9005
 /CODING_STANDARDS.md @No9005
 /GLOSSARY.md @No9005
