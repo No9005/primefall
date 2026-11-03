@@ -58,6 +58,7 @@ function SightBoard() {
         areaTiles={NOTHING}
         shotLines={SIGHT_SHOTS}
         targetLines={[]}
+        marks={{}}
         paths={[]}
         collisionTiles={[]}
         pickRef={pickRef}
