@@ -13,7 +13,7 @@
   },
   "scripts": {
     "dev": "npm run dev -w apps/web",
-    "build": "npm run build -w apps/web",
+    "build": "npm run build -w apps/web && npm run build -w apps/dashboard",
     "test": "npm run test --workspaces --if-present",
     "sim": "npm run sim -w game-core",
     "test:e2e": "npm run build && npm run e2e -w web",
