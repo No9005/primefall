@@ -1,9 +1,10 @@
 import { CoverKind, type EnemyView, type Grid, type GridPosition, shotLine, Visibility } from "game-core";
 import type { Point } from "./card-drag";
-import { gridToWorld, TILE_HEIGHT } from "./terrain";
+import { footOffset, gridToWorld, TILE_HEIGHT, VIEW_ANGLE } from "./terrain";
 
 // The line of fire drawn while aiming. The decision (hit, Cover, where the shot is blocked) is `shotLine` of
-// game-core; this module only turns it into world points, from the same projection as the terrain and the tokens.
+// game-core. A drawing is kept in tiles, so it does not depend on the view angle; `shotInWorld` turns it into
+// world points with the same projection as the terrain and the tokens, whatever angle the board is turned to.
 
 export enum SegmentStyle {
   /** A shot that can be fired: dashed teal. */
@@ -15,16 +16,17 @@ export enum SegmentStyle {
 }
 
 export interface ShotSegment {
-  from: Point;
-  to: Point;
+  /** The tile the line starts on, drawn at chest height. */
+  from: GridPosition;
+  to: GridPosition;
   style: SegmentStyle;
 }
 
 export interface ShotDrawing {
   targetId: string;
   segments: ShotSegment[];
-  /** Where a shot is blocked (a ✕ is drawn there); missing for a clear shot and an out of Range one. */
-  cross?: Point;
+  /** The tile where a shot is blocked (a ✕ is drawn there); missing for a clear shot and an out of Range one. */
+  cross?: GridPosition;
   /** The Cover tile on the board that protects the target, when it has Cover against this attacker. */
   coverTile?: GridPosition;
   coverKind: CoverKind;
@@ -32,36 +34,44 @@ export interface ShotDrawing {
   ringed: boolean;
 }
 
-/** Where on a Hero the line starts and ends: the chest, above the foot of the token. */
-const CHEST_LIFT = TILE_HEIGHT * 0.7;
-
-function chestOf(tile: GridPosition): Point {
-  const { x, y } = gridToWorld(tile);
-  // Tokens stand on the lower edge of their tile diamond.
-  return { x, y: y + TILE_HEIGHT / 2 - CHEST_LIFT };
+/** A shot drawing in world pixels at one view angle. */
+export interface ShotInWorld {
+  segments: { from: Point; to: Point; style: SegmentStyle }[];
+  cross?: Point;
 }
 
-const floorOf = (tile: GridPosition): Point => gridToWorld(tile);
+/** How high above the foot of a Hero the line starts and ends: the chest. */
+const CHEST_LIFT = TILE_HEIGHT * 0.7;
+
+/** The chest height above a tile, in world pixels at a view angle. Tokens stand on the lower vertex of their tile. */
+export function chestOf(tile: GridPosition, angle: number = VIEW_ANGLE): Point {
+  const { x, y } = gridToWorld(tile, angle);
+  return { x, y: y + footOffset(angle) - CHEST_LIFT };
+}
 
 /** The drawing of one shot. Pure: no state, same input gives the same lines. */
 export function drawShot(grid: Grid, attacker: GridPosition, target: { id: string; position: GridPosition }, range: number): ShotDrawing {
   const line = shotLine(grid, attacker, target.position, range);
-  const start = chestOf(attacker);
-  const end = chestOf(target.position);
   const base = { targetId: target.id, coverKind: line.cover, ringed: line.canHit && line.cover !== CoverKind.Full };
   const cover = line.cover === CoverKind.None ? {} : { coverTile: target.position };
-  const stop = line.blockedAt ? { at: floorOf(line.blockedAt), blocked: true } : line.rangeEnd ? { at: floorOf(line.rangeEnd), blocked: false } : undefined;
-  if (!stop) return { ...base, ...cover, segments: [{ from: start, to: end, style: SegmentStyle.Clear }] };
-  // The blocking tile is lifted to chest height so the cross sits on the line.
-  const at = { x: stop.at.x, y: stop.at.y + TILE_HEIGHT / 2 - CHEST_LIFT };
+  const stop = line.blockedAt ?? line.rangeEnd;
+  if (!stop) return { ...base, ...cover, segments: [{ from: attacker, to: target.position, style: SegmentStyle.Clear }] };
   return {
     ...base,
     ...cover,
-    cross: stop.blocked ? at : undefined,
+    cross: line.blockedAt,
     segments: [
-      { from: start, to: at, style: SegmentStyle.Stopped },
-      { from: at, to: end, style: SegmentStyle.Beyond },
+      { from: attacker, to: stop, style: SegmentStyle.Stopped },
+      { from: stop, to: target.position, style: SegmentStyle.Beyond },
     ],
+  };
+}
+
+/** The lines and the cross of a drawing as world points at a view angle. */
+export function shotInWorld({ segments, cross }: ShotDrawing, angle: number = VIEW_ANGLE): ShotInWorld {
+  return {
+    segments: segments.map(({ from, to, style }) => ({ from: chestOf(from, angle), to: chestOf(to, angle), style })),
+    cross: cross && chestOf(cross, angle),
   };
 }
 
