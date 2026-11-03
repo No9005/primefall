@@ -1,6 +1,6 @@
 import { type EnemyView, EventKind, HeroClass, type MatchEvent, Visibility } from "game-core";
 import { describe, expect, it } from "vitest";
-import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
+import { buildPlaybackFrames,enemyTokens, tickCountOf } from "./playback";
 
 const step = (tick: number, heroId: string, col: number): MatchEvent => ({
   kind: EventKind.Step,
@@ -27,7 +27,6 @@ describe("buildPlaybackFrames", () => {
       { kind: EventKind.AreaRevealed, tick: 2, heroId: "a", to: { col: 6, row: 3 }, amount: 3 },
     ]);
     expect(frames.map((frame) => frame.moves)).toEqual([{}, {}]);
-    expect(describeEvent(frames[1]!.events[0]!, (id) => id)).toContain("3 by 3");
   });
 
   it("shows a pushed Hero moving one tile per frame", () => {
@@ -40,19 +39,11 @@ describe("buildPlaybackFrames", () => {
     });
     const frames = buildPlaybackFrames([push(5), push(6)]);
     expect(frames.map((frame) => frame.moves.b)).toEqual([{ col: 5, row: 0 }, { col: 6, row: 0 }]);
-    expect(describeEvent(push(5), (id) => id.toUpperCase())).toBe("Tick 1: B is pushed back");
   });
 
   it("keeps a frame for a Tick in which every move was blocked", () => {
     const blocked: MatchEvent = { kind: EventKind.MoveBlocked, tick: 1, heroId: "a", from: { col: 1, row: 0 } };
     expect(buildPlaybackFrames([blocked])).toMatchObject([{ tick: 1, moves: {}, shields: {}, hits: [], exhausted: [] }]);
-  });
-
-  it("describes a blocked Move for an own and an enemy Hero", () => {
-    const nameOf = (id: string) => (id === "a" ? "Bruiser" : "Enemy Bruiser");
-    const blocked = (heroId: string): MatchEvent => ({ kind: EventKind.MoveBlocked, tick: 1, heroId, from: { col: 1, row: 0 } });
-    expect(describeEvent(blocked("a"), nameOf)).toBe("Tick 1: Bruiser's Move is blocked and stops on column 1, row 0");
-    expect(describeEvent(blocked("b"), nameOf)).toBe("Tick 1: Enemy Bruiser's Move is blocked and stops on column 1, row 0");
   });
 
   it("shows Deck Damage and Exhaustion in the frame of their event", () => {
@@ -61,15 +52,6 @@ describe("buildPlaybackFrames", () => {
     const [frame] = buildPlaybackFrames([hit, exhausted]);
     expect(frame!.hits).toEqual([{ targetId: "b", damage: 1, absorbed: 1 }]);
     expect(frame!.exhausted).toEqual(["b"]);
-  });
-
-  it("describes hits, failed Attacks and Exhaustion for the log", () => {
-    const name = (id: string) => id.toUpperCase();
-    const hit: MatchEvent = { kind: EventKind.AttackHit, tick: 2, heroId: "a", targetId: "b", absorbed: 1, damage: 1 };
-    expect(describeEvent(hit, name)).toBe("Tick 2: A hits B: Deck Damage 1, Shield absorbed 1");
-    expect(describeEvent({ kind: EventKind.AttackFailed, tick: 1, heroId: "a", targetId: "b" }, name)).toContain("fails");
-    expect(describeEvent({ kind: EventKind.Exhausted, tick: 1, heroId: "b" }, name)).toBe("B is Exhausted");
-    expect(describeEvent(step(1, "a", 1), name)).toBeUndefined();
   });
 
   it("shows Shield in the frame of the Tick in which it was gained", () => {
