@@ -140,15 +140,57 @@ export function coverAgainst(grid: Grid, attacker: GridPosition, target: GridPos
  * The line is traced from the same end for both directions, so it is symmetric.
  */
 export function hasLineOfSight(grid: Grid, a: GridPosition, b: GridPosition): boolean {
+  return sightBlockers(grid, a, b).length === 0;
+}
+
+/** The tiles between `a` and `b` that block Line of Sight. */
+function sightBlockers(grid: Grid, a: GridPosition, b: GridPosition): GridPosition[] {
   const [from, to] = a.col < b.col || (a.col === b.col && a.row <= b.row) ? [a, b] : [b, a];
   const steps = Math.max(Math.abs(to.col - from.col), Math.abs(to.row - from.row));
+  const blockers: GridPosition[] = [];
   for (let i = 1; i < steps; i++) {
     const col = Math.round(from.col + ((to.col - from.col) * i) / steps);
     const row = Math.round(from.row + ((to.row - from.row) * i) / steps);
-    const blocker = { col, row };
-    if (tileAt(grid, blocker) === TileKind.Wall || coverAt(grid, blocker) === CoverKind.Full) return false;
+    const tile = { col, row };
+    if (tileAt(grid, tile) === TileKind.Wall || coverAt(grid, tile) === CoverKind.Full) blockers.push(tile);
   }
-  return true;
+  return blockers;
+}
+
+const distanceBetween = (a: GridPosition, b: GridPosition) => Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row));
+
+/** The line of fire from an attacker to a target, as the rules see it. */
+export interface ShotLine {
+  from: GridPosition;
+  to: GridPosition;
+  inRange: boolean;
+  lineOfSight: boolean;
+  /** The Cover that protects the target from this attacker (on the target's own tile); none at Range 1. */
+  cover: CoverKind;
+  /** The blocking tile nearest to the attacker when Line of Sight is missing. */
+  blockedAt?: GridPosition;
+  /** The last tile of the line within Range when the target is out of Range. */
+  rangeEnd?: GridPosition;
+  /** The attack can hit: in Range, in Line of Sight and not against Full Cover. */
+  canHit: boolean;
+}
+
+/** The straight line of fire from `from` to `to` for an attack of `range`, decided by the functions the Resolution uses. */
+export function shotLine(grid: Grid, from: GridPosition, to: GridPosition, range: number): ShotLine {
+  const distance = distanceBetween(from, to);
+  const inRange = distance <= range;
+  const lineOfSight = hasLineOfSight(grid, from, to);
+  const cover = coverAgainst(grid, from, to);
+  const blockedAt = sightBlockers(grid, from, to).sort((x, y) => distanceBetween(from, x) - distanceBetween(from, y))[0];
+  const line: ShotLine = { from, to, inRange, lineOfSight, cover, canHit: inRange && lineOfSight && cover !== CoverKind.Full };
+  if (blockedAt) line.blockedAt = blockedAt;
+  if (!inRange) {
+    line.rangeEnd = {
+      col: Math.round(from.col + ((to.col - from.col) * range) / distance),
+      row: Math.round(from.row + ((to.row - from.row) * range) / distance),
+    };
+  }
+  return line;
 }
 
 /**

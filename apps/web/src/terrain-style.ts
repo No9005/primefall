@@ -24,6 +24,18 @@ export const TERRAIN_STYLE = {
   overwatchNest: { top: 0x5d7194, left: 0x465676, right: 0x344059, edge: 0xffc933 },
 } as const;
 
+/** The line of fire drawn while aiming (artboard J). */
+export const SHOT_STYLE = {
+  clear: 0x2ec4b6,
+  stopped: 0xe5484d,
+  beyond: 0x8a8f98,
+  cover: 0xffc933,
+  width: 4,
+  dash: 14,
+  dot: 4,
+  gap: 10,
+} as const;
+
 export interface PieceStyle {
   top: number;
   left: number;

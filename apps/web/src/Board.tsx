@@ -34,7 +34,38 @@ import {
   zoomOnPoint,
 } from "./board-layout";
 import { buildTerrain, type Face, litTiles } from "./terrain";
-import { TERRAIN_STYLE } from "./terrain-style";
+import { SegmentStyle, type ShotDrawing, type ShotSegment } from "./shot-lines";
+import { SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
+
+/** Strokes `segment` as a run of dashes: long for a clear shot, dots for the stopped part, grey after a block. */
+function strokeShotSegment(graphics: Graphics, { from, to, style }: ShotSegment): void {
+  const length = Math.hypot(to.x - from.x, to.y - from.y);
+  if (length === 0) return;
+  const dash = style === SegmentStyle.Stopped ? SHOT_STYLE.dot : SHOT_STYLE.dash;
+  const color = SHOT_STYLE[style];
+  for (let start = 0; start < length; start += dash + SHOT_STYLE.gap) {
+    const end = Math.min(start + dash, length);
+    graphics.moveTo(from.x + ((to.x - from.x) * start) / length, from.y + ((to.y - from.y) * start) / length);
+    graphics.lineTo(from.x + ((to.x - from.x) * end) / length, from.y + ((to.y - from.y) * end) / length);
+  }
+  graphics.stroke({ width: SHOT_STYLE.width, color, alpha: style === SegmentStyle.Beyond ? 0.6 : 1, cap: "round" });
+}
+
+function shotGraphics({ segments, cross, coverTile }: ShotDrawing): Graphics {
+  const graphics = new Graphics();
+  if (coverTile) {
+    const { x, y } = gridToWorld(coverTile);
+    graphics.poly(tileDiamond().map((value, index) => value + (index % 2 === 0 ? x : y))).stroke({ width: 5, color: SHOT_STYLE.cover });
+  }
+  segments.forEach((segment) => strokeShotSegment(graphics, segment));
+  if (cross) {
+    const size = 12;
+    graphics.moveTo(cross.x - size, cross.y - size).lineTo(cross.x + size, cross.y + size);
+    graphics.moveTo(cross.x + size, cross.y - size).lineTo(cross.x - size, cross.y + size);
+    graphics.stroke({ width: 6, color: SHOT_STYLE.stopped, cap: "round" });
+  }
+  return graphics;
+}
 
 interface Manifest {
   bundles: { name: string; assets: { alias: string; src: string; data?: { anchor?: [number, number] } }[] }[];
@@ -114,6 +145,8 @@ interface BoardProps {
   zoneLabels: readonly { position: GridPosition; text: string }[];
   /** While a card is dragged: a tinted area (the Range of a card played here). */
   areaTiles: readonly GridPosition[];
+  /** While aiming an Attack: the lines of fire to Visible enemies. A target whose shot cannot hit is not ringed. */
+  shotLines: readonly ShotDrawing[];
   /** Filled with a function that tells what the board has under a viewport point, for dropping a dragged card. */
   pickRef: MutableRefObject<((point: Point) => BoardPick) | undefined>;
 }
@@ -143,6 +176,7 @@ export function Board({
   moveFrameHero,
   zoneLabels,
   areaTiles,
+  shotLines,
   pickRef,
 }: BoardProps) {
   const host = useRef<HTMLDivElement>(null);
@@ -224,8 +258,13 @@ export function Board({
       overlay.addChild(label);
       created.push(label);
     });
+    for (const shot of shotLines) {
+      const line = shotGraphics(shot);
+      overlay.addChild(line);
+      created.push(line);
+    }
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [overlay, highlights, markers, pressed, zoneLabels, areaTiles]);
+  }, [overlay, highlights, markers, pressed, zoneLabels, areaTiles, shotLines]);
 
   useEffect(() => {
     if (!tokens) return;
@@ -239,7 +278,8 @@ export function Board({
       token.zIndex = hero.position.col + hero.position.row + 0.5;
       const targetable = targetableIds.includes(hero.id);
       if (hero.id === selectedId) token.addChild(ring(0x2ec4b6));
-      if (targetable) token.addChild(ring(enemy ? 0xe5484d : 0x5ad17a));
+      const cannotHit = shotLines.some((shot) => shot.targetId === hero.id && !shot.ringed);
+      if (targetable && !cannotHit) token.addChild(ring(enemy ? 0xe5484d : 0x5ad17a));
       const pose = hero.exhausted ? "exhausted" : hitIds.includes(hero.id) ? "hit" : "idle";
       const sprite = new Sprite(Assets.get(`heroes.${hero.heroClass}.${pose}`));
       sprite.anchor.set(0.5, 1);
@@ -274,7 +314,7 @@ export function Board({
     heroes.forEach((hero) => addToken(hero, false));
     enemies.forEach((hero) => addToken(hero, true));
     return () => created.forEach((token) => token.destroy({ children: true }));
-  }, [tokens, heroes, enemies, selectedId, targetableIds, hitIds]);
+  }, [tokens, heroes, enemies, selectedId, targetableIds, hitIds, shotLines]);
 
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
   useEffect(() => {
