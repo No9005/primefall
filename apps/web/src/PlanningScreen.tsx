@@ -272,7 +272,7 @@ function Skull() {
   );
 }
 
-function PilePanel({
+export function PilePanel({
   deck,
   discard,
   exile,
@@ -290,14 +290,18 @@ function PilePanel({
   greyed: boolean;
 }) {
   return (
-    <div className={`piles${greyed ? " exhausted-hud" : ""}`} style={greyed ? undefined : { opacity }}>
-      <div className="pile-minor">
+    <div className="piles" style={greyed ? undefined : { opacity }}>
+      <div className={`pile-minor${greyed ? " exhausted-hud" : ""}`}>
         <span data-testid="discard-count">Discard {discard}</span>
         <span data-testid="exile-count">Exile {exile}</span>
       </div>
-      <div className="deck-pile" data-testid="deck-pile" aria-label={`Deck: ${deck} cards`}>
-        {skull ? <Skull /> : <span className="deck-count">{deck}</span>}
-        {burn}
+      {/* The skull is a sibling of the greyed Deck pile, so the greying never touches it. */}
+      <div className="deck-group">
+        <div className={`deck-pile${greyed ? " exhausted-hud" : ""}`} data-testid="deck-pile" aria-label={`Deck: ${deck} cards`}>
+          {skull ? null : <span className="deck-count">{deck}</span>}
+          {burn}
+        </div>
+        {skull ? <Skull /> : null}
       </div>
     </div>
   );

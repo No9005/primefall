@@ -200,6 +200,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 @keyframes shuffle-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
 /* Exhaustion (issue 205): the Deck group and the Hand are greyed out and inert; a red skull drops onto the Deck pile. */
 .exhausted-hud { opacity: 0.3; filter: grayscale(1); pointer-events: none; }
+.deck-group { position: relative; }
+.deck-group > .deck-skull { position: absolute; top: 50%; left: 50%; margin: -16px 0 0 -19px; pointer-events: none; }
 .deck-skull { color: var(--red); animation: skull-drop 400ms ease-out; }
 @keyframes skull-drop {
   0% { transform: scale(1.8); opacity: 0; }
