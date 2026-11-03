@@ -32,106 +32,163 @@ const at = (col: number, row = 3): GridPosition => ({ col, row });
 const positionOf = (match: MatchState, heroId: string) => match.heroes.find((hero) => hero.id === heroId)!.position;
 const mirror = ({ col, row }: GridPosition): GridPosition => ({ col: 30 - col, row });
 
-function moveBruiser(positions: Record<string, GridPosition>, others: Record<string, GridPosition> = {}) {
+/** Plays the Left Squad's Moves and returns where the Heroes end. */
+function play(positions: Record<string, GridPosition>, moves: Record<string, GridPosition>) {
   const match = matchWith(positions);
-  const plans = [movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(10), ...others })];
-  return resolveRound(match, plans);
+  return resolveRound(match, [movePlan(match, SquadId.Left, moves)]);
 }
 
-describe("Heroes walking through each other (ADR 0013)", () => {
-  it("walks through an ally and ends behind it", () => {
-    const { match } = moveBruiser({ [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(9) });
+describe("Heroes that move do not hinder each other (ADR 0013)", () => {
+  it("lets two Heroes whose paths cross both arrive", () => {
+    const { match, events } = play(
+      { [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(9, 5) },
+      { [LEFT_BRUISER]: at(10), [LEFT_CONTROLLER]: at(9) },
+    );
     expect(positionOf(match, LEFT_BRUISER)).toEqual(at(10));
+    expect(positionOf(match, LEFT_CONTROLLER)).toEqual(at(9));
+    expect(events.map(({ kind }) => kind)).not.toContain(EventKind.MoveBlocked);
   });
 
-  it("walks through an enemy and ends behind it", () => {
-    const { match, events } = moveBruiser({ [LEFT_BRUISER]: at(8), [RIGHT_BRUISER]: at(9) });
+  it("lets two Heroes swap tiles", () => {
+    const { match } = play(
+      { [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(9) },
+      { [LEFT_BRUISER]: at(9), [LEFT_CONTROLLER]: at(8) },
+    );
+    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(9));
+    expect(positionOf(match, LEFT_CONTROLLER)).toEqual(at(8));
+  });
+
+  it("lets a Hero follow a Hero that walks away in the same corridor", () => {
+    const { match, events } = play(
+      { [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(9) },
+      { [LEFT_BRUISER]: at(10), [LEFT_CONTROLLER]: at(11) },
+    );
     expect(positionOf(match, LEFT_BRUISER)).toEqual(at(10));
-    expect(events.map(({ kind }) => kind)).toEqual([EventKind.Step, EventKind.Step]);
+    expect(positionOf(match, LEFT_CONTROLLER)).toEqual(at(11));
+    expect(events.map(({ kind }) => kind)).not.toContain(EventKind.MoveBlocked);
   });
 
-  it("walks through an Exhausted Hero", () => {
-    const match = matchWith({ [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(9) });
-    match.heroes.find((hero) => hero.id === LEFT_CONTROLLER)!.exhausted = true;
-    const { match: after } = resolveRound(match, [movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(10) })]);
-    expect(positionOf(after, LEFT_BRUISER)).toEqual(at(10));
+  it("does not let a Hero walk through an ally or an enemy that stands still", () => {
+    for (const standing of [LEFT_CONTROLLER, RIGHT_BRUISER]) {
+      const { match, events } = play({ [LEFT_BRUISER]: at(8), [standing]: at(10) }, { [LEFT_BRUISER]: at(10) });
+      expect(positionOf(match, LEFT_BRUISER)).toEqual(at(9));
+      expect(events).toMatchObject([
+        { kind: EventKind.Step, to: at(9) },
+        { kind: EventKind.MoveBlocked, from: at(9) },
+      ]);
+    }
   });
 
-  it("stops on the last free tile when the destination is occupied", () => {
-    const { match, events } = moveBruiser({ [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(10) });
-    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(9));
-    expect(positionOf(match, LEFT_CONTROLLER)).toEqual(at(10));
-    expect(events).toMatchObject([
-      { kind: EventKind.Step, to: at(9) },
-      { kind: EventKind.MoveBlocked, from: at(9) },
-    ]);
-  });
-
-  it("stops on the last free tile when an enemy stands on the destination", () => {
-    const { match } = moveBruiser({ [LEFT_BRUISER]: at(8), [RIGHT_BRUISER]: at(10) });
-    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(9));
-  });
-
-  it("stays when every tile of the walk is occupied", () => {
-    const { match, events } = moveBruiser({ [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(9), [LEFT_ASSASSIN]: at(10) });
+  it("stops in front of a Hero that stands next to it and does not move", () => {
+    const { match, events } = play({ [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(9) }, { [LEFT_BRUISER]: at(10) });
     expect(positionOf(match, LEFT_BRUISER)).toEqual(at(8));
     expect(events.map(({ kind }) => kind)).toEqual([EventKind.MoveBlocked]);
   });
 
-  it("lets two Heroes with the same destination both stop short", () => {
-    const match = matchWith({ [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(12) });
-    const plan = movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(10), [LEFT_CONTROLLER]: at(10) });
-    const { match: after } = resolveRound(match, [plan]);
-    expect(positionOf(after, LEFT_BRUISER)).toEqual(at(9));
-    expect(positionOf(after, LEFT_CONTROLLER)).toEqual(at(11));
+  it("does not let a Hero walk through a Hero on a Wait or an Exhausted Hero", () => {
+    const match = matchWith({ [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(9) });
+    const bruiser = movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(10) });
+    const wait = { heroId: LEFT_CONTROLLER, queue: [{ kind: ActionKind.Wait as const }] };
+    const { match: after } = resolveRound(match, [{ ...bruiser, heroes: [...bruiser.heroes, wait] }]);
+    expect(positionOf(after, LEFT_BRUISER)).toEqual(at(8));
+    expect(positionOf(after, LEFT_CONTROLLER)).toEqual(at(9));
+
+    const exhausted = matchWith({ [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(9) });
+    exhausted.heroes.find((hero) => hero.id === LEFT_CONTROLLER)!.exhausted = true;
+    const { match: afterExhausted } = resolveRound(exhausted, [movePlan(exhausted, SquadId.Left, { [LEFT_BRUISER]: at(10) })]);
+    expect(positionOf(afterExhausted, LEFT_BRUISER)).toEqual(at(8));
   });
 
-  it("lets a Hero and an enemy with the same destination both stop short", () => {
-    const match = matchWith({ [LEFT_BRUISER]: at(8), [RIGHT_BRUISER]: at(12) });
+  it("makes the Hero behind a Hero whose step fails fail too", () => {
+    // The Controller cannot step onto the Assassin, so the Bruiser's tile (9) stays taken.
+    const { match } = play(
+      { [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(9), [LEFT_ASSASSIN]: at(10) },
+      { [LEFT_BRUISER]: at(10), [LEFT_CONTROLLER]: at(11) },
+    );
+    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(8));
+    expect(positionOf(match, LEFT_CONTROLLER)).toEqual(at(9));
+  });
+
+  it("lets two Heroes stepping onto the same free tile both stay", () => {
+    const { match, events } = play(
+      { [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(10) },
+      { [LEFT_BRUISER]: at(9), [LEFT_CONTROLLER]: at(9) },
+    );
+    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(8));
+    expect(positionOf(match, LEFT_CONTROLLER)).toEqual(at(10));
+    expect(events.map(({ kind }) => kind)).toEqual([EventKind.MoveBlocked, EventKind.MoveBlocked]);
+  });
+
+  it("lets a Hero and an enemy stepping onto the same free tile both stay", () => {
+    const match = matchWith({ [LEFT_BRUISER]: at(8), [RIGHT_BRUISER]: at(10) });
     const plans = [
-      movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(10) }),
-      movePlan(match, SquadId.Right, { [RIGHT_BRUISER]: at(10) }),
+      movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(9) }),
+      movePlan(match, SquadId.Right, { [RIGHT_BRUISER]: at(9) }),
     ];
     const { match: after } = resolveRound(match, plans);
-    expect(positionOf(after, LEFT_BRUISER)).toEqual(at(9));
-    expect(positionOf(after, RIGHT_BRUISER)).toEqual(at(11));
+    expect(positionOf(after, LEFT_BRUISER)).toEqual(at(8));
+    expect(positionOf(after, RIGHT_BRUISER)).toEqual(at(10));
   });
 
-  it("never ends two Heroes on one tile when a Hero swaps places with another", () => {
-    const match = matchWith({ [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(10) });
-    const plan = movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(10), [LEFT_CONTROLLER]: at(8) });
-    const { match: after } = resolveRound(match, [plan]);
-    expect(positionOf(after, LEFT_BRUISER)).toEqual(at(10));
-    expect(positionOf(after, LEFT_CONTROLLER)).toEqual(at(8));
+  it("stops a Hero that fails its second step on the tile it reached", () => {
+    const { match } = play({ [LEFT_BRUISER]: at(8), [LEFT_CONTROLLER]: at(10) }, { [LEFT_BRUISER]: at(10) });
+    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(9));
   });
 
   it("still stops at a Wall", () => {
     // (5,6) is the first Wall of the upper channel Wall.
-    const match = matchWith({ [LEFT_BRUISER]: at(3, 6), [LEFT_CONTROLLER]: at(4, 6) });
-    const { match: after } = resolveRound(match, [movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(5, 6) })]);
-    expect(positionOf(after, LEFT_BRUISER)).toEqual(at(3, 6));
+    const { match } = play({ [LEFT_BRUISER]: at(3, 6) }, { [LEFT_BRUISER]: at(5, 6) });
+    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(4, 6));
   });
 
-  it("still does not cut a Wall corner while walking through a Hero", () => {
-    const match = matchWith({ [LEFT_BRUISER]: at(5, 5), [LEFT_CONTROLLER]: at(4, 6) });
-    const { match: after } = resolveRound(match, [movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(4, 6) })]);
-    expect(positionOf(after, LEFT_BRUISER)).toEqual(at(5, 5));
+  it("still does not cut a Wall corner", () => {
+    const { match } = play({ [LEFT_BRUISER]: at(5, 5) }, { [LEFT_BRUISER]: at(4, 6) });
+    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(5, 5));
   });
+});
 
-  it("is symmetric: a Left Squad and its mirror image end on mirrored tiles", () => {
+describe("the movement rule is symmetric and independent of the order of the Heroes", () => {
+  const crossing = (squadMirrored: boolean) => {
+    const place = squadMirrored ? mirror : (tile: GridPosition) => tile;
+    const squad = squadMirrored ? SquadId.Right : SquadId.Left;
+    const [first, second, standing] = squadMirrored
+      ? [RIGHT_BRUISER, RIGHT_CONTROLLER, "right-assassin"]
+      : [LEFT_BRUISER, LEFT_CONTROLLER, LEFT_ASSASSIN];
+    return { place, squad, first, second, standing };
+  };
+
+  function run(mirrored: boolean, reverse: boolean) {
+    const { place, squad, first, second, standing } = crossing(mirrored);
     const match = matchWith({
-      [LEFT_BRUISER]: at(8),
-      [LEFT_CONTROLLER]: at(10),
-      [RIGHT_BRUISER]: mirror(at(8)),
-      [RIGHT_CONTROLLER]: mirror(at(10)),
-      [LEFT_ASSASSIN]: at(8, 8),
+      [first]: place(at(8)),
+      [second]: place(at(9)),
+      [standing]: place(at(10)),
     });
+    if (reverse) match.heroes.reverse();
+    const ordered = movePlan(match, squad, { [first]: place(at(10)), [second]: place(at(11)) });
+    const plan = reverse ? { ...ordered, heroes: [...ordered.heroes].reverse() } : ordered;
+    const { match: after } = resolveRound(match, [plan]);
+    return [first, second, standing].map((id) => positionOf(after, id));
+  }
+
+  it("ends a Left Squad and its mirror image on mirrored tiles", () => {
+    const left = run(false, false);
+    expect(run(true, false)).toEqual(left.map(mirror));
+    expect(left).toEqual([at(8), at(9), at(10)]);
+  });
+
+  it("does not depend on the order of the Heroes", () => {
+    expect(run(false, true)).toEqual(run(false, false));
+    expect(run(true, true)).toEqual(run(true, false));
+  });
+
+  it("ends two Squads that aim at the same tile on mirrored tiles", () => {
+    const match = matchWith({ [LEFT_BRUISER]: at(14, 5), [RIGHT_BRUISER]: mirror(at(14, 5)) });
     const plans = [
-      movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(10) }),
-      movePlan(match, SquadId.Right, { [RIGHT_BRUISER]: mirror(at(10)) }),
+      movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(15, 7) }),
+      movePlan(match, SquadId.Right, { [RIGHT_BRUISER]: at(15, 7) }),
     ];
     const { match: after } = resolveRound(match, plans);
     expect(positionOf(after, RIGHT_BRUISER)).toEqual(mirror(positionOf(after, LEFT_BRUISER)));
-    expect(positionOf(after, LEFT_BRUISER)).toEqual(at(9));
   });
 });

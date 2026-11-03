@@ -96,6 +96,11 @@ describe("AI does not freeze", () => {
     expect(new Set(snapshots.slice(3)).size).toBeGreaterThan(1);
   });
 
+  it("never ends a match on the Round limit because Heroes block each other", () => {
+    const stuck = SEEDS.filter((seed) => playAiMatch(seed, MAX_ROUNDS).match.result?.reason === MatchEndReason.RoundLimit);
+    expect(stuck).toEqual([]);
+  });
+
   it("decides at least half of the matches before the Round limit", () => {
     const decided = SEEDS.filter((seed) => playAiMatch(seed, MAX_ROUNDS).match.result?.reason !== MatchEndReason.RoundLimit);
     expect(decided.length).toBeGreaterThanOrEqual(SEEDS.length / 2);
