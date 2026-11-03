@@ -8,7 +8,7 @@ export default defineConfig({
   testDir: "e2e",
   testMatch: "*.e2e.ts",
   outputDir: "e2e-results",
-  timeout: 30_000,
+  timeout: 60_000,
   retries: 0,
   reporter: "list",
   use: {

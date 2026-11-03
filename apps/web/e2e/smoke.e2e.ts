@@ -45,7 +45,8 @@ test("start a match, play a Move card onto a tile, Commit", async ({ page }) => 
   await expect(page.getByTestId("round")).toHaveText(/^Round 1\//);
   const canvas = page.locator(".board canvas");
   await expect(canvas).toBeVisible();
-  await expect.poll(() => canvasIsDrawn(page, canvas)).toBe(true);
+  // On a runner without a GPU one canvas screenshot waits for a software-rendered frame and takes several seconds.
+  await expect.poll(() => canvasIsDrawn(page, canvas), { timeout: 30_000 }).toBe(true);
 
   // Tap flow: card, "Move" in the detail sheet, then a tile. Which tiles are legal is the game's call, so tap
   // a grid of points over the board until the card shows up in the queue.
