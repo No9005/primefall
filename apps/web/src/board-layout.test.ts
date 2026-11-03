@@ -148,10 +148,12 @@ describe("tile picking at the fitted scale", () => {
   it("picks a Wall in front of a tile, not the floor it hides", () => {
     const wall = { col: 8, row: 6 };
     expect(REACTOR_DECK.tiles[wall.row]?.[wall.col]).toBe(TileKind.Wall);
-    // A point on the Wall sprite above its footprint lies over the floor tile behind it.
+    // A point on the top of the Wall (64 px above its footprint) lies over the floor tile behind it.
     const { x, y } = gridToWorld(wall);
-    expect(pickTileAt(x, y - TILE_HEIGHT * 1.5)).toEqual(wall);
-    expect(Math.round(worldToGrid(x, y - TILE_HEIGHT * 1.5).col)).not.toBe(wall.col);
+    expect(pickTileAt(x, y - TILE_HEIGHT)).toEqual(wall);
+    expect(Math.round(worldToGrid(x, y - TILE_HEIGHT).col)).not.toBe(wall.col);
+    // The empty floor beside a thin Wall stays tappable.
+    expect(pickTileAt(x, y - TILE_HEIGHT * 1.5)).not.toEqual(wall);
   });
 
   it("returns nothing outside the grid", () => {

@@ -94,23 +94,89 @@ function floorStyle(kind: TileKind, { col, row }: GridPosition, nextToZone: bool
   return { fill: (col + row) % 2 === 0 ? fill : fillAlt, edge };
 }
 
-/** The footprint of a standing piece as a box: its visible side faces and its top. */
-function pieceFaces(proj: Projection, { col, row }: GridPosition, shape: { inset: number; height: number }, style: PieceStyle): Face[] {
-  const half = shape.inset / 2;
-  const corners = [
-    [col - half, row - half],
-    [col + half, row - half],
-    [col + half, row + half],
-    [col - half, row + half],
+/** The sides of a tile a standing piece joins its neighbour on, as bits of a neighbour mask. */
+export const Join = { West: 1, North: 2, East: 4, South: 8 } as const;
+
+export type PieceForm = "pillar" | "end" | "straight" | "corner" | "tee" | "cross";
+
+/** The form for each neighbour mask (West 1, North 2, East 4, South 8). */
+const FORM_BY_MASK: readonly PieceForm[] = [
+  "pillar", // none
+  "end", // W
+  "end", // N
+  "corner", // W N
+  "end", // E
+  "straight", // W E
+  "corner", // N E
+  "tee", // W N E
+  "end", // S
+  "corner", // W S
+  "straight", // N S
+  "tee", // W N S
+  "corner", // E S
+  "tee", // W E S
+  "tee", // N E S
+  "cross", // all
+];
+
+export interface PieceChoice {
+  kind: PieceKind;
+  form: PieceForm;
+  /** The sides on which the piece continues into a neighbouring piece of the same kind. */
+  joins: number;
+}
+
+/** Which standing piece to draw on a tile, chosen from its four neighbours; undefined for open tiles. */
+export function choosePiece(grid: Grid, { col, row }: GridPosition): PieceChoice | undefined {
+  const kind = PIECE_KINDS[grid.tiles[row]?.[col] as TileKind];
+  if (!kind) return undefined;
+  const neighbours = [
+    [Join.West, col - 1, row],
+    [Join.North, col, row - 1],
+    [Join.East, col + 1, row],
+    [Join.South, col, row + 1],
   ] as const;
-  const centre = proj.point(col, row);
+  const joins =
+    kind === "overwatchNest" ? 0 : neighbours.reduce((mask, [bit, c, r]) => (PIECE_KINDS[grid.tiles[r]?.[c] as TileKind] === kind ? mask | bit : mask), 0);
+  return { kind, form: FORM_BY_MASK[joins]!, joins };
+}
+
+interface Box {
+  fromCol: number;
+  toCol: number;
+  fromRow: number;
+  toRow: number;
+}
+
+/** A piece as boxes: the middle post and, for each join, a slab out to the tile edge. */
+function pieceBoxes({ col, row }: GridPosition, { joins }: PieceChoice, shape: { thickness: number; pillar: number }): Box[] {
+  const t = (joins === 0 ? shape.pillar : shape.thickness) / 2;
+  const middle = { fromCol: col - t, toCol: col + t, fromRow: row - t, toRow: row + t };
+  const arms: [number, Box][] = [
+    [Join.West, { ...middle, fromCol: col - 0.5, toCol: col - t }],
+    [Join.North, { ...middle, fromRow: row - 0.5, toRow: row - t }],
+    [Join.East, { ...middle, fromCol: col + t, toCol: col + 0.5 }],
+    [Join.South, { ...middle, fromRow: row + t, toRow: row + 0.5 }],
+  ];
+  return [middle, ...arms.filter(([bit]) => joins & bit).map(([, box]) => box)];
+}
+
+/** One box of a standing piece: its visible side faces and its top. */
+function boxFaces(proj: Projection, box: Box, height: number, style: PieceStyle): Face[] {
+  const corners = [
+    [box.fromCol, box.fromRow],
+    [box.toCol, box.fromRow],
+    [box.toCol, box.toRow],
+    [box.fromCol, box.toRow],
+  ] as const;
+  const centre = proj.point((box.fromCol + box.toCol) / 2, (box.fromRow + box.toRow) / 2);
   // A side faces the viewer when its edge lies below the tile centre on screen.
   const sides = corners
     .map((from, i) => {
       const to = corners[(i + 1) % corners.length]!;
       const a = proj.point(from[0], from[1]);
       const b = proj.point(to[0], to[1]);
-      const lifted = (p: { x: number; y: number }) => ({ x: p.x, y: p.y - shape.height });
+      const lifted = (p: { x: number; y: number }) => ({ x: p.x, y: p.y - height });
       return { middleX: (a.x + b.x) / 2, middleY: (a.y + b.y) / 2, points: flat([a, b, lifted(b), lifted(a)]) };
     })
     .filter((side) => side.middleY > centre.y)
@@ -120,8 +186,18 @@ function pieceFaces(proj: Projection, { col, row }: GridPosition, shape: { inset
     { role: FaceRole.Right, fill: style.right },
   ];
   const faces = sides.map((side, i) => ({ ...roles[i]!, points: side.points, edge: style.edge }));
-  const top = flat(corners.map(([c, r]) => proj.point(c, r, shape.height)));
+  const top = flat(corners.map(([c, r]) => proj.point(c, r, height)));
   return [...faces, { role: FaceRole.Top, points: top, fill: style.top, edge: style.edge }];
+}
+
+/** All faces of the piece on a tile, the boxes farthest from the viewer first. */
+function pieceFaces(proj: Projection, position: GridPosition, choice: PieceChoice): Face[] {
+  const shape = PIECE_SHAPE[choice.kind];
+  const style = TERRAIN_STYLE[choice.kind];
+  const depthOf = (box: Box) => proj.depth((box.fromCol + box.toCol) / 2, (box.fromRow + box.toRow) / 2);
+  return pieceBoxes(position, choice, shape)
+    .sort((a, b) => depthOf(a) - depthOf(b))
+    .flatMap((box) => boxFaces(proj, box, shape.height, style));
 }
 
 /** Every tile of the grid as drawing primitives, sorted so that nearer tiles come last. */
@@ -141,8 +217,8 @@ export function buildTerrain(grid: Grid, angle: number = VIEW_ANGLE): TerrainTil
         floor: { role: FaceRole.Floor, points: diamond(1), ...style },
       };
       if (kind === TileKind.Spawn) tile.marker = { points: diamond(0.5), color: TERRAIN_STYLE.spawnMarker };
-      const pieceKind = PIECE_KINDS[kind];
-      if (pieceKind) tile.piece = pieceFaces(proj, position, PIECE_SHAPE[pieceKind], TERRAIN_STYLE[pieceKind]);
+      const choice = choosePiece(grid, position);
+      if (choice) tile.piece = pieceFaces(proj, position, choice);
       tiles.push(tile);
     }),
   );
