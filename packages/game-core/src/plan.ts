@@ -24,6 +24,8 @@ export enum ActionKind {
   Block = "block",
   /** A card's primary effect; it costs the card's Energy. Simple damage Attacks and Shield Utility cards resolve so far. */
   Primary = "primary",
+  /** The Hero does nothing for one Tick; it needs no card and no Energy but takes a slot of the Queue. */
+  Wait = "wait",
 }
 
 export interface MoveAction {
@@ -58,8 +60,12 @@ export interface PrimaryAction {
   overdrive?: boolean;
 }
 
+export interface WaitAction {
+  kind: ActionKind.Wait;
+}
+
 /** Actions are a union that grows with the card uses. */
-export type QueuedAction = MoveAction | BlockAction | PrimaryAction;
+export type QueuedAction = MoveAction | BlockAction | PrimaryAction | WaitAction;
 
 export interface HeroPlan {
   heroId: string;
@@ -188,6 +194,7 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
     // Reposition stretches the next Move of the Queue to the distance on its card.
     let moveDistance = MOVE_DISTANCE;
     for (const action of queue) {
+      if (action.kind === ActionKind.Wait) continue;
       useCard(action.card);
       if (action.kind === ActionKind.Primary) {
         const extend = cardInMode(HERO_DECKS[hero.heroClass][action.card]!, action.overdrive).effects.find(

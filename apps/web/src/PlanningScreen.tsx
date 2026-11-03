@@ -41,7 +41,7 @@ import { plannedTargetLines, replayTargetLines, type TargetLine } from "./target
 import { cardAtX, FAN_WIDTH, fanSpacing } from "./hand-fan";
 import { applyDrop, type BoardPick, type DropPlaces, type DropProbe, type DropUse, type Point, probeDrop, type Rect } from "./card-drag";
 import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
-import { blockAction, CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, type ModeFace, modeChoiceFaces, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
+import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, type ModeFace, modeChoiceFaces, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
 export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
@@ -100,6 +100,7 @@ function SquadPanel({
   disabled,
   onSelect,
   onRemove,
+  onWait,
   blockChip,
   blockChipRef,
   warningsOf,
@@ -116,6 +117,7 @@ function SquadPanel({
   disabled: boolean;
   onSelect: (id: string) => void;
   onRemove: (index: number) => void;
+  onWait: () => void;
 }) {
   const shield = playback?.shields[selected.id] ?? 0;
   return (
@@ -142,6 +144,7 @@ function SquadPanel({
                     aria-label={`Remove action ${i + 1}`}
                     onClick={() => onRemove(i)}
                   >
+                    {action.kind === ActionKind.Wait && <span aria-hidden="true">⌛ </span>}
                     {queueSlotCode(selected.heroClass, action)}
                     {action.kind === ActionKind.Primary && action.overdrive && <span className="od-marker">OD</span>}
                   </button>
@@ -152,6 +155,9 @@ function SquadPanel({
             );
           })}
         </ol>
+        <button type="button" className="wait-button" disabled={disabled || queue.length >= MAX_QUEUE_LENGTH} onClick={onWait}>
+          ⌛ Wait
+        </button>
         <div className="queue-tags">
           {warningsOf(selected.id).map((text) => (
             <span key={text} className="tag collision-tag" role="alert">
@@ -276,7 +282,7 @@ interface HandProps {
   onCardPointerDown: (card: CardIndex, event: ReactPointerEvent) => void;
 }
 
-const ACTION_USE_LABELS: Record<ActionKind, string> = {
+const ACTION_USE_LABELS: Record<Exclude<ActionKind, ActionKind.Wait>, string> = {
   [ActionKind.Move]: CARD_USE_LABELS[CardUse.Move],
   [ActionKind.Block]: CARD_USE_LABELS[CardUse.Block],
   [ActionKind.Primary]: CARD_USE_LABELS[CardUse.Primary],
@@ -302,11 +308,11 @@ function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onC
       {hero.hand.map((cardIndex, position) => {
         const card = deck[cardIndex]!;
         const offset = position - middle;
-        const queuedAt = queue.findIndex((action) => action.card === cardIndex);
+        const queuedAt = queue.findIndex((action) => actionUsesCard(action, cardIndex));
         const isPitched = pitched.includes(cardIndex);
         let use = "";
         const queued = queue[queuedAt];
-        if (queued) {
+        if (queued && queued.kind !== ActionKind.Wait) {
           const overdriven = queued.kind === ActionKind.Primary && queued.overdrive;
           use = `${overdriven ? "Overdrive" : ACTION_USE_LABELS[queued.kind]} · #${queuedAt + 1}`;
         } else if (isPitched) use = CARD_USE_LABELS[CardUse.Pitch];
@@ -714,7 +720,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   };
   function startCardPress(card: CardIndex, event: ReactPointerEvent) {
     if (playing || gesture.current || (event.pointerType === "mouse" && event.button !== 0)) return;
-    if (queue.some((action) => action.card === card) || pitched.includes(card)) return;
+    if (queue.some((action) => actionUsesCard(action, card)) || pitched.includes(card)) return;
     gesture.current = { card, pointerId: event.pointerId, start: { x: event.clientX, y: event.clientY }, active: false };
     window.addEventListener("pointermove", onDragMove);
     window.addEventListener("pointerup", onDragEnd);
@@ -728,8 +734,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     setArmed(undefined);
     setAiming(undefined);
     setPickingSecond(false);
-    if (queue.some((action) => action.card === card) || pitched.includes(card)) {
-      setQueue(queue.filter((action) => action.card !== card));
+    if (queue.some((action) => actionUsesCard(action, card)) || pitched.includes(card)) {
+      setQueue(queue.filter((action) => !actionUsesCard(action, card)));
       setPitched(pitched.filter((pitchedCard) => pitchedCard !== card));
       setChoosing(undefined);
     } else {
@@ -923,6 +929,12 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         onSelect={changeSelection}
         blockChip={dragLit ? { allowed: dragLit.blockAllowed, active: drag?.probe.drop?.use === CardUse.Block } : undefined}
         blockChipRef={blockChipRef}
+        onWait={() => {
+          setQueue(addWaitAction(queue));
+          setArmed(undefined);
+          setAiming(undefined);
+          setChoosing(undefined);
+        }}
         onRemove={(index) => {
           setQueue(removeQueueAction(queue, index));
           setArmed(undefined);

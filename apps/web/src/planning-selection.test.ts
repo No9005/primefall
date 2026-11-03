@@ -1,6 +1,6 @@
 import { ActionKind, cardInMode, HERO_DECKS, HeroClass, type QueuedAction } from "game-core";
 import { describe, expect, it } from "vitest";
-import { cardFace, CardUse, cardUseReasons, modeChoiceFaces, primaryAction, queueSlotCode, removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, targetHint } from "./planning-selection";
+import { actionUsesCard, addWaitAction, cardFace, CardUse, cardUseReasons, modeChoiceFaces, primaryAction, queueSlotCode, removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, targetHint } from "./planning-selection";
 
 describe("rangeDamageLabel", () => {
   const longShotOverdrive = cardInMode(HERO_DECKS[HeroClass.Assassin][4]!, true);
@@ -190,5 +190,20 @@ describe("Queue window", () => {
     expect(afterRemoval).toEqual(queue);
     expect(energyReadout(HeroClass.Bruiser, afterRemoval, pitched)).toEqual(energyReadout(HeroClass.Bruiser, queue, pitched));
     expect(removeQueueAction(queue, 0)).toEqual([queue[1]]);
+  });
+
+  it("adds a Wait to the first free slot, spends no card or Energy, and can remove it again", () => {
+    const withWait = addWaitAction(queue);
+    expect(withWait).toEqual([...queue, { kind: ActionKind.Wait }]);
+    expect(queueSlotCode(HeroClass.Bruiser, withWait[2]!)).toBe("Wait");
+    expect(actionUsesCard(withWait[2]!, 0)).toBe(false);
+    expect(energyReadout(HeroClass.Bruiser, withWait, [5])).toEqual(energyReadout(HeroClass.Bruiser, queue, [5]));
+    expect(removeQueueAction(withWait, 2)).toEqual(queue);
+  });
+
+  it("adds no Wait to a full Queue", () => {
+    const full = addWaitAction(addWaitAction(queue));
+    expect(full).toHaveLength(4);
+    expect(addWaitAction(full)).toBe(full);
   });
 });
