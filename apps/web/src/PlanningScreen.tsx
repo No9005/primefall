@@ -37,6 +37,7 @@ import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths"
 import { Board } from "./Board";
 import { BlockChip, CardFace, EnergyOrb, ModeFaceCard } from "./game-parts";
 import { drawShots, type ShotDrawing } from "./shot-lines";
+import { plannedTargetLines, replayTargetLines, type TargetLine } from "./target-lines";
 import { cardAtX, FAN_WIDTH, fanSpacing } from "./hand-fan";
 import { applyDrop, type BoardPick, type DropPlaces, type DropProbe, type DropUse, type Point, probeDrop, type Rect } from "./card-drag";
 import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
@@ -86,6 +87,8 @@ interface PlaybackState {
   /** Heroes hit in the frame being shown. */
   hit: string[];
   log: string[];
+  /** The target lines of the actions resolved in the frame being shown. */
+  lines: TargetLine[];
 }
 
 /** Top left: the Queue window of the selected Hero, with the other Heroes of the Squad as compact chips below it. */
@@ -461,6 +464,14 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   const lastMove = queue.filter((action) => action.kind === ActionKind.Move).at(-1);
   const planningFrom = lastMove?.kind === ActionKind.Move ? lastMove.destination : selected.position;
   const knownGrid = useMemo(() => view.destroyedCover.reduce(destroyCover, REACTOR_DECK), [view.destroyedCover]);
+  // Who targets whom: the queued actions of the Squad while planning, the actions of the current Tick in the replay.
+  const targetLines = useMemo(
+    () =>
+      playback
+        ? playback.lines
+        : plannedTargetLines(knownGrid, view.heroes, view.enemies, squadPlans).map((line) => ({ ...line, faint: line.heroId !== selected.id })),
+    [playback, knownGrid, view.heroes, view.enemies, squadPlans, selected.id],
+  );
   const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, pickingSecond);
   // A card with an Overdrive can be aimed at what either of its modes targets; the face chosen afterwards must fit.
   const aimedModes = aiming === undefined || aimedCard === undefined ? [] : pickingSecond || !aimedCard.overdrive ? [aimedCard] : [aimedCard, cardInMode(aimedCard, true)];
@@ -814,13 +825,16 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       throw error;
     }
     const positions: Record<string, GridPosition> = {};
+    const startPositions: Record<string, GridPosition> = Object.fromEntries(
+      [...view.heroes, ...view.enemies].flatMap((unit) => ("position" in unit ? [[unit.id, unit.position]] : [])),
+    );
     const shields: Record<string, number> = {};
     const deckDamage: Record<string, number> = {};
     const exhausted: string[] = [];
     const lines: string[] = [];
     const tickCount = tickCountOf(result.events);
     setLog([]);
-    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, exhausted, hit: [], log: lines });
+    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, exhausted, hit: [], log: lines, lines: [] });
     for (const frame of buildPlaybackFrames(result.events)) {
       Object.assign(positions, frame.moves);
       for (const [heroId, amount] of Object.entries(frame.shields)) shields[heroId] = (shields[heroId] ?? 0) + amount;
@@ -839,6 +853,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         exhausted: [...exhausted],
         hit: frame.hits.map((hit) => hit.targetId),
         log: [...lines],
+        lines: replayTargetLines(frame.events, view.heroes, view.enemies, (heroId) => positions[heroId] ?? startPositions[heroId]),
       });
       await new Promise((resolve) => setTimeout(resolve, STEP_MS));
       if (unmounted.current) return;
@@ -871,6 +886,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         areaTiles={dragLit?.area ?? NO_TILES}
         dropTile={drag?.probe.drop?.tile}
         shotLines={shotLines}
+        targetLines={targetLines}
         paths={paths}
         collisionTiles={collisionTiles}
         pickRef={pickBoard}

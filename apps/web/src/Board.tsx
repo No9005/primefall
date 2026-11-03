@@ -37,6 +37,7 @@ import {
 import { buildTerrain, depthOf, type Face, floorOutline, footOffset, litTiles, turnView, VIEW_ANGLE, VIEW_STEP } from "./terrain";
 import { chestOf, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
 import { PathOwner, type PlannedPath } from "./ally-paths";
+import { LineKind, LineTone, type TargetLine } from "./target-lines";
 import { SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
 
 /** Strokes `segment` as a run of dashes: long for a clear shot, dots for the stopped part, grey after a block. */
@@ -95,6 +96,42 @@ function collisionCross(tile: GridPosition, angle: number): Graphics {
     .moveTo(x + size, y - size)
     .lineTo(x - size, y + size)
     .stroke({ width: 6, color: COLLISION_COLOR, cap: "round" });
+}
+
+/** A target line: the shot drawing for an Attack, an arrow to an allied Hero, a ring on a tile; the Tick sits in the middle. */
+function targetLineGraphics(line: TargetLine, angle: number): Container {
+  const container = new Container();
+  const color = line.tone === LineTone.Clear ? SHOT_STYLE.clear : SHOT_STYLE.stopped;
+  const from = chestOf(line.from, angle);
+  const to = chestOf(line.to, angle);
+  if (line.kind === LineKind.Attack && line.shot) {
+    // An enemy's shot is always red, whatever the segment says.
+    const shot = line.own ? line.shot : { ...line.shot, segments: line.shot.segments.map((segment) => ({ ...segment, style: SegmentStyle.Stopped })) };
+    container.addChild(shotGraphics(shot, angle));
+  } else {
+    const graphics = new Graphics().moveTo(from.x, from.y).lineTo(to.x, to.y).stroke({ width: SHOT_STYLE.width, color, cap: "round" });
+    if (line.kind === LineKind.Ally) {
+      const direction = Math.atan2(to.y - from.y, to.x - from.x);
+      for (const side of [-1, 1]) {
+        graphics.moveTo(to.x, to.y).lineTo(to.x - 18 * Math.cos(direction + side * 0.5), to.y - 18 * Math.sin(direction + side * 0.5));
+      }
+      graphics.stroke({ width: SHOT_STYLE.width, color, cap: "round" });
+    }
+    container.addChild(graphics);
+  }
+  if (line.kind !== LineKind.Ally && (line.tone === LineTone.Clear || line.kind === LineKind.Tile)) {
+    const { x, y } = gridToWorld(line.to, angle);
+    const ring = new Graphics().poly(floorOutline(angle).map((value, index) => value + (index % 2 === 0 ? x : y))).stroke({ width: 4, color });
+    container.addChild(ring);
+  }
+  const badge = new Container();
+  badge.position.set((from.x + to.x) / 2, (from.y + to.y) / 2);
+  const number = new Text({ text: String(line.tick), style: { fill: 0x12161c, fontSize: 14, fontWeight: "700" } });
+  number.anchor.set(0.5);
+  badge.addChild(new Graphics().circle(0, 0, 10).fill(color), number);
+  container.addChild(badge);
+  container.alpha = line.faint ? 0.45 : 1;
+  return container;
 }
 
 function shotGraphics(drawing: ShotDrawing, angle: number): Graphics {
@@ -198,10 +235,31 @@ interface BoardProps {
   shotLines: readonly ShotDrawing[];
   /** Planning only: the queued Moves of the player's Hero (teal) and the AI allies (yellow). */
   paths: readonly PlannedPath[];
+  /** Who targets whom: queued actions while planning, the actions of the current Tick during the replay. */
+  targetLines: readonly TargetLine[];
   /** Planning only: destinations of Moves that will fail through another Hero of the Squad. */
   collisionTiles: readonly GridPosition[];
   /** Filled with a function that tells what the board has under a viewport point, for dropping a dragged card. */
   pickRef: MutableRefObject<((point: Point) => BoardPick) | undefined>;
+}
+
+const LINES_KEY = "primefall.targetLines";
+
+/** Whether the target lines are shown; on unless the player turned them off. Storage may be missing (private mode). */
+function readLinesSetting(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(LINES_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+function writeLinesSetting(on: boolean): void {
+  try {
+    globalThis.localStorage?.setItem(LINES_KEY, on ? "on" : "off");
+  } catch {
+    // The setting is then kept for this session only.
+  }
 }
 
 /** Length of the camera ease when a Move is armed, placed or cancelled. */
@@ -227,10 +285,12 @@ export function Board({
   areaTiles,
   dropTile,
   shotLines,
+  targetLines,
   paths,
   collisionTiles,
   pickRef,
 }: BoardProps) {
+  const [showLines, setShowLines] = useState(readLinesSetting);
   const host = useRef<HTMLDivElement>(null);
   const [tokens, setTokens] = useState<Container>();
   const [overlay, setOverlay] = useState<Container>();
@@ -317,6 +377,11 @@ export function Board({
       overlay.addChild(label);
       created.push(label);
     });
+    for (const targetLine of showLines ? targetLines : []) {
+      const drawn = targetLineGraphics(targetLine, angle);
+      overlay.addChild(drawn);
+      created.push(drawn);
+    }
     for (const shot of shotLines) {
       const line = shotGraphics(shot, angle);
       overlay.addChild(line);
@@ -333,7 +398,7 @@ export function Board({
       created.push(cross);
     }
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [overlay, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, shotLines, paths, collisionTiles]);
+  }, [overlay, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, shotLines, targetLines, showLines, paths, collisionTiles]);
 
   useEffect(() => {
     if (!tokens) return;
@@ -684,6 +749,19 @@ export function Board({
         onClick={() => cameraControl.current?.turn(1)}
       >
         ⟳
+      </button>
+      <button
+        type="button"
+        className="board-lines"
+        aria-label="Target lines"
+        aria-pressed={showLines}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={() => {
+          writeLinesSetting(!showLines);
+          setShowLines(!showLines);
+        }}
+      >
+        Lines
       </button>
       <button
         type="button"
