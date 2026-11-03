@@ -93,11 +93,10 @@ function iconGraphics(kind: IconKind, x: number, y: number, scale: number): Grap
  * The marks above a Hero: a row of rubies (filled for held Shield, hollow and dashed for a queued Block, with its Tick)
  * and the icons of planned Waits and self-played cards. Drawn in the Hero's own Graphics, without filters.
  */
-export function marksFigure(marks: HeroMarks, scale: number, faint: boolean): Container {
-  const { ruby, icon, faint: faintAlpha } = HERO_STYLE.marks;
+export function marksFigure(marks: HeroMarks, scale: number): Container {
+  const { ruby, icon } = HERO_STYLE.marks;
   const line = { width: worldLineWidth(HERO_STYLE.outline.width, scale), color: HERO_STYLE.outline.color, join: "round" as const };
   const container = new Container();
-  container.alpha = faint ? faintAlpha : 1;
   const step = ruby.size * 2 + ruby.gap;
   const left = (-(marks.rubies - 1) * step) / 2;
   const rubies = new Graphics();

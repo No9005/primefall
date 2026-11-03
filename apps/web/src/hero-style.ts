@@ -23,9 +23,8 @@ export const HERO_STYLE = {
     icon: { fill: 0xe8eef5, size: 9, rowY: -118, gap: 6 },
     /** The grey badge of a planned Wait ("n II"). */
     waitBadge: { fill: 0x8a99a8, text: 0x12161c, size: 12 },
-    tickText:{ fill: 0xe8eef5, size: 12 },
+    tickText: { fill: 0xe8eef5, size: 12 },
     /** Alpha of the marks of an allied Hero that is not the selected one. */
-    faint: 0.45,
   },
   /** World pixels; the feet are at (0, 0). */
   shape: { bodyWidth: 30, bodyHeight: 50, bodyLift: 4, headRadius: 12, headGap: 2 },

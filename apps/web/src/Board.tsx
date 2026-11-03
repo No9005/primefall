@@ -40,7 +40,7 @@ import { buildTerrain, depthOf, type Face, floorOutline, footOffset, lineScale, 
 import { heroFigure, marksFigure, shieldBubble } from "./hero-figure";
 import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
-import { chestOf, dashRuns, SegmentStyle,type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
+import { chestOf, dashRuns, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
 import { finalTile, PathOwner, type PlannedPath } from "./ally-paths";
 import { LineKind, LineTone, type TargetLine } from "./target-lines";
 import { PLAN_STYLE, SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
@@ -508,7 +508,7 @@ export function Board({
       token.addChild(figure);
       const heroMarks = hero.ghost ? undefined : marks[hero.id];
       if (heroMarks && (heroMarks.rubies > 0 || heroMarks.icons.length > 0)) {
-        token.addChild(marksFigure(heroMarks, strokeScale, !enemy && hero.id !== selectedId));
+        token.addChild(marksFigure(heroMarks, strokeScale));
       }
       if (heroMarks?.bubble) {
         const bubble = shieldBubble(strokeScale);

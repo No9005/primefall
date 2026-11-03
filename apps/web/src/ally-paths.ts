@@ -38,7 +38,7 @@ export function plannedPaths(heroes: readonly HeroView[], plans: readonly SquadP
       );
       if (!hero || hero.exhausted || stops.length === 0) return [];
       const owner = heroId === playerHeroId ? PathOwner.Player : PathOwner.Ally;
-      return [{ heroId, owner, heroClass: hero.heroClass,from: hero.position, stops }];
+      return [{ heroId, owner, heroClass: hero.heroClass, from: hero.position, stops }];
     }),
   );
 }
