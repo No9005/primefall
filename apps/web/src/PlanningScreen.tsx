@@ -34,6 +34,7 @@ import {
 } from "game-core";
 import { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { Board } from "./Board";
+import { drawShots, type ShotDrawing } from "./shot-lines";
 import { applyDrop, type BoardPick, type DropPlaces, type DropProbe, type DropUse, type Point, probeDrop, type Rect } from "./card-drag";
 import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
 import { blockAction, CARD_USE_LABELS, cardFace, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, type ModeFace, modeChoiceFaces, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
@@ -47,6 +48,7 @@ const DRAG_START_DISTANCE = 8;
 const PLAY_HERE_RADIUS = 2;
 
 const NO_TILES: readonly GridPosition[] = [];
+const NO_SHOTS: readonly ShotDrawing[] = [];
 const NO_LABELS: readonly { position: GridPosition; text: string }[] = [];
 
 /** Every tile of the Reactor Deck within `radius` tiles of `center`. */
@@ -563,6 +565,18 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     };
   }, [draggedCard, selected, queue, pitched, planningFrom, view.enemies, view.heroes, view.placedCover, knownGrid]);
 
+  // The line of fire: to the enemy under a dragged Attack card, or to every enemy the tapped Attack card can be aimed at.
+  const shotCard = draggedCard !== undefined ? HERO_DECKS[selected.heroClass][draggedCard] : aimedCard;
+  const droppedOn = drag?.probe.drop?.use === CardUse.Primary ? drag.probe.drop.heroId : undefined;
+  const shotTargets = draggedCard !== undefined ? (droppedOn === undefined ? [] : [droppedOn]) : targetableIds;
+  const shotLines = useMemo(
+    () =>
+      shotCard?.type === CardType.Attack && shotCard.range !== undefined && !playing
+        ? drawShots(knownGrid, planningFrom, shotCard.range, view.enemies, shotTargets)
+        : NO_SHOTS,
+    [shotCard, playing, knownGrid, planningFrom, view.enemies, shotTargets],
+  );
+
   function probeAt(card: CardIndex, point: Point): DropProbe {
     const definition = HERO_DECKS[selected.heroClass][card]!;
     const rectOf = (element: HTMLElement | null): Rect => element?.getBoundingClientRect() ?? { left: 0, top: 0, right: 0, bottom: 0 };
@@ -816,6 +830,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         highlights={dragLit?.tiles ?? highlights}
         zoneLabels={dragLit?.labels ?? NO_LABELS}
         areaTiles={dragLit?.area ?? NO_TILES}
+        shotLines={shotLines}
         pickRef={pickBoard}
         markers={markers}
         onTileTap={tapTile}
