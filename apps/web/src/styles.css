@@ -171,6 +171,26 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .hand li:has(.card:active) { transform: translateY(calc(var(--offset) * var(--offset) * 3px - 10px)) rotate(calc(var(--offset) * 7deg)); }
 .card { position: relative; display: block; width: var(--card-w, 108px); height: 134px; padding: 6px 7px; box-sizing: border-box; background: var(--graphite); border: 1.5px solid var(--steel); border-radius: var(--radius-m); text-align: left; cursor: pointer; }
 .card.used { opacity: 0.55; }
+/* The draw animation (issue 202): a card flies from the Deck pile along an arc and turns face up in the middle. */
+.hand li.arriving { animation: draw-fly 450ms ease-out var(--draw-delay) backwards; }
+.hand li.arriving .card { animation: draw-flip 450ms linear var(--draw-delay) backwards; }
+.hand.drawing .card:disabled { opacity: 1; }
+.card-back { position: absolute; inset: 0; border-radius: inherit; background: repeating-linear-gradient(45deg, var(--panel) 0 6px, var(--graphite) 6px 12px); border: 1.5px solid var(--teal); animation: draw-back 450ms steps(1, end) var(--draw-delay) forwards; }
+@keyframes draw-fly {
+  0% { transform: translate(var(--from-x), var(--from-y)) scale(0.6) rotate(0deg); }
+  50% { transform: translate(calc(var(--from-x) / 2), -46px) scale(0.85) rotate(0deg); }
+}
+@keyframes draw-flip {
+  0% { transform: perspective(500px) rotateY(0deg); }
+  50% { transform: perspective(500px) rotateY(90deg); }
+  50.01% { transform: perspective(500px) rotateY(-90deg); }
+  100% { transform: perspective(500px) rotateY(0deg); }
+}
+@keyframes draw-back { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .hand li.arriving, .hand li.arriving .card, .card-back { animation: none; }
+  .card-back { display: none; }
+}
 .hand .card-name { display: block; padding-right: 20px; font-weight: 700; font-size: 15px; line-height: 1; overflow-wrap: normal; word-break: normal; hyphens: none; }
 .hand .card-type { display: block; margin-top: 3px; font-size: 10px; letter-spacing: 0.08em; font-weight: 700; text-transform: uppercase; }
 .card.attack .card-type { color: var(--orange); }

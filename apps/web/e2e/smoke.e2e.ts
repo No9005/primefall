@@ -58,6 +58,8 @@ test("start a match, play a Move card onto a tile, Commit", async ({ page }) => 
   await expect(page.getByTestId("discard-count")).toHaveText(/^Discard \d+$/);
   await expect(page.getByTestId("exile-count")).toHaveText(/^Exile \d+$/);
   // The hand is a fan of overlapping cards; the last one is fully visible.
+  // The drawn cards fly in first; the Hand is usable once the last one has landed.
+  await expect(hand.getByRole("button").last()).toBeEnabled();
   await hand.getByRole("button").last().click();
   await page.getByRole("group", { name: "Use card as" }).getByRole("button", { name: /^Move/ }).click();
   // Arming a Move zooms the camera on the Hero; wait for that, then tap the lit tiles right of the Hero.
