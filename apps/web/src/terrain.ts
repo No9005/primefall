@@ -1,5 +1,5 @@
 import { type Grid, type GridPosition, TileKind } from "game-core";
-import { PIECE_SHAPE, type PieceStyle, TERRAIN_STYLE } from "./terrain-style";
+import { OUTLINE, PIECE_SHAPE, type PieceStyle, TERRAIN_STYLE } from "./terrain-style";
 
 // The terrain as shapes: the grid and a view angle in, drawing primitives out (floor polygons, and for each
 // standing piece its top and two visible side faces). Pure; the Pixi code only fills the polygons.
@@ -102,6 +102,18 @@ export interface Face {
   points: number[];
   fill: number;
   edge: number;
+  /** Width of the outline in px on screen; see `worldLineWidth`. */
+  edgeWidth: number;
+}
+
+/** The width in world pixels that draws as `screenWidth` px at a camera scale: lines keep their width when zooming. */
+export function worldLineWidth(screenWidth: number, scale: number): number {
+  return screenWidth / scale;
+}
+
+/** A camera scale rounded to steps of 0.1, so the terrain is redrawn per step of a zoom, not per frame. */
+export function lineScale(scale: number): number {
+  return Math.max(0.1, Math.round(scale * 10) / 10);
 }
 
 export interface TerrainTile {
@@ -249,9 +261,10 @@ function boxFaces(proj: Projection, box: Box, height: number, style: PieceStyle)
     { role: FaceRole.Left, fill: style.left },
     { role: FaceRole.Right, fill: style.right },
   ];
-  const faces = sides.map((side, i) => ({ ...roles[i]!, points: side.points, edge: style.edge }));
+  const edgeWidth = OUTLINE.width;
+  const faces = sides.map((side, i) => ({ ...roles[i]!, points: side.points, edge: style.edge, edgeWidth }));
   const top = flat(corners.map(([c, r]) => proj.point(c, r, height)));
-  return [...faces, { role: FaceRole.Top, points: top, fill: style.top, edge: style.edge }];
+  return [...faces, { role: FaceRole.Top, points: top, fill: style.top, edge: style.edge, edgeWidth }];
 }
 
 /** All faces of the piece on a tile, the boxes farthest from the viewer first. */
@@ -280,7 +293,7 @@ export function buildTerrain(grid: Grid, angle: number = VIEW_ANGLE, lit?: Reado
         kind,
         depth: proj.depth(col, row),
         lit: isLit ?? true,
-        floor: { role: FaceRole.Floor, points: diamond(1), ...style },
+        floor: { role: FaceRole.Floor, points: diamond(1), ...style, edgeWidth: TERRAIN_STYLE.gridLineWidth },
       };
       if (kind === TileKind.Spawn) tile.marker = { points: diamond(0.5), color: tile.lit ? TERRAIN_STYLE.spawnMarker : TERRAIN_STYLE.spawnMarkerDark };
       const choice = choosePiece(grid, position);

@@ -1,7 +1,9 @@
 import { parseGrid, REACTOR_DECK, TileKind } from "game-core";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildTerrain, choosePiece, FaceRole, gridToWorld, Join, litTiles, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE } from "./terrain";
-import { PIECE_SHAPE, TERRAIN_STYLE } from "./terrain-style";
+import { buildTerrain, choosePiece, FaceRole, gridToWorld, Join, lineScale, litTiles, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE, worldLineWidth } from "./terrain";
+import { OUTLINE, PIECE_SHAPE, TERRAIN_STYLE } from "./terrain-style";
 
 const flatPoints = (points: number[]) => Array.from({ length: points.length / 2 }, (_, i) => ({ x: points[i * 2]!, y: points[i * 2 + 1]! }));
 
@@ -189,5 +191,38 @@ describe("tile brightness from sight", () => {
 
   it("draws every tile lit when no sight is given", () => {
     expect(buildTerrain(grid).every((t) => t.lit)).toBe(true);
+  });
+});
+
+describe("the look of the terrain (artboard J)", () => {
+  const faces = (rows: string[]) => buildTerrain(parseGrid(rows)).flatMap((tile) => tile.piece ?? []);
+
+  it("outlines Wall and Nest faces dark and Cover faces warning yellow, all at the same width", () => {
+    for (const face of faces(["#"])) expect(face.edge).toBe(OUTLINE.color);
+    for (const face of faces(["O"])) expect(face.edge).toBe(OUTLINE.color);
+    for (const face of [...faces(["F"]), ...faces(["H"])]) expect(face.edge).toBe(TERRAIN_STYLE.fullCover.edge);
+    for (const face of faces(["#F"])) expect(face.edgeWidth).toBe(OUTLINE.width);
+  });
+
+  it("draws the floor with fine grid lines, thinner than the piece outline", () => {
+    const [tile] = buildTerrain(parseGrid(["."]));
+    expect(tile!.floor.edgeWidth).toBe(TERRAIN_STYLE.gridLineWidth);
+    expect(tile!.floor.edgeWidth).toBeLessThan(OUTLINE.width);
+  });
+
+  it("keeps a line the same width on screen when the zoom changes", () => {
+    for (const scale of [0.5, 1, 2, 3.5]) expect(worldLineWidth(OUTLINE.width, scale) * scale).toBeCloseTo(OUTLINE.width);
+  });
+
+  it("redraws per step of zoom, not per frame", () => {
+    expect(lineScale(1.01)).toBe(lineScale(1.04));
+    expect(lineScale(1.04)).not.toBe(lineScale(1.16));
+    expect(lineScale(0)).toBeGreaterThan(0);
+  });
+
+  it("has no colour literal in the terrain and Hero drawing code outside the style files", () => {
+    for (const file of ["terrain.ts", "hero-figure.ts"]) {
+      expect(readFileSync(path.join(__dirname, file), "utf8"), file).not.toMatch(/0x[0-9a-fA-F]{6}|#[0-9a-fA-F]{6}\b/);
+    }
   });
 });

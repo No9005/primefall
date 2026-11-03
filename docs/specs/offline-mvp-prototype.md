@@ -106,11 +106,11 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 ## Implementation Decisions
 
 - Build an offline, client-side 3v3 tactical match prototype in TypeScript.
-- Use the Reactor Deck as the first map: a horizontally oriented, mirror-symmetric 21 by 11 tile grid.
-- Place the 3 by 3 Prime Zone at columns 9–11 and rows 4–6.
+- Use the Reactor Deck as the first map: a horizontally oriented, mirror-symmetric 31 by 17 tile grid (ADR 0016).
+- Place the 3 by 3 Prime Zone at columns 14–16 and rows 7–9.
 - Keep the Prime Zone free of permanent Cover.
-- Provide exactly one Overwatch Nest at column 10, row 1, with Full Cover and a limited sightline into the Prime Zone.
-- Spawn one Squad on the left edge (column 1, rows 4–6) and the other on the right edge (column 19, rows 4–6), without direct Line of Sight into the Prime Zone.
+- Provide exactly one Overwatch Nest at column 15, row 1, with Full Cover and a limited sightline into the Prime Zone.
+- Spawn one Squad on the left edge (column 1, rows 7–9) and the other on the right edge (column 29, rows 7–9), without direct Line of Sight into the Prime Zone.
 - Implement three Hero classes: Bruiser/Vanguard, Controller/Tactician, and Assassin/Striker.
 - Give each Hero a fixed 12-card Deck with no Flex cards.
 - Implement Deck-as-Life: unblocked damage removes cards from the top of the target’s Deck; an empty Deck causes Exhaustion.

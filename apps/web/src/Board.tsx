@@ -34,7 +34,8 @@ import {
   zoomAt,
   zoomOnPoint,
 } from "./board-layout";
-import { buildTerrain, depthOf, type Face, floorOutline, footOffset, litTiles, turnView, VIEW_ANGLE, VIEW_STEP } from "./terrain";
+import { buildTerrain, depthOf, type Face, floorOutline, footOffset, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
+import { heroFigure } from "./hero-figure";
 import { chestOf, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
 import { PathOwner, type PlannedPath } from "./ally-paths";
 import { LineKind, LineTone, type TargetLine } from "./target-lines";
@@ -197,8 +198,9 @@ interface Terrain {
   planning: Container;
 }
 
-function fillFace(graphics: Graphics, { points, fill, edge }: Face): Graphics {
-  return graphics.poly(points).fill(fill).stroke({ width: 1, color: edge, alpha: 0.8 });
+/** Fills a face and outlines it with a line that keeps its width on screen at the camera `scale`. */
+function fillFace(graphics: Graphics, { points, fill, edge, edgeWidth }: Face, scale: number): Graphics {
+  return graphics.poly(points).fill(fill).stroke({ width: worldLineWidth(edgeWidth, scale), color: edge, join: "round" });
 }
 
 interface BoardProps {
@@ -309,6 +311,8 @@ export function Board({
   enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
   const [pressed, setPressed] = useState<GridPosition>();
   const [zoomed, setZoomed] = useState(false);
+  // The camera scale in steps; outlines are drawn in world pixels of `1 / strokeScale` so they keep their width on screen.
+  const [strokeScale, setStrokeScale] = useState(1);
   // The angle the board is drawn at right now; it changes every frame of a turn.
   const [angle, setAngle] = useState(VIEW_ANGLE);
   const angleRef = useRef(VIEW_ANGLE);
@@ -415,13 +419,11 @@ export function Board({
       const cannotHit = shotLines.some((shot) => shot.targetId === hero.id && !shot.ringed);
       if (targetable && !cannotHit) token.addChild(ring(enemy ? 0xe5484d : 0x5ad17a));
       const pose = hero.exhausted ? "exhausted" : hitIds.includes(hero.id) ? "hit" : "idle";
-      const sprite = new Sprite(Assets.get(`heroes.${hero.heroClass}.${pose}`));
-      sprite.anchor.set(0.5, 1);
-      // Enemies carry a red tint so the two Squads are told apart.
-      if (enemy) sprite.tint = 0xffb3b3;
-      if (hero.ghost) sprite.alpha = 0.35;
-      if (hero.hidden) sprite.alpha = 0.55;
-      token.addChild(sprite);
+      // The enemy Squad is told apart by the red ring under the figure.
+      const figure = heroFigure(hero.heroClass, enemy, pose, strokeScale);
+      if (hero.ghost) figure.alpha = 0.35;
+      if (hero.hidden) figure.alpha = 0.55;
+      token.addChild(figure);
       if (hero.marked && !hero.exhausted && !hero.ghost) {
         // A red downward marker above the head.
         const mark = new Graphics().poly([-12, -8, 12, -8, 0, 12]).fill(0xe5484d).stroke({ width: 2, color: 0x12161c });
@@ -439,7 +441,12 @@ export function Board({
     for (const hero of heroes) {
       // A soft light on the floor around each own Hero.
       const { x, y } = gridToWorld(hero.position, angle);
-      const light = new Graphics().ellipse(0, 0, TILE_WIDTH * 0.9, TILE_HEIGHT * 0.9).fill(TERRAIN_STYLE.heroLight);
+      const { color, alpha, rings } = TERRAIN_STYLE.heroLight;
+      const light = new Graphics();
+      for (let ring = 1; ring <= rings; ring++) {
+        const reach = ring / rings;
+        light.ellipse(0, 0, TILE_WIDTH * 0.9 * reach, TILE_HEIGHT * 0.9 * reach).fill({ color, alpha: alpha / rings });
+      }
       light.position.set(x, y);
       light.zIndex = -1;
       tokens.addChild(light);
@@ -448,7 +455,7 @@ export function Board({
     heroes.forEach((hero) => addToken(hero, false));
     enemies.forEach((hero) => addToken(hero, true));
     return () => created.forEach((token) => token.destroy({ children: true }));
-  }, [tokens, angle, heroes, enemies, selectedId, targetableIds, hitIds, shotLines]);
+  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, shotLines]);
 
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
   useEffect(() => {
@@ -466,11 +473,11 @@ export function Board({
       heroes.map((hero) => hero.position),
     );
     for (const tile of buildTerrain(grid, angle, lit)) {
-      fillFace(ground, tile.floor);
+      fillFace(ground, tile.floor, strokeScale);
       if (tile.marker) ground.poly(tile.marker.points).stroke({ width: 2, color: tile.marker.color, alpha: 0.9 });
       if (!tile.piece) continue;
       const piece = new Graphics();
-      for (const face of tile.piece) fillFace(piece, face);
+      for (const face of tile.piece) fillFace(piece, face, strokeScale);
       piece.zIndex = tile.depth;
       if (!tile.lit) piece.alpha = TERRAIN_STYLE.fogPieceAlpha;
       objects.addChild(piece);
@@ -511,7 +518,7 @@ export function Board({
       }
     }
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [terrain, angle, destroyedCover, placedCover, revealedAreas, visibleTiles, heroes]);
+  }, [terrain, angle, strokeScale, destroyedCover, placedCover, revealedAreas, visibleTiles, heroes]);
 
   useEffect(() => {
     const element = host.current;
@@ -550,6 +557,7 @@ export function Board({
         camera = next;
         world.scale.set(camera.scale);
         world.position.set(camera.x, camera.y);
+        setStrokeScale(lineScale(camera.scale));
         setZoomed(isZoomed(camera, size()));
       };
       // Eases to a camera in FRAME_MS; jumps when the player prefers reduced motion.
