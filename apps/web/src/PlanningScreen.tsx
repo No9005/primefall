@@ -32,7 +32,7 @@ import {
   validatePlan,
   Visibility,
 } from "game-core";
-import { type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
 import { Board } from "./Board";
 import { CardFace, EnergyPill, PulledCard } from "./game-parts";
@@ -43,6 +43,8 @@ import { heroMarks } from "./shield-marks";
 import { plannedTargetLines, replayTargetLines, type TargetLine } from "./target-lines";
 import { cardAtX, FAN_WIDTH, fanSpacing } from "./hand-fan";
 import { drawSchedule, newCards, shownDeckCount } from "./hand-draw";
+import { addBurn, type BurnBatch, NO_BURN_PENDING, settleBurn, shownBurnCounts } from "./deck-burn";
+import { DeckBurn } from "./DeckBurn";
 import type { BoardPick, Point } from "./card-drag";
 import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
 import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
@@ -252,7 +254,7 @@ function EnemyPanel({
 }
 
 /** The piles of the selected Hero: the Deck as a stack with its count on top, Discard and Exile as a tiny grey row. */
-function PilePanel({ deck, discard, exile, opacity }: { deck: number; discard: number; exile: number; opacity: number }) {
+function PilePanel({ deck, discard, exile, opacity, burn }: { deck: number; discard: number; exile: number; opacity: number; burn?: ReactNode }) {
   return (
     <div className="piles" style={{ opacity }}>
       <div className="pile-minor">
@@ -261,6 +263,7 @@ function PilePanel({ deck, discard, exile, opacity }: { deck: number; discard: n
       </div>
       <div className="deck-pile" data-testid="deck-pile" aria-label={`Deck: ${deck} cards`}>
         <span className="deck-count">{deck}</span>
+        {burn}
       </div>
     </div>
   );
@@ -421,6 +424,10 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   /** The aimed card is used in its Overdrive mode (the Overdrive face was chosen). */
   const [overdriveAim, setOverdriveAim] = useState(false);
   const [playback, setPlayback] = useState<PlaybackState>();
+  // The Deck Damage animation (issue 203): hits on the player's Heroes wait in a queue and burn one batch at a time.
+  const [burnQueue, setBurnQueue] = useState<readonly BurnBatch[]>([]);
+  const [burnPending, setBurnPending] = useState(NO_BURN_PENDING);
+  const burnId = useRef(0);
   const unmounted = useRef(false);
   useEffect(() => {
     unmounted.current = false;
@@ -456,6 +463,14 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       window.removeEventListener("pointerdown", skip, true);
     };
   }, [draw.view, draw.done, view]);
+
+  const burning = burnQueue[0];
+  const burnCounts = shownBurnCounts(
+    selected.deckCount - (playback?.deckDamage[selected.id] ?? 0),
+    selected.exileCount + (playback?.deckDamage[selected.id] ?? 0),
+    burnPending,
+    selected.id,
+  );
 
   // The AI allies plan from the same view, so their plan is known before Commit and does not change with ours.
   const [allyPlan, setAllyPlan] = useState<SquadPlan>();
@@ -835,6 +850,10 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       for (const { targetId, damage, absorbed } of frame.hits) {
         shields[targetId] = Math.max(0, (shields[targetId] ?? 0) - absorbed);
         deckDamage[targetId] = (deckDamage[targetId] ?? 0) + damage;
+        if (damage > 0 && view.heroes.some((hero) => hero.id === targetId)) {
+          setBurnPending((pending) => addBurn(pending, targetId, damage));
+          setBurnQueue((queued) => [...queued, { id: burnId.current++, heroId: targetId, cards: damage }]);
+        }
       }
       exhausted.push(...frame.exhausted);
       lines.push(...frame.events.flatMap((event) => describeEvent(event, nameOf) ?? []));
@@ -853,6 +872,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       if (unmounted.current) return;
     }
     setLog(lines);
+    setBurnQueue([]);
+    setBurnPending(NO_BURN_PENDING);
     setPlayback(undefined);
     setQueue([]);
     setPitched([]);
@@ -957,10 +978,23 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       )}
       <div className={`hud hand-bar${picking ? " collapsed" : ""}`}>
         <PilePanel
-          deck={shownDeckCount(selected.deckCount - (playback?.deckDamage[selected.id] ?? 0), drawing ? draw.cards.length : 0, draw.departed)}
+          deck={shownDeckCount(burnCounts.deck, drawing ? draw.cards.length : 0, draw.departed)}
           discard={selected.discardCount}
-          exile={selected.exileCount}
+          exile={burnCounts.exile}
           opacity={focus.deck}
+          burn={
+            burning && (
+              <DeckBurn
+                key={burning.id}
+                cards={burning.cards}
+                visible={burning.heroId === selected.id}
+                reducedMotion={window.matchMedia("(prefers-reduced-motion: reduce)").matches}
+                onLifted={() => setBurnPending((pending) => settleBurn(pending, burning.heroId, "lifted"))}
+                onBurned={() => setBurnPending((pending) => settleBurn(pending, burning.heroId, "burned"))}
+                onDone={() => setBurnQueue((queued) => queued.filter((batch) => batch.id !== burning.id))}
+              />
+            )
+          }
         />
         <div className="hand-column">
           <EnergyPill

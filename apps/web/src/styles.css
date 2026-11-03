@@ -163,6 +163,26 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .pile-minor { display: flex; gap: 8px; font: 500 10px/1 var(--font-number); color: var(--muted); }
 .deck-pile { position: relative; width: 60px; height: 84px; box-sizing: border-box; background: var(--panel); border: 2px solid var(--teal); border-radius: var(--radius-s); box-shadow: 3px 3px 0 0 var(--graphite), 3px 3px 0 2px var(--teal); margin-right: 3px; margin-bottom: 3px; display: flex; align-items: center; justify-content: center; }
 .hand-bar.collapsed .piles { display: none; }
+/* The Deck Damage animation (issue 203): the top card lifts off the pile, burns and dissolves; a red -1 floats up. */
+.deck-burn, .burn-card { position: absolute; inset: 0; pointer-events: none; }
+.burn-card { border-radius: var(--radius-s); background: var(--panel) repeating-linear-gradient(45deg, var(--panel) 0 6px, var(--graphite) 6px 12px); border: 2px solid var(--teal); box-sizing: border-box; opacity: 0; animation: burn-card 900ms ease-in forwards; }
+.burn-flame { position: absolute; left: 0; right: 0; bottom: 0; height: 70%; border-radius: inherit; background: linear-gradient(to top, var(--orange), transparent); opacity: 0; animation: burn-flame 900ms ease-in forwards; }
+.burn-ember { position: absolute; bottom: 20%; width: 4px; height: 4px; border-radius: 50%; background: var(--orange); opacity: 0; animation: burn-ember 500ms ease-out forwards; }
+.burn-minus { position: absolute; left: 50%; top: 0; font: 500 20px/1 var(--font-number); color: var(--red); opacity: 0; animation: burn-minus 900ms ease-out forwards; }
+@keyframes burn-card {
+  0% { opacity: 1; transform: none; filter: none; }
+  22% { opacity: 1; transform: translateY(-20px) scale(1.1); filter: none; }
+  60% { opacity: 1; transform: translateY(-20px) scale(1.1); filter: brightness(0.35); }
+  100% { opacity: 0; transform: translateY(-24px) scale(1.1); filter: brightness(0.2) blur(3px); }
+}
+@keyframes burn-flame { 0%, 22% { opacity: 0; transform: translateY(-20px) scaleY(0.3); } 50% { opacity: 1; transform: translateY(-20px) scaleY(1); } 100% { opacity: 0; transform: translateY(-24px) scaleY(1.2); } }
+@keyframes burn-ember { 0% { opacity: 1; transform: translateY(-20px); } 100% { opacity: 0; transform: translateY(-50px); } }
+@keyframes burn-minus { 0% { opacity: 1; transform: translate(-50%, -4px); } 100% { opacity: 0; transform: translate(-50%, -44px); } }
+@media (prefers-reduced-motion: reduce) {
+  .burn-card.calm { animation: burn-fade 400ms ease-out forwards; }
+  .burn-minus { animation: burn-fade 900ms ease-out forwards; }
+  @keyframes burn-fade { 0% { opacity: 1; } 100% { opacity: 0; } }
+}
 .deck-count { font: 500 24px/1 var(--font-number); color: var(--text); }
 .hand { margin: 0; padding: 12px 0 0; list-style: none; display: flex; height: 146px; position: relative; }
 /* --step and --card-w come from fanSpacing (hand-fan.ts). */
