@@ -12,6 +12,7 @@ const RIGHT_BRUISER = "right-bruiser";
 const SLAM_SHOT = 0;
 
 const hero = (match: MatchState, heroId: string) => match.heroes.find((candidate) => candidate.id === heroId)!;
+const sorted = (cards: number[]) => [...cards].sort((a, b) => a - b);
 const attack = (target: string): QueuedAction => ({ kind: ActionKind.Primary, card: SLAM_SHOT, target });
 const planOf = (squad: SquadId, heroId: string, queue: QueuedAction[], pitched: number[] = []): SquadPlan => ({
   squad,
@@ -118,6 +119,58 @@ describe("Range and Line of Sight", () => {
   });
 });
 
+describe("Deck Damage and the Discard", () => {
+  it("exiles exactly the points that Shield does not absorb", () => {
+    const match = duel();
+    hero(match, RIGHT_BRUISER).shield = 1;
+    const deck = [...hero(match, RIGHT_BRUISER).deck];
+    const { match: after } = resolveRound(match, [leftAttacks()]);
+    expect(hero(after, RIGHT_BRUISER).exile).toEqual(deck.slice(-1));
+    expect(hero(after, RIGHT_BRUISER).deck).toEqual(deck.slice(0, -1));
+  });
+
+  it("shuffles the Discard into an emptied Deck and goes on exiling: burn, shuffle, burn", () => {
+    const match = duel();
+    hero(match, RIGHT_BRUISER).deck = [7];
+    hero(match, RIGHT_BRUISER).discard = [4, 5, 6];
+    const { match: after, events } = resolveRound(match, [leftAttacks()]);
+    expect(events.map(({ kind, damage, amount }) => [kind, damage ?? amount])).toEqual([
+      [EventKind.AttackHit, 1],
+      [EventKind.DeckShuffled, 3],
+      [EventKind.AttackHit, 1],
+    ]);
+    expect(events[1]).toMatchObject({ heroId: RIGHT_BRUISER });
+    const right = hero(after, RIGHT_BRUISER);
+    expect(right.exile).toHaveLength(2);
+    expect(right.exile[0]).toBe(7);
+    expect(sorted([...right.deck, right.exile[1]!])).toEqual([4, 5, 6]);
+  });
+
+  it("shuffles the Discard into an empty Deck at the end of a Resolution, never the Exile", () => {
+    const match = duel();
+    const bruiser = hero(match, RIGHT_BRUISER);
+    bruiser.deck = [];
+    bruiser.hand = [0, 1, 2, 3];
+    bruiser.discard = [4, 5];
+    bruiser.exile = [8, 9];
+    const { match: after, events } = resolveRound(match, [planOf(SquadId.Right, RIGHT_BRUISER, [{ kind: ActionKind.Wait }], [0])]);
+    const right = hero(after, RIGHT_BRUISER);
+    expect(sorted(right.deck)).toEqual([0, 4, 5]);
+    expect(right.discard).toEqual([]);
+    expect(right.exile).toEqual([8, 9]);
+    expect(events).toContainEqual({ kind: EventKind.DeckShuffled, tick: 1, heroId: RIGHT_BRUISER, amount: 3 });
+  });
+
+  it("gives the same piles for the same Match State and plans", () => {
+    const match = duel();
+    hero(match, RIGHT_BRUISER).deck = [7];
+    hero(match, RIGHT_BRUISER).discard = [4, 5, 6];
+    const first = resolveRound(match, [leftAttacks()]);
+    const second = resolveRound(match, [leftAttacks()]);
+    expect(second).toEqual(first);
+  });
+});
+
 describe("Exhaustion", () => {
   it("takes effect after the Resolution, once the Deck is empty", () => {
     const match = duel();
@@ -140,7 +193,26 @@ describe("Exhaustion", () => {
     const { match: after, events } = resolveRound(match, [leftAttacks(), counter]);
     expect(events.filter(({ kind }) => kind === EventKind.AttackHit).map(({ tick }) => tick)).toEqual([1, 2]);
     expect(hero(after, LEFT_BRUISER).deck).toHaveLength(leftDeck - 2);
+    // Its three played cards went to the Discard, so there is something to shuffle and it is not Exhausted.
+    expect(hero(after, RIGHT_BRUISER).exhausted).toBe(false);
+  });
+
+  it("does not count the Hand: a Hero holding cards is Exhausted when Deck and Discard are empty", () => {
+    const match = duel();
+    hero(match, RIGHT_BRUISER).deck = [7, 8];
+    expect(hero(match, RIGHT_BRUISER).hand).toHaveLength(4);
+    const { match: after } = resolveRound(match, [leftAttacks()]);
     expect(hero(after, RIGHT_BRUISER).exhausted).toBe(true);
+  });
+
+  it("does not Exhaust a Hero with an empty Deck and a Discard that holds cards", () => {
+    const match = duel();
+    hero(match, RIGHT_BRUISER).deck = [7, 8];
+    hero(match, RIGHT_BRUISER).discard = [4, 5];
+    const { match: after, events } = resolveRound(match, [leftAttacks()]);
+    expect(hero(after, RIGHT_BRUISER).exhausted).toBe(false);
+    expect(sorted(hero(after, RIGHT_BRUISER).deck)).toEqual([4, 5]);
+    expect(events.some(({ kind }) => kind === EventKind.Exhausted)).toBe(false);
   });
 
   it("ignores the plans of an Exhausted Hero and fails Attacks against it", () => {

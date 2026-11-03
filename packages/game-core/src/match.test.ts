@@ -90,7 +90,7 @@ describe("startRound", () => {
     expect(hero(match, SquadId.Left, HeroClass.Bruiser).hand).toEqual(next.hand);
   });
 
-  it("reshuffles the Discard without Exiled cards and draws again the following Round", () => {
+  it("shuffles the Discard (never the Exile) into the Deck when drawing empties it, and goes on drawing", () => {
     const match = startRound(createMatch(9));
     const bruiser = hero(match, SquadId.Left, HeroClass.Bruiser);
     bruiser.hand = [];
@@ -98,15 +98,20 @@ describe("startRound", () => {
     bruiser.discard = [1, 2, 3, 4, 5];
     bruiser.exile = [6, 7];
 
-    const afterReshuffle = hero(startRound(match), SquadId.Left, HeroClass.Bruiser);
-    expect(afterReshuffle.hand).toEqual([0]);
-    expect(afterReshuffle.discard).toEqual([]);
-    expect([...afterReshuffle.deck].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5]);
-    expect(afterReshuffle.exile).toEqual([6, 7]);
+    const afterDraw = hero(startRound(match), SquadId.Left, HeroClass.Bruiser);
+    expect(afterDraw.hand).toHaveLength(4);
+    expect(afterDraw.hand[0]).toBe(0);
+    expect(afterDraw.discard).toEqual([]);
+    expect([...afterDraw.hand.slice(1), ...afterDraw.deck].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5]);
+    expect(afterDraw.exile).toEqual([6, 7]);
+  });
 
-    const nextRound = hero(startRound(startRound(match)), SquadId.Left, HeroClass.Bruiser);
-    expect(nextRound.hand).toHaveLength(4);
-    expect(nextRound.hand).not.toContain(6);
-    expect(nextRound.hand).not.toContain(7);
+  it("shuffles the same way for the same Match State", () => {
+    const match = startRound(createMatch(9));
+    const bruiser = hero(match, SquadId.Left, HeroClass.Bruiser);
+    bruiser.hand = [];
+    bruiser.deck = [0];
+    bruiser.discard = [1, 2, 3, 4, 5];
+    expect(hero(startRound(match), SquadId.Left, HeroClass.Bruiser)).toEqual(hero(startRound(match), SquadId.Left, HeroClass.Bruiser));
   });
 });

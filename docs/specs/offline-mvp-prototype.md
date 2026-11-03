@@ -37,7 +37,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 19. As a player, I want my Squad to share vision, so that information gathered by one Hero benefits the entire team.
 20. As a player, I want my Hero to have a fixed 12-card Deck, so that my long-term survival is tied to my card resources.
 21. As a player, I want unblocked damage to remove cards from the top of my Deck, so that every point of damage has a lasting cost.
-22. As a player, I want my Hero to become Exhausted when its Deck is empty, so that Deck-as-Life creates a clear defeat condition.
+22. As a player, I want my Hero to become Exhausted when its Deck and Discard are empty at the end of a Resolution, so that Deck-as-Life creates a clear defeat condition.
 23. As a player, I want my Squad to lose when all three Heroes are Exhausted, so that matches have a decisive end.
 24. As a player, I want to draw up to four cards at the start of each round, so that I have fresh tactical options without losing access to retained cards.
 25. As a player, I want to retain unused Hand cards between rounds, so that I can plan around future turns.
@@ -48,7 +48,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 30. As a player, I want to use any card as Block 2, so that I can create Shield instead of using its primary effect.
 31. As a player, I want a card to fulfill only one role during a round, so that card use remains a meaningful commitment.
 32. As a player, I want Energy to expire at the end of the round, so that resource planning stays round-scoped.
-33. As a player, I want the Discard to be shuffled into a new Deck cycle when no non-exiled cards remain, so that a Hero can continue fighting after spending cards.
+33. As a player, I want the Discard to be shuffled into the Deck as soon as the Deck is empty and a card must be taken from it (Deck Damage, Draw) or a Resolution ends, so that a Hero can continue fighting after spending cards.
 34. As a player, I want to plan an ordered queue of actions for each Hero, so that I can express tactical intent.
 35. As a player, I want both Squads to commit their plans simultaneously, so that neither side can react to the other’s final commands.
 36. As a player, I want a fixed planning timer with early commit, so that matches keep moving.
@@ -113,7 +113,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Spawn one Squad on the left edge (column 1, rows 7–9) and the other on the right edge (column 29, rows 7–9), without direct Line of Sight into the Prime Zone.
 - Implement three Hero classes: Bruiser/Vanguard, Controller/Tactician, and Assassin/Striker.
 - Give each Hero a fixed 12-card Deck with no Flex cards.
-- Implement Deck-as-Life: unblocked damage removes cards from the top of the target’s Deck; an empty Deck causes Exhaustion. An Exhausted Hero is out of the match and its tile becomes Half Cover (it does not obstruct Moves; Cover-destroying effects such as Breach Charge destroy it; a Prime Zone tile stays a Prime Zone tile).
+- Implement Deck-as-Life: unblocked damage removes cards from the top of the target’s Deck; a Hero whose Deck and Discard are both empty at the end of a Resolution is Exhausted. An Exhausted Hero is out of the match and its tile becomes Half Cover (it does not obstruct Moves; Cover-destroying effects such as Breach Charge destroy it; a Prime Zone tile stays a Prime Zone tile).
 - Implement Shield as a round-scoped defensive value created through Block 2.
 - A **Wait** button next to the Queue slots of the selected Hero adds a Wait (an hourglass slot that needs no card and no Energy and can be removed like any other slot) to the first free slot.
 - Distances use Chebyshev distance and movement is 8-directional; Cover is occupiable and ignored by attackers at Range 1; Pitch is a planning step; a Hero's queue has at most 4 actions (ADR 0020).

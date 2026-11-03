@@ -110,6 +110,8 @@ export function describeEvent(event: MatchEvent, nameOf: (heroId: string) => str
       return `Tick ${event.tick}: ${who}'s Move is blocked and stops on column ${event.from!.col}, row ${event.from!.row}`;
     case EventKind.Wait:
       return `Tick ${event.tick}: ${who} waits`;
+    case EventKind.DeckShuffled:
+      return `Tick ${event.tick}: ${who} shuffles ${event.amount ?? 0} cards from the Discard into the Deck`;
     case EventKind.Exhausted:
       return `${who} is Exhausted`;
     default:
