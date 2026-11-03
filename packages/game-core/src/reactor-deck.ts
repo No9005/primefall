@@ -116,6 +116,46 @@ export function stepTowards(from: GridPosition, destination: GridPosition): Grid
   };
 }
 
+/** Straight-line distance, squared: unlike Chebyshev distance it also shrinks for a sidestep on a diagonal. */
+const squaredDistance = (a: GridPosition, b: GridPosition) => (a.col - b.col) ** 2 + (a.row - b.row) ** 2;
+
+/**
+ * The two neighbouring steps that also bring `from` closer to `destination`, in a fixed order that does not
+ * favour a side: a Move along a row tries the upper tile first, a diagonal Move tries the column step first, and a
+ * Move along a column tries the side towards the middle column first (so a mirrored Hero mirrors its choice).
+ */
+function sidestepsTowards(from: GridPosition, destination: GridPosition): GridPosition[] {
+  const dx = Math.sign(destination.col - from.col);
+  const dy = Math.sign(destination.row - from.row);
+  let offsets: GridPosition[];
+  if (dx !== 0 && dy !== 0) {
+    offsets = [{ col: dx, row: 0 }, { col: 0, row: dy }];
+  } else if (dy === 0) {
+    offsets = [{ col: dx, row: -1 }, { col: dx, row: 1 }];
+  } else {
+    const towardsMiddle = Math.sign((REACTOR_DECK.width - 1) / 2 - from.col) || -1;
+    offsets = [{ col: towardsMiddle, row: dy }, { col: -towardsMiddle, row: dy }];
+  }
+  return offsets
+    .map((offset) => ({ col: from.col + offset.col, row: from.row + offset.row }))
+    .filter((tile) => squaredDistance(tile, destination) < squaredDistance(from, destination));
+}
+
+/**
+ * The tile a Hero steps to on its way to `destination`: straight on, or, when another Hero stands on that tile,
+ * the first neighbouring step that is allowed, free and still closer. If there is none, the straight tile (the
+ * step fails). Walls and Wall corners are not walked round (ADR 0020).
+ */
+export function nextStep(
+  from: GridPosition,
+  destination: GridPosition,
+  isOccupied: (tile: GridPosition) => boolean,
+): GridPosition {
+  const straight = stepTowards(from, destination);
+  if (!isStepAllowed(from, straight) || !isOccupied(straight)) return straight;
+  return sidestepsTowards(from, destination).find((tile) => isStepAllowed(from, tile) && !isOccupied(tile)) ?? straight;
+}
+
 /** The Cover tiles of the original map that are no longer Cover in `grid`. */
 export function destroyedCoverTiles(grid: Grid): GridPosition[] {
   const destroyed: GridPosition[] = [];
