@@ -33,9 +33,9 @@ import {
   Visibility,
 } from "game-core";
 import { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject, useEffect, useMemo, useRef, useState } from "react";
-import { Board, type TokenHero } from "./Board";
+import { Board } from "./Board";
 import { applyDrop, type BoardPick, type DropPlaces, type DropProbe, type DropUse, type Point, probeDrop, type Rect } from "./card-drag";
-import { buildPlaybackFrames, describeEvent, tickCountOf } from "./playback";
+import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
 import { blockAction, CARD_USE_LABELS, cardFace, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, type ModeFace, modeChoiceFaces, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
@@ -478,15 +478,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
     }));
   const boardHeroes = useMemo(() => onBoard(view.heroes), [view.heroes, playback]);
   // Unknown enemies have no marker; Ghosts stay where they were last seen, faded.
-  const boardEnemies = useMemo(
-    () =>
-      view.enemies.flatMap((enemy): TokenHero[] => {
-        if (enemy.visibility === Visibility.Unknown) return [];
-        if (enemy.visibility === Visibility.Ghost) return [{ ...enemy, exhausted: false, ghost: true }];
-        return onBoard([enemy]);
-      }),
-    [view.enemies, playback],
-  );
+  const boardEnemies = useMemo(() => enemyTokens(view.enemies, onBoard), [view.enemies, playback]);
   const aimsAtAlly =
     aimedCard?.type === CardType.Utility &&
     (aimedCard.target === CardTarget.AllyHero || aimedCard.target === CardTarget.AllyHeroTile);
@@ -813,6 +805,7 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         destroyedCover={view.destroyedCover}
         placedCover={view.placedCover}
         revealedAreas={view.revealedAreas}
+        visibleTiles={view.visibleTiles}
         heroes={boardHeroes}
         enemies={boardEnemies}
         selectedId={selected.id}

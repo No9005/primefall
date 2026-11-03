@@ -1,6 +1,6 @@
-import { EventKind, type MatchEvent } from "game-core";
+import { type EnemyView, EventKind, HeroClass, type MatchEvent, Visibility } from "game-core";
 import { describe, expect, it } from "vitest";
-import { buildPlaybackFrames, describeEvent, tickCountOf } from "./playback";
+import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
 
 const step = (tick: number, heroId: string, col: number): MatchEvent => ({
   kind: EventKind.Step,
@@ -84,5 +84,39 @@ describe("buildPlaybackFrames", () => {
     expect(buildPlaybackFrames([])).toEqual([]);
     expect(tickCountOf([])).toBe(0);
     expect(tickCountOf([step(1, "a", 1), step(3, "a", 2)])).toBe(3);
+  });
+});
+
+describe("enemyTokens", () => {
+  const visible: EnemyView = {
+    id: "v",
+    heroClass: HeroClass.Bruiser,
+    visibility: Visibility.Visible,
+    position: { col: 1, row: 1 },
+    shield: 0,
+    deckCount: 5,
+    discardCount: 0,
+    exileCount: 0,
+    exhausted: false,
+    slowed: false,
+    marked: false,
+  };
+  const ghost: EnemyView = {
+    id: "g",
+    heroClass: HeroClass.Bruiser,
+    visibility: Visibility.Ghost,
+    position: { col: 2, row: 2 },
+    deckCount: 5,
+    discardCount: 0,
+    exileCount: 0,
+    lastSeenRound: 1,
+  };
+  const unknown: EnemyView = { id: "u", heroClass: HeroClass.Bruiser, visibility: Visibility.Unknown };
+
+  it("creates no token for an Unknown enemy, a faded one for a Ghost and a normal one for a Visible enemy", () => {
+    const tokens = enemyTokens([visible, ghost, unknown], (units) => units.map((unit) => ({ ...unit, exhausted: unit.exhausted })));
+    expect(tokens.map((token) => token.id)).toEqual(["v", "g"]);
+    expect(tokens.find((token) => token.id === "g")?.ghost).toBe(true);
+    expect(tokens.find((token) => token.id === "v")?.ghost).toBeUndefined();
   });
 });

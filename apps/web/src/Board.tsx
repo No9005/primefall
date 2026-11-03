@@ -33,7 +33,7 @@ import {
   zoomAt,
   zoomOnPoint,
 } from "./board-layout";
-import { buildTerrain, type Face } from "./terrain";
+import { buildTerrain, type Face, litTiles } from "./terrain";
 import { TERRAIN_STYLE } from "./terrain-style";
 
 interface Manifest {
@@ -93,6 +93,8 @@ interface BoardProps {
   placedCover: readonly GridPosition[];
   /** Areas a Scout Drone reveals: tinted yellow. */
   revealedAreas: readonly RevealedArea[];
+  /** Tiles the Squad sees; every other tile is drawn dark. */
+  visibleTiles: readonly GridPosition[];
   heroes: readonly TokenHero[];
   enemies: readonly TokenHero[];
   selectedId: string;
@@ -127,6 +129,7 @@ export function Board({
   destroyedCover,
   placedCover,
   revealedAreas,
+  visibleTiles,
   heroes,
   enemies,
   selectedId,
@@ -259,6 +262,15 @@ export function Board({
       tokens.addChild(token);
       created.push(token);
     };
+    for (const hero of heroes) {
+      // A soft light on the floor around each own Hero.
+      const { x, y } = gridToWorld(hero.position);
+      const light = new Graphics().ellipse(0, 0, TILE_WIDTH * 0.9, TILE_HEIGHT * 0.9).fill(TERRAIN_STYLE.heroLight);
+      light.position.set(x, y);
+      light.zIndex = -1;
+      tokens.addChild(light);
+      created.push(light);
+    }
     heroes.forEach((hero) => addToken(hero, false));
     enemies.forEach((hero) => addToken(hero, true));
     return () => created.forEach((token) => token.destroy({ children: true }));
@@ -275,13 +287,18 @@ export function Board({
     const ground = new Graphics();
     floor.addChild(ground);
     created.push(ground);
-    for (const tile of buildTerrain(grid)) {
+    const lit = litTiles(
+      visibleTiles,
+      heroes.map((hero) => hero.position),
+    );
+    for (const tile of buildTerrain(grid, undefined, lit)) {
       fillFace(ground, tile.floor);
       if (tile.marker) ground.poly(tile.marker.points).stroke({ width: 2, color: tile.marker.color, alpha: 0.9 });
       if (!tile.piece) continue;
       const piece = new Graphics();
       for (const face of tile.piece) fillFace(piece, face);
       piece.zIndex = tile.depth;
+      if (!tile.lit) piece.alpha = TERRAIN_STYLE.fogPieceAlpha;
       objects.addChild(piece);
       created.push(piece);
     }
@@ -320,7 +337,7 @@ export function Board({
       }
     }
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [terrain, destroyedCover, placedCover, revealedAreas]);
+  }, [terrain, destroyedCover, placedCover, revealedAreas, visibleTiles, heroes]);
 
   useEffect(() => {
     const element = host.current;

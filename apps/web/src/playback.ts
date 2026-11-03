@@ -1,4 +1,17 @@
-import { EventKind, type GridPosition, type MatchEvent } from "game-core";
+import { type EnemyView, EventKind, type GridPosition, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
+import type { TokenHero } from "./Board";
+
+/**
+ * The enemy tokens of the board: Visible ones as they are (`place` puts them where the playback has them), Ghosts
+ * faded at their last known tile, and none at all for an Unknown Hero (ADR 0005).
+ */
+export function enemyTokens(enemies: readonly EnemyView[], place: (visible: VisibleEnemyView[]) => TokenHero[]): TokenHero[] {
+  return enemies.flatMap((enemy): TokenHero[] => {
+    if (enemy.visibility === Visibility.Unknown) return [];
+    if (enemy.visibility === Visibility.Ghost) return [{ ...enemy, exhausted: false, ghost: true }];
+    return place([enemy]);
+  });
+}
 
 /** An Attack that hit, as the playback shows it on the target. */
 export interface PlaybackHit {
