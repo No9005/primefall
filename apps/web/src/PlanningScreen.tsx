@@ -609,8 +609,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     () =>
       playback
         ? playback.lines
-        : plannedTargetLines(knownGrid, view.heroes, view.enemies, squadPlans).map((line) => ({ ...line, faint: line.heroId !== selected.id })),
-    [playback, knownGrid, view.heroes, view.enemies, squadPlans, selected.id],
+        : plannedTargetLines(knownGrid, view.heroes, view.enemies, squadPlans).map((line) => ({ ...line, faint: line.heroId !== playerHeroId })),
+    [playback, knownGrid, view.heroes, view.enemies, squadPlans, playerHeroId],
   );
   // Shield rubies, bubble and planned icons above the Heroes the Squad may see (own Heroes and Visible enemies).
   const marks = useMemo(() => {

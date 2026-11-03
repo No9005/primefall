@@ -42,6 +42,22 @@ export const SHOT_STYLE = {
   gap: 10,
 } as const;
 
+/** The Queue drawn on the board (UI rework 11): the player's plan in teal, the allies' plans very faint in yellow. */
+export const PLAN_STYLE = {
+  own: 0x2ec4b6,
+  ally: 0xe5b429,
+  allyAlpha: 0.22,
+  danger: 0xe5484d,
+  badgeText: 0x12161c,
+  width: 3,
+  dash: 8,
+  dashGap: 4,
+  dot: 2,
+  dotGap: 4,
+  ringFillAlpha: 0.15,
+  ghostAlpha: 0.35,
+} as const;
+
 export interface PieceStyle {
   top: number;
   left: number;

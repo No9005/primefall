@@ -1,6 +1,6 @@
 import { CoverKind, type EnemyView, parseGrid, Visibility } from "game-core";
 import { describe, expect, it } from "vitest";
-import { drawShot, drawShots, SegmentStyle, shotInWorld } from "./shot-lines";
+import { dashRuns, drawShot, drawShots, SegmentStyle, shotInWorld } from "./shot-lines";
 import { gridToWorld } from "./terrain";
 
 const grid = parseGrid(["#########", "#.......#", "#...#...#", "#.H...F.#", "#.......#", "#########"]);
@@ -62,6 +62,20 @@ describe("drawShot", () => {
     expect(shot.segments.map((segment) => segment.style)).toEqual([SegmentStyle.Stopped, SegmentStyle.Beyond]);
     expect(shot.cross).toBeUndefined();
     expect(shot.ringed).toBe(false);
+  });
+});
+
+describe("dashRuns", () => {
+  it("cuts a line into dashes of the given length with gaps between, the last one cut short", () => {
+    expect(dashRuns({ x: 0, y: 0 }, { x: 28, y: 0 }, 8, 4)).toEqual([
+      { from: { x: 0, y: 0 }, to: { x: 8, y: 0 } },
+      { from: { x: 12, y: 0 }, to: { x: 20, y: 0 } },
+      { from: { x: 24, y: 0 }, to: { x: 28, y: 0 } },
+    ]);
+  });
+
+  it("returns nothing for a line of no length", () => {
+    expect(dashRuns({ x: 3, y: 3 }, { x: 3, y: 3 }, 8, 4)).toEqual([]);
   });
 });
 

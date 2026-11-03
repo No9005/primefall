@@ -40,10 +40,10 @@ import { buildTerrain, depthOf, type Face, floorOutline, footOffset, lineScale, 
 import { heroFigure, marksFigure, shieldBubble } from "./hero-figure";
 import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
-import { chestOf, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
-import { PathOwner, type PlannedPath } from "./ally-paths";
+import { chestOf, dashRuns, SegmentStyle,type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
+import { finalTile, PathOwner, type PlannedPath } from "./ally-paths";
 import { LineKind, LineTone, type TargetLine } from "./target-lines";
-import { SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
+import { PLAN_STYLE, SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
 
 /** Strokes `segment` as a run of dashes: long for a clear shot, dots for the stopped part, grey after a block. */
 function strokeShotSegment(graphics: Graphics, { from, to, style }: ShotInWorld["segments"][number]): void {
@@ -59,12 +59,35 @@ function strokeShotSegment(graphics: Graphics, { from, to, style }: ShotInWorld[
   graphics.stroke({ width: SHOT_STYLE.width, color, alpha: style === SegmentStyle.Beyond ? 0.6 : 1, cap: "round" });
 }
 
-const PATH_COLORS = { [PathOwner.Ally]: 0xffd23f, [PathOwner.Player]: 0x2ec4b6 } as const;
 const COLLISION_COLOR = 0xe5484d;
 
-/** A planned path: a line from the Hero's tile through its Move destinations, a ring with the role letter and Tick at each. */
-function pathGraphics({ owner, letter, from, stops }: PlannedPath, angle: number): Container {
-  const color = PATH_COLORS[owner];
+/** A small round badge (a pill for longer text) with the Queue slot number, centred on (x, y). */
+function slotBadge(text: string, x: number, y: number, color: number): Container {
+  const badge = new Container();
+  badge.position.set(x, y);
+  const label = new Text({ text, style: { fill: PLAN_STYLE.badgeText, fontSize: 14, fontWeight: "700" } });
+  label.anchor.set(0.5);
+  const width = Math.max(20, label.width + 10);
+  badge.addChild(new Graphics().roundRect(-width / 2, -10, width, 20, 10).fill(color), label);
+  return badge;
+}
+
+/** A flat ring on a tile's floor. */
+function tileRing(tile: GridPosition, angle: number, color: number, fillAlpha = 0): Graphics {
+  const { x, y } = gridToWorld(tile, angle);
+  const ring = new Graphics().ellipse(x, y, TILE_WIDTH * 0.3, TILE_HEIGHT * 0.3);
+  if (fillAlpha > 0) ring.fill({ color, alpha: fillAlpha });
+  return ring.stroke({ width: PLAN_STYLE.width, color });
+}
+
+/**
+ * A planned path: a line from the Hero through its Move destinations. The player's has a ring and a numbered badge at each
+ * destination and a ghost copy of the Hero on the final tile; an ally's is the bare line, very faint.
+ */
+function pathGraphics(path: PlannedPath, angle: number, scale: number): Container {
+  const { owner, from, stops } = path;
+  const own = owner === PathOwner.Player;
+  const color = own ? PLAN_STYLE.own : PLAN_STYLE.ally;
   const container = new Container();
   const line = new Graphics();
   const start = chestOf(from, angle);
@@ -73,20 +96,20 @@ function pathGraphics({ owner, letter, from, stops }: PlannedPath, angle: number
     const point = chestOf(tile, angle);
     line.lineTo(point.x, point.y);
   }
-  line.stroke({ width: 5, color, alpha: 0.9, cap: "round", join: "round" });
+  line.stroke({ width: PLAN_STYLE.width, color, cap: "round", join: "round" });
   container.addChild(line);
+  if (!own) {
+    container.alpha = PLAN_STYLE.allyAlpha;
+    return container;
+  }
+  const ghost = heroFigure(path.heroClass, false, "idle", scale);
+  const foot = gridToWorld(finalTile(path), angle);
+  ghost.position.set(foot.x, foot.y + footOffset(angle));
+  ghost.alpha = PLAN_STYLE.ghostAlpha;
+  container.addChild(ghost);
   for (const { tile, tick } of stops) {
-    const point = chestOf(tile, angle);
-    const marker = new Container();
-    marker.position.set(point.x, point.y);
-    marker.addChild(new Graphics().circle(0, 0, 16).fill({ color: 0x12161c, alpha: 0.55 }).stroke({ width: 4, color }));
-    const role = new Text({ text: letter, style: { fill: color, fontSize: 18, fontWeight: "700" } });
-    role.anchor.set(0.5);
-    const number = new Text({ text: String(tick), style: { fill: 0x12161c, fontSize: 14, fontWeight: "700" } });
-    number.anchor.set(0.5);
-    number.position.set(14, -14);
-    marker.addChild(role, new Graphics().circle(14, -14, 9).fill(color), number);
-    container.addChild(marker);
+    const { x, y } = gridToWorld(tile, angle);
+    container.addChild(tileRing(tile, angle, color, PLAN_STYLE.ringFillAlpha), slotBadge(String(tick), x + TILE_WIDTH * 0.42, y, color));
   }
   return container;
 }
@@ -106,9 +129,28 @@ function collisionCross(tile: GridPosition, angle: number): Graphics {
 /** A target line: the shot drawing for an Attack, an arrow to an allied Hero, a ring on a tile; the Tick sits in the middle. */
 function targetLineGraphics(line: TargetLine, angle: number): Container {
   const container = new Container();
-  const color = line.tone === LineTone.Clear ? SHOT_STYLE.clear : SHOT_STYLE.stopped;
   const from = chestOf(line.from, angle);
   const to = chestOf(line.to, angle);
+  if (line.planned && line.faint) {
+    // An ally's plan: the bare line in yellow, no badge, no ring.
+    const dashed = line.kind === LineKind.Attack;
+    const graphics = new Graphics();
+    for (const run of dashed ? dashRuns(from, to, PLAN_STYLE.dash, PLAN_STYLE.dashGap) : [{ from, to }]) graphics.moveTo(run.from.x, run.from.y).lineTo(run.to.x, run.to.y);
+    container.addChild(graphics.stroke({ width: PLAN_STYLE.width, color: PLAN_STYLE.ally, cap: "round" }));
+    container.alpha = PLAN_STYLE.allyAlpha;
+    return container;
+  }
+  if (line.planned && line.kind === LineKind.Attack) {
+    // The player's Attack: dashed teal from chest to chest; red and dotted with "!" when the target cannot be reached.
+    const color = line.unreachable ? PLAN_STYLE.danger : PLAN_STYLE.own;
+    const graphics = new Graphics();
+    const [dash, gap] = line.unreachable ? [PLAN_STYLE.dot, PLAN_STYLE.dotGap] : [PLAN_STYLE.dash, PLAN_STYLE.dashGap];
+    for (const run of dashRuns(from, to, dash, gap)) graphics.moveTo(run.from.x, run.from.y).lineTo(run.to.x, run.to.y);
+    container.addChild(graphics.stroke({ width: PLAN_STYLE.width, color, cap: "round" }), tileRing(line.to, angle, PLAN_STYLE.danger));
+    container.addChild(slotBadge(`${line.tick}${line.unreachable ? "!" : ""}`, (from.x + to.x) / 2, (from.y + to.y) / 2, color));
+    return container;
+  }
+  const color = line.tone === LineTone.Clear ? SHOT_STYLE.clear : SHOT_STYLE.stopped;
   if (line.kind === LineKind.Attack && line.shot) {
     // An enemy's shot is always red, whatever the segment says.
     const shot = line.own ? line.shot : { ...line.shot, segments: line.shot.segments.map((segment) => ({ ...segment, style: SegmentStyle.Stopped })) };
@@ -129,13 +171,7 @@ function targetLineGraphics(line: TargetLine, angle: number): Container {
     const ring = new Graphics().poly(floorOutline(angle).map((value, index) => value + (index % 2 === 0 ? x : y))).stroke({ width: 4, color });
     container.addChild(ring);
   }
-  const badge = new Container();
-  badge.position.set((from.x + to.x) / 2, (from.y + to.y) / 2);
-  const number = new Text({ text: String(line.tick), style: { fill: 0x12161c, fontSize: 14, fontWeight: "700" } });
-  number.anchor.set(0.5);
-  badge.addChild(new Graphics().circle(0, 0, 10).fill(color), number);
-  container.addChild(badge);
-  container.alpha = line.faint ? 0.45 : 1;
+  container.addChild(slotBadge(String(line.tick), (from.x + to.x) / 2, (from.y + to.y) / 2, color));
   return container;
 }
 
@@ -437,7 +473,7 @@ export function Board({
       created.push(line);
     }
     for (const path of paths) {
-      const drawn = pathGraphics(path, angle);
+      const drawn = pathGraphics(path, angle, strokeScale);
       overlay.addChild(drawn);
       created.push(drawn);
     }
@@ -447,7 +483,7 @@ export function Board({
       created.push(cross);
     }
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [overlay, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, shotLines, targetLines, showLines, paths, collisionTiles]);
+  }, [overlay, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, shotLines, targetLines, showLines, paths, collisionTiles, strokeScale]);
 
   useEffect(() => {
     if (!tokens) return;

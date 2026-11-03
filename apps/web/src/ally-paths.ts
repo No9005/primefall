@@ -1,4 +1,4 @@
-import { ActionKind, findMoveCollisions, type GridPosition, type HeroView, type MoveCollision, type SquadPlan } from "game-core";
+import { ActionKind, findMoveCollisions, type GridPosition, type HeroClass, type HeroView, type MoveCollision, type SquadPlan } from "game-core";
 
 // The planned Moves of the own Squad drawn on the board before Commit. Only own Heroes are read: the
 // functions take `HeroView`s and plans, never enemy data. A path is kept in tiles, so it does not depend on the
@@ -20,8 +20,8 @@ export interface PathStop {
 export interface PlannedPath {
   heroId: string;
   owner: PathOwner;
-  /** The first letter of the Hero's role, shown in the destination marker. */
-  letter: string;
+  /** The Hero's class, to draw the ghost copy on the final tile. */
+  heroClass: HeroClass;
   /** The tile the Hero stands on; the line starts here. */
   from: GridPosition;
   /** The destination of each queued Move, in order. */
@@ -38,9 +38,14 @@ export function plannedPaths(heroes: readonly HeroView[], plans: readonly SquadP
       );
       if (!hero || hero.exhausted || stops.length === 0) return [];
       const owner = heroId === playerHeroId ? PathOwner.Player : PathOwner.Ally;
-      return [{ heroId, owner, letter: hero.heroClass.charAt(0).toUpperCase(), from: hero.position, stops }];
+      return [{ heroId, owner, heroClass: hero.heroClass,from: hero.position, stops }];
     }),
   );
+}
+
+/** The tile the Hero stands on after all its queued Moves: where the ghost copy is drawn. */
+export function finalTile({ stops }: PlannedPath): GridPosition {
+  return stops[stops.length - 1]!.tile;
 }
 
 /** The warnings for the Squad's combined plan, and the text the Queue shows for a Hero's own Move. */

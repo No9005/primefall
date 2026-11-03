@@ -64,6 +64,17 @@ function tickLabel(text: string, x: number, y: number): Text {
   return label;
 }
 
+/** The small grey badge of a planned Wait: the slot number and a pause sign. */
+function waitBadge(tick: number, x: number, y: number): Container {
+  const { fill, text, size } = HERO_STYLE.marks.waitBadge;
+  const label = new Text({ text: `${tick} II`, style: { fill: text, fontSize: size, fontWeight: "700" } });
+  label.anchor.set(0.5);
+  const badge = new Container();
+  badge.position.set(x, y);
+  badge.addChild(new Graphics().roundRect(-label.width / 2 - 5, -9, label.width + 10, 18, 9).fill(fill), label);
+  return badge;
+}
+
 function iconGraphics(kind: IconKind, x: number, y: number, scale: number): Graphics {
   const { fill, size } = HERO_STYLE.marks.icon;
   const line = { width: worldLineWidth(HERO_STYLE.outline.width, scale), color: HERO_STYLE.outline.color, join: "round" as const };
@@ -98,7 +109,9 @@ export function marksFigure(marks: HeroMarks, scale: number, faint: boolean): Co
       const top = ruby.rowY - ruby.size * 0.9;
       rubies.poly([x - ruby.size * 0.55, top, x + ruby.size * 0.55, top, x, ruby.rowY - ruby.size * 0.1]).fill(ruby.facet);
     } else {
-      strokeDashed(rubies, points, ruby.dash, { width: worldLineWidth(2, scale), color: ruby.fill });
+      // A queued Block: a hollow dashed diamond.
+      const diamond = [0, -1, 1, 0, 0, 1, -1, 0].map((value, index) => (index % 2 === 0 ? x + value * ruby.size : ruby.rowY + value * ruby.size));
+      strokeDashed(rubies, diamond, ruby.dash, { width: worldLineWidth(2, scale), color: ruby.fill });
     }
   }
   container.addChild(rubies);
@@ -107,6 +120,10 @@ export function marksFigure(marks: HeroMarks, scale: number, faint: boolean): Co
   const iconLeft = (-(marks.icons.length - 1) * iconStep) / 2;
   marks.icons.forEach(({ kind, tick }, i) => {
     const x = iconLeft + i * iconStep;
+    if (kind === IconKind.Wait) {
+      container.addChild(waitBadge(tick, x, icon.rowY));
+      return;
+    }
     container.addChild(iconGraphics(kind, x - 6, icon.rowY, scale), tickLabel(String(tick), x + icon.size * 0.6 - 2, icon.rowY));
   });
   return container;
