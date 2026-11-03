@@ -46,8 +46,8 @@ Path: `heroes/<class>/<pose>`, class one of `bruiser`, `controller`, `assassin`.
 
 `assets/manifest.json` is a PixiJS asset manifest (one bundle per folder: `heroes.<class>`, `vfx`). Each asset has an `alias` (`<bundle>.<name>`, for example `heroes.bruiser.idle`), a relative `src` and `data.anchor`. The game loads only through the manifest. When final assets are packed into atlases, the manifest changes, the aliases do not.
 
-## Rendering notes (from the 21 x 11 Grid)
+## Rendering notes (from the 31 x 17 Grid)
 
-- A full Grid is 32 tile widths wide (2048 px at 128 px tiles). On a phone the board is therefore scaled down; the UI spec defines the camera behaviour.
+- A full Grid is 3072 px wide at 128 px tiles ((31 + 17) x 64). On a phone the board is therefore scaled down; the UI spec defines the camera behaviour.
 - Depth sorting by the rotated depth of the anchor tile (`row + column` at the 45 degree view; skill `depth-sorting-occlusion`).
 - Tile centre for grid cell `(col, row)`: `x = (col - row) * 64`, `y = (col + row) * 32` (skill `isometric-grid-math`).
