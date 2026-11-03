@@ -12,7 +12,8 @@ it("prints win rates and match lengths", () => {
   let totalRounds = 0;
   let longest = 0;
   for (let seed = 1; seed <= seeds; seed++) {
-    const { match, issues } = playAiMatch(seed, ROUND_LIMIT * 2);
+    // Half of the matches start one Round later: the Squads yield by Round parity (see `playAiMatch`).
+    const { match, issues } = playAiMatch(seed, ROUND_LIMIT * 2, seed % 2 === 0 ? 1 : 2);
     if (issues.length > 0) throw new Error(`Seed ${seed} produced an illegal AI plan: ${issues[0]!.message}`);
     const result = match.result;
     wins[result?.winner ?? "draw"] += 1;
