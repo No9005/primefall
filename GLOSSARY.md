@@ -93,7 +93,7 @@ _Avoid_: Sniper shot, ranged finisher
 ### Battlefield and objectives
 
 **Grid**:
-The 21 by 11 tile-based battlefield used for movement, range, line of sight, and cover.
+The tile-based battlefield (31 by 17 on the Reactor Deck) used for movement, range, line of sight, and cover.
 _Avoid_: Map, board, arena
 
 **Line of Sight**:

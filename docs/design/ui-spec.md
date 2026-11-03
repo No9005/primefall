@@ -1,6 +1,6 @@
 # UI Spec: Offline MVP Prototype
 
-Clickable mockups: `docs/design/mockups.html` (open in a browser). Assets: `docs/design/asset-contract.md`. Vocabulary follows `GLOSSARY.md`. The UI language of the final app is not decided yet; the mockups use English terms.
+The UI direction (orientation, layout, input, board rotation, terrain, style) is decided in ADR 0021; this page adds the screens, the information shown and the component states. Assets: `docs/design/asset-contract.md`. Vocabulary follows `GLOSSARY.md`. The UI language of the final app is not decided yet; the UI uses English terms.
 
 ## Principles
 
@@ -8,13 +8,13 @@ Clickable mockups: `docs/design/mockups.html` (open in a browser). Assets: `docs
 - Cards must be readable on a phone.
 - Commit must feel consequential.
 - The replay must explain cause and effect.
-- Orientation: **landscape first** (Grid is 21 x 11 tiles, about 2:1). In portrait the app shows a "Rotate your device" notice. Desktop scales the same layout.
-- The board fills the whole screen as the bottom layer; HUD panels overlay it at the edges. The camera always shows the whole board (all 21 by 11 tiles, including tall props such as Walls), as large as fits and centred, also after a resize or rotation. The player can zoom in: pinch (or the mouse wheel) between the fitted scale and about 3 times it, and drag with one finger to pan, only while zoomed (at the fitted scale a drag does nothing; the view never shows more than the board plus its margin). A round Zoom button at the right edge switches between the fitted view and a zoom on the selected Hero (about 2.5 times the fitted scale, the Hero in the middle); its label says where the next tap goes ("Zoom" or "Fit"). Resizing or rotating returns to the fitted view.
+- Landscape only, whole board always visible, zoom and pan for details: see ADR 0021. Desktop scales the same layout.
+- The board fills the whole screen as the bottom layer; HUD panels overlay it at the edges (layout in ADR 0021). Zoom goes from the fitted scale to about 3 times it; the Zoom/Fit button zooms on the selected Hero (about 2.5 times the fitted scale) and its label says where the next tap goes. Resizing or rotating returns to the fitted view.
 
 ## Screens
 
 1. **Start**: product name, "Play" (Reactor Deck, 3v3 vs AI, you control the Bruiser), seed shown small for bug reports.
-2. **Planning** (main screen): top bar with "Round X / 30", planning timer, Prime Zone control progress (0 to 3 Resolutions per Squad). Left: Squad panel with the three Heroes (Deck / Exile counts, selected Hero highlighted; allied Heroes are AI planned and show their queue read-only). Bottom: Hand of up to 4 cards and the Energy readout. Right: action queue of the selected Hero and the Commit button.
+2. **Planning** (main screen, layout in ADR 0021): "Round X / 30", planning timer and Prime Zone control progress (0 to 3 Resolutions per Squad) in the top pill. The Squad panel shows the three Heroes (Deck / Exile counts, selected Hero highlighted; allied Heroes are AI planned and show their queue read-only) and the Queue of the selected Hero. The Hand of up to 4 cards, the Energy orb and the Commit button.
 3. **Resolution**: same board, HUD reduced to Tick indicator ("Tick 2 / 4"), an event log that names cause and effect ("Bruiser Slam Shot hits Enemy Assassin, 2 Deck Damage"), play / pause / speed (1x, 2x) and skip to end.
 4. **End**: result (victory, defeat, draw), reason (Prime Zone held, all Heroes Exhausted, Round Limit with Deck totals), Round reached, "Play again" and the match seed.
 5. **Card detail** (sheet over Planning): the card with its four uses (Primary effect, Pitch 1, Move 2, Block 2) and Overdrive where available. Disabled uses state why (for example "needs 2 Energy").
@@ -46,6 +46,7 @@ Dark tactical HUD. Colours: graphite `#12161c` (ground), panel `#1b222b`, steel 
 
 - UI language (English or German).
 - Resolved by ADR 0020: Chebyshev distance (the Range overlay is a square), Pitch is a planning step marked on the card, and a queue has at most 4 actions (5 with Forward Deploy).
-- Camera: the full 21 x 11 Grid is about 2048 px wide at 128 px tiles, so the phone view scales it to roughly 0.65; check tile and sprite readability once real assets exist.
+- Camera: the full 31 x 17 Grid is about 3072 px wide at 128 px tiles, so the phone view scales it down a lot; check tile and sprite readability once real assets exist.
+- Art direction and the open question about pixel art for eight view angles: ADR 0021.
 - Final card artwork and iconography (placeholders use text only).
 - Sound and haptics are out of scope for the MVP.
