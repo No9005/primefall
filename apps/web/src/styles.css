@@ -1,8 +1,10 @@
 html, body, #root { height: 100%; margin: 0; }
-body { background: #12161c; color: #dbe4ec; font-family: Barlow, system-ui, sans-serif; overflow: hidden; }
-button { font: inherit; color: inherit; }
+/* The page never scrolls, bounces or pull-to-refreshes during play; dvh follows the browser bars on phones. */
+html, body { overscroll-behavior: none; }
+body { background: #12161c; color: #dbe4ec; font-family: Barlow, system-ui, sans-serif; overflow: hidden; position: fixed; width: 100%; }
+button { font: inherit; color: inherit; touch-action: manipulation; }
 
-.app { height: 100%; position: relative; }
+.app { height: 100dvh; position: relative; }
 .loading { padding: 16px; }
 
 /* The board fills the screen; HUD panels overlay it at the edges (UI spec). */
