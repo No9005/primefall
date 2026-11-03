@@ -217,4 +217,9 @@ export interface SubmitResult {
 export interface MatchHost {
   getSquadView(squad: SquadId): Promise<SquadView>;
   submitPlan(plan: SquadPlan): Promise<SubmitResult>;
+  /**
+   * What the AI will plan for these allied Heroes of the Squad if the player leaves them out of the
+   * submitted plan. It depends on the Squad View only, so it does not change with the player's plan.
+   */
+  getAllyPlan(squad: SquadId, heroIds: readonly string[]): Promise<SquadPlan>;
 }
