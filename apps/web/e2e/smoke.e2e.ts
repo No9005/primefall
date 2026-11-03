@@ -89,6 +89,9 @@ test("start a match, play a Move card onto a tile, Commit", async ({ page }) => 
   expect(queued, "a card was queued on a legal tile").toBe(true);
 
   await page.getByRole("button", { name: "Commit" }).click();
+  // The Resolution starts with the big callout; the Commit button then follows the Ticks.
+  await expect(page.getByText("RESOLUTION", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^(Waiting\.\.\.|Tick \d+|Done)$/ })).toBeDisabled();
   await expect(page.getByTestId("round")).toHaveText(/^Round 2\//, { timeout: 20_000 });
 
   expect(errors).toEqual([]);
