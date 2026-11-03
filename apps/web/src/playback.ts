@@ -108,6 +108,8 @@ export function describeEvent(event: MatchEvent, nameOf: (heroId: string) => str
       return `Tick ${event.tick}: ${who} permanently gains +${event.amount ?? 0} Attack`;
     case EventKind.MoveBlocked:
       return `Tick ${event.tick}: ${who}'s Move is blocked`;
+    case EventKind.Wait:
+      return `Tick ${event.tick}: ${who} waits`;
     case EventKind.Exhausted:
       return `${who} is Exhausted`;
     default:

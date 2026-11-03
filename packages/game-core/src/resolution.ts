@@ -550,6 +550,7 @@ function legalQueues(match: MatchState, plans: readonly SquadPlan[]): HeroQueue[
       const overdriven: CardIndex[] = [];
       const legal = queue.map((action, index) => {
         if (index >= MAX_QUEUE_LENGTH) return undefined;
+        if (action.kind === ActionKind.Wait) return action;
         // An Overdrive that does not exist or cannot be played yet is illegal and fails without spending the card.
         if (
           action.kind === ActionKind.Primary &&
@@ -595,6 +596,9 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
       const action = queue?.[tick - 1];
       return action ? [{ hero, action }] : [];
     });
+    for (const { hero, action } of actions) {
+      if (action.kind === ActionKind.Wait) events.push({ kind: EventKind.Wait, tick, heroId: hero.id });
+    }
     // Shield exists from its Tick on, so damage resolved later in the same Tick is absorbed by it.
     for (const { hero, action } of actions) {
       if (action.kind === ActionKind.Block) {

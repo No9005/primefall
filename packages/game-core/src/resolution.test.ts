@@ -89,7 +89,7 @@ describe("resolveRound: Move", () => {
   it("moves a used card leaves the Hand for the Discard", () => {
     const match = matchWith({ [LEFT_BRUISER]: { col: 8, row: 5 } });
     const plan = movePlan(match, { [LEFT_BRUISER]: [{ col: 9, row: 5 }] });
-    const used = plan.heroes[0]!.queue[0]!.card;
+    const used = (plan.heroes[0]!.queue[0] as { card: number }).card;
     const bruiser = resolveRound(match, [plan]).match.heroes.find((hero) => hero.id === LEFT_BRUISER)!;
     expect(bruiser.hand).not.toContain(used);
     expect(bruiser.discard).toEqual([used]);

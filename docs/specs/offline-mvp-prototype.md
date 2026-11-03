@@ -115,6 +115,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Give each Hero a fixed 12-card Deck with no Flex cards.
 - Implement Deck-as-Life: unblocked damage removes cards from the top of the target’s Deck; an empty Deck causes Exhaustion.
 - Implement Shield as a round-scoped defensive value created through Block 2.
+- A **Wait** button next to the Queue slots of the selected Hero adds a Wait (an hourglass slot that needs no card and no Energy and can be removed like any other slot) to the first free slot.
 - Distances use Chebyshev distance and movement is 8-directional; Cover is occupiable and ignored by attackers at Range 1; Pitch is a planning step; a Hero's queue has at most 4 actions (ADR 0020).
 - Implement four standard uses for every card: primary effect, Pitch 1, Move 2, or Block 2.
 - Implement Energy as a round-scoped resource produced by Pitching and required for Attack and Utility effects.

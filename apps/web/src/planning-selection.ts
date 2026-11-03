@@ -126,6 +126,7 @@ export function cardFace(card: CardDefinition): { type: string; effectText: stri
 export function queueSlotCode(heroClass: HeroClass, action: QueuedAction): string {
   if (action.kind === ActionKind.Move) return "MOVE";
   if (action.kind === ActionKind.Block) return "BLK";
+  if (action.kind === ActionKind.Wait) return "Wait";
   return HERO_DECKS[heroClass][action.card]!.type === CardType.Attack ? "ATK" : "UTL";
 }
 
@@ -137,6 +138,16 @@ export function removeQueueAction(queue: readonly QueuedAction[], index: number)
 /** The Queue entries the tap flow and the drag flow both build, so one use of a card is one entry however it was chosen. */
 export function moveAction(card: CardIndex, destination: GridPosition): QueuedAction {
   return { kind: ActionKind.Move, card, destination };
+}
+
+/** A Wait needs no card; it takes the first free slot of the Queue, and nothing is added to a full Queue. */
+export function addWaitAction(queue: readonly QueuedAction[]): readonly QueuedAction[] {
+  return queue.length >= MAX_QUEUE_LENGTH ? queue : [...queue, { kind: ActionKind.Wait }];
+}
+
+/** Whether the action spends the Hand card `card`; a Wait spends none. */
+export function actionUsesCard(action: QueuedAction, card: CardIndex): boolean {
+  return action.kind !== ActionKind.Wait && action.card === card;
 }
 
 export function blockAction(card: CardIndex): QueuedAction {

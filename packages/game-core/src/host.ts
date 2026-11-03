@@ -183,6 +183,8 @@ export enum EventKind {
   CoverReductionIgnored = "coverReductionIgnored",
   /** `heroId` permanently gained `amount` Attack (Adrenal Surge). */
   AttackBonusGained = "attackBonusGained",
+  /** A Hero waited: it did nothing in this Tick (`ActionKind.Wait`). */
+  Wait = "wait",
   /** A Hero's Deck is empty after the Resolution; it is removed from the match. */
   Exhausted = "exhausted",
 }

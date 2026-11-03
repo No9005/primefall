@@ -84,7 +84,7 @@ describe("findMoveCollisions against the Resolution", () => {
     const reachable = reachableMoveDestinations(first!.position);
     const destination =
       reachable.find((tile) => contested.some((other) => other.col === tile.col && other.row === tile.row)) ?? reachable[0]!;
-    const plan: SquadPlan = { squad: SquadId.Left, heroes: [{ heroId: first!.id, queue: [{ ...move(destination), card: first!.hand[0]! }] }, ...others] };
+    const plan: SquadPlan = { squad: SquadId.Left, heroes: [{ heroId: first!.id, queue: [{ kind: ActionKind.Move as const, card: first!.hand[0]!, destination }] }, ...others] };
     const flagged = new Set(findMoveCollisions(view.heroes, [plan]).map(({ heroId, tick }) => `${heroId}@${tick}`));
     const result = resolveRound(match, [plan, { squad: SquadId.Right, heroes: [] }]);
     const own = new Set(view.heroes.map((h) => h.id));

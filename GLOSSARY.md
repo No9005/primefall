@@ -120,6 +120,10 @@ _Avoid_: Distance, reach
 The ordered actions a Hero has planned for one Round, at most four. One action is resolved per Tick.
 _Avoid_: Command list, turn order
 
+**Wait**:
+A queue action in which a Hero does nothing for one Tick; it needs no card and takes a slot of the Queue.
+_Avoid_: Skip, pass
+
 **Tick**:
 One simultaneous Resolution step in which each non-exhausted Hero processes the next action in its queue.
 _Avoid_: Turn, phase
