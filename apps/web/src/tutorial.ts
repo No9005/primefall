@@ -1,0 +1,117 @@
+// The Tutorial as data: a list of steps, each with a card, a gesture and a one-line caption.
+// Numbers come from the card data and rule constants, so a rule change cannot make the tutorial lie.
+
+import {
+  BLOCK_SHIELD,
+  type CardDefinition,
+  HALF_COVER_REDUCTION,
+  HERO_DECKS,
+  HeroClass,
+  MOVE_DISTANCE,
+  PITCH_ENERGY,
+  PRIME_ZONE_WIN_RESOLUTIONS,
+} from "game-core";
+import { describeEffects } from "./planning-selection";
+
+export enum TutorialTopic {
+  Goal = "goal",
+  Move = "move",
+  Block = "block",
+  Pitch = "pitch",
+  Attack = "attack",
+  Overdrive = "overdrive",
+  Sight = "sight",
+}
+
+/** Where the dragged card is dropped in the step; `none` means the step shows no drag. */
+export enum TutorialDrop {
+  None = "none",
+  Tile = "tile",
+  BlockChip = "blockChip",
+  EnergyOrb = "energyOrb",
+  EnemyHero = "enemyHero",
+}
+
+export interface TutorialStep {
+  topic: TutorialTopic;
+  title: string;
+  /** One line, in the terms of GLOSSARY.md. */
+  caption: string;
+  /** The glossary terms the caption uses; a test checks that each is a defined term and appears in the caption. */
+  terms: readonly string[];
+  card?: CardDefinition;
+  drop: TutorialDrop;
+}
+
+/** Seconds a step is shown before the next one starts. */
+export const TUTORIAL_STEP_SECONDS = 4;
+
+function cardNamed(heroClass: HeroClass, name: string): CardDefinition {
+  const card = HERO_DECKS[heroClass].find((candidate) => candidate.name === name);
+  if (!card) throw new Error(`Tutorial card ${name} is not in the ${heroClass} Deck`);
+  return card;
+}
+
+const attackCard = cardNamed(HeroClass.Bruiser, "Slam Shot");
+const overdriveCard = cardNamed(HeroClass.Assassin, "Long Shot");
+const anyCard = cardNamed(HeroClass.Bruiser, "Bulwark");
+
+const attackDamage = attackCard.effects[0]?.amount ?? 0;
+const attackRange = attackCard.range ?? 0;
+
+export const TUTORIAL_STEPS: readonly TutorialStep[] = [
+  {
+    topic: TutorialTopic.Goal,
+    title: "Goal",
+    caption: `Hold the Prime Zone for ${PRIME_ZONE_WIN_RESOLUTIONS} Resolutions in a row to win.`,
+    terms: ["Prime Zone", "Resolution"],
+    drop: TutorialDrop.None,
+  },
+  {
+    topic: TutorialTopic.Move,
+    title: `Move ${MOVE_DISTANCE}`,
+    caption: `Drag a card onto a highlighted tile: the Hero moves up to ${MOVE_DISTANCE} tiles.`,
+    terms: ["Hero"],
+    card: anyCard,
+    drop: TutorialDrop.Tile,
+  },
+  {
+    topic: TutorialTopic.Block,
+    title: `Block ${BLOCK_SHIELD}`,
+    caption: `Drag a card onto the Block chip: the Hero gets Shield ${BLOCK_SHIELD} for the Round.`,
+    terms: ["Block", "Shield", "Hero"],
+    card: anyCard,
+    drop: TutorialDrop.BlockChip,
+  },
+  {
+    topic: TutorialTopic.Pitch,
+    title: "Pitch",
+    caption: `Drag a card onto the Energy orb to Pitch it: you gain ${PITCH_ENERGY} Energy.`,
+    terms: ["Pitch", "Energy"],
+    card: anyCard,
+    drop: TutorialDrop.EnergyOrb,
+  },
+  {
+    topic: TutorialTopic.Attack,
+    title: "Attack",
+    caption: `Drag ${attackCard.name} onto an enemy Hero: it costs ${attackCard.energyCost} Energy and deals ${attackDamage} Deck Damage to its Deck.`,
+    terms: ["Hero", "Energy", "Deck Damage", "Deck"],
+    card: attackCard,
+    drop: TutorialDrop.EnemyHero,
+  },
+  {
+    topic: TutorialTopic.Overdrive,
+    title: "Overdrive",
+    caption: `${overdriveCard.name} has two faces: Normal (${describeEffects(overdriveCard.effects)}) and Overdrive (${describeEffects(overdriveCard.overdrive)}). Choose Overdrive and the card goes to Exile.`,
+    terms: ["Overdrive", "Exile"],
+    card: overdriveCard,
+    drop: TutorialDrop.EnemyHero,
+  },
+  {
+    topic: TutorialTopic.Sight,
+    title: "Line of Sight",
+    caption: `An attack needs Line of Sight and Range ${attackRange}: a Hero out of sight is not Visible, and Half Cover cuts damage by ${HALF_COVER_REDUCTION}.`,
+    terms: ["Line of Sight", "Range", "Visible", "Cover", "Hero"],
+    drop: TutorialDrop.None,
+  },
+];
