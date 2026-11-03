@@ -1,21 +1,19 @@
-import { useEffect, useState } from "react";
+import { HeroClass } from "game-core";
+import { useEffect, useRef, useState } from "react";
+import { Board, type TokenHero } from "./Board";
+import type { BoardPick, Point } from "./card-drag";
+import { BlockChip, CardFace, EnergyOrb, ModeFaceCard } from "./game-parts";
 import "./tutorial.css";
-import { cardFace, describeEffects } from "./planning-selection";
-import { TUTORIAL_STEP_SECONDS, TUTORIAL_STEPS, TutorialDrop, TutorialTopic } from "./tutorial";
+import { OVERDRIVE_FACES, SIGHT_SCENE, TUTORIAL_STEP_SECONDS, TUTORIAL_STEPS, TutorialDrop, TutorialTopic } from "./tutorial";
 
 const COLS = 7;
 const ROWS = 5;
 const PRIME_ZONE = { fromCol: 2, toCol: 4, fromRow: 1, toRow: 3 };
 const HERO = { col: 0, row: 2 };
 const ENEMY = { col: 6, row: 2 };
-/** Sight step: tiles behind the blockers are dark, the enemy standing there is not Visible. */
-const BLOCKERS = [{ col: 3, row: 3 }, { col: 3, row: 4 }];
-const HIDDEN_ENEMY = { col: 6, row: 4 };
-const VISIBLE_ENEMY = { col: 6, row: 0 };
 const MOVE_TARGET = { col: 2, row: 2 };
 
 const same = (a: { col: number; row: number }, b: { col: number; row: number }) => a.col === b.col && a.row === b.row;
-const inShadow = ({ col, row }: { col: number; row: number }) => col > 3 && row >= 3;
 
 function tileClasses(col: number, row: number, topic: TutorialTopic): string {
   const tile = { col, row };
@@ -24,11 +22,44 @@ function tileClasses(col: number, row: number, topic: TutorialTopic): string {
   if (inZone) classes.push("prime");
   if (topic === TutorialTopic.Goal && inZone) classes.push("glow");
   if (topic === TutorialTopic.Move && same(tile, MOVE_TARGET)) classes.push("move-target");
-  if (topic === TutorialTopic.Sight) {
-    if (BLOCKERS.some((blocker) => same(blocker, tile))) classes.push("blocker");
-    classes.push(inShadow(tile) ? "dark" : "lit");
-  }
   return classes.join(" ");
+}
+
+// Static input of the Board in the Line of Sight step. Kept outside the component so the Board's effects do not redraw.
+const SIGHT_HEROES: readonly TokenHero[] = [{ id: "hero", heroClass: HeroClass.Bruiser, position: SIGHT_SCENE.hero, exhausted: false }];
+const SIGHT_ENEMIES: readonly TokenHero[] = [{ id: SIGHT_SCENE.seenEnemy.id, heroClass: HeroClass.Assassin, position: SIGHT_SCENE.seenEnemy.position, exhausted: false }];
+const SIGHT_SHOTS = [SIGHT_SCENE.shot];
+const NOTHING: never[] = [];
+const NO_PICK: BoardPick = { target: { kind: "none" }, ground: undefined };
+const ignore = () => undefined;
+
+/** The Line of Sight step: the game's own Board with its visibility drawing and shot line, on static data. */
+function SightBoard() {
+  const pickRef = useRef<((point: Point) => BoardPick) | undefined>(() => NO_PICK);
+  return (
+    <div className="tutorial-sight-board" data-testid="tutorial-sight-board">
+      <Board
+        destroyedCover={NOTHING}
+        placedCover={NOTHING}
+        revealedAreas={NOTHING}
+        visibleTiles={SIGHT_SCENE.visibleTiles}
+        heroes={SIGHT_HEROES}
+        enemies={SIGHT_ENEMIES}
+        selectedId="hero"
+        onSelect={ignore}
+        targetableIds={NOTHING}
+        onTargetTap={ignore}
+        hitIds={NOTHING}
+        highlights={NOTHING}
+        markers={NOTHING}
+        onTileTap={ignore}
+        zoneLabels={NOTHING}
+        areaTiles={NOTHING}
+        shotLines={SIGHT_SHOTS}
+        pickRef={pickRef}
+      />
+    </div>
+  );
 }
 
 /** The Resolution counter of the Goal step: 0/3 climbing to 3/3 while the step plays. */
@@ -58,14 +89,8 @@ export function TutorialScreen({ onPlay, onClose }: { onPlay: () => void; onClos
     return () => clearInterval(timer);
   }, [index, last]);
 
-  const faces =
-    step.topic === TutorialTopic.Overdrive && step.card
-      ? [false, true].map((overdrive) => ({ overdrive, energyCost: step.card!.energyCost, effectText: describeEffects(overdrive ? step.card!.overdrive : step.card!.effects) ?? "" }))
-      : undefined;
-  const face = step.card ? cardFace(step.card) : undefined;
   const heroMoved = step.topic === TutorialTopic.Move && seconds >= TUTORIAL_STEP_SECONDS / 2;
   const heroPosition = heroMoved ? MOVE_TARGET : HERO;
-  const enemyPositions = step.topic === TutorialTopic.Sight ? [VISIBLE_ENEMY, HIDDEN_ENEMY] : [ENEMY];
   const dropped = seconds >= TUTORIAL_STEP_SECONDS / 2;
 
   return (
@@ -74,56 +99,40 @@ export function TutorialScreen({ onPlay, onClose }: { onPlay: () => void; onClos
         {step.title}
       </h2>
       <div className="tutorial-stage">
-        <div className="tutorial-board" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)`, gridTemplateRows: `repeat(${ROWS}, 1fr)` }}>
-          {Array.from({ length: ROWS * COLS }, (_, i) => {
-            const col = i % COLS;
-            const row = Math.floor(i / COLS);
-            return <div key={i} className={tileClasses(col, row, step.topic)} />;
-          })}
-          <div className="tutorial-hero ally" style={{ gridColumn: heroPosition.col + 1, gridRow: heroPosition.row + 1 }}>
-            {step.topic === TutorialTopic.Block && dropped ? "Shield 2" : "Hero"}
-          </div>
-          {enemyPositions.map((enemy) => (
-            <div
-              key={`${enemy.col},${enemy.row}`}
-              className={`tutorial-hero enemy${step.topic === TutorialTopic.Sight && same(enemy, HIDDEN_ENEMY) ? " unseen" : ""}`}
-              style={{ gridColumn: enemy.col + 1, gridRow: enemy.row + 1 }}
-            >
-              {step.topic === TutorialTopic.Sight && same(enemy, HIDDEN_ENEMY) ? "?" : "Hero"}
+        {step.topic === TutorialTopic.Sight ? (
+          <SightBoard />
+        ) : (
+          <div className="tutorial-board" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)`, gridTemplateRows: `repeat(${ROWS}, 1fr)` }}>
+            {Array.from({ length: ROWS * COLS }, (_, i) => {
+              const col = i % COLS;
+              const row = Math.floor(i / COLS);
+              return <div key={i} className={tileClasses(col, row, step.topic)} />;
+            })}
+            <div className="tutorial-hero ally" style={{ gridColumn: heroPosition.col + 1, gridRow: heroPosition.row + 1 }}>
+              {step.topic === TutorialTopic.Block && dropped ? "Shield 2" : "Hero"}
             </div>
-          ))}
-          {step.topic === TutorialTopic.Sight && <div className="tutorial-sight-line" data-testid="tutorial-sight-line" />}
-          {step.topic === TutorialTopic.Goal && (
-            <div className="tutorial-counter" data-testid="tutorial-counter">
-              {goalCount(seconds)}/3
+            <div className="tutorial-hero enemy" style={{ gridColumn: ENEMY.col + 1, gridRow: ENEMY.row + 1 }}>
+              Hero
             </div>
-          )}
-        </div>
-        <div className="tutorial-side">
-          <div className={`drop-chip ${step.drop === TutorialDrop.BlockChip ? "lit" : "off"}${step.drop === TutorialDrop.BlockChip && dropped ? " active" : ""}`}>BLOCK</div>
-          <div className={`energy${step.drop === TutorialDrop.EnergyOrb ? " drop-lit" : ""}${step.drop === TutorialDrop.EnergyOrb && dropped ? " active" : ""}`}>
-            {step.drop === TutorialDrop.EnergyOrb && dropped ? 1 : 0}
-          </div>
-        </div>
-        {step.card && face && (
-          <div className="tutorial-hand">
-            {faces ? (
-              faces.map((modeFace, i) => (
-                <div key={modeFace.overdrive ? "overdrive" : "normal"} className={`card mode-face ${step.card!.type}${modeFace.overdrive ? " overdrive" : ""}${dropped && i === 1 ? " chosen" : ""}`}>
-                  <span className="card-name">{step.card!.name}</span>
-                  <span className="card-cost">{modeFace.energyCost}</span>
-                  <span className="card-type">{modeFace.overdrive ? "OVERDRIVE" : "NORMAL"}</span>
-                  <span className="card-text">{modeFace.effectText}</span>
-                  {dropped && modeFace.overdrive && <span className="card-use">Exiled</span>}
-                </div>
-              ))
-            ) : (
-              <div className={`card ${step.card.type} tutorial-card drop-${step.drop}`} key={step.topic}>
-                <span className="card-name">{step.card.name}</span>
-                <span className="card-cost">{step.card.energyCost}</span>
-                <span className="card-type">{face.type}</span>
-                <span className="card-text">{face.effectText}</span>
+            {step.topic === TutorialTopic.Goal && (
+              <div className="tutorial-counter" data-testid="tutorial-counter">
+                {goalCount(seconds)}/3
               </div>
+            )}
+          </div>
+        )}
+        <div className="tutorial-side">
+          <BlockChip allowed={step.drop === TutorialDrop.BlockChip} active={step.drop === TutorialDrop.BlockChip && dropped} />
+          <EnergyOrb available={step.drop === TutorialDrop.EnergyOrb && dropped ? 1 : 0} lit={step.drop === TutorialDrop.EnergyOrb} active={step.drop === TutorialDrop.EnergyOrb && dropped} />
+        </div>
+        {step.card && (
+          <div className="tutorial-hand">
+            {step.topic === TutorialTopic.Overdrive ? (
+              OVERDRIVE_FACES.map((face) => <ModeFaceCard key={String(face.overdrive)} card={step.card!} face={face} chosen={dropped && face.overdrive} />)
+            ) : (
+              <button type="button" tabIndex={-1} className={`card ${step.card.type} tutorial-card drop-${step.drop}`} key={step.topic}>
+                <CardFace card={step.card} />
+              </button>
             )}
           </div>
         )}

@@ -6,12 +6,16 @@ import {
   type CardDefinition,
   HALF_COVER_REDUCTION,
   HERO_DECKS,
+  type GridPosition,
+  hasLineOfSight,
   HeroClass,
   MOVE_DISTANCE,
   PITCH_ENERGY,
   PRIME_ZONE_WIN_RESOLUTIONS,
+  REACTOR_DECK,
 } from "game-core";
-import { describeEffects } from "./planning-selection";
+import { describeEffects, modeChoiceFaces, type ModeFace } from "./planning-selection";
+import { drawShot } from "./shot-lines";
 
 export enum TutorialTopic {
   Goal = "goal",
@@ -56,8 +60,33 @@ const attackCard = cardNamed(HeroClass.Bruiser, "Slam Shot");
 const overdriveCard = cardNamed(HeroClass.Assassin, "Long Shot");
 const anyCard = cardNamed(HeroClass.Bruiser, "Bulwark");
 
+/** The two faces of the Overdrive step's card, as the game's own mode choice builds them (all pressable in the demo). */
+export const OVERDRIVE_FACES: readonly ModeFace[] = (modeChoiceFaces(HeroClass.Assassin, HERO_DECKS[HeroClass.Assassin].indexOf(overdriveCard), [], []) ?? []).map(
+  (face) => ({ ...face, reason: undefined }),
+);
+
 const attackDamage = attackCard.effects[0]?.amount ?? 0;
 const attackRange = attackCard.range ?? 0;
+
+// The Line of Sight step: one Hero on the real Reactor Deck, an enemy it sees and one behind a Wall. The Board draws it.
+
+/** How far a Hero sees; the rules' SIGHT_RANGE lives in the server entry point, which the web app may not import. */
+const TUTORIAL_SIGHT_TILES = 7;
+
+export const SIGHT_SCENE = (() => {
+  const hero = { col: 10, row: 8 };
+  const seenEnemy = { id: "seen", position: { col: 13, row: 6 } };
+  const hiddenEnemy = { id: "hidden", position: { col: 10, row: 4 } };
+  const visibleTiles: GridPosition[] = [];
+  REACTOR_DECK.tiles.forEach((line, row) =>
+    line.forEach((_, col) => {
+      const tile = { col, row };
+      const near = Math.max(Math.abs(col - hero.col), Math.abs(row - hero.row)) <= TUTORIAL_SIGHT_TILES;
+      if (near && hasLineOfSight(REACTOR_DECK, hero, tile)) visibleTiles.push(tile);
+    }),
+  );
+  return { hero, seenEnemy, hiddenEnemy, visibleTiles, shot: drawShot(REACTOR_DECK, hero, seenEnemy, attackRange) };
+})();
 
 export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
