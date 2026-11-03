@@ -7,14 +7,10 @@
 .tutorial-tile.prime { background: #24424a; }
 .tutorial-tile.prime.glow { background: #2ec4b6; animation: tutorial-glow 1s infinite alternate; }
 .tutorial-tile.move-target { outline: 2px solid #2ec4b6; background: #2ec4b633; }
-.tutorial-tile.lit { background: #3a4a5a; }
-.tutorial-tile.dark { background: #07090c; }
-.tutorial-tile.blocker { background: #5b6672; }
+.tutorial-sight-board { position: relative; width: 420px; height: 200px; }
 .tutorial-hero { z-index: 1; display: flex; align-items: center; justify-content: center; border-radius: 50%; font: 600 11px Rajdhani, sans-serif; }
 .tutorial-hero.ally { background: #2ec4b6; color: #12161c; }
 .tutorial-hero.enemy { background: #e5484d; color: #12161c; }
-.tutorial-hero.enemy.unseen { background: #07090c; color: #8a99a8; border: 1px dashed #3d5a73; }
-.tutorial-sight-line { position: absolute; left: 7%; top: 50%; width: 88%; height: 0; border-top: 2px dashed #ff8a3d; transform-origin: left center; transform: rotate(-22deg); pointer-events: none; }
 .tutorial-counter { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 700 28px "IBM Plex Mono", monospace; color: #12161c; }
 .tutorial-side { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .tutorial-hand { display: flex; gap: 6px; }

@@ -34,10 +34,11 @@ import {
 } from "game-core";
 import { type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { Board } from "./Board";
+import { BlockChip, CardFace, EnergyOrb, ModeFaceCard } from "./game-parts";
 import { drawShots, type ShotDrawing } from "./shot-lines";
 import { applyDrop, type BoardPick, type DropPlaces, type DropProbe, type DropUse, type Point, probeDrop, type Rect } from "./card-drag";
 import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
-import { blockAction, CARD_USE_LABELS, cardFace, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, type ModeFace, modeChoiceFaces, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
+import { blockAction, CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, type ModeFace, modeChoiceFaces, moveAction, primaryAction, queueSlotCode, rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
 export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
@@ -150,9 +151,7 @@ function SquadPanel({
         </div>
       </section>
       {blockChip && (
-        <div ref={blockChipRef} className={`drop-chip${blockChip.allowed ? " lit" : " off"}${blockChip.active ? " active" : ""}`}>
-          BLOCK 2
-        </div>
+        <BlockChip chipRef={blockChipRef} allowed={blockChip.allowed} active={blockChip.active} />
       )}
       </div>
       <div className="chips">
@@ -271,7 +270,6 @@ function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onC
     <ul className="hand" aria-label="Hand">
       {hero.hand.map((cardIndex, position) => {
         const card = deck[cardIndex]!;
-        const face = cardFace(card);
         const offset = position - middle;
         const queuedAt = queue.findIndex((action) => action.card === cardIndex);
         const isPitched = pitched.includes(cardIndex);
@@ -292,11 +290,7 @@ function Hand({ hero, queue, pitched, armed, armedLabel, choosing, disabled, onC
               onClick={() => onCardTap(cardIndex)}
               onPointerDown={(event) => onCardPointerDown(cardIndex, event)}
             >
-              <span className="card-name">{card.name}</span>
-              <span className="card-cost">{card.energyCost}</span>
-              <span className="card-type">{face.type}</span>
-              <span className="card-text">{face.effectText}</span>
-              {use && <span className="card-use">{use}</span>}
+              <CardFace card={card} use={use} />
             </button>
           </li>
         );
@@ -356,21 +350,7 @@ function ModeChoice({ card, faces, onPick, onCancel }: ModeChoiceProps) {
       <div className="mode-backdrop" data-testid="mode-backdrop" onClick={onCancel} />
       <div className="mode-faces">
         {faces.map((face) => (
-          <button
-            key={String(face.overdrive)}
-            type="button"
-            className={`card mode-face ${card.type}${face.overdrive ? " overdrive" : ""}`}
-            disabled={face.reason !== undefined}
-            aria-label={`${card.name} ${face.overdrive ? "Overdrive" : "Normal"}`}
-            onClick={() => onPick(face)}
-          >
-            <span className="card-name">{card.name}</span>
-            <span className="card-cost">{face.energyCost}</span>
-            <span className="card-type">{face.overdrive ? "OVERDRIVE" : "NORMAL"}</span>
-            <span className="card-text">{face.effectText}</span>
-            {face.exiled && <span className="mode-note">Exiled: leaves the game after use</span>}
-            {face.reason && <span className="use-reason">{face.reason}</span>}
-          </button>
+          <ModeFaceCard key={String(face.overdrive)} card={card} face={face} onPick={onPick} />
         ))}
       </div>
     </div>
@@ -898,15 +878,13 @@ export function PlanningScreen({ view, submitPlan, onResolved }: PlanningScreenP
         <ModeChoice card={HERO_DECKS[selected.heroClass][modeChoice.card]!} faces={modeFaces} onPick={pickFace} onCancel={() => setModeChoice(undefined)} />
       )}
       <div className="hud hand-bar">
-        <div
-          ref={energyRef}
-          className={`energy${drag ? " drop-lit" : ""}${drag?.probe.drop?.use === CardUse.Pitch ? " active" : ""}`}
-          data-testid="energy"
-          aria-label={`Energy: ${energy.available} available`}
+        <EnergyOrb
+          orbRef={energyRef}
+          available={energy.available}
+          lit={drag !== undefined}
+          active={drag?.probe.drop?.use === CardUse.Pitch}
           title={`Pitched ${energy.pitched} · Spent ${energy.spent}`}
-        >
-          {energy.available}
-        </div>
+        />
         <Hand
           hero={selected}
           queue={queue}
