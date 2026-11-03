@@ -39,6 +39,7 @@ import {
   reviewOutcome,
   summarizeAgentRun,
   formatRunSummary,
+  formatOwnerBrief,
   ReviewVerdict,
   type IssueEvent,
   type ReviewResult,
@@ -246,6 +247,9 @@ function reviewReport(number: number, file: string): void {
   gh(["api", "-X", "POST", `repos/${repo}/statuses/${pr.head.sha}`, "-f", `state=${passed ? "success" : "failure"}`, "-f", `context=${REVIEW_STATUS_CONTEXT}`, "-f", `description=Automated review: ${effective.verdict}`]);
   if (passed) tidyBotThreadsAndReviews(number, pr.head.sha, effective.resolvedThreads);
   if (effective.raiseBlastRadiusReason && ratingEnabled) setBlastRadius(number, BlastRadius.High, [`Raised by the reviewer: ${effective.raiseBlastRadiusReason}`]);
+  // Reload the labels: the reviewer may just have raised the class above.
+  const high = loadPullRequest(number).labels.some((l) => l.name === Label.BlastRadiusHigh);
+  if (high && effective.brief) upsertComment(number, CommentMarker.OwnerBrief, formatOwnerBrief(effective.brief));
   output("verdict", effective.verdict);
 }
 

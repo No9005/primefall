@@ -22,6 +22,8 @@ export const CommentMarker = {
   ReviewNotRun: "<!-- factory:review-not-run -->",
   ImplementFailed: "<!-- factory:implement-failed -->",
   ReworkStalled: "<!-- factory:rework-stalled -->",
+  /** Contract with the dashboard (#176): it shows this comment as the recommendation. */
+  OwnerBrief: "<!-- factory:owner-brief -->",
 } as const;
 
 export const ReviewVerdict = { Pass: "pass", Fail: "fail" } as const;
@@ -183,12 +185,69 @@ export interface ResolvedThread {
   reason: string;
 }
 
+export const BriefRecommendation = { Merge: "merge", Hold: "hold", Change: "change" } as const;
+export type BriefRecommendation = (typeof BriefRecommendation)[keyof typeof BriefRecommendation];
+
+/** Advice for the owner on a high blast radius pull request. It never decides anything. */
+export interface OwnerBrief {
+  playerImpact: string;
+  ownerChecks: string[];
+  recommendation: BriefRecommendation;
+  reason: string;
+}
+
 export interface ReviewResult {
   verdict: ReviewVerdict;
   summary: string;
   findings: ReviewFinding[];
   raiseBlastRadiusReason: string | undefined;
   resolvedThreads: ResolvedThread[];
+  brief: OwnerBrief | undefined;
+}
+
+const MAX_BRIEF_IMPACT = 400;
+const MAX_BRIEF_CHECK = 160;
+const MAX_BRIEF_CHECKS = 4;
+const MAX_BRIEF_REASON = 200;
+
+function ellipsize(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+/** A malformed brief is dropped (undefined); it never fails the review. */
+function parseBrief(raw: unknown): OwnerBrief | undefined {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const b = raw as Record<string, unknown>;
+  const recommendation = Object.values(BriefRecommendation).find((r) => r === b.recommendation);
+  if (!recommendation || typeof b.playerImpact !== "string" || typeof b.reason !== "string" || !Array.isArray(b.ownerChecks)) return undefined;
+  if (b.playerImpact.trim().length === 0 || b.reason.trim().length === 0) return undefined;
+  if (!b.ownerChecks.every((check) => typeof check === "string")) return undefined;
+  const ownerChecks = (b.ownerChecks as string[])
+    .map((check) => check.trim())
+    .filter((check) => check.length > 0)
+    .slice(0, MAX_BRIEF_CHECKS)
+    .map((check) => ellipsize(check, MAX_BRIEF_CHECK));
+  return { playerImpact: ellipsize(b.playerImpact.trim(), MAX_BRIEF_IMPACT), ownerChecks, recommendation, reason: ellipsize(b.reason.trim(), MAX_BRIEF_REASON) };
+}
+
+/** Text from the agent is data: `@` handles are removed so nothing in it can notify anyone. */
+function withoutMentions(text: string): string {
+  return text.replaceAll("@", "");
+}
+
+/** The body of the owner brief comment (the upsert puts the marker on the first line). */
+export function formatOwnerBrief(brief: OwnerBrief): string {
+  const checks = brief.ownerChecks.length > 0 ? brief.ownerChecks.map((check) => `- ${withoutMentions(check)}`).join("\n") : "- Nothing to check by hand.";
+  return [
+    "**Owner brief** (advice from the automated review; you decide)",
+    "",
+    `**What changes for the player:** ${withoutMentions(brief.playerImpact)}`,
+    "",
+    "**What only you can check:**",
+    checks,
+    "",
+    `**Recommendation:** ${brief.recommendation} (${withoutMentions(brief.reason)})`,
+  ].join("\n");
 }
 
 /** Validates the JSON the review run wrote; anything malformed counts as a failed review. */
@@ -210,7 +269,7 @@ export function parseReviewResult(raw: unknown): ReviewResult | undefined {
     const t = item as Record<string, unknown>;
     if (typeof t?.id === "string" && t.id.length > 0 && typeof t.reason === "string" && t.reason.trim().length > 0) resolvedThreads.push({ id: t.id, reason: t.reason.trim() });
   }
-  return { verdict, summary: value.summary, findings, raiseBlastRadiusReason: reason, resolvedThreads };
+  return { verdict, summary: value.summary, findings, raiseBlastRadiusReason: reason, resolvedThreads, brief: parseBrief(value.brief) };
 }
 
 /**
