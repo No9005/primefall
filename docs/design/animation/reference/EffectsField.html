@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Board effects: the field and status</title>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;background:#0e1217}
+button{font-family:inherit;cursor:pointer}
+button:disabled{cursor:default}
+
+.fig{position:absolute;left:0;top:0;width:0;height:0}
+.fig *{position:absolute;box-sizing:border-box}
+.gring{left:-16px;top:-8px;width:32px;height:16px;border-radius:50%;border:2.5px solid #2ec4b6}
+.slab{left:-14px;top:-9px;width:28px;height:11px;border-radius:3px;background:#3a4653;border:1.5px solid #0b1016;opacity:0}
+.bubble{left:-17px;top:-50px;width:34px;height:54px;border-radius:50%;border:1.5px solid #4da3ff;background:#4da3ff22;opacity:0}
+.ripple{left:-17px;top:-50px;width:34px;height:54px;border-radius:50%;border:1.5px solid #4da3ff;opacity:0}
+.rig{left:0;top:0;width:0;height:0;transform-origin:0 0}
+.legL,.legR{top:-10px;width:6px;height:10px;background:#8a4b1f;border:1px solid #0b1016;border-radius:3px;transform-origin:50% 0}
+.legL{left:-8px}.legR{left:2px}
+.torso{left:0;top:-10px;width:0;height:0;transform-origin:0 0}
+.body{left:-9px;top:-16px;width:18px;height:16px;background:#d9732f;border:1.5px solid #0b1016;border-radius:6px}
+.plate{left:3px;top:3px;width:8px;height:5px;background:#f0a25e;border-radius:2px;border:0}
+.head{left:-5px;top:-27px;width:10px;height:10px;background:#e8d3b9;border:1.5px solid #0b1016;border-radius:50%;transform-origin:50% 100%}
+.visor{right:0;top:3px;width:5px;height:2px;background:#0b1016;border:0}
+.armB,.armF{top:-15px;width:4px;height:11px;background:#c26323;border:1px solid #0b1016;border-radius:2px;transform-origin:50% 1px}
+.armB{left:-12px;transform:rotate(4deg)}
+.armF{left:8px;transform:rotate(-30deg)}
+.hand{left:-1px;top:8px;width:5px;height:5px;border-radius:50%;background:#e8d3b9;border:1px solid #0b1016}
+.gun{left:-1px;top:11px;width:6px;height:13px;background:#2a323c;border:1px solid #0b1016;border-radius:2px}
+.muzzle{left:-3px;top:11px;width:10px;height:10px;border-radius:50%;background:radial-gradient(#ffd24a,#ff8a3d);opacity:0;transform:scale(0)}
+.bolt{left:34px;top:-26px;width:130px;height:3px;opacity:0}
+.bolt i{display:block;left:0;top:0;width:100%;height:100%;border-radius:2px;background:#2ec4b6;box-shadow:0 0 6px #2ec4b6;transform-origin:0 50%;transform:scaleX(0)}
+.rubies b{top:-48px;width:7px;height:7px;transform:rotate(45deg);background:#4da3ff;border:1px solid #0b1016;opacity:0}
+.rubies b:first-child{left:-9px}.rubies b:last-child{left:2px}
+.float{left:-24px;top:-58px;width:48px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:500;opacity:0;text-shadow:0 1px 2px #000;color:#e5484d}
+.pad{left:-15px;top:-19px;width:11px;height:9px;border-radius:6px 6px 3px 3px;background:#c4651f;border:1.5px solid #0b1016;z-index:3;box-shadow:inset 0 2px 0 #f0a25e}
+.padR{left:4px}
+.as .pad,.co .pad{display:none}
+.wallh,.wallf,.dropgun{display:none}
+.as .dropgun{display:block;left:9px;top:-24px;width:4px;height:26px;background:#1d242c;border:1px solid #0b1016;border-radius:2px;transform-origin:50% 0;opacity:0}
+.as .dropgun i{left:-1px;top:8px;width:6px;height:3px;background:#7fe8ff;border:0}
+.p-cover .wallh,.p-covh .wallh{display:block;left:-17px;top:-13px;width:34px;height:12px;background:#5a6877;border:1.5px solid #0b1016;border-radius:3px;box-shadow:inset 0 3px 0 #77899b}
+.p-fullcover .wallf,.p-covf .wallf{display:block;left:-19px;top:-40px;width:9px;height:40px;background:#4b5967;border:1.5px solid #0b1016;border-radius:2px;box-shadow:inset 3px 0 0 #6a7c8e}
+.pause{display:none;left:-9px;top:-52px;width:18px;height:11px;border-radius:4px;background:#8a99a8;color:#12161c;font-family:'IBM Plex Mono',monospace;font-size:8px;line-height:11px;text-align:center}
+.fig .body{background:#2a56a8}.fig .plate{background:#5f8fe0}.fig .legL,.fig .legR{background:#173a78}.fig .armB,.fig .armF{background:#234a94}
+.fig .pad{background:#1f4488;box-shadow:inset 0 2px 0 #5f8fe0}
+.fig.co .body{background:#4f8fe6}.fig.co .plate{background:#a9ccff}.fig.co .legL,.fig.co .legR{background:#2d5aa8}.fig.co .armB,.fig.co .armF{background:#3f78d0}
+.fig.co .head{background:#2a5fb8}.fig.co .pack{background:#2d5aa8}
+.fig.as .body{background:#8ec3ff}.fig.as .plate{background:#d0e8ff}.fig.as .legL,.fig.as .legR{background:#4a7ab8}.fig.as .armB,.fig.as .armF{background:#6aa6ea}
+.fig.as .head{background:#3a6ab0}.fig.as .hood i{background:#3a6ab0}.fig.as .cape i{background:linear-gradient(#6aa6ea,#4a7ab8)}
+.fig.enemy .body{background:#a3212c}.fig.enemy .plate{background:#d8606a}.fig.enemy .legL,.fig.enemy .legR{background:#6e141c}.fig.enemy .armB,.fig.enemy .armF{background:#8c1b25}
+.fig.enemy .pad{background:#7a1822;box-shadow:inset 0 2px 0 #d8606a}
+.fig.enemy.co .body{background:#e04a44}.fig.enemy.co .plate{background:#ff9c96}.fig.enemy.co .legL,.fig.enemy.co .legR{background:#9a2a2a}.fig.enemy.co .armB,.fig.enemy.co .armF{background:#c93a38}
+.fig.enemy.co .head{background:#b02e2e}.fig.enemy.co .pack{background:#9a2a2a}
+.fig.enemy.as .body{background:#ff9a92}.fig.enemy.as .plate{background:#ffd0cc}.fig.enemy.as .legL,.fig.enemy.as .legR{background:#b04a4a}.fig.enemy.as .armB,.fig.enemy.as .armF{background:#e87a76}
+.fig.enemy.as .head{background:#a63a3a}.fig.enemy.as .hood i{background:#a63a3a}.fig.enemy.as .cape i{background:linear-gradient(#e87a76,#b04a4a)}
+.fig.enemy .visor{background:#ff5a5a}.fig.enemy.co .visor{background:#ff9a5a}.fig.enemy .gring{border-color:#e5484d}
+/* idle: a clear breath, weight shift and sway so it reads even at game size */
+@keyframes i-torso{0%,100%{transform:translate(0,0) scale(1,1)}50%{transform:translate(.8px,-2px) scale(1,1.05)}}
+@keyframes i-head{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-1.4px) rotate(-4deg)}}
+@keyframes i-armf{0%,100%{transform:rotate(-30deg)}50%{transform:rotate(-40deg)}}
+@keyframes i-armb{0%,100%{transform:rotate(4deg)}50%{transform:rotate(14deg)}}
+@keyframes i-legl{0%,100%{transform:rotate(0)}50%{transform:rotate(-4deg)}}
+@keyframes i-legr{0%,100%{transform:rotate(0)}50%{transform:rotate(4deg)}}
+.p-idle .torso{animation:i-torso 2s ease-in-out infinite}
+.p-idle .head{animation:i-head 2s ease-in-out infinite}
+.p-idle .armF{animation:i-armf 2s ease-in-out infinite}
+.p-idle .armB{animation:i-armb 2s ease-in-out infinite}
+.p-idle .legL{animation:i-legl 2s ease-in-out infinite}
+.p-idle .legR{animation:i-legr 2s ease-in-out infinite}
+/* walk */
+@keyframes w-legl{0%,100%{transform:rotate(-30deg)}50%{transform:rotate(30deg)}}
+@keyframes w-legr{0%,100%{transform:rotate(30deg)}50%{transform:rotate(-30deg)}}
+@keyframes w-torso{0%,50%,100%{transform:translateY(0) rotate(5deg)}25%,75%{transform:translateY(-1.5px) rotate(5deg)}}
+@keyframes w-armf{0%,100%{transform:rotate(-48deg)}50%{transform:rotate(-30deg)}}
+@keyframes w-armb{0%,100%{transform:rotate(30deg)}50%{transform:rotate(-30deg)}}
+@keyframes w-head{0%,50%,100%{transform:translateY(0)}25%,75%{transform:translateY(-.8px)}}
+.p-walk .legL{animation:w-legl .64s linear infinite}
+.p-walk .legR{animation:w-legr .64s linear infinite}
+.p-walk .torso{animation:w-torso .64s linear infinite}
+.p-walk .armF{animation:w-armf .64s linear infinite}
+.p-walk .armB{animation:w-armb .64s linear infinite}
+.p-walk .head{animation:w-head .64s linear infinite}
+/* wait */
+@keyframes wt-head{0%,18%,50%,62%,92%,100%{transform:rotate(0)}26%,38%{transform:rotate(-14deg)}70%,82%{transform:rotate(14deg)}}
+@keyframes wt-leg{0%,6%,14%,22%,100%{transform:rotate(0)}10%,18%{transform:rotate(-10deg)}}
+@keyframes wt-pause{0%,100%{opacity:1}50%{opacity:.45}}
+.p-wait .head{animation:wt-head 3.2s ease-in-out infinite}
+.p-wait .legR{animation:wt-leg 3.2s ease-in-out infinite}
+.p-wait .armF{transform:rotate(-12deg)}
+.p-wait .pause{display:block;animation:wt-pause 1.6s ease-in-out infinite}
+/* attack: Slam Shot */
+@keyframes a-torso{0%,10%{transform:translate(0,0) rotate(0)}22%{transform:translate(-1px,0) rotate(-5deg)}26%{transform:translate(-3px,0) rotate(-9deg)}36%{transform:translate(-2px,0) rotate(-6deg)}52%{transform:translate(0,0) rotate(-1deg)}64%,100%{transform:translate(0,0) rotate(0)}}
+@keyframes a-armf{0%,10%{transform:rotate(-30deg)}22%{transform:rotate(-92deg)}26%{transform:rotate(-108deg)}38%{transform:rotate(-96deg)}56%{transform:rotate(-45deg)}66%,100%{transform:rotate(-30deg)}}
+@keyframes a-legl{0%,10%,60%,100%{transform:rotate(0)}22%,40%{transform:rotate(10deg)}}
+@keyframes a-legr{0%,10%,60%,100%{transform:rotate(0)}22%,40%{transform:rotate(-10deg)}}
+@keyframes a-head{0%,10%,60%,100%{transform:rotate(0)}22%,40%{transform:rotate(3deg)}26%{transform:rotate(-4deg)}}
+@keyframes a-muzzle{0%,24%{opacity:0;transform:scale(0)}27%{opacity:1;transform:scale(1.6)}34%{opacity:0;transform:scale(2)}100%{opacity:0}}
+@keyframes a-bolt{0%,25%{opacity:0}26%,44%{opacity:1}56%,100%{opacity:0}}
+@keyframes a-boltin{0%,25%{transform:scaleX(0)}42%,100%{transform:scaleX(1)}}
+.p-attack .torso{animation:a-torso 2.6s ease-out infinite}
+.p-attack .armF{animation:a-armf 2.6s ease-out infinite}
+.p-attack .legL{animation:a-legl 2.6s ease-out infinite}
+.p-attack .legR{animation:a-legr 2.6s ease-out infinite}
+.p-attack .head{animation:a-head 2.6s ease-out infinite}
+.p-attack .muzzle{animation:a-muzzle 2.6s ease-out infinite}
+.p-attack .bolt{animation:a-bolt 2.6s linear infinite}
+.p-attack .bolt i{animation:a-boltin 2.6s ease-out infinite}
+/* block */
+@keyframes b-torso{0%,10%,90%,100%{transform:translateY(0) rotate(0)}22%,78%{transform:translateY(3px) rotate(5deg)}}
+@keyframes b-legl{0%,10%,90%,100%{transform:rotate(0)}22%,78%{transform:rotate(28deg)}}
+@keyframes b-legr{0%,10%,90%,100%{transform:rotate(0)}22%,78%{transform:rotate(-28deg)}}
+@keyframes b-armf{0%,10%,90%,100%{transform:rotate(-30deg)}22%,78%{transform:rotate(-125deg)}}
+@keyframes b-armb{0%,10%,90%,100%{transform:rotate(4deg)}22%,78%{transform:rotate(-105deg)}}
+@keyframes b-bubble{0%,16%{opacity:0;transform:scale(.6)}28%{opacity:1;transform:scale(1.08)}34%,80%{opacity:1;transform:scale(1)}92%,100%{opacity:0;transform:scale(1.1)}}
+@keyframes b-ruby{0%,22%{opacity:0;transform:rotate(45deg) scale(0)}30%{opacity:1;transform:rotate(45deg) scale(1.5)}36%,82%{opacity:1;transform:rotate(45deg) scale(1)}92%,100%{opacity:0;transform:rotate(45deg) scale(0)}}
+.p-block .torso{animation:b-torso 3.2s ease-out infinite}
+.p-block .legL{animation:b-legl 3.2s ease-out infinite}
+.p-block .legR{animation:b-legr 3.2s ease-out infinite}
+.p-block .armF{animation:b-armf 3.2s ease-out infinite}
+.p-block .armB{animation:b-armb 3.2s ease-out infinite}
+.p-block .bubble{animation:b-bubble 3.2s ease-out infinite}
+.p-block .rubies b{animation:b-ruby 3.2s ease-out infinite}
+.p-block .rubies b:last-child{animation-delay:.06s}
+/* hit (no Shield) */
+@keyframes h-rig{0%,10%,50%,100%{transform:translateX(0);filter:none}14%{transform:translateX(-5px);filter:brightness(3) saturate(.2)}24%{transform:translateX(-2px);filter:brightness(1.6)}34%{transform:translateX(-3px);filter:none}}
+@keyframes h-torso{0%,10%,52%,100%{transform:rotate(0)}14%{transform:rotate(-16deg)}30%{transform:rotate(-8deg)}}
+@keyframes h-head{0%,10%,56%,100%{transform:rotate(0)}14%{transform:rotate(-22deg)}34%{transform:rotate(-8deg)}}
+@keyframes h-armf{0%,10%,52%,100%{transform:rotate(-30deg)}14%{transform:rotate(-5deg)}30%{transform:rotate(-15deg)}}
+@keyframes h-armb{0%,10%,52%,100%{transform:rotate(4deg)}14%{transform:rotate(50deg)}30%{transform:rotate(25deg)}}
+@keyframes h-ring{0%,10%,44%,100%{border-color:#2ec4b6;background:transparent}14%,30%{border-color:#e5484d;background:#e5484d55}}
+@keyframes h-float{0%,12%{opacity:0;transform:translateY(0)}20%{opacity:1}70%,100%{opacity:0;transform:translateY(-20px)}}
+.p-hit .rig{animation:h-rig 2.6s ease-out infinite}
+.p-hit .torso{animation:h-torso 2.6s ease-out infinite}
+.p-hit .head{animation:h-head 2.6s ease-out infinite}
+.p-hit .armF{animation:h-armf 2.6s ease-out infinite}
+.p-hit .armB{animation:h-armb 2.6s ease-out infinite}
+.p-hit .gring{animation:h-ring 2.6s ease-out infinite}
+.p-hit .float{animation:h-float 2.6s ease-out infinite}
+/* the Shield takes the hit */
+@keyframes s-bubble{0%,10%,40%,100%{background:#4da3ff22;transform:scale(1)}14%{background:#4da3ffaa;transform:scale(1.12)}}
+@keyframes s-ripple{0%,12%{opacity:0;transform:scale(1)}16%{opacity:.9}50%,100%{opacity:0;transform:scale(1.7)}}
+@keyframes s-ruby{0%,12%{opacity:1;transform:rotate(45deg) scale(1)}20%{opacity:1;transform:rotate(45deg) scale(1.6)}32%,96%{opacity:0;transform:rotate(45deg) scale(0)}100%{opacity:1;transform:rotate(45deg) scale(1)}}
+@keyframes s-rig{0%,10%,24%,100%{transform:translateX(0)}13%{transform:translateX(-1.5px)}18%{transform:translateX(1px)}}
+@keyframes s-float{0%,12%{opacity:0;transform:translateY(0)}20%{opacity:1}70%,100%{opacity:0;transform:translateY(-20px)}}
+.p-absorb .bubble{opacity:1;animation:s-bubble 2.6s ease-out infinite}
+.p-absorb .ripple{animation:s-ripple 2.6s ease-out infinite}
+.p-absorb .rubies b{opacity:1;transform:rotate(45deg)}
+.p-absorb .rubies b:last-child{animation:s-ruby 2.6s ease-out infinite}
+.p-absorb .rig{animation:s-rig 2.6s ease-out infinite}
+.p-absorb .float{color:#4da3ff;animation:s-float 2.6s ease-out infinite}
+/* exhausted: hit, knees buckle, falls, becomes Half Cover */
+@keyframes x-rig{0%,8%{transform:translate(0,0) rotate(0);filter:none;opacity:1}12%{transform:translate(-4px,0) rotate(0);filter:brightness(2.8)}18%{transform:translate(-1px,0) rotate(0);filter:none}34%{transform:translate(-1px,5px) rotate(0)}50%{transform:translate(-2px,6px) rotate(-8deg);filter:grayscale(.6) brightness(.8)}62%{transform:translate(-14px,3px) rotate(-90deg);filter:grayscale(1) brightness(.55);opacity:1}74%{transform:translate(-14px,3px) rotate(-90deg);filter:grayscale(1) brightness(.5);opacity:0}96%{opacity:0;transform:translate(0,0) rotate(0);filter:none}100%{opacity:1;transform:translate(0,0) rotate(0);filter:none}}
+@keyframes x-torso{0%,14%,100%{transform:translateY(0) rotate(0)}30%,60%{transform:translateY(5px) rotate(16deg)}}
+@keyframes x-legl{0%,14%,100%{transform:rotate(0)}30%,60%{transform:rotate(38deg)}}
+@keyframes x-legr{0%,14%,100%{transform:rotate(0)}30%,60%{transform:rotate(-38deg)}}
+@keyframes x-head{0%,14%,100%{transform:rotate(0)}30%,60%{transform:rotate(26deg)}}
+@keyframes x-arms{0%,14%,100%{transform:rotate(-30deg)}30%,60%{transform:rotate(14deg)}}
+@keyframes x-slab{0%,64%{opacity:0}74%,90%{opacity:1}98%,100%{opacity:0}}
+@keyframes x-ring{0%,56%,100%{opacity:1}66%,94%{opacity:0}}
+.p-exhausted .rig{animation:x-rig 5.4s ease-in-out infinite}
+.p-exhausted .torso{animation:x-torso 5.4s ease-in-out infinite}
+.p-exhausted .legL{animation:x-legl 5.4s ease-in-out infinite}
+.p-exhausted .legR{animation:x-legr 5.4s ease-in-out infinite}
+.p-exhausted .head{animation:x-head 5.4s ease-in-out infinite}
+.p-exhausted .armF,.p-exhausted .armB{animation:x-arms 5.4s ease-in-out infinite}
+.p-exhausted .slab{animation:x-slab 5.4s ease-in-out infinite}
+.p-exhausted .gring{animation:x-ring 5.4s ease-in-out infinite}
+/* take cover: half cover, duck behind the low wall, peek, stand up again */
+@keyframes c-torso{0%,10%,82%,100%{transform:translateY(0)}24%,70%{transform:translateY(5px)}}
+@keyframes c-legl{0%,10%,82%,100%{transform:scaleY(1) rotate(0)}24%,70%{transform:scaleY(.5) rotate(-14deg)}}
+@keyframes c-legr{0%,10%,82%,100%{transform:scaleY(1) rotate(0)}24%,70%{transform:scaleY(.5) rotate(14deg)}}
+@keyframes c-head{0%,30%,70%,100%{transform:translate(0,0) rotate(0)}38%,46%{transform:translate(1px,-3px) rotate(-12deg)}54%,62%{transform:translate(-1px,-3px) rotate(12deg)}}
+@keyframes c-armf{0%,10%,82%,100%{transform:rotate(-30deg)}24%,70%{transform:rotate(-125deg)}}
+@keyframes c-armb{0%,10%,82%,100%{transform:rotate(4deg)}24%,70%{transform:rotate(-100deg)}}
+.p-cover .torso{animation:c-torso 4.4s ease-in-out infinite}
+.p-cover .legL{animation:c-legl 4.4s ease-in-out infinite}
+.p-cover .legR{animation:c-legr 4.4s ease-in-out infinite}
+.p-cover .head{animation:c-head 4.4s ease-in-out infinite}
+.p-cover .armF{animation:c-armf 4.4s ease-in-out infinite}
+.p-cover .armB{animation:c-armb 4.4s ease-in-out infinite}
+/* full cover: slides in, back to the tall wall, weapon upright, leans out to check, slides back */
+@keyframes f-rig{0%{transform:translateX(13px)}22%,78%{transform:translateX(-2px)}94%,100%{transform:translateX(13px)}}
+@keyframes f-torso{0%,22%,78%,100%{transform:rotate(0)}48%,60%{transform:translateX(3px) rotate(9deg)}}
+@keyframes f-head{0%,22%,78%,100%{transform:rotate(0)}30%,42%{transform:rotate(10deg)}48%,60%{transform:translateX(1px) rotate(-12deg)}}
+@keyframes f-armf{0%,22%,78%,100%{transform:rotate(-30deg)}30%,72%{transform:rotate(-168deg)}}
+@keyframes f-armb{0%,22%,78%,100%{transform:rotate(4deg)}30%,72%{transform:rotate(82deg)}}
+@keyframes f-legs{0%,100%{transform:rotate(0)}}
+.p-fullcover .rig{animation:f-rig 4.8s ease-in-out infinite}
+.p-fullcover .torso{animation:f-torso 4.8s ease-in-out infinite}
+.p-fullcover .head{animation:f-head 4.8s ease-in-out infinite}
+.p-fullcover .armF{animation:f-armf 4.8s ease-in-out infinite}
+.p-fullcover .armB{animation:f-armb 4.8s ease-in-out infinite}
+/* in cover (half): crouched behind the low wall, breathing, a peek now and then */
+@keyframes ch-torso{0%,100%{transform:translateY(5px)}50%{transform:translateY(4px)}}
+@keyframes ch-head{0%,38%,84%,100%{transform:translate(0,0) rotate(0)}46%,56%{transform:translate(1px,-3px) rotate(-12deg)}64%,74%{transform:translate(-1px,-3px) rotate(12deg)}}
+.p-covh .torso{animation:ch-torso 3.4s ease-in-out infinite}
+.p-covh .head{animation:ch-head 3.4s ease-in-out infinite}
+.p-covh .legL{transform:scaleY(.5) rotate(-14deg)}
+.p-covh .legR{transform:scaleY(.5) rotate(14deg)}
+.p-covh .armF{transform:rotate(-125deg)}
+.p-covh .armB{transform:rotate(-100deg)}
+/* in cover (full): back to the tall wall, weapon upright, a glance around the edge now and then */
+@keyframes cf-torso{0%,100%{transform:translateY(0)}50%{transform:translateY(-.8px)}}
+@keyframes cf-head{0%,48%,84%,100%{transform:rotate(0)}56%,74%{transform:translateX(1px) rotate(-12deg)}}
+@keyframes cf-lean{0%,48%,84%,100%{transform:rotate(0)}56%,74%{transform:translateX(2px) rotate(6deg)}}
+.p-covf .rig{transform:translateX(-2px)}
+.p-covf .torso{animation:cf-torso 3.6s ease-in-out infinite}
+.p-covf .head{animation:cf-head 3.6s ease-in-out infinite}
+.p-covf .body{animation:cf-lean 3.6s ease-in-out infinite}
+.p-covf .armF{transform:rotate(-168deg)}
+.p-covf .armB{transform:rotate(82deg)}
+@media (prefers-reduced-motion: reduce){.fig *{animation:none !important}}
+
+/* cape and a raised hood */
+.cape,.hood{display:none}
+.as .cape{display:block;left:-16px;top:-17px;width:12px;height:18px;transform-origin:85% 0;filter:drop-shadow(1px 0 0 #0b1016) drop-shadow(-1px 0 0 #0b1016) drop-shadow(0 1px 0 #0b1016);animation:cape-sway 2s ease-in-out infinite}
+.as .cape i{left:0;top:0;width:100%;height:100%;background:linear-gradient(#6b44a8,#3b2460);clip-path:polygon(100% 0,100% 14%,66% 100%,40% 66%,0 94%,16% 42%,32% 0)}
+.as .hood{display:block;left:-6px;top:-6px;width:18px;height:16px;filter:drop-shadow(1px 0 0 #0b1016) drop-shadow(-1px 0 0 #0b1016) drop-shadow(0 -1px 0 #0b1016)}
+.as .hood i{left:0;top:0;width:100%;height:100%;background:#4d2f7a;clip-path:polygon(12% 100%,0 62%,8% 24%,40% 0,72% 6%,100% 30%,100% 58%,74% 50%,58% 100%)}
+.as .head{overflow:visible}
+@keyframes cape-sway{0%,100%{transform:rotate(0) skewX(0)}50%{transform:rotate(4deg) skewX(-4deg)}}
+@keyframes cape-walk{0%,100%{transform:rotate(-16deg) skewX(8deg)}50%{transform:rotate(-6deg) skewX(-6deg)}}
+@keyframes cape-hit{0%,10%,50%,100%{transform:rotate(0) skewX(0)}14%{transform:rotate(-34deg) skewX(10deg)}30%{transform:rotate(8deg) skewX(-4deg)}}
+@keyframes cape-ps{0%,24%,50%,100%{transform:rotate(0)}28%{transform:rotate(-10deg) skewX(4deg)}38%{transform:rotate(4deg)}}
+@keyframes cape-ls{0%,8%,88%,100%{transform:rotate(0) scaleY(1)}22%,72%{transform:rotate(12deg) scaleY(.7)}46%{transform:rotate(-12deg) scaleY(.7)}}
+@keyframes cape-block{0%,10%,90%,100%{transform:rotate(0) scaleX(1)}22%,78%{transform:rotate(22deg) scaleX(1.3)}}
+@keyframes cape-hd{0%,10%,34%,100%{transform:rotate(0) scaleX(1)}16%,24%{transform:rotate(34deg) scaleX(1.5)}}
+.as.p-walk .cape{animation:cape-walk .5s ease-in-out infinite}
+.as.p-hit .cape{animation:cape-hit 2.6s ease-out infinite}
+.as.p-ps .cape{animation:cape-ps 2.2s ease-out infinite}
+.as.p-ls .cape{animation:cape-ls 3.6s ease-in-out infinite}
+.as.p-block .cape{animation:cape-block 3.2s ease-out infinite}
+.as.p-hidden .cape{animation:cape-hd 4.2s ease-in-out infinite}
+.as.p-cover .cape,.as.p-covh .cape,.as.p-fullcover .cape,.as.p-covf .cape{animation:none;transform:rotate(-3deg) scaleY(.85)}
+.as.p-exhausted .cape{animation:none}
+/* Assassin: slimmer, hooded, long rifle with a scope */
+.as .body{left:-7px;width:14px;background:#6b44a8}
+.as .plate{left:2px;width:6px;background:#5aa0e0}
+.as .head{background:#4d2f7a}
+.as .visor{right:1px;top:3px;width:5px;height:2px;background:#7fe8ff}
+.as .legL,.as .legR{width:5px;background:#3b2460}
+.as .armB,.as .armF{width:3.5px;background:#6b44a8}
+.as .gun{width:4px;height:20px;background:#1d242c}
+.as .scope{left:-1px;top:3px;width:6px;height:3px;background:#7fe8ff;border:0}
+.as .muzzle{left:-3px;top:19px;width:9px;height:9px}
+.as .bolt{left:42px;top:-25px;width:160px;height:2px}
+.as .bolt i{background:#9fd4ff;box-shadow:0 0 6px #5aa0e0}
+.laser,.glint{display:none}
+.as .laser{display:block;left:42px;top:-25px;width:160px;height:1px;background:repeating-linear-gradient(90deg,#e5484d 0 3px,transparent 3px 6px);opacity:0}
+.as .glint{display:block;left:22px;top:-29px;width:8px;height:8px;background:radial-gradient(#fff,#7fe8ff 40%,transparent 70%);opacity:0;transform:scale(0)}
+.as.p-walk .legL,.as.p-walk .legR,.as.p-walk .torso,.as.p-walk .armF,.as.p-walk .armB,.as.p-walk .head{animation-duration:.5s}
+/* lighter than the Bruiser: quicker in cover */
+.as.p-covh .head{animation-duration:2.4s}
+.as.p-covh .torso{animation-duration:2.4s}
+.as.p-covf .head{animation-duration:2.6s}
+.as.p-covf .torso{animation-duration:2.6s}
+.as.p-cover .torso,.as.p-cover .legL,.as.p-cover .legR,.as.p-cover .head,.as.p-cover .armF,.as.p-cover .armB{animation-duration:3.6s}
+.as.p-fullcover .rig,.as.p-fullcover .torso,.as.p-fullcover .head,.as.p-fullcover .armF,.as.p-fullcover .armB{animation-duration:4s}
+/* In cover (Full Cover): kneels behind the wall and scans left and right through the scope, then stands up */
+@keyframes acf-torso{0%,10%,84%,100%{transform:translate(0,0) rotate(0)}22%,74%{transform:translate(1px,5px) rotate(5deg)}34%{transform:translate(1px,5px) rotate(2deg)}58%{transform:translate(1px,5px) rotate(9deg)}}
+@keyframes acf-legl{0%,10%,84%,100%{transform:rotate(0)}22%,74%{transform:rotate(12deg)}}
+@keyframes acf-legr{0%,10%,84%,100%{transform:rotate(0)}22%,74%{transform:rotate(-75deg)}}
+@keyframes acf-armf{0%,10%,84%,100%{transform:rotate(-168deg)}22%{transform:rotate(-91deg)}34%{transform:rotate(-84deg)}46%,50%{transform:rotate(-99deg)}62%{transform:rotate(-84deg)}74%{transform:rotate(-91deg)}}
+@keyframes acf-armb{0%,10%,84%,100%{transform:rotate(82deg)}22%,74%{transform:rotate(-84deg)}}
+@keyframes acf-head{0%,10%,84%,100%{transform:rotate(0)}22%{transform:rotate(8deg)}34%{transform:rotate(2deg)}46%,50%{transform:rotate(12deg)}62%{transform:rotate(2deg)}74%{transform:rotate(8deg)}}
+@keyframes acf-glint{0%,28%,48%,100%{opacity:0;transform:scale(0)}31%,51%{opacity:1;transform:scale(1.6)}35%,55%{opacity:0;transform:scale(2.2)}}
+.as.p-covf .torso{animation:acf-torso 4.4s ease-in-out infinite}
+.as.p-covf .legL{animation:acf-legl 4.4s ease-in-out infinite}
+.as.p-covf .legR{animation:acf-legr 4.4s ease-in-out infinite}
+.as.p-covf .armF{animation:acf-armf 4.4s ease-in-out infinite}
+.as.p-covf .armB{animation:acf-armb 4.4s ease-in-out infinite}
+.as.p-covf .head{animation:acf-head 4.4s ease-in-out infinite}
+.as.p-covf .body{animation:none}
+.as.p-covf .glint{animation:acf-glint 4.4s ease-out infinite}
+/* Exhausted: crumples faster, the rifle is flung forward */
+@keyframes ax-rig{0%,8%{transform:translate(0,0) rotate(0);filter:none;opacity:1}12%{transform:translate(-5px,0) rotate(0);filter:brightness(2.8)}18%{transform:translate(-1px,0) rotate(0);filter:none}28%{transform:translate(-1px,5px) rotate(0)}40%{transform:translate(-2px,6px) rotate(-10deg);filter:grayscale(.5) brightness(.8)}50%{transform:translate(-14px,3px) rotate(-90deg);filter:grayscale(1) brightness(.55);opacity:1}66%{transform:translate(-14px,3px) rotate(-90deg);filter:grayscale(1) brightness(.5);opacity:0}96%{opacity:0;transform:translate(0,0) rotate(0);filter:none}100%{opacity:1;transform:translate(0,0) rotate(0);filter:none}}
+@keyframes ax-gun{0%,26%{opacity:1}27%,96%{opacity:0}100%{opacity:1}}
+@keyframes ax-drop{0%,26%{opacity:0;transform:translate(0,0) rotate(0)}27%{opacity:1;transform:translate(0,0) rotate(0)}36%{opacity:1;transform:translate(16px,-8px) rotate(-120deg)}44%{opacity:1;transform:translate(27px,14px) rotate(-220deg)}48%{opacity:1;transform:translate(30px,10px) rotate(-250deg)}52%,86%{opacity:1;transform:translate(32px,22px) rotate(-270deg)}96%{opacity:0;transform:translate(32px,22px) rotate(-270deg)}100%{opacity:0}}
+.as.p-exhausted .rig{animation:ax-rig 5.4s ease-in-out infinite}
+.as.p-exhausted .gun{animation:ax-gun 5.4s linear infinite}
+.as.p-exhausted .dropgun{animation:ax-drop 5.4s ease-in infinite}
+/* Precision Shot: quick, from the shoulder */
+@keyframes ps-torso{0%,12%{transform:translate(0,0) rotate(0)}22%{transform:translate(-.5px,0) rotate(-2deg)}26%{transform:translate(-1.5px,0) rotate(-4deg)}40%{transform:translate(-.5px,0) rotate(-1deg)}56%,100%{transform:translate(0,0) rotate(0)}}
+@keyframes ps-armf{0%,12%{transform:rotate(-30deg)}22%{transform:rotate(-92deg)}26%{transform:rotate(-98deg)}42%{transform:rotate(-92deg)}58%{transform:rotate(-40deg)}68%,100%{transform:rotate(-30deg)}}
+@keyframes ps-muzzle{0%,24%{opacity:0;transform:scale(0)}27%{opacity:1;transform:scale(1.1)}32%{opacity:0;transform:scale(1.4)}100%{opacity:0}}
+@keyframes ps-bolt{0%,25%{opacity:0}26%,40%{opacity:1}50%,100%{opacity:0}}
+@keyframes ps-boltin{0%,25%{transform:scaleX(0)}34%,100%{transform:scaleX(1)}}
+.p-ps .torso{animation:ps-torso 2.2s ease-out infinite}
+.p-ps .armF{animation:ps-armf 2.2s ease-out infinite}
+.p-ps .muzzle{animation:ps-muzzle 2.2s ease-out infinite}
+.p-ps .bolt{animation:ps-bolt 2.2s linear infinite}
+.p-ps .bolt i{animation:ps-boltin 2.2s ease-out infinite}
+/* Long Shot: kneels, a scope glint and a laser, one hard shot, gets up again */
+@keyframes ls-torso{0%,8%,88%,100%{transform:translate(0,0) rotate(0)}22%,44%{transform:translate(2px,4px) rotate(7deg)}46%{transform:translate(-1px,4px) rotate(1deg)}54%{transform:translate(1.5px,4px) rotate(6deg)}72%{transform:translate(2px,4px) rotate(7deg)}}
+@keyframes ls-legl{0%,8%,88%,100%{transform:rotate(0)}22%,72%{transform:rotate(12deg)}}
+@keyframes ls-legr{0%,8%,88%,100%{transform:rotate(0)}22%,72%{transform:rotate(-75deg)}}
+@keyframes ls-armf{0%,8%,88%,100%{transform:rotate(-30deg)}22%,44%{transform:rotate(-91deg)}46%{transform:rotate(-100deg)}54%,72%{transform:rotate(-91deg)}}
+@keyframes ls-armb{0%,8%,88%,100%{transform:rotate(4deg)}22%,72%{transform:rotate(-84deg)}}
+@keyframes ls-head{0%,8%,88%,100%{transform:rotate(0)}22%,72%{transform:rotate(6deg)}}
+@keyframes ls-laser{0%,24%,44%,100%{opacity:0}30%,43%{opacity:.85}}
+@keyframes ls-glint{0%,34%{opacity:0;transform:scale(0)}38%{opacity:1;transform:scale(1.6)}42%,100%{opacity:0;transform:scale(2.2)}}
+@keyframes ls-muzzle{0%,45%{opacity:0;transform:scale(0)}47%{opacity:1;transform:scale(2)}56%,100%{opacity:0;transform:scale(2.6)}}
+@keyframes ls-bolt{0%,45%{opacity:0}46%,52%{opacity:1}62%,100%{opacity:0}}
+@keyframes ls-boltin{0%,45%{transform:scaleX(0)}50%,100%{transform:scaleX(1)}}
+.p-ls .torso{animation:ls-torso 3.6s ease-in-out infinite}
+.p-ls .legL{animation:ls-legl 3.6s ease-in-out infinite}
+.p-ls .legR{animation:ls-legr 3.6s ease-in-out infinite}
+.p-ls .armF{animation:ls-armf 3.6s ease-in-out infinite}
+.p-ls .armB{animation:ls-armb 3.6s ease-in-out infinite}
+.p-ls .head{animation:ls-head 3.6s ease-in-out infinite}
+.p-ls .laser{animation:ls-laser 3.6s linear infinite}
+.p-ls .glint{animation:ls-glint 3.6s ease-out infinite}
+.p-ls .muzzle{animation:ls-muzzle 3.6s ease-out infinite}
+.p-ls .bolt{animation:ls-bolt 3.6s linear infinite}
+.p-ls .bolt i{animation:ls-boltin 3.6s ease-out infinite}
+/* Hidden: a cloak sweep, then the Hero shimmers, almost gone, and shows itself again */
+@keyframes hd-rig{0%,10%{opacity:1;filter:none;transform:translateX(0)}22%{opacity:1;filter:brightness(2) hue-rotate(160deg)}30%{opacity:.35;filter:hue-rotate(160deg)}40%{opacity:.22;transform:translateX(.6px)}50%{opacity:.38;transform:translateX(-.6px)}60%{opacity:.24;transform:translateX(.6px)}70%{opacity:.36;transform:translateX(-.4px)}80%{opacity:.26;transform:translateX(0)}86%{opacity:.3;filter:hue-rotate(160deg)}92%{opacity:1;filter:brightness(2) hue-rotate(160deg)}100%{opacity:1;filter:none;transform:translateX(0)}}
+@keyframes hd-armb{0%,10%,32%,100%{transform:rotate(4deg)}16%,24%{transform:rotate(-112deg)}}
+@keyframes hd-ring{0%,10%,96%,100%{opacity:1}30%,86%{opacity:.25}}
+@keyframes hd-float{0%,22%{opacity:0;transform:translateY(0)}30%{opacity:1}80%{opacity:1;transform:translateY(-8px)}92%,100%{opacity:0;transform:translateY(-8px)}}
+.p-hidden .rig{animation:hd-rig 4.2s ease-in-out infinite}
+.p-hidden .armB{animation:hd-armb 4.2s ease-in-out infinite}
+.p-hidden .gring{animation:hd-ring 4.2s ease-in-out infinite}
+.p-hidden .float{top:-44px;color:#7fe8ff;animation:hd-float 4.2s ease-out infinite}
+
+/* Controller: medium build, blue armour, a backpack with an antenna and a blinking beacon, a short pulse emitter, a console on the wrist */
+.pack,.antenna,.cons,.orb,.reticle,.field,.drone,.scan,.beam,.ally,.dome,.risewall,.sparks{display:none}
+.co .body{background:#4a78e0}
+.co .plate{background:#9fc0ff}
+.co .head{background:#2f4f9e}
+.co .visor{background:#ffd24a;right:1px;top:3px;width:5px;height:2px}
+.co .legL,.co .legR{background:#2a3f78}
+.co .armB,.co .armF{background:#3e66c4}
+.co .gun{width:5px;height:11px;background:#27407f}
+.co .muzzle{left:-3px;top:16px;width:9px;height:9px;background:radial-gradient(#fff,#5aa0ff)}
+.co .pack{display:block;left:-14px;top:-17px;width:7px;height:11px;background:#27407f;border:1.5px solid #0b1016;border-radius:2px}
+.co .antenna{display:block;left:-12px;top:-32px;width:2px;height:15px;background:#8fb2ff;border:0}
+.co .antenna i{left:-2px;top:-3px;width:6px;height:6px;border-radius:50%;background:#ffd24a;animation:beacon 1.4s ease-in-out infinite}
+.co .cons{display:block;left:-1px;top:7px;width:6px;height:5px;background:#7fe8ff;border:1px solid #0b1016;border-radius:1px}
+@keyframes beacon{0%,100%{opacity:1}50%{opacity:.25}}
+.orb{left:34px;top:-28px;width:7px;height:7px;border-radius:50%;background:#bfe0ff;box-shadow:0 0 8px #5aa0ff;opacity:0}
+.co .orb{display:block}
+/* Pulse Bolt: a glowing orb travels, bigger than a bolt line */
+@keyframes pb-torso{0%,10%{transform:translate(0,0) rotate(0)}22%{transform:translate(0,0) rotate(-2deg)}26%{transform:translate(-2px,0) rotate(-6deg)}38%{transform:translate(-1px,0) rotate(-3deg)}56%,100%{transform:translate(0,0) rotate(0)}}
+@keyframes pb-armf{0%,10%{transform:rotate(-30deg)}22%{transform:rotate(-88deg)}26%{transform:rotate(-100deg)}40%{transform:rotate(-90deg)}58%{transform:rotate(-40deg)}68%,100%{transform:rotate(-30deg)}}
+@keyframes pb-orb{0%,25%{opacity:0;transform:translateX(0) scale(.6)}26%{opacity:1;transform:translateX(0) scale(1)}46%{opacity:1;transform:translateX(125px) scale(1.2)}50%,100%{opacity:0;transform:translateX(132px) scale(2.4)}}
+@keyframes pb-muzzle{0%,24%{opacity:0;transform:scale(0)}27%{opacity:1;transform:scale(1.5)}33%,100%{opacity:0;transform:scale(2)}}
+.p-pb .torso{animation:pb-torso 2.4s ease-out infinite}
+.p-pb .armF{animation:pb-armf 2.4s ease-out infinite}
+.p-pb .orb{animation:pb-orb 2.4s ease-in infinite}
+.p-pb .muzzle{animation:pb-muzzle 2.4s ease-out infinite}
+/* Tag Round: a dart, and a red reticle stays on the target (Marked) */
+.reticle{left:122px;top:-42px;width:22px;height:22px;border:2px solid #ff6b6b;border-radius:50%;background:linear-gradient(#ff6b6b,#ff6b6b) center/2px 100% no-repeat,linear-gradient(#ff6b6b,#ff6b6b) center/100% 2px no-repeat;opacity:0}
+.p-tag .reticle{display:block;animation:tag-ret 2.8s ease-out infinite}
+.p-tag .orb{animation:tag-orb 2.8s ease-in infinite;background:#ffd0d0;box-shadow:0 0 8px #ff6b6b;width:5px;height:5px}
+@keyframes tag-orb{0%,25%{opacity:0;transform:translateX(0)}26%{opacity:1;transform:translateX(0)}42%{opacity:1;transform:translateX(125px)}44%,100%{opacity:0;transform:translateX(128px)}}
+@keyframes tag-ret{0%,42%{opacity:0;transform:scale(2.2) rotate(0)}50%{opacity:1;transform:scale(1) rotate(45deg)}85%{opacity:1;transform:scale(1) rotate(45deg)}96%,100%{opacity:0;transform:scale(1) rotate(45deg)}}
+.p-tag .torso{animation:pb-torso 2.8s ease-out infinite}
+.p-tag .armF{animation:pb-armf 2.8s ease-out infinite}
+.p-tag .muzzle{animation:pb-muzzle 2.8s ease-out infinite}
+/* Shock Pulse / Gravity Snare: a pulse, then a slowing field at the target */
+.field{left:106px;top:-8px;width:34px;height:16px;border:2px solid #c18bff;border-radius:50%;opacity:0}
+.p-slow .field{display:block;animation:slow-field 2.6s ease-out infinite}
+.p-slow .orb{animation:tag-orb 2.6s ease-in infinite;background:#e4ccff;box-shadow:0 0 8px #c18bff}
+.p-slow .float{left:96px;top:-50px;color:#c18bff;animation:slow-float 2.6s ease-out infinite}
+@keyframes slow-field{0%,40%{opacity:0;transform:scale(.3)}46%{opacity:1;transform:scale(1)}60%{opacity:.8;transform:scale(1.5)}72%{opacity:.9;transform:scale(.9)}84%{opacity:.7;transform:scale(1.4)}96%,100%{opacity:0;transform:scale(1.6)}}
+@keyframes slow-float{0%,44%{opacity:0;transform:translateY(0)}52%{opacity:1}90%,100%{opacity:0;transform:translateY(-12px)}}
+.p-slow .torso{animation:pb-torso 2.6s ease-out infinite}
+.p-slow .armF{animation:pb-armf 2.6s ease-out infinite}
+.p-slow .muzzle{animation:pb-muzzle 2.6s ease-out infinite}
+/* Scout Drone: lifts off the backpack, flies out, hovers over the area it reveals, comes back */
+.drone{left:-14px;top:-35px;width:12px;height:5px;border-radius:3px;background:#8fb2ff;border:1px solid #0b1016}
+.drone i{left:-3px;top:-3px;width:18px;height:2px;background:#dbe4ec;opacity:.8;animation:rotor .2s linear infinite}
+@keyframes rotor{0%,100%{transform:scaleX(1)}50%{transform:scaleX(.3)}}
+.p-drone .drone{display:block;animation:dr-fly 3.6s ease-in-out infinite}
+@keyframes dr-fly{0%,10%{transform:translate(0,0)}22%{transform:translate(0,-12px)}46%{transform:translate(88px,-22px)}54%{transform:translate(88px,-18px)}62%{transform:translate(88px,-23px)}70%{transform:translate(88px,-19px)}84%{transform:translate(2px,-14px)}94%,100%{transform:translate(0,0)}}
+.scan{left:62px;top:-18px;width:66px;height:34px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:rgba(127,232,255,.28)}
+.p-drone .scan{display:block;animation:dr-scan 3.6s ease-in-out infinite;opacity:0}
+@keyframes dr-scan{0%,44%{opacity:0}52%{opacity:1}62%{opacity:.5}70%{opacity:1}80%{opacity:.8}88%,100%{opacity:0}}
+.p-drone .armB{animation:dr-arm 3.6s ease-in-out infinite}
+@keyframes dr-arm{0%,8%,30%,100%{transform:rotate(4deg)}14%,22%{transform:rotate(-120deg)}}
+/* Aegis Protocol: beams a Shield 3 onto an ally at the right */
+.ally{left:70px;top:-24px;width:10px;height:24px}
+.ally b{left:0;top:6px;width:10px;height:14px;background:#4a78e0;border:1px solid #0b1016;border-radius:4px}
+.ally u{left:1px;top:-4px;width:8px;height:8px;background:#e8d3b9;border:1px solid #0b1016;border-radius:50%;text-decoration:none}
+.p-aegis .ally{display:block}
+.beam{left:34px;top:-26px;width:34px;height:2px;background:#4da3ff;box-shadow:0 0 6px #4da3ff;transform-origin:0 50%;opacity:0}
+.p-aegis .beam{display:block;animation:ae-beam 3.2s ease-out infinite}
+.dome{left:63px;top:-40px;width:24px;height:42px;border-radius:50%;border:1.5px solid #4da3ff;background:#4da3ff22;opacity:0}
+.p-aegis .dome{display:block;animation:ae-dome 3.2s ease-out infinite}
+.dome i{top:-9px;width:6px;height:6px;transform:rotate(45deg);background:#4da3ff;border:1px solid #0b1016}
+.dome i:nth-child(1){left:-1px}.dome i:nth-child(2){left:8px}.dome i:nth-child(3){left:17px}
+@keyframes ae-beam{0%,20%{opacity:0;transform:scaleX(0)}28%{opacity:1;transform:scaleX(1)}44%{opacity:1;transform:scaleX(1)}52%,100%{opacity:0;transform:scaleX(1)}}
+@keyframes ae-dome{0%,30%{opacity:0;transform:scale(.5)}42%{opacity:1;transform:scale(1.1)}50%,80%{opacity:1;transform:scale(1)}92%,100%{opacity:0;transform:scale(1.05)}}
+.p-aegis .armF{animation:ae-arm 3.2s ease-in-out infinite}
+@keyframes ae-arm{0%,12%,66%,100%{transform:rotate(-30deg)}22%,50%{transform:rotate(-90deg)}}
+.p-aegis .torso{animation:ae-torso 3.2s ease-in-out infinite}
+@keyframes ae-torso{0%,12%,66%,100%{transform:rotate(0)}22%,50%{transform:rotate(3deg)}}
+/* Deploy Cover / Fortify: slams the deployer down, a low wall rises out of the ground ahead */
+.risewall{left:22px;top:-12px;width:34px;height:12px;background:#5a6877;border:1.5px solid #0b1016;border-radius:3px;box-shadow:inset 0 3px 0 #77899b;transform-origin:50% 100%;opacity:0}
+.p-deploy .risewall{display:block;animation:dp-wall 3.4s ease-out infinite}
+@keyframes dp-wall{0%,26%{opacity:0;transform:scaleY(0)}30%{opacity:1;transform:scaleY(.2)}42%{opacity:1;transform:scaleY(1.15)}48%,80%{opacity:1;transform:scaleY(1)}92%,100%{opacity:0;transform:scaleY(1)}}
+@keyframes dp-torso{0%,10%,64%,100%{transform:translateY(0) rotate(0)}22%{transform:translateY(2px) rotate(8deg)}28%{transform:translateY(3px) rotate(14deg)}44%{transform:translateY(2px) rotate(8deg)}}
+@keyframes dp-armf{0%,10%,64%,100%{transform:rotate(-30deg)}22%{transform:rotate(-120deg)}28%{transform:rotate(-20deg)}44%{transform:rotate(-30deg)}}
+.p-deploy .torso{animation:dp-torso 3.4s ease-in-out infinite}
+.p-deploy .armF{animation:dp-armf 3.4s ease-in-out infinite}
+/* Exhausted: the backpack sparks, the beacon goes out, the Controller topples forward */
+.sparks{left:-14px;top:-20px;width:8px;height:8px;border-radius:50%;background:#ffd24a;box-shadow:4px -4px 0 #fff,-3px -5px 0 #ffd24a;opacity:0}
+.p-exhausted.co .sparks{display:block;animation:co-sparks 5.4s steps(2,end) infinite}
+@keyframes co-sparks{0%,10%{opacity:0}14%,40%{opacity:1}44%,100%{opacity:0}}
+@keyframes cox-rig{0%,8%{transform:translate(0,0) rotate(0);filter:none;opacity:1}12%{transform:translate(-4px,0) rotate(0);filter:brightness(2.8)}18%{transform:translate(-1px,0) rotate(0);filter:none}34%{transform:translate(-1px,5px) rotate(0)}50%{transform:translate(1px,6px) rotate(14deg);filter:grayscale(.6) brightness(.8)}62%{transform:translate(18px,5px) rotate(90deg);filter:grayscale(1) brightness(.55);opacity:1}74%{transform:translate(18px,5px) rotate(90deg);filter:grayscale(1) brightness(.5);opacity:0}96%{opacity:0;transform:translate(0,0) rotate(0);filter:none}100%{opacity:1;transform:translate(0,0) rotate(0);filter:none}}
+.co.p-exhausted .rig{animation:cox-rig 5.4s ease-in-out infinite}
+.co.p-exhausted .antenna i{animation:none;background:#e5484d}
+
+.scene{position:absolute;left:0;top:0;width:0;height:0}
+.scene *{position:absolute;box-sizing:border-box}
+.fig.aimed .armF{transform:rotate(-92deg)}
+.fig.aimed .armB{transform:rotate(-84deg)}
+.tgtwrap{transform:scaleX(-1)}
+.tgt .rig{animation:e-hit 2.4s ease-out infinite}
+.tgt .gring{animation:e-ring 2.4s ease-out infinite}
+@keyframes e-hit{0%,39%,60%,100%{transform:translateX(0);filter:none}41%{transform:translateX(4px);filter:brightness(3) saturate(.2)}48%{transform:translateX(2px);filter:brightness(1.5)}54%{transform:translateX(1px);filter:none}}
+@keyframes e-ring{0%,39%,60%,100%{border-color:#e5484d;background:transparent}41%,50%{border-color:#ff9ea1;background:#e5484d66}}
+/* generic pieces, all on a 2.4 s loop: fire at 20 %, impact at 40 % */
+.fxflash{opacity:0;border-radius:50%;background:radial-gradient(#fff 12%,var(--c) 55%,transparent 72%);animation:fx-flash 2.4s ease-out infinite}
+@keyframes fx-flash{0%,19%{opacity:0;transform:scale(0)}22%{opacity:1;transform:scale(1.5)}30%,100%{opacity:0;transform:scale(2)}}
+.fxproj{opacity:0;border-radius:3px;background:var(--c);box-shadow:0 0 6px var(--g);animation:fx-fly 2.4s linear infinite}
+@keyframes fx-fly{0%,19%{opacity:0;transform:translateX(0)}20%{opacity:1;transform:translateX(0)}38%{opacity:1;transform:translateX(var(--d))}40%,100%{opacity:0;transform:translateX(var(--d))}}
+.fxburst{opacity:0;border-radius:50%;background:radial-gradient(#fff 10%,var(--c) 45%,transparent 70%);animation:fx-burst 2.4s ease-out infinite}
+@keyframes fx-burst{0%,39%{opacity:0;transform:scale(.2)}42%{opacity:1;transform:scale(1)}56%,100%{opacity:0;transform:scale(1.9)}}
+.fxsp{width:3px;height:3px;border-radius:50%;background:var(--c);opacity:0;animation:fx-spark 2.4s ease-out infinite}
+@keyframes fx-spark{0%,39%{opacity:0;transform:translate(0,0)}42%{opacity:1}58%,100%{opacity:0;transform:translate(var(--dx),var(--dy))}}
+.fxring{opacity:0;border-radius:50%;border:2px solid var(--c);animation:fx-ring 2.4s ease-out infinite}
+@keyframes fx-ring{0%,39%{opacity:0;transform:scale(.3)}42%{opacity:.9;transform:scale(.5)}64%,100%{opacity:0;transform:scale(2.2)}}
+.fxnum{width:48px;text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:9px;color:var(--c);text-shadow:0 1px 2px #000;opacity:0;animation:fx-num 2.4s ease-out infinite}
+@keyframes fx-num{0%,41%{opacity:0;transform:translateY(0)}48%{opacity:1}80%,100%{opacity:0;transform:translateY(-14px)}}
+.fxline{height:2px;transform-origin:0 50%;opacity:0}
+/* long shot */
+.p-lslaser{height:1px;background:repeating-linear-gradient(90deg,#e5484d 0 3px,transparent 3px 6px);opacity:0;animation:ls-l 2.4s linear infinite;transform-origin:0 50%}
+@keyframes ls-l{0%,6%{opacity:0}9%,18%{opacity:.85}19%,100%{opacity:0}}
+.p-lstracer{height:2px;background:linear-gradient(90deg,#7fe8ff,#fff);box-shadow:0 0 8px #7fe8ff;opacity:0;transform-origin:0 50%;animation:ls-t 2.4s linear infinite}
+@keyframes ls-t{0%,19%{opacity:0;transform:scaleX(0)}21%{opacity:1;transform:scaleX(1)}26%{opacity:1;transform:scaleX(1)}38%,100%{opacity:0;transform:scaleX(1)}}
+.p-lsglint{width:8px;height:8px;background:radial-gradient(#fff,#7fe8ff 40%,transparent 70%);opacity:0;animation:ls-g 2.4s ease-out infinite}
+@keyframes ls-g{0%,12%{opacity:0;transform:scale(0)}16%{opacity:1;transform:scale(1.6)}20%,100%{opacity:0;transform:scale(2.2)}}
+.shake{animation:e-shake 2.4s linear infinite}
+@keyframes e-shake{0%,39%,60%,100%{transform:translate(0,0)}41%{transform:translate(-1.5px,1px)}44%{transform:translate(1.5px,-1px)}48%{transform:translate(-1px,0)}52%{transform:translate(0,0)}}
+/* pulse bolt: the orb grows on its way */
+.fxorb{opacity:0;border-radius:50%;background:radial-gradient(#fff 15%,#8fb2ff 55%,#4a78e0 100%);box-shadow:0 0 8px #5aa0ff;animation:fx-orb 2.4s ease-in infinite}
+@keyframes fx-orb{0%,19%{opacity:0;transform:translateX(0) scale(.6)}20%{opacity:1;transform:translateX(0) scale(.8)}38%{opacity:1;transform:translateX(var(--d)) scale(1.4)}40%,100%{opacity:0;transform:translateX(var(--d)) scale(2)}}
+/* tag round: the reticle locks on and stays */
+.fxret{width:22px;height:22px;border:2px solid #ff6b6b;border-radius:50%;background:linear-gradient(#ff6b6b,#ff6b6b) center/2px 100% no-repeat,linear-gradient(#ff6b6b,#ff6b6b) center/100% 2px no-repeat;opacity:0;animation:fx-ret 2.4s ease-out infinite}
+@keyframes fx-ret{0%,40%{opacity:0;transform:scale(2.4) rotate(0)}48%{opacity:1;transform:scale(1) rotate(45deg)}86%{opacity:1;transform:scale(1) rotate(45deg)}96%,100%{opacity:0;transform:scale(1) rotate(45deg)}}
+.fxtag{width:50px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:7px;letter-spacing:.1em;color:#ff9ea1;opacity:0;animation:fx-tag 2.4s ease-out infinite}
+@keyframes fx-tag{0%,46%{opacity:0}52%,86%{opacity:1}96%,100%{opacity:0}}
+/* slow */
+.fxfield{width:34px;height:16px;border:2px solid #c18bff;border-radius:50%;opacity:0;animation:fx-field 2.4s ease-out infinite}
+@keyframes fx-field{0%,40%{opacity:0;transform:scale(.3)}46%{opacity:1;transform:scale(1)}58%{opacity:.8;transform:scale(1.5)}70%{opacity:.9;transform:scale(.9)}82%{opacity:.7;transform:scale(1.4)}96%,100%{opacity:0;transform:scale(1.6)}}
+.fxslow{opacity:0;animation:fx-slow 2.4s ease-out infinite}
+@keyframes fx-slow{0%,44%{opacity:0;transform:translateY(-4px)}52%,86%{opacity:1;transform:translateY(0)}96%,100%{opacity:0}}
+.fxchev{width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid #c18bff}
+/* shockwave and knockback */
+.fxgring{opacity:0;border-radius:50%;border:3px solid #ff8a3d;animation:sw-ring 2.4s ease-out infinite}
+@keyframes sw-ring{0%,19%{opacity:0;transform:scale(.3)}22%{opacity:1;transform:scale(.5)}46%,100%{opacity:0;transform:scale(3)}}
+.fxdust{width:10px;height:6px;border-radius:50%;background:#8a99a8;opacity:0;animation:sw-dust 2.4s ease-out infinite}
+@keyframes sw-dust{0%,21%{opacity:0;transform:scale(.4)}26%{opacity:.8;transform:scale(1)}46%,100%{opacity:0;transform:scale(2.2) translateY(-4px)}}
+.kb .rig{animation:kb-rig 2.4s ease-out infinite}
+@keyframes kb-rig{0%,20%{transform:translateX(0);filter:none}22%{transform:translateX(2px);filter:brightness(3) saturate(.2)}30%{transform:translateX(24px);filter:brightness(1.4)}46%,64%{transform:translateX(48px);filter:none}74%,100%{transform:translateX(0)}}
+.kb .gring{animation:none}
+.fxskid{height:3px;background:linear-gradient(90deg,transparent,#8a99a8);opacity:0;animation:sw-skid 2.4s linear infinite}
+@keyframes sw-skid{0%,21%{opacity:0;transform:scaleX(0)}28%{opacity:.8;transform:scaleX(1)}56%,100%{opacity:0;transform:scaleX(1)}}
+/* breach charge */
+.fxcharge{width:6px;height:6px;border-radius:50%;background:#2a323c;border:1px solid #ff8a3d;animation:bc-x 2.4s linear infinite;opacity:0}
+.fxchargey{width:0;height:0;animation:bc-y 2.4s ease-out infinite}
+@keyframes bc-x{0%,15%{opacity:0;transform:translateX(0)}16%{opacity:1;transform:translateX(0)}38%{opacity:1;transform:translateX(56px)}40%,100%{opacity:0;transform:translateX(56px)}}
+@keyframes bc-y{0%,15%{transform:translateY(0)}27%{transform:translateY(-26px)}38%,100%{transform:translateY(2px)}}
+.fxfire{border-radius:50%;background:radial-gradient(#fff 8%,#ffd24a 30%,#ff8a3d 58%,#5a2a10 82%,transparent 100%);opacity:0;animation:bc-fire 2.4s ease-out infinite}
+@keyframes bc-fire{0%,39%{opacity:0;transform:scale(.2)}44%{opacity:1;transform:scale(1)}58%{opacity:.9;transform:scale(1.5)}76%,100%{opacity:0;transform:scale(1.9)}}
+.fxsmoke{border-radius:50%;background:#3a4653;opacity:0;animation:bc-smoke 2.4s ease-out infinite}
+@keyframes bc-smoke{0%,44%{opacity:0;transform:translateY(0) scale(.5)}56%{opacity:.7}90%,100%{opacity:0;transform:translateY(-22px) scale(2)}}
+.fxwallb{background:#5a6877;border:1.5px solid #0b1016;border-radius:3px;box-shadow:inset 0 3px 0 #77899b;animation:bc-wall 2.4s linear infinite}
+@keyframes bc-wall{0%,39%{opacity:1}41%,100%{opacity:0}}
+.fxrubble{background:#3a4653;border:1px solid #0b1016;opacity:0;animation:bc-rub 2.4s ease-out infinite}
+@keyframes bc-rub{0%,39%{opacity:0;transform:translate(0,0) rotate(0)}41%{opacity:1}58%{opacity:1;transform:translate(var(--dx),var(--dy)) rotate(var(--r))}90%{opacity:1;transform:translate(var(--dx),var(--dy2)) rotate(var(--r))}100%{opacity:0}}
+.fxscorch{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#1a1f26;opacity:0;animation:bc-scorch 2.4s linear infinite}
+@keyframes bc-scorch{0%,42%{opacity:0}48%,90%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){.scene *{animation:none !important}}
+
+@keyframes sh-bub{0%,6%{opacity:0;transform:scale(.6)}14%{opacity:1;transform:scale(1.1)}18%,60%{opacity:1;transform:scale(1)}66%{opacity:.9;transform:scale(1.15)}69%,100%{opacity:0;transform:scale(1.6)}}
+.shbub{left:-17px;top:-52px;width:34px;height:56px;border-radius:50%;border:1.5px solid #4da3ff;background:#4da3ff22;opacity:0;animation:sh-bub 5s ease-out infinite}
+@keyframes sh-r1{0%,10%{opacity:0;transform:rotate(45deg) scale(0)}16%{opacity:1;transform:rotate(45deg) scale(1.5)}20%,58%{opacity:1;transform:rotate(45deg) scale(1)}62%,100%{opacity:0;transform:rotate(45deg) scale(0)}}
+@keyframes sh-r2{0%,10%{opacity:0;transform:rotate(45deg) scale(0)}16%{opacity:1;transform:rotate(45deg) scale(1.5)}20%,38%{opacity:1;transform:rotate(45deg) scale(1)}42%,100%{opacity:0;transform:rotate(45deg) scale(0)}}
+@keyframes sh-r3{0%,10%{opacity:0;transform:rotate(45deg) scale(0)}16%{opacity:1;transform:rotate(45deg) scale(1.5)}20%,28%{opacity:1;transform:rotate(45deg) scale(1)}32%,100%{opacity:0;transform:rotate(45deg) scale(0)}}
+.shr1{animation:sh-r1 5s ease-out infinite}.shr2{animation:sh-r2 5s ease-out infinite}.shr3{animation:sh-r3 5s ease-out infinite}
+@keyframes sh-rip{0%,26%,36%,56%,100%{opacity:0;transform:scale(1)}28%,38%,58%{opacity:.9;transform:scale(1)}34%,44%,64%{opacity:0;transform:scale(1.7)}}
+.shrip{left:-17px;top:-52px;width:34px;height:56px;border-radius:50%;border:1.5px solid #8fc4ff;opacity:0;animation:sh-rip 5s ease-out infinite}
+@keyframes sh-shard{0%,66%{opacity:0;transform:translate(0,0) rotate(0)}68%{opacity:1}82%,100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r))}}
+.shshard{width:5px;height:9px;background:#4da3ff;opacity:0;animation:sh-shard 5s ease-out infinite;clip-path:polygon(50% 0,100% 100%,0 100%)}
+@keyframes sh-hit{0%,66%,80%,100%{filter:none;transform:translateX(0)}68%{filter:brightness(2.5) saturate(.3);transform:translateX(-3px)}74%{filter:brightness(1.4);transform:translateX(-1px)}}
+.shhero .rig{animation:sh-hit 5s ease-out infinite}
+@keyframes sh-num{0%,28%,38%,58%,68%,100%{opacity:0;transform:translateY(0)}30%,40%,60%,70%{opacity:1}36%,46%,66%,80%{opacity:0;transform:translateY(-12px)}}
+.shnum{width:60px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:#4da3ff;text-shadow:0 1px 2px #000;opacity:0;animation:sh-num 5s ease-out infinite}
+/* cover placed */
+@keyframes cp-wall{0%,12%{opacity:0;transform:scaleY(0)}16%{opacity:1;transform:scaleY(.2)}26%{opacity:1;transform:scaleY(1.15)}30%,78%{opacity:1;transform:scaleY(1)}86%{opacity:.9;transform:scaleY(1)}94%,100%{opacity:0;transform:scaleY(.6)}}
+.cpwall{background:#5a6877;border:1.5px solid #0b1016;border-radius:3px;box-shadow:inset 0 3px 0 #77899b;transform-origin:50% 100%;opacity:0;animation:cp-wall 4s ease-out infinite}
+@keyframes cp-pip1{0%,28%{opacity:0}32%,60%{opacity:1}64%,100%{opacity:.15}}
+@keyframes cp-pip2{0%,28%{opacity:0}32%,80%{opacity:1}86%,100%{opacity:.15}}
+.cppip{width:6px;height:6px;border-radius:50%;background:#2ec4b6;border:1px solid #0b1016;opacity:0}
+.cppip.a{animation:cp-pip1 4s linear infinite}.cppip.b{animation:cp-pip2 4s linear infinite}
+@keyframes cp-dust{0%,14%{opacity:0;transform:scale(.4)}20%{opacity:.8;transform:scale(1)}40%,100%{opacity:0;transform:scale(2.2) translateY(-4px)}}
+.cpdust{width:10px;height:6px;border-radius:50%;background:#8a99a8;opacity:0;animation:cp-dust 4s ease-out infinite}
+@keyframes cp-flash{0%,12%,30%,100%{opacity:0}16%{opacity:.8}}
+.cpflash{background:#2ec4b6;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);opacity:0;animation:cp-flash 4s ease-out infinite}
+/* Half Cover reduces the damage */
+@keyframes hc-chip{0%,39%{opacity:0;transform:translate(0,0)}42%{opacity:1}56%,100%{opacity:0;transform:translate(var(--dx),var(--dy))}}
+.hcchip{width:3px;height:3px;background:#77899b;opacity:0;animation:hc-chip 2.4s ease-out infinite}
+@keyframes hc-flash{0%,39%,52%,100%{background:#5a6877}42%{background:#aebccb}}
+.hcwall{background:#5a6877;border:1.5px solid #0b1016;border-radius:3px;box-shadow:inset 0 3px 0 #77899b;animation:hc-flash 2.4s linear infinite}
+.tgt2 .rig{animation:e-hit2 2.4s ease-out infinite}
+@keyframes e-hit2{0%,42%,60%,100%{transform:translateX(0);filter:none}44%{transform:translateX(2px);filter:brightness(2) saturate(.4)}52%{transform:translateX(0);filter:none}}
+/* Scout Drone: fog lifts tile by tile, an enemy inside is revealed */
+@keyframes sd-fog{0%,26%{opacity:1}34%,70%{opacity:0}78%,100%{opacity:1}}
+.sdfog{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#0b1016;opacity:1;animation:sd-fog 5s ease-in-out infinite}
+@keyframes sd-lit{0%,26%{opacity:0}34%,70%{opacity:1}78%,100%{opacity:0}}
+.sdlit{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:rgba(127,232,255,.22);opacity:0;animation:sd-lit 5s ease-in-out infinite}
+@keyframes sd-drone{0%,8%{transform:translate(0,0)}22%{transform:translate(60px,-22px)}30%{transform:translate(60px,-20px)}36%{transform:translate(60px,-24px)}44%{transform:translate(60px,-20px)}52%,58%{transform:translate(60px,-23px)}70%{transform:translate(60px,-20px)}86%,100%{transform:translate(0,0)}}
+.sddrone{width:12px;height:5px;border-radius:3px;background:#8fb2ff;border:1px solid #0b1016;animation:sd-drone 5s ease-in-out infinite}
+@keyframes sd-enemy{0%,30%{opacity:0}38%,68%{opacity:1}76%,100%{opacity:0}}
+.sdenemy{opacity:0;animation:sd-enemy 5s ease-in-out infinite}
+@keyframes sd-pip1{0%,34%{opacity:0}38%,52%{opacity:1}56%,100%{opacity:.15}}
+@keyframes sd-pip2{0%,34%{opacity:0}38%,68%{opacity:1}74%,100%{opacity:.15}}
+.sdpip{width:6px;height:6px;border-radius:50%;background:#7fe8ff;border:1px solid #0b1016;opacity:0}
+.sdpip.a{animation:sd-pip1 5s linear infinite}.sdpip.b{animation:sd-pip2 5s linear infinite}
+/* fog and Ghost */
+@keyframes fg-enemy{0%,28%{opacity:1}36%,80%{opacity:0}88%,100%{opacity:1}}
+.fgenemy{animation:fg-enemy 6s ease-in-out infinite}
+@keyframes fg-ghost{0%,28%{opacity:0}36%,76%{opacity:.5}84%,100%{opacity:0}}
+.fgghost{opacity:0;animation:fg-ghost 6s ease-in-out infinite}
+@keyframes fg-fog{0%,24%{opacity:0}34%,74%{opacity:.85}86%,100%{opacity:0}}
+.fgfog{background:#0b1016;border-radius:50%;opacity:0;animation:fg-fog 6s ease-in-out infinite;filter:blur(3px)}
+@keyframes fg-new{0%,76%{opacity:0;transform:translateX(0)}86%,100%{opacity:1;transform:translateX(0)}}
+.fgnew{opacity:0;animation:fg-new 6s ease-in-out infinite}
+.fglabel{width:80px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:7px;color:#aebccb;opacity:0;animation:fg-ghost 6s ease-in-out infinite}
+/* Prime Zone */
+@keyframes pz-z{0%,12%{background:#8a99a833}18%,38%{background:#2ec4b655}46%,60%{background:#2ec4b688}68%,76%{background:#ffd24a99}84%,90%{background:#ffb34777}100%{background:#8a99a833}}
+.pztile{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#8a99a833;animation:pz-z 8s linear infinite}
+@keyframes pz-hero{0%,14%{opacity:0}18%,66%{opacity:1}72%,100%{opacity:0}}
+.pzhero{opacity:0;animation:pz-hero 8s linear infinite}
+@keyframes pz-enemy{0%,80%{opacity:0}84%,92%{opacity:1}96%,100%{opacity:0}}
+.pzenemy{opacity:0;animation:pz-enemy 8s linear infinite}
+@keyframes pz-pop1{0%,24%{opacity:0;transform:scale(.4)}28%{opacity:1;transform:scale(1)}36%,100%{opacity:0;transform:scale(1.4) translateY(-8px)}}
+@keyframes pz-pop2{0%,44%{opacity:0;transform:scale(.4)}48%{opacity:1;transform:scale(1)}56%,100%{opacity:0;transform:scale(1.4) translateY(-8px)}}
+@keyframes pz-pop3{0%,62%{opacity:0;transform:scale(.4)}66%{opacity:1;transform:scale(1)}76%,100%{opacity:0;transform:scale(1.4) translateY(-8px)}}
+@keyframes pz-pop4{0%,82%{opacity:0;transform:scale(.4)}86%{opacity:1;transform:scale(1)}94%,100%{opacity:0;transform:scale(1.4) translateY(-8px)}}
+.pzpop{width:120px;text-align:center;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:11px;letter-spacing:.14em;opacity:0}
+.pzpop.p1{color:#2ec4b6;animation:pz-pop1 8s ease-out infinite}.pzpop.p2{color:#2ec4b6;animation:pz-pop2 8s ease-out infinite}.pzpop.p3{color:#ffd24a;animation:pz-pop3 8s ease-out infinite}.pzpop.p4{color:#ffb347;animation:pz-pop4 8s ease-out infinite}
+@keyframes pz-ring{0%,26%,46%,64%,100%{opacity:0;transform:scale(.4)}28%,48%,66%{opacity:.9;transform:scale(.6)}40%,58%,78%{opacity:0;transform:scale(2.2)}}
+.pzring{border-radius:50%;border:2px solid #2ec4b6;opacity:0;animation:pz-ring 8s ease-out infinite}
+/* Reactor pulse and explosion */
+@keyframes rc-core{0%,100%{box-shadow:0 0 6px #ff8a3d,0 0 14px #ff8a3d66}50%{box-shadow:0 0 12px #ffd24a,0 0 26px #ff8a3d99}}
+.rccore{border-radius:50%;background:radial-gradient(#fff,#ffd24a 40%,#ff8a3d 80%);animation:rc-core 1.5s ease-in-out infinite}
+@keyframes rc-pulse{0%,3%{opacity:0;transform:scale(.2)}8%{opacity:.8;transform:scale(.5)}34%{opacity:0;transform:scale(2.6)}35%,100%{opacity:0}}
+.rcpulse{border-radius:50%;border:2px solid #ff8a3d;opacity:0;animation:rc-pulse 6s ease-out infinite}
+@keyframes rc-blast{0%,70%{opacity:0;transform:scale(.2)}74%{opacity:1;transform:scale(1)}90%{opacity:.8;transform:scale(1.7)}100%{opacity:0;transform:scale(2.2)}}
+.rcblast{border-radius:50%;background:radial-gradient(#fff 8%,#ffd24a 30%,#ff8a3d 55%,#5a2a10 80%,transparent 100%);opacity:0;animation:rc-blast 6s ease-out infinite}
+@keyframes rc-wave{0%,70%{opacity:0;transform:scale(.2)}74%{opacity:1;transform:scale(.4)}100%{opacity:0;transform:scale(3.4)}}
+.rcwave{border-radius:50%;border:3px solid #fff;opacity:0;animation:rc-wave 6s ease-out infinite}
+@keyframes rc-flash{0%,70%,80%,100%{opacity:0}72%{opacity:.55}}
+.rcflash{left:0;top:0;width:270px;height:300px;background:#fff;opacity:0;animation:rc-flash 6s ease-out infinite;transform:none}
+@keyframes rc-deb{0%,72%{opacity:0;transform:translate(0,0)}74%{opacity:1}92%,100%{opacity:0;transform:translate(var(--dx),var(--dy))}}
+.rcdeb{width:4px;height:4px;background:#ffb366;opacity:0;animation:rc-deb 6s ease-out infinite}
+/* damage numbers */
+@keyframes dn-a{0%,100%{opacity:0;transform:translateY(0)}8%{opacity:1}40%{opacity:0;transform:translateY(-22px)}}
+.dn{width:100px;text-align:center;font-family:'IBM Plex Mono',monospace;text-shadow:0 1px 2px #000;opacity:0;animation:dn-a 4.8s ease-out infinite}
+
+</style>
+</helmet>
+<div style="position: relative; width: 1160px; height: 720px; background: #0e1217; overflow: hidden; font-family: 'Rajdhani', sans-serif; color: #dbe4ec">
+<div style="position:absolute;left:20px;top:18px;font-size:26px;font-weight:700;letter-spacing:0.02em">Board effects: the field and status</div>
+<div style="position:absolute;left:20px;top:50px;width:1100px;font-size:13px;color:#8a99a8">Shield, Cover, vision, the Prime Zone, the reactor and the numbers. Every effect loops; the timings are for judging the feel, the final lengths come from the Resolution.</div>
+<div style="position:absolute;left:20px;top:80px;width:270px;height:300px;box-sizing:border-box;background:#161c24;border:1px solid #2a3542;border-radius:8px;overflow:hidden">
+<div style="position:absolute;left:14px;top:10px;font-size:19px;font-weight:700;line-height:1">Shield: gain, absorb, break</div>
+<div style="position:absolute;left:14px;top:34px;width:242px;font-size:12.5px;line-height:1.25;color:#aebccb">Three blue rubies pop above the Hero and the bubble forms. Each absorbed hit sends a ripple over the bubble and takes one ruby; at zero the bubble shatters into shards and the next hit is real.</div>
+<div style="position:absolute;left:14px;top:278px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6f7f8f">loop 5 s</div>
+<div class="scene" style="left:40px;top:226px;transform:scale(1.6);transform-origin:0 0"><div style="left:0;top:0;width:0;height:0"><div style="position:absolute;left:-23px;top:-12px;width:46px;height:24px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#243040"></div></div><div class="shhero" style="left:0;top:0;width:0;height:0"><div class="fig p-none"><div class="gring"></div><div class="slab"></div><div class="wallf"></div><div class="bubble"></div><div class="ripple"></div><div class="rig"><div class="legL"></div><div class="legR"></div><div class="torso"><div class="pad padL"></div><div class="pad padR"></div><div class="armB"></div><div class="body"><div class="plate"></div></div><div class="head"><div class="visor"></div></div><div class="armF"><div class="hand"></div><div class="gun"><div class="muzzle"></div></div></div></div></div><div class="wallh"></div><div class="dropgun"><i></i></div><div class="bolt"><i></i></div><div class="rubies"><b></b><b></b></div><div class="float"></div><div class="pause">II</div></div></div><div class="shbub" style="left:-17px;top:-52px;width:34px;height:56px;"></div><div class="shr1" style="left:-11px;top:-50px;width:7px;height:7px;transform:rotate(45deg);background:#4da3ff;border:1px solid #0b1016"></div><div class="shr2" style="left:-3px;top:-50px;width:7px;height:7px;transform:rotate(45deg);background:#4da3ff;border:1px solid #0b1016"></div><div class="shr3" style="left:5px;top:-50px;width:7px;height:7px;transform:rotate(45deg);background:#4da3ff;border:1px solid #0b1016"></div><div class="shrip" style="left:-17px;top:-52px;width:34px;height:56px;"></div><div class="shnum" style="left:-30px;top:-66px;width:60px;height:10px;">Shield -2</div><div class="shshard" style="left:-2px;top:-30px;width:5px;height:9px;--dx:-26px;--dy:-14px;--r:-120deg"></div><div class="shshard" style="left:-2px;top:-30px;width:5px;height:9px;--dx:26px;--dy:-18px;--r:140deg"></div><div class="shshard" style="left:-2px;top:-30px;width:5px;height:9px;--dx:-20px;--dy:18px;--r:90deg"></div><div class="shshard" style="left:-2px;top:-30px;width:5px;height:9px;--dx:24px;--dy:14px;--r:-70deg"></div><div class="shshard" style="left:-2px;top:-30px;width:5px;height:9px;--dx:0px;--dy:-34px;--r:30deg"></div><div style="left:96px;top:0;width:0;height:0"><div style="position:absolute;left:-23px;top:-12px;width:46px;height:24px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#243040"></div></div></div>
+</div><div style="position:absolute;left:300px;top:80px;width:270px;height:300px;box-sizing:border-box;background:#161c24;border:1px solid #2a3542;border-radius:8px;overflow:hidden">
+<div style="position:absolute;left:14px;top:10px;font-size:19px;font-weight:700;line-height:1">Cover placed</div>
+<div style="position:absolute;left:14px;top:34px;width:242px;font-size:12.5px;line-height:1.25;color:#aebccb">A teal flash marks the tile, the wall shoots up out of the ground with dust and a small overshoot. Two pips above it count the Resolutions it stays; the first goes dark after one, then the wall sinks away.</div>
+<div style="position:absolute;left:14px;top:278px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6f7f8f">loop 4 s</div>
+<div class="scene" style="left:40px;top:226px;transform:scale(1.6);transform-origin:0 0"><div style="left:48px;top:0;width:0;height:0"><div style="position:absolute;left:-23px;top:-12px;width:46px;height:24px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#243040"></div></div><div style="left:96px;top:0;width:0;height:0"><div style="position:absolute;left:-23px;top:-12px;width:46px;height:24px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#243040"></div></div><div style="left:0;top:0;width:0;height:0"><div style="position:absolute;left:-23px;top:-12px;width:46px;height:24px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#243040"></div><div class="fig aimed co p-none"><div class="gring"></div><div class="slab"></div><div class="wallf"></div><div class="bubble"></div><div class="ripple"></div><div class="rig"><div class="legL"></div><div class="legR"></div><div class="torso"><div class="pad padL"></div><div class="pad padR"></div><div class="pack"></div><div class="antenna"><i></i></div><div class="armB"><div class="cons"></div></div><div class="body"><div class="plate"></div></div><div class="head"><div class="visor"></div></div><div class="armF"><div class="hand"></div><div class="gun"><div class="muzzle"></div></div></div></div></div><div class="wallh"></div><div class="dropgun"><i></i></div><div class="bolt"><i></i></div><div class="rubies"><b></b><b></b></div><div class="float"></div><div class="orb"></div><div class="reticle"></div><div class="field"></div><div class="drone"><i></i></div><div class="scan"></div><div class="beam"></div><div class="ally"><u></u><b></b></div><div class="dome"><i></i><i></i><i></i></div><div class="risewall"></div><div class="sparks"></div><div class="pause">II</div></div></div><div class="cpflash" style="left:73px;top:-12px;width:46px;height:24px;"></div><div class="cpwall" style="left:80px;top:-13px;width:34px;height:12px;"></div><div class="cpdust" style="left:78px;top:-8px;width:10px;height:6px;animation-delay:0s"></div><div class="cpdust" style="left:92px;top:-8px;width:10px;height:6px;animation-delay:0.05s"></div><div class="cpdust" style="left:106px;top:-8px;width:10px;height:6px;animation-delay:0.1s"></div><div class="cppip a" style="left:91px;top:-26px;width:6px;height:6px;"></div><div class="cppip b" style="left:101px;top:-26px;width:6px;height:6px;"></div></div>
+</div><div style="position:absolute;left:580px;top:80px;width:270px;height:300px;box-sizing:border-box;background:#161c24;border:1px solid #2a3542;border-radius:8px;overflow:hidden">
+<div style="position:absolute;left:14px;top:10px;font-size:19px;font-weight:700;line-height:1">Half Cover: less damage</div>
+<div style="position:absolute;left:14px;top:34px;width:242px;font-size:12.5px;line-height:1.25;color:#aebccb">The shot hits the low wall in front of the target: chips fly, the wall flashes, and only part of the damage gets through, shown as -1 with a grey Half Cover tag. A Full Cover would stop the bolt completely.</div>
+<div style="position:absolute;left:14px;top:278px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6f7f8f">loop 2.4 s</div>
+<div class="scene" style="left:40px;top:226px;transform:scale(1.6);transform-origin:0 0"><div style="left:48px;top:0;width:0;height:0"><div style="position:absolute;left:-23px;top:-12px;width:46px;height:24px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#243040"></div></div><div style="left:0;top:0;width:0;height:0"><div style="position:absolute;left:-23px;top:-12px;width:46px;height:24px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#243040"></div><div class="fig aimed as p-none"><div class="gring"></div><div class="slab"></div><div class="wallf"></div><div class="bubble"></div><div class="ripple"></div><div class="rig"><div class="legL"></div><div class="legR"></div><div class="torso"><div class="pad padL"></div><div class="pad padR"></div><div class="cape"><i></i></div><div class="armB"></div><div class="body"><div class="plate"></div></div><div class="head"><div class="hood"><i></i></div><div class="visor"></div></div><div class="armF"><div class="hand"></div><div class="gun"><div class="scope"></div><div class="muzzle"></div></div></div></div></div><div class="wallh"></div><div class="dropgun"><i></i></div><div class="bolt"><i></i></div><div class="rubies"><b></b><b></b></div><div class="float"></div><div class="laser"></div><div class="glint"></div><div class="pause">II</div></div></div><div style="left:96px;top:0;width:0;height:0"><div style="position:absolute;left:-23px;top:-12px;width:46px;height:24px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#243040"></div><div class="tgtwrap" style="left:0;top:0;width:0;height:0"><div class="fig enemy tgt2 p-none"><div class="gring"></div><div class="slab"></div><div class="wallf"></div><div class="bubble"></div><div class="ripple"></div><div class="rig"><div class="legL"></div><div class="legR"></div><div class="torso"><div class="pad padL"></div><div class="pad padR"></div><div class="armB"></div><div class="body"><div class="plate"></div></div><div class="head"><div class="visor"></div></div><div class="armF"><div class="hand"></div><div class="gun"><div class="muzzle"></div></div></div></div></div><div class="wallh"></div><div class="dropgun"><i></i></div><div class="bolt"><i></i></div><div class="rubies"><b></b><b></b></div><div class="float"></div><div class="pause">II</div></div></div></div><div class="fxflash" style="left:40px;top:-29px;width:9px;height:9px;--c:#9fd4ff"></div><div class="fxproj" style="left:44px;top:-25px;width:24px;height:2px;--c:#e6f4ff;--g:#5aa0e0;--d:24px"></div><div class="hcwall" style="left:64px;top:-13px;width:18px;height:12px;"></div><div class="fxburst" style="left:64px;top:-22px;width:12px;height:12px;--c:#9fd4ff"></div><div class="hcchip" style="left:70px;top:-16px;width:3px;height:3px;--dx:-10px;--dy:-12px"></div><div class="hcchip" style="left:70px;top:-16px;width:3px;height:3px;--dx:6px;--dy:-16px"></div><div class="hcchip" style="left:70px;top:-16px;width:3px;height:3px;--dx:-4px;--dy:-8px"></div><div class="fxnum" style="left:72px;top:-52px;width:52px;height:12px;--c:#e5484d">-1</div><div class="fxnum" style="left:72px;top:-41px;width:52px;height:10px;--c:#aebccb;font-size:6px">Half Cover</div></div>
+</div><div style="position:absolute;left:860px;top:80px;width:270px;height:300px;box-sizing:border-box;background:#161c24;border:1px solid #2a3542;border-radius:8px;overflow:hidden">
+<div style="position:absolute;left:14px;top:10px;font-size:19px;font-weight:700;line-height:1">Scout Drone: revealed area</div>
+<div style="position:absolute;left:14px;top:34px;width:242px;font-size:12.5px;line-height:1.25;color:#aebccb">The drone flies out and hovers; from the middle outwards the fog lifts over a 3 by 3 area and a cyan tint marks it. An enemy standing inside shows up. Two pips count the Resolutions; then the fog closes again.</div>
+<div style="position:absolute;left:14px;top:278px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6f7f8f">loop 5 s</div>
+<div class="scene" style="left:40px;top:226px;transform:scale(1.6);transform-origin:0 0"><div class="sdfog" style="left:33px;top:-22px;width:46px;height:24px;"></div><div class="sdfog" style="left:9px;top:-10px;width:46px;height:24px;"></div><div class="sdfog" style="left:-15px;top:2px;width:46px;height:24px;"></div><div class="sdfog" style="left:57px;top:-10px;width:46px;height:24px;"></div><div class="sdfog" style="left:33px;top:2px;width:46px;height:24px;"></div><div class="sdfog" style="left:9px;top:14px;width:46px;height:24px;"></div><div class="sdfog" style="left:81px;top:2px;width:46px;height:24px;"></div><div class="sdfog" style="left:57px;top:14px;width:46px;height:24px;"></div><div class="sdfog" style="left:33px;top:26px;width:46px;height:24px;"></div><div class="sdlit" style="left:33px;top:-22px;width:46px;height:24px;animation-delay:0.24s"></div><div class="sdlit" style="left:9px;top:-10px;width:46px;height:24px;animation-delay:0.12s"></div><div class="sdlit" style="left:-15px;top:2px;width:46px;height:24px;animation-delay:0.24s"></div><div class="sdlit" style="left:57px;top:-10px;width:46px;height:24px;animation-delay:0.12s"></div><div class="sdlit" style="left:33px;top:2px;width:46px;height:24px;animation-delay:0.0s"></div><div class="sdlit" style="left:9px;top:14px;width:46px;height:24px;animation-delay:0.12s"></div><div class="sdlit" style="left:81px;top:2px;width:46px;height:24px;animation-delay:0.24s"></div><div class="sdlit" style="left:57px;top:14px;width:46px;height:24px;animation-delay:0.12s"></div><div class="sdlit" style="left:33px;top:26px;width:46px;height:24px;animation-delay:0.24s"></div><div style="left:0;top:0;width:0;height:0"><div style="position:absolute;left:-23px;top:-12px;width:46px;height:24px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#243040"></div><div class="fig co p-none"><div class="gring"></div><div class="slab"></div><div class="wallf"></div><div class="bubble"></div><div class="ripple"></div><div class="rig"><div class="legL"></div><div class="legR"></div><div class="torso"><div class="pad padL"></div><div class="pad padR"></div><div class="pack"></div><div class="antenna"><i></i></div><div class="armB"><div class="cons"></div></div><div class="body"><div class="plate"></div></div><div class="head"><div class="visor"></div></div><div class="armF"><div class="hand"></div><div class="gun"><div class="muzzle"></div></div></div></div></div><div class="wallh"></div><div class="dropgun"><i></i></div><div class="bolt"><i></i></div><div class="rubies"><b></b><b></b></div><div class="float"></div><div class="orb"></div><div class="reticle"></div><div class="field"></div><div class="drone"><i></i></div><div class="scan"></div><div class="beam"></div><div class="ally"><u></u><b></b></div><div class="dome"><i></i><i></i><i></i></div><div class="risewall"></div><div class="sparks"></div><div class="pause">II</div></div></div><div class="sdenemy" style="left:56px;top:0;width:0;height:0"><div class="tgtwrap" style="left:0;top:0;width:0;height:0"><div class="fig enemy p-none"><div class="gring"></div><div class="slab"></div><div class="wallf"></div><div class="bubble"></div><div class="ripple"></div><div class="rig"><div class="legL"></div><div class="legR"></div><div class="torso"><div class="pad padL"></div><div class="pad padR"></div><div class="armB"></div><div class="body"><div class="plate"></div></div><div class="head"><div class="visor"></div></div><div class="armF"><div class="hand"></div><div class="gun"><div class="muzzle"></div></div></div></div></div><div class="wallh"></div><div class="dropgun"><i></i></div><div class="bolt"><i></i></div><div class="rubies"><b></b><b></b></div><div class="float"></div><div class="pause">II</div></div></div></div><div class="sddrone" style="left:-6px;top:-40px;width:12px;height:5px;"></div><div class="sdpip a" style="left:52px;top:-50px;width:6px;height:6px;"></div><div class="sdpip b" style="left:62px;top:-50px;width:6px;height:6px;"></div></div>
+</div><div style="position:absolute;left:20px;top:390px;width:270px;height:300px;box-sizing:border-box;background:#161c24;border:1px solid #2a3542;border-radius:8px;overflow:hidden">
+<div style="position:absolute;left:14px;top:10px;font-size:19px;font-weight:700;line-height:1">Fog and Ghost</div>
+<div style="position:absolute;left:14px;top:34px;width:242px;font-size:12.5px;line-height:1.25;color:#aebccb">The enemy walks out of sight: fog rolls over the tile, the Hero fades to a half-transparent Ghost with a 'last seen' tag where it was last known. Later the fog clears and the real enemy stands somewhere else.</div>
+<div style="position:absolute;left:14px;top:278px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6f7f8f">loop 6 s</div>
+<div class="scene" style="left:40px;top:226px;transform:scale(1.6);transform-origin:0 0"><div style="left:0;top:0;width:0;height:0"><div style="position:absolute;left:-23px;top:-12px;width:46px;height:24px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#243040"></div><div class="fig aimed co p-none"><div class="gring"></div><div class="slab"></div><div class="wallf"></div><div class="bubble"></div><div class="ripple"></div><div class="rig"><div class="legL"></div><div class="legR"></div><div class="torso"><div class="pad padL"></div><div class="pad padR"></div><div class="pack"></div><div class="antenna"><i></i></div><div class="armB"><div class="cons"></div></div><div class="body"><div class="plate"></div></div><div class="head"><div class="visor"></div></div><div class="armF"><div class="hand"></div><div class="gun"><div class="muzzle"></div></div></div></div></div><div class="wallh"></div><div class="dropgun"><i></i></div><div class="bolt"><i></i></div><div class="rubies"><b></b><b></b></div><div class="float"></div><div class="orb"></div><div class="reticle"></div><div class="field"></div><div class="drone"><i></i></div><div class="scan"></div><div class="beam"></div><div class="ally"><u></u><b></b></div><div class="dome"><i></i><i></i><i></i></div><div class="risewall"></div><div class="sparks"></div><div class="pause">II</div></div></div><div style="left:84px;top:0;width:0;height:0"><div style="position:absolute;left:-23px;top:-12px;width:46px;height:24px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#243040"></div></div><div class="fgenemy" style="left:60px;top:0;width:0;height:0"><div class="tgtwrap" style="left:0;top:0;width:0;height:0"><div class="fig enemy p-none"><div class="gring"></div><div class="slab"></div><div class="wallf"></div><div class="bubble"></div><div class="ripple"></div><div class="rig"><div class="legL"></div><div class="legR"></div><div class="torso"><div class="pad padL"></div><div class="pad padR"></div><div class="armB"></div><div class="body"><div class="plate"></div></div><div class="head"><div class="visor"></div></div><div class="armF"><div class="hand"></div><div class="gun"><div class="muzzle"></div></div></div></div></div><div class="wallh"></div><div class="dropgun"><i></i></div><div class="bolt"><i></i></div><div class="rubies"><b></b><b></b></div><div class="float"></div><div class="pause">II</div></div></div></div><div class="fgghost" style="left:60px;top:0;width:0;height:0"><div class="tgtwrap" style="left:0;top:0;width:0;height:0"><div class="fig enemy p-none"><div class="gring"></div><div class="slab"></div><div class="wallf"></div><div class="bubble"></div><div class="ripple"></div><div class="rig"><div class="legL"></div><div class="legR"></div><div class="torso"><div class="pad padL"></div><div class="pad padR"></div><div class="armB"></div><div class="body"><div class="plate"></div></div><div class="head"><div class="visor"></div></div><div class="armF"><div class="hand"></div><div class="gun"><div class="muzzle"></div></div></div></div></div><div class="wallh"></div><div class="dropgun"><i></i></div><div class="bolt"><i></i></div><div class="rubies"><b></b><b></b></div><div class="float"></div><div class="pause">II</div></div></div></div><div class="fglabel" style="left:20px;top:8px;width:80px;height:9px;">last seen</div><div class="fgfog" style="left:28px;top:-46px;width:90px;height:60px;"></div><div class="fgnew" style="left:96px;top:0;width:0;height:0"><div class="tgtwrap" style="left:0;top:0;width:0;height:0"><div class="fig enemy p-none"><div class="gring"></div><div class="slab"></div><div class="wallf"></div><div class="bubble"></div><div class="ripple"></div><div class="rig"><div class="legL"></div><div class="legR"></div><div class="torso"><div class="pad padL"></div><div class="pad padR"></div><div class="armB"></div><div class="body"><div class="plate"></div></div><div class="head"><div class="visor"></div></div><div class="armF"><div class="hand"></div><div class="gun"><div class="muzzle"></div></div></div></div></div><div class="wallh"></div><div class="dropgun"><i></i></div><div class="bolt"><i></i></div><div class="rubies"><b></b><b></b></div><div class="float"></div><div class="pause">II</div></div></div></div></div>
+</div><div style="position:absolute;left:300px;top:390px;width:270px;height:300px;box-sizing:border-box;background:#161c24;border:1px solid #2a3542;border-radius:8px;overflow:hidden">
+<div style="position:absolute;left:14px;top:10px;font-size:19px;font-weight:700;line-height:1">Prime Zone states</div>
+<div style="position:absolute;left:14px;top:34px;width:242px;font-size:12.5px;line-height:1.25;color:#aebccb">The 3 by 3 zone is grey while empty, turns teal when your Squad holds it and pulses a ring each Resolution with the count. At 3 / 3 it flashes gold. When an enemy steps in it turns amber and the count falls back to zero.</div>
+<div style="position:absolute;left:14px;top:278px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6f7f8f">loop 8 s</div>
+<div class="scene" style="left:44px;top:200px;transform:scale(1.6);transform-origin:0 0"><div style="left:60px;top:-6px;width:0;height:0"><div class="pztile" style="left:-23px;top:-12px;width:46px;height:24px;"></div><div class="pztile" style="left:-47px;top:0px;width:46px;height:24px;"></div><div class="pztile" style="left:-71px;top:12px;width:46px;height:24px;"></div><div class="pztile" style="left:1px;top:0px;width:46px;height:24px;"></div><div class="pztile" style="left:-23px;top:12px;width:46px;height:24px;"></div><div class="pztile" style="left:-47px;top:24px;width:46px;height:24px;"></div><div class="pztile" style="left:25px;top:12px;width:46px;height:24px;"></div><div class="pztile" style="left:1px;top:24px;width:46px;height:24px;"></div><div class="pztile" style="left:-23px;top:36px;width:46px;height:24px;"></div></div><div class="pzhero" style="left:60px;top:18px;width:0;height:0"><div class="fig p-none"><div class="gring"></div><div class="slab"></div><div class="wallf"></div><div class="bubble"></div><div class="ripple"></div><div class="rig"><div class="legL"></div><div class="legR"></div><div class="torso"><div class="pad padL"></div><div class="pad padR"></div><div class="armB"></div><div class="body"><div class="plate"></div></div><div class="head"><div class="visor"></div></div><div class="armF"><div class="hand"></div><div class="gun"><div class="muzzle"></div></div></div></div></div><div class="wallh"></div><div class="dropgun"><i></i></div><div class="bolt"><i></i></div><div class="rubies"><b></b><b></b></div><div class="float"></div><div class="pause">II</div></div></div><div class="pzenemy" style="left:108px;top:30px;width:0;height:0"><div class="tgtwrap" style="left:0;top:0;width:0;height:0"><div class="fig enemy p-none"><div class="gring"></div><div class="slab"></div><div class="wallf"></div><div class="bubble"></div><div class="ripple"></div><div class="rig"><div class="legL"></div><div class="legR"></div><div class="torso"><div class="pad padL"></div><div class="pad padR"></div><div class="armB"></div><div class="body"><div class="plate"></div></div><div class="head"><div class="visor"></div></div><div class="armF"><div class="hand"></div><div class="gun"><div class="muzzle"></div></div></div></div></div><div class="wallh"></div><div class="dropgun"><i></i></div><div class="bolt"><i></i></div><div class="rubies"><b></b><b></b></div><div class="float"></div><div class="pause">II</div></div></div></div><div class="pzring" style="left:36px;top:8px;width:48px;height:24px;"></div><div class="pzpop p1" style="left:0px;top:-26px;width:120px;height:12px;">PRIME ZONE 1 / 3</div><div class="pzpop p2" style="left:0px;top:-26px;width:120px;height:12px;">PRIME ZONE 2 / 3</div><div class="pzpop p3" style="left:0px;top:-26px;width:120px;height:12px;">PRIME ZONE 3 / 3</div><div class="pzpop p4" style="left:0px;top:-26px;width:120px;height:12px;">CONTESTED</div></div>
+</div><div style="position:absolute;left:580px;top:390px;width:270px;height:300px;box-sizing:border-box;background:#161c24;border:1px solid #2a3542;border-radius:8px;overflow:hidden">
+<div style="position:absolute;left:14px;top:10px;font-size:19px;font-weight:700;line-height:1">Reactor: pulse and explosion</div>
+<div style="position:absolute;left:14px;top:34px;width:242px;font-size:12.5px;line-height:1.25;color:#aebccb">The reactor core glows and breathes, and sends a ring over the floor every few seconds. When it blows: a white flash over the whole view, a fireball, a hard shockwave ring and glowing debris.</div>
+<div style="position:absolute;left:14px;top:278px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6f7f8f">loop 6 s</div>
+<div class="scene" style="left:56px;top:190px;transform:scale(1.9);transform-origin:0 0"><div style="left:60px;top:20px;width:0;height:0"><div style="position:absolute;left:-23px;top:-12px;width:46px;height:24px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#243040"></div></div><div class="rcpulse" style="left:36px;top:6px;width:48px;height:24px;"></div><div class="rcpulse" style="left:36px;top:6px;width:48px;height:24px;animation-delay:.25s"></div><div class="rccore" style="left:50px;top:-2px;width:20px;height:20px;"></div><div class="rcwave" style="left:24px;top:0px;width:72px;height:36px;"></div><div class="rcblast" style="left:36px;top:-22px;width:48px;height:48px;"></div><div class="rcdeb" style="left:58px;top:4px;width:4px;height:4px;--dx:-50px;--dy:-40px"></div><div class="rcdeb" style="left:58px;top:4px;width:4px;height:4px;--dx:46px;--dy:-44px"></div><div class="rcdeb" style="left:58px;top:4px;width:4px;height:4px;--dx:-40px;--dy:24px"></div><div class="rcdeb" style="left:58px;top:4px;width:4px;height:4px;--dx:52px;--dy:20px"></div><div class="rcdeb" style="left:58px;top:4px;width:4px;height:4px;--dx:4px;--dy:-56px"></div><div class="rcdeb" style="left:58px;top:4px;width:4px;height:4px;--dx:-8px;--dy:34px"></div><div class="rcflash" style="left:-80px;top:-200px;width:270px;height:300px;"></div></div>
+</div><div style="position:absolute;left:860px;top:390px;width:270px;height:300px;box-sizing:border-box;background:#161c24;border:1px solid #2a3542;border-radius:8px;overflow:hidden">
+<div style="position:absolute;left:14px;top:10px;font-size:19px;font-weight:700;line-height:1">Floating numbers</div>
+<div style="position:absolute;left:14px;top:34px;width:242px;font-size:12.5px;line-height:1.25;color:#aebccb">What rises from a Hero after a hit: red -1, -2 for Deck Damage, a bigger gold -4! for a long-range bonus, blue Shield -2, grey Blocked and a quiet Out of range.</div>
+<div style="position:absolute;left:14px;top:278px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6f7f8f">loop 4.8 s</div>
+<div class="scene" style="left:90px;top:170px;transform:scale(1.4);transform-origin:0 0"><div class="dn" style="left:-60px;top:-70px;width:100px;height:24px;color:#e5484d;font-size:14px;animation-delay:0.0s">-1</div><div class="dn" style="left:40px;top:-70px;width:100px;height:24px;color:#e5484d;font-size:17px;animation-delay:0.7s">-2</div><div class="dn" style="left:-60px;top:-36px;width:100px;height:24px;color:#ffd24a;font-size:22px;animation-delay:1.4s">-4!</div><div class="dn" style="left:40px;top:-36px;width:100px;height:24px;color:#4da3ff;font-size:12px;animation-delay:2.0999999999999996s">Shield -2</div><div class="dn" style="left:-60px;top:-2px;width:100px;height:24px;color:#aebccb;font-size:12px;animation-delay:2.8s">Blocked</div><div class="dn" style="left:40px;top:-2px;width:100px;height:24px;color:#8a99a8;font-size:11px;animation-delay:3.5s">Out of range</div></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1160,"height":720}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
