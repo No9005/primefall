@@ -623,10 +623,10 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   // Who targets whom: the queued actions of the Squad while planning, the actions of the current Tick in the replay.
   const targetLines = useMemo(
     () =>
-      playback
-        ? playback.lines
+      playing
+        ? (playback?.lines ?? [])
         : plannedTargetLines(knownGrid, view.heroes, view.enemies, squadPlans).map((line) => ({ ...line, faint: line.heroId !== playerHeroId })),
-    [playback, knownGrid, view.heroes, view.enemies, squadPlans, playerHeroId],
+    [playing, playback, knownGrid, view.heroes, view.enemies, squadPlans, playerHeroId],
   );
   // Shield rubies, bubble and planned icons above the Heroes the Squad may see (own Heroes and Visible enemies).
   const marks = useMemo(() => {
@@ -640,7 +640,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         shield: held(hero.id, 0),
         // Only the player's own plan gets marks; allied plans are drawn as faint lines only.
         queue: hero.id === playerHeroId ? squadPlans.flatMap((squadPlan) => squadPlan.heroes).find((planned) => planned.heroId === hero.id)?.queue : undefined,
-        resolving: playback !== undefined,
+        resolving: playing,
       }),
     ]);
     const enemies = view.enemies.map((enemy) => [
@@ -650,11 +650,11 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         heroClass: enemy.heroClass,
         visibility: enemy.visibility,
         shield: enemy.visibility === Visibility.Visible ? held(enemy.id, enemy.shield) : 0,
-        resolving: playback !== undefined,
+        resolving: playing,
       }),
     ]);
     return Object.fromEntries([...own, ...enemies]);
-  }, [view.heroes, view.enemies, squadPlans, playback, playerHeroId]);
+  }, [view.heroes, view.enemies, squadPlans, playback, playing, playerHeroId]);
   const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, overdriveAim);
   const aimedModes = aimedCard === undefined ? [] : [aimedCard];
   // Tile cards (Breach Charge), area cards (Scout Drone) and Deploy Cover are confirmed by tapping a tile.
