@@ -27,6 +27,7 @@ import {
   reviewOutcome,
   summarizeAgentRun,
   formatRunSummary,
+  formatOwnerBrief,
   reworkDecision,
   ReworkAction,
   ReviewVerdict,
@@ -132,7 +133,7 @@ describe("parseReviewResult", () => {
 });
 
 describe("reviewOutcome", () => {
-  const parsed = { verdict: ReviewVerdict.Pass, summary: "ok", findings: [], raiseBlastRadiusReason: undefined, resolvedThreads: [] };
+  const parsed = { verdict: ReviewVerdict.Pass, summary: "ok", findings: [], raiseBlastRadiusReason: undefined, resolvedThreads: [], brief: undefined };
 
   it("is not-run when no result file exists, so no rework starts", () => {
     expect(reviewOutcome({ resultFileExists: false, parsed: undefined })).toBe(ReviewOutcome.NotRun);
@@ -263,6 +264,65 @@ describe("resolving the review bot's own threads", () => {
     });
     expect(result?.resolvedThreads).toEqual([{ id: "a", reason: "fixed in changeSelection" }]);
     expect(parseReviewResult({ verdict: "pass", summary: "ok", findings: [] })?.resolvedThreads).toEqual([]);
+  });
+});
+
+describe("the owner brief", () => {
+  const base = { verdict: "pass", summary: "ok", findings: [] };
+  const brief = { playerImpact: "Nothing visible.", ownerChecks: ["play a match on a phone"], recommendation: "merge", reason: "All criteria are met." };
+
+  it("is read from a valid result", () => {
+    expect(parseReviewResult({ ...base, brief })?.brief).toEqual(brief);
+  });
+
+  it("is dropped when malformed, and the review still counts", () => {
+    for (const bad of [{ ...brief, recommendation: "yes" }, { ...brief, ownerChecks: "x" }, { ...brief, ownerChecks: [1] }, { ...brief, playerImpact: 3 }, "nope"]) {
+      const result = parseReviewResult({ ...base, brief: bad });
+      expect(result?.verdict).toBe(ReviewVerdict.Pass);
+      expect(result?.brief).toBeUndefined();
+    }
+  });
+
+  it("is absent when the result has none", () => {
+    expect(parseReviewResult(base)?.brief).toBeUndefined();
+  });
+
+  it("truncates long fields and keeps at most four checks", () => {
+    const long = "x".repeat(1000);
+    const result = parseReviewResult({ ...base, brief: { ...brief, playerImpact: long, reason: long, ownerChecks: [long, "b", "c", "d", "e"] } })?.brief;
+    expect(result?.playerImpact.length).toBeLessThan(500);
+    expect(result?.playerImpact.endsWith("…")).toBe(true);
+    expect(result?.reason.length).toBeLessThan(250);
+    expect(result?.ownerChecks).toHaveLength(4);
+    expect(result?.ownerChecks[0]?.endsWith("…")).toBe(true);
+  });
+
+  it("is shown as the four parts without @ handles", () => {
+    const text = formatOwnerBrief({ playerImpact: "Ping @someone now.", ownerChecks: ["ask @team", "look"], recommendation: "hold", reason: "Unchecked, @owner." });
+    expect(text).toContain("Ping someone now.");
+    expect(text).toContain("- ask team\n- look");
+    expect(text).toContain("**Recommendation:** hold (Unchecked, owner.)");
+    expect(text).not.toContain("@");
+  });
+
+  it("shows an empty check list as nothing to check by hand", () => {
+    expect(formatOwnerBrief({ playerImpact: "Nothing visible.", ownerChecks: [], recommendation: "merge", reason: "Fine." })).toContain("Nothing to check by hand.");
+  });
+
+  it("has a marker of its own, distinct from the other comments", () => {
+    expect(CommentMarker.OwnerBrief).toBe("<!-- factory:owner-brief -->");
+    expect(Object.values(CommentMarker).filter((m) => m === CommentMarker.OwnerBrief)).toHaveLength(1);
+  });
+
+  it("does not change the merge gate or the blast radius", () => {
+    const gate = { level: BlastRadius.High, reviewPassed: true, needsHuman: false, automergeEnabled: true };
+    expect(mergeGateDecision(gate)).toBe(MergeGateAction.AwaitHumanMerge);
+    for (const recommendation of ["merge", "hold", "change"]) {
+      const result = parseReviewResult({ ...base, brief: { ...brief, recommendation } });
+      expect(result?.verdict).toBe(ReviewVerdict.Pass);
+      expect(result?.raiseBlastRadiusReason).toBeUndefined();
+      expect(mergeGateDecision(gate)).toBe(MergeGateAction.AwaitHumanMerge);
+    }
   });
 });
 
