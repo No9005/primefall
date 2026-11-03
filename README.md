@@ -28,3 +28,7 @@ The web app is a static single-page app. Expected project settings:
 - Build Command: `npm run build`; Output Directory: `dist`.
 
 These settings are not verified yet; check them when the Vercel project is first connected.
+
+## License
+
+Primefall is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International license](LICENSE) (CC BY-NC 4.0). You may share and adapt it with attribution and for non-commercial purposes only.
