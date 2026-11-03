@@ -40,6 +40,9 @@ import {
   summarizeAgentRun,
   formatRunSummary,
   formatOwnerBrief,
+  formatMergeBlockedComment,
+  handOverIfStillOpen,
+  mergeBlockReasons,
   ReviewVerdict,
   type IssueEvent,
   type ReviewResult,
@@ -119,7 +122,7 @@ function removeLabel(number: number, label: string): void {
 function upsertComment(number: number, marker: string, body: string): void {
   const comments = apiList<{ id: number; body: string }>(`repos/${repo}/issues/${number}/comments`);
   const existing = comments.find((c) => c.body.includes(marker));
-  const text = `${marker}\n${body}${FOOTER}`;
+  const text = `${body.startsWith(marker) ? "" : `${marker}\n`}${body}${FOOTER}`;
   if (existing) gh(["api", "-X", "PATCH", `repos/${repo}/issues/comments/${existing.id}`, "-f", `body=${text}`]);
   else gh(["api", "-X", "POST", `repos/${repo}/issues/${number}/comments`, "-f", `body=${text}`]);
 }
@@ -439,13 +442,48 @@ function prForIssue(issue: number): void {
   output("head_ref", pr === undefined ? "" : pr.head.ref);
 }
 
+/** Unresolved review threads with a link to their first comment. */
+function unresolvedThreadLinks(number: number): { url: string }[] {
+  const [repoOwner = "", name = ""] = repo.split("/");
+  const query = `query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{isResolved comments(first:1){nodes{url}}}}}}}`;
+  const result = graphql(query, { owner: repoOwner, name, number }) as {
+    data: { repository: { pullRequest: { reviewThreads: { nodes: { isResolved: boolean; comments: { nodes: { url: string }[] } }[] } } } };
+  };
+  return result.data.repository.pullRequest.reviewThreads.nodes.filter((node) => !node.isResolved).map((node) => ({ url: node.comments.nodes[0]?.url ?? "" }));
+}
+
+/** The auto-merge did not happen in time: label the pull request for the owner and say why. */
+function handOverMergeBlocked(number: number): void {
+  const pr = api<{ head: { sha: string }; mergeable_state: string; auto_merge: unknown }>(`repos/${repo}/pulls/${number}`);
+  const checkRuns = api<{ check_runs: { name: string; status: string; conclusion: string | null }[] }>(`repos/${repo}/commits/${pr.head.sha}/check-runs?per_page=100`).check_runs;
+  const reasons = mergeBlockReasons({
+    unresolvedThreads: unresolvedThreadLinks(number),
+    checks: checkRuns,
+    mergeableState: pr.mergeable_state,
+    autoMergeEnabled: pr.auto_merge !== null && pr.auto_merge !== undefined,
+  });
+  addLabel(number, Label.NeedsHumanMerge);
+  upsertComment(number, CommentMarker.MergeBlocked, formatMergeBlockedComment(reasons, new Date().toISOString()));
+  console.log(`Handed #${number} to the owner: ${reasons.join("; ")}`);
+}
+
 /** Waits (polling) until the pull request is merged or closed, at most `minutes`. Output `merged`. */
 function awaitMerge(number: number, minutes: number): void {
   const deadline = Date.now() + minutes * 60_000;
   for (;;) {
     const pr = api<{ merged_at: string | null; state: string }>(`repos/${repo}/pulls/${number}`);
     if (pr.merged_at !== null) return output("merged", "true");
-    if (pr.state !== "open" || Date.now() >= deadline) return output("merged", "false");
+    if (pr.state !== "open") return output("merged", "false");
+    if (Date.now() >= deadline) {
+      handOverIfStillOpen({
+        loadState: () => {
+          const latest = api<{ merged_at: string | null; state: string }>(`repos/${repo}/pulls/${number}`);
+          return { open: latest.state === "open", merged: latest.merged_at !== null };
+        },
+        handOver: () => handOverMergeBlocked(number),
+      });
+      return output("merged", "false");
+    }
     execFileSync("sleep", ["20"]);
   }
 }
