@@ -37,7 +37,9 @@ import {
 } from "./board-layout";
 import { freeBoardArea } from "./hud-layout";
 import { buildTerrain, depthOf, type Face, floorOutline, footOffset, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
-import { heroFigure } from "./hero-figure";
+import { heroFigure, marksFigure, shieldBubble } from "./hero-figure";
+import { HERO_STYLE } from "./hero-style";
+import type { HeroMarks } from "./shield-marks";
 import { chestOf, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
 import { PathOwner, type PlannedPath } from "./ally-paths";
 import { LineKind, LineTone, type TargetLine } from "./target-lines";
@@ -243,6 +245,8 @@ interface BoardProps {
   paths: readonly PlannedPath[];
   /** Who targets whom: queued actions while planning, the actions of the current Tick during the replay. */
   targetLines: readonly TargetLine[];
+  /** Shield rubies, the shield bubble and planned-action icons per Hero id; Heroes without an entry have none. */
+  marks: Readonly<Record<string, HeroMarks>>;
   /** Planning only: destinations of Moves that will fail through another Hero of the Squad. */
   collisionTiles: readonly GridPosition[];
   /** Filled with a function that tells what the board has under a viewport point, for dropping a dragged card. */
@@ -270,6 +274,37 @@ function writeLinesSetting(on: boolean): void {
   }
 }
 
+/** Grows a shape from small and transparent to full size in `ms`; with reduced motion it just shows. Returns a cancel function. */
+function animateAppear(shape: Graphics, ms: number): () => void {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return () => undefined;
+  const start = performance.now();
+  let frame = 0;
+  const step = (now: number) => {
+    const t = Math.min(1, (now - start) / ms);
+    shape.alpha = t;
+    shape.scale.set(0.4 + 0.6 * t);
+    if (t < 1) frame = requestAnimationFrame(step);
+  };
+  shape.alpha = 0;
+  shape.scale.set(0.4);
+  frame = requestAnimationFrame(step);
+  return () => cancelAnimationFrame(frame);
+}
+
+/** Fades a shape from full to transparent in `ms`. Returns a cancel function. */
+function animateFadeOut(shape: Graphics, ms: number): () => void {
+  const start = performance.now();
+  let frame = 0;
+  const step = (now: number) => {
+    const t = Math.min(1, (now - start) / ms);
+    shape.alpha = 1 - t;
+    shape.scale.set(1 + 0.2 * t);
+    if (t < 1) frame = requestAnimationFrame(step);
+  };
+  frame = requestAnimationFrame(step);
+  return () => cancelAnimationFrame(frame);
+}
+
 /** Length of the camera ease when a Move is armed, placed or cancelled. */
 const FRAME_MS = 250;
 
@@ -295,6 +330,7 @@ export function Board({
   dropTile,
   shotLines,
   targetLines,
+  marks,
   paths,
   collisionTiles,
   pickRef,
@@ -317,6 +353,7 @@ export function Board({
   candidatesRef.current = { heroes: [...heroes, ...enemies], targetableIds, highlights };
   const enemyIdsRef = useRef(new Set<string>());
   enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
+  const bubbleSeen = useRef(new Set<string>());
   const [pressed, setPressed] = useState<GridPosition>();
   const [zoomed, setZoomed] = useState(false);
   // The camera scale in steps; outlines are drawn in world pixels of `1 / strokeScale` so they keep their width on screen.
@@ -415,6 +452,7 @@ export function Board({
   useEffect(() => {
     if (!tokens) return;
     const created: Container[] = [];
+    const cancels: (() => void)[] = [];
     const ring = (color: number) =>
       new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color });
     const addToken = (hero: TokenHero, enemy: boolean) => {
@@ -432,6 +470,20 @@ export function Board({
       if (hero.ghost) figure.alpha = 0.35;
       if (hero.hidden) figure.alpha = 0.55;
       token.addChild(figure);
+      const heroMarks = hero.ghost ? undefined : marks[hero.id];
+      if (heroMarks && (heroMarks.rubies > 0 || heroMarks.icons.length > 0)) {
+        token.addChild(marksFigure(heroMarks, strokeScale, !enemy && hero.id !== selectedId));
+      }
+      if (heroMarks?.bubble) {
+        const bubble = shieldBubble(strokeScale);
+        token.addChild(bubble);
+        if (!bubbleSeen.current.has(hero.id)) cancels.push(animateAppear(bubble, HERO_STYLE.marks.bubble.appearMs));
+      } else if (bubbleSeen.current.has(hero.id) && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        // The Shield was used up or expired: the bubble fades away (not with reduced motion).
+        const bubble = shieldBubble(strokeScale);
+        token.addChild(bubble);
+        cancels.push(animateFadeOut(bubble, HERO_STYLE.marks.bubble.appearMs));
+      }
       if (hero.marked && !hero.exhausted && !hero.ghost) {
         // A red downward marker above the head.
         const mark = new Graphics().poly([-12, -8, 12, -8, 0, 12]).fill(0xe5484d).stroke({ width: 2, color: 0x12161c });
@@ -462,8 +514,13 @@ export function Board({
     }
     heroes.forEach((hero) => addToken(hero, false));
     enemies.forEach((hero) => addToken(hero, true));
-    return () => created.forEach((token) => token.destroy({ children: true }));
-  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, shotLines]);
+    // A bubble appears with an animation only when it was not there before this redraw.
+    bubbleSeen.current = new Set(Object.entries(marks).flatMap(([id, heroMarks]) => (heroMarks.bubble ? [id] : [])));
+    return () => {
+      cancels.forEach((cancel) => cancel());
+      created.forEach((token) => token.destroy({ children: true }));
+    };
+  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, shotLines, marks]);
 
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
   useEffect(() => {

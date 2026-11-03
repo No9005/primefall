@@ -16,6 +16,15 @@ export const HERO_STYLE = {
   ring: { own: 0x2ec4b6, enemy: 0xe5484d, width: 3 },
   /** Soft contact shadow under the feet. */
   shadow: { color: 0x000000, alpha: 0.4 },
+  /** Shield rubies, the shield bubble and the planned-action icons above the Hero. */
+  marks: {
+    ruby: { fill: 0x2f7bff, facet: 0x9cc4ff, size: 7, gap: 3, rowY: -96, dash: 3 },
+    bubble: { fill: 0x4aa3ff, fillAlpha: 0.22, edgeAlpha: 0.75, radiusX: 34, radiusY: 46, centerY: -42, appearMs: 250 },
+    icon: { fill: 0xe8eef5, size: 9, rowY: -118, gap: 6 },
+    tickText: { fill: 0xe8eef5, size: 12 },
+    /** Alpha of the marks of an allied Hero that is not the selected one. */
+    faint: 0.45,
+  },
   /** World pixels; the feet are at (0, 0). */
   shape: { bodyWidth: 30, bodyHeight: 50, bodyLift: 4, headRadius: 12, headGap: 2 },
 } as const;

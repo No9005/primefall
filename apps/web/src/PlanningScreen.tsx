@@ -39,6 +39,7 @@ import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths"
 import { Board } from "./Board";
 import { BlockChip, CardFace, EnergyOrb, ModeFaceCard } from "./game-parts";
 import { drawShots, type ShotDrawing } from "./shot-lines";
+import { heroMarks } from "./shield-marks";
 import { plannedTargetLines, replayTargetLines, type TargetLine } from "./target-lines";
 import { cardAtX, FAN_WIDTH, fanSpacing } from "./hand-fan";
 import { applyDrop, type BoardPick, type DropPlaces, type DropProbe, type DropUse, type Point, probeDrop, type Rect } from "./card-drag";
@@ -508,6 +509,32 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         : plannedTargetLines(knownGrid, view.heroes, view.enemies, squadPlans).map((line) => ({ ...line, faint: line.heroId !== selected.id })),
     [playback, knownGrid, view.heroes, view.enemies, squadPlans, selected.id],
   );
+  // Shield rubies, bubble and planned icons above the Heroes the Squad may see (own Heroes and Visible enemies).
+  const marks = useMemo(() => {
+    const held = (id: string, base: number) => base + (playback?.shields[id] ?? 0);
+    const own = view.heroes.map((hero) => [
+      hero.id,
+      heroMarks({
+        own: true,
+        heroClass: hero.heroClass,
+        // Shield lasts only for the Round (ADR 0002): an own Hero holds none outside the Resolution.
+        shield: held(hero.id, 0),
+        queue: squadPlans.flatMap((squadPlan) => squadPlan.heroes).find((planned) => planned.heroId === hero.id)?.queue,
+        resolving: playback !== undefined,
+      }),
+    ]);
+    const enemies = view.enemies.map((enemy) => [
+      enemy.id,
+      heroMarks({
+        own: false,
+        heroClass: enemy.heroClass,
+        visibility: enemy.visibility,
+        shield: enemy.visibility === Visibility.Visible ? held(enemy.id, enemy.shield) : 0,
+        resolving: playback !== undefined,
+      }),
+    ]);
+    return Object.fromEntries([...own, ...enemies]);
+  }, [view.heroes, view.enemies, squadPlans, playback]);
   const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, pickingSecond);
   // A card with an Overdrive can be aimed at what either of its modes targets; the face chosen afterwards must fit.
   const aimedModes = aiming === undefined || aimedCard === undefined ? [] : pickingSecond || !aimedCard.overdrive ? [aimedCard] : [aimedCard, cardInMode(aimedCard, true)];
@@ -943,6 +970,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         dropTile={drag?.probe.drop?.tile}
         shotLines={shotLines}
         targetLines={targetLines}
+        marks={marks}
         paths={paths}
         collisionTiles={collisionTiles}
         pickRef={pickBoard}
