@@ -61,7 +61,7 @@ import { coverGridOf } from "./terrain";
 import { buildPlaybackFrames, enemyTokens, STEP_MS, tickCountOf } from "./playback";
 import type { ClipName } from "./hero-clips";
 import type { EffectCue } from "./weapon-effects";
-import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,removeQueueAction, selectHero, pickInstruction } from "./planning-selection";
+import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,removeQueueAction, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
 export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
@@ -272,7 +272,7 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
   const middle = (hero.hand.length - 1) / 2;
   const spacing = fanSpacing(FAN_WIDTH, hero.hand.length);
   // The card under the finger is the one whose strip it is on, however the rotated card boxes overlap.
-  const pressedCard = (event: ReactPointerEvent<HTMLElement>, fallback: CardIndex): CardIndex => {
+  const pressedCard = (event: ReactPointerEvent<HTMLElement> | ReactMouseEvent<HTMLElement>, fallback: CardIndex): CardIndex => {
     const fan = event.currentTarget.closest("ul");
     if (!fan) return fallback;
     const position = cardAtX(spacing, hero.hand.length, event.clientX - fan.getBoundingClientRect().left);
@@ -294,7 +294,7 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
         if (queued && queued.kind !== ActionKind.Wait) {
           const overdriven = queued.kind === ActionKind.Primary && queued.overdrive;
           use = `${overdriven ? "Overdrive" : ACTION_USE_LABELS[queued.kind]} · #${queuedAt + 1}`;
-        } else if (isPitched) use = CARD_USE_LABELS[CardUse.Pitch];
+        } else if (isPitched) use = `${CARD_USE_LABELS[CardUse.Pitch]} · tap to undo`;
         else if (cardIndex === armed) use = armedLabel;
         const arrivalOrder = arriving.indexOf(cardIndex);
         const arrival =
@@ -316,7 +316,7 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
               className={`card ${card.type}${queued || isPitched ? " used" : ""}${cardIndex === held ? " lifted" : ""}`}
               aria-pressed={cardIndex === armed || cardIndex === held || queuedAt >= 0 || isPitched}
               disabled={disabled}
-              onClick={(event) => onCardClick(cardIndex, event)}
+              onClick={(event) => onCardClick(event.detail === 0 ? cardIndex : pressedCard(event, cardIndex), event)}
               onPointerDown={(event) => onCardPointerDown(pressedCard(event, cardIndex), event)}
             >
               <CardFace card={card} use={use} />
@@ -762,7 +762,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     setOverdriveAim(false);
     if (queue.some((action) => actionUsesCard(action, card)) || pitched.includes(card)) {
       setQueue(queue.filter((action) => !actionUsesCard(action, card)));
-      setPitched(pitched.filter((pitchedCard) => pitchedCard !== card));
+      setPitched(unpitchCard(pitched, card));
       setPull(IDLE);
     } else if (event.detail === 0) setPull(openCard(card));
   }
@@ -1110,13 +1110,29 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
           }
         />
         <div className={`hand-column${exhaustion.greyed ? " exhausted-hud" : ""}`} style={playing ? { opacity: RESOLUTION_DIM } : undefined}>
-          <EnergyPill
-            available={energy.available}
-            lit={false}
-            active={false}
-            title={`Pitched ${energy.pitched} · Spent ${energy.spent}`}
-            opacity={focus.energyPill}
-          />
+          <div className="energy-row">
+            <EnergyPill
+              available={energy.available}
+              lit={false}
+              active={false}
+              title={`Pitched ${energy.pitched} · Spent ${energy.spent}`}
+              opacity={focus.energyPill}
+            />
+            {pitched.length > 0 && (
+              <button
+                type="button"
+                className="pitch-undo"
+                disabled={playing || drawing || exhaustion.greyed}
+                style={{ opacity: focus.energyPill }}
+                onClick={() => {
+                  setPitched(unpitchCard(pitched, pitched[pitched.length - 1]!));
+                  setPull(IDLE);
+                }}
+              >
+                Undo Pitch
+              </button>
+            )}
+          </div>
           <Hand
             hero={selected}
             queue={queue}
