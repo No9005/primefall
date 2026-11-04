@@ -153,7 +153,7 @@ describe("Adrenal Surge", () => {
     const match = fight();
     const { match: after, events } = resolveRound(match, [play(match, ADRENAL_SURGE, { target: BRUISER })]);
     expect(hero(after, BRUISER).attackBonus).toBe(1);
-    expect(events).toContainEqual({ kind: EventKind.AttackBonusGained, tick: 1, heroId: BRUISER, amount: 1 });
+    expect(events).toContainEqual({ kind: EventKind.AttackBonusGained, tick: 1, heroId: BRUISER, amount: 1, card: "Adrenal Surge" });
     const next = fight();
     hero(next, BRUISER).attackBonus = hero(after, BRUISER).attackBonus;
     const slammed = resolveRound(next, [play(next, SLAM_SHOT, {}, 1)]).match;

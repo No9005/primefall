@@ -61,7 +61,7 @@ describe("Slow", () => {
 
   it("Suppress Slows a visible enemy", () => {
     const { match: after, events } = resolveRound(duel(), [leftPlan([use(SUPPRESS, RIGHT_BRUISER)], [SLAM_SHOT])]);
-    expect(events).toEqual([{ kind: EventKind.SlowApplied, tick: 1, heroId: BRUISER, targetId: RIGHT_BRUISER }]);
+    expect(events).toEqual([{ kind: EventKind.SlowApplied, tick: 1, heroId: BRUISER, targetId: RIGHT_BRUISER, card: "Suppress" }]);
     expect(buildSquadView(after, SquadId.Right).heroes.find(({ id }) => id === RIGHT_BRUISER)?.slowed).toBe(true);
   });
 
