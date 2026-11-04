@@ -90,12 +90,15 @@ function tileRing(tile: GridPosition, angle: number, color: number, fillAlpha = 
 /**
  * A planned path: a line from the Hero through its Move destinations. The player's has a ring and a numbered badge at each
  * destination and a ghost copy of the Hero on the final tile; an ally's is the bare line, very faint.
+ * The line and the rings lie on the floor (`ground`); the ghost and the numbers are drawn above the props (`top`), so a
+ * wall in front of the final tile never hides what the player planned.
  */
-function pathGraphics(path: PlannedPath, angle: number, scale: number): Container {
+function pathGraphics(path: PlannedPath, angle: number, scale: number): { ground: Container; top: Container } {
   const { owner, from, stops } = path;
   const own = owner === PathOwner.Player;
   const color = own ? PLAN_STYLE.own : PLAN_STYLE.ally;
   const container = new Container();
+  const top = new Container();
   const line = new Graphics();
   const start = chestOf(from, angle);
   line.moveTo(start.x, start.y);
@@ -107,18 +110,19 @@ function pathGraphics(path: PlannedPath, angle: number, scale: number): Containe
   container.addChild(line);
   if (!own) {
     container.alpha = PLAN_STYLE.allyAlpha;
-    return container;
+    return { ground: container, top };
   }
   const ghost = heroFigure(path.heroClass, false, "idle", scale);
   const foot = gridToWorld(finalTile(path), angle);
   ghost.position.set(foot.x, foot.y + footOffset(angle));
   ghost.alpha = PLAN_STYLE.ghostAlpha;
-  container.addChild(ghost);
+  top.addChild(ghost);
   for (const { tile, tick } of stops) {
     const { x, y } = gridToWorld(tile, angle);
-    container.addChild(tileRing(tile, angle, color, PLAN_STYLE.ringFillAlpha), slotBadge(String(tick), x + TILE_WIDTH * 0.42, y, color));
+    container.addChild(tileRing(tile, angle, color, PLAN_STYLE.ringFillAlpha));
+    top.addChild(slotBadge(String(tick), x + TILE_WIDTH * 0.42, y, color));
   }
-  return container;
+  return { ground: container, top };
 }
 
 /** The red cross on the destination of a Move that will fail through another Hero of the Squad. */
@@ -444,6 +448,8 @@ export function Board({
   // The layer of the attack effects (above the Heroes) and the world it shakes.
   const [effectsHost, setEffectsHost] = useState<{ layer: Container; world: Container }>();
   const [overlay, setOverlay] = useState<Container>();
+  /** Above the props and the Heroes, below the effects: the ghost and the numbers of the planned paths. */
+  const [overlayTop, setOverlayTop] = useState<Container>();
   const [terrain, setTerrain] = useState<Terrain>();
   // Always the latest callbacks, so the pixi sprites need not be rebuilt for them.
   const onSelectRef = useRef(onSelect);
@@ -498,7 +504,7 @@ export function Board({
   }, [frameCol, frameRow]);
 
   useEffect(() => {
-    if (!overlay) return;
+    if (!overlay || !overlayTop) return;
     const created: Container[] = [];
     const diamond = floorOutline(angle);
     for (const tile of areaTiles) {
@@ -579,8 +585,9 @@ export function Board({
     }
     for (const path of paths) {
       const drawn = pathGraphics(path, angle, strokeScale);
-      overlay.addChild(drawn);
-      created.push(drawn);
+      overlay.addChild(drawn.ground);
+      overlayTop.addChild(drawn.top);
+      created.push(drawn.ground, drawn.top);
     }
     for (const tile of collisionTiles) {
       const cross = collisionCross(tile, angle);
@@ -591,7 +598,7 @@ export function Board({
       cancelAnimationFrame(pulseFrame);
       created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [overlay, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, paths, collisionTiles, strokeScale]);
+  }, [overlay, overlayTop, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, paths, collisionTiles, strokeScale]);
 
   useEffect(() => {
     if (!tokens) return;
@@ -1024,14 +1031,16 @@ export function Board({
       const objects = new Container();
       objects.sortableChildren = true;
       const planning = new Container();
+      const planningTop = new Container();
       const effectsLayer = new Container();
-      world.addChild(floor, planning, objects, effectsLayer);
+      world.addChild(floor, planning, objects, planningTop, effectsLayer);
       app.stage.addChild(world);
       setEffectsHost({ layer: effectsLayer, world });
       // Hero tokens sort together with the props, by tile depth.
       setTokens(objects);
       // Highlights and markers lie on the floor; markers would hide behind props, which is acceptable.
       setOverlay(planning);
+      setOverlayTop(planningTop);
 
       setTerrain({ floor, objects, planning });
 
