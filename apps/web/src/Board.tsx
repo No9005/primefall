@@ -44,6 +44,7 @@ import { chestOf, dashRuns, SegmentStyle, type ShotDrawing, shotInWorld, type Sh
 import { finalTile, PathOwner, type PlannedPath } from "./ally-paths";
 import { LineKind, LineTone, type TargetLine } from "./target-lines";
 import { PLAN_STYLE, SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
+import { pulseAlpha } from "./target-pick";
 
 /** Strokes `segment` as a run of dashes: long for a clear shot, dots for the stopped part, grey after a block. */
 function strokeShotSegment(graphics: Graphics, { from, to, style }: ShotInWorld["segments"][number]): void {
@@ -426,13 +427,25 @@ export function Board({
       overlay.addChild(tint);
       created.push(tint);
     }
+    const lit: Graphics[] = [];
     for (const tile of highlights) {
       const { x, y } = gridToWorld(tile, angle);
-      const highlight = new Graphics().poly(diamond).fill({ color: 0x2ec4b6, alpha: 0.35 }).stroke({ width: 4, color: 0x2ec4b6 });
+      const highlight = new Graphics().poly(diamond).fill({ color: 0x2ec4b6 }).stroke({ width: 4, color: 0x2ec4b6 });
       highlight.position.set(x, y);
       overlay.addChild(highlight);
       created.push(highlight);
+      lit.push(highlight);
     }
+    // The lit tiles pulse slowly (issue 208); with reduced motion they stand still.
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const pulseStart = performance.now();
+    let pulseFrame = 0;
+    const pulse = (now: number) => {
+      const alpha = pulseAlpha(now - pulseStart, reducedMotion);
+      for (const highlight of lit) highlight.alpha = alpha;
+      if (!reducedMotion) pulseFrame = requestAnimationFrame(pulse);
+    };
+    if (lit.length > 0) pulse(pulseStart);
     const previewTile = dropTile ?? pressed;
     if (previewTile) {
       // The tile under the finger, drawn larger than the tile so the finger does not hide it.
@@ -485,7 +498,10 @@ export function Board({
       overlay.addChild(cross);
       created.push(cross);
     }
-    return () => created.forEach((child) => child.destroy({ children: true }));
+    return () => {
+      cancelAnimationFrame(pulseFrame);
+      created.forEach((child) => child.destroy({ children: true }));
+    };
   }, [overlay, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, shotLines, targetLines, showLines, paths, collisionTiles, strokeScale]);
 
   useEffect(() => {

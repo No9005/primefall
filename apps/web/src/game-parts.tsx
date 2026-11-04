@@ -1,7 +1,8 @@
 import type { CardDefinition } from "game-core";
-import type { ReactNode, Ref } from "react";
+import { type ReactNode, type Ref, useState } from "react";
 import type { Face, FaceView } from "./card-pull";
 import { cardFace, type ModeFace } from "./planning-selection";
+import { pullOffset, ReleaseOutcome, releaseOutcome } from "./target-pick";
 
 // The card face and the drop targets of the game, shared by Planning and the Tutorial so that a change to one
 // changes the other.
@@ -54,6 +55,41 @@ export function PulledCard({ card, faces, onFace, onOutside }: { card: CardDefin
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The used card while its target is picked (issue 208): it floats at the lower middle of the board with the instruction.
+ * Pulling it down by more than CANCEL_PULL, or tapping it, cancels the use; a shorter pull springs it back.
+ */
+export function FloatingCard({ card, instruction, onCancel }: { card: CardDefinition; instruction: string; onCancel: () => void }) {
+  const [drag, setDrag] = useState<{ startY: number; offset: number } | undefined>(undefined);
+  const face = cardFace(card);
+  return (
+    <div
+      className="floating-card"
+      data-testid="floating-card"
+      role="button"
+      tabIndex={0}
+      aria-label={`${card.name}: ${instruction}. Pull down or tap to cancel`}
+      style={{ transform: `translateX(-50%) translateY(${drag?.offset ?? 0}px)`, transition: drag ? "none" : undefined }}
+      onPointerDown={(event) => {
+        event.currentTarget.setPointerCapture(event.pointerId);
+        setDrag({ startY: event.clientY, offset: 0 });
+      }}
+      onPointerMove={(event) => drag && setDrag({ ...drag, offset: pullOffset(drag.startY, event.clientY) })}
+      onPointerUp={() => {
+        if (drag && releaseOutcome(drag.offset) === ReleaseOutcome.Cancel) onCancel();
+        else setDrag(undefined);
+      }}
+      onPointerCancel={() => setDrag(undefined)}
+      onKeyDown={(event) => (event.key === "Enter" || event.key === " " || event.key === "Escape") && onCancel()}
+    >
+      <span className="floating-name">{card.name}</span>
+      <span className="floating-type">{face.type}</span>
+      <span className="floating-instruction">{instruction}</span>
+      <span className="floating-cancel">pull down to cancel</span>
     </div>
   );
 }

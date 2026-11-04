@@ -36,7 +36,7 @@ import {
 import { type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
 import { Board } from "./Board";
-import { CardFace, EnergyPill, PulledCard } from "./game-parts";
+import { CardFace, EnergyPill, FloatingCard, PulledCard } from "./game-parts";
 import { cancel as cancelPull, type Face, faceViews, heldCard, IDLE, move as movePull, openCard, press as pressCard, type PullState, release as releasePull, showsFaces, tap as tapPull } from "./card-pull";
 import { CardUseStage, hudFocus } from "./hud-focus";
 import { drawShots, type ShotDrawing } from "./shot-lines";
@@ -56,7 +56,7 @@ import { type PrimeCallout, primeCallouts, type PrimeProgress, primeScore, zoneO
 import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionCommitLabel } from "./resolution-hud";
 import { buildCommentary, type CommentaryEntry, type CommentarySide, MAX_COMMENTARY_ENTRIES } from "./commentary";
 import { buildPlaybackFrames, enemyTokens, tickCountOf } from "./playback";
-import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,rangeDamageLabel, removeQueueAction, selectHero, targetHint } from "./planning-selection";
+import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,rangeDamageLabel, removeQueueAction, selectHero, pickInstruction } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
 export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
@@ -379,20 +379,6 @@ interface HandProps {
 /** Where the centre of the Deck pile lies relative to the left edge of the fan and to the centre of a card (CSS pixels). */
 const PILE_CENTRE_X = -39;
 const PILE_TO_CARD_Y = 22;
-
-/** The selected card while its target is picked: name, cost and a button that cancels the use. */
-function SelectedCardChip({ card, hint, onCancel }: { card: CardDefinition; hint: string; onCancel: () => void }) {
-  return (
-    <div className="selected-card-chip" aria-label={`${card.name} selected`}>
-      <span className="chip-name">{card.name}</span>
-      <span className="chip-cost">Cost {card.energyCost}</span>
-      <span className="chip-hint">{hint}</span>
-      <button type="button" className="chip-cancel" aria-label={`Cancel ${card.name}`} onClick={onCancel}>
-        ×
-      </button>
-    </div>
-  );
-}
 
 const ACTION_USE_LABELS: Record<Exclude<ActionKind, ActionKind.Wait>, string> = {
   [ActionKind.Move]: CARD_USE_LABELS[CardUse.Move],
@@ -1223,22 +1209,20 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
             }}
           />
         )}
-        {picking && (armed ?? aiming) !== undefined && (
-          <SelectedCardChip
-            card={HERO_DECKS[selected.heroClass][(armed ?? aiming)!]!}
-            hint={aiming !== undefined ? "Pick a target" : "Pick a tile"}
-            onCancel={cancelUse}
-          />
-        )}
       </div>
+      {picking && (armed ?? aiming) !== undefined && (
+        <FloatingCard
+          card={HERO_DECKS[selected.heroClass][(armed ?? aiming)!]!}
+          instruction={
+            aimedCard === undefined
+              ? "Tap a lit tile"
+              : pickInstruction({ card: aimedCard, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked: deployAlly !== undefined })
+          }
+          onCancel={cancelUse}
+        />
+      )}
       <section className="commit-panel" aria-label="Commit" style={{ opacity: focus.commit }}>
-        {aiming !== undefined && !playing && aimedCard && (
-          <div className="commit-info">
-            <p className="target-hint">
-              {targetHint({ card: aimedCard, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked: deployAlly !== undefined })}
-            </p>
-          </div>
-        )}
+
         <QueueColumn
           queue={queue}
           heroClass={selected.heroClass}
