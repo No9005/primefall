@@ -21,7 +21,7 @@ interface Insets {
 }
 
 /** Idle: the timer and score pills on top, the Queue column and Commit at the right, the piles, Energy pill and the peeking Hand at the bottom. */
-const IDLE_INSETS: Insets = { left: 0, right: 136, top: 42, bottom: 114 };
+const IDLE_INSETS: Insets = { left: 0, right: 136, top: 42, bottom: 116 };
 /** Picking: the Hand slides away; the Queue column and Commit stay at the right, the pills on top. */
 const PICKING_INSETS: Insets = { left: 0, right: 136, top: 42, bottom: 6 };
 
@@ -71,9 +71,9 @@ export function commentaryRect(): Rect {
   return { left: 8, top: PILL_TOP.resolution + PILL_HEIGHT + 4, right: 244, bottom: PILL_TOP.resolution + PILL_HEIGHT + 4 + MAX_ENTRIES * COMMENTARY_ENTRY_HEIGHT + (MAX_ENTRIES - 1) * COMMENTARY_GAP };
 }
 
-/** The Deck pile with the Discard and Exile counts stacked above it (63 px wide, 113 px tall). */
+/** The Deck pile with the Discard and Exile counts (12 px) stacked above it (63 px wide, 115 px tall). */
 const PILES_WIDTH = 63;
-const PILES_HEIGHT = 113;
+const PILES_HEIGHT = 115;
 const ENERGY_PILL_HEIGHT = 26;
 /** The Hand peeks 62 px out of the bottom edge (the cost badges stick out above the cards) with the Energy pill right above it. */
 const HAND_PEEK = 62;
