@@ -48,8 +48,10 @@ describe("Tag Round", () => {
   it("deals 1 damage and Marks the target, and a Marked Hero stays Visible out of sight for the next Resolution", () => {
     const match = setup([TAG_ROUND, PULSE_BOLT, 1, 5]);
     const { match: after, events } = resolveRound(match, [planOf(CONTROLLER, [primary(TAG_ROUND, ENEMY)], [PULSE_BOLT])]);
-    expect(events).toContainEqual({ kind: EventKind.AttackHit, tick: 1, heroId: CONTROLLER, targetId: ENEMY, absorbed: 0, damage: 1 });
-    expect(events).toContainEqual({ kind: EventKind.MarkedApplied, tick: 1, heroId: CONTROLLER, targetId: ENEMY });
+    expect(events).toContainEqual({
+      kind: EventKind.AttackHit, tick: 1, heroId: CONTROLLER, targetId: ENEMY, absorbed: 0, damage: 1, card: "Tag Round", distance: expect.any(Number),
+    });
+    expect(events).toContainEqual({ kind: EventKind.MarkedApplied, tick: 1, heroId: CONTROLLER, targetId: ENEMY, card: "Tag Round" });
     expect(hero(after, ENEMY).slow).toBe(0);
 
     // The enemy is far from every Hero of the Squad but still Visible, and shows as Marked.
@@ -78,7 +80,9 @@ describe("Pulse Bolt, Shock Pulse and Gravity Snare", () => {
   it("Pulse Bolt deals 2 damage", () => {
     const match = setup([PULSE_BOLT, 1, 5, 9]);
     const { events } = resolveRound(match, [planOf(CONTROLLER, [primary(PULSE_BOLT, ENEMY)], [1])]);
-    expect(events).toEqual([{ kind: EventKind.AttackHit, tick: 1, heroId: CONTROLLER, targetId: ENEMY, absorbed: 0, damage: 2 }]);
+    expect(events).toEqual([
+      { kind: EventKind.AttackHit, tick: 1, heroId: CONTROLLER, targetId: ENEMY, absorbed: 0, damage: 2, card: "Pulse Bolt", distance: expect.any(Number) },
+    ]);
   });
 
   it("Shock Pulse deals 1 damage and Slows", () => {
@@ -115,7 +119,7 @@ describe("Scout Drone", () => {
     const plan = planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile: { col: 13, row: 5 } })], [PULSE_BOLT]);
     expect(validatePlan(buildSquadView(match, SquadId.Left), plan)).toEqual([]);
     const { match: after, events } = resolveRound(match, [plan]);
-    expect(events).toContainEqual({ kind: EventKind.AreaRevealed, tick: 1, heroId: CONTROLLER, to: { col: 13, row: 5 }, amount: 3 });
+    expect(events).toContainEqual({ kind: EventKind.AreaRevealed, tick: 1, heroId: CONTROLLER, to: { col: 13, row: 5 }, amount: 3, card: "Scout Drone" });
 
     const view = buildSquadView(after, SquadId.Left);
     expect(view.revealedAreas).toEqual([{ center: { col: 13, row: 5 }, size: 3 }]);
@@ -168,7 +172,7 @@ describe("Aegis Protocol", () => {
 
   it("gives an allied Hero Shield 3", () => {
     const { events } = resolveRound(setup(hand), [planOf(CONTROLLER, [primary(AEGIS_PROTOCOL, BRUISER)], [PULSE_BOLT])]);
-    expect(events).toEqual([{ kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3 }]);
+    expect(events).toEqual([{ kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Aegis Protocol" }]);
   });
 
   it("Overdrive gives two allied Heroes Shield 3 each and Exiles the card", () => {
@@ -177,8 +181,8 @@ describe("Aegis Protocol", () => {
     expect(validatePlan(buildSquadView(match, SquadId.Left), plan)).toEqual([]);
     const { match: after, events } = resolveRound(match, [plan]);
     expect(events).toEqual([
-      { kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3 },
-      { kind: EventKind.ShieldGained, tick: 1, heroId: ASSASSIN, amount: 3 },
+      { kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Aegis Protocol", overdrive: true },
+      { kind: EventKind.ShieldGained, tick: 1, heroId: ASSASSIN, amount: 3, card: "Aegis Protocol", overdrive: true },
     ]);
     expect(hero(after, CONTROLLER).exile).toContain(AEGIS_PROTOCOL);
   });
@@ -209,7 +213,7 @@ describe("Placed Cover", () => {
     const tile = PRIME_TILE;
     const plan = planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile })], [PULSE_BOLT]);
     const { match: first, events } = resolveRound(match, [plan]);
-    expect(events).toEqual([{ kind: EventKind.CoverPlaced, tick: 1, heroId: CONTROLLER, to: tile }]);
+    expect(events).toEqual([{ kind: EventKind.CoverPlaced, tick: 1, heroId: CONTROLLER, to: tile, card: "Deploy Cover" }]);
     expect(coverAt(first.grid, tile)).toBe(CoverKind.Half);
     expect(buildSquadView(first, SquadId.Left).placedCover).toEqual([tile]);
 
@@ -255,7 +259,7 @@ describe("Placed Cover", () => {
     const match = setup([FORTIFY, PULSE_BOLT, 1, 5]);
     hero(match, BRUISER).position = { col: 9, row: 4 };
     const { match: after, events } = resolveRound(match, [planOf(CONTROLLER, [primary(FORTIFY, BRUISER)], [PULSE_BOLT])]);
-    expect(events).toEqual([{ kind: EventKind.CoverPlaced, tick: 1, heroId: CONTROLLER, to: { col: 9, row: 4 } }]);
+    expect(events).toEqual([{ kind: EventKind.CoverPlaced, tick: 1, heroId: CONTROLLER, to: { col: 9, row: 4 }, card: "Fortify" }]);
     expect(coverAt(after.grid, { col: 9, row: 4 })).toBe(CoverKind.Half);
     expect(hero(after, BRUISER).position).toEqual({ col: 9, row: 4 });
   });
@@ -317,7 +321,7 @@ describe("Overwatch Uplink", () => {
     expect(withoutUplink.events[0]).toMatchObject({ kind: EventKind.AttackHit, damage: 1 });
 
     const { match: after, events } = resolveRound(coverFight(), [bruiserPlan([primary(0, ENEMY)], [1])]);
-    expect(events).toContainEqual({ kind: EventKind.CoverReductionIgnored, tick: 1, heroId: CONTROLLER, targetId: BRUISER });
+    expect(events).toContainEqual({ kind: EventKind.CoverReductionIgnored, tick: 1, heroId: CONTROLLER, targetId: BRUISER, card: "Overwatch Uplink" });
     expect(events.find(({ kind }) => kind === EventKind.AttackHit)).toMatchObject({ heroId: BRUISER, damage: 2 });
     // It ends with the Round.
     expect(hero(after, BRUISER).ignoresHalfCover).toBe(false);

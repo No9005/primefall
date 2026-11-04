@@ -67,7 +67,7 @@ describe("Mark Target", () => {
   it("Marks an enemy in sight, so the Squad sees it until the end of the next Resolution", () => {
     const match = scene(OPEN, { col: 2 + SIGHT_RANGE, row: 1 });
     const { match: after, events } = resolveRound(match, [plan([primary(MARK_TARGET, ENEMY)])]);
-    expect(events).toContainEqual({ kind: EventKind.MarkedApplied, tick: 1, heroId: ASSASSIN, targetId: ENEMY });
+    expect(events).toContainEqual({ kind: EventKind.MarkedApplied, tick: 1, heroId: ASSASSIN, targetId: ENEMY, card: "Mark Target" });
     expect(hero(after, ENEMY).marked).toBe(1);
     // The Assassin walks out of sight but still sees the Marked enemy.
     hero(after, ASSASSIN).position = { col: 1, row: 9 };
@@ -129,7 +129,7 @@ describe("Hidden", () => {
 
   it("Vanish makes the Hero Hidden on a Cover tile and shows it in its own Squad View", () => {
     const { match: after, events } = vanished();
-    expect(events).toContainEqual({ kind: EventKind.HiddenGained, tick: 1, heroId: ASSASSIN });
+    expect(events).toContainEqual({ kind: EventKind.HiddenGained, tick: 1, heroId: ASSASSIN, card: "Vanish" });
     expect(buildSquadView(after, SquadId.Left).heroes.find(({ id }) => id === ASSASSIN)?.hidden).toBe(true);
   });
 

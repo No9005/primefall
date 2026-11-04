@@ -20,6 +20,10 @@ export interface PlaybackHit {
   damage: number;
   /** Damage the target's Shield absorbed. */
   absorbed: number;
+  /** The card that caused the hit, whether it was played in Overdrive and the Range of the shot. */
+  card?: string;
+  overdrive?: boolean;
+  distance?: number;
 }
 
 /** One visible change during playback: some Heroes arrive on new tiles within a Tick. */
@@ -58,7 +62,14 @@ export function buildPlaybackFrames(events: readonly MatchEvent[]): PlaybackFram
       if (event.to && !TILE_EVENTS.includes(event.kind)) frame.moves[event.heroId] = event.to;
       if (event.kind === EventKind.ShieldGained) frame.shields[event.heroId] = event.amount ?? 0;
       if (event.kind === EventKind.AttackHit) {
-        frame.hits.push({ targetId: event.targetId!, damage: event.damage ?? 0, absorbed: event.absorbed ?? 0 });
+        frame.hits.push({
+          targetId: event.targetId!,
+          damage: event.damage ?? 0,
+          absorbed: event.absorbed ?? 0,
+          ...(event.card !== undefined && { card: event.card }),
+          ...(event.overdrive && { overdrive: true }),
+          ...(event.distance !== undefined && { distance: event.distance }),
+        });
       }
       if (event.kind === EventKind.Exhausted) frame.exhausted.push(event.heroId);
     }

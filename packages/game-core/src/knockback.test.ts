@@ -122,8 +122,8 @@ describe("Shockwave: area damage and Knockback", () => {
     const resolution = resolveRound(match, [shockwavePlan()]);
     for (const squad of [SquadId.Left, SquadId.Right]) {
       expect(knockbacks(getSquadEvents(squad, resolution))).toEqual([
-        { kind: EventKind.Knockback, tick: 1, heroId: RIGHT_BRUISER, from: { col: 9, row: 5 }, to: { col: 10, row: 5 } },
-        { kind: EventKind.Knockback, tick: 1, heroId: RIGHT_BRUISER, from: { col: 10, row: 5 }, to: { col: 11, row: 5 } },
+        { kind: EventKind.Knockback, tick: 1, heroId: RIGHT_BRUISER, from: { col: 9, row: 5 }, to: { col: 10, row: 5 }, card: "Shockwave" },
+        { kind: EventKind.Knockback, tick: 1, heroId: RIGHT_BRUISER, from: { col: 10, row: 5 }, to: { col: 11, row: 5 }, card: "Shockwave" },
       ]);
     }
   });
