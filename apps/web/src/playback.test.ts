@@ -108,6 +108,7 @@ describe("enemyTokens", () => {
     exhausted: false,
     slowed: false,
     marked: false,
+    attackBonus: 0,
   };
   const ghost: EnemyView = {
     id: "g",

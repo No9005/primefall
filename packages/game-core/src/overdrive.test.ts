@@ -111,3 +111,13 @@ describe("validatePlan and Overdrive", () => {
     expect(hero(after, TARGET).deck).toHaveLength(hero(match, TARGET).deck.length);
   });
 });
+
+describe("the Attack bonus in the Squad View", () => {
+  it("shows the permanent Attack bonus of own Heroes, so a loaded match can draw its badge", () => {
+    const match = shootout(3);
+    hero(match, ASSASSIN).attackBonus = 1;
+    const view = buildSquadView(match, SquadId.Left);
+    expect(view.heroes.find((own) => own.id === ASSASSIN)?.attackBonus).toBe(1);
+    expect(view.heroes.filter((own) => own.id !== ASSASSIN).every((own) => own.attackBonus === 0)).toBe(true);
+  });
+});

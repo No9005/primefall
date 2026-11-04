@@ -13,7 +13,7 @@ const tile = { col: 2, row: 1 };
 const CUES: EffectCue[] = [
   { kind: "shockwave", casterId: "a", startMs: 100 },
   { kind: "knockback", toId: "t", from: { col: 0, row: 0 }, to: tile, startMs: 100, tag: "Knockback 2" },
-  { kind: "breach", casterId: "a", tile, fireMs: 100, flightMs: 480 },
+  { kind: "breach", casterId: "a", tile, fireMs: 100, flightMs: 480, cover: true, overdrive: false },
   { kind: "coverPlaced", casterId: "a", tile, startMs: 100 },
   { kind: "shot", weapon: "slam", fromId: "a", toId: "t", fireMs: 100, flightMs: 300, overdrive: false, halfCover: true },
   { kind: "number", toId: "t", startMs: 400, text: "Half Cover", style: "failed", drop: 9 },

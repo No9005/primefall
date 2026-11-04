@@ -144,6 +144,7 @@ function tagCardEvents(
     const target = match.heroes.find((hero) => hero.id === event.targetId);
     const aimedAt = target?.position ?? tile;
     if (aimedAt) event.distance = chebyshevDistance(caster.position, aimedAt);
+    if (tile) event.tile = { ...tile };
   }
 }
 

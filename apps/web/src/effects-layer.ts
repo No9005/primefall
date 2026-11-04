@@ -5,6 +5,16 @@ import { rubyPieces, shieldBubble } from "./hero-figure";
 import { HERO_STYLE } from "./hero-style";
 import { TILE_HEIGHT } from "./terrain";
 import {
+  aegisBeamAt,
+  AURA_SPARKS,
+  auraGlowAt,
+  auraRingAt,
+  auraSparkAt,
+  badgeAt,
+  bigFireballAt,
+  overdriveTagAt,
+  puffAt,
+  surgeBeamAt,
   chargeAt,
   chunkAt,
   COVER_WALL_UP_MS,
@@ -24,6 +34,9 @@ import {
   SHARDS,
   flightProgress,
   KNOCKBACK_TAG_MS,
+  AEGIS_BEAM_MS,
+  OVERDRIVE_TAG_OUT_MS,
+  SURGE_MS,
   sampleTrack,
   scorchAt,
   shockRingAt,
@@ -97,13 +110,13 @@ export interface StatusMark {
 }
 
 /** The red reticle (22 px ring with a cross) that locks on from 2.4 x to 1 x, turning 45 degrees, with a small MARKED tag. */
-export function markedMark(): StatusMark {
+export function markedMark(color = MARKED_RED): StatusMark {
   const container = new Container();
   const reticle = new Graphics();
-  reticle.circle(0, 0, 11 * F).stroke({ width: 2 * F, color: MARKED_RED });
-  reticle.moveTo(0, -11 * F).lineTo(0, 11 * F).moveTo(-11 * F, 0).lineTo(11 * F, 0).stroke({ width: 2 * F, color: MARKED_RED });
+  reticle.circle(0, 0, 11 * F).stroke({ width: 2 * F, color });
+  reticle.moveTo(0, -11 * F).lineTo(0, 11 * F).moveTo(-11 * F, 0).lineTo(11 * F, 0).stroke({ width: 2 * F, color });
   reticle.position.set(0, -CHEST_LIFT);
-  const tag = new Text({ text: "MARKED", style: { fontFamily: "IBM Plex Mono", fontSize: 6 * F, fontWeight: "700", fill: MARKED_RED, stroke: { color: OUTLINE, width: 2 * F } } });
+  const tag = new Text({ text: "MARKED", style: { fontFamily: "IBM Plex Mono", fontSize: 6 * F, fontWeight: "700", fill: color, stroke: { color: OUTLINE, width: 2 * F } } });
   tag.anchor.set(0.5, 1);
   tag.position.set(0, -CHEST_LIFT - 13 * F);
   container.addChild(reticle, tag);
@@ -140,6 +153,35 @@ export function slowMark(): StatusMark {
       field.alpha = intro < 1 ? intro : 0.7 + 0.3 * Math.sin(((t - 300) / 1200) * 2 * Math.PI);
       chevrons.alpha = intro;
       chevrons.y = ((t / 400) % 1) * 2 * F;
+    },
+  };
+}
+
+const OVERDRIVE_GOLD = 0xffb000;
+
+/**
+ * The small gold double-chevron badge with `+1` that stays beside the ring of a Hero with an Attack bonus (Adrenal Surge in
+ * Overdrive) until its Exhaustion. `update(ms)` is the time since it appeared; state passes a large `ms`.
+ */
+export function attackBadge(): StatusMark {
+  const container = new Container();
+  const badge = new Container();
+  const chevrons = new Graphics();
+  for (const y of [-3, 2]) {
+    chevrons.poly([-4 * F, y * F + 3 * F, 0, y * F - 1 * F, 4 * F, y * F + 3 * F]).fill(OVERDRIVE_GOLD).stroke({ width: F, color: OUTLINE });
+  }
+  const label = new Text({ text: "+1", style: { fontFamily: "IBM Plex Mono", fontSize: 6.5 * F, fontWeight: "700", fill: GOLD, stroke: { color: OUTLINE, width: 2 * F } } });
+  label.anchor.set(0, 0.5);
+  label.position.set(6 * F, 0);
+  badge.addChild(chevrons, label);
+  badge.position.set(24 * F, -4 * F);
+  container.addChild(badge);
+  return {
+    container,
+    update(ms) {
+      const { scale, alpha } = badgeAt(ms);
+      badge.scale.set(scale);
+      badge.alpha = alpha;
     },
   };
 }
@@ -286,15 +328,16 @@ export class EffectsLayer {
     cues.forEach((cue, i) => {
       if (cue.kind === "number") this.prepareLabel(i, cue.text, NUMBER_COLOR[cue.style]);
       else if (cue.kind === "knockback") this.prepareLabel(i, cue.tag, SHOCK_ORANGE);
+      else if (cue.kind === "aura") this.prepareLabel(i, "OVERDRIVE", OVERDRIVE_GOLD);
       else if (cue.kind === "marked" || cue.kind === "slow") {
-        const mark = cue.kind === "marked" ? markedMark() : slowMark();
+        const mark = cue.kind === "marked" ? markedMark(cue.overdrive ? GOLD : undefined) : slowMark();
         this.container.addChild(mark.container);
         this.statuses.push({ cue, mark });
       } else if (cue.kind !== "shieldGain" && cue.kind !== "shieldHit") this.shapeAt(i);
     });
     for (let i = 0; i < this.texts.length; i++) {
       const kind = cues[i]?.kind;
-      if (kind !== "number" && kind !== "knockback") this.texts[i]!.visible = false;
+      if (kind !== "number" && kind !== "knockback" && kind !== "aura") this.texts[i]!.visible = false;
     }
   }
 
@@ -333,7 +376,15 @@ export class EffectsLayer {
           const offset = shakeAt(ms - cue.fireMs);
           shake = { x: offset.x * F, y: offset.y * F };
         }
-      } else if (cue.kind === "shockwave") this.drawShockwave(this.shapeAt(i), cue, ms);
+      } else if (cue.kind === "shockwave") {
+        this.drawShockwave(this.shapeAt(i), cue, ms);
+        if (cue.overdrive && !this.reduced) {
+          const offset = shakeAt(ms - cue.startMs);
+          shake = { x: offset.x * F, y: offset.y * F };
+        }
+      } else if (cue.kind === "aura") this.drawAura(this.shapeAt(i), this.texts[i]!, cue, ms);
+      else if (cue.kind === "surge") this.drawSurge(this.shapeAt(i), cue, ms);
+      else if (cue.kind === "aegisBeam") this.drawAegisBeam(this.shapeAt(i), cue, ms);
       else if (cue.kind === "breach") this.drawBreach(this.shapeAt(i), cue, ms);
       else if (cue.kind === "coverPlaced") this.drawCoverPlaced(this.shapeAt(i), cue, ms);
     });
@@ -356,6 +407,61 @@ export class EffectsLayer {
     label.alpha = alpha;
   }
 
+  /** The gold glow around the Hero, two rings rising from the ground, rising sparks and the `OVERDRIVE` tag. */
+  private drawAura(g: Graphics, label: Text, cue: Extract<EffectCue, { kind: "aura" }>, ms: number): void {
+    g.clear();
+    const at = this.place(cue.heroId);
+    const tag = overdriveTagAt(ms);
+    label.visible = at !== undefined && ms < OVERDRIVE_TAG_OUT_MS && tag.alpha > 0;
+    if (!at) return;
+    label.position.set(at.x, at.y - HEAD_LIFT - 6 * F - (this.reduced ? 0 : tag.rise * F));
+    label.alpha = tag.alpha;
+    if (ms >= cue.endMs) return;
+    const glow = auraGlowAt(ms, cue.endMs);
+    if (glow > 0) blob(g, { x: at.x, y: at.y - 16 * F }, 26 * F, OVERDRIVE_GOLD, glow * 0.7);
+    if (this.reduced) return;
+    for (let ring = 0; ring < 2; ring++) {
+      const state = auraRingAt(ms, ring);
+      if (state) g.ellipse(at.x, at.y - state.rise * F, 16 * F * state.scale, 8 * F * state.scale).stroke({ width: 2 * F, color: OVERDRIVE_GOLD, alpha: state.alpha });
+    }
+    AURA_SPARKS.forEach(({ dx }, index) => {
+      const state = auraSparkAt(ms, index);
+      if (state) g.circle(at.x + dx * F, at.y - 6 * F - state.rise * F, 1.3 * F).fill({ color: GOLD, alpha: state.alpha });
+    });
+  }
+
+  /** A gold beam with a soft wide line under it, `length` (0 to 1) of the way from one point to the other. */
+  private goldBeam(g: Graphics, from: Point, to: Point, length: number, alpha: number): void {
+    const end = { x: from.x + (to.x - from.x) * length, y: from.y + (to.y - from.y) * length };
+    line(g, from, end, 7 * F, OVERDRIVE_GOLD, alpha * 0.25);
+    line(g, from, end, 2 * F, GOLD, alpha);
+  }
+
+  /** Adrenal Surge in Overdrive: a gold beam to the ally, and both Heroes glow. The badge is state, drawn on the token. */
+  private drawSurge(g: Graphics, cue: Extract<EffectCue, { kind: "surge" }>, ms: number): void {
+    g.clear();
+    const to = this.place(cue.toId);
+    const s = ms - cue.startMs;
+    if (!to || s < 0 || s >= SURGE_MS) return;
+    const glow = sampleTrack([[0, 0], [192, 1], [480, 1], [SURGE_MS, 0]], s);
+    blob(g, { x: to.x, y: to.y - 16 * F }, 22 * F, OVERDRIVE_GOLD, glow * 0.7);
+    const from = this.place(cue.casterId);
+    if (this.reduced || !from || cue.casterId === cue.toId) return;
+    const beam = surgeBeamAt(s);
+    this.goldBeam(g, { x: from.x, y: from.y - CHEST_LIFT }, { x: to.x, y: to.y - CHEST_LIFT }, beam.length, beam.alpha);
+  }
+
+  /** Aegis Protocol in Overdrive: a gold beam from the Controller to each ally (the domes are the Shield's own). */
+  private drawAegisBeam(g: Graphics, cue: Extract<EffectCue, { kind: "aegisBeam" }>, ms: number): void {
+    g.clear();
+    const from = this.place(cue.casterId);
+    const to = this.place(cue.toId);
+    const s = ms - cue.startMs;
+    if (this.reduced || !from || !to || s < 0 || s >= AEGIS_BEAM_MS) return;
+    const beam = aegisBeamAt(s);
+    this.goldBeam(g, { x: from.x, y: from.y - CHEST_LIFT }, { x: to.x, y: to.y - CHEST_LIFT }, beam.length, beam.alpha);
+  }
+
   /** The orange rings along the floor, and the dust puffs around the Hero that plays the Shockwave. */
   private drawShockwave(g: Graphics, cue: Extract<EffectCue, { kind: "shockwave" }>, ms: number): void {
     g.clear();
@@ -366,6 +472,9 @@ export class EffectsLayer {
       const state = shockRingAt(s, ring);
       if (state) g.ellipse(at.x, at.y, 24 * F * state.scale, 12 * F * state.scale).stroke({ width: 3 * F, color: SHOCK_ORANGE, alpha: state.alpha });
     }
+    // Overdrive: one more ring, white.
+    const extra = cue.overdrive ? shockRingAt(s, 3) : undefined;
+    if (extra) g.ellipse(at.x, at.y, 24 * F * extra.scale, 12 * F * extra.scale).stroke({ width: 3.5 * F, color: 0xffffff, alpha: extra.alpha });
     for (let puff = 0; puff < 6; puff++) {
       const state = dustAt(s, 20 + puff * 25);
       if (!state) continue;
@@ -388,7 +497,7 @@ export class EffectsLayer {
     if (skid.alpha <= 0) return;
     const from = this.world.tile(cue.from);
     const to = this.world.tile(cue.to);
-    line(g, from, { x: from.x + (to.x - from.x) * skid.length, y: from.y + (to.y - from.y) * skid.length }, 3 * F, DUST, skid.alpha);
+    line(g, from, { x: from.x + (to.x - from.x) * skid.length, y: from.y + (to.y - from.y) * skid.length }, (cue.overdrive ? 5 : 3) * F, cue.overdrive ? 0xffffff : DUST, skid.alpha);
   }
 
   /** The charge arcs to the tile (26 px high), a fireball and smoke, the Cover breaks into four chunks and a scorch stays. */
@@ -414,8 +523,14 @@ export class EffectsLayer {
       g.fill({ color: 0x1a1f26, alpha: scorch * 0.85 });
     }
     const burst = { x: centre.x, y: centre.y - 18 * F };
-    const fire = fireballAt(t);
-    if (fire.alpha > 0) {
+    const fire = cue.overdrive ? bigFireballAt(t) : fireballAt(t);
+    if (fire.alpha > 0 && cue.overdrive) {
+      // Overdrive: a much bigger gold blast that reaches the tiles around, with a white core.
+      blob(g, burst, 34 * F * fire.scale, OVERDRIVE_GOLD, fire.alpha * 0.8);
+      blob(g, burst, 22 * F * fire.scale, GOLD, fire.alpha);
+      g.circle(burst.x, burst.y, 8 * F * fire.scale).fill({ color: 0xffffff, alpha: fire.alpha });
+      g.ellipse(centre.x, centre.y, 46 * F * fire.scale * 0.6, 24 * F * fire.scale * 0.6).stroke({ width: 2 * F, color: GOLD, alpha: fire.alpha * 0.8 });
+    } else if (fire.alpha > 0) {
       blob(g, burst, 16 * F * fire.scale, SHOCK_ORANGE, fire.alpha);
       blob(g, burst, 9 * F * fire.scale, GOLD, fire.alpha);
       g.circle(burst.x, burst.y, 3 * F * fire.scale).fill({ color: 0xffffff, alpha: fire.alpha });
@@ -424,7 +539,7 @@ export class EffectsLayer {
       const smoke = smokeAt(t);
       if (smoke.alpha > 0) g.circle(centre.x + dx * F, centre.y + dy * F - smoke.rise * F, radius * F * smoke.scale).fill({ color: SMOKE, alpha: smoke.alpha });
     }
-    for (let chunk = 0; chunk < 4; chunk++) {
+    for (let chunk = 0; chunk < (cue.cover ? 4 : 0); chunk++) {
       const state = chunkAt(t, chunk);
       if (state.alpha <= 0) continue;
       rotatedRect(g, centre.x + state.x * F, centre.y - 10 * F + state.y * F, 7 * F, 5 * F, state.turn);
@@ -470,7 +585,8 @@ export class EffectsLayer {
     const look = LOOK[cue.weapon];
     const color = cue.overdrive ? GOLD : look.color;
     const flashColor = cue.overdrive ? GOLD : look.flash;
-    const boost = cue.overdrive ? 1.3 : 1;
+    // Overdrive: gold and stronger; the Long Shot's bright impact is the strongest.
+    const boost = cue.overdrive ? (cue.weapon === "long" ? 1.6 : 1.3) : 1;
     const a = { x: from.x, y: from.y - CHEST_LIFT };
     // Half Cover: the shot ends on the wall in front of the target, on the side of the attacker.
     const toward = Math.hypot(from.x - to.x, from.y - to.y) || 1;
@@ -481,7 +597,7 @@ export class EffectsLayer {
     const dir = { x: (b.x - a.x) / length, y: (b.y - a.y) / length };
     const muzzle = { x: a.x + dir.x * 14 * F, y: a.y + dir.y * 14 * F };
     const s = ms - cue.fireMs;
-    if (cue.weapon === "long") this.drawLongBefore(g, muzzle, b, s);
+    if (cue.weapon === "long") this.drawLongBefore(g, muzzle, b, s, cue.overdrive ? GOLD : 0xffffff);
     // Muzzle flash: 0 to 1.5 x over 70 ms, gone by 270 ms.
     if (s >= 0 && s < FLASH_MS) {
       const grow = Math.min(1, s / 70);
@@ -491,10 +607,20 @@ export class EffectsLayer {
     const flown = flightProgress(s, cue.flightMs);
     if (s >= 0 && s < cue.flightMs && cue.weapon !== "long") this.drawProjectile(g, cue.weapon, color, muzzle, b, flown, dir);
     if (s >= 0 && cue.weapon === "long" && s < LONG_LINE_FADE_MS) {
-      line(g, muzzle, b, 2 * F, color, 1 - s / LONG_LINE_FADE_MS);
+      const fade = 1 - s / LONG_LINE_FADE_MS;
+      // Overdrive: a thick gold tracer, bright towards the target.
+      if (cue.overdrive) {
+        line(g, muzzle, b, 8 * F, GOLD, fade * 0.25);
+        line(g, muzzle, b, 4 * F, OVERDRIVE_GOLD, fade);
+        line(g, { x: muzzle.x + (b.x - muzzle.x) * 0.5, y: muzzle.y + (b.y - muzzle.y) * 0.5 }, b, 2 * F, 0xffffff, fade);
+      } else line(g, muzzle, b, 2 * F, color, fade);
     }
     const arrived = s - cue.flightMs;
-    if (arrived >= 0 && cue.halfCover) this.drawWallHit(g, color, wallFoot, look, boost, arrived);
+    if (arrived >= 0 && cue.miss) {
+      // A Ghost Shot at a tile with nobody on it: a grey puff.
+      const puff = puffAt(arrived);
+      if (puff) blob(g, { x: to.x, y: to.y - 8 * F }, 12 * F * puff.scale, 0x8a99a8, puff.alpha);
+    } else if (arrived >= 0 && cue.halfCover) this.drawWallHit(g, color, wallFoot, look, boost, arrived);
     else if (arrived >= 0) this.drawImpact(g, color, to, look, boost, arrived, CHEST_LIFT);
     return true;
   }
@@ -511,7 +637,7 @@ export class EffectsLayer {
   }
 
   /** Long Shot: the red dotted laser for 480 ms before the shot, and a glint of the scope. */
-  private drawLongBefore(g: Graphics, muzzle: Point, target: Point, s: number): void {
+  private drawLongBefore(g: Graphics, muzzle: Point, target: Point, s: number, glintColor: number): void {
     if (s >= -LASER_MS && s < 0) {
       const length = Math.hypot(target.x - muzzle.x, target.y - muzzle.y);
       const step = 6 * F;
@@ -524,7 +650,7 @@ export class EffectsLayer {
       g.stroke({ width: F, color: 0xe5484d, alpha: 0.85 });
     }
     const u = (s + GLINT_BEFORE_FIRE_MS + 150) / 290;
-    if (u >= 0 && u < 1) blob(g, muzzle, 4 * F * (0.5 + 1.7 * u), 0xffffff, u < 0.5 ? u * 2 : (1 - u) * 2);
+    if (u >= 0 && u < 1) blob(g, muzzle, 4 * F * (0.5 + 1.7 * u), glintColor, u < 0.5 ? u * 2 : (1 - u) * 2);
   }
 
   private drawProjectile(g: Graphics, weapon: Weapon, color: number, muzzle: Point, target: Point, progress: number, dir: Point): void {
