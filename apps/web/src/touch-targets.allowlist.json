@@ -1,7 +1,3 @@
 [
-  { "target": "Queue remove button", "check": "size", "reason": "owned by #273 (Queue slots)" },
-  { "target": "Queue remove button", "check": "floor", "reason": "owned by #273 (Queue slots)" },
-  { "target": "Energy pill", "check": "size", "reason": "owned by #273 (Energy pill)" },
-  { "target": "Queue row", "check": "size", "reason": "owned by #273 (Queue slots)" },
-  { "target": "Queue row", "check": "gap", "reason": "owned by #273 (Queue slots)" }
+  { "target": "Energy pill", "check": "size", "reason": "owned by #273 (Energy pill)" }
 ]

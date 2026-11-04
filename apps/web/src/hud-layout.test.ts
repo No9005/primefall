@@ -6,7 +6,7 @@ import {
   barRect,
   commentaryRect,
   commitRect,
-  energyPillRect,
+  energyRect,
   freeBoardArea,
   handRect,
   pilesRect,
@@ -59,7 +59,7 @@ describe("the HUD elements", () => {
     describe(`at ${view.width} x ${view.height}`, () => {
       const bottom = (rows = 4): Record<string, Rect> => ({
         piles: pilesRect(view),
-        energy: energyPillRect(view),
+        energy: energyRect(view),
         hand: handRect(view),
         wait: waitCardRect(view),
         queueAndCommit: commitRect(view, rows),

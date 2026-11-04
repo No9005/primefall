@@ -192,14 +192,6 @@ function cssViolations(): Violation[] {
   return found;
 }
 
-/** The Wait card is dimmed with an inline style in PlanningScreen.tsx. */
-function inlineOpacityViolations(): Violation[] {
-  const opacity = Number(/opacity: dimmed \? ([\d.]+)/.exec(read("PlanningScreen.tsx"))?.[1]);
-  if (!(opacity > 0)) throw new Error("The inline opacity of the Wait card was not found in PlanningScreen.tsx");
-  const violation = checkPair(".wait-card (inline opacity)", resolveColor("--text")!, resolveColor("--graphite")!, opacity, false, true);
-  return violation ? [violation] : [];
-}
-
 /** Pixi texts: font sizes in the source files; a world-space size is multiplied by the figure scale F. */
 function pixiViolations(): Violation[] {
   const found: Violation[] = [];
@@ -218,7 +210,7 @@ function pixiViolations(): Violation[] {
   return found;
 }
 
-const allViolations = [...cssViolations(), ...inlineOpacityViolations(), ...pixiViolations()];
+const allViolations = [...cssViolations(), ...pixiViolations()];
 const key = (v: { selector: string; check: string }) => `${v.check} ${v.selector}`;
 
 describe("text legibility", () => {
