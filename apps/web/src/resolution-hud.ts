@@ -23,3 +23,10 @@ export function resolutionCommitLabel(stage: ResolutionStage, tick: number): str
   if (stage === "done") return "Done";
   return `Tick ${Math.max(tick, 1)}`;
 }
+
+/** The text of the Resolution bar: `RESOLUTION  ·  TICK n / 4` while the Ticks play, `RESOLUTION COMPLETE` when done. */
+export function resolutionBarText(stage: ResolutionStage, tick: number, tickCount: number): string {
+  if (stage === "done") return "RESOLUTION COMPLETE";
+  const total = Math.max(tickCount, 1);
+  return `RESOLUTION  ·  TICK ${Math.min(Math.max(tick, 1), total)} / ${total}`;
+}

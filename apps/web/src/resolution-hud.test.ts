@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { queueRowState, resolutionCommitLabel } from "./resolution-hud";
+import { queueRowState, resolutionBarText, resolutionCommitLabel } from "./resolution-hud";
 
 describe("queueRowState", () => {
   it("lights the row of the current Tick, fades earlier rows and leaves later rows alone", () => {
@@ -22,5 +22,13 @@ describe("resolutionCommitLabel", () => {
     expect(resolutionCommitLabel("callout", 0)).toBe("Tick 1");
     expect(resolutionCommitLabel("ticks", 2)).toBe("Tick 2");
     expect(resolutionCommitLabel("done", 4)).toBe("Done");
+  });
+});
+
+describe("resolutionBarText", () => {
+  it("shows the Tick on screen out of the Resolution's Ticks, then RESOLUTION COMPLETE", () => {
+    expect(resolutionBarText("callout", 0, 4)).toBe("RESOLUTION  ·  TICK 1 / 4");
+    expect(resolutionBarText("ticks", 3, 4)).toBe("RESOLUTION  ·  TICK 3 / 4");
+    expect(resolutionBarText("done", 4, 4)).toBe("RESOLUTION COMPLETE");
   });
 });

@@ -2,11 +2,23 @@ import { reachableMoveDestinations } from "game-core";
 import { describe, expect, it } from "vitest";
 import type { Rect } from "./card-drag";
 import { computeCamera, frameMoveCamera, gridToWorld } from "./board-layout";
-import { commitRect, freeBoardArea, handRect, waitCardRect } from "./hud-layout";
+import {
+  barRect,
+  commentaryRect,
+  commitRect,
+  energyPillRect,
+  freeBoardArea,
+  handRect,
+  pilesRect,
+  primePillRect,
+  timerPillRect,
+  waitCardRect,
+} from "./hud-layout";
 
 const VIEWS = [
   { width: 844, height: 390 },
   { width: 667, height: 375 },
+  { width: 932, height: 430 },
 ];
 
 const overlaps = (a: Rect, b: Rect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
@@ -42,12 +54,51 @@ describe("the free board area", () => {
   }
 });
 
-describe("the HUD elements at the right and bottom", () => {
+describe("the HUD elements", () => {
   for (const view of VIEWS) {
     describe(`at ${view.width} x ${view.height}`, () => {
-      it("do not overlap each other, even with a fifth Queue row", () => {
-        const elements = [commitRect(view, 5), handRect(view), waitCardRect(view)];
-        elements.forEach((a, i) => elements.slice(i + 1).forEach((b) => expect(overlaps(a, b), `${i}`).toBe(false)));
+      const bottom = (rows = 4): Record<string, Rect> => ({
+        piles: pilesRect(view),
+        energy: energyPillRect(view),
+        hand: handRect(view),
+        wait: waitCardRect(view),
+        queueAndCommit: commitRect(view, rows),
+      });
+      const states: Record<string, Record<string, Rect>> = {
+        Planning: { primePill: primePillRect(view, "planning"), timerPill: timerPillRect(view, "planning"), ...bottom() },
+        "Planning with a fifth Queue row": { primePill: primePillRect(view, "planning"), timerPill: timerPillRect(view, "planning"), ...bottom(5) },
+        Resolution: {
+          bar: barRect(view),
+          primePill: primePillRect(view, "resolution"),
+          timerPill: timerPillRect(view, "resolution"),
+          commentary: commentaryRect(),
+          ...bottom(),
+        },
+        "Resolution with a fifth Queue row": {
+          bar: barRect(view),
+          primePill: primePillRect(view, "resolution"),
+          timerPill: timerPillRect(view, "resolution"),
+          commentary: commentaryRect(),
+          ...bottom(5),
+        },
+      };
+
+      for (const [state, elements] of Object.entries(states)) {
+        it(`do not overlap each other in ${state}`, () => {
+          const names = Object.keys(elements);
+          names.forEach((a, i) =>
+            names.slice(i + 1).forEach((b) => expect(overlaps(elements[a]!, elements[b]!), `${a} and ${b}`).toBe(false)),
+          );
+        });
+      }
+
+      it("keep the commentary at least 2 px clear of the Prime Zone pill", () => {
+        const pill = primePillRect(view, "resolution");
+        expect(commentaryRect().top - pill.bottom >= 2 || commentaryRect().right - pill.left <= -2).toBe(true);
+      });
+
+      it("keep the Wait card 6 px clear of the Queue column", () => {
+        expect(commitRect(view, 5).left - waitCardRect(view).right).toBeGreaterThanOrEqual(6);
       });
 
       it("keep clear of the idle free board area", () => {
