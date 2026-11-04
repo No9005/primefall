@@ -81,7 +81,7 @@ describe("Events carry the card that caused them", () => {
     const match = scene({ [BRUISER]: { col: 8, row: 5 } });
     const utility = resolveRound(match, [plan(BRUISER, { kind: ActionKind.Primary, card: BULWARK, target: BRUISER }, [1])]);
     expect(utility.events).toEqual([
-      { kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Bulwark" },
+      { kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Bulwark", casterId: BRUISER },
     ]);
     const block = resolveRound(match, [plan(BRUISER, { kind: ActionKind.Block, card: SLAM_SHOT }, [1])]);
     expect(block.events).toEqual([{ kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: expect.any(Number) }]);

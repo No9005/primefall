@@ -4,4 +4,5 @@ dist/
 .vite/
 .scratch/
 e2e-results/
+apps/web/screenshots/
 playwright-report/

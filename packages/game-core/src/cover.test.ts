@@ -35,6 +35,12 @@ describe("Cover against Attacks", () => {
     expect(attackFrom({ col: 16, row: 5 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 1 });
   });
 
+  it("flags the hit that Half Cover reduced, so the playback can show the wall taking it", () => {
+    expect(attackFrom({ col: 17, row: 5 }, halfCover)).toMatchObject({ halfCover: true });
+    expect(attackFrom({ col: 15, row: 5 }, halfCover)).not.toHaveProperty("halfCover");
+    expect(attackFrom({ col: 17, row: 5 }, { col: 8, row: 5 })).not.toHaveProperty("halfCover");
+  });
+
   it("ignores Half Cover for an attacker at Range 1", () => {
     expect(attackFrom({ col: 15, row: 5 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
     expect(attackFrom({ col: 15, row: 4 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });

@@ -105,6 +105,9 @@ interface PlaybackState {
   commentary: CommentaryEntry[];
   /** The target lines of the actions resolved in the frame being shown. */
   lines: TargetLine[];
+  /** Cover destroyed and Cover placed so far in the playback, each from the moment its effect shows it; the board adds them to the view's. */
+  coverDestroyed: GridPosition[];
+  coverPlaced: GridPosition[];
 }
 
 /** Bottom right, above Commit: the Queue of the selected Hero, tick 1 on top. Each row shows the action, its target and why it is invalid. */
@@ -481,6 +484,14 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
 
   const lastMove = queue.filter((action) => action.kind === ActionKind.Move).at(-1);
   const planningFrom = lastMove?.kind === ActionKind.Move ? lastMove.destination : selected.position;
+  // During the playback the board also shows the Cover that was destroyed or placed in it so far.
+  const playedDestroyed = playback?.coverDestroyed;
+  const playedPlaced = playback?.coverPlaced;
+  const shownDestroyed = useMemo(() => (playedDestroyed ? [...view.destroyedCover, ...playedDestroyed] : view.destroyedCover), [view.destroyedCover, playedDestroyed]);
+  const shownPlaced = useMemo(
+    () => (playedPlaced ? [...view.placedCover.filter((tile) => !playedDestroyed?.some((gone) => gone.col === tile.col && gone.row === tile.row)), ...playedPlaced] : view.placedCover),
+    [view.placedCover, playedPlaced, playedDestroyed],
+  );
   const knownGrid = useMemo(
     () => view.wreckCover.reduce(withWreck, view.destroyedCover.reduce(destroyCover, REACTOR_DECK)),
     [view.destroyedCover, view.wreckCover],
@@ -854,7 +865,9 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     const tickCount = tickCountOf(result.events);
     let commentary: CommentaryEntry[] = [];
     let commentaryTick = 0;
-    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, effects: [], slowed: [], marked: [], commentary, lines: [] });
+    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, effects: [], slowed: [], marked: [], commentary, lines: [], coverDestroyed: [], coverPlaced: [] });
+    let coverDestroyed: GridPosition[] = [];
+    let coverPlaced: GridPosition[] = [];
     const slowed: string[] = [];
     const marked: string[] = [];
     const classes = new Map([...view.heroes, ...view.enemies].map((unit) => [unit.id, unit.heroClass]));
@@ -914,8 +927,26 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         marked: [...marked],
         commentary,
         lines: replayTargetLines(frame.events, view.heroes, view.enemies, (heroId) => positions[heroId] ?? startPositions[heroId]),
+        coverDestroyed,
+        coverPlaced,
       });
-      await new Promise((resolve) => setTimeout(resolve, reducedMotion ? STEP_MS : Math.max(STEP_MS, frame.holdMs / CLIP_SPEED)));
+      // Cover that is placed or destroyed changes the board at the moment its effect shows it (at once with reduced motion).
+      const hold = reducedMotion ? STEP_MS : Math.max(STEP_MS, frame.holdMs / CLIP_SPEED);
+      let waited = 0;
+      for (const edit of [...frame.coverEdits].sort((a, b) => a.atMs - b.atMs)) {
+        const at = reducedMotion ? 0 : Math.min(hold, edit.atMs / CLIP_SPEED);
+        await new Promise((resolve) => setTimeout(resolve, at - waited));
+        if (unmounted.current) return;
+        waited = at;
+        const isTile = (tile: GridPosition) => tile.col === edit.tile.col && tile.row === edit.tile.row;
+        if (edit.kind === "destroyed") {
+          coverPlaced = coverPlaced.filter((tile) => !isTile(tile));
+          coverDestroyed = [...coverDestroyed, edit.tile];
+        } else coverPlaced = [...coverPlaced, edit.tile];
+        const [destroyedNow, placedNow] = [coverDestroyed, coverPlaced];
+        setPlayback((current) => current && { ...current, coverDestroyed: destroyedNow, coverPlaced: placedNow });
+      }
+      await new Promise((resolve) => setTimeout(resolve, hold - waited));
       if (unmounted.current) return;
     }
     setResolutionStage("done");
@@ -950,8 +981,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   return (
     <div className="planning" ref={planningRef}>
       <Board
-        destroyedCover={view.destroyedCover}
-        placedCover={view.placedCover}
+        destroyedCover={shownDestroyed}
+        placedCover={shownPlaced}
         wreckCover={view.wreckCover}
         revealedAreas={view.revealedAreas}
         visibleTiles={view.visibleTiles}

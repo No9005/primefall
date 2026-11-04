@@ -1,7 +1,7 @@
 import { CoverKind, type EnemyView, EventKind, type GridPosition, type HeroClass, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
 import type { TokenHero } from "./Board";
 import { attackClipName, type ClipName, clipOf, takeCoverClipName } from "./hero-clips";
-import { cueEndMs, type EffectCue, effectCuesOf, impactMs } from "./weapon-effects";
+import { type CoverEdit, coverEditsOf, cueEndMs, type EffectCue, effectCuesOf, impactMs } from "./weapon-effects";
 
 /** How long the playback shows one step (one frame) at least; slow enough to follow who does what. The animation never changes it. */
 export const STEP_MS = 1200;
@@ -53,6 +53,8 @@ export interface PlaybackFrame {
   delays: Record<string, number>;
   /** The effects of the attacks of this frame (flash, projectile, impact, numbers, Marked and Slow). */
   effects: EffectCue[];
+  /** Cover that is placed or destroyed in this frame, each at the moment its effect shows it. */
+  coverEdits: CoverEdit[];
   /**
    * How long the frame lasts at normal clip speed: until the slowest clip of the frame has reached its active end,
    * and at least one step.
@@ -82,7 +84,7 @@ export function buildPlaybackFrames(
     for (const event of events.filter((candidate) => candidate.tick === tick)) {
       const occurrence = seen.get(event.heroId) ?? 0;
       seen.set(event.heroId, occurrence + 1);
-      tickFrames[occurrence] ??= { tick, moves: {}, shields: {}, hits: [], exhausted: [], clips: {}, delays: {}, effects: [], holdMs: STEP_MS, events: [] };
+      tickFrames[occurrence] ??= { tick, moves: {}, shields: {}, hits: [], exhausted: [], clips: {}, delays: {}, effects: [], coverEdits: [], holdMs: STEP_MS, events: [] };
       const frame = tickFrames[occurrence];
       frame.events.push(event);
       // `to` of a Cover or area event is a tile of the board, not a place the Hero moves to.
@@ -109,8 +111,11 @@ export function buildPlaybackFrames(
       if (event.kind === EventKind.AttackHit || event.kind === EventKind.AttackFailed) {
         frame.clips[event.heroId] = attackClipName(event.card);
       }
-      // A Block (a Shield without a card) crouches; the Shield of an Aegis Protocol has its own clip later.
+      // A Block (a Shield without a card) crouches.
       if (event.kind === EventKind.ShieldGained && event.card === undefined) frame.clips[event.heroId] = "block";
+      // The Utility gestures belong to the Hero that played the card; the Shield of an Aegis Protocol is on its target.
+      const gesture = utilityClipName(event);
+      if (gesture !== undefined) frame.clips[gesture.heroId] = gesture.clip;
     }
     // A Move that ends on Cover takes cover (the Hero has walked there in this frame).
     for (const [heroId, { frame, to }] of lastStep) {
@@ -140,6 +145,7 @@ export function buildPlaybackFrames(
         return heroClass === undefined ? DEFAULT_FIRE_MS : clipOf(heroClass, attackClipName(card)).fireMs ?? DEFAULT_FIRE_MS;
       };
       frame.effects = effectCuesOf(frame.events, fireOf);
+      frame.coverEdits = coverEditsOf(frame.effects);
     }
     // A Wait lasts the whole Tick; a Step in the same frame wins over it.
     for (const event of events) {
@@ -162,6 +168,27 @@ function holdOf(frame: PlaybackFrame, classOf: ((heroId: string) => HeroClass | 
     if (!clip.loop) hold = Math.max(hold, (frame.delays[heroId] ?? 0) + clip.activeEndMs);
   }
   return hold;
+}
+
+/** The gesture a Utility card makes and the Hero that makes it, or undefined for an event without one. */
+export function utilityClipName(event: MatchEvent): { heroId: string; clip: ClipName } | undefined {
+  switch (event.kind) {
+    case EventKind.AreaRevealed:
+      return { heroId: event.heroId, clip: "scoutDrone" };
+    case EventKind.CoverPlaced:
+      return { heroId: event.heroId, clip: "deploy" };
+    case EventKind.HiddenGained:
+      return { heroId: event.heroId, clip: "hidden" };
+    case EventKind.ShieldGained:
+      return event.card === "Aegis Protocol" ? { heroId: event.casterId ?? event.heroId, clip: "aegis" } : undefined;
+    default:
+      return undefined;
+  }
+}
+
+/** An enemy that plays the Hidden clip is not drawn at all (Fog of War); its own Squad sees the ghost instead. */
+export function enemyIsDrawn(clip: ClipName | undefined): boolean {
+  return clip !== "hidden";
 }
 
 /** Events whose `to` names a tile they act on, not the Hero's destination. */

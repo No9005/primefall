@@ -172,7 +172,7 @@ describe("Aegis Protocol", () => {
 
   it("gives an allied Hero Shield 3", () => {
     const { events } = resolveRound(setup(hand), [planOf(CONTROLLER, [primary(AEGIS_PROTOCOL, BRUISER)], [PULSE_BOLT])]);
-    expect(events).toEqual([{ kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Aegis Protocol" }]);
+    expect(events).toEqual([{ kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Aegis Protocol", casterId: CONTROLLER }]);
   });
 
   it("Overdrive gives two allied Heroes Shield 3 each and Exiles the card", () => {
@@ -181,8 +181,8 @@ describe("Aegis Protocol", () => {
     expect(validatePlan(buildSquadView(match, SquadId.Left), plan)).toEqual([]);
     const { match: after, events } = resolveRound(match, [plan]);
     expect(events).toEqual([
-      { kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Aegis Protocol", overdrive: true },
-      { kind: EventKind.ShieldGained, tick: 1, heroId: ASSASSIN, amount: 3, card: "Aegis Protocol", overdrive: true },
+      { kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Aegis Protocol", overdrive: true, casterId: CONTROLLER },
+      { kind: EventKind.ShieldGained, tick: 1, heroId: ASSASSIN, amount: 3, card: "Aegis Protocol", overdrive: true, casterId: CONTROLLER },
     ]);
     expect(hero(after, CONTROLLER).exile).toContain(AEGIS_PROTOCOL);
   });
