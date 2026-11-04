@@ -393,7 +393,7 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
       effect.recipient === EffectRecipient.SecondTarget ? secondTarget! : effect.recipient === EffectRecipient.Self ? caster : target;
     const amount = effect.amount ?? 0;
     receiver.shield += amount;
-    events.push({ kind: EventKind.ShieldGained, tick, heroId: receiver.id, amount });
+    events.push({ kind: EventKind.ShieldGained, tick, heroId: receiver.id, amount, casterId: caster.id });
   },
   // Scout Drone: the Squad sees the area for `duration` Resolutions, this one included; range was checked with the target.
   [EffectKind.RevealArea]: ({ match, tick, effect, caster, tile, events }) => {
