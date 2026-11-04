@@ -58,6 +58,8 @@ export interface HeroView {
   hidden: boolean;
   /** Marked: the enemy Squad sees this Hero until the end of the next Resolution. */
   marked: boolean;
+  /** The permanent Attack bonus (Adrenal Surge); the board shows a badge while it is above zero. */
+  attackBonus: number;
 }
 
 /** A square of tiles a Scout Drone shows the Squad for a while, regardless of walls and Cover. */
@@ -100,6 +102,8 @@ export interface VisibleEnemyView extends EnemyIdentity {
   slowed: boolean;
   /** Marked: shown only while the enemy is Visible, which a Marked Hero always is. */
   marked: boolean;
+  /** The permanent Attack bonus of a Visible Hero (Adrenal Surge). */
+  attackBonus: number;
 }
 
 /** The last known position and counts of an enemy Hero that is no longer Visible. */
@@ -228,6 +232,8 @@ export interface MatchEvent {
   overdrive?: boolean;
   /** Range in tiles (Chebyshev) between attacker and target, for `AttackHit` and `AttackFailed`. */
   distance?: number;
+  /** The tile a tile Attack (Breach Charge) was aimed at, for its `AttackHit` and `AttackFailed`. */
+  tile?: GridPosition;
 }
 
 export interface SubmitResult {

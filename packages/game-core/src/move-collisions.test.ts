@@ -31,6 +31,7 @@ const hero = (id: string, position: GridPosition): HeroView => ({
   slowed: false,
   hidden: false,
   marked: false,
+  attackBonus: 0,
 });
 const move = (destination: GridPosition): QueuedAction => ({ kind: ActionKind.Move, card: 0, destination });
 const planOf = (queues: Record<string, QueuedAction[]>): SquadPlan => ({

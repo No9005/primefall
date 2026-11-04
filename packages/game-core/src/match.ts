@@ -293,6 +293,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
       slowed: hero.slow > 0,
       hidden: hero.hidden > 0,
       marked: hero.marked > 0,
+      attackBonus: hero.attackBonus,
     }));
   const enemies: EnemyView[] = match.heroes
     .filter((hero) => hero.squad !== squad)
@@ -310,6 +311,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
           exhausted: hero.exhausted,
           slowed: hero.slow > 0,
           marked: hero.marked > 0,
+          attackBonus: hero.attackBonus,
         };
       }
       const ghost = match.ghosts[squad][hero.id];
