@@ -179,6 +179,11 @@ export function utilityClipName(event: MatchEvent): { heroId: string; clip: Clip
   }
 }
 
+/** An enemy that plays the Hidden clip is not drawn at all (Fog of War); its own Squad sees the ghost instead. */
+export function enemyIsDrawn(clip: ClipName | undefined): boolean {
+  return clip !== "hidden";
+}
+
 /** Events whose `to` names a tile they act on, not the Hero's destination. */
 const TILE_EVENTS = [EventKind.CoverDestroyed, EventKind.CoverPlaced, EventKind.AreaRevealed];
 

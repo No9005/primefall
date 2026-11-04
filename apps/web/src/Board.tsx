@@ -36,6 +36,7 @@ import { freeBoardArea } from "./hud-layout";
 import { buildTerrain, depthOf, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
 import { applyPose, applyRestPose, type BoundPart, bindParts, ClipPlayer } from "./clip-player";
 import { type ClipName, restClipName } from "./hero-clips";
+import { enemyIsDrawn } from "./playback";
 import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
 import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
@@ -534,7 +535,7 @@ export function Board({
       new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color });
     const addToken = (hero: TokenHero, enemy: boolean) => {
       // An enemy that goes Hidden is not drawn at all (Fog of War); only its own Squad sees the ghost.
-      if (enemy && clips[hero.id] === "hidden") return;
+      if (enemy && !enemyIsDrawn(clips[hero.id])) return;
       const { x, y } = gridToWorld(hero.position, angle);
       const token = new Container();
       token.position.set(x, y + footOffset(angle));

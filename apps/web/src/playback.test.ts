@@ -1,6 +1,6 @@
 import { type EnemyView, EventKind, HeroClass, type MatchEvent, Visibility } from "game-core";
 import { describe, expect, it } from "vitest";
-import { buildPlaybackFrames,enemyTokens, tickCountOf } from "./playback";
+import { buildPlaybackFrames, enemyIsDrawn, enemyTokens, tickCountOf } from "./playback";
 
 const step = (tick: number, heroId: string, col: number): MatchEvent => ({
   kind: EventKind.Step,
@@ -75,6 +75,23 @@ describe("buildPlaybackFrames", () => {
     expect(buildPlaybackFrames([])).toEqual([]);
     expect(tickCountOf([])).toBe(0);
     expect(tickCountOf([step(1, "a", 1), step(3, "a", 2)])).toBe(3);
+  });
+});
+
+describe("an enemy that goes Hidden", () => {
+  const hidden: MatchEvent = { kind: EventKind.HiddenGained, tick: 1, heroId: "enemy" };
+
+  it("plays the Hidden clip, which the board does not draw for an enemy", () => {
+    const [frame] = buildPlaybackFrames([hidden], () => HeroClass.Assassin);
+    expect(frame!.clips.enemy).toBe("hidden");
+    expect(enemyIsDrawn(frame!.clips.enemy)).toBe(false);
+    expect(enemyIsDrawn("idle")).toBe(true);
+    expect(enemyIsDrawn(undefined)).toBe(true);
+  });
+
+  it("changes no position, Shield or Exhaustion, so skipping or reduced motion (no clips) ends in the same state", () => {
+    const [frame] = buildPlaybackFrames([hidden], () => HeroClass.Assassin);
+    expect([frame!.moves, frame!.shields, frame!.hits, frame!.exhausted]).toEqual([{}, {}, [], []]);
   });
 });
 
