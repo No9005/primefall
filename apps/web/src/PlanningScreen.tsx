@@ -69,8 +69,8 @@ const NO_PATHS: readonly PlannedPath[] = [];
 const PIPS = Array.from({ length: PRIME_ZONE_WIN_RESOLUTIONS }, (_, i) => i);
 const NO_LABELS: readonly { position: GridPosition; text: string }[] = [];
 
-/** Time one tile of movement takes in the playback. */
-const STEP_MS = 450;
+/** Time one playback frame (one Tick) stays on screen; slow enough to follow who does what. */
+const STEP_MS = 1200;
 
 const HERO_NAMES: Record<HeroClass, string> = {
   [HeroClass.Bruiser]: "Bruiser",
@@ -978,6 +978,11 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         <Callout kind="number" text={countdownCallout(secondsLeft)!.text} tone={countdownCallout(secondsLeft)!.tone} durationMs={COUNTDOWN_CALLOUT_MS} />
       )}
       {resolutionStage === "callout" && <Callout kind="word" text="RESOLUTION" tone="teal" durationMs={RESOLUTION_CALLOUT_MS} />}
+      {playing && (
+        <div className="resolution-bar" data-testid="resolution-bar" aria-hidden="true">
+          RESOLUTION
+        </div>
+      )}
       {primeCallout !== undefined && <Callout kind="word" text={primeCallout.text} tone={primeCallout.tone} durationMs={primeCallout.durationMs} />}
       {playback !== undefined && playback.commentary.length > 0 && (
         // A new key per Tick: the entries of the previous Tick are replaced and slide in again.
