@@ -116,7 +116,7 @@ interface PlaybackState {
 }
 
 /** Bottom right, above Commit: the Queue of the selected Hero, tick 1 on top. Each row shows the action, its target and why it is invalid. */
-function QueueColumn({
+export function QueueColumn({
   queue,
   heroClass,
   heroId,
@@ -147,7 +147,13 @@ function QueueColumn({
       <ol className="queue-rows">
         {Array.from({ length: Math.max(MAX_QUEUE_LENGTH, queue.length) }, (_, slot) => {
           const action = queue[slot];
-          if (!action) return <li key={slot} className="queue-row empty" aria-label={`Empty slot ${slot + 1}`} />;
+          if (!action) {
+            return (
+              <li key={slot} className="queue-row empty" aria-label={`Empty slot ${slot + 1}`}>
+                <span className="queue-number" aria-hidden="true">{slot + 1}</span>
+              </li>
+            );
+          }
           const { name, target } = queueRowLabel(heroClass, heroId, action, nameOf);
           const reasons = reasonsAt(slot);
           return (
@@ -186,11 +192,27 @@ function QueueColumn({
 }
 
 /** Right of the Hand: the Wait action as a card. */
-function WaitCard({ dimmed, disabled, onWait }: { dimmed: boolean; disabled: boolean; onWait: () => void }) {
+function WaitCard({ dimmed, disabled, locked, onWait }: { dimmed: boolean; disabled: boolean; locked: boolean; onWait: () => void }) {
   return (
-    <button type="button" className="card wait-card" style={{ opacity: dimmed ? 0.35 : undefined }} disabled={disabled || dimmed} onClick={onWait}>
-      Wait
+    <button type="button" className={`card wait-card${locked ? " locked" : ""}`} disabled={disabled || dimmed} title={locked ? LOCKED_TITLE : undefined} onClick={onWait}>
+      <span className="card-name">Wait</span>
+      {locked && <LockedMark used={false} />}
     </button>
+  );
+}
+
+const LOCKED_TITLE = "locked during the Resolution";
+const USED_TITLE = "already used this Round";
+
+/** The lock glyph of a locked card, with USED when the card was used this Round; it sits in the visible top of the card. */
+function LockedMark({ used }: { used: boolean }) {
+  return (
+    <span className="card-lock" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 14 14">
+        <path fill="currentColor" d="M7 1a3 3 0 0 0-3 3v2H3v7h8V6h-1V4a3 3 0 0 0-3-3Zm-1.5 3a1.5 1.5 0 0 1 3 0v2h-3V4Z" />
+      </svg>
+      {used && <span>USED</span>}
+    </span>
   );
 }
 
@@ -258,6 +280,8 @@ interface HandProps {
   inUse: CardIndex | undefined;
   otherOpacity: number;
   disabled: boolean;
+  /** The Resolution plays: the cards show the locked look. */
+  locked: boolean;
   onCardClick: (card: CardIndex, event: ReactMouseEvent) => void;
   onCardPointerDown: (card: CardIndex, event: ReactPointerEvent) => void;
   /** A target is being picked: the fan slides away (the selected card is shown as a chip beside it). */
@@ -276,7 +300,7 @@ const ACTION_USE_LABELS: Record<Exclude<ActionKind, ActionKind.Wait>, string> = 
   [ActionKind.Primary]: CARD_USE_LABELS[CardUse.Primary],
 };
 
-function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpacity, disabled, onCardClick, onCardPointerDown, collapsed, arriving }: HandProps) {
+function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpacity, disabled, locked, onCardClick, onCardPointerDown, collapsed, arriving }: HandProps) {
   const deck = HERO_DECKS[hero.heroClass];
   const middle = (hero.hand.length - 1) / 2;
   const spacing = fanSpacing(FAN_WIDTH, hero.hand.length);
@@ -327,13 +351,15 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
           >
             <button
               type="button"
-              className={`card ${card.type}${queued || isPitched ? " used" : ""}${cardIndex === held ? " lifted" : ""}`}
+              className={`card ${card.type}${queued || isPitched ? " used" : ""}${locked ? " locked" : ""}${cardIndex === held ? " lifted" : ""}`}
+              title={locked ? (queued || isPitched ? USED_TITLE : LOCKED_TITLE) : undefined}
               aria-pressed={cardIndex === armed || cardIndex === held || queuedAt >= 0 || isPitched}
               disabled={disabled}
               onClick={(event) => onCardClick(event.detail === 0 ? cardIndex : pressedCard(event, cardIndex), event)}
               onPointerDown={(event) => onCardPointerDown(pressedCard(event, cardIndex), event)}
             >
               <CardFace card={card} use={use} />
+              {locked && <LockedMark used={Boolean(queued || isPitched)} />}
               {arrivalOrder >= 0 && <span className="card-back" aria-hidden="true" />}
             </button>
           </li>
@@ -1172,6 +1198,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
             inUse={cardInUse}
             otherOpacity={focus.otherCards}
             disabled={playing || drawing || exhaustion.greyed}
+            locked={playing}
             arriving={drawing ? draw.cards : NO_CARDS}
             onCardClick={clickCard}
             onCardPointerDown={startCardPress}
@@ -1182,6 +1209,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
           <WaitCard
             dimmed={queue.length >= MAX_QUEUE_LENGTH}
             disabled={playing || drawing || exhaustion.greyed}
+            locked={playing}
             onWait={() => {
               setQueue(addWaitAction(queue));
               setArmed(undefined);

@@ -75,32 +75,41 @@ export function commentaryRect(): Rect {
 const PILES_WIDTH = 63;
 const PILES_HEIGHT = 115;
 const ENERGY_PILL_HEIGHT = 26;
-/** The Hand peeks 62 px out of the bottom edge (the cost badges stick out above the cards) with the Energy pill right above it. */
+/** The Hand peeks 62 px out of the bottom edge; the outer cards of the fan are rotated and reach about 8 px above that line. */
 const HAND_PEEK = 62;
+/** Between the Energy pill and the peek line: at least 8 px of it stays clear above the rotated card tops. */
+const ENERGY_GAP = 14;
 const HAND_LEFT = 6 + PILES_WIDTH + 6;
 
 export function pilesRect(view: ViewSize): Rect {
   return { left: 6, top: view.height - PILES_HEIGHT, right: 6 + PILES_WIDTH, bottom: view.height };
 }
 
-export function energyPillRect(view: ViewSize): Rect {
-  const bottom = view.height - HAND_PEEK - 2;
+/** The Energy pill: right of the piles, above the top left of the fan, clear of the rotated cards. */
+export function energyRect(view: ViewSize): Rect {
+  const bottom = view.height - HAND_PEEK - ENERGY_GAP;
   return { left: HAND_LEFT, top: bottom - ENERGY_PILL_HEIGHT, right: HAND_LEFT + 193, bottom };
 }
 
+/** The Energy pill under its older name (touch-targets.test.ts). */
+export const energyPillRect = energyRect;
+
+/** The fan itself (the peeking part of the cards); the Energy pill has its own rectangle. */
 export function handRect(view: ViewSize): Rect {
   return { left: HAND_LEFT, top: view.height - HAND_PEEK, right: HAND_LEFT + FAN_WIDTH, bottom: view.height };
 }
 
 export const QUEUE_COLUMN_WIDTH = 124;
-const QUEUE_ROW_HEIGHT = 28;
+const QUEUE_ROW_HEIGHT = 32;
 const QUEUE_GAP = 4;
+/** Secondary targets keep 8 px between them. */
+const QUEUE_ROW_GAP = 8;
 const COMMIT_HEIGHT = 46;
 
 /** The Queue column: `rows` Queue rows, 4 by default and 5 with Forward Deploy; it ends above the Commit pill. */
 export function queueRect(view: ViewSize, rows = 4): Rect {
   const bottom = commitButtonRect(view).top - QUEUE_GAP;
-  return { left: view.width - 6 - QUEUE_COLUMN_WIDTH, top: bottom - (rows * QUEUE_ROW_HEIGHT + (rows - 1) * QUEUE_GAP), right: view.width - 6, bottom };
+  return { left: view.width - 6 - QUEUE_COLUMN_WIDTH, top: bottom - (rows * QUEUE_ROW_HEIGHT + (rows - 1) * QUEUE_ROW_GAP), right: view.width - 6, bottom };
 }
 
 export function commitButtonRect(view: ViewSize): Rect {
@@ -113,8 +122,8 @@ export function commitRect(view: ViewSize, rows = 4): Rect {
   return { left: queue.left, top: queue.top, right: queue.right, bottom: commitButtonRect(view).bottom };
 }
 
-/** The Wait card right of the Hand fan, 6 px away from it, peeking like the Hand. */
+/** The Wait card right of the Hand fan, 12 px away from it (6 px gap and 6 px margin), as big as a Hand card and level with the unrotated centre card. */
 export function waitCardRect(view: ViewSize): Rect {
-  const left = handRect(view).right + 6;
+  const left = handRect(view).right + 12;
   return { left, top: view.height - HAND_PEEK, right: left + 108, bottom: view.height };
 }
