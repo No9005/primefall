@@ -47,12 +47,13 @@ export function floorOutline(angle: number): number[] {
 }
 
 /**
- * Distance in world pixels from a tile's centre down to where a Hero token stands: the lower vertex of the tile.
- * 32 px in the diagonal view, less in the flat-fronted views where a tile is lower on screen.
+ * Distance in world pixels from a tile's centre down to where a Hero token stands: a little below the centre, so the feet
+ * rest on the middle of the tile (not on its lower vertex, which would put the figure in front of the tile).
  */
 export function footOffset(angle: number): number {
   const proj = projection(angle);
-  return Math.max(...[-0.5, 0.5].flatMap((c) => [-0.5, 0.5].map((r) => proj.point(c, r).y)));
+  const lowerVertex = Math.max(...[-0.5, 0.5].flatMap((c) => [-0.5, 0.5].map((r) => proj.point(c, r).y)));
+  return lowerVertex * 0.25;
 }
 
 /** The four outer corners of the grid's footprint in world pixels at a view angle. */

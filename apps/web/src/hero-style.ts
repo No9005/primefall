@@ -58,6 +58,8 @@ export function heroLook(heroClass: HeroClass, enemy: boolean): HeroLook {
 
 export const HERO_STYLE = {
   outline: OUTLINE,
+  /** The rig is drawn in design pixels (a tile is 46 px wide there, 128 px in the game), so figure and marks are magnified by this factor: a Hero is then about 100 px tall. */
+  figureScale: 128 / 46,
   /** Skin: the Bruiser's head and every hand. */
   skin: 0xe8d3b9,
   /** Body colour of an Exhausted Hero and of one that has just been hit (every part takes it). */

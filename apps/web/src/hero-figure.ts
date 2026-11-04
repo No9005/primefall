@@ -156,7 +156,9 @@ export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose,
   const team = heroLook(heroClass, enemy);
   const flat = pose === "hit" ? hit : pose === "exhausted" ? exhausted : undefined;
   const look: HeroLook = flat === undefined ? team : { ...team, body: flat, plate: flat, legs: flat, arms: flat, accent: flat, head: flat };
-  const stroke = (screenWidth: number): Stroke => ({ width: worldLineWidth(screenWidth, scale), color: outline.color, join: "round" });
+  // The whole figure is magnified, so strokes are drawn thinner to keep their width on screen.
+  const inner = scale * HERO_STYLE.figureScale;
+  const stroke = (screenWidth: number): Stroke => ({ width: worldLineWidth(screenWidth, inner), color: outline.color, join: "round" });
   const strokes: Strokes = { body: stroke(line.body), limb: stroke(line.limb) };
   const hips = torso(heroClass, look, strokes);
   if (pose === "exhausted") hips.scale.y = exhaustedSquash;
@@ -164,9 +166,10 @@ export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose,
   rig.addChild(legs(heroClass, look, strokes), hips);
   if (enemy) rig.scale.x = -1;
   const figure = new Container();
+  figure.scale.set(HERO_STYLE.figureScale);
   figure.addChild(
     new Graphics().ellipse(0, 0, shadow.radiusX, shadow.radiusY).fill(shadow),
-    new Graphics().ellipse(0, 0, ring.radiusX, ring.radiusY).stroke({ width: worldLineWidth(ring.width, scale), color: enemy ? ring.enemy : ring.own }),
+    new Graphics().ellipse(0, 0, ring.radiusX, ring.radiusY).stroke({ width: worldLineWidth(ring.width, inner), color: enemy ? ring.enemy : ring.own }),
     rig,
     pauseMark(),
   );
@@ -230,10 +233,12 @@ function iconGraphics(kind: IconKind, x: number, y: number, scale: number): Grap
  * The marks above a Hero: a row of rubies (filled for held Shield, hollow and dashed for a queued Block, with its Tick)
  * and the icons of planned Waits and self-played cards. Drawn in the Hero's own Graphics, without filters.
  */
-export function marksFigure(marks: HeroMarks, scale: number): Container {
+export function marksFigure(marks: HeroMarks, cameraScale: number): Container {
   const { ruby, icon } = HERO_STYLE.marks;
+  const scale = cameraScale * HERO_STYLE.figureScale;
   const line = { width: worldLineWidth(HERO_STYLE.outline.width, scale), color: HERO_STYLE.outline.color, join: "round" as const };
   const container = new Container();
+  container.scale.set(HERO_STYLE.figureScale);
   const step = ruby.size * 2 + ruby.gap;
   const left = (-(marks.rubies - 1) * step) / 2;
   const rubies = new Graphics();
@@ -266,10 +271,12 @@ export function marksFigure(marks: HeroMarks, scale: number): Container {
 }
 
 /** The translucent blue shield in front of the Hero, an upright ellipse with a brighter edge. */
-export function shieldBubble(scale: number): Graphics {
+export function shieldBubble(cameraScale: number): Graphics {
   const { fill, fillAlpha, edgeAlpha, radiusX, radiusY, centerY } = HERO_STYLE.marks.bubble;
-  return new Graphics()
+  const bubble = new Graphics()
     .ellipse(0, centerY, radiusX, radiusY)
     .fill({ color: fill, alpha: fillAlpha })
-    .stroke({ width: worldLineWidth(2, scale), color: fill, alpha: edgeAlpha });
+    .stroke({ width: worldLineWidth(2, cameraScale * HERO_STYLE.figureScale), color: fill, alpha: edgeAlpha });
+  bubble.scale.set(HERO_STYLE.figureScale);
+  return bubble;
 }
