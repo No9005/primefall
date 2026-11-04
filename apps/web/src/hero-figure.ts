@@ -1,37 +1,158 @@
-import type { HeroClass } from "game-core";
+import { HeroClass } from "game-core";
 import { Container, Graphics, Text } from "pixi.js";
-import { HERO_STYLE } from "./hero-style";
+import { HERO_STYLE, type HeroLook, heroLook } from "./hero-style";
 import { type HeroMarks, IconKind } from "./shield-marks";
 import { worldLineWidth } from "./terrain";
 
 export type HeroPose = "idle" | "hit" | "exhausted";
 
-/** Body colour and height factor of a pose: a hit Hero flashes white, an Exhausted one is grey and slumped. */
-export function poseLook(heroClass: HeroClass, pose: HeroPose): { body: number; squash: number } {
-  if (pose === "hit") return { body: HERO_STYLE.hit, squash: 1 };
-  if (pose === "exhausted") return { body: HERO_STYLE.exhausted, squash: 0.65 };
-  return { body: HERO_STYLE.body[heroClass], squash: 1 };
+/** Opacity of the Controller's beacon at a time: 1 to 0.25 and back, a smooth loop of 1.4 s. */
+export function beaconAlpha(ms: number): number {
+  const { periodMs, minAlpha } = HERO_STYLE.rig.beacon;
+  const phase = (ms % periodMs) / periodMs;
+  return minAlpha + (1 - minAlpha) * (0.5 + 0.5 * Math.cos(phase * 2 * Math.PI));
+}
+
+/** The label of the beacon, so the board can blink it. */
+export const BEACON_LABEL = "beacon";
+
+interface Stroke {
+  width: number;
+  color: number;
+  join: "round";
+}
+interface Strokes {
+  body: Stroke;
+  limb: Stroke;
+}
+
+/** A rounded box with the dark outline. */
+function box(x: number, y: number, width: number, height: number, radius: number, fill: number, line: Stroke): Graphics {
+  return new Graphics().roundRect(x, y, width, height, radius).fill(fill).stroke(line);
+}
+
+/** A polygon given in fractions of its box, with the dark outline. */
+function polygon(shape: { x: number; y: number; width: number; height: number; points: readonly number[] }, fill: number, line: Stroke): Graphics {
+  const points = shape.points.map((value, i) => (i % 2 === 0 ? shape.x + value * shape.width : shape.y + value * shape.height));
+  return new Graphics().poly(points).fill(fill).stroke(line);
+}
+
+function pivoted(x: number, y: number, degrees: number, ...children: Graphics[]): Container {
+  const part = new Container();
+  part.position.set(x, y);
+  part.rotation = (degrees * Math.PI) / 180;
+  part.addChild(...children);
+  return part;
+}
+
+/** One arm, hanging from its shoulder; the front arm carries the hand and the weapon (children, so they point along the arm). */
+function arm(heroClass: HeroClass, look: HeroLook, strokes: Strokes, front: boolean): Container {
+  const { arm: a, weapon, scope, console: wrist, hipY } = HERO_STYLE.rig;
+  const shape = HERO_STYLE.shape[heroClass];
+  const side = front ? a.front : a.back;
+  // The arm box starts 2 px left of and 1 px above the shoulder.
+  const children: Graphics[] = [box(-2, -1, shape.armWidth, a.height, a.radius, look.arms, strokes.limb)];
+  if (front) {
+    const { gun } = shape;
+    const gunX = -2 + weapon.x;
+    const gunY = -1 + weapon.y;
+    children.push(
+      box(gunX, gunY, gun.width, gun.height, weapon.radius, gun.color, strokes.limb),
+      box(-3, 7, a.hand, a.hand, a.hand / 2, HERO_STYLE.skin, strokes.limb),
+    );
+    if (heroClass === HeroClass.Assassin) children.push(new Graphics().rect(gunX + scope.x, gunY + scope.y, scope.width, scope.height).fill(scope.color));
+  } else if (heroClass === HeroClass.Controller) {
+    children.push(box(-2 + wrist.x, -1 + wrist.y, wrist.width, wrist.height, 1, wrist.color, strokes.limb));
+  }
+  return pivoted(side.shoulderX, a.shoulderY - hipY, side.angle, ...children);
+}
+
+/** The head with its visor slit, and the Assassin's hood on it; it turns about the bottom centre. */
+function head(heroClass: HeroClass, look: HeroLook, strokes: Strokes): Container {
+  const { head: h, hood, hipY } = HERO_STYLE.rig;
+  const visorX = h.size / 2 - HERO_STYLE.shape[heroClass].visorRight - h.visorWidth;
+  const parts = [new Graphics().circle(0, -h.size / 2, h.size / 2).fill(look.head).stroke(strokes.body)];
+  if (heroClass === HeroClass.Assassin) parts.push(polygon({ ...hood, y: hood.y - h.pivotY }, look.accent, strokes.body));
+  parts.push(new Graphics().rect(visorX, h.visorY - h.size, h.visorWidth, h.visorHeight).fill(look.visor));
+  return pivoted(0, h.pivotY - hipY, 0, ...parts);
+}
+
+/** The torso group: everything that leans and bobs with the hip, with the class parts. */
+function torso(heroClass: HeroClass, look: HeroLook, strokes: Strokes): Container {
+  const { body, hipY } = HERO_STYLE.rig;
+  const shape = HERO_STYLE.shape[heroClass];
+  const local = (y: number) => y - hipY;
+  const group = new Container();
+  group.position.set(0, hipY);
+  if (heroClass === HeroClass.Assassin) {
+    const { cape } = HERO_STYLE.rig;
+    group.addChild(polygon({ ...cape, y: local(cape.y) }, look.arms, strokes.body));
+  }
+  if (heroClass === HeroClass.Controller) {
+    const { pack, antenna, beacon } = HERO_STYLE.rig;
+    const light = new Graphics().circle(beacon.x, local(beacon.y), beacon.radius).fill(beacon.color);
+    light.label = BEACON_LABEL;
+    group.addChild(
+      box(pack.x, local(pack.y), pack.width, pack.height, pack.radius, look.legs, strokes.body),
+      new Graphics().rect(antenna.x, local(antenna.y), antenna.width, antenna.height).fill(antenna.color),
+      light,
+    );
+  }
+  group.addChild(
+    arm(heroClass, look, strokes, false),
+    box(-shape.bodyWidth / 2, local(body.y), shape.bodyWidth, body.height, body.radius, look.body, strokes.body),
+    new Graphics()
+      .roundRect(-shape.bodyWidth / 2 + shape.plate.x, local(body.y) + body.plateY, shape.plate.width, body.plateHeight, body.plateRadius)
+      .fill(look.plate),
+    head(heroClass, look, strokes),
+    arm(heroClass, look, strokes, true),
+  );
+  if (heroClass === HeroClass.Bruiser) {
+    const { pad } = HERO_STYLE.rig;
+    for (const x of pad.xs) {
+      group.addChild(
+        box(x, local(pad.y), pad.width, pad.height, pad.radius, look.accent, strokes.body),
+        new Graphics().rect(x + 2, local(pad.y) + 1, pad.width - 4, pad.highlight).fill(look.plate),
+      );
+    }
+  }
+  return group;
+}
+
+/** The two legs, each turning about the top centre of its box. */
+function legs(heroClass: HeroClass, look: HeroLook, strokes: Strokes): Container {
+  const { legs: l, hipY } = HERO_STYLE.rig;
+  const width = HERO_STYLE.shape[heroClass].legWidth;
+  const pair = new Container();
+  for (const x of l.xs) {
+    pair.addChild(pivoted(x + 3, hipY, 0, box(-width / 2, 0, width, l.height, l.radius, look.legs, strokes.limb)));
+  }
+  return pair;
 }
 
 /**
- * A Hero as a vector figure with its feet at (0, 0): contact shadow, Squad ring, a capsule body and a round head,
- * all with the dark outline. `scale` is the camera scale, so the outline keeps its width on screen.
- * The chest is left plain: the identity marker (a later ticket) goes there.
+ * A Hero as a vector figure, the Hero rig of docs/design/animation, with its feet at (0, 0): contact shadow, Squad ring
+ * and the rig, which faces right and is mirrored for the enemy. Every part is its own Graphics or container, so later
+ * clips can move it. A hit Hero is flat white, an Exhausted one grey and slumped. `scale` is the camera scale, so the
+ * outline keeps its width on screen. The Controller's beacon carries the label `BEACON_LABEL`.
  */
 export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose, scale: number): Container {
-  const { shape, outline, ring, shadow, head } = HERO_STYLE;
-  const { body, squash } = poseLook(heroClass, pose);
-  const line = { width: worldLineWidth(outline.width, scale), color: outline.color, join: "round" as const };
-  const bodyHeight = shape.bodyHeight * squash;
+  const { outline, ring, shadow, exhausted, hit, exhaustedSquash, line } = HERO_STYLE;
+  const team = heroLook(heroClass, enemy);
+  const flat = pose === "hit" ? hit : pose === "exhausted" ? exhausted : undefined;
+  const look: HeroLook = flat === undefined ? team : { ...team, body: flat, plate: flat, legs: flat, arms: flat, accent: flat, head: flat };
+  const stroke = (screenWidth: number): Stroke => ({ width: worldLineWidth(screenWidth, scale), color: outline.color, join: "round" });
+  const strokes: Strokes = { body: stroke(line.body), limb: stroke(line.limb) };
+  const hips = torso(heroClass, look, strokes);
+  if (pose === "exhausted") hips.scale.y = exhaustedSquash;
+  const rig = new Container();
+  rig.addChild(legs(heroClass, look, strokes), hips);
+  if (enemy) rig.scale.x = -1;
   const figure = new Container();
   figure.addChild(
-    new Graphics().ellipse(0, -4, 28, 12).fill(shadow),
-    new Graphics().ellipse(0, -4, 26, 11).stroke({ width: worldLineWidth(ring.width, scale), color: enemy ? ring.enemy : ring.own }),
-    new Graphics()
-      .roundRect(-shape.bodyWidth / 2, -shape.bodyLift - bodyHeight, shape.bodyWidth, bodyHeight, shape.bodyWidth / 2)
-      .fill(body)
-      .stroke(line),
-    new Graphics().circle(0, -shape.bodyLift - bodyHeight - shape.headGap - shape.headRadius + 4, shape.headRadius).fill(head).stroke(line),
+    new Graphics().ellipse(0, 0, shadow.radiusX, shadow.radiusY).fill(shadow),
+    new Graphics().ellipse(0, 0, ring.radiusX, ring.radiusY).stroke({ width: worldLineWidth(ring.width, scale), color: enemy ? ring.enemy : ring.own }),
+    rig,
   );
   return figure;
 }

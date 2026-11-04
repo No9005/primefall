@@ -38,7 +38,7 @@ import {
 } from "./board-layout";
 import { freeBoardArea } from "./hud-layout";
 import { buildTerrain, depthOf, type Face, floorOutline, footOffset, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
-import { heroFigure, marksFigure, shieldBubble } from "./hero-figure";
+import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
 import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
 import { chestOf, dashRuns, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
@@ -320,6 +320,18 @@ function animateAppear(shape: Graphics, ms: number): () => void {
   return () => cancelAnimationFrame(frame);
 }
 
+/** Blinks the Controller's beacon in a loop; with reduced motion it stays lit. Returns a cancel function. */
+function animateBeacon(beacon: Container): () => void {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return () => undefined;
+  let frame = 0;
+  const step = (now: number) => {
+    beacon.alpha = beaconAlpha(now);
+    frame = requestAnimationFrame(step);
+  };
+  frame = requestAnimationFrame(step);
+  return () => cancelAnimationFrame(frame);
+}
+
 /** Fades a shape from full to transparent in `ms`. Returns a cancel function. */
 function animateFadeOut(shape: Graphics, ms: number): () => void {
   const start = performance.now();
@@ -528,6 +540,8 @@ export function Board({
       if (hero.ghost) figure.alpha = 0.35;
       if (hero.hidden) figure.alpha = 0.55;
       token.addChild(figure);
+      const beacon = figure.getChildByLabel(BEACON_LABEL, true);
+      if (beacon && pose === "idle") cancels.push(animateBeacon(beacon));
       const heroMarks = hero.ghost ? undefined : marks[hero.id];
       if (heroMarks && (heroMarks.rubies > 0 || heroMarks.icons.length > 0)) {
         token.addChild(marksFigure(heroMarks, strokeScale));
