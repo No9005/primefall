@@ -218,6 +218,8 @@ export interface MatchEvent {
    * gives AttackHit, DeckShuffled, AttackHit: the damage is the sum, the order is the order of the piles.
    */
   damage?: number;
+  /** True when Half Cover on the target's tile reduced the damage, for `AttackHit`. */
+  halfCover?: boolean;
   /** The card that caused the event (for example "Slam Shot"); absent for events no card causes, such as Block. */
   card?: string;
   /** True when the card was played in Overdrive. */
