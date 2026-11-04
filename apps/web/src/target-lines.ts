@@ -3,6 +3,7 @@ import {
   type CardDefinition,
   CardTarget,
   cardInMode,
+  chebyshevDistance,
   CoverKind,
   type EnemyView,
   EventKind,
@@ -54,6 +55,8 @@ export interface TargetLine {
   planned?: boolean;
   /** Planned Attack that cannot reach its target from the planned position: out of Range or no Line of Sight. */
   unreachable?: boolean;
+  /** Set with `unreachable`: why the shot may miss from the planned position. A hint only; Commit is never blocked by it. */
+  missHint?: string;
   /** An allied Hero's plan: drawn very faint in yellow, without badge or ring. */
   faint?: boolean;
 }
@@ -68,6 +71,16 @@ const TILE_TARGETS = [CardTarget.Tile, CardTarget.EmptyTile, CardTarget.Area];
 function knownEnemy(enemies: readonly EnemyView[], id: string): { id: string; position: GridPosition } | undefined {
   const enemy = enemies.find((candidate) => candidate.id === id);
   return enemy && enemy.visibility !== Visibility.Unknown ? { id, position: enemy.position } : undefined;
+}
+
+/**
+ * The note for a shot that cannot hit from the planned position (a Declared Target is only checked in the Tick it
+ * fires, so this is a hint, not an error). It judges the target's last known position.
+ */
+export function mayMissHint(from: GridPosition, target: GridPosition, range: number): string {
+  return chebyshevDistance(from, target) > range
+    ? "may miss: out of Range from the planned position"
+    : "may miss: no clear shot from the planned position";
 }
 
 /** Where a Hero stands when action `index` resolves: at its last queued Move destination before it (up to the Move's reach). */
@@ -93,7 +106,8 @@ function linesOfAction(
     if (!target) return [];
     const shot = drawShot(grid, from, target, card.range ?? NO_RANGE_LIMIT);
     const clear = shot.segments.every((segment) => segment.style === SegmentStyle.Clear) && shot.ringed;
-    return [{ ...base, kind: LineKind.Attack, tone: clear ? LineTone.Clear : LineTone.Red, from, to: target.position, shot, unreachable: !clear }];
+    const missHint = clear ? undefined : mayMissHint(from, target.position, card.range ?? NO_RANGE_LIMIT);
+    return [{ ...base, kind: LineKind.Attack, tone: clear ? LineTone.Clear : LineTone.Red, from, to: target.position, shot, unreachable: !clear, missHint }];
   }
   if (ALLY_TARGETS.includes(card.target)) {
     const ally = heroes.find((candidate) => candidate.id === action.target);

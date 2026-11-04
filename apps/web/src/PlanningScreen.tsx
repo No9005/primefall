@@ -39,7 +39,7 @@ import { Board } from "./Board";
 import { CardFace, EnergyPill, FloatingCard, PulledCard } from "./game-parts";
 import { cancel as cancelPull, type Face, faceViews, heldCard, IDLE, move as movePull, openCard, press as pressCard, type PullState, release as releasePull, showsFaces, tap as tapPull } from "./card-pull";
 import { CardUseStage, hudFocus } from "./hud-focus";
-import { drawShots, type ShotDrawing } from "./shot-lines";
+import { drawShots, SegmentStyle, type ShotDrawing } from "./shot-lines";
 import { heroMarks } from "./shield-marks";
 import { plannedTargetLines, replayTargetLines, type TargetLine } from "./target-lines";
 import { cardAtX, FAN_WIDTH, fanSpacing } from "./hand-fan";
@@ -121,6 +121,7 @@ function QueueColumn({
   disabled,
   resolutionTick,
   nameOf,
+  missHints,
   onRemove,
 }: {
   queue: readonly QueuedAction[];
@@ -131,6 +132,8 @@ function QueueColumn({
   /** Set during the Resolution (0 before the first Tick): the Queue is read-only and the row of the current Tick is lit. */
   resolutionTick: number | undefined;
   nameOf: (heroId: string) => string;
+  /** Slot (0-based) and the "may miss" note of a planned Attack that cannot hit from the planned position: a hint, not an issue. */
+  missHints: readonly (readonly [number, string])[];
   onRemove: (index: number) => void;
 }) {
   // An issue without a slot of its own (a whole-Queue rule) is shown on the last row.
@@ -161,6 +164,9 @@ function QueueColumn({
                   <span className="queue-reason" role="alert">
                     {reasons.join(" ")}
                   </span>
+                )}
+                {reasons.length === 0 && missHints.some(([hintSlot]) => hintSlot === slot) && (
+                  <span className="queue-reason">{missHints.find(([hintSlot]) => hintSlot === slot)![1]}</span>
                 )}
               </span>
               {resolutionTick === undefined && (
@@ -506,6 +512,11 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         : plannedTargetLines(knownGrid, view.heroes, view.enemies, squadPlans).map((line) => ({ ...line, faint: line.heroId !== playerHeroId })),
     [playing, playback, knownGrid, view.heroes, view.enemies, squadPlans, playerHeroId],
   );
+  // The "may miss" note of each Queue slot of the selected Hero whose Attack cannot hit from the planned position.
+  const missHints = useMemo(
+    () => targetLines.flatMap((line) => (line.planned && line.heroId === selected.id && line.missHint ? [[line.tick - 1, line.missHint] as const] : [])),
+    [targetLines, selected.id],
+  );
   // Shield rubies, bubble and planned icons above the Heroes the Squad may see (own Heroes and Visible enemies).
   const marks = useMemo(() => {
     const held = (id: string, base: number) => base + (playback?.shields[id] ?? 0);
@@ -658,18 +669,27 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   // A card that aims at another Hero reaches it only inside its Range area, and a shot must be able to hit (issue 209).
   const aimsAtOtherHero =
     aimedCard !== undefined && !aimsAtTile && !aimsAtDeployTile && aimedCard.target !== CardTarget.SelfHero && aimedCard.target !== CardTarget.EnemiesInRange;
+  const namesDeclaredTarget = aimedCard?.type === CardType.Attack && aimedCard.target === CardTarget.VisibleEnemy;
   const targetableIds = useMemo(() => {
     if (!aimsAtOtherHero || !aimedCard) return candidateIds;
+    // A Declared Target: every Visible enemy can be named, the shot is checked in the Tick it fires.
+    if (namesDeclaredTarget) return candidateIds;
     const candidates = [...view.heroes, ...view.enemies].flatMap((unit) =>
       candidateIds.includes(unit.id) && "position" in unit ? [{ id: unit.id, position: unit.position }] : [],
     );
     return targetsInReach(candidates, planningFrom, aimedCard, (id) => shotLines.find((shot) => shot.targetId === id)?.ringed ?? true);
-  }, [aimsAtOtherHero, candidateIds, view.heroes, view.enemies, planningFrom, aimedCard, shotLines]);
+  }, [aimsAtOtherHero, namesDeclaredTarget, candidateIds, view.heroes, view.enemies, planningFrom, aimedCard, shotLines]);
   const rangeArea = useMemo(
     () => (aimsAtOtherHero && !playing && aimedCard ? cardRangeArea(knownGrid, planningFrom, aimedCard) : NO_RANGE),
     [aimsAtOtherHero, playing, knownGrid, planningFrom, aimedCard],
   );
   const noEnemyInRange = aimsAtOtherHero && !aimsAtAlly && targetableIds.length === 0;
+  // The aiming sheet says so when the shot at an enemy cannot hit from where the Hero will stand.
+  const aimHint = useMemo(() => {
+    if (!namesDeclaredTarget || !aimedCard || aimedCard.range === undefined) return undefined;
+    const outOfReach = shotLines.some((shot) => !shot.ringed || shot.segments.some((segment) => segment.style !== SegmentStyle.Clear));
+    return outOfReach ? "red lines may miss from the planned position" : undefined;
+  }, [namesDeclaredTarget, aimedCard, shotLines]);
 
   // The state of the pull is kept in a ref as well, because the window listeners of a gesture read it between renders.
   const pullRef = useRef<PullState>(IDLE);
@@ -1168,7 +1188,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
           instruction={
             aimedCard === undefined
               ? "Tap a lit tile"
-              : pickInstruction({ card: aimedCard, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked: deployAlly !== undefined, noEnemyInRange })
+              : pickInstruction({ card: aimedCard, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked: deployAlly !== undefined, noEnemyInRange }) +
+                (aimHint ? ` · ${aimHint}` : "")
           }
           onCancel={cancelUse}
         />
@@ -1183,6 +1204,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
           disabled={playing}
           resolutionTick={playing ? (playback?.tick ?? 0) : undefined}
           nameOf={nameOf}
+          missHints={missHints}
           onRemove={(index) => {
             setQueue(removeQueueAction(queue, index));
             setArmed(undefined);

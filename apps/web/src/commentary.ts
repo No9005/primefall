@@ -1,4 +1,4 @@
-import { EventKind, type MatchEvent } from "game-core";
+import { AttackFailReason, EventKind, type MatchEvent } from "game-core";
 
 /** Whose Hero acted: your Hero, an ally or an enemy. It sets the colour of the entry's left border. */
 export type CommentarySide = "own" | "ally" | "enemy";
@@ -25,6 +25,21 @@ function hitDetail(damage: number, absorbed: number): string {
   if (damage > 0 && absorbed > 0) return `The Shield absorbs ${absorbed}, ${plural(damage, "card")} burn${damage === 1 ? "s" : ""} from the Deck`;
   if (absorbed > 0) return `The Shield absorbs ${absorbed} damage: no card burns`;
   return `Hits for ${damage}: ${plural(damage, "card")} burn${damage === 1 ? "s" : ""} from the Deck`;
+}
+
+const MISS_REASONS: Record<AttackFailReason, string> = {
+  [AttackFailReason.NotVisible]: "target not visible",
+  [AttackFailReason.TargetExhausted]: "target is already Exhausted",
+  [AttackFailReason.OutOfRange]: "target is out of Range",
+  [AttackFailReason.NoLineOfSight]: "no Line of Sight to the target",
+  [AttackFailReason.FullCover]: "target is behind Full Cover",
+  [AttackFailReason.EmptyTile]: "nobody stands on the tile",
+};
+
+/** A missed Attack with its reason; an event without one (an old replay) falls back to the general sentence. */
+function missDetail({ card, reason }: MatchEvent): string {
+  const what = card ?? "The Attack";
+  return reason ? `${what} misses: ${MISS_REASONS[reason]}` : `${what} misses: the target is not allowed when it fires`;
 }
 
 /**
@@ -63,7 +78,7 @@ export function buildCommentary(events: readonly MatchEvent[], { nameOf, sideOf 
         add(heroId, "Attack", hitDetail(event.damage ?? 0, event.absorbed ?? 0), targetId);
         break;
       case EventKind.AttackFailed:
-        add(heroId, "Attack", "Target is out of range, out of sight or already Exhausted: nothing happens", targetId);
+        add(heroId, "Attack", missDetail(event), targetId);
         break;
       case EventKind.ActionFailed:
         add(heroId, "Action", "The card cannot be used: nothing happens");

@@ -57,6 +57,20 @@ describe("plannedTargetLines", () => {
     expect(after).toMatchObject({ unreachable: false, tone: LineTone.Clear, from: { col: 15, row: 1 } });
   });
 
+  it("hints that a Tick 4 shot may miss, with the reason, and says nothing when it can hit", () => {
+    const far = parseGrid(["####################", "#..................#", "####################"]);
+    const target = [visible("e", { col: 18, row: 1 })];
+    const move: QueuedAction = { kind: ActionKind.Move, card: 0, destination: { col: 3, row: 1 } };
+    const wait: QueuedAction = { kind: ActionKind.Wait };
+    const [tooFar] = plannedTargetLines(far, [bruiser], target, [plan("b", [move, wait, wait, attack("e")])]);
+    expect(tooFar).toMatchObject({ tick: 4, unreachable: true, missHint: "may miss: out of Range from the planned position" });
+    const closer: QueuedAction = { kind: ActionKind.Move, card: 0, destination: { col: 16, row: 1 } };
+    const [inReach] = plannedTargetLines(far, [bruiser], target, [plan("b", [closer, wait, wait, attack("e")])]);
+    expect(inReach!.missHint).toBeUndefined();
+    const [walled] = plannedTargetLines(grid, [hero("b", HeroClass.Bruiser, { col: 2, row: 2 })], [visible("e", { col: 5, row: 2 })], [plan("b", [attack("e")])]);
+    expect(walled!.missHint).toBe("may miss: no clear shot from the planned position");
+  });
+
   it("draws a red line with the blocked tile where a Wall stops the shot", () => {
     const shooter = hero("b", HeroClass.Bruiser, { col: 2, row: 2 });
     const [line] = plannedTargetLines(grid, [shooter], [visible("e", { col: 5, row: 2 })], [plan("b", [attack("e")])]);
