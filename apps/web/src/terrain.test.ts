@@ -2,8 +2,17 @@ import { parseGrid, REACTOR_DECK, TileKind } from "game-core";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildTerrain, choosePiece, FaceRole, gridToWorld, Join, lineScale, litTiles, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE, worldLineWidth } from "./terrain";
-import { OUTLINE, PIECE_SHAPE, TERRAIN_STYLE } from "./terrain-style";
+import { buildTerrain, choosePiece, coverMarks, FaceRole, gridToWorld, Join, lineScale, litTiles, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE, worldLineWidth } from "./terrain";
+import { HERO_REFERENCE_LUMINANCE, OUTLINE, PIECE_SHAPE, TERRAIN_STYLE } from "./terrain-style";
+
+/** WCAG relative luminance of a 0xRRGGBB colour. */
+function relativeLuminance(hex: number): number {
+  const [r, g, b] = [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255].map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+}
 
 const flatPoints = (points: number[]) => Array.from({ length: points.length / 2 }, (_, i) => ({ x: points[i * 2]!, y: points[i * 2 + 1]! }));
 
@@ -135,9 +144,8 @@ describe("choosePiece", () => {
     expect(choose(["OO"], 0, 0)).toEqual({ kind: "overwatchNest", form: "pillar", joins: 0 });
   });
 
-  it("draws Full Cover taller than Half Cover, both with the warning edge", () => {
-    expect(PIECE_SHAPE.fullCover.height).toBeGreaterThan(PIECE_SHAPE.halfCover.height);
-    expect(TERRAIN_STYLE.halfCover.edge).toBe(TERRAIN_STYLE.fullCover.edge);
+  it("draws Full Cover at least twice as tall as Half Cover", () => {
+    expect(PIECE_SHAPE.fullCover.height).toBeGreaterThanOrEqual(2 * PIECE_SHAPE.halfCover.height);
   });
 });
 
@@ -197,11 +205,55 @@ describe("tile brightness from sight", () => {
 describe("the look of the terrain (artboard J)", () => {
   const faces = (rows: string[]) => buildTerrain(parseGrid(rows)).flatMap((tile) => tile.piece ?? []);
 
-  it("outlines Wall and Nest faces dark and Cover faces warning yellow, all at the same width", () => {
+  it("outlines Wall and Nest faces dark, Full Cover with a bright top edge, Half Cover without one", () => {
     for (const face of faces(["#"])) expect(face.edge).toBe(OUTLINE.color);
     for (const face of faces(["O"])) expect(face.edge).toBe(OUTLINE.color);
-    for (const face of [...faces(["F"]), ...faces(["H"])]) expect(face.edge).toBe(TERRAIN_STYLE.fullCover.edge);
-    for (const face of faces(["#F"])) expect(face.edgeWidth).toBe(OUTLINE.width);
+    for (const face of faces(["F"])) expect(face.edge).toBe(face.role === FaceRole.Top ? TERRAIN_STYLE.fullCover.topEdge : OUTLINE.color);
+    expect(faces(["F"]).some((face) => face.role === FaceRole.Top)).toBe(true);
+    for (const face of faces(["H"])) expect(face.edge).toBe(TERRAIN_STYLE.halfCover.edge);
+  });
+
+  it("draws Cover outlines 1 px wide and Wall outlines at the outline width", () => {
+    for (const face of [...faces(["F"]), ...faces(["H"])]) expect(face.edgeWidth).toBe(1);
+    for (const face of faces(["#"])) expect(face.edgeWidth).toBe(OUTLINE.width);
+  });
+
+  it("keeps the Fog of War look", () => {
+    expect(TERRAIN_STYLE.floorLit).toEqual({ fill: 0x2c4257, edge: 0x3d5a73 });
+    expect(TERRAIN_STYLE.floorDark).toEqual({ fill: 0x0b1016, edge: 0x141c25 });
+    expect(TERRAIN_STYLE.primeZoneDark).toEqual({ fill: 0x0f1f22, edge: 0x1d6b66 });
+    expect(TERRAIN_STYLE.fogPieceAlpha).toBe(0.45);
+    expect(relativeLuminance(TERRAIN_STYLE.floorLit.fill)).toBeGreaterThan(relativeLuminance(TERRAIN_STYLE.floorDark.fill));
+  });
+
+  it("ranks Hero > Full Cover > Half Cover > Wall > floor by luminance", () => {
+    const mean = (s: { top: number; left: number; right: number }) => (relativeLuminance(s.top) + relativeLuminance(s.left) + relativeLuminance(s.right)) / 3;
+    const { floor, fullCover, halfCover, wall } = TERRAIN_STYLE;
+    expect(HERO_REFERENCE_LUMINANCE).toBeGreaterThan(mean(fullCover));
+    expect(mean(fullCover)).toBeGreaterThan(mean(halfCover));
+    expect(mean(halfCover)).toBeGreaterThan(mean(wall));
+    expect(mean(wall)).toBeGreaterThan(Math.max(relativeLuminance(floor.fill), relativeLuminance(floor.fillAlt)));
+    expect(relativeLuminance(floor.edge)).toBeLessThanOrEqual(0.1);
+    expect(relativeLuminance(floor.edge)).toBeLessThan(mean(fullCover));
+  });
+
+  it("gives Cover no warm tint and no yellow", () => {
+    const channels = (hex: number) => ({ r: (hex >> 16) & 255, b: hex & 255 });
+    for (const style of [TERRAIN_STYLE.fullCover, TERRAIN_STYLE.halfCover]) {
+      for (const hex of [style.top, style.left, style.right, style.edge, "topEdge" in style ? style.topEdge : style.edge]) {
+        const { r, b } = channels(hex);
+        expect(r - b).toBeLessThanOrEqual(12);
+        expect(hex).not.toBe(0xe5b429);
+      }
+    }
+  });
+
+  it("marks Cover with a shield only while aiming, once per Cover tile", () => {
+    const grid = parseGrid(["FH.", "#.F"]);
+    expect(coverMarks(grid, false)).toEqual([]);
+    const marks = coverMarks(grid, true);
+    expect(marks.map((mark) => mark.kind).sort()).toEqual(["full", "full", "half"]);
+    expect(new Set(marks.map((mark) => `${mark.position.col},${mark.position.row}`)).size).toBe(3);
   });
 
   it("draws the floor with fine grid lines, thinner than the piece outline", () => {
