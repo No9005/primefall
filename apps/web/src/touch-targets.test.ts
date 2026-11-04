@@ -133,6 +133,8 @@ const TARGETS: Target[] = [
   { name: "Start and end screen button", tier: "primary", selector: ".end-screen button", size: () => ({ width: 48 }), jsx: [{ file: "App.tsx", includes: "<button" }, { file: "EndScreen.tsx", includes: "<button" }] },
   { name: "Tutorial control", tier: "primary", selector: ".tutorial-controls button", jsx: ["tutorial-back", "tutorial-play", "tutorial-skip", "tutorial-exit"].map((includes) => ({ file: "TutorialScreen.tsx", includes })) },
   { name: "Tutorial demo card", tier: { none: "a moving picture of a card, tabIndex -1, no handler" }, jsx: [{ file: "TutorialScreen.tsx", includes: "tutorial-card" }] },
+  { name: "Hand fan", tier: { none: "the container of the Hand cards; a press in a gap of the fan grabs the card whose strip it is on, the cards are the targets" }, jsx: [{ file: "PlanningScreen.tsx", includes: "className={`hand${collapsed" }] },
+  { name: "Parked card", tier: "primary", selector: ".pull-card.parked.card", jsx: [{ file: "game-parts.tsx", includes: "pull-card card" }] },
   { name: "Pull backdrop", tier: { none: "the whole view behind the pulled card; a tap anywhere outside the card closes it" }, jsx: [{ file: "game-parts.tsx", includes: "pull-backdrop" }] },
 ];
 

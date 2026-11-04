@@ -37,4 +37,14 @@ describe("cardAtX", () => {
     expect(cardAtX(spacing, 4, strip * 2 + 2)).toBe(2);
     expect(cardAtX(spacing, 4, spacing.width - 1)).toBe(3);
   });
+
+  it("resolves every point across the whole width of the fan, gaps included, to the card whose strip it is on", () => {
+    for (const cards of [1, 2, 3, 4]) {
+      const spacing = fanSpacing(336, cards);
+      for (let x = 0; x < spacing.width; x += 1) {
+        const expected = Math.min(cards - 1, Math.floor(x / spacing.step));
+        expect(cardAtX(spacing, cards, x)).toBe(expected);
+      }
+    }
+  });
 });

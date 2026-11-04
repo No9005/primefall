@@ -15,6 +15,10 @@ export const SCREENSHOT_NAMES = [
   "04-resolution-start.png",
   "05-resolution-mid.png",
   "06-round-2.png",
+  "07-card-pressed.png",
+  "08-card-pulled.png",
+  "09-card-parked.png",
+  "10-card-back-in-hand.png",
 ] as const;
 
 export type ScreenshotName = (typeof SCREENSHOT_NAMES)[number];
@@ -97,6 +101,29 @@ async function playStandardPath(page: Page): Promise<void> {
   await page.getByTestId("round").filter({ hasText: "ROUND 2" }).waitFor({ timeout: 40_000 });
   await page.waitForTimeout(1500);
   await shoot("06-round-2.png");
+
+  // The card pull with a real pointer: press, drag up (the faces fade in), release in the middle (parked), then a low release.
+  const fan = (await hand.boundingBox())!;
+  const grab = { x: fan.x + fan.width * 0.08, y: fan.y + 30 };
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  await page.waitForTimeout(400);
+  await shoot("07-card-pressed.png");
+  await page.mouse.move(grab.x + 60, grab.y - 40, { steps: 4 });
+  await page.mouse.move(grab.x + 140, grab.y - 100, { steps: 4 });
+  await page.waitForTimeout(300);
+  await shoot("08-card-pulled.png");
+  await page.mouse.move(400, 215, { steps: 4 });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  await shoot("09-card-parked.png");
+  await page.mouse.click(700, 60); // outside the faces: the card goes back
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  await page.mouse.move(200, 330, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  await shoot("10-card-back-in-hand.png");
 }
 
 async function main(): Promise<void> {
