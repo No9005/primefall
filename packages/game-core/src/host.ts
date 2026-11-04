@@ -218,6 +218,8 @@ export interface MatchEvent {
    * gives AttackHit, DeckShuffled, AttackHit: the damage is the sum, the order is the order of the piles.
    */
   damage?: number;
+  /** The Hero that played the card, for a `ShieldGained` from a card (`heroId` is the receiver of the Shield). */
+  casterId?: string;
   /** The card that caused the event (for example "Slam Shot"); absent for events no card causes, such as Block. */
   card?: string;
   /** True when the card was played in Overdrive. */

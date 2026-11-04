@@ -38,7 +38,7 @@ describe("Utility cards: Shield", () => {
       planOf(BRUISER, [use(BULWARK, BRUISER)], [SLAM_SHOT]),
       planOf(RIGHT_BRUISER, [use(0, BRUISER)], [1], SquadId.Right),
     ]);
-    expect(events).toContainEqual({ kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Bulwark" });
+    expect(events).toContainEqual({ kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Bulwark", casterId: BRUISER });
     expect(events.find(({ kind }) => kind === EventKind.AttackHit)).toMatchObject({ absorbed: 2, damage: 0 });
     expect(hero(after, BRUISER).deck).toHaveLength(deckSize);
     expect(after.heroes.every((candidate) => candidate.shield === 0)).toBe(true);
@@ -47,7 +47,7 @@ describe("Utility cards: Shield", () => {
 
   it("Reinforce gives an allied Hero Shield 2", () => {
     const { match: after, events } = resolveRound(duel(), [planOf(BRUISER, [use(REINFORCE, CONTROLLER)], [SLAM_SHOT])]);
-    expect(events).toEqual([{ kind: EventKind.ShieldGained, tick: 1, heroId: CONTROLLER, amount: 2, card: "Reinforce" }]);
+    expect(events).toEqual([{ kind: EventKind.ShieldGained, tick: 1, heroId: CONTROLLER, amount: 2, card: "Reinforce", casterId: BRUISER }]);
     expect(after.heroes.every((candidate) => candidate.shield === 0)).toBe(true);
   });
 
