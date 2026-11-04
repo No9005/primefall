@@ -2,8 +2,8 @@ import { type EnemyView, EventKind, type GridPosition, type HeroClass, type Matc
 import type { TokenHero } from "./Board";
 import { attackClipName, type ClipName, clipOf } from "./hero-clips";
 
-/** How long the playback shows one step (one frame) at least; the animation never changes it. */
-export const STEP_MS = 450;
+/** How long the playback shows one step (one frame) at least; slow enough to follow who does what. The animation never changes it. */
+export const STEP_MS = 1200;
 
 /**
  * From the `fire` beat of the attacker's clip to the impact on the target. Until the effects ticket brings the real

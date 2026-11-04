@@ -57,8 +57,12 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 /* HUD placement (UI spec): at 844 x 390 and 667 x 375 the fitted board leaves the bottom corners and a strip at the
    top free. The hand bar stays within ~330 px of the left edge and the commit column within 110 px of the right edge,
    below the lower board edges; keep these sizes small when changing them. */
-/* Resolution commentary: a column at the top left; entries slide in per Tick. */
-.commentary { position: absolute; z-index: var(--z-hud); left: calc(8px + env(safe-area-inset-left)); top: calc(6px + env(safe-area-inset-top)); width: 236px; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+/* The Resolution bar: a thin strip across the top while the Ticks play, with the commentary below it. */
+.resolution-bar { position: absolute; z-index: var(--z-hud); left: 0; right: 0; top: 0; height: 28px; box-sizing: border-box; padding: 0 14px; display: flex; align-items: center; background: color-mix(in srgb, var(--ink) 93%, transparent); border-bottom: 1px solid var(--teal); font: 500 12px var(--font-number); letter-spacing: 0.2em; color: var(--teal); pointer-events: none; animation: slide-down var(--dur-ui) ease-out; }
+@keyframes slide-down { from { transform: translateY(-30px); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .resolution-bar { animation: none; } }
+/* Resolution commentary: a column at the top left, below the bar; entries slide in per Tick. */
+.commentary { position: absolute; z-index: var(--z-hud); left: calc(8px + env(safe-area-inset-left)); top: calc(38px + env(safe-area-inset-top)); width: 236px; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
 .commentary-entry { height: 36px; box-sizing: border-box; padding: 3px 8px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; background: color-mix(in srgb, var(--panel) 94%, transparent); border-left: 4px solid var(--steel); border-radius: var(--radius-s); white-space: nowrap; }
 .commentary-entry.own { border-left-color: var(--teal); }
 .commentary-entry.ally { border-left-color: var(--yellow); }
@@ -267,7 +271,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 }
 
 /* Timer pill: top right. */
-.timer-pill { position: absolute; z-index: var(--z-hud); top: calc(4px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); height: 34px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--steel); border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
+.timer-pill { position: absolute; z-index: calc(var(--z-hud) + 1); top: calc(4px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); height: 34px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--steel); border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
 .timer-round { font: 600 12px var(--font-label); letter-spacing: 0.08em; color: var(--muted); }
 .timer-time { font: 500 20px var(--font-number); color: var(--text); }
 .timer-amber { border-color: var(--amber); }
