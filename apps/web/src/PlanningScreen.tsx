@@ -773,11 +773,11 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   const aimsAtOtherHero =
     aimedCard !== undefined && !aimsAtTile && !aimsAtDeployTile && aimedCard.target !== CardTarget.SelfHero && aimedCard.target !== CardTarget.EnemiesInRange;
   const targetableIds = useMemo(() => {
-    if (!aimsAtOtherHero) return candidateIds;
+    if (!aimsAtOtherHero || !aimedCard) return candidateIds;
     const candidates = [...view.heroes, ...view.enemies].flatMap((unit) =>
       candidateIds.includes(unit.id) && "position" in unit ? [{ id: unit.id, position: unit.position }] : [],
     );
-    return targetsInReach(candidates, planningFrom, aimedCard?.range, (id) => shotLines.find((shot) => shot.targetId === id)?.ringed ?? true);
+    return targetsInReach(candidates, planningFrom, aimedCard, (id) => shotLines.find((shot) => shot.targetId === id)?.ringed ?? true);
   }, [aimsAtOtherHero, candidateIds, view.heroes, view.enemies, planningFrom, aimedCard, shotLines]);
   const rangeArea = useMemo(
     () => (aimsAtOtherHero && !playing && aimedCard ? cardRangeArea(knownGrid, planningFrom, aimedCard) : NO_RANGE),

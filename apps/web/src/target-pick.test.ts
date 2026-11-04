@@ -28,13 +28,13 @@ describe("targetsInReach", () => {
   ];
 
   it("keeps only the Heroes inside the square Range", () => {
-    expect(targetsInReach(enemies, origin, 2, () => true)).toEqual(["near", "blocked"]);
+    expect(targetsInReach(enemies, origin, { range: 2 }, () => true)).toEqual(["near", "blocked"]);
   });
   it("drops a Hero whose shot cannot hit", () => {
-    expect(targetsInReach(enemies, origin, 2, (id) => id !== "blocked")).toEqual(["near"]);
+    expect(targetsInReach(enemies, origin, { range: 2 }, (id) => id !== "blocked")).toEqual(["near"]);
   });
   it("reaches everyone for a card without a Range", () => {
-    expect(targetsInReach(enemies, origin, undefined, () => true)).toHaveLength(3);
+    expect(targetsInReach(enemies, origin, {},() => true)).toHaveLength(3);
   });
 });
 

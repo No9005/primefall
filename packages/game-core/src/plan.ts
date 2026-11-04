@@ -312,6 +312,14 @@ export function cardRangeArea(grid: Grid, origin: GridPosition, card: Pick<CardD
   return tiles;
 }
 
+/**
+ * Whether `position` is inside the Range area of the card around `origin`; the same shape as `cardRangeArea`.
+ * A card without a Range reaches every position.
+ */
+export function isInCardRange(origin: GridPosition, card: Pick<CardDefinition, "range">, position: GridPosition): boolean {
+  return card.range === undefined || chebyshevDistance(origin, position) <= card.range;
+}
+
 export interface WalkRequest {
   heroId: string;
   destination: GridPosition;

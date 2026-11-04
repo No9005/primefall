@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HeroClass } from "./cards";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { SquadId, type SquadView } from "./host";
-import { ActionKind, cardRangeArea, energyPool, type MoveAction, PlanIssueKind, type QueuedAction, validatePlan } from "./plan";
+import { ActionKind, cardRangeArea, energyPool, isInCardRange, type MoveAction, PlanIssueKind, type QueuedAction, validatePlan } from "./plan";
 import { type GridPosition, parseGrid } from "./reactor-deck";
 
 // The enemy Bruiser stands in sight of the Squad; the other enemies are still Unknown.
@@ -180,5 +180,19 @@ describe("cardRangeArea", () => {
     expect(tiles.find(({ position }) => position.col === 4 && position.row === 2)?.blocked).toBe(true);
     expect(tiles.find(({ position }) => position.col === 2 && position.row === 3)?.blocked).toBe(false);
     expect(cardRangeArea(grid, { col: 3, row: 3 }, {})).toEqual([]);
+  });
+
+  it("isInCardRange agrees with the drawn area for every tile", () => {
+    const origin = { col: 3, row: 3 };
+    const card = { range: 2 };
+    const inArea = positions(cardRangeArea(grid, origin, card));
+    for (let row = 0; row < grid.height; row++) {
+      for (let col = 0; col < grid.width; col++) {
+        const position = { col, row };
+        const isOrigin = col === origin.col && row === origin.row;
+        expect(isInCardRange(origin, card, position) && !isOrigin).toBe(inArea.some((tile) => tile.col === col && tile.row === row));
+      }
+    }
+    expect(isInCardRange(origin, {}, { col: 8, row: 5 })).toBe(true);
   });
 });
