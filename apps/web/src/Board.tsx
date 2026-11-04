@@ -5,6 +5,8 @@ import {
   type HeroClass,
   type RangeTile,
   type RevealedArea,
+  findTiles,
+  REACTOR_DECK,
   TileKind,
   tileAt,
 } from "game-core";
@@ -18,6 +20,7 @@ import {
   endMoveFraming,
   fitCamera,
   frameMoveCamera,
+  frameSquadCamera,
   type MoveFraming,
   takeOverFraming,
   turnCamera,
@@ -249,6 +252,13 @@ function fillFace(graphics: Graphics, { points, fill, edge, edgeWidth }: Face, s
   return graphics.poly(points).fill(fill).stroke({ width: worldLineWidth(edgeWidth, scale), color: edge, join: "round" });
 }
 
+/** The middle of the Prime Zone tiles (the zone is drawn faintly even in the fog, so using it reveals nothing). */
+function zoneCentre(): GridPosition | undefined {
+  const tiles = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+  if (tiles.length === 0) return undefined;
+  return { col: tiles.reduce((sum, t) => sum + t.col, 0) / tiles.length, row: tiles.reduce((sum, t) => sum + t.row, 0) / tiles.length };
+}
+
 interface BoardProps {
   /** Cover tiles the Squad has seen destroyed; the board draws them as open floor. */
   destroyedCover: readonly GridPosition[];
@@ -445,6 +455,8 @@ export function Board({
   // One tap handler on the stage picks in isometric space; it reads the latest candidates from here.
   const candidatesRef = useRef({ heroes: [...heroes, ...enemies], targetableIds, highlights });
   candidatesRef.current = { heroes: [...heroes, ...enemies], targetableIds, highlights };
+  const ownPositionsRef = useRef<GridPosition[]>([]);
+  ownPositionsRef.current = heroes.map((hero) => hero.position);
   const enemyIdsRef = useRef(new Set<string>());
   enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
   const bubbleSeen = useRef(new Set<string>());
@@ -1024,7 +1036,13 @@ export function Board({
       setTerrain({ floor, objects, planning });
 
       const size = (): CameraView => ({ width: app.screen.width, height: app.screen.height, angle: angleRef.current });
-      let camera = fitCamera(size());
+      // The start framing: the own Squad and the Prime Zone, never an enemy (Fog of War).
+      const startFraming = (): Camera => {
+        const view = size();
+        const zone = zoneCentre();
+        return zone ? frameSquadCamera(ownPositionsRef.current, zone, view, freeBoardArea(view, { kind: "idle" })) : fitCamera(view);
+      };
+      let camera = startFraming();
       const setCamera = (next: Camera) => {
         camera = next;
         world.scale.set(camera.scale);
@@ -1208,9 +1226,9 @@ export function Board({
         }
       });
 
-      // After a resize or rotation the view starts fitted again.
+      // After a resize or rotation the view starts framed on the own Squad again.
       setCamera(camera);
-      app.renderer.on("resize", () => setCameraByHand(fitCamera(size())));
+      app.renderer.on("resize", () => setCameraByHand(startFraming()));
     })();
 
     return () => {

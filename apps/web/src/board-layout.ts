@@ -1,5 +1,6 @@
 import { REACTOR_DECK, type Grid, type GridPosition } from "game-core";
 import type { Rect } from "./card-drag";
+import { HERO_WORLD_HEIGHT } from "./hero-style";
 import { footprintCorners, gridToWorld, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE, worldToGrid } from "./terrain";
 
 // Pure layout of the isometric board: camera, zoom and pan, and what a tap picks.
@@ -74,6 +75,11 @@ export function viewToWorld(
 export const MAX_ZOOM = 3;
 /** Zoom of the Hero view, as a multiple of the fitted scale. */
 export const HERO_ZOOM = 2.5;
+
+/** The start framing zooms in on the own Squad: this multiple of the fitted scale ... */
+export const SQUAD_ZOOM = 1.6;
+/** ... but never so far out that a Hero is lower than this on screen (CSS pixels). */
+export const MIN_HERO_SCREEN_HEIGHT = 40;
 
 export interface CameraView {
   width: number;
@@ -172,6 +178,53 @@ export function frameMoveCamera(hero: GridPosition, highlights: readonly GridPos
   const x = (area.left + area.right) / 2 - centreX * scale;
   const y = (area.top + area.bottom) / 2 - centreY * scale;
   return clampCameraIn({ scale, x, y }, view, area);
+}
+
+/**
+ * The start framing: zoomed in on the own Squad so the Heroes are readable, with the midpoint between the Squad and
+ * the Prime Zone in the middle of `free`. Then it shifts the least that keeps every Hero tile (and, if both fit, the
+ * Zone tile) inside `free` with a tile of margin; the Heroes win over the Zone. It uses only the positions passed in,
+ * never an enemy's, so Fog of War stays intact.
+ */
+export function frameSquadCamera(heroes: readonly GridPosition[], zone: GridPosition, view: CameraView, free: Rect): Camera {
+  if (heroes.length === 0) return fitCamera(view);
+  const fitted = fitCamera(view);
+  const scale = Math.min(Math.max(fitted.scale * SQUAD_ZOOM, MIN_HERO_SCREEN_HEIGHT / HERO_WORLD_HEIGHT), fitted.scale * MAX_ZOOM);
+  const world = (tile: GridPosition) => gridToWorld(tile, view.angle);
+  const squadPoints = heroes.map(world);
+  const squad = { x: average(squadPoints.map((p) => p.x)), y: average(squadPoints.map((p) => p.y)) };
+  const zonePoint = world(zone);
+  const middle = { x: (squad.x + zonePoint.x) / 2, y: (squad.y + zonePoint.y) / 2 };
+  const centre = { x: (free.left + free.right) / 2, y: (free.top + free.bottom) / 2 };
+  const offset = { x: centre.x - middle.x * scale, y: centre.y - middle.y * scale };
+
+  // Screen box of the tiles that must stay in view, with a tile of margin around the tile shapes.
+  const margin = TILE_WIDTH * scale;
+  const boxOf = (points: readonly { x: number; y: number }[]) => ({
+    left: Math.min(...points.map((p) => p.x)) * scale - (TILE_WIDTH * scale) / 2 - margin,
+    right: Math.max(...points.map((p) => p.x)) * scale + (TILE_WIDTH * scale) / 2 + margin,
+    top: Math.min(...points.map((p) => p.y)) * scale - (TILE_HEIGHT * scale) / 2 - margin,
+    bottom: Math.max(...points.map((p) => p.y)) * scale + (TILE_HEIGHT * scale) / 2 + margin,
+  });
+  const fits = (box: Rect) => box.right - box.left <= free.right - free.left && box.bottom - box.top <= free.bottom - free.top;
+  const withZone = boxOf([...squadPoints, zonePoint]);
+  const keep = fits(withZone) ? withZone : boxOf(squadPoints);
+  const shift = (low: number, high: number, areaLow: number, areaHigh: number, at: number) => {
+    if (high - low > areaHigh - areaLow) return (areaLow + areaHigh) / 2 - (low + high) / 2;
+    return Math.min(Math.max(at + low, areaLow), areaHigh - (high - low)) - (at + low);
+  };
+  return clampCamera(
+    {
+      scale,
+      x: offset.x + shift(keep.left, keep.right, free.left, free.right, offset.x),
+      y: offset.y + shift(keep.top, keep.bottom, free.top, free.bottom, offset.y),
+    },
+    view,
+  );
+}
+
+function average(values: readonly number[]): number {
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 /** Automatic framing of an armed Move: remembers the view to return to, and stops once the player moves the camera by hand. */

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { REACTOR_DECK, TileKind } from "game-core";
+import { findTiles, REACTOR_DECK, TileKind } from "game-core";
 import { describe, expect, it } from "vitest";
 import {
   beginMoveFraming,
@@ -10,6 +10,8 @@ import {
   boardBounds,
   clampCamera,
   computeCamera,
+  fitCamera,
+  frameSquadCamera,
   gridToWorld,
   HERO_PICK_TOLERANCE,
   HERO_ZOOM,
@@ -25,6 +27,8 @@ import {
   viewToWorld,
   worldToGrid,
 } from "./board-layout";
+import { freeBoardArea } from "./hud-layout";
+import { HERO_WORLD_HEIGHT } from "./hero-style";
 
 const assetsDir = path.resolve(__dirname, "../public/assets");
 const manifest = JSON.parse(readFileSync(path.join(assetsDir, "manifest.json"), "utf8")) as {
@@ -346,5 +350,68 @@ describe("framing a Move", () => {
     const byHand = zoomAt(fitted, fitted.scale * 2, 100, 100, view);
     expect(framing?.automatic).toBe(false);
     expect(endMoveFraming(framing!, byHand)).toEqual(byHand);
+  });
+});
+
+describe("frameSquadCamera", () => {
+  const spawns = findTiles(REACTOR_DECK, TileKind.Spawn);
+  const zoneTiles = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+  const zone = {
+    col: zoneTiles.reduce((sum, t) => sum + t.col, 0) / zoneTiles.length,
+    row: zoneTiles.reduce((sum, t) => sum + t.row, 0) / zoneTiles.length,
+  };
+  const squadAt = (side: "left" | "right") =>
+    spawns.filter((t) => (side === "left" ? t.col < REACTOR_DECK.width / 2 : t.col > REACTOR_DECK.width / 2)).sort((a, b) => a.row - b.row);
+  const viewOf = (width: number, height: number) => ({ width, height, angle: 45 });
+  const freeOf = (width: number, height: number) => freeBoardArea({ width, height }, { kind: "idle" });
+  const screenOf = (tile: { col: number; row: number }, camera: { scale: number; x: number; y: number }) => {
+    const { x, y } = gridToWorld(tile, 45);
+    return { x: x * camera.scale + camera.x, y: y * camera.scale + camera.y };
+  };
+
+  it("zooms to 1.6 times the fitted scale and shows Heroes at least 40 px high", () => {
+    const view = viewOf(844, 390);
+    const camera = frameSquadCamera(squadAt("left"), zone, view, freeOf(844, 390));
+    // 1.6 times fitted, raised only as far as the 40 px Hero height needs.
+    expect(camera.scale).toBeGreaterThanOrEqual(fitCamera(view).scale * 1.6 - 1e-9);
+    expect(camera.scale).toBeLessThan(fitCamera(view).scale * 1.6 + 0.005);
+    expect(HERO_WORLD_HEIGHT * camera.scale).toBeGreaterThanOrEqual(40);
+  });
+
+  it.each([
+    [844, 390],
+    [667, 375],
+    [932, 430],
+  ])("keeps every own Hero tile inside the free area with a tile of margin at %i x %i", (width, height) => {
+    const view = viewOf(width, height);
+    const free = freeOf(width, height);
+    // The player is the Left Squad. (The Right Squad's Spawn lies in the board's bottom corner, where the camera
+    // clamp keeps the view on the board and so cannot give the same margin.)
+    const camera = frameSquadCamera(squadAt("left"), zone, view, free);
+    expect(HERO_WORLD_HEIGHT * camera.scale).toBeGreaterThanOrEqual(40);
+    const margin = TILE_WIDTH * camera.scale;
+    for (const tile of squadAt("left")) {
+      const { x, y } = screenOf(tile, camera);
+      expect(x - margin).toBeGreaterThanOrEqual(free.left - 0.5);
+      expect(x + margin).toBeLessThanOrEqual(free.right + 0.5);
+      expect(y - margin).toBeGreaterThanOrEqual(free.top - 0.5);
+      expect(y + margin).toBeLessThanOrEqual(free.bottom + 0.5);
+    }
+  });
+
+  it("depends only on the own Heroes and the Zone passed in", () => {
+    const view = viewOf(844, 390);
+    const free = freeOf(844, 390);
+    const own = squadAt("left");
+    expect(frameSquadCamera([...own], { ...zone }, view, free)).toEqual(frameSquadCamera(own, zone, view, free));
+    // The other Squad is framed on its own Heroes, so it differs from the first Squad's framing.
+    expect(frameSquadCamera(squadAt("right"), zone, view, free)).not.toEqual(frameSquadCamera(own, zone, view, free));
+  });
+
+  it("is a valid camera that can be panned", () => {
+    const view = viewOf(844, 390);
+    const camera = frameSquadCamera(squadAt("left"), zone, view, freeOf(844, 390));
+    expect(clampCamera(camera, view)).toEqual(camera);
+    expect(isZoomed(camera, view)).toBe(true);
   });
 });

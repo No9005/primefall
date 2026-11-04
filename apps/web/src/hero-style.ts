@@ -56,6 +56,9 @@ export function heroLook(heroClass: HeroClass, enemy: boolean): HeroLook {
   };
 }
 
+/** Height of a Hero from its feet to the top of the head or the rifle, in world pixels. */
+export const HERO_WORLD_HEIGHT = 113;
+
 export const HERO_STYLE = {
   outline: OUTLINE,
   /** The rig is drawn in design pixels (a tile is 46 px wide there, 128 px in the game), so figure and marks are magnified by this factor: a Hero is then about 100 px tall. */
