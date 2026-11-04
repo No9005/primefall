@@ -11,6 +11,10 @@ export type ClipName =
   | "longShot"
   | "tagRound"
   | "slowPulse"
+  | "scoutDrone"
+  | "aegis"
+  | "deploy"
+  | "hidden"
   | "block"
   | "hit"
   | "absorb"
@@ -24,7 +28,8 @@ export type ClipName =
  * `rig` moves the whole figure (the knock-back of a Hit, the fall of Exhaustion); `flash` is the white flash and `ring`
  * the red flash of the Squad ring, `teamRing` the Squad ring itself. `grey` is how far an Exhausted Hero has gone grey,
  * `dropGun` the rifle an Exhausted Assassin flings, `sparks` and `beaconRed` the Exhaustion of a Controller; `beacon` is
- * its yellow light (clip-driven only while Exhausted, otherwise the board blinks it).
+ * its yellow light (clip-driven only while Exhausted, otherwise the board blinks it). `drone` is the Scout Drone (a shape
+ * of its own that flies its path, `rotor` its flickering blade) and `cloak` the cyan flash of a Hidden Assassin.
  */
 export const PARTS = [
   "torso",
@@ -46,6 +51,9 @@ export const PARTS = [
   "sparks",
   "beacon",
   "beaconRed",
+  "drone",
+  "rotor",
+  "cloak",
 ] as const;
 export type PartName = (typeof PARTS)[number];
 
@@ -88,7 +96,7 @@ export interface Clip {
 const REST_PART: PartPose = { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, alpha: 1 };
 const REST_ROTATION: Partial<Record<PartName, number>> = { armF: -30, armB: 4 };
 /** Overlays that show only while a clip moves them. */
-const HIDDEN_AT_REST: ReadonlySet<PartName> = new Set(["pause", "flash", "ring", "grey", "dropGun", "sparks", "beaconRed"]);
+const HIDDEN_AT_REST: ReadonlySet<PartName> = new Set(["pause", "flash", "ring", "grey", "dropGun", "sparks", "beaconRed", "drone", "cloak"]);
 
 export function restPart(part: PartName): PartPose {
   return { ...REST_PART, rotation: REST_ROTATION[part] ?? 0, alpha: HIDDEN_AT_REST.has(part) ? 0 : 1 };
@@ -451,6 +459,49 @@ const CONTROLLER_SPARKS = (): Track[] => [
   track("beaconRed", "alpha", "ease-in-out", [[0, [0, 12]], [1, [14, 45]], [0, [55, 100]]]),
 ];
 
+// ---- Utility gestures (the dr-*, ae-*, dp-* and hd-* keyframes) -----------------------------------------------------------
+
+/** The rotor of the drone flickers ten times a second: full width and a third of it, every 100 ms of the 3600 ms. */
+const ROTOR_FLICKER = (): Track => ({
+  part: "rotor",
+  prop: "scaleX",
+  keys: Array.from({ length: 37 }, (_, i) => ({ at: i / 36, value: i % 2 === 0 ? 1 : 0.3, ease: "linear" as const })),
+});
+
+/** Scout Drone: the Controller taps the wrist console, the drone lifts off the backpack, flies out, hovers and returns. */
+const SCOUT_DRONE = (): Track[] => [
+  track("armB", "rotation", "ease-in-out", [[4, [0, 8, 30, 100]], [-120, [14, 22]]]),
+  track("drone", "x", "ease-in-out", [[0, [0, 10, 22, 94, 100]], [88, [46, 54, 62, 70]], [2, [84]]]),
+  track("drone", "y", "ease-in-out", [[0, [0, 10, 94, 100]], [-12, [22]], [-22, [46]], [-18, [54]], [-23, [62]], [-19, [70]], [-14, [84]]]),
+  // Stowed on the backpack again at the end: the drone is not drawn at rest.
+  track("drone", "alpha", "linear", [[1, [0, 98]], [0, [100]]]),
+  ROTOR_FLICKER(),
+];
+
+/** Aegis Protocol: points the emitter at an ally and holds the beam on it. */
+const AEGIS = (): Track[] => [
+  track("armF", "rotation", "ease-in-out", [[-30, [0, 12, 66, 100]], [-90, [22, 50]]]),
+  track("torso", "rotation", "ease-in-out", [[0, [0, 12, 66, 100]], [3, [22, 50]]]),
+];
+
+/** Deploy Cover / Fortify: slams the deployer into the ground, then straightens up. */
+const DEPLOY = (): Track[] => [
+  track("torso", "y", "ease-in-out", [[0, [0, 10, 64, 100]], [2, [22, 44]], [3, [28]]]),
+  track("torso", "rotation", "ease-in-out", [[0, [0, 10, 64, 100]], [8, [22, 44]], [14, [28]]]),
+  track("armF", "rotation", "ease-in-out", [[-30, [0, 10, 44, 64, 100]], [-120, [22]], [-20, [28]]]),
+];
+
+/** The Assassin's Hidden: a cloak sweep with the back arm and a cyan flash, a faint flickering ghost, a flash on the return. */
+const HIDDEN = (): Track[] => [
+  track("rig", "alpha", "ease-in-out", [[1, [0, 10, 22, 92, 100]], [0.35, [30]], [0.22, [40]], [0.38, [50]], [0.24, [60]], [0.36, [70]], [0.26, [80]], [0.3, [86]]]),
+  track("rig", "x", "ease-in-out", [[0, [0, 10, 80, 100]], [0.6, [40, 60]], [-0.6, [50]], [-0.4, [70]]]),
+  track("cloak", "alpha", "ease-in-out", [[0, [0, 10, 100]], [0.7, [22, 92]], [0.25, [30, 86]]]),
+  track("armB", "rotation", "ease-in-out", [[4, [0, 10, 32, 100]], [-112, [16, 24]]]),
+  track("teamRing", "alpha", "ease-in-out", [[1, [0, 10, 96, 100]], [0.25, [30, 86]]]),
+  track("cape", "rotation", "ease-in-out", [[0, [0, 10, 34, 100]], [34, [16, 24]]]),
+  track("cape", "scaleX", "ease-in-out", [[1, [0, 10, 34, 100]], [1.5, [16, 24]]]),
+];
+
 const pulse = (name: ClipName, durationMs: number, activeEndMs: number): Clip =>
   once(name, durationMs, activeEndMs, PULSE_BOLT(), Math.round((durationMs * 0.26) / 10) * 10);
 
@@ -495,12 +546,16 @@ const CLIPS: Record<HeroClass, Partial<Record<ClipName, Clip>>> = {
     attack: pulse("attack", 2400, 1630),
     tagRound: pulse("tagRound", 2800, 1400),
     slowPulse: pulse("slowPulse", 2600, 2180),
+    scoutDrone: once("scoutDrone", 3600, 3380, SCOUT_DRONE()),
+    aegis: once("aegis", 3200, 2560, AEGIS()),
+    deploy: once("deploy", 3400, 2720, DEPLOY()),
     exhausted: once("exhausted", EXHAUSTED_MS, EXHAUSTED_ACTIVE_END_MS, [...EXHAUSTED_FALL(CONTROLLER_FALL), ...CONTROLLER_SPARKS()]),
   },
   [HeroClass.Assassin]: {
     ...CAPED,
     attack: once("attack", 2200, 1450, PRECISION_SHOT(), 570),
     longShot: once("longShot", 3600, 3170, LONG_SHOT(), 1650),
+    hidden: once("hidden", 4200, 4200, HIDDEN()),
     exhausted: once("exhausted", EXHAUSTED_MS, EXHAUSTED_ACTIVE_END_MS, [...EXHAUSTED_FALL(ASSASSIN_FALL), ...ASSASSIN_RIFLE()]),
   },
 };

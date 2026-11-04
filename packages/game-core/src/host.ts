@@ -220,6 +220,8 @@ export interface MatchEvent {
   damage?: number;
   /** True when Half Cover on the target's tile reduced the damage, for `AttackHit`. */
   halfCover?: boolean;
+  /** The Hero that played the card, for a `ShieldGained` from a card (`heroId` is the receiver of the Shield). */
+  casterId?: string;
   /** The card that caused the event (for example "Slam Shot"); absent for events no card causes, such as Block. */
   card?: string;
   /** True when the card was played in Overdrive. */
