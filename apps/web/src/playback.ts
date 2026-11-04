@@ -2,8 +2,8 @@ import { type EnemyView, EventKind, type GridPosition, type MatchEvent, Visibili
 import type { TokenHero } from "./Board";
 import type { ClipName } from "./hero-clips";
 
-/** How long the playback shows one step (one frame); the animation never changes it. */
-export const STEP_MS = 450;
+/** How long the playback shows one step (one frame); slow enough to follow who does what. The animation never changes it. */
+export const STEP_MS = 1200;
 
 /**
  * The enemy tokens of the board: Visible ones as they are (`place` puts them where the playback has them), Ghosts
