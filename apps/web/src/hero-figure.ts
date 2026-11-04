@@ -348,6 +348,29 @@ export function marksFigure(marks: HeroMarks, cameraScale: number): Container {
   return container;
 }
 
+/**
+ * The row of `total` filled rubies as separate shapes, each centred on its own origin so it can pop, swell or burst on
+ * its own. The container is scaled like `marksFigure`; the rubies keep their places when one of them goes.
+ */
+export function rubyPieces(total: number, cameraScale: number): { row: Container; rubies: Graphics[] } {
+  const { ruby } = HERO_STYLE.marks;
+  const scale = cameraScale * HERO_STYLE.figureScale;
+  const line = { width: worldLineWidth(HERO_STYLE.outline.width, scale), color: HERO_STYLE.outline.color, join: "round" as const };
+  const row = new Container();
+  row.scale.set(HERO_STYLE.figureScale);
+  const step = ruby.size * 2 + ruby.gap;
+  const rubies = Array.from({ length: total }, (_, i) => {
+    const piece = new Graphics();
+    piece.poly(rubyPoints(0, 0, ruby.size)).fill(ruby.fill).stroke(line);
+    const top = -ruby.size * 0.9;
+    piece.poly([-ruby.size * 0.55, top, ruby.size * 0.55, top, 0, -ruby.size * 0.1]).fill(ruby.facet);
+    piece.position.set((-(total - 1) * step) / 2 + i * step, ruby.rowY);
+    row.addChild(piece);
+    return piece;
+  });
+  return { row, rubies };
+}
+
 /** The translucent blue shield in front of the Hero, an upright ellipse with a brighter edge. */
 export function shieldBubble(cameraScale: number): Graphics {
   const { fill, fillAlpha, edgeAlpha, radiusX, radiusY, centerY } = HERO_STYLE.marks.bubble;

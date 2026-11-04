@@ -97,6 +97,11 @@ function dealDamage(match: MatchState, tick: number, source: HeroState, target: 
   reportHit();
 }
 
+/** Marks the hits from `first` on as reduced by Half Cover, so the playback can show the projectile hitting the wall. */
+function flagHalfCover(events: MatchEvent[], first: number): void {
+  for (const event of events.slice(first)) if (event.kind === EventKind.AttackHit) event.halfCover = true;
+}
+
 /** A Hero stops being Hidden when it attacks or is revealed (Marked). */
 function endHidden(tick: number, hero: HeroState, events: MatchEvent[]): void {
   if (hero.hidden === 0) return;
@@ -267,6 +272,7 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const damage = damageAtDistance(damageEffect, distance) + hero.attackBonus;
     const incoming = Math.max(0, damage - (halfCover ? HALF_COVER_REDUCTION : 0));
     dealDamage(match, tick, hero, target, incoming, events);
+    if (halfCover && damage > 0) flagHalfCover(events, first);
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplySlow)) {
       applySlow(tick, hero, target, effect, events);
     }
@@ -314,7 +320,9 @@ function resolveTileAttack(match: MatchState, tick: number, { hero, card, tile }
     } else if (occupant) {
       const amount = (card.effects.find(({ kind }) => kind === EffectKind.Damage)?.amount ?? 0) + hero.attackBonus;
       const reduced = cover === CoverKind.Half && !hero.ignoresHalfCover;
+      const first = events.length;
       dealDamage(match, tick, hero, occupant, Math.max(0, amount - (reduced ? HALF_COVER_REDUCTION : 0)), events);
+      if (reduced && amount > 0) flagHalfCover(events, first);
     }
   }
   const destroysAny = isTileBlast(card);

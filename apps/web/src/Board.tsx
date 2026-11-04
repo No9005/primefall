@@ -34,9 +34,9 @@ import {
 } from "./board-layout";
 import { freeBoardArea } from "./hud-layout";
 import { buildTerrain, depthOf, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
-import { applyPose, applyRestPose, type BoundPart, bindParts, ClipPlayer } from "./clip-player";
-import { EffectsLayer, markedMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
-import type { EffectCue } from "./weapon-effects";
+import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
+import { EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
+import { type EffectCue, slideProgress } from "./weapon-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
 import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
@@ -412,6 +412,14 @@ export function Board({
   const enemyIdsRef = useRef(new Set<string>());
   enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
   const bubbleSeen = useRef(new Set<string>());
+  // When the playback frame being shown started. The Shield and the Knockback slide of the Heroes follow it, so a redraw of
+  // the figures in the middle of a frame (Cover that changes) does not start them again.
+  const frameClock = useRef(performance.now());
+  const frameOfEffects = useRef(effects);
+  if (frameOfEffects.current !== effects) {
+    frameOfEffects.current = effects;
+    frameClock.current = performance.now();
+  }
   // One clip player per Hero; the figures are drawn again for every frame, the players (and their cross-fades) are not.
   const clipPlayers = useRef(new Map<string, ClipPlayer>());
   const [pressed, setPressed] = useState<GridPosition>();
@@ -538,6 +546,9 @@ export function Board({
     // The rings of the Heroes that can be tapped as target pulse (issue 209); with reduced motion they stand still.
     const pulsingRings: Graphics[] = [];
     const statusMarks: StatusMark[] = [];
+    // Shields that change in this frame, and Heroes that slide one tile of Knockback (the rules moved them already).
+    const shieldMarks: StatusMark[] = [];
+    const slides: { token: Container; fromX: number; fromY: number; startMs: number }[] = [];
     // The figures that play a clip (not the hit or Exhausted ones, which are flat poses).
     const animated: { id: string; heroClass: HeroClass; cover: CoverKind; parts: BoundPart[] }[] = [];
     const ring = (color: number) =>
@@ -550,6 +561,12 @@ export function Board({
       token.position.set(x, y + footOffset(angle));
       token.zIndex = depthOf(hero.position, angle) + 0.5;
       const targetable = targetableIds.includes(hero.id);
+      const slide = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? undefined : effects.find((cue) => cue.kind === "knockback" && cue.toId === hero.id);
+      if (slide?.kind === "knockback") {
+        // The token starts on the tile it was pushed from and slides to the one the rules put it on.
+        const from = gridToWorld(slide.from, angle);
+        slides.push({ token, fromX: from.x - x, fromY: from.y - y, startMs: slide.startMs });
+      }
       if (hero.id === selectedId) token.addChild(ring(0x2ec4b6));
       const cannotHit = shotLines.some((shot) => shot.targetId === hero.id && !shot.ringed);
       if (targetable && !cannotHit) {
@@ -572,14 +589,31 @@ export function Board({
       if (beacon && pose === "idle" && !falling) cancels.push(animateBeacon(beacon));
       if (pose === "idle") animated.push({ id: hero.id, heroClass: hero.heroClass, cover: coverAt(coverGrid, hero.position), parts: bindParts(figure, falling) });
       const heroMarks = hero.ghost ? undefined : marks[hero.id];
-      if (heroMarks && (heroMarks.rubies > 0 || heroMarks.icons.length > 0)) {
+      // A Shield that changes in this frame (gained, or hit and absorbing) is drawn with its own animation.
+      let shield: StatusMark | undefined;
+      if (!reduced && !hero.ghost) {
+        const gain = effects.find((cue) => cue.kind === "shieldGain" && cue.toId === hero.id);
+        const hit = effects.find((cue) => cue.kind === "shieldHit" && cue.toId === hero.id);
+        if (gain?.kind === "shieldGain" || hit?.kind === "shieldHit") {
+          shield = shieldMark({
+            held: heroMarks?.rubies ?? 0,
+            ...(gain?.kind === "shieldGain" && { gain: { startMs: gain.startMs, amount: gain.amount } }),
+            ...(hit?.kind === "shieldHit" && { hit: { startMs: hit.startMs, absorbed: hit.absorbed } }),
+            cameraScale: strokeScale,
+          });
+          token.addChild(shield.container);
+          shieldMarks.push(shield);
+        }
+      }
+      if (shield === undefined && heroMarks && (heroMarks.rubies > 0 || heroMarks.icons.length > 0)) {
         token.addChild(marksFigure(heroMarks, strokeScale));
       }
-      if (heroMarks?.bubble) {
+      // (The bubble of an animated Shield is part of its mark.)
+      if (shield === undefined && heroMarks?.bubble) {
         const bubble = shieldBubble(strokeScale);
         token.addChild(bubble);
         if (!bubbleSeen.current.has(hero.id)) cancels.push(animateAppear(bubble, HERO_STYLE.marks.bubble.appearMs));
-      } else if (bubbleSeen.current.has(hero.id) && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      } else if (shield === undefined && bubbleSeen.current.has(hero.id) && !reduced) {
         // The Shield was used up or expired: the bubble fades away (not with reduced motion).
         const bubble = shieldBubble(strokeScale);
         token.addChild(bubble);
@@ -587,7 +621,7 @@ export function Board({
       }
       // Marked and Slow are state: drawn whenever the Hero has them, also when the board is loaded mid-match. In the frame
       // that applies one, the effects layer draws it with its lock-on instead.
-      const locking = (kind: string) => effects.some((cue) => cue.kind === kind && cue.toId === hero.id);
+      const locking = (kind: string) => effects.some((cue) => cue.kind === kind && "toId" in cue && cue.toId === hero.id);
       if (hero.marked && !hero.exhausted && !hero.ghost && !locking("marked")) {
         const mark = markedMark();
         token.addChild(mark.container);
@@ -631,6 +665,12 @@ export function Board({
     // The clip of every Hero: the active one of this frame, Idle otherwise. Reduced motion stands on the rest frame.
     let clipFrame = 0;
     const playClips = (now: number) => {
+      const frameMs = (now - frameClock.current) * CLIP_SPEED;
+      for (const mark of shieldMarks) mark.update(frameMs);
+      for (const { token, fromX, fromY, startMs } of slides) {
+        const left = 1 - slideProgress(frameMs - startMs);
+        token.pivot.set(-fromX * left, -fromY * left);
+      }
       // Marked and Slow are past their lock-on here; the Slow field keeps breathing.
       for (const mark of statusMarks) mark.update(reducedMotion ? STATUS_AT_REST_MS : 300 + now - pulseStart);
       for (const { id, heroClass, cover, parts } of animated) {
@@ -675,13 +715,19 @@ export function Board({
     const layer = effectsLayer.current;
     if (!layer || !effectsHost) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const place = (id: string) => {
-      const hero = candidatesRef.current.heroes.find((candidate) => candidate.id === id);
-      if (!hero) return undefined;
-      const { x, y } = gridToWorld(hero.position, angleRef.current);
+    const tile = (position: GridPosition) => {
+      const { x, y } = gridToWorld(position, angleRef.current);
       return { x, y: y + footOffset(angleRef.current) };
     };
-    layer.play(effects, performance.now(), place, reduced);
+    const world: EffectsWorld = {
+      place: (id) => {
+        const hero = candidatesRef.current.heroes.find((candidate) => candidate.id === id);
+        return hero && tile(hero.position);
+      },
+      tile,
+      own: (id) => !enemyIdsRef.current.has(id),
+    };
+    layer.play(effects, frameClock.current, world, reduced);
     let frame = 0;
     const step = () => {
       const shake = layer.update(performance.now());

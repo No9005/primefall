@@ -1,7 +1,7 @@
 import { CoverKind, type EnemyView, EventKind, type GridPosition, type HeroClass, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
 import type { TokenHero } from "./Board";
 import { attackClipName, type ClipName, clipOf, takeCoverClipName } from "./hero-clips";
-import { cueEndMs, type EffectCue, effectCuesOf, impactMs } from "./weapon-effects";
+import { type CoverEdit, coverEditsOf, cueEndMs, type EffectCue, effectCuesOf, impactMs } from "./weapon-effects";
 
 /** How long the playback shows one step (one frame) at least; slow enough to follow who does what. The animation never changes it. */
 export const STEP_MS = 1200;
@@ -53,6 +53,8 @@ export interface PlaybackFrame {
   delays: Record<string, number>;
   /** The effects of the attacks of this frame (flash, projectile, impact, numbers, Marked and Slow). */
   effects: EffectCue[];
+  /** Cover that is placed or destroyed in this frame, each at the moment its effect shows it. */
+  coverEdits: CoverEdit[];
   /**
    * How long the frame lasts at normal clip speed: until the slowest clip of the frame has reached its active end,
    * and at least one step.
@@ -82,7 +84,7 @@ export function buildPlaybackFrames(
     for (const event of events.filter((candidate) => candidate.tick === tick)) {
       const occurrence = seen.get(event.heroId) ?? 0;
       seen.set(event.heroId, occurrence + 1);
-      tickFrames[occurrence] ??= { tick, moves: {}, shields: {}, hits: [], exhausted: [], clips: {}, delays: {}, effects: [], holdMs: STEP_MS, events: [] };
+      tickFrames[occurrence] ??= { tick, moves: {}, shields: {}, hits: [], exhausted: [], clips: {}, delays: {}, effects: [], coverEdits: [], holdMs: STEP_MS, events: [] };
       const frame = tickFrames[occurrence];
       frame.events.push(event);
       // `to` of a Cover or area event is a tile of the board, not a place the Hero moves to.
@@ -143,6 +145,7 @@ export function buildPlaybackFrames(
         return heroClass === undefined ? DEFAULT_FIRE_MS : clipOf(heroClass, attackClipName(card)).fireMs ?? DEFAULT_FIRE_MS;
       };
       frame.effects = effectCuesOf(frame.events, fireOf);
+      frame.coverEdits = coverEditsOf(frame.effects);
     }
     // A Wait lasts the whole Tick; a Step in the same frame wins over it.
     for (const event of events) {
