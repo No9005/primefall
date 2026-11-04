@@ -1,4 +1,4 @@
-import { EventKind, type MatchEvent } from "game-core";
+import { AttackFailReason, EventKind, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
 import { buildCommentary, type CommentarySide } from "./commentary";
 
@@ -28,17 +28,25 @@ describe("buildCommentary", () => {
   it("covers Block, a failed Attack, Utility and Exhaustion", () => {
     const entries = build([
       event(EventKind.ShieldGained, "me", { amount: 2 }),
-      event(EventKind.AttackFailed, "ally", { targetId: "foe" }),
+      event(EventKind.AttackFailed, "ally", { targetId: "foe", card: "Slam Shot", reason: AttackFailReason.OutOfRange }),
       event(EventKind.SlowApplied, "ally", { targetId: "foe" }),
       event(EventKind.Exhausted, "foe"),
     ]);
     expect(entries.map((entry) => entry.detail)).toEqual([
       "Shield 2 until it is hit",
-      "Target is out of range, out of sight or already Exhausted: nothing happens",
+      "Slam Shot misses: target is out of Range",
       "Its next Move 2 becomes a Move 1",
       "Out of cards: Exhausted",
     ]);
     expect(entries[1]).toMatchObject({ side: "ally", title: "Controller  ·  Attack on Enemy Bruiser" });
+  });
+
+  it("says why an Attack missed, and shows no distance for a target that was not visible", () => {
+    const miss = (reason: AttackFailReason) => build([event(EventKind.AttackFailed, "me", { targetId: "foe", card: "Slam Shot", reason })])[0]!.detail;
+    expect(miss(AttackFailReason.NotVisible)).toBe("Slam Shot misses: target not visible");
+    expect(miss(AttackFailReason.NoLineOfSight)).toBe("Slam Shot misses: no Line of Sight to the target");
+    expect(miss(AttackFailReason.FullCover)).toBe("Slam Shot misses: target is behind Full Cover");
+    expect(miss(AttackFailReason.TargetExhausted)).toBe("Slam Shot misses: target is already Exhausted");
   });
 
   it("lists only your own Wait and skips follow-up events", () => {

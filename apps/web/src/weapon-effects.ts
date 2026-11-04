@@ -1,4 +1,4 @@
-import { EffectKind, EventKind, type GridPosition, HERO_DECKS, LONG_RANGE_FROM, type MatchEvent } from "game-core";
+import { AttackFailReason, EffectKind, EventKind, type GridPosition, HERO_DECKS, LONG_RANGE_FROM, type MatchEvent } from "game-core";
 
 // The effects of the attacks (docs/design/animation/README.md, "Effects"): which cue an event causes and when it starts and
 // ends. Pure data and functions, so the scheduling is tested without a browser; `effects-layer.ts` draws the cues.
@@ -396,12 +396,11 @@ function hitNumbers(event: MatchEvent, startMs: number): EffectCue[] {
   return cues;
 }
 
-/** Why a failed Attack failed, as the number shows it: beyond the Range of its card, or stopped on the way. */
+/** Why a failed Attack failed, as the number shows it: beyond the Range of its card, not visible, or stopped on the way. */
 export function failureText(event: MatchEvent): string {
-  const card = Object.values(HERO_DECKS)
-    .flat()
-    .find((candidate) => candidate.name === event.card);
-  return card?.range !== undefined && (event.distance ?? 0) > card.range ? "Out of range" : "Blocked";
+  if (event.reason === AttackFailReason.OutOfRange) return "Out of range";
+  if (event.reason === AttackFailReason.NotVisible) return "Not visible";
+  return "Blocked";
 }
 
 /**

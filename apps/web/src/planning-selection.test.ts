@@ -27,7 +27,7 @@ describe("pickInstruction", () => {
   });
 
   it("says to move closer when no enemy is inside the Range", () => {
-    expect(pickInstruction({ ...base, noEnemyInRange: true })).toBe("No enemy in range: move closer first");
+    expect(pickInstruction({ ...base, noEnemyInRange: true })).toBe("No enemy in sight");
   });
 
   it("asks for the first and then the second ally when a card needs two", () => {

@@ -1,4 +1,4 @@
-import { EventKind, HeroClass, type MatchEvent } from "game-core";
+import { AttackFailReason, EventKind, HeroClass, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
 import { buildPlaybackFrames } from "./playback";
 import { cueEndMs, effectCuesOf, flightMs, flightProgress, impactMs, numberAt, reticleAt, shakeAt, weaponOf } from "./weapon-effects";
@@ -55,10 +55,12 @@ describe("the cues of the events", () => {
     expect(numbers.map((cue) => (cue.kind === "number" ? [cue.text, cue.style] : []))).toEqual([["Shield -1", "shield"], ["-1", "damage"]]);
   });
 
-  it("names a failed Attack Blocked, or Out of range beyond the Range of its card", () => {
-    const failed = (distance: number): MatchEvent => ({ kind: EventKind.AttackFailed, tick: 1, heroId: "a", targetId: "t", card: "Slam Shot", distance });
-    expect(effectCuesOf([failed(2)], fireOf)).toEqual([{ kind: "number", toId: "t", startMs: 640, text: "Blocked", style: "failed" }]);
-    expect(effectCuesOf([failed(5)], fireOf)[0]).toMatchObject({ text: "Out of range" });
+  it("names a failed Attack by its reason: Out of range, Not visible, or Blocked", () => {
+    const failed = (reason: AttackFailReason): MatchEvent => ({ kind: EventKind.AttackFailed, tick: 1, heroId: "a", targetId: "t", card: "Slam Shot", reason });
+    expect(effectCuesOf([failed(AttackFailReason.NoLineOfSight)], fireOf)).toEqual([{ kind: "number", toId: "t", startMs: 640, text: "Blocked", style: "failed" }]);
+    expect(effectCuesOf([failed(AttackFailReason.FullCover)], fireOf)[0]).toMatchObject({ text: "Blocked" });
+    expect(effectCuesOf([failed(AttackFailReason.OutOfRange)], fireOf)[0]).toMatchObject({ text: "Out of range" });
+    expect(effectCuesOf([failed(AttackFailReason.NotVisible)], fireOf)[0]).toMatchObject({ text: "Not visible" });
   });
 
   it("locks Marked on when the dart lands and Slow at the field beat", () => {
