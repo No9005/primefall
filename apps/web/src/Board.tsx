@@ -8,7 +8,7 @@ import {
   TileKind,
   tileAt,
 } from "game-core";
-import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
+import { Application, Assets, Container, Graphics, Text } from "pixi.js";
 import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPick, Point } from "./card-drag";
 import {
@@ -35,6 +35,8 @@ import {
 import { freeBoardArea } from "./hud-layout";
 import { buildTerrain, depthOf, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
 import { applyPose, applyRestPose, type BoundPart, bindParts, ClipPlayer } from "./clip-player";
+import { EffectsLayer, markedMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
+import type { EffectCue } from "./weapon-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
 import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
@@ -268,6 +270,8 @@ interface BoardProps {
   clips?: Readonly<Record<string, ClipName>>;
   /** Milliseconds after the start of the frame at which a Hero's clip starts (a target reacts at the impact beat). */
   clipDelays?: Readonly<Record<string, number>>;
+  /** The effects of the attacks of the playback frame being shown (flash, projectile, impact, numbers, Marked and Slow). */
+  effects?: readonly EffectCue[];
   /** Tiles the player may tap right now. */
   highlights: readonly GridPosition[];
   markers: readonly BoardMarker[];
@@ -303,6 +307,7 @@ interface BoardProps {
 const NO_RANGE: readonly RangeTile[] = [];
 const NO_CLIPS: Readonly<Record<string, ClipName>> = {};
 const NO_DELAYS: Readonly<Record<string, number>> = {};
+const NO_EFFECTS: readonly EffectCue[] = [];
 const RANGE_COLOR = 0xe5484d;
 const RANGE_BLOCKED_COLOR = 0x8a99a8;
 const RANGE_ALPHA = 0.27;
@@ -369,6 +374,7 @@ export function Board({
   hitIds,
   clips = NO_CLIPS,
   clipDelays = NO_DELAYS,
+  effects = NO_EFFECTS,
   highlights,
   markers,
   onTileTap,
@@ -389,6 +395,8 @@ export function Board({
   const host = useRef<HTMLDivElement>(null);
   const coverGrid = useMemo(() => coverGridOf(destroyedCover, placedCover, wreckCover), [destroyedCover, placedCover, wreckCover]);
   const [tokens, setTokens] = useState<Container>();
+  // The layer of the attack effects (above the Heroes) and the world it shakes.
+  const [effectsHost, setEffectsHost] = useState<{ layer: Container; world: Container }>();
   const [overlay, setOverlay] = useState<Container>();
   const [terrain, setTerrain] = useState<Terrain>();
   // Always the latest callbacks, so the pixi sprites need not be rebuilt for them.
@@ -529,6 +537,7 @@ export function Board({
     const cancels: (() => void)[] = [];
     // The rings of the Heroes that can be tapped as target pulse (issue 209); with reduced motion they stand still.
     const pulsingRings: Graphics[] = [];
+    const statusMarks: StatusMark[] = [];
     // The figures that play a clip (not the hit or Exhausted ones, which are flat poses).
     const animated: { id: string; heroClass: HeroClass; cover: CoverKind; parts: BoundPart[] }[] = [];
     const ring = (color: number) =>
@@ -576,16 +585,18 @@ export function Board({
         token.addChild(bubble);
         cancels.push(animateFadeOut(bubble, HERO_STYLE.marks.bubble.appearMs));
       }
-      if (hero.marked && !hero.exhausted && !hero.ghost) {
-        // A red downward marker above the head.
-        const mark = new Graphics().poly([-12, -8, 12, -8, 0, 12]).fill(0xe5484d).stroke({ width: 2, color: 0x12161c });
-        mark.position.set(0, -TILE_HEIGHT * 1.6);
-        token.addChild(mark);
+      // Marked and Slow are state: drawn whenever the Hero has them, also when the board is loaded mid-match. In the frame
+      // that applies one, the effects layer draws it with its lock-on instead.
+      const locking = (kind: string) => effects.some((cue) => cue.kind === kind && cue.toId === hero.id);
+      if (hero.marked && !hero.exhausted && !hero.ghost && !locking("marked")) {
+        const mark = markedMark();
+        token.addChild(mark.container);
+        statusMarks.push(mark);
       }
-      if (hero.slowed && !hero.exhausted) {
-        const indicator = new Sprite(Assets.get("vfx.slow_indicator"));
-        indicator.anchor.set(0.5, 1);
-        token.addChild(indicator);
+      if (hero.slowed && !hero.exhausted && !hero.ghost && !locking("slow")) {
+        const mark = slowMark();
+        token.addChild(mark.container);
+        statusMarks.push(mark);
       }
       tokens.addChild(token);
       created.push(token);
@@ -620,6 +631,8 @@ export function Board({
     // The clip of every Hero: the active one of this frame, Idle otherwise. Reduced motion stands on the rest frame.
     let clipFrame = 0;
     const playClips = (now: number) => {
+      // Marked and Slow are past their lock-on here; the Slow field keeps breathing.
+      for (const mark of statusMarks) mark.update(reducedMotion ? STATUS_AT_REST_MS : 300 + now - pulseStart);
       for (const { id, heroClass, cover, parts } of animated) {
         // A Hero with nothing to show stands, or stands behind the Cover it is on.
         const name = clips[id] ?? restClipName(cover);
@@ -644,7 +657,43 @@ export function Board({
       cancels.forEach((cancel) => cancel());
       created.forEach((token) => token.destroy({ children: true }));
     };
-  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, shotLines, marks, coverGrid]);
+  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, effects, shotLines, marks, coverGrid]);
+
+  // The effects of the attacks of the frame being shown. They read the latest Heroes and angle from refs, so a redraw of
+  // the tokens does not restart them; a new frame (a new `effects` array) does.
+  const effectsLayer = useRef<EffectsLayer | undefined>(undefined);
+  useEffect(() => {
+    if (!effectsHost) return;
+    const layer = new EffectsLayer(effectsHost.layer);
+    effectsLayer.current = layer;
+    return () => {
+      effectsLayer.current = undefined;
+      layer.container.destroy({ children: true });
+    };
+  }, [effectsHost]);
+  useEffect(() => {
+    const layer = effectsLayer.current;
+    if (!layer || !effectsHost) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const place = (id: string) => {
+      const hero = candidatesRef.current.heroes.find((candidate) => candidate.id === id);
+      if (!hero) return undefined;
+      const { x, y } = gridToWorld(hero.position, angleRef.current);
+      return { x, y: y + footOffset(angleRef.current) };
+    };
+    layer.play(effects, performance.now(), place, reduced);
+    let frame = 0;
+    const step = () => {
+      const shake = layer.update(performance.now());
+      effectsHost.world.pivot.set(shake.x, shake.y);
+      if (effects.length > 0) frame = requestAnimationFrame(step);
+    };
+    step();
+    return () => {
+      cancelAnimationFrame(frame);
+      effectsHost.world.pivot.set(0, 0);
+    };
+  }, [effects, effectsHost]);
 
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
   useEffect(() => {
@@ -741,8 +790,10 @@ export function Board({
       const objects = new Container();
       objects.sortableChildren = true;
       const planning = new Container();
-      world.addChild(floor, planning, objects);
+      const effectsLayer = new Container();
+      world.addChild(floor, planning, objects, effectsLayer);
       app.stage.addChild(world);
+      setEffectsHost({ layer: effectsLayer, world });
       // Hero tokens sort together with the props, by tile depth.
       setTokens(objects);
       // Highlights and markers lie on the floor; markers would hide behind props, which is acceptable.
