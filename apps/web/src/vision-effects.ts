@@ -45,28 +45,45 @@ export function enemyFade(kind: "toGhost" | "toSeen" | "appear", ms: number): nu
 export type ZoneState = "neutral" | "own" | "gold" | "contested" | "enemy";
 
 export interface ZoneLook {
+  /** Colour of the border, the emblem and the tile fill. */
   color: number;
+  /** Alpha of the tile fill. */
   alpha: number;
-  /** A ring runs over the zone: our Squad holds it. */
+  /** Alpha of the floor emblem. */
+  emblemAlpha: number;
+  /** The border pulses while the zone is on screen (every state; reduced motion holds it still). */
   pulse: boolean;
+  /** A one-shot ring runs over the zone when the hold level is new: our Squad holds it (teal). */
+  ring: boolean;
 }
 
 export const ZONE_RING_MS = 1600;
+export const ZONE_BORDER_PERIOD_MS = 2400;
+/** The 3 px border stroke pulses between this alpha and 1; in reduced motion it rests at ZONE_BORDER_REST_ALPHA. */
+export const ZONE_BORDER_MIN_ALPHA = 0.65;
+export const ZONE_BORDER_REST_ALPHA = 0.9;
 
-/** The tint of the Prime Zone tiles: grey when empty, teal (35 to 55 %) held by us, gold at the third Resolution, amber contested, red held by the enemy. */
+/** The look of the Prime Zone: white when empty, teal (35 / 45 %) held by us, gold at the third Resolution, amber contested, red held by the enemy. */
 export function zoneLook(state: ZoneState, filled: number): ZoneLook {
   switch (state) {
     case "own":
-      return { color: 0x2ec4b6, alpha: Math.min(0.55, 0.35 + 0.1 * Math.max(0, filled - 1)), pulse: true };
+      return { color: 0x2ec4b6, alpha: filled >= 2 ? 0.45 : 0.35, emblemAlpha: 0.8, pulse: true, ring: true };
     case "gold":
-      return { color: 0xffd24a, alpha: 0.5, pulse: false };
+      return { color: 0xffd24a, alpha: 0.5, emblemAlpha: 0.9, pulse: true, ring: false };
     case "contested":
-      return { color: 0xffb347, alpha: 0.4, pulse: false };
+      return { color: 0xffb347, alpha: 0.4, emblemAlpha: 0.8, pulse: true, ring: false };
     case "enemy":
-      return { color: 0xe5484d, alpha: 0.35, pulse: false };
+      return { color: 0xe5484d, alpha: 0.35, emblemAlpha: 0.8, pulse: true, ring: false };
     default:
-      return { color: 0x8a99a8, alpha: 0.2, pulse: false };
+      return { color: 0xe8eef5, alpha: 0.12, emblemAlpha: 0.5, pulse: true, ring: false };
   }
+}
+
+/** Alpha of the zone border's 3 px stroke `ms` into the idle pulse (a sine, 2.4 s period); constant in reduced motion. The glow under it follows at a quarter of this. */
+export function zoneBorderAlpha(ms: number, reducedMotion: boolean): number {
+  if (reducedMotion) return ZONE_BORDER_REST_ALPHA;
+  const wave = (1 - Math.cos((2 * Math.PI * ms) / ZONE_BORDER_PERIOD_MS)) / 2;
+  return ZONE_BORDER_MIN_ALPHA + (1 - ZONE_BORDER_MIN_ALPHA) * wave;
 }
 
 /** The ring that runs once over the zone per Resolution: scale 0.4 to 1.4 and alpha 0.8 to 0, then it is gone. */

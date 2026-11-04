@@ -614,7 +614,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   // Unknown enemies have no marker; Ghosts stay where they were last seen, faded.
   const boardEnemies = useMemo(() => enemyTokens(view.enemies, onBoard), [view.enemies, playback]);
   const zone = zoneOccupancy(boardHeroes, boardEnemies);
-  const score = primeScore(primeAfter ?? view.primeProgress, view.squad, zone.occupied || FORCE_CONTESTED_PILL, zone.contested || FORCE_CONTESTED_PILL);
+  const score = primeScore(primeAfter ?? view.primeProgress, view.squad, zone.contested || FORCE_CONTESTED_PILL);
   const aimsAtAlly =
     aimedCard?.type === CardType.Utility &&
     (aimedCard.target === CardTarget.AllyHero || aimedCard.target === CardTarget.AllyHeroTile);
@@ -1047,17 +1047,15 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         moveFrameHero={frameHero}
         heroScreenRef={heroScreenRef}
       />
-      {score !== undefined && (
-        <div className={`prime-pill prime-${score.state}${playing ? " resolving" : ""}`} data-testid="prime-progress" aria-label={`${score.label}, ${score.filled} of ${PIPS.length}`}>
-          <span className="prime-label">{score.label}</span>
-          <span className="prime-pips">
-            {PIPS.map((pip) => (
-              // The key carries the filled state, so a pip that fills mounts again and plays its pop.
-              <span key={`${pip}-${pip < score.filled}`} className={pip < score.filled ? "prime-pip prime-pip-filled" : "prime-pip"} />
-            ))}
-          </span>
-        </div>
-      )}
+      <div className={`prime-pill prime-${score.state}${playing ? " resolving" : ""}`} data-testid="prime-progress" aria-label={`${score.label}, ${score.filled} of ${PIPS.length}`}>
+        <span className="prime-label">{score.label}</span>
+        <span className="prime-pips">
+          {PIPS.map((pip) => (
+            // The key carries the filled state, so a pip that fills mounts again and plays its pop.
+            <span key={`${pip}-${pip < score.filled}`} className={pip < score.filled ? "prime-pip prime-pip-filled" : "prime-pip"} />
+          ))}
+        </span>
+      </div>
       <div
         className={`timer-pill timer-${timerTone(secondsLeft)}${playing ? " resolving" : ""}`}
         title={`Round ${view.round} / ${ROUND_LIMIT}`}

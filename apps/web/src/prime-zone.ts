@@ -43,9 +43,8 @@ export interface PrimeScore {
   label: string;
 }
 
-/** The score pill, or undefined while no Hero stands in the Prime Zone. `contested`: Heroes of both Squads stand in it. */
-export function primeScore(progress: PrimeProgress, you: SquadId, occupied: boolean, contested: boolean): PrimeScore | undefined {
-  if (!occupied && !contested) return undefined;
+/** The score pill, shown for the whole match (neutral with empty pips while nobody holds the count). `contested`: Heroes of both Squads stand in it. */
+export function primeScore(progress: PrimeProgress, you: SquadId, contested: boolean): PrimeScore {
   const enemy = you === SquadId.Left ? SquadId.Right : SquadId.Left;
   if (contested) return { filled: 0, state: "contested", label: "CONTESTED" };
   if (progress[enemy] > 0) return { filled: progress[enemy], state: "enemy", label: "ENEMY HOLDS" };
@@ -61,7 +60,7 @@ export function zoneOccupancy(heroes: readonly { position: GridPosition; exhaust
 }
 
 /** The tint of the Prime Zone tiles on the board. */
-export function zoneTint(score: PrimeScore | undefined): ZoneLook {
-  if (score?.state === "own") return zoneLook(score.filled >= PRIME_ZONE_WIN_RESOLUTIONS ? "gold" : "own", score.filled);
-  return zoneLook(score?.state === "contested" || score?.state === "enemy" ? score.state : "neutral", score?.filled ?? 0);
+export function zoneTint(score: PrimeScore): ZoneLook {
+  if (score.state === "own") return zoneLook(score.filled >= PRIME_ZONE_WIN_RESOLUTIONS ? "gold" : "own", score.filled);
+  return zoneLook(score.state, score.filled);
 }
