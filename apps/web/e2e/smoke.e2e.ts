@@ -62,8 +62,9 @@ test("start a match, play a Move card onto a tile, Commit", async ({ page }) => 
   await expect(hand.getByRole("button").last()).toBeEnabled();
   await hand.getByRole("button").last().click();
   await page.getByRole("group", { name: "Use card as" }).getByRole("button", { name: /^Move/ }).click();
-  // Arming a Move zooms the camera on the Hero; wait for that, then tap the lit tiles right of the Hero.
-  await expect(page.getByRole("button", { name: "Fit board" })).toBeVisible();
+  // Arming a Move frames the camera on the Hero (it eases there in 250 ms); then tap the lit tiles right of the Hero.
+  await expect(page.getByTestId("floating-card")).toBeVisible();
+  await page.waitForTimeout(600);
   const lit = [
     [0.6, 0.38],
     [0.5, 0.5],
@@ -75,7 +76,7 @@ test("start a match, play a Move card onto a tile, Commit", async ({ page }) => 
   await expect(page.getByTestId("floating-card")).toContainText("Tap a lit tile");
   await expect(hand).toBeHidden();
   const hud = await page
-    .locator(".hand-bar, .squad-panel, .enemy-panel, .commit-panel")
+    .locator(".hand-bar, .commit-panel, .timer-pill")
     .evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().toJSON() as DOMRect));
   const under = (x: number, y: number) => hud.some((rect) => x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom);
   let queued = false;

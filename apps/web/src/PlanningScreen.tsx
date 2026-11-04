@@ -12,9 +12,7 @@ import {
   destroyCover,
   EffectKind,
   EffectRecipient,
-  type EnemyView,
   EventKind,
-  type Grid,
   HERO_DECKS,
   HeroClass,
   MAX_QUEUE_LENGTH,
@@ -59,7 +57,7 @@ import { targetsInReach } from "./target-pick";
 import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionCommitLabel } from "./resolution-hud";
 import { buildCommentary, type CommentaryEntry, type CommentarySide, MAX_COMMENTARY_ENTRIES } from "./commentary";
 import { buildPlaybackFrames, enemyTokens, tickCountOf } from "./playback";
-import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,rangeDamageLabel, removeQueueAction, selectHero, pickInstruction } from "./planning-selection";
+import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,removeQueueAction, selectHero, pickInstruction } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
 export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
@@ -169,142 +167,6 @@ function WaitCard({ dimmed, disabled, onWait }: { dimmed: boolean; disabled: boo
     <button type="button" className="card wait-card" style={{ opacity: dimmed ? 0.35 : undefined }} disabled={disabled || dimmed} onClick={onWait}>
       Wait
     </button>
-  );
-}
-
-/** Top left: the selected Hero's name and status, with the other Heroes of the Squad as compact chips below it. */
-function SquadPanel({
-  heroes,
-  selected,
-  playback,
-  onSelect,
-  warningsOf,
-  collapsed,
-}: {
-  /** A target is being picked: only the Queue slots and thin name pills stay, so the board is free. */
-  collapsed: boolean;
-  /** The collision warnings of a Hero's planned Moves, e.g. "Collides with Controller at Tick 2". */
-  warningsOf: (heroId: string) => string[];
-  heroes: readonly HeroView[];
-  selected: HeroView;
-  playback: PlaybackState | undefined;
-  onSelect: (id: string) => void;
-}) {
-  const shield = playback?.shields[selected.id] ?? 0;
-  return (
-    <aside className={`squad-panel${collapsed ? " collapsed" : ""}`} aria-label="Squad">
-      <div className="queue-column">
-      <section className="hud queue-window" aria-label="Selected Hero">
-        <div className="queue-head">
-          <span className="hero-name">{HERO_NAMES[selected.heroClass]}</span>
-          {shield > 0 && <span className="counts">Shield {shield}</span>}
-        </div>
-        <div className="queue-tags">
-          {warningsOf(selected.id).map((text) => (
-            <span key={text} className="tag collision-tag" role="alert">
-              ⚠ {text}
-            </span>
-          ))}
-          {selected.slowed && <span className="tag slow-tag">Slowed</span>}
-          {selected.marked && <span className="tag marked-tag">Marked</span>}
-          {selected.hidden && <span className="tag hidden-tag">Hidden · sight +2</span>}
-          {(selected.exhausted || playback?.exhausted.includes(selected.id)) && <span className="tag">Exhausted</span>}
-        </div>
-      </section>
-      </div>
-      <div className="chips">
-        {heroes
-          .filter((hero) => hero.id !== selected.id)
-          .map((hero) => {
-            const playerControlled = hero.heroClass === PLAYER_HERO_CLASS;
-            const exhausted = hero.exhausted || playback?.exhausted.includes(hero.id);
-            return (
-              <button
-                key={hero.id}
-                type="button"
-                className="hud chip"
-                disabled={!playerControlled || hero.exhausted}
-                onClick={() => onSelect(hero.id)}
-              >
-                <span className="hero-name">{HERO_NAMES[hero.heroClass]}</span>
-                <span className="counts">
-                  {playerControlled ? "" : "AI"}
-                  {exhausted && `${playerControlled ? "" : " · "}Exhausted`}
-                </span>
-                {warningsOf(hero.id).length > 0 && (
-                  <span className="collision-tag" title={warningsOf(hero.id).join(" ")}>
-                    ⚠ {warningsOf(hero.id).join(" ")}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-      </div>
-    </aside>
-  );
-}
-
-function EnemyPanel({
-  enemies,
-  playback,
-  attackerPosition,
-  aimedCard,
-  knownGrid,
-  collapsed,
-}: {
-  /** A target is being picked: thin pills with the names (and the tags that help aiming). */
-  collapsed: boolean;
-  /** The Reactor Deck as the Squad knows it: Cover it has seen destroyed is gone. */
-  knownGrid: Grid;
-  enemies: readonly EnemyView[];
-  playback: PlaybackState | undefined;
-  /** Set while the player picks a target: the protection each enemy's tile gives against this attacker is shown. */
-  attackerPosition: GridPosition | undefined;
-  /** The card being aimed, if any: a distance-dependent damage is shown per enemy. */
-  aimedCard: CardDefinition | undefined;
-}) {
-  return (
-    <aside className={`hud enemy-panel${collapsed ? " collapsed" : ""}`} aria-label="Enemy Squad">
-      {enemies.map((enemy) => {
-        if (enemy.visibility === Visibility.Unknown) {
-          return (
-            <div key={enemy.id} className="hero-row unknown" data-testid={`enemy-${enemy.heroClass}`}>
-              <span className="hero-name">{HERO_NAMES[enemy.heroClass]}</span>
-              <span className="counts">Unknown</span>
-            </div>
-          );
-        }
-        if (enemy.visibility === Visibility.Ghost) {
-          return (
-            <div key={enemy.id} className="hero-row ghost" data-testid={`enemy-${enemy.heroClass}`}>
-              <span className="hero-name">{HERO_NAMES[enemy.heroClass]}</span>
-              <span className="tag">last seen</span>
-              <span className="counts">
-                Deck {enemy.deckCount} · Discard {enemy.discardCount} · Exile {enemy.exileCount}
-              </span>
-            </div>
-          );
-        }
-        const cover = attackerPosition && coverProtectionLabel(attackerPosition, enemy.position, knownGrid);
-        const damage = attackerPosition && aimedCard && rangeDamageLabel(aimedCard, attackerPosition, enemy.position);
-        return (
-          <div key={enemy.id} className="hero-row" data-testid={`enemy-${enemy.heroClass}`}>
-            <span className="hero-name">{HERO_NAMES[enemy.heroClass]}</span>
-            {damage && <span className="tag range-tag">{damage}</span>}
-            {attackerPosition && !enemy.exhausted && cover && <span className="tag cover-tag">{cover}</span>}
-            {enemy.slowed && <span className="tag slow-tag">Slowed</span>}
-            {enemy.marked && <span className="tag marked-tag">Marked</span>}
-            <span className="counts">
-              Deck {enemy.deckCount - (playback?.deckDamage[enemy.id] ?? 0)} · Discard {enemy.discardCount} · Exile{" "}
-              {enemy.exileCount}
-              {enemy.shield + (playback?.shields[enemy.id] ?? 0) > 0 &&
-                ` · Shield ${enemy.shield + (playback?.shields[enemy.id] ?? 0)}`}
-            </span>
-            {(enemy.exhausted || playback?.exhausted.includes(enemy.id)) && <span className="tag">Exhausted</span>}
-          </div>
-        );
-      })}
-    </aside>
   );
 }
 
@@ -605,8 +467,6 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     [view.heroes, squadPlans],
   );
   const collisionTiles = useMemo(() => (playing ? NO_TILES : warnings.collisions.map(({ destination }) => destination)), [playing, warnings]);
-  const warningsOf = (heroId: string) =>
-    warnings.collisions.filter((collision) => collision.heroId === heroId).flatMap(({ tick }) => warnings.textFor(heroId, tick) ?? []);
   const energy = energyReadout(selected.heroClass, queue, pitched);
 
   const lastMove = queue.filter((action) => action.kind === ActionKind.Move).at(-1);
@@ -1119,22 +979,6 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       )}
       {resolutionStage === "callout" && <Callout kind="word" text="RESOLUTION" tone="teal" durationMs={RESOLUTION_CALLOUT_MS} />}
       {primeCallout !== undefined && <Callout kind="word" text={primeCallout.text} tone={primeCallout.tone} durationMs={primeCallout.durationMs} />}
-      <SquadPanel
-        heroes={view.heroes}
-        warningsOf={warningsOf}
-        selected={selected}
-        playback={playback}
-        collapsed={picking}
-        onSelect={changeSelection}
-      />
-      <EnemyPanel
-        knownGrid={knownGrid}
-        enemies={view.enemies}
-        playback={playback}
-        collapsed={picking}
-        attackerPosition={aiming !== undefined && !aimsAtAlly && !playing ? planningFrom : undefined}
-        aimedCard={aimedCard}
-      />
       {playback !== undefined && playback.commentary.length > 0 && (
         // A new key per Tick: the entries of the previous Tick are replaced and slide in again.
         <ol className="commentary" aria-label="Resolution commentary" data-testid="commentary" key={playback.tick}>

@@ -50,52 +50,21 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .planning { position: absolute; inset: 0; }
 .board { position: absolute; inset: 0; overflow: hidden; }
 .board canvas { display: block; touch-action: none; }
-/* Zoom / Fit: round, thumb-sized, stacked from the top (26 to 232 px) in a column left of the Queue column (136 px from the right edge), clear of the Wait card below and the enemy panel. Mirrored by zoomColumnRect in hud-layout.ts. */
-.board-zoom { position: absolute; z-index: 1; right: calc(136px + env(safe-area-inset-right)); top: 80px; width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--steel); background: var(--panel); color: var(--text); font: 600 14px Rajdhani, sans-serif; cursor: pointer; }
 
-/* Lines: the small toggle for the target lines, below the turn buttons; it shows lit while the lines are on. */
-.board-lines { position: absolute; z-index: 1; right: calc(140px + env(safe-area-inset-right)); top: 188px; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--steel); background: var(--panel); color: var(--text); font: 600 11px Rajdhani, sans-serif; cursor: pointer; }
-.board-lines[aria-pressed="true"] { border-color: var(--teal); color: var(--teal); }
 
-.board-turn { position: absolute; z-index: 1; right: calc(136px + env(safe-area-inset-right)); width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--steel); background: var(--panel); color: var(--text); font-size: 24px; line-height: 1; cursor: pointer; }
-.board-turn-left { top: 26px; }
-.board-turn-right { top: 134px; }
 
 .hud { position: absolute; background: color-mix(in srgb, var(--panel) 87%, transparent); border: 1px solid var(--steel); border-radius: 6px; box-sizing: border-box; }
 /* HUD placement (UI spec): at 844 x 390 and 667 x 375 the fitted board leaves the bottom corners and a strip at the
    top free. The hand bar stays within ~330 px of the left edge and the commit column within 110 px of the right edge,
    below the lower board edges; keep these sizes small when changing them. */
-.enemy-panel { top: calc(6px + env(safe-area-inset-top)); right: calc(6px + env(safe-area-inset-right)); width: 124px; padding: 3px; display: flex; flex-direction: column; gap: 3px; }
-.enemy-panel .hero-row { cursor: default; }
-.enemy-panel .hero-row.ghost { opacity: 0.6; border-style: dashed; }
-.enemy-panel .hero-row.unknown { opacity: 0.45; border-style: dotted; }
-/* Resolution commentary: a column at the top, right of the Squad panel (about 230 px wide) and left of the enemy panel, so it covers neither; entries slide in per Tick. */
-.commentary { position: absolute; z-index: var(--z-hud); left: calc(240px + env(safe-area-inset-left)); top: calc(6px + env(safe-area-inset-top)); width: 236px; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+/* Resolution commentary: a column at the top left; entries slide in per Tick. */
+.commentary { position: absolute; z-index: var(--z-hud); left: calc(8px + env(safe-area-inset-left)); top: calc(6px + env(safe-area-inset-top)); width: 236px; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
 .commentary-entry { height: 36px; box-sizing: border-box; padding: 3px 8px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; background: color-mix(in srgb, var(--panel) 94%, transparent); border-left: 4px solid var(--steel); border-radius: var(--radius-s); white-space: nowrap; }
 .commentary-entry.own { border-left-color: var(--teal); }
 .commentary-entry.ally { border-left-color: var(--yellow); }
 .commentary-entry.enemy { border-left-color: var(--red); }
 .commentary-entry b { font: 700 13px/1.1 var(--font-label); color: var(--text); overflow: hidden; text-overflow: ellipsis; }
 .commentary-entry span { font: 12px/1.1 var(--font-label); color: var(--muted-light); overflow: hidden; text-overflow: ellipsis; }
-/* Top left: the Queue window of the selected Hero and the other Heroes as compact chips. */
-.squad-panel { position: absolute; top: calc(6px + env(safe-area-inset-top)); left: calc(6px + env(safe-area-inset-left)); display: flex; align-items: flex-start; gap: 3px; }
-.queue-window { position: static; width: 124px; flex: none; padding: 4px; display: flex; flex-direction: column; gap: 3px; }
-.queue-head { display: flex; flex-direction: column; }
-.queue-head .counts { flex-basis: auto; order: 0; }
-.queue-tags { display: flex; flex-wrap: wrap; gap: 0 4px; }
-.queue-tags:empty { display: none; }
-.collision-tag { color: #ff6b70; font-size: 10px; }
-.chips { display: flex; flex-direction: column; gap: 2px; width: 92px; }
-.chip { position: static; min-height: 18px; padding: 1px 4px; display: flex; align-items: baseline; gap: 4px; text-align: left; cursor: pointer; }
-.chip:disabled { cursor: default; opacity: 0.8; }
-.chip .hero-name { font-size: 11px; }
-.chip .counts { flex-basis: auto; order: 0; font-size: 9px; white-space: nowrap; }
-.hero-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 4px; min-height: 40px; padding: 2px 5px; background: var(--graphite); border: 1px solid var(--steel); border-radius: 4px; text-align: left; cursor: pointer; }
-.hero-row[aria-pressed="true"] { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal); }
-.hero-row:disabled { cursor: default; opacity: 0.8; }
-.hero-name { font-family: Rajdhani, sans-serif; font-weight: 600; font-size: 13px; }
-.counts { flex-basis: 100%; order: 1; font-family: "IBM Plex Mono", monospace; font-size: 10px; line-height: 1.2; color: var(--muted); }
-.tag { font-size: 10px; color: var(--muted); }
 
 /* Energy pill above the fan; Pitched and Spent are in its tooltip. */
 .energy { display: inline-flex; align-items: center; gap: 6px; height: 26px; box-sizing: border-box; padding: 0 10px; border-radius: 13px; background: color-mix(in srgb, var(--panel) 87%, transparent); border: 1px solid var(--steel); color: var(--orange); transition: opacity 150ms; }
@@ -109,20 +78,27 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 /* A card pressed or pulled out of the Hand: big in the middle of the free board area (left inset 231, right inset 136), the faces of its uses above it. Below the Hand. */
 .pull { position: absolute; inset: 0; z-index: var(--z-hud); pointer-events: none; }
 .pull-backdrop { position: absolute; inset: 0; pointer-events: auto; }
-.pull-card { position: absolute; left: calc(50% + 48px); top: 110px; width: 108px; transform: translateX(-50%) scale(1.8); transform-origin: 50% 0; border-color: var(--teal); pointer-events: none; animation: pull-lift var(--dur-fast) ease-out; }
-.pull-card .card-name { display: block; padding-right: 20px; font-weight: 700; font-size: 15px; line-height: 1; }
-.pull-card .card-type { display: block; margin-top: 3px; font-size: 10px; letter-spacing: 0.08em; font-weight: 700; text-transform: uppercase; }
-.pull-card.card .card-cost { position: absolute; top: -11px; right: -7px; width: 24px; height: 24px; border-radius: 50%; background: var(--orange); color: var(--graphite); display: flex; align-items: center; justify-content: center; font: 500 13px/1 var(--font-number); }
-.pull-card .card-text { display: block; margin-top: 3px; font-size: 12px; line-height: 1.1; color: var(--text-soft); }
-.pull-faces { position: absolute; left: calc(50% + 48px); top: 34px; transform: translateX(-50%); display: flex; gap: 6px; }
-.pull-face { width: 100px; min-height: 62px; box-sizing: border-box; padding: 4px 6px; display: flex; flex-direction: column; gap: 2px; background: color-mix(in srgb, var(--ink) 93%, transparent); color: var(--text); border: 1.5px solid var(--teal); border-radius: var(--radius-s); text-align: left; cursor: pointer; pointer-events: auto; animation: pull-lift var(--dur-fast) ease-out; }
+.pull-card.card { position: absolute; left: 96px; top: 34px; width: 280px; height: auto; padding: 14px 16px; box-sizing: border-box; border-width: 2px; border-color: var(--teal); border-radius: 10px; box-shadow: 0 10px 30px color-mix(in srgb, var(--ink) 80%, transparent); pointer-events: none; animation: pull-lift var(--dur-fast) ease-out; }
+.pull-card.attack { border-color: var(--orange); }
+.pull-card .card-name { display: block; padding-right: 40px; font-weight: 700; font-size: 26px; line-height: 1; }
+.pull-card .card-type { display: block; margin-top: 6px; font-size: 12px; letter-spacing: 0.08em; font-weight: 700; text-transform: uppercase; }
+.pull-card.card .card-cost { position: absolute; top: 12px; right: 14px; width: 30px; height: 30px; border-radius: 50%; background: var(--orange); color: var(--graphite); display: flex; align-items: center; justify-content: center; font: 500 18px/1 var(--font-number); }
+.pull-card .card-text { display: block; margin-top: 8px; font-size: 16px; line-height: 1.25; color: var(--text); }
+/* Pulled out: the card is parked small below the faces. */
+.pull-card.parked.card { left: calc((100% - 136px) / 2 - 50px); top: 172px; width: 100px; height: 118px; padding: 8px 9px; border-radius: var(--radius-m); }
+.pull-card.parked .card-name { font-size: 15px; padding-right: 0; }
+.pull-card.parked .card-type { margin-top: 3px; font-size: 10px; }
+.pull-card.parked .card-text { display: none; }
+.pull-card.parked.card .card-cost { top: -9px; right: -9px; width: 22px; height: 22px; font-size: 12px; }
+.pull-faces { position: absolute; left: calc((100% - 136px) / 2); top: 52px; transform: translateX(-50%); display: flex; gap: 6px; }
+.pull-face { width: 128px; min-height: 112px; box-sizing: border-box; padding: 8px 9px; display: flex; flex-direction: column; gap: 4px; background: var(--graphite); color: var(--text); border: 2px solid var(--teal); border-radius: var(--radius-m); text-align: left; cursor: pointer; pointer-events: auto; animation: pull-lift var(--dur-fast) ease-out; }
 .pull-face.overdrive { border-color: var(--overdrive); }
 .pull-face.overdrive .face-title { color: var(--overdrive); }
-.pull-face[aria-disabled="true"] { opacity: 0.4; border-color: var(--steel); cursor: default; }
-.face-title { display: flex; justify-content: space-between; align-items: center; font: 700 14px/1 var(--font-label); }
+.pull-face[aria-disabled="true"] { opacity: 0.55; border-color: var(--steel); cursor: default; }
+.face-title { display: flex; justify-content: space-between; align-items: center; font: 700 12px/1 var(--font-label); letter-spacing: 0.1em; text-transform: uppercase; }
 .face-cost { font: 500 12px/1 var(--font-number); color: var(--orange); }
-.face-effect { font: 12px/1.1 var(--font-label); color: var(--muted-light); }
-.face-reason { font: 700 12px/1.1 var(--font-label); color: var(--red); }
+.face-effect { font: 12px/1.18 var(--font-label); color: var(--text-soft); }
+.face-reason { font: 700 11px/1.1 var(--font-label); color: var(--red); }
 @keyframes pull-lift { from { opacity: 0; } to { opacity: 1; } }
 
 /* A target is being picked: the HUD shrinks to what hud-layout.ts keeps out of the free board area. */
@@ -137,13 +113,6 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 @media (prefers-reduced-motion: reduce) {
   .floating-card { transition: none; }
 }
-.squad-panel.collapsed { flex-direction: column; gap: 2px; }
-.squad-panel.collapsed .queue-head,.squad-panel.collapsed .queue-tags, .squad-panel.collapsed .chip .counts, .squad-panel.collapsed .chip .collision-tag { display: none; }
-.squad-panel.collapsed .chips { flex-direction: row; width: 124px; }
-.squad-panel.collapsed .chip { flex: 1; min-height: 20px; opacity: 0.7; }
-.enemy-panel.collapsed .hero-row { min-height: 20px; padding: 0 5px; }
-.enemy-panel.collapsed .hero-row .counts, .enemy-panel.collapsed .hero-row .tag:not(.range-tag):not(.cover-tag) { display: none; }
-.enemy-panel.collapsed { opacity: 0.85; }
 @media (prefers-reduced-motion: reduce) {
   .hand.collapsed, .hand.collapsed li { transition: none; }
 }
@@ -156,8 +125,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .card.mode-face:disabled { opacity: 0.55; cursor: default; }
 .mode-note { display: block; font-size: 12px; color: var(--overdrive); }
 .od-marker { margin-left: 3px; padding: 0 2px; border-radius: 2px; background: var(--overdrive); color: var(--graphite); font-size: 9px; }
-/* The Hand is a fan of 108 x 134 px cards in the free bottom left corner; the piles sit left of it, the Energy pill above it. */
-.hand-bar { z-index: var(--z-hand); background: none; border: 0; bottom: calc(4px + env(safe-area-inset-bottom)); left: calc(6px + env(safe-area-inset-left)); display: flex; align-items: flex-end; gap: 6px; }
+/* The Hand is a fan of 108 x 134 px cards in the bottom left corner that bleed off the bottom edge (only the top 62 px show: name, cost, type); the piles sit left of it, the Energy pill right above it. */
+.hand-bar { z-index: var(--z-hand); background: none; border: 0; bottom: 0; left: calc(6px + env(safe-area-inset-left)); display: flex; align-items: flex-end; gap: 6px; }
 .piles { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .pile-minor { display: flex; gap: 8px; font: 500 10px/1 var(--font-number); color: var(--muted); }
 .deck-pile { position: relative; width: 60px; height: 84px; box-sizing: border-box; background: var(--panel); border: 2px solid var(--teal); border-radius: var(--radius-s); box-shadow: 3px 3px 0 0 var(--graphite), 3px 3px 0 2px var(--teal); margin-right: 3px; margin-bottom: 3px; display: flex; align-items: center; justify-content: center; }
@@ -213,12 +182,12 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   .deck-skull { animation: none; }
 }
 .deck-count { font: 500 24px/1 var(--font-number); color: var(--text); }
-.hand { margin: 0; padding: 12px 0 0; list-style: none; display: flex; height: 146px; position: relative; }
+.hand { margin: 0; padding: 0; list-style: none; display: flex; height: 62px; position: relative; }
 /* --step and --card-w come from fanSpacing (hand-fan.ts). */
-.hand li { position: absolute; bottom: 0; left: calc(var(--position) * var(--step)); transform-origin: 50% 100%; opacity: var(--dim, 1); transition: transform 80ms, opacity 150ms; transform: translateY(calc(var(--offset) * var(--offset) * 3px)) rotate(calc(var(--offset) * 7deg)); }
+.hand li { position: absolute; bottom: -72px; left: calc(var(--position) * var(--step)); transform-origin: 50% 100%; opacity: var(--dim, 1); transition: transform 80ms, opacity 150ms; transform: translateY(calc(var(--offset) * var(--offset) * 3px)) rotate(calc(var(--offset) * 7deg)); }
 /* The card held down lifts a little so the player sees which one is meant. */
 .hand li:has(.card:active) { transform: translateY(calc(var(--offset) * var(--offset) * 3px - 10px)) rotate(calc(var(--offset) * 7deg)); }
-.card { position: relative; display: block; width: var(--card-w, 108px); height: 134px; padding: 6px 7px; box-sizing: border-box; background: var(--graphite); border: 1.5px solid var(--steel); border-radius: var(--radius-m); text-align: left; cursor: pointer; }
+.card { position: relative; display: flex; flex-direction: column; justify-content: flex-start; width: var(--card-w, 108px); height: 134px; padding: 6px 7px; box-sizing: border-box; background: var(--graphite); border: 1.5px solid var(--steel); border-radius: var(--radius-m); text-align: left; cursor: pointer; }
 .card.used { opacity: 0.55; }
 /* The draw animation (issue 202): a card flies from the Deck pile along an arc and turns face up in the middle. */
 .hand li.arriving { animation: draw-fly 450ms ease-out var(--draw-delay) backwards; }
@@ -240,7 +209,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   .hand li.arriving, .hand li.arriving .card, .card-back { animation: none; }
   .card-back { display: none; }
 }
-.hand .card-name { display: block; padding-right: 20px; font-weight: 700; font-size: 15px; line-height: 1; overflow-wrap: normal; word-break: normal; hyphens: none; }
+.hand .card-name { display: block; padding-right: 6px; font-weight: 700; font-size: 14px; line-height: 1; overflow-wrap: normal; word-break: normal; hyphens: none; }
 .hand .card-type { display: block; margin-top: 3px; font-size: 10px; letter-spacing: 0.08em; font-weight: 700; text-transform: uppercase; }
 .card.attack .card-type { color: var(--orange); }
 .card.utility .card-type { color: var(--teal); }
@@ -279,8 +248,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .queue-remove:disabled { cursor: default; opacity: 0.5; }
 .commit { height: 46px; background: var(--teal); color: var(--graphite); border: 0; border-radius: 23px; font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 18px; cursor: pointer; }
 .commit:disabled { background: var(--panel); color: var(--muted); cursor: default; }
-/* The Wait action as a card right of the Hand fan. */
-.wait-card { flex: none; width: 108px; margin-left: 6px; padding: 8px 0 0; text-align: center; font: 700 22px/1 var(--font-label); color: var(--text); }
+/* The Wait action as a card right of the Hand fan, peeking from the bottom edge like the Hand. */
+.wait-card { flex: none; width: 108px; margin-left: 12px; margin-bottom: -72px; padding: 10px 0 0; display: flex; flex-direction: row; align-items: flex-start; justify-content: center; text-align: center; font: 700 22px/1 var(--font-label); color: var(--text); }
 
 /* Prime Zone score at the top centre: label and three pips; appears once a Hero stands in the zone. */
 .prime-pill { position: absolute; z-index: var(--z-hud); top: calc(4px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: 200px; height: 34px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px solid var(--steel); border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
@@ -297,8 +266,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   .prime-pip-filled { animation: none; }
 }
 
-/* Timer pill: left of the turn buttons, clear of the enemy panel. */
-.timer-pill { position: absolute; z-index: var(--z-hud); top: calc(4px + env(safe-area-inset-top)); right: calc(194px + env(safe-area-inset-right)); height: 34px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--steel); border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
+/* Timer pill: top right. */
+.timer-pill { position: absolute; z-index: var(--z-hud); top: calc(4px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); height: 34px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--steel); border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
 .timer-round { font: 600 12px var(--font-label); letter-spacing: 0.08em; color: var(--muted); }
 .timer-time { font: 500 20px var(--font-number); color: var(--text); }
 .timer-amber { border-color: var(--amber); }

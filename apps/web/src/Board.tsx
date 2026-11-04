@@ -302,24 +302,6 @@ const RANGE_COLOR = 0xe5484d;
 const RANGE_BLOCKED_COLOR = 0x8a99a8;
 const RANGE_ALPHA = 0.27;
 
-const LINES_KEY = "primefall.targetLines";
-
-/** Whether the target lines are shown; on unless the player turned them off. Storage may be missing (private mode). */
-function readLinesSetting(): boolean {
-  try {
-    return globalThis.localStorage?.getItem(LINES_KEY) !== "off";
-  } catch {
-    return true;
-  }
-}
-
-function writeLinesSetting(on: boolean): void {
-  try {
-    globalThis.localStorage?.setItem(LINES_KEY, on ? "on" : "off");
-  } catch {
-    // The setting is then kept for this session only.
-  }
-}
 
 /** Grows a shape from small and transparent to full size in `ms`; with reduced motion it just shows. Returns a cancel function. */
 function animateAppear(shape: Graphics, ms: number): () => void {
@@ -385,7 +367,6 @@ export function Board({
   pickRef,
   heroScreenRef,
 }: BoardProps) {
-  const [showLines, setShowLines] = useState(readLinesSetting);
   const host = useRef<HTMLDivElement>(null);
   const [tokens, setTokens] = useState<Container>();
   const [overlay, setOverlay] = useState<Container>();
@@ -404,7 +385,6 @@ export function Board({
   enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
   const bubbleSeen = useRef(new Set<string>());
   const [pressed, setPressed] = useState<GridPosition>();
-  const [zoomed, setZoomed] = useState(false);
   // The camera scale in steps; outlines are drawn in world pixels of `1 / strokeScale` so they keep their width on screen.
   const [strokeScale, setStrokeScale] = useState(1);
   // The angle the board is drawn at right now; it changes every frame of a turn.
@@ -495,7 +475,7 @@ export function Board({
       overlay.addChild(label);
       created.push(label);
     });
-    for (const targetLine of showLines ? targetLines : []) {
+    for (const targetLine of targetLines) {
       const drawn = targetLineGraphics(targetLine, angle);
       overlay.addChild(drawn);
       created.push(drawn);
@@ -519,7 +499,7 @@ export function Board({
       cancelAnimationFrame(pulseFrame);
       created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [overlay, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, showLines, paths, collisionTiles, strokeScale]);
+  }, [overlay, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, paths, collisionTiles, strokeScale]);
 
   useEffect(() => {
     if (!tokens) return;
@@ -723,7 +703,6 @@ export function Board({
         world.scale.set(camera.scale);
         world.position.set(camera.x, camera.y);
         setStrokeScale(lineScale(camera.scale));
-        setZoomed(isZoomed(camera, size()));
       };
       // Eases to a camera in FRAME_MS; jumps when the player prefers reduced motion.
       let animation: number | undefined;
@@ -915,46 +894,6 @@ export function Board({
 
   return (
     <div ref={host} className="board" role="img" aria-label="Reactor Deck">
-      <button
-        type="button"
-        className="board-turn board-turn-left"
-        aria-label="Turn board left"
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={() => cameraControl.current?.turn(-1)}
-      >
-        ⟲
-      </button>
-      <button
-        type="button"
-        className="board-turn board-turn-right"
-        aria-label="Turn board right"
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={() => cameraControl.current?.turn(1)}
-      >
-        ⟳
-      </button>
-      <button
-        type="button"
-        className="board-lines"
-        aria-label="Target lines"
-        aria-pressed={showLines}
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={() => {
-          writeLinesSetting(!showLines);
-          setShowLines(!showLines);
-        }}
-      >
-        Lines
-      </button>
-      <button
-        type="button"
-        className="board-zoom"
-        aria-label={zoomed ? "Fit board" : "Zoom on selected Hero"}
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={() => cameraControl.current?.toggle()}
-      >
-        {zoomed ? "Fit" : "Zoom"}
-      </button>
     </div>
   );
 }
