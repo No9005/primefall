@@ -103,7 +103,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .pull-face.overdrive { border-color: var(--overdrive); }
 .pull-face.overdrive .face-title { color: var(--overdrive); }
 .pull-face[aria-disabled="true"] { opacity: 0.55; border-color: var(--steel); cursor: default; }
-.face-title { display: flex; justify-content: space-between; align-items: center; font: 700 12px/1 var(--font-label); letter-spacing: 0.1em; text-transform: uppercase; }
+.face-title { display: flex; flex: none; justify-content: space-between; align-items: flex-start; gap: 4px; font: 700 12px/1.2 var(--font-label); letter-spacing: 0.06em; text-transform: uppercase; }
+.pull-face > * { flex: none; }
 .face-cost { font: 500 12px/1 var(--font-number); color: var(--orange); }
 .face-effect { font: 12px/1.18 var(--font-label); color: var(--text-soft); }
 .face-reason { font: 700 11px/1.1 var(--font-label); color: var(--red); }
