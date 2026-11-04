@@ -85,6 +85,10 @@ jobs:
           cp -r tools/factory "$RUNNER_TEMP/factory"
           echo "FACTORY=$RUNNER_TEMP/factory" >> "$GITHUB_ENV"
       - run: npm ci
+      # Display only: the label shows on the issue while the agent works. Nothing reads it, so a failure here or a
+      # label left behind by a killed run changes nothing.
+      - name: Show that an agent works on the ticket
+        run: gh issue edit "$ISSUE" --add-label agent-working || true
 
       - name: Implement
         continue-on-error: true
@@ -189,6 +193,9 @@ jobs:
           gh issue comment "$ISSUE" --body "The factory run failed before this ticket was done. The issue is labelled \`needs-human\`; remove the label to try again. [Run]($RUN_URL)"
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - name: Take the working label off
+        if: always()
+        run: gh issue edit "$ISSUE" --remove-label agent-working || true
       # Whatever happened, go on with the next ticket. Every ticket ends merged, needs-human, or with an open
       # pull request, and none of these is startable again, so this ends when no ticket is left.
       - name: Start the next ticket

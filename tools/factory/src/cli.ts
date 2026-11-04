@@ -73,6 +73,7 @@ const LABEL_COLORS: Record<string, string> = {
   [Label.BlastRadiusLow]: "0e8a16",
   [Label.BlastRadiusHigh]: "b60205",
   [Label.HighRisk]: "b60205",
+  [Label.AgentWorking]: "fbca04",
 };
 
 const repo = process.env.GITHUB_REPOSITORY ?? "";

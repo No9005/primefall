@@ -31,4 +31,5 @@ The single source for the factory's labels (other docs link here). Set by the so
 | `needs-human` | On a pull request: the automated review failed twice or the rework pushed nothing. On an issue: the factory run failed or ended without a pull request. No further automatic runs until the owner acts (remove the label to retry) |
 | `needs-human-merge` | High blast radius pull request waiting for the owner to review and merge |
 | `blast-radius:low`, `blast-radius:high` | Class of a pull request |
+| `agent-working` | Display only: set on an issue while a factory run works on it, removed when the run ends. No decision reads it (the run scans all ready issues), so a label left behind by a killed run blocks nothing |
 | `high-risk` | Owner marks a ticket or pull request as high blast radius |
