@@ -41,9 +41,9 @@ export interface ShotInWorld {
 }
 
 /** How high above the foot of a Hero the line starts and ends: the chest. */
-const CHEST_LIFT = TILE_HEIGHT * 0.7;
+const CHEST_LIFT = TILE_HEIGHT * 1.05;
 
-/** The chest height above a tile, in world pixels at a view angle. Tokens stand on the lower vertex of their tile. */
+/** The chest height above a tile, in world pixels at a view angle. Tokens stand on the middle of their tile. */
 export function chestOf(tile: GridPosition, angle: number = VIEW_ANGLE): Point {
   const { x, y } = gridToWorld(tile, angle);
   return { x, y: y + footOffset(angle) - CHEST_LIFT };
