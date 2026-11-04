@@ -25,9 +25,12 @@ describe("fogShape", () => {
     const grid = { width: 6, height: 6 };
     const visible = [{ col: 1, row: 1 }, { col: 2, row: 1 }];
     const own = [{ col: 1, row: 1 }];
-    // An enemy standing in the fog or in sight is not an input: the same sight gives the same fog.
-    expect(fogShape(grid, visible, own)).toEqual(fogShape(grid, [...visible], [...own]));
-    expect(fogShape(grid, visible, own)[1 * 6 + 2]).toBe(0);
+    // An enemy stands at (4, 4), outside the sight. fogShape has no enemy input, so that tile stays fully fogged
+    // and the fog is exactly that of the visible and own tiles alone.
+    const enemy = { col: 4, row: 4 };
+    const fog = fogShape(grid, visible, own);
+    expect(fog).toEqual(fogAlphas(6, 6, seen([1, 1], [2, 1])));
+    expect(fog[enemy.row * 6 + enemy.col]).toBe(1);
   });
   it("lights the tiles of the own Heroes", () => {
     expect(fogShape({ width: 4, height: 4 }, [], [{ col: 2, row: 2 }])[2 * 4 + 2]).toBe(0);

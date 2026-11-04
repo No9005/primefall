@@ -41,7 +41,7 @@ import { buildTerrain, coverMarks, depthOf, type Face, floorOutline, footOffset,
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
-import { AREA_COLOR, AREA_PIPS, areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
+import { AREA_COLOR, AREA_PIPS, areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, TRANSITION_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
 import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
@@ -903,7 +903,7 @@ export function Board({
       const ms = now - startedAt;
       for (const { index, fog, lift } of fading) frame[index] = (fog - finalFog[index]!) * lift(ms) + finalFog[index]!;
       fogClouds.setFog(frame);
-      if (!finished(ms, 3000)) handle = requestAnimationFrame(step);
+      if (!finished(ms, TRANSITION_MS)) handle = requestAnimationFrame(step);
       else fogClouds.setFog(finalFog);
     };
     step(startedAt);
@@ -1092,7 +1092,7 @@ export function Board({
       for (const update of animated) update(now - effectStart);
       for (const update of idle) update(now);
       // Every transition (the longest: a ring of the zone or an area of up to 5 rings) is over within 3 s; the idle pulse never ends.
-      const transitioning = animated.length > 0 && !finished(now - effectStart, 3000);
+      const transitioning = animated.length > 0 && !finished(now - effectStart, TRANSITION_MS);
       if (!reducedMotion && (idle.length > 0 || transitioning)) effectFrame = requestAnimationFrame(runEffects);
     };
     runEffects(effectStart);
