@@ -5,6 +5,9 @@ import type { BoardPick, Point } from "./card-drag";
 import { BlockChip, CardFace, EnergyPill, ModeFaceCard } from "./game-parts";
 import "./tutorial.css";
 import { OVERDRIVE_FACES, SIGHT_SCENE, TUTORIAL_STEP_SECONDS, TUTORIAL_STEPS, TutorialDrop, TutorialTopic } from "./tutorial";
+import { zoneLook } from "./vision-effects";
+
+const NEUTRAL_ZONE = zoneLook("neutral", 0);
 
 const COLS = 7;
 const ROWS = 5;
@@ -43,7 +46,7 @@ function SightBoard() {
         placedCover={NOTHING}
         wreckCover={NOTHING}
         revealedAreas={NOTHING}
-        zoneTint="neutral"
+        zoneTint={NEUTRAL_ZONE}
         visibleTiles={SIGHT_SCENE.visibleTiles}
         heroes={SIGHT_HEROES}
         enemies={SIGHT_ENEMIES}
