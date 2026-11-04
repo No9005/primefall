@@ -1,6 +1,6 @@
-import { type EnemyView, EventKind, type GridPosition, type HeroClass, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
+import { CoverKind, type EnemyView, EventKind, type GridPosition, type HeroClass, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
 import type { TokenHero } from "./Board";
-import { attackClipName, type ClipName, clipOf } from "./hero-clips";
+import { attackClipName, type ClipName, clipOf, takeCoverClipName } from "./hero-clips";
 
 /** How long the playback shows one step (one frame) at least; slow enough to follow who does what. The animation never changes it. */
 export const STEP_MS = 1200;
@@ -10,6 +10,8 @@ export const STEP_MS = 1200;
  * flight time of every projectile, the target reacts this long after the shot.
  */
 export const IMPACT_AFTER_FIRE_MS = 480;
+/** Where the hit flash is in the Exhausted clip (12 % of 5400 ms). */
+const EXHAUSTED_HIT_FLASH_MS = 650;
 /** The fire beat when the class of the attacker is not known. */
 const DEFAULT_FIRE_MS = 620;
 
@@ -67,12 +69,18 @@ export interface PlaybackFrame {
  * then their second step, and so on, so the Heroes of a Tick walk side by side, tile by tile.
  * A Tick with only blocked moves still yields a frame so the Tick indicator advances.
  */
-export function buildPlaybackFrames(events: readonly MatchEvent[], classOf?: (heroId: string) => HeroClass | undefined): PlaybackFrame[] {
+export function buildPlaybackFrames(
+  events: readonly MatchEvent[],
+  classOf?: (heroId: string) => HeroClass | undefined,
+  coverOf?: (tile: GridPosition) => CoverKind,
+): PlaybackFrame[] {
   const frames: PlaybackFrame[] = [];
   const ticks = [...new Set(events.map((event) => event.tick))].sort((a, b) => a - b);
   for (const tick of ticks) {
     const seen = new Map<string, number>();
     const tickFrames: PlaybackFrame[] = [];
+    /** The last Step of each Hero in the Tick: where its Move ends. */
+    const lastStep = new Map<string, { frame: PlaybackFrame; to: GridPosition }>();
     for (const event of events.filter((candidate) => candidate.tick === tick)) {
       const occurrence = seen.get(event.heroId) ?? 0;
       seen.set(event.heroId, occurrence + 1);
@@ -92,13 +100,24 @@ export function buildPlaybackFrames(events: readonly MatchEvent[], classOf?: (he
           ...(event.distance !== undefined && { distance: event.distance }),
         });
       }
-      if (event.kind === EventKind.Exhausted) frame.exhausted.push(event.heroId);
-      if (event.kind === EventKind.Step) frame.clips[event.heroId] = "walk";
+      if (event.kind === EventKind.Exhausted) {
+        frame.exhausted.push(event.heroId);
+        frame.clips[event.heroId] = "exhausted";
+      }
+      if (event.kind === EventKind.Step) {
+        frame.clips[event.heroId] = "walk";
+        if (event.to) lastStep.set(event.heroId, { frame, to: event.to });
+      }
       if (event.kind === EventKind.AttackHit || event.kind === EventKind.AttackFailed) {
         frame.clips[event.heroId] = attackClipName(event.card);
       }
       // A Block (a Shield without a card) crouches; the Shield of an Aegis Protocol has its own clip later.
       if (event.kind === EventKind.ShieldGained && event.card === undefined) frame.clips[event.heroId] = "block";
+    }
+    // A Move that ends on Cover takes cover (the Hero has walked there in this frame).
+    for (const [heroId, { frame, to }] of lastStep) {
+      const cover = coverOf?.(to) ?? CoverKind.None;
+      if (cover !== CoverKind.None && frame.clips[heroId] === "walk") frame.clips[heroId] = takeCoverClipName(cover);
     }
     // The targets react at the impact beat of the attacker's clip, unless they do something of their own in the frame.
     for (const frame of tickFrames) {
@@ -107,9 +126,15 @@ export function buildPlaybackFrames(events: readonly MatchEvent[], classOf?: (he
         const attackerClass = classOf?.(event.heroId);
         const fire = attackerClass === undefined ? undefined : clipOf(attackerClass, attackClipName(event.card)).fireMs;
         const absorbed = (event.absorbed ?? 0) > 0 && (event.damage ?? 0) === 0;
+        const impactMs = (fire ?? DEFAULT_FIRE_MS) + IMPACT_AFTER_FIRE_MS;
+        if (frame.clips[event.targetId] === "exhausted") {
+          // The Exhausted clip has its own hit flash: it starts early enough for the flash to land with the impact.
+          frame.delays[event.targetId] = Math.max(0, impactMs - EXHAUSTED_HIT_FLASH_MS);
+          continue;
+        }
         if (frame.clips[event.targetId] !== undefined) continue;
         frame.clips[event.targetId] = absorbed ? "absorb" : "hit";
-        frame.delays[event.targetId] = (fire ?? DEFAULT_FIRE_MS) + IMPACT_AFTER_FIRE_MS;
+        frame.delays[event.targetId] = impactMs;
       }
     }
     // A Wait lasts the whole Tick; a Step in the same frame wins over it.

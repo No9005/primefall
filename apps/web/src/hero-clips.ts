@@ -1,4 +1,4 @@
-import { HeroClass } from "game-core";
+import { CoverKind, HeroClass } from "game-core";
 
 // The Hero clips of docs/design/animation: plain keyframe data per rig part, and the pure sampling of it. The numbers
 // are the CSS @keyframes of reference/*.html translated one to one (px at game size, CSS degrees, clockwise).
@@ -13,10 +13,40 @@ export type ClipName =
   | "slowPulse"
   | "block"
   | "hit"
-  | "absorb";
+  | "absorb"
+  | "takeCover"
+  | "takeCoverFull"
+  | "inCover"
+  | "inCoverFull"
+  | "exhausted";
 
-/** `rig` moves the whole figure (the knock-back of a Hit); `flash` is the white flash and `ring` the red flash of the Squad ring. */
-export const PARTS = ["torso", "head", "armF", "armB", "legL", "legR", "cape", "pause", "rig", "flash", "ring"] as const;
+/**
+ * `rig` moves the whole figure (the knock-back of a Hit, the fall of Exhaustion); `flash` is the white flash and `ring`
+ * the red flash of the Squad ring, `teamRing` the Squad ring itself. `grey` is how far an Exhausted Hero has gone grey,
+ * `dropGun` the rifle an Exhausted Assassin flings, `sparks` and `beaconRed` the Exhaustion of a Controller; `beacon` is
+ * its yellow light (clip-driven only while Exhausted, otherwise the board blinks it).
+ */
+export const PARTS = [
+  "torso",
+  "body",
+  "head",
+  "armF",
+  "armB",
+  "gun",
+  "legL",
+  "legR",
+  "cape",
+  "pause",
+  "rig",
+  "flash",
+  "ring",
+  "teamRing",
+  "grey",
+  "dropGun",
+  "sparks",
+  "beacon",
+  "beaconRed",
+] as const;
 export type PartName = (typeof PARTS)[number];
 
 export const PROPS = ["x", "y", "rotation", "scaleX", "scaleY", "alpha"] as const;
@@ -58,7 +88,7 @@ export interface Clip {
 const REST_PART: PartPose = { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, alpha: 1 };
 const REST_ROTATION: Partial<Record<PartName, number>> = { armF: -30, armB: 4 };
 /** Overlays that show only while a clip moves them. */
-const HIDDEN_AT_REST: ReadonlySet<PartName> = new Set(["pause", "flash", "ring"]);
+const HIDDEN_AT_REST: ReadonlySet<PartName> = new Set(["pause", "flash", "ring", "grey", "dropGun", "sparks", "beaconRed"]);
 
 export function restPart(part: PartName): PartPose {
   return { ...REST_PART, rotation: REST_ROTATION[part] ?? 0, alpha: HIDDEN_AT_REST.has(part) ? 0 : 1 };
@@ -276,6 +306,151 @@ const HIT = (cape: boolean): Track[] => [
 /** Hit, Shield absorbs: a small shake, no flash and no knock-back. */
 const ABSORB = (): Track[] => [track("rig", "x", "ease-out", [[0, [0, 10, 24, 100]], [-1.5, [13]], [1, [18]]])];
 
+// ---- Cover (the c-*, f-*, ch-*, cf-* and acf-* keyframes) ---------------------------------------------------------------
+
+/** A Hero behind Cover keeps its knees bent and its arms up; these are the values the cover clips hold. */
+const CROUCH = (): Track[] => [
+  track("legL", "scaleY", "ease-in-out", [[0.5, [0, 100]]]),
+  track("legL", "rotation", "ease-in-out", [[-14, [0, 100]]]),
+  track("legR", "scaleY", "ease-in-out", [[0.5, [0, 100]]]),
+  track("legR", "rotation", "ease-in-out", [[14, [0, 100]]]),
+  track("armF", "rotation", "ease-in-out", [[-125, [0, 100]]]),
+  track("armB", "rotation", "ease-in-out", [[-100, [0, 100]]]),
+];
+
+/** The half-cape of the Assassin hangs still behind Cover. */
+const CAPE_STILL = (): Track[] => [track("cape", "rotation", "ease-in-out", [[-3, [0, 100]]]), track("cape", "scaleY", "ease-in-out", [[0.85, [0, 100]]])];
+
+/** Take cover behind Half Cover: duck behind the low wall, peek both ways, stand up again. */
+const TAKE_COVER_HALF = (): Track[] => [
+  track("torso", "y", "ease-in-out", [[0, [0, 10, 82, 100]], [5, [24, 70]]]),
+  track("legL", "scaleY", "ease-in-out", [[1, [0, 10, 82, 100]], [0.5, [24, 70]]]),
+  track("legL", "rotation", "ease-in-out", [[0, [0, 10, 82, 100]], [-14, [24, 70]]]),
+  track("legR", "scaleY", "ease-in-out", [[1, [0, 10, 82, 100]], [0.5, [24, 70]]]),
+  track("legR", "rotation", "ease-in-out", [[0, [0, 10, 82, 100]], [14, [24, 70]]]),
+  track("armF", "rotation", "ease-in-out", [[-30, [0, 10, 82, 100]], [-125, [24, 70]]]),
+  track("armB", "rotation", "ease-in-out", [[4, [0, 10, 82, 100]], [-100, [24, 70]]]),
+  track("head", "x", "ease-in-out", [[0, [0, 30, 70, 100]], [1, [38, 46]], [-1, [54, 62]]]),
+  track("head", "y", "ease-in-out", [[0, [0, 30, 70, 100]], [-3, [38, 46, 54, 62]]]),
+  track("head", "rotation", "ease-in-out", [[0, [0, 30, 70, 100]], [-12, [38, 46]], [12, [54, 62]]]),
+  ...CAPE_STILL(),
+];
+
+/** Take cover behind Full Cover: slide in against the tall wall, weapon upright, lean out to look around the edge. */
+const TAKE_COVER_FULL = (): Track[] => [
+  track("rig", "x", "ease-in-out", [[13, [0, 94, 100]], [-2, [22, 78]]]),
+  track("torso", "x", "ease-in-out", [[0, [0, 22, 78, 100]], [3, [48, 60]]]),
+  track("torso", "rotation", "ease-in-out", [[0, [0, 22, 78, 100]], [9, [48, 60]]]),
+  track("head", "x", "ease-in-out", [[0, [0, 22, 78, 100]], [1, [48, 60]]]),
+  track("head", "rotation", "ease-in-out", [[0, [0, 22, 78, 100]], [10, [30, 42]], [-12, [48, 60]]]),
+  track("armF", "rotation", "ease-in-out", [[-30, [0, 22, 78, 100]], [-168, [30, 72]]]),
+  track("armB", "rotation", "ease-in-out", [[4, [0, 22, 78, 100]], [82, [30, 72]]]),
+  ...CAPE_STILL(),
+];
+
+/** In cover behind Half Cover: crouched, breathing, a peek now and then. */
+const IN_COVER_HALF = (): Track[] => [
+  ...CROUCH(),
+  track("torso", "y", "ease-in-out", [[5, [0, 100]], [4, [50]]]),
+  track("head", "x", "ease-in-out", [[0, [0, 38, 84, 100]], [1, [46, 56]], [-1, [64, 74]]]),
+  track("head", "y", "ease-in-out", [[0, [0, 38, 84, 100]], [-3, [46, 56, 64, 74]]]),
+  track("head", "rotation", "ease-in-out", [[0, [0, 38, 84, 100]], [-12, [46, 56]], [12, [64, 74]]]),
+  ...CAPE_STILL(),
+];
+
+/** In cover behind Full Cover: back to the tall wall, weapon upright, a glance around the edge now and then. */
+const IN_COVER_FULL = (): Track[] => [
+  track("rig", "x", "ease-in-out", [[-2, [0, 100]]]),
+  track("torso", "y", "ease-in-out", [[0, [0, 100]], [-0.8, [50]]]),
+  track("head", "x", "ease-in-out", [[0, [0, 48, 84, 100]], [1, [56, 74]]]),
+  track("head", "rotation", "ease-in-out", [[0, [0, 48, 84, 100]], [-12, [56, 74]]]),
+  track("body", "x", "ease-in-out", [[0, [0, 48, 84, 100]], [2, [56, 74]]]),
+  track("body", "rotation", "ease-in-out", [[0, [0, 48, 84, 100]], [6, [56, 74]]]),
+  track("armF", "rotation", "ease-in-out", [[-168, [0, 100]]]),
+  track("armB", "rotation", "ease-in-out", [[82, [0, 100]]]),
+  ...CAPE_STILL(),
+];
+
+/** The Assassin in Full Cover kneels and scans left and right through the scope, then stands up (acf-*). */
+const ASSASSIN_IN_COVER_FULL = (): Track[] => [
+  track("rig", "x", "ease-in-out", [[-2, [0, 100]]]),
+  track("torso", "x", "ease-in-out", [[0, [0, 10, 84, 100]], [1, [22, 34, 58, 74]]]),
+  track("torso", "y", "ease-in-out", [[0, [0, 10, 84, 100]], [5, [22, 34, 58, 74]]]),
+  track("torso", "rotation", "ease-in-out", [[0, [0, 10, 84, 100]], [5, [22, 74]], [2, [34]], [9, [58]]]),
+  track("legL", "rotation", "ease-in-out", [[0, [0, 10, 84, 100]], [12, [22, 74]]]),
+  track("legR", "rotation", "ease-in-out", [[0, [0, 10, 84, 100]], [-75, [22, 74]]]),
+  track("armF", "rotation", "ease-in-out", [[-168, [0, 10, 84, 100]], [-91, [22, 74]], [-84, [34, 62]], [-99, [46, 50]]]),
+  track("armB", "rotation", "ease-in-out", [[82, [0, 10, 84, 100]], [-84, [22, 74]]]),
+  track("head", "rotation", "ease-in-out", [[0, [0, 10, 84, 100]], [8, [22, 74]], [2, [34, 62]], [12, [46, 50]]]),
+  ...CAPE_STILL(),
+];
+
+// ---- Exhausted (the x-*, ax-* and cox-* keyframes) -------------------------------------------------------------------
+
+/** How a class falls: backwards for the Bruiser and the Assassin (quicker), forwards for the Controller. Times are percents of the clip. */
+interface Fall {
+  /** The knees have buckled. */
+  buckle: number;
+  /** The Hero leans into the fall. */
+  tilt: number;
+  /** The Hero lies on the ground. */
+  fallen: number;
+  /** The figure is gone: the slab has taken its place. */
+  gone: number;
+  /** The hit lands just before this (12 %); the Hero stands until then. */
+  standsUntil: number;
+  tiltAngle: number;
+  fallenX: number;
+  fallenY: number;
+  fallenAngle: number;
+  tiltX: number;
+  greyHalf: number;
+}
+
+const BRUISER_FALL: Fall = { buckle: 34, tilt: 50, fallen: 62, gone: 74, standsUntil: 8, tiltAngle: -8, fallenX: -14, fallenY: 3, fallenAngle: -90, tiltX: -2, greyHalf: 0.6 };
+const ASSASSIN_FALL: Fall = { buckle: 28, tilt: 40, fallen: 50, gone: 66, standsUntil: 8, tiltAngle: -10, fallenX: -14, fallenY: 3, fallenAngle: -90, tiltX: -2, greyHalf: 0.5 };
+const CONTROLLER_FALL: Fall = { buckle: 34, tilt: 50, fallen: 62, gone: 74, standsUntil: 8, tiltAngle: 14, fallenX: 18, fallenY: 5, fallenAngle: 90, tiltX: 1, greyHalf: 0.6 };
+
+/**
+ * Exhausted: the hit flash at 12 % (650 ms), the knees buckle, the Hero falls and goes grey, and then the figure is gone,
+ * as the body becomes the Half Cover slab the terrain draws. The Hero does not come back: the board shows the Exhausted
+ * Hero as the existing flat pose afterwards.
+ */
+const EXHAUSTED_FALL = ({ buckle, tilt, fallen, gone, standsUntil, tiltAngle, fallenX, fallenY, fallenAngle, tiltX, greyHalf }: Fall): Track[] => {
+  return [
+    track("rig", "x", "ease-in-out", [[0, [0, standsUntil]], [-4, [12]], [-1, [18, buckle]], [tiltX, [tilt]], [fallenX, [fallen, gone, 100]]]),
+    track("rig", "y", "ease-in-out", [[0, [0, standsUntil, 12, 18]], [5, [buckle]], [6, [tilt]], [fallenY, [fallen, gone, 100]]]),
+    track("rig", "rotation", "ease-in-out", [[0, [0, buckle]], [tiltAngle, [tilt]], [fallenAngle, [fallen, gone, 100]]]),
+    track("rig", "alpha", "ease-in-out", [[1, [0, fallen]], [0, [gone, 100]]]),
+    track("flash", "alpha", "linear", [[0, [0, standsUntil, 18, 100]], [1, [12]]]),
+    track("grey", "alpha", "ease-in-out", [[0, [0, buckle]], [greyHalf, [tilt]], [1, [fallen, 100]]]),
+    track("teamRing", "alpha", "ease-in-out", [[1, [0, 56]], [0, [66, 100]]]),
+    track("torso", "y", "ease-in-out", [[0, [0, 14]], [5, [30, 60]], [0, [100]]]),
+    track("torso", "rotation", "ease-in-out", [[0, [0, 14]], [16, [30, 60]], [0, [100]]]),
+    track("legL", "rotation", "ease-in-out", [[0, [0, 14]], [38, [30, 60]], [0, [100]]]),
+    track("legR", "rotation", "ease-in-out", [[0, [0, 14]], [-38, [30, 60]], [0, [100]]]),
+    track("head", "rotation", "ease-in-out", [[0, [0, 14]], [26, [30, 60]], [0, [100]]]),
+    track("armF", "rotation", "ease-in-out", [[-30, [0, 14]], [14, [30, 60]], [-30, [100]]]),
+    track("armB", "rotation", "ease-in-out", [[4, [0, 14]], [14, [30, 60]], [4, [100]]]),
+  ];
+};
+
+/** The Assassin's rifle leaves the arm at 26 %, flies forward (1400-2800 ms), clatters and lies next to the slab. */
+const ASSASSIN_RIFLE = (): Track[] => [
+  track("gun", "alpha", "linear", [[1, [0, 26]], [0, [27, 100]]]),
+  track("dropGun", "alpha", "linear", [[0, [0, 26, 100]], [1, [27, 86]]]),
+  track("dropGun", "x", "ease-in", [[0, [0, 26, 27]], [16, [36]], [27, [44]], [30, [48]], [32, [52, 100]]]),
+  track("dropGun", "y", "ease-in", [[0, [0, 26, 27]], [-8, [36]], [14, [44]], [10, [48]], [22, [52, 100]]]),
+  track("dropGun", "rotation", "ease-in", [[0, [0, 26, 27]], [-120, [36]], [-220, [44]], [-250, [48]], [-270, [52, 100]]]),
+];
+
+/** The Controller's backpack sparks and its beacon goes red, then out. */
+const CONTROLLER_SPARKS = (): Track[] => [
+  track("sparks", "alpha", "linear", [[0, [0, 11.9, 18.1, 19.9, 28.1, 29.9, 42.1, 100]], [1, [12, 18, 20, 28, 30, 42]]]),
+  track("beacon", "alpha", "linear", [[1, [0, 12]], [0, [13, 100]]]),
+  track("beaconRed", "alpha", "ease-in-out", [[0, [0, 12]], [1, [14, 45]], [0, [55, 100]]]),
+];
+
 const pulse = (name: ClipName, durationMs: number, activeEndMs: number): Clip =>
   once(name, durationMs, activeEndMs, PULSE_BOLT(), Math.round((durationMs * 0.26) / 10) * 10);
 
@@ -291,24 +466,54 @@ function basics(cape: boolean): Partial<Record<ClipName, Clip>> {
   };
 }
 
-const PLAIN = basics(false);
-/** The Assassin is lighter and quicker: a 500 ms stride, and the cape moves. */
-const CAPED = basics(true);
+/** The cover clips loop. A Take cover reaches its rest (ducked, or against the wall) at 24 % / 22 % of its loop. */
+function covers(takeHalfMs: number, takeFullMs: number, inHalfMs: number, inFullMs: number, inFull: Track[]): Partial<Record<ClipName, Clip>> {
+  return {
+    takeCover: { ...clip("takeCover", takeHalfMs, TAKE_COVER_HALF()), activeEndMs: Math.round(takeHalfMs * 0.24) },
+    takeCoverFull: { ...clip("takeCoverFull", takeFullMs, TAKE_COVER_FULL()), activeEndMs: Math.round(takeFullMs * 0.22) },
+    inCover: clip("inCover", inHalfMs, IN_COVER_HALF()),
+    inCoverFull: clip("inCoverFull", inFullMs, inFull),
+  };
+}
+
+const PLAIN = { ...basics(false), ...covers(4400, 4800, 3400, 3600, IN_COVER_FULL()) };
+/** The Assassin is lighter and quicker: a 500 ms stride, the cape moves, and it is nervous and quick in cover. */
+const CAPED = { ...basics(true), ...covers(3600, 4000, 2400, 4400, ASSASSIN_IN_COVER_FULL()) };
+
+const EXHAUSTED_MS = 5400;
+/** The Exhausted clip is over for the Tick when the slab has formed (4860 ms). */
+const EXHAUSTED_ACTIVE_END_MS = 4860;
 
 const CLIPS: Record<HeroClass, Partial<Record<ClipName, Clip>>> = {
-  [HeroClass.Bruiser]: { ...PLAIN, attack: once("attack", 2400, 1540, SLAM_SHOT(), 620) },
+  [HeroClass.Bruiser]: {
+    ...PLAIN,
+    attack: once("attack", 2400, 1540, SLAM_SHOT(), 620),
+    exhausted: once("exhausted", EXHAUSTED_MS, EXHAUSTED_ACTIVE_END_MS, EXHAUSTED_FALL(BRUISER_FALL)),
+  },
   [HeroClass.Controller]: {
     ...PLAIN,
     attack: pulse("attack", 2400, 1630),
     tagRound: pulse("tagRound", 2800, 1400),
     slowPulse: pulse("slowPulse", 2600, 2180),
+    exhausted: once("exhausted", EXHAUSTED_MS, EXHAUSTED_ACTIVE_END_MS, [...EXHAUSTED_FALL(CONTROLLER_FALL), ...CONTROLLER_SPARKS()]),
   },
   [HeroClass.Assassin]: {
     ...CAPED,
     attack: once("attack", 2200, 1450, PRECISION_SHOT(), 570),
     longShot: once("longShot", 3600, 3170, LONG_SHOT(), 1650),
+    exhausted: once("exhausted", EXHAUSTED_MS, EXHAUSTED_ACTIVE_END_MS, [...EXHAUSTED_FALL(ASSASSIN_FALL), ...ASSASSIN_RIFLE()]),
   },
 };
+
+/** The Take cover clip for a Move that ends on this Cover. */
+export function takeCoverClipName(cover: CoverKind): ClipName {
+  return cover === CoverKind.Full ? "takeCoverFull" : "takeCover";
+}
+
+/** What a Hero does when nothing is asked of it: stand, or stand behind the Cover it is on. */
+export function restClipName(cover: CoverKind): ClipName {
+  return cover === CoverKind.Full ? "inCoverFull" : cover === CoverKind.Half ? "inCover" : "idle";
+}
 
 /** The clip of a Hero class; a clip the class does not have (a Long Shot of a Bruiser) is its basic attack. */
 export function clipOf(heroClass: HeroClass, name: ClipName): Clip {

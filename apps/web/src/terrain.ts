@@ -1,4 +1,4 @@
-import { type Grid, type GridPosition, isWreck, TileKind } from "game-core";
+import { destroyCover, type Grid, type GridPosition, isWreck, REACTOR_DECK, TileKind, withTile, withWreck } from "game-core";
 import { OUTLINE, PIECE_SHAPE, type PieceStyle, TERRAIN_STYLE } from "./terrain-style";
 
 // The terrain as shapes: the grid and a view angle in, drawing primitives out (floor polygons, and for each
@@ -333,4 +333,10 @@ export function pickWallAt(x: number, y: number, grid: Grid, angle: number = VIE
     if (!best || tile.depth > best.depth || (tile.depth === best.depth && offset < best.offset)) best = { position: tile.position, depth: tile.depth, offset };
   }
   return best?.position;
+}
+
+/** The Reactor Deck as the Squad knows it: destroyed Cover gone, Cover placed in the match standing, wrecks of Exhausted Heroes as Half Cover. */
+export function coverGridOf(destroyed: readonly GridPosition[], placed: readonly GridPosition[], wrecks: readonly GridPosition[]): Grid {
+  const standing = placed.reduce((grid, tile) => withTile(grid, tile, TileKind.HalfCover), destroyed.reduce(destroyCover, REACTOR_DECK));
+  return wrecks.reduce(withWreck, standing);
 }
