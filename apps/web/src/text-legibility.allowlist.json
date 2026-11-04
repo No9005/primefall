@@ -1,0 +1,4 @@
+[
+  { "selector": ".queue-number", "check": "size", "reason": "owned by #273 (Queue slot numbers)" },
+  { "selector": ".wait-card (inline opacity)", "check": "contrast", "reason": "owned by #273 (Wait card)" }
+]
