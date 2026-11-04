@@ -37,20 +37,20 @@ describe("primeCallouts", () => {
 });
 
 describe("primeScore", () => {
-  it("is hidden while nobody stands in the zone", () => {
-    expect(primeScore(counts(0, 0), L, false, false)).toBeUndefined();
+  it("is neutral with empty pips while nobody holds the zone", () => {
+    expect(primeScore(counts(0, 0), L, false)).toEqual({ filled: 0, state: "neutral", label: "PRIME ZONE" });
   });
 
   it("shows the own count in teal pips", () => {
-    expect(primeScore(counts(2, 0), L, true, false)).toEqual({ filled: 2, state: "own", label: "PRIME ZONE" });
+    expect(primeScore(counts(2, 0), L, false)).toEqual({ filled: 2, state: "own", label: "PRIME ZONE" });
   });
 
   it("says ENEMY HOLDS when the enemy holds the count", () => {
-    expect(primeScore(counts(0, 1), L, true, false)).toEqual({ filled: 1, state: "enemy", label: "ENEMY HOLDS" });
+    expect(primeScore(counts(0, 1), L, false)).toEqual({ filled: 1, state: "enemy", label: "ENEMY HOLDS" });
   });
 
   it("shows the contested state with empty pips", () => {
-    expect(primeScore(counts(2, 0), L, true, true)).toEqual({ filled: 0, state: "contested", label: "CONTESTED" });
+    expect(primeScore(counts(2, 0), L, true)).toEqual({ filled: 0, state: "contested", label: "CONTESTED" });
   });
 });
 
@@ -64,12 +64,21 @@ describe("zoneOccupancy and zoneTint", () => {
     expect(zoneOccupancy([{ position: zone, exhausted: false }], [{ position: zone, exhausted: false }]).contested).toBe(true);
   });
 
-  it("tints teal when own, gold at the third Resolution, amber when contested, red when the enemy holds it, grey otherwise", () => {
-    expect(zoneTint(primeScore(counts(1, 0), L, true, false))).toEqual({ color: 0x2ec4b6, alpha: 0.35, pulse: true });
-    expect(zoneTint(primeScore(counts(2, 0), L, true, false)).alpha).toBeCloseTo(0.45);
-    expect(zoneTint(primeScore(counts(3, 0), L, true, false)).color).toBe(0xffd24a);
-    expect(zoneTint(primeScore(counts(1, 0), L, true, true)).color).toBe(0xffb347);
-    expect(zoneTint(primeScore(counts(0, 1), L, true, false)).color).toBe(0xe5484d);
-    expect(zoneTint(undefined)).toEqual({ color: 0x8a99a8, alpha: 0.2, pulse: false });
+  it("looks teal when own, gold at the third Resolution, amber when contested, red when the enemy holds it, white otherwise", () => {
+    expect(zoneTint(primeScore(counts(1, 0), L, false))).toEqual({ color: 0x2ec4b6, alpha: 0.35, emblemAlpha: 0.8, pulse: true, ring: true });
+    expect(zoneTint(primeScore(counts(2, 0), L, false)).alpha).toBe(0.45);
+    expect(zoneTint(primeScore(counts(3, 0), L, false))).toEqual({ color: 0xffd24a, alpha: 0.5, emblemAlpha: 0.9, pulse: true, ring: false });
+    expect(zoneTint(primeScore(counts(1, 0), L, true))).toEqual({ color: 0xffb347, alpha: 0.4, emblemAlpha: 0.8, pulse: true, ring: false });
+    expect(zoneTint(primeScore(counts(0, 1), L, false))).toEqual({ color: 0xe5484d, alpha: 0.35, emblemAlpha: 0.8, pulse: true, ring: false });
+    expect(zoneTint(primeScore(counts(0, 0), L, false))).toEqual({ color: 0xe8eef5, alpha: 0.12, emblemAlpha: 0.5, pulse: true, ring: false });
+  });
+
+  it("does not turn contested or enemy for an enemy Hero in the zone outside our Line of Sight", () => {
+    // Outside our sight the enemy is not in the list (or only as a Ghost), so the zone stays neutral.
+    const unseen = zoneOccupancy([{ position: zone, exhausted: false }], [{ position: zone, exhausted: false, ghost: true }]);
+    expect(unseen.contested).toBe(false);
+    expect(unseen.enemy).toBe(false);
+    expect(zoneTint(primeScore(counts(0, 0), L, unseen.contested)).color).toBe(0xe8eef5);
+    expect(zoneTint(primeScore(counts(0, 0), L, zoneOccupancy([], []).contested)).color).toBe(0xe8eef5);
   });
 });

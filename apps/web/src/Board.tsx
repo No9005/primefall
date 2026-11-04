@@ -37,7 +37,7 @@ import { buildTerrain, depthOf, type Face, floorOutline, footOffset, coverGridOf
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
-import { AREA_COLOR, AREA_PIPS, areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, type ZoneLook, zoneRingAt } from "./vision-effects";
+import { AREA_COLOR, AREA_PIPS, areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
 import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
@@ -448,7 +448,7 @@ export function Board({
   const enemyIdsRef = useRef(new Set<string>());
   enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
   const bubbleSeen = useRef(new Set<string>());
-  const { color: zoneColor, alpha: zoneAlpha, pulse: zonePulse } = zoneTint;
+  const { color: zoneColor, alpha: zoneAlpha, emblemAlpha: zoneEmblemAlpha, ring: zoneRingOn } = zoneTint;
   const areaSeen = useRef(new Map<string, { center: GridPosition; size: number }>());
   const ringSeen = useRef("");
   /** Enemy Heroes shown as a Ghost in the last redraw, to fade a change between Ghost and real figure. */
@@ -866,7 +866,40 @@ export function Board({
       }),
     );
     const animated: ((now: number) => void)[] = [];
-    if (zonePulse && zoneTiles.length > 0) {
+    /** Run on every frame while the zone is on screen (the idle pulse), unlike `animated`, which ends after 3 s. */
+    const idle: ((now: number) => void)[] = [];
+    if (zoneTiles.length > 0) {
+      // One outline around the outer edge of the zone (not per tile), with a wide glow under it, and a flat emblem on the middle tile.
+      const cols = zoneTiles.map((tile) => tile.col);
+      const rows = zoneTiles.map((tile) => tile.row);
+      const [minCol, maxCol, minRow, maxRow] = [Math.min(...cols) - 0.5, Math.max(...cols) + 0.5, Math.min(...rows) - 0.5, Math.max(...rows) + 0.5];
+      const outer = [[minCol, minRow], [maxCol, minRow], [maxCol, maxRow], [minCol, maxRow]].flatMap(([col, row]) => {
+        const { x, y } = gridToWorld({ col: col!, row: row! }, angle);
+        return [x, y];
+      });
+      const glow = new Graphics().poly(outer).stroke({ width: 7, color: zoneColor, join: "round" });
+      const border = new Graphics().poly(outer).stroke({ width: 3, color: zoneColor, join: "round" });
+      const middleTile = gridToWorld({ col: (minCol + maxCol) / 2, row: (minRow + maxRow) / 2 }, angle);
+      const emblem = new Graphics()
+        .ellipse(0, 0, TILE_WIDTH * 0.275, TILE_HEIGHT * 0.275)
+        .stroke({ width: 2, color: zoneColor })
+        .poly([-TILE_WIDTH * 0.125, 0, 0, -TILE_HEIGHT * 0.125, TILE_WIDTH * 0.125, 0, 0, TILE_HEIGHT * 0.125])
+        .fill({ color: zoneColor });
+      emblem.position.set(middleTile.x, middleTile.y);
+      emblem.alpha = zoneEmblemAlpha;
+      for (const graphic of [glow, border, emblem]) {
+        planning.addChild(graphic);
+        created.push(graphic);
+      }
+      const setBorder = (now: number) => {
+        const alpha = zoneBorderAlpha(now, reducedMotion);
+        border.alpha = alpha;
+        glow.alpha = alpha * 0.25;
+      };
+      setBorder(0);
+      if (!reducedMotion) idle.push(setBorder);
+    }
+    if (zoneRingOn && zoneTiles.length > 0) {
       const middle = gridToWorld({ col: zoneTiles.reduce((sum, tile) => sum + tile.col, 0) / zoneTiles.length, row: zoneTiles.reduce((sum, tile) => sum + tile.row, 0) / zoneTiles.length }, angle);
       const zoneRing = new Graphics().ellipse(0, 0, TILE_WIDTH * 1.4, TILE_HEIGHT * 1.4).stroke({ width: 3, color: zoneColor });
       zoneRing.position.set(middle.x, middle.y);
@@ -945,15 +978,17 @@ export function Board({
     let effectFrame = 0;
     const runEffects = (now: number) => {
       for (const update of animated) update(now - effectStart);
-      // Every transition (the longest: a ring of the zone or an area of up to 5 rings) is over within 3 s.
-      if (!reducedMotion && animated.length > 0 && !finished(now - effectStart, 3000)) effectFrame = requestAnimationFrame(runEffects);
+      for (const update of idle) update(now);
+      // Every transition (the longest: a ring of the zone or an area of up to 5 rings) is over within 3 s; the idle pulse never ends.
+      const transitioning = animated.length > 0 && !finished(now - effectStart, 3000);
+      if (!reducedMotion && (idle.length > 0 || transitioning)) effectFrame = requestAnimationFrame(runEffects);
     };
     runEffects(effectStart);
     return () => {
       cancelAnimationFrame(effectFrame);
       created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [terrain, angle, strokeScale, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, zoneColor, zoneAlpha, zonePulse]);
+  }, [terrain, angle, strokeScale, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
 
   useEffect(() => {
     const element = host.current;
