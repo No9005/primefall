@@ -143,6 +143,16 @@ export function removeQueueAction(queue: readonly QueuedAction[], index: number)
   return queue.filter((_, i) => i !== index);
 }
 
+/**
+ * Takes a Pitch back: only `card` leaves `pitched`, the others keep their order. Energy is derived from `pitched`,
+ * so exactly one Energy leaves the pool. The Queue is deliberately not touched: if it now costs more than is
+ * pitched, `validatePlan` flags the first unaffordable action and Commit stays disabled until the player pitches
+ * another card or removes that action. A card that is not pitched changes nothing.
+ */
+export function unpitchCard(pitched: readonly CardIndex[], card: CardIndex): readonly CardIndex[] {
+  return pitched.includes(card) ? pitched.filter((pitchedCard) => pitchedCard !== card) : pitched;
+}
+
 /** The Queue entries the tap flow and the drag flow both build, so one use of a card is one entry however it was chosen. */
 export function moveAction(card: CardIndex, destination: GridPosition): QueuedAction {
   return { kind: ActionKind.Move, card, destination };

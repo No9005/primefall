@@ -77,6 +77,9 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .energy-dot { width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--orange); }
 .energy-dot.full { background: var(--orange); }
 .energy-count { font: 700 15px/1 var(--font-number); color: var(--orange); }
+.energy-row { display: flex; align-items: center; gap: 6px; }
+.pitch-undo { height: 26px; box-sizing: border-box; padding: 0 10px; border-radius: 13px; border: 1px solid var(--orange); background: color-mix(in srgb, var(--panel) 87%, transparent); color: var(--orange); font: 700 12px/1 Rajdhani, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
+.pitch-undo:disabled { opacity: 0.5; cursor: default; }
 .hand-column { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .piles, .commit-panel { transition: opacity 150ms; }
 /* A card pressed or pulled out of the Hand: big in the middle of the free board area (left inset 231, right inset 136), the faces of its uses above it. Below the Hand. */

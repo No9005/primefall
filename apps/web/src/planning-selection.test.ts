@@ -1,6 +1,7 @@
-import { ActionKind, cardInMode, HERO_DECKS, HeroClass, type QueuedAction } from "game-core";
+import { ActionKind, cardInMode, HERO_DECKS, HeroClass, PlanIssueKind, type QueuedAction, SquadId, validatePlan } from "game-core";
+import { createLocalHost } from "game-core/local-host";
 import { describe, expect, it } from "vitest";
-import { actionUsesCard, addWaitAction, cardFace, CardUse, cardUseReasons, modeChoiceFaces, primaryAction, queueRowLabel,removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, pickInstruction } from "./planning-selection";
+import { actionUsesCard, addWaitAction, cardFace, CardUse, cardUseReasons, modeChoiceFaces, primaryAction, queueRowLabel,removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
 
 describe("rangeDamageLabel", () => {
   const longShotOverdrive = cardInMode(HERO_DECKS[HeroClass.Assassin][4]!, true);
@@ -210,5 +211,56 @@ describe("Queue window", () => {
     const full = addWaitAction(addWaitAction(queue));
     expect(full).toHaveLength(4);
     expect(addWaitAction(full)).toBe(full);
+  });
+});
+
+describe("unpitchCard", () => {
+  const assassin = HeroClass.Assassin;
+  // Execution Round (Assassin card 7) costs 2 Energy.
+  const executionRound: QueuedAction = { kind: ActionKind.Primary, card: 7, target: "right-bruiser" };
+  const queue = [executionRound];
+
+  it("removes only that card, keeps the order of the others and leaves the Queue alone", () => {
+    expect(unpitchCard([3, 1, 2], 1)).toEqual([3, 2]);
+    expect(queue).toEqual([executionRound]);
+  });
+
+  it("takes exactly one Energy out of the pool", () => {
+    const before = energyReadout(assassin, queue, [0, 1, 2]);
+    const after = energyReadout(assassin, queue, unpitchCard([0, 1, 2], 1));
+    expect(after.pitched).toBe(before.pitched - 1);
+    expect(after.available).toBe(before.available - 1);
+  });
+
+  it("is a no-op for a card that is not pitched", () => {
+    expect(unpitchCard([0, 1], 5)).toEqual([0, 1]);
+  });
+
+  it("makes a cost-1 Primary need Energy again, and pitching another card makes it usable", () => {
+    expect(HERO_DECKS[assassin][0]!.energyCost).toBe(1);
+    const primary = (pitched: readonly number[]) => cardUseReasons(assassin, 0, [], pitched)[CardUse.Primary];
+    expect(primary([4])).toBeUndefined();
+    const freed = unpitchCard([4], 4);
+    expect(primary(freed)).toBe("needs 1 Energy");
+    const uses = cardUseReasons(assassin, 4, [], freed);
+    expect(uses[CardUse.Pitch]).toBeUndefined();
+    expect(uses[CardUse.Move]).toBeUndefined();
+    expect(uses[CardUse.Block]).toBeUndefined();
+    expect(primary([...freed, 5])).toBeUndefined();
+  });
+
+  it("flags the first unaffordable action instead of deleting it, and pitching again clears the issue", async () => {
+    const view = await createLocalHost(9).getSquadView(SquadId.Left);
+    const hero = view.heroes.find((candidate) => candidate.heroClass === assassin)!;
+    const withHand = { ...view, heroes: view.heroes.map((candidate) => (candidate === hero ? { ...candidate, hand: [7, 0, 1, 2] } : candidate)) };
+    const energyIssues = (pitched: readonly number[]) =>
+      validatePlan(withHand, { squad: SquadId.Left, heroes: [{ heroId: hero.id, queue, pitched: [...pitched] }] }).filter(
+        (issue) => issue.kind === PlanIssueKind.NotEnoughEnergy,
+      );
+    expect(energyIssues([0, 1])).toEqual([]);
+    const freed = unpitchCard([0, 1], 1);
+    expect(energyIssues(freed).map((issue) => issue.slot)).toEqual([0]);
+    expect(queue).toEqual([executionRound]);
+    expect(energyIssues([...freed, 1])).toEqual([]);
   });
 });
