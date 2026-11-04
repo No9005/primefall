@@ -1,5 +1,9 @@
 import { type EnemyView, EventKind, type GridPosition, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
 import type { TokenHero } from "./Board";
+import type { ClipName } from "./hero-clips";
+
+/** How long the playback shows one step (one frame); slow enough to follow who does what. The animation never changes it. */
+export const STEP_MS = 1200;
 
 /**
  * The enemy tokens of the board: Visible ones as they are (`place` puts them where the playback has them), Ghosts
@@ -20,6 +24,10 @@ export interface PlaybackHit {
   damage: number;
   /** Damage the target's Shield absorbed. */
   absorbed: number;
+  /** The card that caused the hit, whether it was played in Overdrive and the Range of the shot. */
+  card?: string;
+  overdrive?: boolean;
+  distance?: number;
 }
 
 /** One visible change during playback: some Heroes arrive on new tiles within a Tick. */
@@ -33,6 +41,8 @@ export interface PlaybackFrame {
   hits: PlaybackHit[];
   /** Heroes that became Exhausted in this frame. */
   exhausted: string[];
+  /** The clip of every Hero that does something to show: a Step walks, a Wait waits for its whole Tick. Others idle. */
+  clips: Record<string, ClipName>;
   /** The events of this frame, for the log. */
   events: MatchEvent[];
 }
@@ -51,16 +61,29 @@ export function buildPlaybackFrames(events: readonly MatchEvent[]): PlaybackFram
     for (const event of events.filter((candidate) => candidate.tick === tick)) {
       const occurrence = seen.get(event.heroId) ?? 0;
       seen.set(event.heroId, occurrence + 1);
-      tickFrames[occurrence] ??= { tick, moves: {}, shields: {}, hits: [], exhausted: [], events: [] };
+      tickFrames[occurrence] ??= { tick, moves: {}, shields: {}, hits: [], exhausted: [], clips: {}, events: [] };
       const frame = tickFrames[occurrence];
       frame.events.push(event);
       // `to` of a Cover or area event is a tile of the board, not a place the Hero moves to.
       if (event.to && !TILE_EVENTS.includes(event.kind)) frame.moves[event.heroId] = event.to;
       if (event.kind === EventKind.ShieldGained) frame.shields[event.heroId] = event.amount ?? 0;
       if (event.kind === EventKind.AttackHit) {
-        frame.hits.push({ targetId: event.targetId!, damage: event.damage ?? 0, absorbed: event.absorbed ?? 0 });
+        frame.hits.push({
+          targetId: event.targetId!,
+          damage: event.damage ?? 0,
+          absorbed: event.absorbed ?? 0,
+          ...(event.card !== undefined && { card: event.card }),
+          ...(event.overdrive && { overdrive: true }),
+          ...(event.distance !== undefined && { distance: event.distance }),
+        });
       }
       if (event.kind === EventKind.Exhausted) frame.exhausted.push(event.heroId);
+      if (event.kind === EventKind.Step) frame.clips[event.heroId] = "walk";
+    }
+    // A Wait lasts the whole Tick; a Step in the same frame wins over it.
+    for (const event of events) {
+      if (event.tick !== tick || event.kind !== EventKind.Wait) continue;
+      for (const frame of tickFrames) frame.clips[event.heroId] ??= "wait";
     }
     frames.push(...tickFrames);
   }

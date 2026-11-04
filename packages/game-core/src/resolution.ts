@@ -111,6 +111,37 @@ function applyMarked(tick: number, source: HeroState, target: HeroState, effect:
   endHidden(tick, target, events);
 }
 
+/** The events a card causes carry its name and the Overdrive flag (not Block, Steps, shuffles or the end of Hidden). */
+const CARD_EVENT_KINDS: ReadonlySet<EventKind> = new Set([
+  EventKind.AttackHit, EventKind.AttackFailed, EventKind.SlowApplied, EventKind.MarkedApplied, EventKind.HiddenGained,
+  EventKind.Knockback, EventKind.CoverPlaced, EventKind.CoverDestroyed, EventKind.AreaRevealed,
+  EventKind.CoverReductionIgnored, EventKind.AttackBonusGained, EventKind.ShieldGained,
+]);
+
+/**
+ * Marks the events from index `first` on as caused by `card`. Attack events also get the Range between the
+ * attacker and the target Hero (or the targeted tile), which tells a Long Shot from a normal shot.
+ */
+function tagCardEvents(
+  match: MatchState,
+  events: MatchEvent[],
+  first: number,
+  caster: HeroState,
+  card: CardDefinition,
+  overdrive: boolean | undefined,
+  tile?: GridPosition,
+): void {
+  for (const event of events.slice(first)) {
+    if (!CARD_EVENT_KINDS.has(event.kind)) continue;
+    event.card = card.name;
+    if (overdrive) event.overdrive = true;
+    if (event.kind !== EventKind.AttackHit && event.kind !== EventKind.AttackFailed) continue;
+    const target = match.heroes.find((hero) => hero.id === event.targetId);
+    const aimedAt = target?.position ?? tile;
+    if (aimedAt) event.distance = chebyshevDistance(caster.position, aimedAt);
+  }
+}
+
 /** Which Squads perceive the events from `first` on, judged by the current positions (see `getSquadEvents`). */
 function perceivers(match: MatchState, events: readonly MatchEvent[], first: number): SquadId[][] {
   return events.slice(first).map((event) => {
@@ -143,6 +174,8 @@ interface Attack {
   missed?: boolean;
   /** For a tile Attack (Breach Charge): the targeted tile. */
   tile?: GridPosition;
+  /** The card was played in Overdrive. */
+  overdrive?: boolean;
 }
 
 const samePosition = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
@@ -213,13 +246,18 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
   });
   // Attacking gives away a Hidden Hero, whether or not the Attack lands.
   for (const { hero } of attacks) endHidden(tick, hero, events);
-  const landed = aimed.filter(({ hero, card, targetId, missed }) => {
+  const landed = aimed.filter(({ hero, card, targetId, missed, overdrive }) => {
     const target = match.heroes.find((candidate) => candidate.id === targetId);
     const reachable = !missed && target !== undefined && canReach(hero, card, target);
-    if (!reachable) events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId });
+    if (!reachable) {
+      const first = events.length;
+      events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId });
+      tagCardEvents(match, events, first, hero, card, overdrive);
+    }
     return reachable;
   });
-  for (const { hero, card, targetId } of landed) {
+  for (const { hero, card, targetId, overdrive } of landed) {
+    const first = events.length;
     const target = match.heroes.find((candidate) => candidate.id === targetId)!;
     const distance = chebyshevDistance(hero.position, target.position);
     const ignoresHalfCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreHalfCover);
@@ -235,13 +273,21 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplyMarked)) {
       applyMarked(tick, hero, target, effect, events);
     }
+    tagCardEvents(match, events, first, hero, card, overdrive);
   }
   // Tile Attacks come after the other damage of the Tick, so Cover they destroy still protected against it.
-  for (const attack of tileAttacks) resolveTileAttack(match, tick, attack, events);
+  for (const attack of tileAttacks) {
+    const first = events.length;
+    resolveTileAttack(match, tick, attack, events);
+    tagCardEvents(match, events, first, attack.hero, attack.card, attack.overdrive, attack.tile);
+  }
   // Knockback comes after all damage of the Tick, in Hero order, so an earlier push can block a later one.
-  for (const { hero, card, targetId } of landed) {
+  for (const { hero, card, targetId, overdrive } of landed) {
     const push = card.effects.find(({ kind }) => kind === EffectKind.Knockback);
-    if (push) knockBack(match, tick, hero, match.heroes.find((candidate) => candidate.id === targetId)!, push.amount ?? 0, events);
+    if (!push) continue;
+    const first = events.length;
+    knockBack(match, tick, hero, match.heroes.find((candidate) => candidate.id === targetId)!, push.amount ?? 0, events);
+    tagCardEvents(match, events, first, hero, card, overdrive);
   }
 }
 
@@ -619,7 +665,10 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     for (const { hero, action } of actions) {
       if (action.kind !== ActionKind.Primary) continue;
       const card = playedCard(hero, action);
-      if (card.type === CardType.Utility) resolveUtility(match, tick, hero, card, action.target, action.secondTarget, action.tile, events);
+      if (card.type !== CardType.Utility) continue;
+      const first = events.length;
+      resolveUtility(match, tick, hero, card, action.target, action.secondTarget, action.tile, events);
+      tagCardEvents(match, events, first, hero, card, action.overdrive);
     }
     const movers = actions.flatMap(({ hero, action }) => {
       if (action.kind !== ActionKind.Move) return [];
@@ -637,6 +686,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
             targetId: action.target,
             ghostTile: ghostTiles[hero.squad][action.target]?.position,
             tile: action.tile,
+            overdrive: action.overdrive,
           }]
         : [],
     );
