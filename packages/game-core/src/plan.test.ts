@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HeroClass } from "./cards";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { SquadId, type SquadView } from "./host";
-import { ActionKind, cardRangeArea, energyPool, isInCardRange, type MoveAction, PlanIssueKind, type QueuedAction, validatePlan } from "./plan";
+import { ActionKind, cardRangeArea, energyPool, isInCardRange, type MoveAction, PlanIssueKind, type QueuedAction, type SquadPlan, validatePlan } from "./plan";
 import { type GridPosition, parseGrid } from "./reactor-deck";
 
 // The enemy Bruiser stands in sight of the Squad; the other enemies are still Unknown.
@@ -103,6 +103,19 @@ describe("validatePlan: Pitch, Energy and Block", () => {
     expect(check([attack(0, "right-controller")])).toEqual([PlanIssueKind.BadTarget]);
     // Bruiser card 8 is Forward Deploy: an ally card, so an enemy is no target (and it needs a tile).
     expect(check([attack(8, enemy.id)])).toEqual([PlanIssueKind.BadTarget, PlanIssueKind.BadTarget]);
+  });
+
+  it("accepts a Visible enemy that is out of Range, because the Attack is checked in the Tick it fires", () => {
+    const farAway: SquadView = {
+      ...view,
+      heroes: view.heroes.map((hero) => (hero === bruiser ? { ...hero, hand: [0, 1, 2, 3] } : hero)),
+      enemies: view.enemies.map((other) => (other === enemy ? { ...other, position: { col: 17, row: 10 } } : other)),
+    };
+    const plan: SquadPlan = {
+      squad: SquadId.Left,
+      heroes: [{ heroId: bruiser.id, queue: [{ kind: ActionKind.Primary, card: 0, target: enemy.id }], pitched: [1] }],
+    };
+    expect(validatePlan(farAway, plan)).toEqual([]);
   });
 
   it("plans Utility cards at this Hero or an allied Hero only", () => {

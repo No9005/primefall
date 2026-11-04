@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EventKind, SquadId } from "./host";
+import { AttackFailReason, EventKind, SquadId } from "./host";
 import { createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type QueuedAction, type SquadPlan } from "./plan";
 import type { GridPosition } from "./reactor-deck";
@@ -51,9 +51,11 @@ describe("Events carry the card that caused them", () => {
 
   it("tags a failed Attack too, with the Range to the target", () => {
     const match = scene({ [ASSASSIN]: { col: 2, row: 1 }, [ENEMY]: { col: 12, row: 1 } });
+    // A Marked enemy is seen from any distance, so the shot misses on Range, not on visibility.
+    hero(match, ENEMY).marked = 2;
     const { events } = resolveRound(match, [plan(ASSASSIN, { kind: ActionKind.Primary, card: LONG_SHOT, target: ENEMY }, [0])]);
     expect(events).toEqual([
-      { kind: EventKind.AttackFailed, tick: 1, heroId: ASSASSIN, targetId: ENEMY, card: "Long Shot", distance: 10 },
+      { kind: EventKind.AttackFailed, tick: 1, heroId: ASSASSIN, targetId: ENEMY, card: "Long Shot", distance: 10, reason: AttackFailReason.OutOfRange },
     ]);
   });
 

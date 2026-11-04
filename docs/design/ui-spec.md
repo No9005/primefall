@@ -25,6 +25,7 @@ The UI direction (orientation, layout, input, board rotation, terrain, style) is
 - Visible enemy: position, Shield, Deck / Discard / Exile counts.
 - Ghost enemy: faded sprite at last known position, counts last seen, label "last seen".
 - Unknown enemy: no marker; the Squad panel lists it as "Unknown".
+- A Miss on an enemy the Squad no longer sees shows no distance or position, only "target not visible".
 - Never shown: enemy Hands, Energy, queues.
 
 ## Component states
@@ -33,9 +34,9 @@ The UI direction (orientation, layout, input, board rotation, terrain, style) is
 |---|---|
 | Card | in Hand, selected, use chosen (Primary / Pitch / Move 2 / Block 2), cannot afford, already used this Round, Overdrive armed |
 | Energy | Pitched total, spent, available |
-| Queue slot | empty, filled (card + use + target), invalid at plan time (marked, still sendable), failed at execution (Resolution log) |
+| Queue slot | empty, filled (card + use + target), may miss at plan time (hint, still sendable), failed at execution (Resolution log) |
 | Hero token | selected, allied, Visible enemy, Ghost enemy, Hidden, Marked, Slow, Shielded, Exhausted |
-| Grid tile | normal, in range of selected card, target candidate, Prime Zone, Cover (Full / Half), Overwatch Nest |
+| Grid tile | normal, in range of selected card, target candidate (every Visible enemy for an Attack), Prime Zone, Cover (Full / Half), Overwatch Nest |
 | Commit | idle, waiting for enemy Squad, timer expired |
 
 ## Design tokens

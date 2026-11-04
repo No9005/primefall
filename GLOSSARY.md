@@ -97,8 +97,16 @@ The tile-based battlefield (31 by 17 on the Reactor Deck) used for movement, ran
 _Avoid_: Map, board, arena
 
 **Line of Sight**:
-The rule determining whether a Hero can see and target another Hero. Attacks require current Line of Sight.
+The rule determining whether a Hero can see and target another Hero. Attacks require current Line of Sight in the Tick they fire.
 _Avoid_: Vision, LOS
+
+**Declared Target**:
+A currently Visible enemy Hero that an Attack names in planning. It is checked in the Tick the Attack fires, and the Attack misses if the target is not allowed then (not visible, Exhausted, out of Range, without Line of Sight, or behind Full Cover).
+_Avoid_: Locked target, auto-aim, lock-on
+
+**Miss**:
+An Attack that fails its check at fire time and does nothing. The Resolution log names the reason.
+_Avoid_: Dodge, whiff
 
 **Visible**:
 An enemy Hero currently within Line of Sight and within the squad's sight range (7 tiles; 9 for a Hidden Assassin). The squad can see its current position, Shield, and the number of cards in its Deck, Discard, and Exile.

@@ -20,7 +20,7 @@ import {
   isTileBlast,
   type PLAYABLE_UTILITY_EFFECTS,
 } from "./cards";
-import { EventKind, MatchEndReason, type MatchEvent, PRIME_ZONE_WIN_RESOLUTIONS, ROUND_LIMIT, SquadId } from "./host";
+import { AttackFailReason, EventKind, MatchEndReason, type MatchEvent, PRIME_ZONE_WIN_RESOLUTIONS, ROUND_LIMIT, SquadId } from "./host";
 import { canSquadSee, canSquadSeeHero, type HeroState, type MatchState, recordSightings, refillDeck, sightRange } from "./match";
 import {
   ActionKind,
@@ -141,6 +141,8 @@ function tagCardEvents(
     event.card = card.name;
     if (overdrive) event.overdrive = true;
     if (event.kind !== EventKind.AttackHit && event.kind !== EventKind.AttackFailed) continue;
+    // A miss on a target the Squad cannot see must not reveal how far away it stands.
+    if (event.reason === AttackFailReason.NotVisible) continue;
     const target = match.heroes.find((hero) => hero.id === event.targetId);
     const aimedAt = target?.position ?? tile;
     if (aimedAt) event.distance = chebyshevDistance(caster.position, aimedAt);
@@ -151,6 +153,10 @@ function tagCardEvents(
 /** Which Squads perceive the events from `first` on, judged by the current positions (see `getSquadEvents`). */
 function perceivers(match: MatchState, events: readonly MatchEvent[], first: number): SquadId[][] {
   return events.slice(first).map((event) => {
+    // Only the attacker's Squad learns that a shot at an unseen target missed.
+    if (event.reason === AttackFailReason.NotVisible) {
+      return SQUADS.filter((squad) => match.heroes.some((hero) => hero.id === event.heroId && hero.squad === squad));
+    }
     const involved = [event.heroId, event.targetId].flatMap((id) => match.heroes.filter((hero) => hero.id === id));
     const tiles = [event.from, event.to, ...involved.map((hero) => hero.position)].filter((tile) => tile !== undefined);
     // Seeing a tile does not reveal what a Hidden enemy does on it.
@@ -226,12 +232,18 @@ function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: 
  * lose their last card in this Tick. A failed Attack (Range, Line of Sight, Exhausted target) does nothing.
  */
 function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], events: MatchEvent[]): void {
+  // The first check an Attack on `target` fails, in the order of ADR 0013; visibility is only asked of a Declared Target.
+  const missReason = (hero: HeroState, card: CardDefinition, target: HeroState, needsSight: boolean) => {
+    if (target.squad === hero.squad) return AttackFailReason.NotVisible;
+    if (needsSight && !canSquadSeeHero(match, hero.squad, target)) return AttackFailReason.NotVisible;
+    if (target.exhausted) return AttackFailReason.TargetExhausted;
+    if (chebyshevDistance(hero.position, target.position) > (card.range ?? 0)) return AttackFailReason.OutOfRange;
+    if (!hasLineOfSight(match.grid, hero.position, target.position)) return AttackFailReason.NoLineOfSight;
+    if (coverAgainst(match.grid, hero.position, target.position) === CoverKind.Full) return AttackFailReason.FullCover;
+    return undefined;
+  };
   const canReach = (hero: HeroState, card: CardDefinition, target: HeroState) =>
-    !target.exhausted &&
-    target.squad !== hero.squad &&
-    chebyshevDistance(hero.position, target.position) <= (card.range ?? 0) &&
-    hasLineOfSight(match.grid, hero.position, target.position) &&
-    coverAgainst(match.grid, hero.position, target.position) !== CoverKind.Full;
+    missReason(hero, card, target, false) === undefined;
   // An area Attack hits every enemy Hero it reaches and does nothing when there is none.
   // A Ghost Shot goes to a tile: it hits the enemy standing there when it resolves, or nobody.
   const isTileCard = (card: CardDefinition) => isTileAttack(card) || isTileBlast(card);
@@ -254,13 +266,14 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
   for (const { hero } of attacks) endHidden(tick, hero, events);
   const landed = aimed.filter(({ hero, card, targetId, missed, overdrive }) => {
     const target = match.heroes.find((candidate) => candidate.id === targetId);
-    const reachable = !missed && target !== undefined && canReach(hero, card, target);
-    if (!reachable) {
+    let reason = target ? missReason(hero, card, target, !isGhostAttack(card) && !isAreaAttack(card)) : AttackFailReason.NotVisible;
+    if (missed) reason = AttackFailReason.EmptyTile;
+    if (reason) {
       const first = events.length;
-      events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId });
+      events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId, reason });
       tagCardEvents(match, events, first, hero, card, overdrive);
     }
-    return reachable;
+    return reason === undefined;
   });
   for (const { hero, card, targetId, overdrive } of landed) {
     const first = events.length;
@@ -304,8 +317,12 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
  * Half Cover reduces it), and then destroys Half Cover on the tile. Full Cover stays.
  */
 function resolveTileAttack(match: MatchState, tick: number, { hero, card, tile }: Attack, events: MatchEvent[]): void {
-  if (!tile || chebyshevDistance(hero.position, tile) > (card.range ?? 0) || !hasLineOfSight(match.grid, hero.position, tile)) {
-    events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id });
+  if (!tile || chebyshevDistance(hero.position, tile) > (card.range ?? 0)) {
+    events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, reason: AttackFailReason.OutOfRange });
+    return;
+  }
+  if (!hasLineOfSight(match.grid, hero.position, tile)) {
+    events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, reason: AttackFailReason.NoLineOfSight });
     return;
   }
   if (isTileBlast(card)) {
@@ -317,7 +334,7 @@ function resolveTileAttack(match: MatchState, tick: number, { hero, card, tile }
     const occupant = match.heroes.find((other) => other.squad !== hero.squad && !other.exhausted && samePosition(other.position, tile));
     const cover = coverAgainst(match.grid, hero.position, tile);
     if (occupant && cover === CoverKind.Full) {
-      events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId: occupant.id });
+      events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId: occupant.id, reason: AttackFailReason.FullCover });
     } else if (occupant) {
       const amount = (card.effects.find(({ kind }) => kind === EffectKind.Damage)?.amount ?? 0) + hero.attackBonus;
       const reduced = cover === CoverKind.Half && !hero.ignoresHalfCover;

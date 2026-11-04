@@ -6,6 +6,10 @@ Cards with the same name are identical in every respect, including their Overdri
 
 Activating Overdrive exiles the card and **replaces** its standard effect; an Overdrive text is complete and says explicitly what it adds to or keeps from the standard effect. Each Deck has three Overdrive modes (three distinct Overdrive effects) on at most four cards.
 
+## Declared Target
+
+An Attack that hits a single enemy Hero (every Attack except Shockwave and Breach Charge, which aim at an area or a tile) names that Hero in planning. Only an enemy that is Visible at that moment can be named, whatever its Range and Line of Sight from the planned position; a Ghost or an Unknown enemy cannot (Ghost Shot Overdrive is the way to hit a Ghost). The Attack is checked in the Tick it fires: the target must still be visible to the Squad, not Exhausted, within the card's Range, in Line of Sight and not behind Full Cover. If any check fails, the Attack misses and does nothing; later actions of the Queue still run. Attacks written as "an enemy" or "the target" without a Range below follow the same rule with the Range of the card. Utility cards that need a visible enemy (Suppress, Gravity Snare) keep checking visibility when they resolve.
+
 ## Status effects
 
 **Slow:** The affected Hero’s next Move 2 use becomes Move 1. Slow lasts until the end of the next Resolution.
@@ -14,8 +18,8 @@ Activating Overdrive exiles the card and **replaces** its standard effect; an Ov
 
 ## Bruiser / Vanguard — 12 cards
 
-1. **Slam Shot** — Attack, 1 Energy: Deal 2 damage to a visible enemy within Range 3.
-2. **Slam Shot** — Attack, 1 Energy: Deal 2 damage to a visible enemy within Range 3.
+1. **Slam Shot** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 3 with a clear Line of Sight when the Attack fires; otherwise it misses.
+2. **Slam Shot** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 3 with a clear Line of Sight when the Attack fires; otherwise it misses.
 3. **Concussion Round** — Attack, 1 Energy: Deal 2 damage; apply Slow until the end of the next Resolution.
 4. **Concussion Round** — Attack, 1 Energy: Deal 2 damage; apply Slow until the end of the next Resolution.
 5. **Breach Charge** — Attack, 2 Energy: Deal 2 damage and destroy Half Cover on the target tile. **Overdrive:** Destroy any Cover on the target tile and deal 2 damage to each Hero on the target tile and on adjacent tiles, including allied Heroes and this Hero.
@@ -31,10 +35,10 @@ Overdrive modes: Breach Charge, Shockwave, and Adrenal Surge (three Overdrive ca
 
 ## Controller / Tactician — 12 cards
 
-1. **Pulse Bolt** — Attack, 1 Energy: Deal 2 damage to a visible enemy within Range 2.
-2. **Pulse Bolt** — Attack, 1 Energy: Deal 2 damage to a visible enemy within Range 2.
+1. **Pulse Bolt** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 2 with a clear Line of Sight when the Attack fires; otherwise it misses.
+2. **Pulse Bolt** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 2 with a clear Line of Sight when the Attack fires; otherwise it misses.
 3. **Tag Round** — Attack, 1 Energy: Deal 1 damage and apply Marked until the end of the next Resolution. **Overdrive:** Deal 1 damage; apply Marked and Slow until the end of the next Resolution.
-4. **Shock Pulse** — Attack, 1 Energy: Deal 1 damage to a visible enemy within Range 2 and apply Slow until the end of the next Resolution.
+4. **Shock Pulse** — Attack, 1 Energy: Deal 1 damage to the named visible enemy Hero if it is visible and within Range 2 with a clear Line of Sight when the Attack fires, and apply Slow until the end of the next Resolution.
 5. **Scout Drone** — Utility, 1 Energy: Reveal a 3 by 3 area within Range 4 for two Resolutions. **Overdrive:** Reveal a 5 by 5 area within Range 4 for two Resolutions.
 6. **Scout Drone** — Utility, 1 Energy: Reveal a 3 by 3 area within Range 4 for two Resolutions. **Overdrive:** Reveal a 5 by 5 area within Range 4 for two Resolutions.
 7. **Aegis Protocol** — Utility, 1 Energy: An allied Hero gains Shield 3. **Overdrive:** Two allied Heroes each gain Shield 3.
@@ -48,14 +52,14 @@ Overdrive modes: Tag Round, Scout Drone (both cards) and Aegis Protocol (four Ov
 
 ## Assassin / Striker — 12 cards
 
-1. **Precision Shot** — Attack, 1 Energy: Deal 2 damage to a visible enemy within Range 5.
-2. **Precision Shot** — Attack, 1 Energy: Deal 2 damage to a visible enemy within Range 5.
+1. **Precision Shot** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 5 with a clear Line of Sight when the Attack fires; otherwise it misses.
+2. **Precision Shot** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 5 with a clear Line of Sight when the Attack fires; otherwise it misses.
 3. **Piercing Round** — Attack, 1 Energy: Deal 2 damage; ignore Half Cover.
 4. **Piercing Round** — Attack, 1 Energy: Deal 2 damage; ignore Half Cover.
 5. **Long Shot** — Attack, 1 Energy: Range 7; deal 2 damage. **Overdrive:** Range 7; deal 4 damage if the target is at Range 6 or 7, otherwise deal 2 damage.
 6. **Long Shot** — Attack, 1 Energy: Range 7; deal 2 damage. **Overdrive:** Range 7; deal 4 damage if the target is at Range 6 or 7, otherwise deal 2 damage.
-7. **Ghost Shot** — Attack, 1 Energy: Deal 2 damage to a visible enemy. **Overdrive:** Target the last known position of a Ghost instead; the shot hits only if an enemy occupies that tile during Resolution.
-8. **Execution Round** — Attack, 2 Energy: Deal 3 damage to a visible enemy.
+7. **Ghost Shot** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is allowed when the Attack fires (see Declared Target); otherwise it misses. **Overdrive:** Target the last known position of a Ghost instead; the shot hits only if an enemy occupies that tile during Resolution.
+8. **Execution Round** — Attack, 2 Energy: Deal 3 damage to the named visible enemy Hero if it is allowed when the Attack fires (see Declared Target); otherwise it misses.
 9. **Vanish** — Utility, 1 Energy: This Hero becomes Hidden for up to two Resolutions, provided it ends movement in Cover.
 10. **Vanish** — Utility, 1 Energy: This Hero becomes Hidden for up to two Resolutions, provided it ends movement in Cover.
 11. **Mark Target** — Utility, 1 Energy: Mark an enemy within the Hero’s current sight range until the end of the next Resolution. **Overdrive:** Mark the enemy; if it is within Range 5 (this Hero's weapon range), also deal 1 damage.
