@@ -247,7 +247,6 @@ interface Terrain {
   planning: Container;
 }
 
-/** Fills a face and outlines it with a line that keeps its width on screen at the camera `scale`. */
 /** A shield glyph about 14 px wide on screen, centred on the origin: filled for Full Cover, outline only for Half Cover. */
 function shieldGlyph(kind: "full" | "half", scale: number): Graphics {
   const unit = 7 / scale;
@@ -258,6 +257,7 @@ function shieldGlyph(kind: "full" | "half", scale: number): Graphics {
   return glyph.stroke({ width: worldLineWidth(1.5, scale), color, join: "round" });
 }
 
+/** Fills a face and outlines it with a line that keeps its width on screen at the camera `scale`. */
 function fillFace(graphics: Graphics, { points, fill, edge, edgeWidth }: Face, scale: number): Graphics {
   return graphics.poly(points).fill(fill).stroke({ width: worldLineWidth(edgeWidth, scale), color: edge, join: "round" });
 }
