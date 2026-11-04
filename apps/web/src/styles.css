@@ -69,8 +69,14 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .enemy-panel .hero-row { cursor: default; }
 .enemy-panel .hero-row.ghost { opacity: 0.6; border-style: dashed; }
 .enemy-panel .hero-row.unknown { opacity: 0.45; border-style: dotted; }
-/* Free left strip between the Squad panel and the hand bar; the latest lines stay in view, older ones scroll. */
-.log { left: calc(6px + env(safe-area-inset-left)); bottom: calc(140px + env(safe-area-inset-bottom)); width: 124px; max-height: 84px; overflow-y: auto; margin: 0; padding: 3px 4px 3px 18px; font-family: "IBM Plex Mono", monospace; font-size: 10px; line-height: 1.25; color: var(--text-soft); }
+/* Resolution commentary: a column at the top, right of the Squad panel (about 230 px wide) and left of the enemy panel, so it covers neither; entries slide in per Tick. */
+.commentary { position: absolute; z-index: var(--z-hud); left: calc(240px + env(safe-area-inset-left)); top: calc(6px + env(safe-area-inset-top)); width: 236px; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+.commentary-entry { height: 36px; box-sizing: border-box; padding: 3px 8px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; background: color-mix(in srgb, var(--panel) 94%, transparent); border-left: 4px solid var(--steel); border-radius: var(--radius-s); white-space: nowrap; }
+.commentary-entry.own { border-left-color: var(--teal); }
+.commentary-entry.ally { border-left-color: var(--yellow); }
+.commentary-entry.enemy { border-left-color: var(--red); }
+.commentary-entry b { font: 700 13px/1.1 var(--font-label); color: var(--text); overflow: hidden; text-overflow: ellipsis; }
+.commentary-entry span { font: 12px/1.1 var(--font-label); color: var(--muted-light); overflow: hidden; text-overflow: ellipsis; }
 /* Top left: the Queue window of the selected Hero and the other Heroes as compact chips. */
 .squad-panel { position: absolute; top: calc(6px + env(safe-area-inset-top)); left: calc(6px + env(safe-area-inset-left)); display: flex; align-items: flex-start; gap: 3px; }
 .queue-window { position: static; width: 124px; flex: none; padding: 4px; display: flex; flex-direction: column; gap: 3px; }

@@ -54,7 +54,8 @@ import { Callout } from "./Callout";
 import { COUNTDOWN_CALLOUT_MS, countdownCallout, formatTimer, timerTone } from "./callout";
 import { type PrimeCallout, primeCallouts, type PrimeProgress, primeScore, zoneOccupancy, zoneTint } from "./prime-zone";
 import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionCommitLabel } from "./resolution-hud";
-import { buildPlaybackFrames, describeEvent, enemyTokens, tickCountOf } from "./playback";
+import { buildCommentary, type CommentaryEntry, type CommentarySide, MAX_COMMENTARY_ENTRIES } from "./commentary";
+import { buildPlaybackFrames, enemyTokens, tickCountOf } from "./playback";
 import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, coverProtectionLabel, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,rangeDamageLabel, removeQueueAction, selectHero, pickInstruction } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
@@ -88,7 +89,8 @@ interface PlaybackState {
   exhausted: string[];
   /** Heroes hit in the frame being shown. */
   hit: string[];
-  log: string[];
+  /** The commentary of the Tick being shown. */
+  commentary: CommentaryEntry[];
   /** The target lines of the actions resolved in the frame being shown. */
   lines: TargetLine[];
 }
@@ -497,8 +499,6 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   const [aiming, setAiming] = useState<CardIndex>();
   /** Forward Deploy: the ally already picked, while the player still has to pick its tile. */
   const [deployAlly, setDeployAlly] = useState<string>();
-  /** Log of the last Resolution; stays visible until the next one. */
-  const [log, setLog] = useState<string[]>([]);
   /** The card in the Hand that is pressed or pulled out (card-pull.ts); the faces of its uses are shown. */
   const [pull, setPullState] = useState<PullState>(IDLE);
   /** The aimed card is used in its Overdrive mode (the Overdrive face was chosen). */
@@ -722,6 +722,11 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     if (aiming === undefined || playing) return [];
     return [...new Set(aimedModes.flatMap(heroTargetsOf))];
   }, [aiming, aimedModes, needsSecondAlly, playing, selected.id, deployAlly, view.heroes, view.enemies]);
+  const sideOf = (heroId: string): CommentarySide => {
+    const ownSquadHero = view.heroes.find((hero) => hero.id === heroId);
+    if (ownSquadHero === undefined) return "enemy";
+    return ownSquadHero.heroClass === PLAYER_HERO_CLASS ? "own" : "ally";
+  };
   const nameOf = (heroId: string) => {
     const unit = [...view.heroes, ...view.enemies].find((candidate) => candidate.id === heroId);
     return unit ? `${heroId.startsWith(view.squad) ? "" : "Enemy "}${HERO_NAMES[unit.heroClass]}` : heroId;
@@ -955,10 +960,10 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     const shuffled: Record<string, number> = {};
     const playerHero = view.heroes.find((hero) => hero.heroClass === PLAYER_HERO_CLASS)!;
     const exhausted: string[] = [];
-    const lines: string[] = [];
     const tickCount = tickCountOf(result.events);
-    setLog([]);
-    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], log: lines, lines: [] });
+    let commentary: CommentaryEntry[] = [];
+    let commentaryTick = 0;
+    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], commentary, lines: [] });
     for (const frame of buildPlaybackFrames(result.events)) {
       Object.assign(positions, frame.moves);
       for (const [heroId, amount] of Object.entries(frame.shields)) shields[heroId] = (shields[heroId] ?? 0) + amount;
@@ -985,7 +990,13 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         }
       }
       exhausted.push(...frame.exhausted);
-      lines.push(...frame.events.flatMap((event) => describeEvent(event, nameOf) ?? []));
+      if (frame.tick !== commentaryTick) {
+        commentaryTick = frame.tick;
+        commentary = buildCommentary(
+          result.events.filter((event) => event.tick === frame.tick),
+          { nameOf, sideOf },
+        );
+      }
       setPlayback({
         tick: frame.tick,
         tickCount,
@@ -995,7 +1006,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         shuffled: { ...shuffled },
         exhausted: [...exhausted],
         hit: frame.hits.map((hit) => hit.targetId),
-        log: [...lines],
+        commentary,
         lines: replayTargetLines(frame.events, view.heroes, view.enemies, (heroId) => positions[heroId] ?? startPositions[heroId]),
       });
       await new Promise((resolve) => setTimeout(resolve, STEP_MS));
@@ -1016,7 +1027,6 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       if (unmounted.current) return;
     }
     deckAfterResolution.current = playerHero.deckCount - (deckDamage[playerHero.id] ?? 0) + (shuffled[playerHero.id] ?? 0);
-    setLog(lines);
     setBurnQueue([]);
     setBurnPending(NO_BURN_PENDING);
     setShufflePending(NO_SHUFFLE_PENDING);
@@ -1105,11 +1115,14 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         attackerPosition={aiming !== undefined && !aimsAtAlly && !playing ? planningFrom : undefined}
         aimedCard={aimedCard}
       />
-      {(playback?.log ?? log).length > 0 && (
-        // Newest line stays in view; older ones scroll up.
-        <ol className="hud log" aria-label="Resolution log" data-testid="log" ref={(el) => el?.scrollTo(0, el.scrollHeight)}>
-          {(playback?.log ?? log).map((line, i) => (
-            <li key={i}>{line}</li>
+      {playback !== undefined && playback.commentary.length > 0 && (
+        // A new key per Tick: the entries of the previous Tick are replaced and slide in again.
+        <ol className="commentary" aria-label="Resolution commentary" data-testid="commentary" key={playback.tick}>
+          {playback.commentary.slice(0, MAX_COMMENTARY_ENTRIES).map((entry, i) => (
+            <li key={i} className={`commentary-entry ${entry.side} slide-in`} style={{ "--i": i } as CSSProperties}>
+              <b>{entry.title}</b>
+              <span>{entry.detail}</span>
+            </li>
           ))}
         </ol>
       )}
