@@ -2,7 +2,7 @@ import { EventKind, HeroClass, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
 import { ClipPlayer } from "./clip-player";
 import { attackClipName, clipOf, sampleClip } from "./hero-clips";
-import { buildPlaybackFrames, IMPACT_AFTER_FIRE_MS, STEP_MS } from "./playback";
+import { buildPlaybackFrames, STEP_MS } from "./playback";
 
 describe("the attack clips, sampled at the beats of the reference", () => {
   it("Bruiser Slam Shot: 2400 ms, fires at 620 ms, back at rest by 1540 ms", () => {
@@ -118,9 +118,11 @@ describe("the playback of attacks", () => {
   it("plays the attacker's clip by card and the target's Hit at the impact beat", () => {
     const [frame] = buildPlaybackFrames([attack(EventKind.AttackHit, { card: "Long Shot", damage: 2 })], classOf);
     expect(frame!.clips).toEqual({ a: "longShot", t: "hit" });
-    expect(frame!.delays).toEqual({ t: 1650 + IMPACT_AFTER_FIRE_MS });
-    // The Tick lasts until the slowest clip has reached its active end: the Hit ends 1350 ms after the impact.
-    expect(frame!.holdMs).toBe(1650 + IMPACT_AFTER_FIRE_MS + 1350);
+    // The Long Shot has no flight: the impact is at the fire beat.
+    expect(frame!.delays).toEqual({ t: 1650 });
+    // The Tick lasts until the slowest clip has reached its active end: the Hit ends 1350 ms after the impact (3000),
+    // the Long Shot stands up again at 3170.
+    expect(frame!.holdMs).toBe(3170);
   });
 
   it("shows the absorb reaction when the Shield took the whole damage, and the Hit otherwise", () => {

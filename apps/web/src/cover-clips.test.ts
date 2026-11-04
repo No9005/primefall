@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { bindParts, greyTint } from "./clip-player";
 import { clipOf, restClipName, sampleClip, takeCoverClipName } from "./hero-clips";
 import { heroFigure } from "./hero-figure";
-import { buildPlaybackFrames, IMPACT_AFTER_FIRE_MS } from "./playback";
+import { buildPlaybackFrames } from "./playback";
 
 /** Values rounded to 1/100: the easing curves leave float dust. */
 const r = (...values: number[]) => values.map((value) => Math.round(value * 100) / 100);
@@ -148,15 +148,16 @@ describe("the playback of cover and Exhaustion", () => {
   it("plays Exhausted for the Exhausted Hero, with the hit flash landing at the impact of the shot that took the last card", () => {
     const classOf = (id: string) => (id === "a" ? HeroClass.Bruiser : HeroClass.Assassin);
     const events: MatchEvent[] = [
-      { kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Slam Shot", damage: 2 },
+      { kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Slam Shot", damage: 2, distance: 3 },
       { kind: EventKind.Exhausted, tick: 1, heroId: "t" },
     ];
     const [frame] = buildPlaybackFrames(events, classOf);
     expect(frame!.clips.t).toBe("exhausted");
-    expect(frame!.delays.t).toBe(620 + IMPACT_AFTER_FIRE_MS - 650);
+    // The slug flies 3 tiles (72 px) at 0.10 px/ms: 720 ms after the fire beat.
+    expect(frame!.delays.t).toBe(620 + 720 - 650);
     expect(frame!.exhausted).toEqual(["t"]);
     // The Tick lasts until the slab has formed.
-    expect(frame!.holdMs).toBe(620 + IMPACT_AFTER_FIRE_MS - 650 + 4860);
+    expect(frame!.holdMs).toBe(620 + 720 - 650 + 4860);
   });
 
   it("starts the Exhausted clip at once when nothing hit the Hero in the frame", () => {

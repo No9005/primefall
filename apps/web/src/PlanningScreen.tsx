@@ -60,6 +60,7 @@ import { CLIP_SPEED } from "./clip-player";
 import { coverGridOf } from "./terrain";
 import { buildPlaybackFrames, enemyTokens, STEP_MS, tickCountOf } from "./playback";
 import type { ClipName } from "./hero-clips";
+import type { EffectCue } from "./weapon-effects";
 import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,removeQueueAction, selectHero, pickInstruction } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
@@ -95,6 +96,11 @@ interface PlaybackState {
   clips: Record<string, ClipName>;
   /** Milliseconds after the start of the frame at which a Hero's clip starts (a target reacts at the impact beat). */
   clipDelays: Record<string, number>;
+  /** The effects of the attacks of the frame being shown. */
+  effects: EffectCue[];
+  /** Heroes Slowed or Marked so far in the playback: they carry it until the end of the next Resolution. */
+  slowed: string[];
+  marked: string[];
   /** The commentary of the Tick being shown. */
   commentary: CommentaryEntry[];
   /** The target lines of the actions resolved in the frame being shown. */
@@ -566,6 +572,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   const onBoard = <T extends { id: string; position: GridPosition; exhausted: boolean }>(units: readonly T[]) =>
     units.map((unit) => ({
       ...unit,
+      ...(playback?.slowed.includes(unit.id) && { slowed: true }),
+      ...(playback?.marked.includes(unit.id) && { marked: true }),
       position: playback?.positions[unit.id] ?? unit.position,
       exhausted: unit.exhausted || (playback?.exhausted.includes(unit.id) ?? false),
     }));
@@ -846,7 +854,9 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     const tickCount = tickCountOf(result.events);
     let commentary: CommentaryEntry[] = [];
     let commentaryTick = 0;
-    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, commentary, lines: [] });
+    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, effects: [], slowed: [], marked: [], commentary, lines: [] });
+    const slowed: string[] = [];
+    const marked: string[] = [];
     const classes = new Map([...view.heroes, ...view.enemies].map((unit) => [unit.id, unit.heroClass]));
     // Reduced motion plays no clips, so a frame lasts one step; otherwise until the slowest clip is back at rest.
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -877,6 +887,10 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         }
       }
       exhausted.push(...frame.exhausted);
+      for (const cue of frame.effects) {
+        if (cue.kind === "slow") slowed.push(cue.toId);
+        if (cue.kind === "marked") marked.push(cue.toId);
+      }
       if (frame.tick !== commentaryTick) {
         commentaryTick = frame.tick;
         commentary = buildCommentary(
@@ -895,6 +909,9 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         hit: frame.hits.map((hit) => hit.targetId),
         clips: frame.clips,
         clipDelays: frame.delays,
+        effects: frame.effects,
+        slowed: [...slowed],
+        marked: [...marked],
         commentary,
         lines: replayTargetLines(frame.events, view.heroes, view.enemies, (heroId) => positions[heroId] ?? startPositions[heroId]),
       });
@@ -947,6 +964,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         hitIds={playback?.hit ?? []}
         clips={playback?.clips}
         clipDelays={playback?.clipDelays}
+        effects={playback?.effects}
         highlights={highlights}
         zoneTint={zoneTint(score)}
         zoneLabels={NO_LABELS}

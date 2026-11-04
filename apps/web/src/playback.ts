@@ -1,15 +1,11 @@
 import { CoverKind, type EnemyView, EventKind, type GridPosition, type HeroClass, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
 import type { TokenHero } from "./Board";
 import { attackClipName, type ClipName, clipOf, takeCoverClipName } from "./hero-clips";
+import { cueEndMs, type EffectCue, effectCuesOf, impactMs } from "./weapon-effects";
 
 /** How long the playback shows one step (one frame) at least; slow enough to follow who does what. The animation never changes it. */
 export const STEP_MS = 1200;
 
-/**
- * From the `fire` beat of the attacker's clip to the impact on the target. Until the effects ticket brings the real
- * flight time of every projectile, the target reacts this long after the shot.
- */
-export const IMPACT_AFTER_FIRE_MS = 480;
 /** Where the hit flash is in the Exhausted clip (12 % of 5400 ms). */
 const EXHAUSTED_HIT_FLASH_MS = 650;
 /** The fire beat when the class of the attacker is not known. */
@@ -55,6 +51,8 @@ export interface PlaybackFrame {
   clips: Record<string, ClipName>;
   /** Milliseconds after the start of the frame at which a Hero's clip starts: a target reacts at the impact beat. */
   delays: Record<string, number>;
+  /** The effects of the attacks of this frame (flash, projectile, impact, numbers, Marked and Slow). */
+  effects: EffectCue[];
   /**
    * How long the frame lasts at normal clip speed: until the slowest clip of the frame has reached its active end,
    * and at least one step.
@@ -84,7 +82,7 @@ export function buildPlaybackFrames(
     for (const event of events.filter((candidate) => candidate.tick === tick)) {
       const occurrence = seen.get(event.heroId) ?? 0;
       seen.set(event.heroId, occurrence + 1);
-      tickFrames[occurrence] ??= { tick, moves: {}, shields: {}, hits: [], exhausted: [], clips: {}, delays: {}, holdMs: STEP_MS, events: [] };
+      tickFrames[occurrence] ??= { tick, moves: {}, shields: {}, hits: [], exhausted: [], clips: {}, delays: {}, effects: [], holdMs: STEP_MS, events: [] };
       const frame = tickFrames[occurrence];
       frame.events.push(event);
       // `to` of a Cover or area event is a tile of the board, not a place the Hero moves to.
@@ -126,16 +124,22 @@ export function buildPlaybackFrames(
         const attackerClass = classOf?.(event.heroId);
         const fire = attackerClass === undefined ? undefined : clipOf(attackerClass, attackClipName(event.card)).fireMs;
         const absorbed = (event.absorbed ?? 0) > 0 && (event.damage ?? 0) === 0;
-        const impactMs = (fire ?? DEFAULT_FIRE_MS) + IMPACT_AFTER_FIRE_MS;
+        // The target reacts when the projectile arrives.
+        const arrival = impactMs(event.card, event.distance, fire ?? DEFAULT_FIRE_MS);
         if (frame.clips[event.targetId] === "exhausted") {
           // The Exhausted clip has its own hit flash: it starts early enough for the flash to land with the impact.
-          frame.delays[event.targetId] = Math.max(0, impactMs - EXHAUSTED_HIT_FLASH_MS);
+          frame.delays[event.targetId] = Math.max(0, arrival - EXHAUSTED_HIT_FLASH_MS);
           continue;
         }
         if (frame.clips[event.targetId] !== undefined) continue;
         frame.clips[event.targetId] = absorbed ? "absorb" : "hit";
-        frame.delays[event.targetId] = impactMs;
+        frame.delays[event.targetId] = arrival;
       }
+      const fireOf = (heroId: string, card: string | undefined) => {
+        const heroClass = classOf?.(heroId);
+        return heroClass === undefined ? DEFAULT_FIRE_MS : clipOf(heroClass, attackClipName(card)).fireMs ?? DEFAULT_FIRE_MS;
+      };
+      frame.effects = effectCuesOf(frame.events, fireOf);
     }
     // A Wait lasts the whole Tick; a Step in the same frame wins over it.
     for (const event of events) {
@@ -150,7 +154,7 @@ export function buildPlaybackFrames(
 
 /** A frame lasts until its slowest one-shot clip has reached its active end (looping Walk and Wait clips run per step). */
 function holdOf(frame: PlaybackFrame, classOf: ((heroId: string) => HeroClass | undefined) | undefined): number {
-  let hold = STEP_MS;
+  let hold = Math.max(STEP_MS, ...frame.effects.map(cueEndMs));
   for (const [heroId, name] of Object.entries(frame.clips)) {
     const heroClass = classOf?.(heroId);
     if (heroClass === undefined) continue;
