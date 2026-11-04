@@ -18,7 +18,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },
-  // Serves the already built app (`npm run build` first; the root `test:e2e` script does both).
+  // Serves the built app. The `e2e` script builds the web app first, so a run never tests an old build.
   webServer: {
     command: `npx vite preview --host 127.0.0.1 --port ${port} --strictPort`,
     url: `http://127.0.0.1:${port}`,
