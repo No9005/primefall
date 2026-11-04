@@ -101,6 +101,8 @@ interface PlaybackState {
   /** Heroes Slowed or Marked so far in the playback: they carry it until the end of the next Resolution. */
   slowed: string[];
   marked: string[];
+  /** Heroes that gained an Attack bonus (Adrenal Surge) in the playback so far: the badge shows beside their ring. */
+  bonus: string[];
   /** The commentary of the Tick being shown. */
   commentary: CommentaryEntry[];
   /** The target lines of the actions resolved in the frame being shown. */
@@ -585,6 +587,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       ...unit,
       ...(playback?.slowed.includes(unit.id) && { slowed: true }),
       ...(playback?.marked.includes(unit.id) && { marked: true }),
+      ...(playback?.bonus.includes(unit.id) && { attackBonus: 1 }),
       position: playback?.positions[unit.id] ?? unit.position,
       exhausted: unit.exhausted || (playback?.exhausted.includes(unit.id) ?? false),
     }));
@@ -865,11 +868,12 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     const tickCount = tickCountOf(result.events);
     let commentary: CommentaryEntry[] = [];
     let commentaryTick = 0;
-    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, effects: [], slowed: [], marked: [], commentary, lines: [], coverDestroyed: [], coverPlaced: [] });
+    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, effects: [], slowed: [], marked: [], bonus: [], commentary, lines: [], coverDestroyed: [], coverPlaced: [] });
     let coverDestroyed: GridPosition[] = [];
     let coverPlaced: GridPosition[] = [];
     const slowed: string[] = [];
     const marked: string[] = [];
+    const bonus: string[] = [];
     const classes = new Map([...view.heroes, ...view.enemies].map((unit) => [unit.id, unit.heroClass]));
     // Reduced motion plays no clips, so a frame lasts one step; otherwise until the slowest clip is back at rest.
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -900,6 +904,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         }
       }
       exhausted.push(...frame.exhausted);
+      for (const event of frame.events) if (event.kind === EventKind.AttackBonusGained) bonus.push(event.heroId);
       for (const cue of frame.effects) {
         if (cue.kind === "slow") slowed.push(cue.toId);
         if (cue.kind === "marked") marked.push(cue.toId);
@@ -925,6 +930,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         effects: frame.effects,
         slowed: [...slowed],
         marked: [...marked],
+        bonus: [...bonus],
         commentary,
         lines: replayTargetLines(frame.events, view.heroes, view.enemies, (heroId) => positions[heroId] ?? startPositions[heroId]),
         coverDestroyed,

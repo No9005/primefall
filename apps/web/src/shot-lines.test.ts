@@ -18,6 +18,7 @@ const visible = (id: string, position: { col: number; row: number }): EnemyView 
   exhausted: false,
   slowed: false,
   marked: false,
+  attackBonus: 0,
 }) as unknown as EnemyView;
 
 describe("drawShot", () => {

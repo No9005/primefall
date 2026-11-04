@@ -35,8 +35,8 @@ import {
 import { freeBoardArea } from "./hud-layout";
 import { buildTerrain, depthOf, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
-import { EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
-import { type EffectCue, slideProgress } from "./weapon-effects";
+import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
+import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
 import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
@@ -232,6 +232,8 @@ export interface TokenHero {
   ghost?: boolean;
   /** Marked: the enemy Squad sees this Hero; drawn with a marker above the token. */
   marked?: boolean;
+  /** The permanent Attack bonus (Adrenal Surge); above zero draws the gold `+1` badge beside the ring. */
+  attackBonus?: number;
 }
 
 /** The containers the terrain is drawn into. */
@@ -546,6 +548,8 @@ export function Board({
     // The rings of the Heroes that can be tapped as target pulse (issue 209); with reduced motion they stand still.
     const pulsingRings: Graphics[] = [];
     const statusMarks: StatusMark[] = [];
+    // The `+1` badges of Heroes with an Attack bonus; one that is gained in this frame pops in at `startMs`.
+    const badges: { mark: StatusMark; startMs: number | undefined }[] = [];
     // Shields that change in this frame, and Heroes that slide one tile of Knockback (the rules moved them already).
     const shieldMarks: StatusMark[] = [];
     const slides: { token: Container; fromX: number; fromY: number; startMs: number }[] = [];
@@ -632,6 +636,13 @@ export function Board({
         token.addChild(mark.container);
         statusMarks.push(mark);
       }
+      // The Attack bonus of Adrenal Surge is state too: the badge stays beside the ring until Exhaustion.
+      if ((hero.attackBonus ?? 0) > 0 && !hero.exhausted && !hero.ghost) {
+        const badge = attackBadge();
+        token.addChild(badge.container);
+        const surge = reduced ? undefined : effects.find((cue) => cue.kind === "surge" && cue.toId === hero.id);
+        badges.push({ mark: badge, startMs: surge?.kind === "surge" ? surge.startMs + BADGE_DELAY_MS : undefined });
+      }
       tokens.addChild(token);
       created.push(token);
     };
@@ -667,6 +678,7 @@ export function Board({
     const playClips = (now: number) => {
       const frameMs = (now - frameClock.current) * CLIP_SPEED;
       for (const mark of shieldMarks) mark.update(frameMs);
+      for (const { mark, startMs } of badges) mark.update(startMs === undefined ? STATUS_AT_REST_MS : frameMs - startMs);
       for (const { token, fromX, fromY, startMs } of slides) {
         const left = 1 - slideProgress(frameMs - startMs);
         token.pivot.set(-fromX * left, -fromY * left);
@@ -797,14 +809,15 @@ export function Board({
       }),
     );
 
-    // Revealed areas: every tile of the square, clipped to the Grid, gets a yellow tint.
+    // Revealed areas: every tile of the square, clipped to the Grid, gets a yellow tint; the 5 by 5 of an Overdrive Scout Drone is gold.
     for (const { center, size } of revealedAreas) {
+      const tintColor = size >= 5 ? 0xffb000 : 0xffd447;
       const reach = Math.floor(size / 2);
       for (let row = center.row - reach; row <= center.row + reach; row++) {
         for (let col = center.col - reach; col <= center.col + reach; col++) {
           if (tileAt(grid, { col, row }) === undefined) continue;
           const { x, y } = gridToWorld({ col, row }, angle);
-          const tint = new Graphics().poly(floorOutline(angle)).fill({ color: 0xffd447, alpha: 0.22 }).stroke({ width: 1, color: 0xffd447, alpha: 0.5 });
+          const tint = new Graphics().poly(floorOutline(angle)).fill({ color: tintColor, alpha: 0.22 }).stroke({ width: 1, color: tintColor, alpha: 0.5 });
           tint.position.set(x, y);
           planning.addChild(tint);
           created.push(tint);

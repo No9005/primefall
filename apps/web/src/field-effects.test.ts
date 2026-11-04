@@ -62,7 +62,7 @@ describe("Breach Charge", () => {
 
   it("flies the charge for 480 ms and blows the Cover up where it lands", () => {
     const [cue] = effectCuesOf([destroyed], fireOf);
-    expect(cue).toEqual({ kind: "breach", casterId: "a", tile: at(5, 2), fireMs: 620, flightMs: 480 });
+    expect(cue).toEqual({ kind: "breach", casterId: "a", tile: at(5, 2), fireMs: 620, flightMs: 480, cover: true, overdrive: false });
     expect(coverEditsOf([cue!])).toEqual([{ kind: "destroyed", tile: at(5, 2), atMs: 1100 }]);
     expect(cueEndMs(cue!)).toBe(1100 + 1464);
   });
