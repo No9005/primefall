@@ -38,6 +38,18 @@ export const TERRAIN_STYLE = {
   overwatchNest: { top: 0x5d7194, left: 0x465676, right: 0x344059, edge: OUTLINE.color },
 } as const;
 
+/**
+ * The drifting clouds over the unseen tiles (issue #275). Speeds are in world pixels per second, periods in world
+ * pixels (they scale with the camera like the board). The total cloud alpha runs from `thinAlpha` to `denseAlpha`.
+ */
+export const FOG_CLOUDS = {
+  tint: 0x9fb4c8,
+  thinAlpha: 0.15,
+  denseAlpha: 0.35,
+  a: { speed: 8, direction: { x: 1, y: 0.3 }, period: 512 },
+  b: { speed: 14, direction: { x: -1, y: -0.3 }, period: 870 },
+} as const;
+
 /** The line of fire drawn while aiming (artboard J). */
 export const SHOT_STYLE = {
   clear: 0x2ec4b6,
