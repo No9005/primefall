@@ -1,11 +1,34 @@
+import type { GridPosition } from "game-core";
 import { Container, Graphics, Text } from "pixi.js";
 import { CLIP_SPEED } from "./clip-player";
+import { rubyPieces, shieldBubble } from "./hero-figure";
 import { HERO_STYLE } from "./hero-style";
 import { TILE_HEIGHT } from "./terrain";
 import {
+  chargeAt,
+  chunkAt,
+  COVER_WALL_UP_MS,
+  coverFlashAt,
+  coverPipAt,
+  coverWallAt,
+  dustAt,
   type EffectCue,
+  bubbleFormAt,
+  BUBBLE_LEAD_MS,
+  fireballAt,
   FLASH_MS,
+  rippleAt,
+  rubyBurstAt,
+  rubyPopAt,
+  shardAt,
+  SHARDS,
   flightProgress,
+  KNOCKBACK_TAG_MS,
+  sampleTrack,
+  scorchAt,
+  shockRingAt,
+  skidAt,
+  smokeAt,
   GLINT_BEFORE_FIRE_MS,
   IMPACT_BURST_MS,
   IMPACT_RING_MS,
@@ -25,6 +48,8 @@ const F = HERO_STYLE.figureScale;
 /** How high above the foot of a Hero a shot starts and lands: the chest. */
 const CHEST_LIFT = TILE_HEIGHT * 1.05;
 const HEAD_LIFT = 38 * F;
+/** How high above the floor a shot lands on a Half Cover wall. */
+const WALL_HIT_LIFT = 7 * F;
 
 interface WeaponLook {
   color: number;
@@ -119,11 +144,109 @@ export function slowMark(): StatusMark {
   };
 }
 
+export interface ShieldMarkInput {
+  /** The Shield the Hero holds after this frame. */
+  held: number;
+  /** The Hero gains `amount` Shield at `startMs`: the rubies pop and the bubble forms. */
+  gain?: { startMs: number; amount: number };
+  /** A hit that the Shield absorbed `absorbed` of, at `startMs`: a ripple, and as many rubies burst; at zero the bubble breaks. */
+  hit?: { startMs: number; absorbed: number };
+  cameraScale: number;
+}
+
+const SHIELD_BLUE = 0x4da3ff;
+
+/**
+ * The Shield of a Hero for a frame in which it changes: the rubies and the bubble, with the pop, the ripple and the
+ * shards of docs/design/animation. `update(ms)` is the time since the frame started.
+ */
+export function shieldMark({ held, gain, hit, cameraScale }: ShieldMarkInput): StatusMark {
+  const { bubble: look } = HERO_STYLE.marks;
+  const container = new Container();
+  const absorbed = hit?.absorbed ?? 0;
+  const bubble = shieldBubble(cameraScale);
+  const ripple = new Graphics().ellipse(0, look.centerY, look.radiusX, look.radiusY).stroke({ width: 1.5, color: SHIELD_BLUE });
+  ripple.pivot.set(0, look.centerY);
+  ripple.position.set(0, look.centerY * F);
+  ripple.visible = false;
+  const { row, rubies } = rubyPieces(held + absorbed, cameraScale);
+  const shards = SHARDS.map(() => {
+    const shard = new Graphics().poly([-2.5, -4, 2.5, -2, 1.5, 4, -3, 2]).fill({ color: look.fill, alpha: 0.7 }).stroke({ width: 0.8, color: SHIELD_BLUE });
+    shard.scale.set(F);
+    shard.visible = false;
+    return shard;
+  });
+  container.addChild(bubble, row, ripple, ...shards);
+  const breaks = hit !== undefined && held <= 0;
+  return {
+    container,
+    update(ms) {
+      // The bubble: it forms before the rubies pop, and breaks into shards when the last Shield is absorbed.
+      const form = gain === undefined ? { scale: 1, alpha: 1 } : bubbleFormAt(ms - (gain.startMs - BUBBLE_LEAD_MS));
+      const gone = breaks && ms >= hit.startMs;
+      bubble.scale.set(F * form.scale);
+      bubble.alpha = gone ? 0 : form.alpha;
+      rubies.forEach((ruby, i) => {
+        // The newest rubies of a gain pop; the ones an absorbed hit removes burst at its impact.
+        let size = 1;
+        if (gain !== undefined && i >= held - gain.amount && i < held) size = rubyPopAt(ms - gain.startMs, i - (held - gain.amount));
+        if (hit !== undefined && i >= held) size = rubyBurstAt(ms - hit.startMs);
+        ruby.scale.set(size);
+        ruby.visible = size > 0;
+      });
+      const wave = hit === undefined ? undefined : rippleAt(ms - hit.startMs);
+      ripple.visible = wave !== undefined && !breaks;
+      if (wave) {
+        ripple.scale.set(F * wave.scale);
+        ripple.alpha = wave.alpha;
+      }
+      shards.forEach((shard, i) => {
+        const state = breaks ? shardAt(ms - hit.startMs, i) : undefined;
+        shard.visible = state !== undefined;
+        if (!state) return;
+        shard.position.set(state.x * F, look.centerY * F + state.y * F);
+        shard.rotation = (state.turn * Math.PI) / 180;
+        shard.alpha = state.alpha;
+      });
+    },
+  };
+}
+
 /** The ms after which a persistent Marked or Slow is past its intro. */
 export const STATUS_AT_REST_MS = 1_000_000;
 
 /** Where a Hero stands in world pixels (its foot), or nothing when the Hero is not on the board (not perceived). */
 export type Placer = (heroId: string) => Point | undefined;
+
+/** What the layer needs to know about the board: where Heroes and tiles are, and whose Squad a Hero is in. */
+export interface EffectsWorld {
+  place: Placer;
+  /** The centre of a tile on the floor, in world pixels. */
+  tile(tile: GridPosition): Point;
+  /** True for a Hero of the player's own Squad. */
+  own(heroId: string): boolean;
+}
+
+const WALL_FILL = 0x5a6877;
+const WALL_TOP = 0x77899b;
+const SMOKE = 0x3a4653;
+const DUST = 0x8a99a8;
+const SHOCK_ORANGE = 0xff8a3d;
+const CHIP_VECTORS = [[-10, -12], [12, -14], [-4, -18], [16, -6]] as const;
+/** How long the chips and the flash of a hit on Half Cover last. */
+const WALL_HIT_MS = 340;
+
+function rotatedRect(g: Graphics, cx: number, cy: number, w: number, h: number, degrees: number): void {
+  const a = (degrees * Math.PI) / 180;
+  const cos = Math.cos(a);
+  const sin = Math.sin(a);
+  const corners = [[-w, -h], [w, -h], [w, h], [-w, h]] as const;
+  g.poly(corners.flatMap(([x, y]) => [cx + (x * cos - y * sin) / 2, cy + (x * sin + y * cos) / 2]));
+}
+
+function diamond(g: Graphics, at: Point, halfWidth: number, halfHeight: number): void {
+  g.poly([at.x, at.y - halfHeight, at.x + halfWidth, at.y, at.x, at.y + halfHeight, at.x - halfWidth, at.y]);
+}
 
 /**
  * The layer itself. `play` starts the cues of one frame; `update` draws them at a time and returns the screen shake to
@@ -135,7 +258,7 @@ export class EffectsLayer {
   private readonly texts: Text[] = [];
   private cues: readonly EffectCue[] = [];
   private statuses: { cue: Extract<EffectCue, { kind: "marked" | "slow" }>; mark: StatusMark }[] = [];
-  private place: Placer = () => undefined;
+  private world: EffectsWorld = { place: () => undefined, tile: () => ({ x: 0, y: 0 }), own: () => true };
   private startMs = 0;
   private reduced = false;
 
@@ -144,25 +267,35 @@ export class EffectsLayer {
     parent.addChild(this.container);
   }
 
-  /** Starts a frame's cues at `now`. With reduced motion only the numbers fade and the states appear, nothing flies or moves. */
-  play(cues: readonly EffectCue[], now: number, place: Placer, reduced: boolean): void {
+  private place(heroId: string): Point | undefined {
+    return this.world.place(heroId);
+  }
+
+  /**
+   * Starts a frame's cues at `now`. With reduced motion only the numbers fade and the states appear, nothing flies or
+   * moves. The Shield (rubies and bubble) and the slide of a Knockback are drawn by the board on the Heroes themselves.
+   */
+  play(cues: readonly EffectCue[], now: number, world: EffectsWorld, reduced: boolean): void {
     this.cues = cues;
-    this.place = place;
+    this.world = world;
     this.startMs = now;
     this.reduced = reduced;
     for (const { mark } of this.statuses) mark.container.destroy({ children: true });
     this.statuses = [];
+    for (const shape of this.shapes) shape.clear();
     cues.forEach((cue, i) => {
-      if (cue.kind === "shot") this.shapeAt(i);
-      else if (cue.kind === "number") this.prepareNumber(i, cue.text, cue.style);
-      else {
+      if (cue.kind === "number") this.prepareLabel(i, cue.text, NUMBER_COLOR[cue.style]);
+      else if (cue.kind === "knockback") this.prepareLabel(i, cue.tag, SHOCK_ORANGE);
+      else if (cue.kind === "marked" || cue.kind === "slow") {
         const mark = cue.kind === "marked" ? markedMark() : slowMark();
         this.container.addChild(mark.container);
         this.statuses.push({ cue, mark });
-      }
+      } else if (cue.kind !== "shieldGain" && cue.kind !== "shieldHit") this.shapeAt(i);
     });
-    for (let i = cues.length; i < this.shapes.length; i++) this.shapes[i]!.clear();
-    for (let i = 0; i < this.texts.length; i++) if (cues[i]?.kind !== "number") this.texts[i]!.visible = false;
+    for (let i = 0; i < this.texts.length; i++) {
+      const kind = cues[i]?.kind;
+      if (kind !== "number" && kind !== "knockback") this.texts[i]!.visible = false;
+    }
   }
 
   private shapeAt(i: number): Graphics {
@@ -174,7 +307,7 @@ export class EffectsLayer {
     return this.shapes[i]!;
   }
 
-  private prepareNumber(i: number, text: string, style: NumberStyle): void {
+  private prepareLabel(i: number, text: string, color: number): void {
     while (this.texts.length <= i) {
       const label = new Text({ text: "", style: { fontFamily: "IBM Plex Mono", fontSize: 9 * F, fontWeight: "700", fill: 0xffffff, stroke: { color: OUTLINE, width: 2.5 * F } } });
       label.anchor.set(0.5, 1);
@@ -184,20 +317,25 @@ export class EffectsLayer {
     }
     const label = this.texts[i]!;
     label.text = text;
-    label.style.fill = NUMBER_COLOR[style];
+    label.style.fill = color;
   }
 
   /** Draws the cues `now`; returns the shake offset in world pixels. */
   update(now: number): Point {
     const ms = (now - this.startMs) * CLIP_SPEED;
-    let shake: Point = { x: 0, y: 0 };    this.cues.forEach((cue, i) => {
-      if (cue.kind === "shot") {
+    let shake: Point = { x: 0, y: 0 };
+    this.cues.forEach((cue, i) => {
+      if (cue.kind === "number") this.drawNumber(this.texts[i]!, cue, ms);
+      else if (cue.kind === "knockback") this.drawKnockback(this.shapeAt(i), this.texts[i]!, cue, ms);
+      else if (cue.kind === "shot") {
         const s = this.reduced ? undefined : this.drawShot(this.shapeAt(i), cue, ms);
         if (s && cue.weapon === "long") {
           const offset = shakeAt(ms - cue.fireMs);
           shake = { x: offset.x * F, y: offset.y * F };
         }
-      } else if (cue.kind === "number") this.drawNumber(this.texts[i]!, cue, ms);
+      } else if (cue.kind === "shockwave") this.drawShockwave(this.shapeAt(i), cue, ms);
+      else if (cue.kind === "breach") this.drawBreach(this.shapeAt(i), cue, ms);
+      else if (cue.kind === "coverPlaced") this.drawCoverPlaced(this.shapeAt(i), cue, ms);
     });
     for (const { cue, mark } of this.statuses) {
       const at = this.place(cue.toId);
@@ -214,8 +352,114 @@ export class EffectsLayer {
     label.visible = at !== undefined && ms >= cue.startMs && alpha > 0;
     if (!at) return;
     // With reduced motion the number stays where it appears and only fades.
-    label.position.set(at.x, at.y - HEAD_LIFT - (this.reduced ? 0 : rise * F));
+    label.position.set(at.x, at.y - HEAD_LIFT - (this.reduced ? 0 : rise * F) + (cue.drop ?? 0) * F);
     label.alpha = alpha;
+  }
+
+  /** The orange rings along the floor, and the dust puffs around the Hero that plays the Shockwave. */
+  private drawShockwave(g: Graphics, cue: Extract<EffectCue, { kind: "shockwave" }>, ms: number): void {
+    g.clear();
+    const at = this.place(cue.casterId);
+    if (this.reduced || !at) return;
+    const s = ms - cue.startMs;
+    for (let ring = 0; ring < 3; ring++) {
+      const state = shockRingAt(s, ring);
+      if (state) g.ellipse(at.x, at.y, 24 * F * state.scale, 12 * F * state.scale).stroke({ width: 3 * F, color: SHOCK_ORANGE, alpha: state.alpha });
+    }
+    for (let puff = 0; puff < 6; puff++) {
+      const state = dustAt(s, 20 + puff * 25);
+      if (!state) continue;
+      const angle = (puff / 6) * 2 * Math.PI + 0.4;
+      g.ellipse(at.x + Math.cos(angle) * 24 * F, at.y + Math.sin(angle) * 12 * F - state.rise * F, 5 * F * state.scale, 3 * F * state.scale).fill({ color: DUST, alpha: state.alpha });
+    }
+  }
+
+  /** The skid line behind a Hero that slides one tile, and the `Knockback 2` tag over it. The slide itself is the token's. */
+  private drawKnockback(g: Graphics, label: Text, cue: Extract<EffectCue, { kind: "knockback" }>, ms: number): void {
+    g.clear();
+    const at = this.place(cue.toId);
+    const s = ms - cue.startMs;
+    label.visible = at !== undefined && s >= 0 && s < KNOCKBACK_TAG_MS;
+    if (!at) return;
+    label.position.set(at.x, at.y - HEAD_LIFT - 10 * F);
+    label.alpha = sampleTrack([[0, 0], [100, 1], [500, 1], [KNOCKBACK_TAG_MS, 0]], s);
+    if (this.reduced) return;
+    const skid = skidAt(s);
+    if (skid.alpha <= 0) return;
+    const from = this.world.tile(cue.from);
+    const to = this.world.tile(cue.to);
+    line(g, from, { x: from.x + (to.x - from.x) * skid.length, y: from.y + (to.y - from.y) * skid.length }, 3 * F, DUST, skid.alpha);
+  }
+
+  /** The charge arcs to the tile (26 px high), a fireball and smoke, the Cover breaks into four chunks and a scorch stays. */
+  private drawBreach(g: Graphics, cue: Extract<EffectCue, { kind: "breach" }>, ms: number): void {
+    g.clear();
+    const from = this.place(cue.casterId);
+    if (this.reduced || !from) return;
+    const centre = this.world.tile(cue.tile);
+    const s = ms - cue.fireMs;
+    if (s >= 0 && s < cue.flightMs) {
+      const { progress, lift } = chargeAt(s);
+      const start = { x: from.x, y: from.y - CHEST_LIFT };
+      const end = { x: centre.x, y: centre.y - 4 * F };
+      const x = start.x + (end.x - start.x) * progress;
+      const y = start.y + (end.y - start.y) * progress - lift * F;
+      g.circle(x, y, 3.2 * F).fill(SMOKE).stroke({ width: F, color: SHOCK_ORANGE });
+    }
+    const t = s - cue.flightMs;
+    if (t < 0) return;
+    const scorch = scorchAt(t);
+    if (scorch > 0) {
+      diamond(g, centre, 23 * F, 12 * F);
+      g.fill({ color: 0x1a1f26, alpha: scorch * 0.85 });
+    }
+    const burst = { x: centre.x, y: centre.y - 18 * F };
+    const fire = fireballAt(t);
+    if (fire.alpha > 0) {
+      blob(g, burst, 16 * F * fire.scale, SHOCK_ORANGE, fire.alpha);
+      blob(g, burst, 9 * F * fire.scale, GOLD, fire.alpha);
+      g.circle(burst.x, burst.y, 3 * F * fire.scale).fill({ color: 0xffffff, alpha: fire.alpha });
+    }
+    for (const [dx, dy, radius] of [[-4, -8, 7], [10, -4, 6]] as const) {
+      const smoke = smokeAt(t);
+      if (smoke.alpha > 0) g.circle(centre.x + dx * F, centre.y + dy * F - smoke.rise * F, radius * F * smoke.scale).fill({ color: SMOKE, alpha: smoke.alpha });
+    }
+    for (let chunk = 0; chunk < 4; chunk++) {
+      const state = chunkAt(t, chunk);
+      if (state.alpha <= 0) continue;
+      rotatedRect(g, centre.x + state.x * F, centre.y - 10 * F + state.y * F, 7 * F, 5 * F, state.turn);
+      g.fill({ color: SMOKE, alpha: state.alpha }).stroke({ width: F, color: OUTLINE, alpha: state.alpha });
+    }
+  }
+
+  /** A team-coloured flash on the tile, then a wall rises out of the ground (0 to 1.15 to 1) with dust; two pips count its Resolutions. */
+  private drawCoverPlaced(g: Graphics, cue: Extract<EffectCue, { kind: "coverPlaced" }>, ms: number): void {
+    g.clear();
+    if (this.reduced) return;
+    const s = ms - cue.startMs;
+    if (s < 0) return;
+    const centre = this.world.tile(cue.tile);
+    const color = this.world.own(cue.casterId) ? HERO_STYLE.ring.own : HERO_STYLE.ring.enemy;
+    const flash = coverFlashAt(s);
+    if (flash > 0) {
+      diamond(g, centre, 23 * F, 12 * F);
+      g.fill({ color, alpha: flash * 0.6 });
+    }
+    // The terrain's own wall stands from the moment it is up; until then this one rises, and it is the one shown a while longer.
+    const wall = coverWallAt(s);
+    if (wall.alpha > 0 && s < COVER_WALL_UP_MS + 150) {
+      const height = 12 * F * wall.scaleY;
+      g.roundRect(centre.x - 17 * F, centre.y + 4 * F - height, 34 * F, height, 2 * F).fill(WALL_FILL).stroke({ width: 1.5 * F, color: OUTLINE });
+      g.rect(centre.x - 15 * F, centre.y + 4 * F - height + 1.5 * F, 30 * F, Math.min(3 * F, height)).fill(WALL_TOP);
+    }
+    for (let puff = 0; puff < 3; puff++) {
+      const state = dustAt(s - 70, puff * 50);
+      if (state) g.ellipse(centre.x + (puff - 1) * 16 * F, centre.y + 2 * F - state.rise * F, 5 * F * state.scale, 3 * F * state.scale).fill({ color: DUST, alpha: state.alpha });
+    }
+    for (let pip = 0; pip < 2; pip++) {
+      const alpha = coverPipAt(s, pip);
+      if (alpha > 0) g.circle(centre.x + (pip === 0 ? -5 : 5) * F, centre.y - 22 * F, 2.2 * F).fill({ color, alpha }).stroke({ width: F, color: OUTLINE, alpha });
+    }
   }
 
   private drawShot(g: Graphics, cue: Extract<EffectCue, { kind: "shot" }>, ms: number): boolean {
@@ -228,7 +472,11 @@ export class EffectsLayer {
     const flashColor = cue.overdrive ? GOLD : look.flash;
     const boost = cue.overdrive ? 1.3 : 1;
     const a = { x: from.x, y: from.y - CHEST_LIFT };
-    const b = { x: to.x, y: to.y - CHEST_LIFT };
+    // Half Cover: the shot ends on the wall in front of the target, on the side of the attacker.
+    const toward = Math.hypot(from.x - to.x, from.y - to.y) || 1;
+    const wallFoot = { x: to.x + ((from.x - to.x) / toward) * 14 * F, y: to.y + ((from.y - to.y) / toward) * 7 * F };
+    const lift = cue.halfCover ? WALL_HIT_LIFT : CHEST_LIFT;
+    const b = cue.halfCover ? { x: wallFoot.x, y: wallFoot.y - lift } : { x: to.x, y: to.y - CHEST_LIFT };
     const length = Math.hypot(b.x - a.x, b.y - a.y) || 1;
     const dir = { x: (b.x - a.x) / length, y: (b.y - a.y) / length };
     const muzzle = { x: a.x + dir.x * 14 * F, y: a.y + dir.y * 14 * F };
@@ -246,8 +494,20 @@ export class EffectsLayer {
       line(g, muzzle, b, 2 * F, color, 1 - s / LONG_LINE_FADE_MS);
     }
     const arrived = s - cue.flightMs;
-    if (arrived >= 0) this.drawImpact(g, color, to, look, boost, arrived);
+    if (arrived >= 0 && cue.halfCover) this.drawWallHit(g, color, wallFoot, look, boost, arrived);
+    else if (arrived >= 0) this.drawImpact(g, color, to, look, boost, arrived, CHEST_LIFT);
     return true;
+  }
+
+  /** A shot that hits Half Cover: the wall flashes, chips fly off it and a small burst shows where it landed. */
+  private drawWallHit(g: Graphics, color: number, foot: Point, look: WeaponLook, boost: number, ms: number): void {
+    if (ms < WALL_HIT_MS) {
+      const u = ms / WALL_HIT_MS;
+      const flash = sampleTrack([[0, 0], [70, 0.7], [WALL_HIT_MS * 0.5, 0.2], [WALL_HIT_MS, 0]], ms);
+      g.roundRect(foot.x - 17 * F, foot.y + 4 * F - 12 * F, 34 * F, 12 * F, 2 * F).fill({ color: 0xaebccb, alpha: flash });
+      CHIP_VECTORS.forEach(([dx, dy]) => g.rect(foot.x + dx * F * u - F, foot.y - WALL_HIT_LIFT + dy * F * u - F, 2 * F, 2 * F).fill({ color: WALL_TOP, alpha: 1 - u }));
+    }
+    this.drawImpact(g, color, foot, look, boost * 0.6, ms, WALL_HIT_LIFT);
   }
 
   /** Long Shot: the red dotted laser for 480 ms before the shot, and a glint of the scope. */
@@ -280,8 +540,8 @@ export class EffectsLayer {
   }
 
   /** The burst, the sparks and the ground ring where the projectile lands. */
-  private drawImpact(g: Graphics, color: number, target: Point, look: WeaponLook, boost: number, ms: number): void {
-    const chest = { x: target.x, y: target.y - CHEST_LIFT };
+  private drawImpact(g: Graphics, color: number, target: Point, look: WeaponLook, boost: number, ms: number, lift: number): void {
+    const chest = { x: target.x, y: target.y - lift };
     const scale = look.impact * boost;
     if (ms < IMPACT_BURST_MS) {
       const u = ms / IMPACT_BURST_MS;

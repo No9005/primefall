@@ -1,4 +1,4 @@
-import { EventKind, HERO_DECKS, LONG_RANGE_FROM, type MatchEvent } from "game-core";
+import { EffectKind, EventKind, type GridPosition, HERO_DECKS, LONG_RANGE_FROM, type MatchEvent } from "game-core";
 
 // The effects of the attacks (docs/design/animation/README.md, "Effects"): which cue an event causes and when it starts and
 // ends. Pure data and functions, so the scheduling is tested without a browser; `effects-layer.ts` draws the cues.
@@ -62,10 +62,24 @@ export function impactMs(card: string | undefined, distance: number | undefined,
 export type NumberStyle = "damage" | "bonus" | "shield" | "failed";
 
 export type EffectCue =
-  | { kind: "shot"; weapon: Weapon; fromId: string; toId: string; fireMs: number; flightMs: number; overdrive: boolean }
-  | { kind: "number"; toId: string; startMs: number; text: string; style: NumberStyle }
+  /** `halfCover`: Half Cover on the target's tile reduced the damage, so the projectile hits the wall in front of the target. */
+  | { kind: "shot"; weapon: Weapon; fromId: string; toId: string; fireMs: number; flightMs: number; overdrive: boolean; halfCover?: true }
+  /** `drop`: design px the label sits below the usual place (a tag under a number). */
+  | { kind: "number"; toId: string; startMs: number; text: string; style: NumberStyle; drop?: number }
   /** Marked and Slow lock on at `startMs` and last (as state) until the end of the next Resolution. */
-  | { kind: "marked" | "slow"; toId: string; startMs: number };
+  | { kind: "marked" | "slow"; toId: string; startMs: number }
+  /** Shockwave: rings and dust around the Hero that plays it. */
+  | { kind: "shockwave"; casterId: string; startMs: number }
+  /** One tile of Knockback: the Hero slides from `from` to `to` (the rules have moved it there already). */
+  | { kind: "knockback"; toId: string; from: GridPosition; to: GridPosition; startMs: number; tag: string }
+  /** Breach Charge: the charge flies from the caster to the tile, which blows up at `fireMs + flightMs`. */
+  | { kind: "breach"; casterId: string; tile: GridPosition; fireMs: number; flightMs: number }
+  /** Deploy Cover and Fortify: a flash on the tile at `startMs`, then the wall rises. */
+  | { kind: "coverPlaced"; casterId: string; tile: GridPosition; startMs: number }
+  /** A Hero gains Shield: the rubies pop and the bubble forms. `startMs` is when the rubies pop. */
+  | { kind: "shieldGain"; toId: string; startMs: number; amount: number }
+  /** A hit that the Shield absorbed (`absorbed` rubies burst) at `startMs`, the impact. */
+  | { kind: "shieldHit"; toId: string; startMs: number; absorbed: number };
 
 /** When a cue is over, for the length of the frame. */
 export function cueEndMs(cue: EffectCue): number {
@@ -77,9 +91,211 @@ export function cueEndMs(cue: EffectCue): number {
     }
     case "number":
       return cue.startMs + NUMBER_RISE_MS;
+    case "shockwave":
+      return cue.startMs + SHOCKWAVE_MS;
+    case "knockback":
+      return cue.startMs + KNOCKBACK_TAG_MS;
+    case "breach":
+      return cue.fireMs + cue.flightMs + BREACH_AFTER_MS;
+    case "coverPlaced":
+      return cue.startMs + COVER_PLACED_MS;
+    case "shieldGain":
+      return cue.startMs + SHIELD_POP_MS;
+    case "shieldHit":
+      return cue.startMs + SHIELD_HIT_MS;
     default:
       return cue.startMs + STATUS_INTRO_MS;
   }
+}
+
+// ---- Field effects: Shockwave and Knockback, Breach Charge, Cover placed, Half Cover and the Shield ----
+
+export const SHOCKWAVE_CARD = "Shockwave";
+export const BREACH_CARD = "Breach Charge";
+export const AEGIS_CARD = "Aegis Protocol";
+export const SHOCKWAVE_MS = 700;
+/** One tile of Knockback slides 24 px (a tile step) in 300 ms; the `Knockback 2` tag and the skid line outlast it. */
+export const SLIDE_MS = 300;
+export const KNOCKBACK_TAG_MS = 800;
+export const BREACH_FLIGHT_MS = UNARMED_FLIGHT_MS;
+export const BREACH_ARC_PX = 26;
+export const BREACH_AFTER_MS = 1464;
+/** The Controller slams the ground at 950 ms; the wall is up (1.15 x) 480 ms after the flash starts, and holds to 2720. */
+export const COVER_SLAM_MS = 950;
+export const COVER_WALL_UP_MS = 480;
+export const COVER_PLACED_MS = 1770;
+export const SHIELD_POP_MS = 900;
+export const SHIELD_HIT_MS = 1100;
+/** Rubies pop at the Block's crouch (700 ms); Aegis Protocol's dome closes at 1340 ms. */
+export const BLOCK_RUBIES_MS = 700;
+export const AEGIS_RUBIES_MS = 1340;
+/** The bubble starts forming this long before the rubies pop. */
+export const BUBBLE_LEAD_MS = 190;
+export const RIPPLE_DELAY_MS = 110;
+
+/** A linear keyframe track: `[ms, value]` pairs in time order; before the first and after the last it holds the end value. */
+export type Track = readonly (readonly [number, number])[];
+
+export function sampleTrack(track: Track, ms: number): number {
+  const first = track[0]!;
+  if (ms <= first[0]) return first[1];
+  for (let i = 1; i < track.length; i++) {
+    const [t1, v1] = track[i]!;
+    if (ms <= t1) {
+      const [t0, v0] = track[i - 1]!;
+      return v0 + ((v1 - v0) * (ms - t0)) / (t1 - t0);
+    }
+  }
+  return track[track.length - 1]![1];
+}
+
+/** Shockwave ring `index` (0 to 2): orange, on the floor, 48 x 24 growing to 3 x over 580 ms, one every 100 ms. */
+export function shockRingAt(ms: number, index: number): { scale: number; alpha: number } | undefined {
+  const t = ms - index * 100;
+  if (t < 0 || t >= 580) return undefined;
+  return { scale: sampleTrack([[0, 0.5], [580, 3]], t), alpha: sampleTrack([[0, 1], [580, 0]], t) };
+}
+
+/** A dust puff of the Shockwave, `delay` ms after the rings: grows to 2.2 x and rises 4 px while it fades. */
+export function dustAt(ms: number, delay: number): { scale: number; alpha: number; rise: number } | undefined {
+  const t = ms - delay;
+  if (t < 0 || t >= 500) return undefined;
+  return {
+    scale: sampleTrack([[0, 0.4], [120, 1], [500, 2.2]], t),
+    alpha: sampleTrack([[0, 0], [120, 0.8], [500, 0]], t),
+    rise: sampleTrack([[0, 0], [500, 4]], t),
+  };
+}
+
+/** How far a Knockback slide has come (0 to 1), `ms` after it starts: it eases out over 300 ms. */
+export function slideProgress(ms: number): number {
+  const t = Math.min(1, Math.max(0, ms / SLIDE_MS));
+  return 1 - (1 - t) * (1 - t);
+}
+
+/** The skid line behind a slid Hero: grows over 170 ms, fades by 560 ms. */
+export function skidAt(ms: number): { length: number; alpha: number } {
+  return { length: sampleTrack([[0, 0], [170, 1]], ms), alpha: ms <= 0 || ms >= 560 ? 0 : sampleTrack([[0, 0], [170, 0.8], [560, 0]], ms) };
+}
+
+/** The Breach Charge `ms` after it leaves: how far along the way it is (0 to 1) and how high the arc lifts it (26 px at most). */
+export function chargeAt(ms: number): { progress: number; lift: number } {
+  const progress = Math.min(1, Math.max(0, ms / BREACH_FLIGHT_MS));
+  return { progress, lift: BREACH_ARC_PX * 4 * progress * (1 - progress) };
+}
+
+/** The four chunks of the broken Cover: where they fly (design px) and how they turn. `dyEnd` is where they come to rest. */
+export const CHUNKS = [
+  { dx: -22, dy: -22, dyEnd: 6, turn: -120 },
+  { dx: 20, dy: -26, dyEnd: 4, turn: 140 },
+  { dx: -8, dy: -30, dyEnd: 2, turn: 90 },
+  { dx: 30, dy: -14, dyEnd: 6, turn: -60 },
+] as const;
+
+/** A chunk `ms` after the blast. */
+export function chunkAt(ms: number, index: number): { x: number; y: number; turn: number; alpha: number } {
+  const { dx, dy, dyEnd, turn } = CHUNKS[index]!;
+  const fly = sampleTrack([[48, 0], [456, 1]], ms);
+  return {
+    x: dx * fly,
+    y: dy * fly + (dyEnd - dy) * sampleTrack([[456, 0], [1250, 1]], ms),
+    turn: turn * fly,
+    alpha: sampleTrack([[0, 0], [48, 1], [1250, 1], [1440, 0]], ms),
+  };
+}
+
+export function fireballAt(ms: number): { scale: number; alpha: number } {
+  return { scale: sampleTrack([[0, 0.2], [120, 1], [456, 1.5], [888, 1.9]], ms), alpha: sampleTrack([[0, 0], [120, 1], [456, 0.9], [888, 0]], ms) };
+}
+
+export function smokeAt(ms: number): { scale: number; alpha: number; rise: number } {
+  const t = ms - 120;
+  return { scale: sampleTrack([[0, 0.5], [980, 2]], t), alpha: sampleTrack([[0, 0], [168, 0.7], [980, 0]], t), rise: sampleTrack([[0, 0], [980, 22]], t) };
+}
+
+/** The dark scorch diamond: appears 72 ms after the blast and stays until the end. */
+export function scorchAt(ms: number): number {
+  return sampleTrack([[0, 0], [72, 0], [264, 1], [1200, 1], [1464, 0]], ms);
+}
+
+/** The team-coloured flash on a tile where Cover is placed, `ms` after the slam. */
+export function coverFlashAt(ms: number): number {
+  return sampleTrack([[0, 0], [100, 0.8], [400, 0]], ms);
+}
+
+/** The wall that rises on the tile (scale 0 to 1.15 to 1), dust at its foot and the two pips counting the Resolutions it stays. */
+export function coverWallAt(ms: number): { scaleY: number; alpha: number } {
+  return {
+    scaleY: sampleTrack([[0, 0], [70, 0.2], [COVER_WALL_UP_MS, 1.15], [COVER_WALL_UP_MS + 150, 1]], ms),
+    alpha: ms < 70 ? 0 : 1,
+  };
+}
+
+/** Pip 0 or 1 above the wall: both lit once it is up; the first dims as the first Resolution passes, the second as the last starts. */
+export function coverPipAt(ms: number, index: number): number {
+  if (ms < COVER_WALL_UP_MS) return 0;
+  return index === 0 ? sampleTrack([[1400, 1], [1500, 0.15]], ms) : sampleTrack([[1650, 1], [1770, 0.15]], ms);
+}
+
+/** A ruby of the Shield pops (0 to 1.5 to 1) `ms` after its turn; `index` staggers them by 60 ms. */
+export function rubyPopAt(ms: number, index: number): number {
+  return sampleTrack([[0, 0], [256, 1.5], [448, 1]], ms - index * 60);
+}
+
+/** The bubble forms: grows 0.6 to 1.08 to 1 while it fades in; `ms` counts from the start of its formation. */
+export function bubbleFormAt(ms: number): { scale: number; alpha: number } {
+  return { scale: sampleTrack([[0, 0.6], [384, 1.08], [576, 1]], ms), alpha: sampleTrack([[0, 0], [384, 1]], ms) };
+}
+
+/** The ripple over the bubble after an absorbed hit: from the impact on, 110 ms later it runs 1 to 1.7 x while it fades. */
+export function rippleAt(ms: number): { scale: number; alpha: number } | undefined {
+  const t = ms - RIPPLE_DELAY_MS;
+  if (t < 0 || t >= 990) return undefined;
+  return { scale: sampleTrack([[0, 1], [990, 1.7]], t), alpha: sampleTrack([[0, 0], [104, 0.9], [990, 0]], t) };
+}
+
+/** The ruby an absorbed hit removes swells to 1.6 x and bursts: `ms` after the impact. */
+export function rubyBurstAt(ms: number): number {
+  return ms < 0 ? 1 : sampleTrack([[0, 1], [210, 1.6], [520, 0]], ms);
+}
+
+/** The shards the bubble breaks into when the last Shield is gone: design px, and how they turn. */
+export const SHARDS = [
+  { dx: -18, dy: -14, turn: -90 },
+  { dx: 16, dy: -18, turn: 120 },
+  { dx: -8, dy: -26, turn: 40 },
+  { dx: 22, dy: -4, turn: -60 },
+  { dx: -24, dy: 2, turn: 170 },
+] as const;
+
+export function shardAt(ms: number, index: number): { x: number; y: number; turn: number; alpha: number } | undefined {
+  if (ms < 0 || ms >= 420) return undefined;
+  const { dx, dy, turn } = SHARDS[index]!;
+  const u = ms / 420;
+  return { x: dx * u, y: dy * u, turn: turn * u, alpha: 1 - u };
+}
+
+/** Cover the playback adds to or takes off the board, and when in the frame (the terrain follows the effect). */
+export interface CoverEdit {
+  kind: "placed" | "destroyed";
+  tile: GridPosition;
+  atMs: number;
+}
+
+export function coverEditsOf(cues: readonly EffectCue[]): CoverEdit[] {
+  return cues.flatMap((cue): CoverEdit[] => {
+    if (cue.kind === "breach") return [{ kind: "destroyed", tile: cue.tile, atMs: cue.fireMs + cue.flightMs }];
+    if (cue.kind === "coverPlaced") return [{ kind: "placed", tile: cue.tile, atMs: cue.startMs + COVER_WALL_UP_MS }];
+    return [];
+  });
+}
+
+/** How many tiles a card pushes (its Knockback effect), for the tag. */
+function pushOf(card: string | undefined): number {
+  const definition = Object.values(HERO_DECKS)
+    .flat()
+    .find((candidate) => candidate.name === card);
+  return definition?.effects.find((effect) => effect.kind === EffectKind.Knockback)?.amount ?? 1;
 }
 
 /** The number a hit puts above the target, in the order shown: Shield first, then Deck Damage. */
@@ -128,9 +344,32 @@ export function effectCuesOf(events: readonly MatchEvent[], fireOf: (heroId: str
           fireMs: fire,
           flightMs: flight,
           overdrive: event.overdrive === true,
+          ...(event.halfCover && { halfCover: true as const }),
         });
       }
       cues.push(...hitNumbers(event, fire + flight + NUMBER_DELAY_MS));
+      if (event.halfCover) {
+        cues.push({ kind: "number", toId: event.targetId, startMs: fire + flight + NUMBER_DELAY_MS, text: "Half Cover", style: "failed", drop: 9 });
+      }
+      if ((event.absorbed ?? 0) > 0) cues.push({ kind: "shieldHit", toId: event.targetId, startMs: fire + flight, absorbed: event.absorbed! });
+      if (event.card === SHOCKWAVE_CARD && !cues.some((cue) => cue.kind === "shockwave" && cue.casterId === event.heroId)) {
+        cues.push({ kind: "shockwave", casterId: event.heroId, startMs: fire });
+      }
+    }
+    if (event.kind === EventKind.Knockback && event.from && event.to) {
+      const shock = events.find((other) => other.kind === EventKind.AttackHit && other.card === event.card);
+      const start = shock === undefined ? 0 : fireOf(shock.heroId, event.card);
+      cues.push({ kind: "knockback", toId: event.heroId, from: event.from, to: event.to, startMs: start, tag: `Knockback ${pushOf(event.card)}` });
+    }
+    if (event.kind === EventKind.CoverDestroyed && event.to) {
+      cues.push({ kind: "breach", casterId: event.heroId, tile: event.to, fireMs: fireOf(event.heroId, event.card), flightMs: BREACH_FLIGHT_MS });
+    }
+    if (event.kind === EventKind.CoverPlaced && event.to) {
+      cues.push({ kind: "coverPlaced", casterId: event.heroId, tile: event.to, startMs: COVER_SLAM_MS });
+    }
+    if (event.kind === EventKind.ShieldGained) {
+      const startMs = event.card === AEGIS_CARD ? AEGIS_RUBIES_MS : BLOCK_RUBIES_MS;
+      cues.push({ kind: "shieldGain", toId: event.heroId, startMs, amount: event.amount ?? 0 });
     }
     if (event.kind === EventKind.MarkedApplied && event.targetId !== undefined) {
       const hit = events.find((other) => other.kind === EventKind.AttackHit && other.heroId === event.heroId && other.targetId === event.targetId);
