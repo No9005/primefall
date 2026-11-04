@@ -169,7 +169,7 @@ export enum EventKind {
   ShieldGained = "shieldGained",
   /** An Attack hit: `heroId` attacked `targetId`; Shield absorbed `absorbed`, `damage` cards left the Deck. */
   AttackHit = "attackHit",
-  /** An Attack failed (target out of Range, without Line of Sight or already Exhausted). */
+  /** An Attack missed: it was checked in the Tick it fired and was not allowed; `reason` says why. */
   AttackFailed = "attackFailed",
   /** A queued action was illegal when it resolved (card not in the Hand, used twice, beyond the Queue limit). */
   ActionFailed = "actionFailed",
@@ -203,6 +203,18 @@ export enum EventKind {
   Exhausted = "exhausted",
 }
 
+/** Why an Attack missed when it fired (a Declared Target is checked in that Tick, ADR 0013). */
+export enum AttackFailReason {
+  /** The Declared Target was not visible to the attacker's Squad any more. Reveals nothing about the real target. */
+  NotVisible = "notVisible",
+  TargetExhausted = "targetExhausted",
+  OutOfRange = "outOfRange",
+  NoLineOfSight = "noLineOfSight",
+  FullCover = "fullCover",
+  /** A Ghost Shot found nobody on the remembered tile. */
+  EmptyTile = "emptyTile",
+}
+
 /** Something that happened during a Resolution, for playback. Events of the same Tick play together. */
 export interface MatchEvent {
   kind: EventKind;
@@ -232,7 +244,9 @@ export interface MatchEvent {
   card?: string;
   /** True when the card was played in Overdrive. */
   overdrive?: boolean;
-  /** Range in tiles (Chebyshev) between attacker and target, for `AttackHit` and `AttackFailed`. */
+  /** Why the Attack missed, for `AttackFailed`. */
+  reason?: AttackFailReason;
+  /** Range in tiles (Chebyshev) between attacker and target, for `AttackHit` and `AttackFailed` (not for `NotVisible`). */
   distance?: number;
   /** The tile a tile Attack (Breach Charge) was aimed at, for its `AttackHit` and `AttackFailed`. */
   tile?: GridPosition;

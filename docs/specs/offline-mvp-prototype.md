@@ -54,7 +54,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 36. As a player, I want a fixed planning timer with early commit, so that matches keep moving.
 37. As a player, I want the game to resolve committed actions deterministically after both Squads commit, so that outcomes are fair and reproducible.
 38. As a player, I want Resolution to process one action from every non-exhausted Hero’s queue per Tick, so that action order matters.
-39. As a player, I want actions to be validated when they execute, so that illegal actions fail without disrupting later planned actions.
+39. As a player, I want actions to be validated when they execute, so that illegal actions fail without disrupting later planned actions. An Attack names a Declared Target in planning and is checked in the Tick it fires (see the Implementation Decisions).
 40. As a player, I want simultaneous attacks to both resolve, so that aggression remains risky and consequential.
 41. As a player, I want Heroes that move not to hinder each other (they can follow, cross and swap), while a Hero cannot walk through a Hero that stays where it is and two Heroes never step onto the same tile: a step onto a tile that a Hero keeps, or that another Hero steps onto too, fails and the Hero stops there, so that movement conflicts have a clear rule (ADR 0013).
 42. As a player, I want a Block to take effect immediately in its Tick, so that I can protect against an attack resolved in that same Tick.
@@ -102,6 +102,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 84. As a player, I want to see the Deck, Discard and Exile counts and the Shield of Visible enemies, so that I can predict when they will have their strong cards again.
 85. As a player, I want Ghosts to show the last seen counts and Unknown enemies to show nothing, so that scouting is valuable.
 86. As a player, I want the spec to respect the existing ADRs, so that future implementation follows the documented decisions.
+87. As a player, I want to name the Visible enemy I want to hit in any Tick of my Queue, even if it is not in Range yet, so that I can plan a shot after my Moves; the shot is checked when it fires and misses if it is not allowed.
 
 ## Implementation Decisions
 
@@ -122,7 +123,8 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Implement simultaneous planning with a fixed timer and early commit.
 - Implement deterministic priority-interleaved Resolution using per-Hero action queues and Ticks.
 - Validate actions at execution time; illegal actions fail without affecting later actions.
-- Implement squad-shared, enemy-only Fog of War with Visible, Ghost, and Unknown states. Base sight range is 7 tiles (9 for a Hidden Assassin); Visible requires sight range and Line of Sight.
+- Declared Target: an Attack that hits a single enemy Hero names it in planning. Only an enemy that is currently Visible and not Exhausted can be named, whatever its Range and Line of Sight from the planned position; a Ghost or an Unknown enemy cannot be named by a normal Attack (Ghost Shot Overdrive keeps its tile rule). In the Tick the Attack fires, against the positions at the end of that Tick's movement, it is checked in this order, and the first failing check makes it a Miss with that reason: the target is visible to the Squad (`NotVisible`), not Exhausted (`TargetExhausted`), within Range (`OutOfRange`), in Line of Sight (`NoLineOfSight`), not behind Full Cover (`FullCover`). A Miss does nothing and later actions of the Queue still run. Plan-time checks never block Commit for Range or Line of Sight; the planner only shows a hint that the shot may miss.
+- Implement squad-shared, enemy-only Fog of War with Visible, Ghost, and Unknown states. Base sight range is 7 tiles (9 for a Hidden Assassin); Visible requires sight range and Line of Sight. A Miss on a target the Squad no longer sees (`NotVisible`) reveals nothing about that enemy: no distance, no position, no new Ghost, and the enemy Squad is not told.
 - Implement Hidden only for the Assassin through selected Utility cards.
 - Implement Marked as a Squad-wide visibility effect until the end of the next round.
 - Implement Ghost Shot as the Assassin’s Attack Overdrive that targets a Ghost’s last known position.
@@ -143,6 +145,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Use the authoritative Match Simulation as the primary test seam.
 - Given a starting Match State and two committed Squad Plans, the simulation must produce exactly one deterministic resulting Match State.
 - Test movement, collision conflicts, Line of Sight, Cover, Hidden, Marked, Ghosts, Energy, Deck Damage, Exhaustion, and victory conditions through this seam.
+- Test Declared Targets through this seam: an Attack hits when its target is valid in the Tick it fires (after the Hero's Moves or the enemy's Moves), and misses with one reason per failing check, without damage and without stopping later actions.
 - Prefer existing seams; do not introduce additional seams unless a higher-level test cannot otherwise be expressed.
 - Use the Reactor Deck layout and the MVP card set as stable fixtures for deterministic scenario tests.
 - Treat AI behaviour as heuristic: test that AI actions are legal and objective-oriented, not that a specific action is always chosen.
