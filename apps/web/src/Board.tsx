@@ -269,6 +269,8 @@ interface BoardProps {
   onTileTap: (tile: GridPosition) => void;
   /** Position of the Hero whose Move (or tile pick) is armed: while set, the camera eases to it and its highlights, inside the free area. */
   moveFrameHero?: GridPosition;
+  /** A faint tint over the Prime Zone tiles: teal while the own Squad holds it, amber while contested, steel otherwise. */
+  zoneTint: keyof typeof TERRAIN_STYLE.zoneTint;
   /** While a card is dragged: short labels on the Heroes or tiles that take a drop. */
   zoneLabels: readonly { position: GridPosition; text: string }[];
   /** While a card is dragged: a tinted area (the Range of a card played here). */
@@ -361,6 +363,7 @@ export function Board({
   markers,
   onTileTap,
   moveFrameHero,
+  zoneTint,
   zoneLabels,
   areaTiles,
   dropTile,
@@ -605,6 +608,17 @@ export function Board({
       }),
     );
 
+    grid.tiles.forEach((line, row) =>
+      line.forEach((kind, col) => {
+        if (kind !== TileKind.PrimeZone) return;
+        const { x, y } = gridToWorld({ col, row }, angle);
+        const tint = new Graphics().poly(floorOutline(angle)).fill({ color: TERRAIN_STYLE.zoneTint[zoneTint], alpha: 0.18 });
+        tint.position.set(x, y);
+        planning.addChild(tint);
+        created.push(tint);
+      }),
+    );
+
     // Revealed areas: every tile of the square, clipped to the Grid, gets a yellow tint.
     for (const { center, size } of revealedAreas) {
       const reach = Math.floor(size / 2);
@@ -620,7 +634,7 @@ export function Board({
       }
     }
     return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [terrain, angle, strokeScale, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes]);
+  }, [terrain, angle, strokeScale, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, zoneTint]);
 
   useEffect(() => {
     const element = host.current;
