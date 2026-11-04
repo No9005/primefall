@@ -92,7 +92,9 @@ export const HERO_STYLE = {
       height: 16,
       points: [0.12, 1, 0, 0.62, 0.08, 0.24, 0.4, 0, 0.72, 0.06, 1, 0.3, 1, 0.58, 0.74, 0.5, 0.58, 1],
     },
-    cape: { x: -16, y: -27, width: 12, height: 18, points: [1, 0, 1, 0.14, 0.66, 1, 0.4, 0.66, 0, 0.94, 0.16, 0.42, 0.32, 0] },
+    cape: { x: -16, y: -27, width: 12, height: 18, pivot: 0.85, points: [1, 0, 1, 0.14, 0.66, 1, 0.4, 0.66, 0, 0.94, 0.16, 0.42, 0.32, 0] },
+    /** The grey II above the head of a waiting Hero: two bars, hidden unless the Wait clip shows it. */
+    pause: { y: -48, barWidth: 3, barHeight: 9, gap: 3, color: 0x8a99a8 },
     /** Controller. */
     pack: { x: -14, y: -27, width: 7, height: 11, radius: 2 },
     antenna: { x: -12, y: -42, width: 2, height: 15, color: 0x8fb2ff },

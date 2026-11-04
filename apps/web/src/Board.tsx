@@ -38,6 +38,8 @@ import {
 } from "./board-layout";
 import { freeBoardArea } from "./hud-layout";
 import { buildTerrain, depthOf, type Face, floorOutline, footOffset, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
+import { applyPose, applyRestPose, type BoundPart, bindParts, ClipPlayer } from "./clip-player";
+import type { ClipName } from "./hero-clips";
 import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
 import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
@@ -265,6 +267,8 @@ interface BoardProps {
   onTargetTap: (heroId: string) => void;
   /** Heroes shown as hit (during the playback frame in which they took an Attack). */
   hitIds: readonly string[];
+  /** The clip each Hero plays during the playback frame being shown (a Step walks, a Wait waits); Heroes not listed idle. */
+  clips?: Readonly<Record<string, ClipName>>;
   /** Tiles the player may tap right now. */
   highlights: readonly GridPosition[];
   markers: readonly BoardMarker[];
@@ -298,6 +302,7 @@ interface BoardProps {
 }
 
 const NO_RANGE: readonly RangeTile[] = [];
+const NO_CLIPS: Readonly<Record<string, ClipName>> = {};
 const RANGE_COLOR = 0xe5484d;
 const RANGE_BLOCKED_COLOR = 0x8a99a8;
 const RANGE_ALPHA = 0.27;
@@ -362,6 +367,7 @@ export function Board({
   targetableIds,
   onTargetTap,
   hitIds,
+  clips = NO_CLIPS,
   highlights,
   markers,
   onTileTap,
@@ -396,6 +402,8 @@ export function Board({
   const enemyIdsRef = useRef(new Set<string>());
   enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
   const bubbleSeen = useRef(new Set<string>());
+  // One clip player per Hero; the figures are drawn again for every frame, the players (and their cross-fades) are not.
+  const clipPlayers = useRef(new Map<string, ClipPlayer>());
   const [pressed, setPressed] = useState<GridPosition>();
   // The camera scale in steps; outlines are drawn in world pixels of `1 / strokeScale` so they keep their width on screen.
   const [strokeScale, setStrokeScale] = useState(1);
@@ -519,6 +527,8 @@ export function Board({
     const cancels: (() => void)[] = [];
     // The rings of the Heroes that can be tapped as target pulse (issue 209); with reduced motion they stand still.
     const pulsingRings: Graphics[] = [];
+    // The figures that play a clip (not the hit or Exhausted ones, which are flat poses).
+    const animated: { id: string; heroClass: HeroClass; parts: BoundPart[] }[] = [];
     const ring = (color: number) =>
       new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color });
     const addToken = (hero: TokenHero, enemy: boolean) => {
@@ -542,6 +552,7 @@ export function Board({
       token.addChild(figure);
       const beacon = figure.getChildByLabel(BEACON_LABEL, true);
       if (beacon && pose === "idle") cancels.push(animateBeacon(beacon));
+      if (pose === "idle") animated.push({ id: hero.id, heroClass: hero.heroClass, parts: bindParts(figure) });
       const heroMarks = hero.ghost ? undefined : marks[hero.id];
       if (heroMarks && (heroMarks.rubies > 0 || heroMarks.icons.length > 0)) {
         token.addChild(marksFigure(heroMarks, strokeScale));
@@ -597,12 +608,33 @@ export function Board({
       if (!reducedMotion) pulseFrame = requestAnimationFrame(pulse);
     };
     if (pulsingRings.length > 0) pulse(pulseStart);
+    // The clip of every Hero: the active one of this frame, Idle otherwise. Reduced motion stands on the rest frame.
+    let clipFrame = 0;
+    const playClips = (now: number) => {
+      for (const { id, heroClass, parts } of animated) {
+        const name = clips[id] ?? "idle";
+        if (reducedMotion) {
+          applyRestPose(parts, name);
+          continue;
+        }
+        let player = clipPlayers.current.get(id);
+        if (player === undefined) {
+          player = new ClipPlayer(heroClass, now);
+          clipPlayers.current.set(id, player);
+        }
+        player.play(name, now);
+        applyPose(parts, player.sample(now));
+      }
+      if (!reducedMotion) clipFrame = requestAnimationFrame(playClips);
+    };
+    playClips(performance.now());
     return () => {
       cancelAnimationFrame(pulseFrame);
+      cancelAnimationFrame(clipFrame);
       cancels.forEach((cancel) => cancel());
       created.forEach((token) => token.destroy({ children: true }));
     };
-  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, shotLines, marks]);
+  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, shotLines, marks]);
 
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
   useEffect(() => {
