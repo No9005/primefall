@@ -4,7 +4,7 @@ import { attackClipName, type ClipName, clipOf, takeCoverClipName } from "./hero
 import { type CoverEdit, coverEditsOf, cueEndMs, type EffectCue, effectCuesOf, impactMs } from "./weapon-effects";
 
 /** How long the playback shows one step (one frame) at least; slow enough to follow who does what. The animation never changes it. */
-export const STEP_MS = 1200;
+export const STEP_MS = 650;
 
 /** Where the hit flash is in the Exhausted clip (12 % of 5400 ms). */
 const EXHAUSTED_HIT_FLASH_MS = 650;

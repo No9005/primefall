@@ -1,4 +1,5 @@
 import { EventKind, type MatchEvent } from "game-core";
+import { CLIP_SPEED } from "./clip-player";
 import { Container } from "pixi.js";
 import { describe, expect, it } from "vitest";
 import { attackBadge, EffectsLayer, type EffectsWorld } from "./effects-layer";
@@ -179,9 +180,9 @@ describe("drawing the Overdrive effects", () => {
   it("shakes the screen when an Overdrive Shockwave lands, and only then", () => {
     const layer = new EffectsLayer(new Container());
     layer.play([{ kind: "shockwave", casterId: "a", startMs: 620, overdrive: true }], 0, world, false);
-    expect(layer.update(10)).toEqual({ x: 0, y: 0 });
-    expect(layer.update(640)).not.toEqual({ x: 0, y: 0 });
-    expect(layer.update(900)).toEqual({ x: 0, y: 0 });
+    expect(layer.update(10 / CLIP_SPEED)).toEqual({ x: 0, y: 0 });
+    expect(layer.update(640 / CLIP_SPEED)).not.toEqual({ x: 0, y: 0 });
+    expect(layer.update(900 / CLIP_SPEED)).toEqual({ x: 0, y: 0 });
   });
 
   it("shows the +1 badge at once as state, and pops it in when it is gained", () => {
