@@ -9,6 +9,8 @@ export const AREA_COLOR = 0x5fd0e6;
 /** The tiles of an area lift one ring after the other, from the middle outwards. */
 export const AREA_RING_DELAY_MS = 140;
 export const AREA_LIFT_MS = 300;
+/** Every vision and zone transition (the longest: a zone ring or an area of up to 5 rings) is over within this many ms. */
+export const TRANSITION_MS = 3000;
 /** Pips above the area: one per Resolution it lasts. */
 export const AREA_PIPS = 2;
 

@@ -36,11 +36,12 @@ import {
   zoomOnPoint,
 } from "./board-layout";
 import { freeBoardArea } from "./hud-layout";
+import { FogClouds, fogShape } from "./fog-clouds";
 import { buildTerrain, coverMarks, depthOf, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
-import { AREA_COLOR, AREA_PIPS, areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
+import { AREA_COLOR, AREA_PIPS, areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, TRANSITION_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
 import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
@@ -458,6 +459,8 @@ export function Board({
   // The layer of the attack effects (above the Heroes) and the world it shakes.
   const [effectsHost, setEffectsHost] = useState<{ layer: Container; world: Container }>();
   const [overlay, setOverlay] = useState<Container>();
+  /** The layer of the Fog of War clouds: above the floor and the props, below the planning marks and the effects. */
+  const [fogLayer, setFogLayer] = useState<Container>();
   /** Above the props and the Heroes, below the effects: the ghost and the numbers of the planned paths. */
   const [overlayTop, setOverlayTop] = useState<Container>();
   const [terrain, setTerrain] = useState<Terrain>();
@@ -837,6 +840,76 @@ export function Board({
     };
   }, [effects, effectsHost]);
 
+  // The cloud layer over the unseen tiles (fog-clouds.ts). Made once per board; it turns with the view and drifts on its own.
+  const [fogClouds, setFogClouds] = useState<FogClouds>();
+  useEffect(() => {
+    if (!fogLayer) return;
+    const clouds = new FogClouds(coverGrid, angleRef.current, window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    fogLayer.addChild(clouds.container);
+    setFogClouds(clouds);
+    return () => {
+      setFogClouds(undefined);
+      clouds.destroy();
+    };
+  }, [fogLayer, coverGrid.width, coverGrid.height]);
+  useEffect(() => fogClouds?.setAngle(angle), [fogClouds, angle]);
+  // The fog is the Squad's own sight only. A Scout Drone area fades the fog out (or back in when it ends) over the area's own timing.
+  const fogAreaSeen = useRef(new Map<string, { center: GridPosition; size: number }>());
+  useEffect(() => {
+    if (!fogClouds) return;
+    const own = heroes.map((hero) => hero.position);
+    const areaTiles = (center: GridPosition, size: number) => {
+      const reach = Math.floor(size / 2);
+      const tiles: { tile: GridPosition; ring: number }[] = [];
+      for (let row = center.row - reach; row <= center.row + reach; row++) {
+        for (let col = center.col - reach; col <= center.col + reach; col++) {
+          if (tileAt(coverGrid, { col, row }) !== undefined) tiles.push({ tile: { col, row }, ring: areaRing(center, { col, row }) });
+        }
+      }
+      return tiles;
+    };
+    const finalFog = fogShape(coverGrid, visibleTiles, own);
+    fogClouds.setFog(finalFog);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const seenNow = new Map<string, { center: GridPosition; size: number }>();
+    /** Tiles whose fog changes over time: the fog they have without the area, and how far the area has lifted. */
+    const fading: { index: number; fog: number; lift: (ms: number) => number }[] = [];
+    const withoutAreas = fogShape(coverGrid, visibleTiles.filter((tile) => !revealedAreas.some((area) => areaContains(area.center, area.size, tile))), own);
+    for (const { center, size } of revealedAreas) {
+      const key = `${center.col},${center.row},${size}`;
+      seenNow.set(key, { center, size });
+      if (reduced || fogAreaSeen.current.has(key)) continue;
+      for (const { tile, ring } of areaTiles(center, size)) {
+        const index = tile.row * coverGrid.width + tile.col;
+        fading.push({ index, fog: withoutAreas[index]!, lift: (ms) => 1 - areaLift(ms, ring) });
+      }
+    }
+    if (!reduced) {
+      for (const [key, { center, size }] of fogAreaSeen.current) {
+        if (seenNow.has(key)) continue;
+        const reach = Math.floor(size / 2);
+        for (const { tile, ring } of areaTiles(center, size)) {
+          const index = tile.row * coverGrid.width + tile.col;
+          fading.push({ index, fog: 0, lift: (ms) => 1 - areaLift(ms, reach - ring) });
+        }
+      }
+    }
+    fogAreaSeen.current = seenNow;
+    if (fading.length === 0) return;
+    const frame = new Float32Array(finalFog);
+    const startedAt = performance.now();
+    let handle = 0;
+    const step = (now: number) => {
+      const ms = now - startedAt;
+      for (const { index, fog, lift } of fading) frame[index] = (fog - finalFog[index]!) * lift(ms) + finalFog[index]!;
+      fogClouds.setFog(frame);
+      if (!finished(ms, TRANSITION_MS)) handle = requestAnimationFrame(step);
+      else fogClouds.setFog(finalFog);
+    };
+    step(startedAt);
+    return () => cancelAnimationFrame(handle);
+  }, [fogClouds, coverGrid, visibleTiles, heroes, revealedAreas]);
+
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
   useEffect(() => {
     if (!terrain) return;
@@ -1019,7 +1092,7 @@ export function Board({
       for (const update of animated) update(now - effectStart);
       for (const update of idle) update(now);
       // Every transition (the longest: a ring of the zone or an area of up to 5 rings) is over within 3 s; the idle pulse never ends.
-      const transitioning = animated.length > 0 && !finished(now - effectStart, 3000);
+      const transitioning = animated.length > 0 && !finished(now - effectStart, TRANSITION_MS);
       if (!reducedMotion && (idle.length > 0 || transitioning)) effectFrame = requestAnimationFrame(runEffects);
     };
     runEffects(effectStart);
@@ -1038,7 +1111,7 @@ export function Board({
     void (async () => {
       await Promise.all([
         loadAssets(),
-        app.init({ background: "#12161c", resizeTo: element, antialias: true, autoDensity: true, resolution: window.devicePixelRatio }),
+        app.init({ background: "#12161c", resizeTo: element, preference: "webgl", antialias: true, autoDensity: true, resolution: window.devicePixelRatio }),
       ]);
       if (cancelled) {
         app.destroy(true, { children: true });
@@ -1053,8 +1126,10 @@ export function Board({
       const planning = new Container();
       const planningTop = new Container();
       const effectsLayer = new Container();
-      world.addChild(floor, planning, objects, planningTop, effectsLayer);
+      const fog = new Container();
+      world.addChild(floor, planning, objects, fog, planningTop, effectsLayer);
       app.stage.addChild(world);
+      setFogLayer(fog);
       setEffectsHost({ layer: effectsLayer, world });
       // Hero tokens sort together with the props, by tile depth.
       setTokens(objects);
