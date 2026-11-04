@@ -18,7 +18,7 @@ export const TERRAIN_STYLE = {
   /** How much of a standing piece shows in the fog (0 to 1). */
   fogPieceAlpha: 0.45,
   /** Soft light around an own Hero: `rings` stacked ellipses that add up to about `alpha` at the centre. */
-  heroLight: { color: 0xffffff, alpha: 0.22, rings: 6 },
+  heroLight: { color: 0xffffff, alpha: 0.1, rings: 6 },
   primeZone: { fill: 0x184648, edge: 0x2ec4b6 },
   /** Faint tint over the Prime Zone tiles: the own Squad holds it, contested, otherwise. */
   zoneTint: { own: 0x2ec4b6, contested: 0xffb347, neutral: 0x3d5a73 },

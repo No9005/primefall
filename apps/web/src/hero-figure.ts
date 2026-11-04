@@ -20,21 +20,33 @@ interface Stroke {
   width: number;
   color: number;
   join: "round";
+  /** The light edge drawn outside the dark outline: its colour and the width it adds on each side. */
+  rim: { color: number; width: number };
 }
 interface Strokes {
   body: Stroke;
   limb: Stroke;
 }
 
+/**
+ * A shape with the dark outline framed by the light rim. The wide light stroke goes first and the fill covers its inner
+ * half, so only the part outside the dark outline shows.
+ */
+function rimmed(shape: (graphics: Graphics) => Graphics, fill: number, line: Stroke): Graphics {
+  const graphics = new Graphics();
+  shape(graphics).stroke({ width: line.width + 2 * line.rim.width, color: line.rim.color, join: line.join });
+  return shape(graphics).fill(fill).stroke({ width: line.width, color: line.color, join: line.join });
+}
+
 /** A rounded box with the dark outline. */
 function box(x: number, y: number, width: number, height: number, radius: number, fill: number, line: Stroke): Graphics {
-  return new Graphics().roundRect(x, y, width, height, radius).fill(fill).stroke(line);
+  return rimmed((g) => g.roundRect(x, y, width, height, radius), fill, line);
 }
 
 /** A polygon given in fractions of its box, with the dark outline. */
 function polygon(shape: { x: number; y: number; width: number; height: number; points: readonly number[] }, fill: number, line: Stroke): Graphics {
   const points = shape.points.map((value, i) => (i % 2 === 0 ? shape.x + value * shape.width : shape.y + value * shape.height));
-  return new Graphics().poly(points).fill(fill).stroke(line);
+  return rimmed((g) => g.poly(points), fill, line);
 }
 
 /** A container that turns about (x, y); its label is the name the clip player finds it by. */
@@ -72,7 +84,7 @@ function arm(heroClass: HeroClass, look: HeroLook, strokes: Strokes, front: bool
 function head(heroClass: HeroClass, look: HeroLook, strokes: Strokes): Container {
   const { head: h, hood, hipY } = HERO_STYLE.rig;
   const visorX = h.size / 2 - HERO_STYLE.shape[heroClass].visorRight - h.visorWidth;
-  const parts = [new Graphics().circle(0, -h.size / 2, h.size / 2).fill(look.head).stroke(strokes.body)];
+  const parts = [rimmed((g) => g.circle(0, -h.size / 2, h.size / 2), look.head, strokes.body)];
   if (heroClass === HeroClass.Assassin) parts.push(polygon({ ...hood, y: hood.y - h.pivotY }, look.accent, strokes.body));
   parts.push(new Graphics().rect(visorX, h.visorY - h.size, h.visorWidth, h.visorHeight).fill(look.visor));
   return pivoted("head", 0, h.pivotY - hipY, 0, ...parts);
@@ -186,13 +198,14 @@ function pauseMark(): Graphics {
  * outline keeps its width on screen. The Controller's beacon carries the label `BEACON_LABEL`.
  */
 export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose, scale: number): Container {
-  const { outline, ring, shadow, exhausted, hit, exhaustedSquash, line } = HERO_STYLE;
+  const { outline, ring, shadow, exhausted, hit, exhaustedSquash, line, rim } = HERO_STYLE;
   const team = heroLook(heroClass, enemy);
   const flat = pose === "hit" ? hit : pose === "exhausted" ? exhausted : undefined;
   const look: HeroLook = flat === undefined ? team : { ...team, body: flat, plate: flat, legs: flat, arms: flat, accent: flat, head: flat };
   // The whole figure is magnified, so strokes are drawn thinner to keep their width on screen.
   const inner = scale * HERO_STYLE.figureScale;
-  const stroke = (screenWidth: number): Stroke => ({ width: worldLineWidth(screenWidth, inner), color: outline.color, join: "round" });
+  const rimEdge = { color: enemy ? rim.enemy : rim.own, width: worldLineWidth(rim.width, inner) };
+  const stroke = (screenWidth: number): Stroke => ({ width: worldLineWidth(screenWidth, inner), color: outline.color, join: "round", rim: rimEdge });
   const strokes: Strokes = { body: stroke(line.body), limb: stroke(line.limb) };
   const hips = torso(heroClass, look, strokes);
   if (pose === "exhausted") hips.scale.y = exhaustedSquash;
@@ -207,7 +220,12 @@ export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose,
     .stroke({ width: worldLineWidth(ring.width, scale * HERO_STYLE.figureScale), color: ring.enemy });
   ringFlash.label = "ring";
   ringFlash.alpha = 0;
-  const teamRing = new Graphics().ellipse(0, 0, ring.radiusX, ring.radiusY).stroke({ width: worldLineWidth(ring.width, inner), color: enemy ? ring.enemy : ring.own });
+  const ringColor = enemy ? ring.enemy : ring.own;
+  const teamRing = new Graphics()
+    .ellipse(0, 0, ring.radiusX, ring.radiusY)
+    .stroke({ width: worldLineWidth(ring.width + ring.glowExtra, inner), color: ringColor, alpha: ring.glowAlpha })
+    .ellipse(0, 0, ring.radiusX, ring.radiusY)
+    .stroke({ width: worldLineWidth(ring.width, inner), color: ringColor });
   teamRing.label = "teamRing";
   const figure = new Container();
   figure.scale.set(HERO_STYLE.figureScale);
