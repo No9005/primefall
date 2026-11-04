@@ -224,10 +224,13 @@ export interface AimState {
   needsSecondAlly: boolean;
   /** An ally has already been picked (Aegis Protocol Overdrive). */
   allyPicked: boolean;
+  /** An enemy is to be picked but none is inside the Range (or has a clear shot). */
+  noEnemyInRange?: boolean;
 }
 
 /** The one-line instruction on the floating card: what to tap next while a card is aimed. */
-export function pickInstruction({ card, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked }: AimState): string {
+export function pickInstruction({ card, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked, noEnemyInRange }: AimState): string {
+  if (noEnemyInRange) return "No enemy in range: move closer first";
   if (card.target === CardTarget.Area || card.target === CardTarget.EmptyTile || aimsAtTile) return "Tap a lit tile";
   if (needsSecondAlly) return allyPicked ? "Tap the second ally" : "Tap the first ally";
   if (card.target === CardTarget.SelfHero || card.target === CardTarget.EnemiesInRange) return "Tap your Hero";

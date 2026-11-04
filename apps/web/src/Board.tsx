@@ -4,6 +4,7 @@ import {
   destroyCover,
   type GridPosition,
   type HeroClass,
+  type RangeTile,
   REACTOR_DECK,
   type RevealedArea,
   TileKind,
@@ -276,6 +277,8 @@ interface BoardProps {
   zoneLabels: readonly { position: GridPosition; text: string }[];
   /** While a card is dragged: a tinted area (the Range of a card played here). */
   areaTiles: readonly GridPosition[];
+  /** While a target is picked: the Range of the used card under the acting Hero, red; Walls and Full Cover grey. */
+  rangeArea?: readonly RangeTile[];
   /** The tile a dragged card would be dropped on (after snapping), drawn like a pressed tile. */
   dropTile?: GridPosition;
   /** While aiming an Attack: the lines of fire to Visible enemies. A target whose shot cannot hit is not ringed. */
@@ -293,6 +296,11 @@ interface BoardProps {
   /** Filled with a function that tells where a Hero is on screen (viewport pixels), to place the card sheet beside it. */
   heroScreenRef?: MutableRefObject<((heroId: string) => Point | undefined) | undefined>;
 }
+
+const NO_RANGE: readonly RangeTile[] = [];
+const RANGE_COLOR = 0xe5484d;
+const RANGE_BLOCKED_COLOR = 0x8a99a8;
+const RANGE_ALPHA = 0.27;
 
 const LINES_KEY = "primefall.targetLines";
 
@@ -367,6 +375,7 @@ export function Board({
   zoneTint,
   zoneLabels,
   areaTiles,
+  rangeArea = NO_RANGE,
   dropTile,
   shotLines,
   targetLines,
@@ -423,6 +432,14 @@ export function Board({
     for (const tile of areaTiles) {
       const { x, y } = gridToWorld(tile, angle);
       const tint = new Graphics().poly(diamond).fill({ color: 0xff8a3d, alpha: 0.2 }).stroke({ width: 1, color: 0xff8a3d, alpha: 0.5 });
+      tint.position.set(x, y);
+      overlay.addChild(tint);
+      created.push(tint);
+    }
+    for (const { position, blocked } of rangeArea) {
+      const { x, y } = gridToWorld(position, angle);
+      const color = blocked ? RANGE_BLOCKED_COLOR : RANGE_COLOR;
+      const tint = new Graphics().poly(diamond).fill({ color, alpha: RANGE_ALPHA });
       tint.position.set(x, y);
       overlay.addChild(tint);
       created.push(tint);
@@ -502,12 +519,14 @@ export function Board({
       cancelAnimationFrame(pulseFrame);
       created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [overlay, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, shotLines, targetLines, showLines, paths, collisionTiles, strokeScale]);
+  }, [overlay, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, showLines, paths, collisionTiles, strokeScale]);
 
   useEffect(() => {
     if (!tokens) return;
     const created: Container[] = [];
     const cancels: (() => void)[] = [];
+    // The rings of the Heroes that can be tapped as target pulse (issue 209); with reduced motion they stand still.
+    const pulsingRings: Graphics[] = [];
     const ring = (color: number) =>
       new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color });
     const addToken = (hero: TokenHero, enemy: boolean) => {
@@ -518,7 +537,11 @@ export function Board({
       const targetable = targetableIds.includes(hero.id);
       if (hero.id === selectedId) token.addChild(ring(0x2ec4b6));
       const cannotHit = shotLines.some((shot) => shot.targetId === hero.id && !shot.ringed);
-      if (targetable && !cannotHit) token.addChild(ring(enemy ? 0xe5484d : 0x5ad17a));
+      if (targetable && !cannotHit) {
+        const targetRing = ring(enemy ? 0xe5484d : 0x2ec4b6);
+        token.addChild(targetRing);
+        pulsingRings.push(targetRing);
+      }
       const pose = hero.exhausted ? "exhausted" : hitIds.includes(hero.id) ? "hit" : "idle";
       // The enemy Squad is told apart by the red ring under the figure.
       const figure = heroFigure(hero.heroClass, enemy, pose, strokeScale);
@@ -571,7 +594,17 @@ export function Board({
     enemies.forEach((hero) => addToken(hero, true));
     // A bubble appears with an animation only when it was not there before this redraw.
     bubbleSeen.current = new Set(Object.entries(marks).flatMap(([id, heroMarks]) => (heroMarks.bubble ? [id] : [])));
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const pulseStart = performance.now();
+    let pulseFrame = 0;
+    const pulse = (now: number) => {
+      const alpha = pulseAlpha(now - pulseStart, reducedMotion);
+      for (const targetRing of pulsingRings) targetRing.alpha = alpha;
+      if (!reducedMotion) pulseFrame = requestAnimationFrame(pulse);
+    };
+    if (pulsingRings.length > 0) pulse(pulseStart);
     return () => {
+      cancelAnimationFrame(pulseFrame);
       cancels.forEach((cancel) => cancel());
       created.forEach((token) => token.destroy({ children: true }));
     };

@@ -1,9 +1,9 @@
 // Squad Plans and planning-time validation (ADR 0013, ADR 0020). Shared with clients: a plan is plain
 // data, and `validatePlan` lets the UI explain why a plan cannot be committed. The host validates again.
 
-import { type CardIndex, cardInMode, CardTarget, EffectKind, EffectRecipient, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
+import { type CardDefinition, type CardIndex, cardInMode, CardTarget, EffectKind, EffectRecipient, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type HeroView, type SquadId, type SquadView, Visibility } from "./host";
-import { type Grid, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind, tileAt } from "./reactor-deck";
+import { CoverKind, coverAt, type Grid, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind, tileAt } from "./reactor-deck";
 
 /** A Hero's Queue holds at most 4 actions (the maximum Hand size, ADR 0020). */
 export const MAX_QUEUE_LENGTH = 4;
@@ -285,6 +285,39 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
     }
   }
   return issues;
+}
+
+export interface RangeTile {
+  position: GridPosition;
+  /** A Wall or Full Cover: shown, but nothing can be aimed at it. */
+  blocked: boolean;
+}
+
+/**
+ * The tiles a card reaches from `origin` (not including it): every tile of the Grid within the card's Range, Chebyshev
+ * distance (ADR 0020), so the area is a square. Empty for a card without a Range. The shape lives here so a card with
+ * another shape can be added without the clients changing.
+ */
+export function cardRangeArea(grid: Grid, origin: GridPosition, card: Pick<CardDefinition, "range">): RangeTile[] {
+  const { range } = card;
+  if (range === undefined) return [];
+  const tiles: RangeTile[] = [];
+  for (let row = Math.max(0, origin.row - range); row <= Math.min(grid.height - 1, origin.row + range); row++) {
+    for (let col = Math.max(0, origin.col - range); col <= Math.min(grid.width - 1, origin.col + range); col++) {
+      if (col === origin.col && row === origin.row) continue;
+      const position = { col, row };
+      tiles.push({ position, blocked: tileAt(grid, position) === TileKind.Wall || coverAt(grid, position) === CoverKind.Full });
+    }
+  }
+  return tiles;
+}
+
+/**
+ * Whether `position` is inside the Range area of the card around `origin`; the same shape as `cardRangeArea`.
+ * A card without a Range reaches every position.
+ */
+export function isInCardRange(origin: GridPosition, card: Pick<CardDefinition, "range">, position: GridPosition): boolean {
+  return card.range === undefined || chebyshevDistance(origin, position) <= card.range;
 }
 
 export interface WalkRequest {

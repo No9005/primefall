@@ -25,6 +25,10 @@ describe("pickInstruction", () => {
     expect(pickInstruction({ ...base, aimsAtAlly: true })).toBe("Tap an ally");
   });
 
+  it("says to move closer when no enemy is inside the Range", () => {
+    expect(pickInstruction({ ...base, noEnemyInRange: true })).toBe("No enemy in range: move closer first");
+  });
+
   it("asks for the first and then the second ally when a card needs two", () => {
     expect(pickInstruction({ ...base, needsSecondAlly: true })).toBe("Tap the first ally");
     expect(pickInstruction({ ...base, needsSecondAlly: true, allyPicked: true })).toBe("Tap the second ally");

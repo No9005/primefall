@@ -1,6 +1,8 @@
 // Picking a target (issue 208): the used card floats in the middle of the board, pulling it down cancels the use, and the
 // tiles the target can be on pulse slowly. These are the pure parts; PlanningScreen and Board only draw them.
 
+import { type CardDefinition, type GridPosition, isInCardRange } from "game-core";
+
 /** Pulling the floating card further down than this (CSS pixels) cancels the use. */
 export const CANCEL_PULL = 36;
 /** A release with less movement than this is a tap, which cancels as well. */
@@ -18,6 +20,21 @@ export enum ReleaseOutcome {
   Cancel = "cancel",
   /** The card springs back to its place and the picking goes on. */
   SpringBack = "spring-back",
+}
+
+/**
+ * The Heroes among `candidates` that can be tapped as target: inside the Range area of the card around `origin`
+ * (decided by game-core) and, when the shot is drawn, with a shot that can hit.
+ */
+export function targetsInReach(
+  candidates: readonly { id: string; position: GridPosition }[],
+  origin: GridPosition,
+  card: Pick<CardDefinition, "range">,
+  canHit: (id: string) => boolean,
+): string[] {
+  return candidates
+    .filter(({ id, position }) => isInCardRange(origin, card, position) && canHit(id))
+    .map(({ id }) => id);
 }
 
 /** How far the card follows the finger: only downwards. */

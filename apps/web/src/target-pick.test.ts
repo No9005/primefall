@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pulseAlpha, pullOffset, ReleaseOutcome, releaseOutcome } from "./target-pick";
+import { pulseAlpha, pullOffset, ReleaseOutcome, releaseOutcome, targetsInReach } from "./target-pick";
 
 describe("pullOffset", () => {
   it("follows the finger down and never up", () => {
@@ -16,6 +16,25 @@ describe("releaseOutcome", () => {
   it("springs back after a shorter pull", () => {
     expect(releaseOutcome(36)).toBe(ReleaseOutcome.SpringBack);
     expect(releaseOutcome(20)).toBe(ReleaseOutcome.SpringBack);
+  });
+});
+
+describe("targetsInReach", () => {
+  const origin = { col: 5, row: 5 };
+  const enemies = [
+    { id: "near", position: { col: 7, row: 3 } },
+    { id: "far", position: { col: 9, row: 5 } },
+    { id: "blocked", position: { col: 6, row: 6 } },
+  ];
+
+  it("keeps only the Heroes inside the square Range", () => {
+    expect(targetsInReach(enemies, origin, { range: 2 }, () => true)).toEqual(["near", "blocked"]);
+  });
+  it("drops a Hero whose shot cannot hit", () => {
+    expect(targetsInReach(enemies, origin, { range: 2 }, (id) => id !== "blocked")).toEqual(["near"]);
+  });
+  it("reaches everyone for a card without a Range", () => {
+    expect(targetsInReach(enemies, origin, {},() => true)).toHaveLength(3);
   });
 });
 
