@@ -297,6 +297,11 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 /* A pressed card: its place in the fan is left empty while it is shown big in the middle. */
 .card { touch-action: none; user-select: none; -webkit-user-select: none; }
 .card.lifted { opacity: 0; }
+/* The Hand must not start a text selection or a native drag: either one cancels the pointer gesture of the card pull. */
+.hand-bar, .hand-bar * { user-select: none; -webkit-user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; }
+.hand { touch-action: none; }
+/* The parked card can be tapped or pulled down to put it back; while it floats under the finger it ignores the pointer. */
+.pull-card.parked:not(.floating) { pointer-events: auto; cursor: grab; touch-action: none; }
 .queue-column { display: flex; flex-direction: column; gap: 3px; }
 .drop-chip { width: 124px; min-height: 32px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; border-radius: 6px; font: 700 14px Rajdhani, sans-serif; letter-spacing: 0.06em; }
 .drop-chip.lit { background: color-mix(in srgb, var(--teal) 20%, transparent); border: 2px solid var(--teal); color: var(--teal); }

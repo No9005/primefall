@@ -37,7 +37,7 @@ import { type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEve
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
 import { Board } from "./Board";
 import { CardFace, EnergyPill, FloatingCard, PulledCard } from "./game-parts";
-import { cancel as cancelPull, type Face, faceViews, heldCard, IDLE, move as movePull, openCard, press as pressCard, type PullState, release as releasePull, showsFaces, tap as tapPull } from "./card-pull";
+import { cancel as cancelPull, type Face, faceReveal, faceViews, heldCard, IDLE, MIDDLE_LINE, move as movePull, openCard, press as pressCard, type PullState, release as releasePull, showsFaces, tap as tapPull } from "./card-pull";
 import { CardUseStage, hudFocus } from "./hud-focus";
 import { drawShots, SegmentStyle, type ShotDrawing } from "./shot-lines";
 import { heroMarks } from "./shield-marks";
@@ -292,6 +292,11 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
       className={`hand${collapsed ? " collapsed" : ""}${arriving.length > 0 ? " drawing" : ""}`}
       aria-label="Hand"
       style={{ "--card-w": `${spacing.cardWidth}px`, "--step": `${spacing.step}px`, width: spacing.width } as CSSProperties}
+      // The rotated cards leave gaps in the top band of the fan: a press there grabs the card whose strip it is on.
+      onPointerDown={(event) => {
+        if (!(event.target as Element).closest("button") && !disabled && hero.hand.length > 0) onCardPointerDown(pressedCard(event, hero.hand[0]!), event);
+      }}
+      onDragStart={(event) => event.preventDefault()}
     >
       {hero.hand.map((cardIndex, position) => {
         const card = deck[cardIndex]!;
@@ -756,8 +761,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   );
   dragHandlers.current.move = (event) => {
     if (event.pointerId !== gesture.current?.pointerId) return;
-    const handTop = document.querySelector(".hand")?.getBoundingClientRect().top ?? Infinity;
-    setPull(movePull(pullRef.current, { x: event.clientX, y: event.clientY }, handTop));
+    setPull(movePull(pullRef.current, { x: event.clientX, y: event.clientY }));
   };
   dragHandlers.current.end = (event) => {
     if (event.pointerId !== gesture.current?.pointerId) return;
@@ -766,10 +770,12 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     window.removeEventListener("pointerup", onDragEnd);
     window.removeEventListener("pointercancel", onDragEnd);
     if (event.type === "pointercancel") setPull(cancelPull());
-    else applyPull(releasePull(pullRef.current, faceAt({ x: event.clientX, y: event.clientY })));
+    else applyPull(releasePull(pullRef.current, faceAt({ x: event.clientX, y: event.clientY }), window.innerHeight * MIDDLE_LINE));
   };
   function startCardPress(card: CardIndex, event: ReactPointerEvent) {
     if (playing || gesture.current || (event.pointerType === "mouse" && event.button !== 0)) return;
+    // A mouse press must not start a text selection or a native drag, which would cancel the pointer gesture (the click still fires).
+    if (event.pointerType === "mouse") event.preventDefault();
     if (queue.some((action) => actionUsesCard(action, card)) || pitched.includes(card)) return;
     gesture.current = { pointerId: event.pointerId };
     setPull(pressCard(card, { x: event.clientX, y: event.clientY }));
@@ -1089,6 +1095,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         <PulledCard
           card={pulledCard}
           faces={showsFaces(pull) ? pulledFaces : undefined}
+          floatingAt={pull.phase === "pulled" ? pull.point : undefined}
+          reveal={pull.phase === "pulled" ? faceReveal(pull.point.y, document.querySelector(".hand")?.getBoundingClientRect().top ?? Infinity) : 1}
           onFace={(face) => applyPull(tapPull(pullRef.current, face))}
           onOutside={() => applyPull(tapPull(pullRef.current, undefined))}
         />

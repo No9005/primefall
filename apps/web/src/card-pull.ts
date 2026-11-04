@@ -8,18 +8,23 @@ import { CardUse } from "./planning-selection";
 /** One use of a card as a face: the four uses and, on cards that have one, Overdrive. */
 export type Face = CardUse | "overdrive";
 
-/** How far (CSS pixels) a pressed card must be dragged up before the faces appear. */
-export const PULL_THRESHOLD = 28;
+/** How far (CSS pixels) a pressed card must be moved before it counts as a drag (canvas board O). */
+export const PULL_THRESHOLD = 14;
+/** The faces start to show this far (CSS pixels) above the top edge of the Hand and are fully there another REVEAL_SPAN higher. */
+export const REVEAL_START = 28;
+export const REVEAL_SPAN = 90;
+/** A release above this share of the viewport height (board O: 250 of 390) parks the card; a lower one puts it back. */
+export const MIDDLE_LINE = 250 / 390;
 
 export type PullState =
   /** No card is held. */
   | { phase: "idle" }
   /** The finger is down on a card: it is shown big, the others dim. */
   | { phase: "pressed"; card: CardIndex; origin: Point }
-  /** The card is dragged up out of the Hand: the faces are shown and the card floats under the finger. */
-  | { phase: "pulled"; card: CardIndex; origin: Point }
-  /** The finger is up after a tap: the faces stay until one is tapped or the player taps elsewhere. */
-  | { phase: "open"; card: CardIndex };
+  /** The card is dragged out of the Hand: it floats under the finger and the faces fade in with its height. */
+  | { phase: "pulled"; card: CardIndex; origin: Point; point: Point }
+  /** The finger is up (after a tap, or a release above the middle line): the faces stay open until one is tapped or the card is put back. */
+  | { phase: "parked"; card: CardIndex };
 
 export const IDLE: PullState = { phase: "idle" };
 
@@ -36,7 +41,7 @@ export function heldCard(state: PullState): CardIndex | undefined {
 
 /** Whether the faces are shown. */
 export function showsFaces(state: PullState): boolean {
-  return state.phase === "pulled" || state.phase === "open";
+  return state.phase === "pulled" || state.phase === "parked";
 }
 
 export function press(card: CardIndex, origin: Point): PullState {
@@ -45,34 +50,43 @@ export function press(card: CardIndex, origin: Point): PullState {
 
 /** The faces open without a gesture (a click from the keyboard). */
 export function openCard(card: CardIndex): PullState {
-  return { phase: "open", card };
+  return { phase: "parked", card };
 }
 
-/**
- * The finger moved. `handTop` is the top edge of the Hand (screen y): dragging back down to it puts the card back
- * into the fan.
- */
-export function move(state: PullState, point: Point, handTop: number): PullState {
-  if (state.phase === "pressed" && state.origin.y - point.y > PULL_THRESHOLD) return { ...state, phase: "pulled" };
-  if (state.phase === "pulled" && point.y >= handTop) return IDLE;
+/** How much of the faces shows (0 to 1) for a finger at screen height `y`, given the top edge of the Hand. */
+export function faceReveal(y: number, handTop: number): number {
+  return Math.max(0, Math.min(1, (handTop - REVEAL_START - y) / REVEAL_SPAN));
+}
+
+/** The finger moved: past the threshold the card is pulled out and follows the finger. */
+export function move(state: PullState, point: Point): PullState {
+  if (state.phase === "pressed" && Math.hypot(point.x - state.origin.x, point.y - state.origin.y) > PULL_THRESHOLD) {
+    return { phase: "pulled", card: state.card, origin: state.origin, point };
+  }
+  if (state.phase === "pulled") return { ...state, point };
   return state;
 }
 
-/** The finger lifted over `face` (a face under it, if any). */
-export function release(state: PullState, face: Face | undefined): PullResult {
+/**
+ * The finger lifted over `face` (a face under it, if any); `middle` is the screen height of the middle line. A tap
+ * parks the card; after a drag, a face under the finger is chosen, otherwise a release above the middle line parks
+ * the card and a lower one puts it back.
+ */
+export function release(state: PullState, face: Face | undefined, middle: number): PullResult {
   switch (state.phase) {
     case "pressed":
-      return { state: { phase: "open", card: state.card } };
+      return { state: { phase: "parked", card: state.card } };
     case "pulled":
-      return face === undefined ? { state: IDLE } : { state: IDLE, chosen: { card: state.card, face } };
+      if (face !== undefined) return { state: IDLE, chosen: { card: state.card, face } };
+      return { state: state.point.y < middle ? { phase: "parked", card: state.card } : IDLE };
     default:
       return { state };
   }
 }
 
-/** A tap while the faces stay open: a face chooses its use, anything else puts the card back. */
+/** A tap while the card is parked: a face chooses its use, anything else puts the card back. */
 export function tap(state: PullState, face: Face | undefined): PullResult {
-  if (state.phase !== "open") return { state };
+  if (state.phase !== "parked") return { state };
   return face === undefined ? { state: IDLE } : { state: IDLE, chosen: { card: state.card, face } };
 }
 

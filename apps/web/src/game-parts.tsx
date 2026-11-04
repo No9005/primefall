@@ -1,6 +1,7 @@
 import type { CardDefinition } from "game-core";
 import { type ReactNode, type Ref, useState } from "react";
-import type { Face, FaceView } from "./card-pull";
+import type { Point } from "./card-drag";
+import { type Face, type FaceView, REVEAL_SPAN } from "./card-pull";
 import { cardFace, type ModeFace } from "./planning-selection";
 import { pullOffset, ReleaseOutcome, releaseOutcome } from "./target-pick";
 
@@ -26,15 +27,51 @@ export function CardFace({ card, use }: { card: CardDefinition; use?: string }) 
  * uses above it once they are shown. A face is chosen by tap or by dropping the card on it (`data-face` is how the
  * drop finds it); tapping anywhere else puts the card back.
  */
-export function PulledCard({ card, faces, onFace, onOutside }: { card: CardDefinition; faces: FaceView[] | undefined; onFace: (face: Face) => void; onOutside: () => void }) {
+export function PulledCard({
+  card,
+  faces,
+  floatingAt,
+  reveal,
+  onFace,
+  onOutside,
+}: {
+  card: CardDefinition;
+  faces: FaceView[] | undefined;
+  /** Where the finger is while the card is dragged: the small card floats there. */
+  floatingAt: Point | undefined;
+  /** How much of the faces shows (0 to 1) while the card is dragged. */
+  reveal: number;
+  onFace: (face: Face) => void;
+  /** The card goes back into the Hand: a tap outside the faces, a tap on the parked card, or a pull down. */
+  onOutside: () => void;
+}) {
+  const [drag, setDrag] = useState<{ startY: number; offset: number } | undefined>(undefined);
+  // Pulling the parked card down fades the faces out like the pull up faded them in.
+  const faceOpacity = drag ? 1 - Math.min(1, drag.offset / REVEAL_SPAN) : reveal;
+  const floating = floatingAt ? { left: floatingAt.x - 50, top: floatingAt.y - 59, transform: "none" } : undefined;
   return (
     <div className="pull" data-testid="pulled-card">
       <div className="pull-backdrop" onClick={onOutside} />
-      <div className={`pull-card card${faces ? " parked" : ""}`} aria-label={`${card.name} held`}>
+      <div
+        className={`pull-card card${faces ? " parked" : ""}${floating ? " floating" : ""}`}
+        aria-label={`${card.name} held`}
+        style={floating ?? (drag ? { transform: `translateY(${drag.offset}px)`, transition: "none" } : undefined)}
+        onPointerDown={(event) => {
+          if (floating) return;
+          event.currentTarget.setPointerCapture(event.pointerId);
+          setDrag({ startY: event.clientY, offset: 0 });
+        }}
+        onPointerMove={(event) => drag && setDrag({ ...drag, offset: pullOffset(drag.startY, event.clientY) })}
+        onPointerUp={() => {
+          if (drag && releaseOutcome(drag.offset) === ReleaseOutcome.Cancel) onOutside();
+          else setDrag(undefined);
+        }}
+        onPointerCancel={() => setDrag(undefined)}
+      >
         <CardFace card={card} />
       </div>
       {faces && (
-        <div className="pull-faces" role="group" aria-label="Use card as">
+        <div className="pull-faces" role="group" aria-label="Use card as" style={{ opacity: faceOpacity }}>
           {faces.map((face) => (
             <button
               key={face.face}
