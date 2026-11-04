@@ -43,6 +43,7 @@ function SightBoard() {
         placedCover={NOTHING}
         wreckCover={NOTHING}
         revealedAreas={NOTHING}
+        zoneTint="neutral"
         visibleTiles={SIGHT_SCENE.visibleTiles}
         heroes={SIGHT_HEROES}
         enemies={SIGHT_ENEMIES}

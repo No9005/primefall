@@ -65,8 +65,6 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 /* HUD placement (UI spec): at 844 x 390 and 667 x 375 the fitted board leaves the bottom corners and a strip at the
    top free. The hand bar stays within ~330 px of the left edge and the commit column within 110 px of the right edge,
    below the lower board edges; keep these sizes small when changing them. */
-.top-bar { top: calc(4px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); padding: 2px 10px; display: flex; gap: 10px; white-space: nowrap; font-family: Rajdhani, sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
-
 .enemy-panel { top: calc(6px + env(safe-area-inset-top)); right: calc(6px + env(safe-area-inset-right)); width: 124px; padding: 3px; display: flex; flex-direction: column; gap: 3px; }
 .enemy-panel .hero-row { cursor: default; }
 .enemy-panel .hero-row.ghost { opacity: 0.6; border-style: dashed; }
@@ -276,7 +274,20 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 /* The Wait action as a card right of the Hand fan. */
 .wait-card { flex: none; width: 108px; margin-left: 6px; padding: 8px 0 0; text-align: center; font: 700 22px/1 var(--font-label); color: var(--text); }
 
-.top-bar [data-testid="prime-progress"] { color: var(--teal); }
+/* Prime Zone score at the top centre: label and three pips; appears once a Hero stands in the zone. */
+.prime-pill { position: absolute; z-index: var(--z-hud); top: calc(4px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: 200px; height: 34px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px solid var(--steel); border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
+.prime-label { font: 700 11px var(--font-label); letter-spacing: 0.14em; color: var(--muted); }
+.prime-pips { display: flex; gap: 6px; }
+.prime-pip { width: 14px; height: 14px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--steel); }
+.prime-pip-filled { background: var(--teal); border-color: var(--teal); animation: prime-pip-pop 0.5s ease-out; }
+.prime-enemy .prime-label { color: var(--red); }
+.prime-enemy .prime-pip-filled { background: var(--red); border-color: var(--red); }
+.prime-contested { border-color: var(--amber); }
+.prime-contested .prime-label { color: var(--amber); }
+@keyframes prime-pip-pop { from { transform: scale(2.2); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .prime-pip-filled { animation: none; }
+}
 
 /* Timer pill: left of the turn buttons, clear of the enemy panel. */
 .timer-pill { position: absolute; z-index: var(--z-hud); top: calc(4px + env(safe-area-inset-top)); right: calc(194px + env(safe-area-inset-right)); height: 34px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--steel); border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
