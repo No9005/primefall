@@ -9,6 +9,8 @@ export const Label = {
   BlastRadiusLow: "blast-radius:low",
   BlastRadiusHigh: "blast-radius:high",
   HighRisk: "high-risk",
+  /** Display only: shown on the issue while an agent works on it; no decision reads it. */
+  AgentWorking: "agent-working",
 } as const;
 
 /**
