@@ -64,9 +64,12 @@ describe("zoneOccupancy and zoneTint", () => {
     expect(zoneOccupancy([{ position: zone, exhausted: false }], [{ position: zone, exhausted: false }]).contested).toBe(true);
   });
 
-  it("tints teal when own, amber when contested, steel otherwise", () => {
-    expect(zoneTint(primeScore(counts(1, 0), L, true, false))).toBe("own");
-    expect(zoneTint(primeScore(counts(1, 0), L, true, true))).toBe("contested");
-    expect(zoneTint(undefined)).toBe("neutral");
+  it("tints teal when own, gold at the third Resolution, amber when contested, red when the enemy holds it, grey otherwise", () => {
+    expect(zoneTint(primeScore(counts(1, 0), L, true, false))).toEqual({ color: 0x2ec4b6, alpha: 0.35, pulse: true });
+    expect(zoneTint(primeScore(counts(2, 0), L, true, false)).alpha).toBeCloseTo(0.45);
+    expect(zoneTint(primeScore(counts(3, 0), L, true, false)).color).toBe(0xffd24a);
+    expect(zoneTint(primeScore(counts(1, 0), L, true, true)).color).toBe(0xffb347);
+    expect(zoneTint(primeScore(counts(0, 1), L, true, false)).color).toBe(0xe5484d);
+    expect(zoneTint(undefined)).toEqual({ color: 0x8a99a8, alpha: 0.2, pulse: false });
   });
 });

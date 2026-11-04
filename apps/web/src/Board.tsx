@@ -37,6 +37,7 @@ import { buildTerrain, depthOf, type Face, floorOutline, footOffset, coverGridOf
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
+import { AREA_COLOR, AREA_PIPS, areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, type ZoneLook, zoneRingAt } from "./vision-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
 import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
@@ -281,7 +282,7 @@ interface BoardProps {
   /** Position of the Hero whose Move (or tile pick) is armed: while set, the camera eases to it and its highlights, inside the free area. */
   moveFrameHero?: GridPosition;
   /** A faint tint over the Prime Zone tiles: teal while the own Squad holds it, amber while contested, steel otherwise. */
-  zoneTint: keyof typeof TERRAIN_STYLE.zoneTint;
+  zoneTint: ZoneLook;
   /** While a card is dragged: short labels on the Heroes or tiles that take a drop. */
   zoneLabels: readonly { position: GridPosition; text: string }[];
   /** While a card is dragged: a tinted area (the Range of a card played here). */
@@ -328,6 +329,39 @@ function animateAppear(shape: Graphics, ms: number): () => void {
   };
   shape.alpha = 0;
   shape.scale.set(0.4);
+  frame = requestAnimationFrame(step);
+  return () => cancelAnimationFrame(frame);
+}
+
+/** The dashed ring and the `last seen` tag of a Ghost. */
+function ghostMark(): Container {
+  const mark = new Container();
+  const ring = new Graphics();
+  const rx = TILE_WIDTH * 0.42;
+  const ry = TILE_HEIGHT * 0.42;
+  const dashes = 16;
+  for (let i = 0; i < dashes; i++) {
+    const from = (i / dashes) * 2 * Math.PI;
+    const to = from + Math.PI / dashes;
+    ring.moveTo(Math.cos(from) * rx, -TILE_HEIGHT / 2 + Math.sin(from) * ry).lineTo(Math.cos(to) * rx, -TILE_HEIGHT / 2 + Math.sin(to) * ry);
+  }
+  ring.stroke({ width: 3, color: 0xe5484d, alpha: 0.8 });
+  const tag = new Text({ text: "last seen", style: { fontFamily: "IBM Plex Mono", fontSize: 12, fill: 0x8a99a8, stroke: { color: 0x0b1016, width: 3 } } });
+  tag.anchor.set(0.5, 0);
+  tag.position.set(0, 4);
+  mark.addChild(ring, tag);
+  return mark;
+}
+
+/** Fades a figure between the real figure and its Ghost; with reduced motion the caller does not call this. Returns a cancel function. */
+function animateFade(figure: Container, kind: "toGhost" | "toSeen" | "appear"): () => void {
+  const start = performance.now();
+  let frame = 0;
+  const step = (now: number) => {
+    figure.alpha = enemyFade(kind, now - start);
+    if (!finished(now - start, GHOST_FADE_MS)) frame = requestAnimationFrame(step);
+  };
+  figure.alpha = enemyFade(kind, 0);
   frame = requestAnimationFrame(step);
   return () => cancelAnimationFrame(frame);
 }
@@ -414,6 +448,12 @@ export function Board({
   const enemyIdsRef = useRef(new Set<string>());
   enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
   const bubbleSeen = useRef(new Set<string>());
+  const { color: zoneColor, alpha: zoneAlpha, pulse: zonePulse } = zoneTint;
+  const areaSeen = useRef(new Map<string, { center: GridPosition; size: number }>());
+  const ringSeen = useRef("");
+  /** Enemy Heroes shown as a Ghost in the last redraw, to fade a change between Ghost and real figure. */
+  const ghostSeen = useRef(new Set<string>());
+  const enemiesSeen = useRef(new Set<string>());
   // When the playback frame being shown started. The Shield and the Knockback slide of the Heroes follow it, so a redraw of
   // the figures in the middle of a frame (Cover that changes) does not start them again.
   const frameClock = useRef(performance.now());
@@ -585,9 +625,20 @@ export function Board({
       const pose = hero.exhausted && !falling ? "exhausted" : reduced && hitIds.includes(hero.id) ? "hit" : "idle";
       // The enemy Squad is told apart by the red ring under the figure.
       const figure = heroFigure(hero.heroClass, enemy, pose, strokeScale);
-      if (hero.ghost) figure.alpha = 0.35;
+      if (hero.ghost) figure.alpha = GHOST_ALPHA;
       // The Hidden clip fades the figure itself; reduced motion and every other moment show the ghost at once.
       if (hero.hidden && (clips[hero.id] !== "hidden" || reduced)) figure.alpha = 0.55;
+      if (hero.ghost) token.addChild(ghostMark());
+      // An enemy that just left sight fades to its Ghost; one seen again fades from the Ghost to the real figure.
+      if (enemy && !reduced) {
+        const was = ghostSeen.current.has(hero.id) ? "ghost" : enemiesSeen.current.has(hero.id) ? "seen" : undefined;
+        if (hero.ghost && was === "seen") cancels.push(animateFade(figure, "toGhost"));
+        else if (!hero.ghost && was === "ghost") cancels.push(animateFade(figure, "toSeen"));
+        else if (!hero.ghost && was === undefined && revealedAreas.some((area) => areaContains(area.center, area.size, hero.position))) {
+          // The Scout Drone lifted the fog over it: it fades in.
+          cancels.push(animateFade(figure, "appear"));
+        }
+      }
       token.addChild(figure);
       const beacon = figure.getChildByLabel(BEACON_LABEL, true);
       if (beacon && pose === "idle" && !falling) cancels.push(animateBeacon(beacon));
@@ -662,6 +713,8 @@ export function Board({
     }
     heroes.forEach((hero) => addToken(hero, false));
     enemies.forEach((hero) => addToken(hero, true));
+    ghostSeen.current = new Set(enemies.filter((hero) => hero.ghost).map((hero) => hero.id));
+    enemiesSeen.current = new Set(enemies.filter((hero) => !hero.ghost).map((hero) => hero.id));
     // A bubble appears with an animation only when it was not there before this redraw.
     bubbleSeen.current = new Set(Object.entries(marks).flatMap(([id, heroMarks]) => (heroMarks.bubble ? [id] : [])));
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -798,34 +851,109 @@ export function Board({
       }),
     );
 
+    // The Prime Zone tint (grey, teal, gold, amber, red); our Squad holding it sends a ring over the zone.
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const zoneTiles: GridPosition[] = [];
     grid.tiles.forEach((line, row) =>
       line.forEach((kind, col) => {
         if (kind !== TileKind.PrimeZone) return;
+        zoneTiles.push({ col, row });
         const { x, y } = gridToWorld({ col, row }, angle);
-        const tint = new Graphics().poly(floorOutline(angle)).fill({ color: TERRAIN_STYLE.zoneTint[zoneTint], alpha: 0.18 });
+        const tint = new Graphics().poly(floorOutline(angle)).fill({ color: zoneColor, alpha: zoneAlpha });
         tint.position.set(x, y);
         planning.addChild(tint);
         created.push(tint);
       }),
     );
+    const animated: ((now: number) => void)[] = [];
+    if (zonePulse && zoneTiles.length > 0) {
+      const middle = gridToWorld({ col: zoneTiles.reduce((sum, tile) => sum + tile.col, 0) / zoneTiles.length, row: zoneTiles.reduce((sum, tile) => sum + tile.row, 0) / zoneTiles.length }, angle);
+      const zoneRing = new Graphics().ellipse(0, 0, TILE_WIDTH * 1.4, TILE_HEIGHT * 1.4).stroke({ width: 3, color: zoneColor });
+      zoneRing.position.set(middle.x, middle.y);
+      planning.addChild(zoneRing);
+      created.push(zoneRing);
+      const pulseOf = (ms: number) => {
+        const { scale, alpha } = zoneRingAt(ms);
+        zoneRing.scale.set(scale);
+        zoneRing.alpha = alpha;
+      };
+      // One ring per Resolution held: it plays when the hold level (the tint) is new, not on every redraw.
+      const ringKey = `${zoneColor}-${zoneAlpha}`;
+      if (reducedMotion || ringSeen.current === ringKey) zoneRing.visible = false;
+      else animated.push((now) => pulseOf(now));
+      ringSeen.current = ringKey;
+    } else {
+      ringSeen.current = "";
+    }
 
-    // Revealed areas: every tile of the square, clipped to the Grid, gets a yellow tint; the 5 by 5 of an Overdrive Scout Drone is gold.
-    for (const { center, size } of revealedAreas) {
-      const tintColor = size >= 5 ? 0xffb000 : 0xffd447;
+    // Scout Drone areas: the tiles lift from the middle outwards in cyan, two pips count the Resolutions left.
+    // An area that was already there before this redraw stands lifted; only a new one plays.
+    const seenNow = new Map<string, { center: GridPosition; size: number }>();
+    for (const { center, size, remaining } of revealedAreas) {
+      const key = `${center.col},${center.row},${size}`;
+      seenNow.set(key, { center, size });
+      const plays = !reducedMotion && !areaSeen.current.has(key);
       const reach = Math.floor(size / 2);
       for (let row = center.row - reach; row <= center.row + reach; row++) {
         for (let col = center.col - reach; col <= center.col + reach; col++) {
           if (tileAt(grid, { col, row }) === undefined) continue;
           const { x, y } = gridToWorld({ col, row }, angle);
-          const tint = new Graphics().poly(floorOutline(angle)).fill({ color: tintColor, alpha: 0.22 }).stroke({ width: 1, color: tintColor, alpha: 0.5 });
+          // The 5 by 5 area of an Overdrive Scout Drone is gold.
+          const areaColor = size >= 5 ? 0xffb000 : AREA_COLOR;
+          const tint = new Graphics().poly(floorOutline(angle)).fill({ color: areaColor, alpha: 0.28 }).stroke({ width: 1, color: areaColor, alpha: 0.6 });
           tint.position.set(x, y);
           planning.addChild(tint);
           created.push(tint);
+          if (!plays) continue;
+          const ring = areaRing(center, { col, row });
+          tint.alpha = 0;
+          animated.push((now) => {
+            tint.alpha = areaLift(now, ring);
+          });
+        }
+      }
+      const top = gridToWorld(center, angle);
+      const pips = new Graphics();
+      for (let pip = 0; pip < AREA_PIPS; pip++) pips.circle((pip - 0.5) * 12, 0, 3.5).fill({ color: AREA_COLOR, alpha: pip < remaining ? 1 : 0.25 }).stroke({ width: 1, color: 0x0b1016 });
+      pips.position.set(top.x, top.y - TILE_HEIGHT * (reach + 2.2));
+      planning.addChild(pips);
+      created.push(pips);
+    }
+    // An area that ran out: the fog closes again from the outside inwards instead of cutting.
+    if (!reducedMotion) {
+      for (const [key, { center, size }] of areaSeen.current) {
+        if (seenNow.has(key)) continue;
+        const reach = Math.floor(size / 2);
+        for (let row = center.row - reach; row <= center.row + reach; row++) {
+          for (let col = center.col - reach; col <= center.col + reach; col++) {
+            if (tileAt(grid, { col, row }) === undefined) continue;
+            const { x, y } = gridToWorld({ col, row }, angle);
+            const tint = new Graphics().poly(floorOutline(angle)).fill({ color: size >= 5 ? 0xffb000 : AREA_COLOR, alpha: 0.28 });
+            tint.position.set(x, y);
+            planning.addChild(tint);
+            created.push(tint);
+            const outward = reach - areaRing(center, { col, row });
+            animated.push((now) => {
+              tint.alpha = 1 - areaLift(now, outward);
+            });
+          }
         }
       }
     }
-    return () => created.forEach((child) => child.destroy({ children: true }));
-  }, [terrain, angle, strokeScale, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, zoneTint]);
+    areaSeen.current = seenNow;
+    const effectStart = performance.now();
+    let effectFrame = 0;
+    const runEffects = (now: number) => {
+      for (const update of animated) update(now - effectStart);
+      // Every transition (the longest: a ring of the zone or an area of up to 5 rings) is over within 3 s.
+      if (!reducedMotion && animated.length > 0 && !finished(now - effectStart, 3000)) effectFrame = requestAnimationFrame(runEffects);
+    };
+    runEffects(effectStart);
+    return () => {
+      cancelAnimationFrame(effectFrame);
+      created.forEach((child) => child.destroy({ children: true }));
+    };
+  }, [terrain, angle, strokeScale, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, zoneColor, zoneAlpha, zonePulse]);
 
   useEffect(() => {
     const element = host.current;

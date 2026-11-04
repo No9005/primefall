@@ -68,6 +68,8 @@ export interface RevealedArea {
   center: GridPosition;
   /** Side length in tiles (3 or 5). */
   size: number;
+  /** Resolution ends left before the area is hidden again. */
+  remaining: number;
 }
 
 /** How much a Squad knows about one enemy Hero (Fog of War, ADR 0005). */
