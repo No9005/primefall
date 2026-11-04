@@ -30,7 +30,7 @@ export function PulledCard({ card, faces, onFace, onOutside }: { card: CardDefin
   return (
     <div className="pull" data-testid="pulled-card">
       <div className="pull-backdrop" onClick={onOutside} />
-      <div className="pull-card card" aria-label={`${card.name} held`}>
+      <div className={`pull-card card${faces ? " parked" : ""}`} aria-label={`${card.name} held`}>
         <CardFace card={card} />
       </div>
       {faces && (

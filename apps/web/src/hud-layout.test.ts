@@ -2,7 +2,7 @@ import { reachableMoveDestinations } from "game-core";
 import { describe, expect, it } from "vitest";
 import type { Rect } from "./card-drag";
 import { computeCamera, frameMoveCamera, gridToWorld } from "./board-layout";
-import { commitRect, enemyPanelRect, freeBoardArea, handRect, waitCardRect, zoomColumnRect } from "./hud-layout";
+import { commitRect, freeBoardArea, handRect, waitCardRect } from "./hud-layout";
 
 const VIEWS = [
   { width: 844, height: 390 },
@@ -34,12 +34,9 @@ describe("the free board area", () => {
         expect(area(picking)).toBeGreaterThan(area(idle));
       });
 
-      it("keeps clear of the hand, Commit and the zoom buttons while a target is picked", () => {
+      it("keeps clear of Commit while a target is picked", () => {
         const free = freeBoardArea(view, { kind: "picking" });
-        // The hand collapses to the Energy orb and a chip of 88 px, which the left inset leaves room for.
-        for (const hud of [commitRect(view), zoomColumnRect(view), { ...handRect(view), right: 6 + 40 + 6 + 88 }]) {
-          expect(overlaps(free, hud)).toBe(false);
-        }
+        expect(overlaps(free, commitRect(view))).toBe(false);
       });
     });
   }
@@ -49,17 +46,17 @@ describe("the HUD elements at the right and bottom", () => {
   for (const view of VIEWS) {
     describe(`at ${view.width} x ${view.height}`, () => {
       it("do not overlap each other, even with a fifth Queue row", () => {
-        const elements = [enemyPanelRect(view), zoomColumnRect(view), commitRect(view, 5), handRect(view), waitCardRect(view)];
+        const elements = [commitRect(view, 5), handRect(view), waitCardRect(view)];
         elements.forEach((a, i) => elements.slice(i + 1).forEach((b) => expect(overlaps(a, b), `${i}`).toBe(false)));
       });
 
       it("keep clear of the idle free board area", () => {
         const free = freeBoardArea(view, { kind: "idle" });
-        for (const hud of [enemyPanelRect(view), zoomColumnRect(view), commitRect(view, 5)]) expect(overlaps(free, hud)).toBe(false);
+        for (const hud of [commitRect(view, 5), handRect(view), waitCardRect(view)]) expect(overlaps(free, hud)).toBe(false);
       });
 
       it("stay inside the view", () => {
-        for (const rect of [commitRect(view, 5), waitCardRect(view), zoomColumnRect(view)]) {
+        for (const rect of [commitRect(view, 5), waitCardRect(view)]) {
           expect(rect.left >= 0 && rect.top >= 0 && rect.right <= view.width && rect.bottom <= view.height).toBe(true);
         }
       });
