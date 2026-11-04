@@ -102,6 +102,18 @@ export const HERO_STYLE = {
     antenna: { x: -12, y: -42, width: 2, height: 15, color: 0x8fb2ff },
     beacon: { x: -11, y: -42, radius: 3, color: 0xffd24a, periodMs: 1400, minAlpha: 0.25 },
     console: { x: -1, y: 7, width: 6, height: 5, color: 0x7fe8ff },
+    /** An Exhausted Controller: sparks on the backpack (drawn back to front), and the red its beacon turns before it goes out. */
+    sparks: {
+      radius: 4,
+      red: 0xe5484d,
+      dots: [
+        { x: -6, y: -20, color: 0xffffff },
+        { x: -13, y: -21, color: 0xffd24a },
+        { x: -10, y: -16, color: 0xffd24a },
+      ],
+    },
+    /** The rifle an Exhausted Assassin flings away: where it leaves the hand, its size, the scope on it. */
+    flungRifle: { x: 11, y: -24, width: 4, height: 26, color: 0x1d242c, scope: { x: -3, y: 8, width: 6, height: 3, color: 0x7fe8ff } },
   },
   /** Shield rubies, the shield bubble and the planned-action icons above the Hero. */
   marks: {

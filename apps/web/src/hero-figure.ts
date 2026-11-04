@@ -38,7 +38,7 @@ function polygon(shape: { x: number; y: number; width: number; height: number; p
 }
 
 /** A container that turns about (x, y); its label is the name the clip player finds it by. */
-function pivoted(label: string, x: number, y: number, degrees: number, ...children: Graphics[]): Container {
+function pivoted(label: string, x: number, y: number, degrees: number, ...children: (Graphics | Container)[]): Container {
   const part = new Container();
   part.label = label;
   part.position.set(x, y);
@@ -53,16 +53,15 @@ function arm(heroClass: HeroClass, look: HeroLook, strokes: Strokes, front: bool
   const shape = HERO_STYLE.shape[heroClass];
   const side = front ? a.front : a.back;
   // The arm box starts 2 px left of and 1 px above the shoulder.
-  const children: Graphics[] = [box(-2, -1, shape.armWidth, a.height, a.radius, look.arms, strokes.limb)];
+  const children: (Graphics | Container)[] = [box(-2, -1, shape.armWidth, a.height, a.radius, look.arms, strokes.limb)];
   if (front) {
     const { gun } = shape;
     const gunX = -2 + weapon.x;
     const gunY = -1 + weapon.y;
-    children.push(
-      box(gunX, gunY, gun.width, gun.height, weapon.radius, gun.color, strokes.limb),
-      box(-3, 7, a.hand, a.hand, a.hand / 2, HERO_STYLE.skin, strokes.limb),
-    );
-    if (heroClass === HeroClass.Assassin) children.push(new Graphics().rect(gunX + scope.x, gunY + scope.y, scope.width, scope.height).fill(scope.color));
+    // The weapon is its own part, so an Exhausted Assassin can fling its rifle away.
+    const weaponParts = [box(gunX, gunY, gun.width, gun.height, weapon.radius, gun.color, strokes.limb)];
+    if (heroClass === HeroClass.Assassin) weaponParts.push(new Graphics().rect(gunX + scope.x, gunY + scope.y, scope.width, scope.height).fill(scope.color));
+    children.push(pivoted("gun", 0, 0, 0, ...weaponParts), box(-3, 7, a.hand, a.hand, a.hand / 2, HERO_STYLE.skin, strokes.limb));
   } else if (heroClass === HeroClass.Controller) {
     children.push(box(-2 + wrist.x, -1 + wrist.y, wrist.width, wrist.height, 1, wrist.color, strokes.limb));
   }
@@ -97,30 +96,55 @@ function torso(heroClass: HeroClass, look: HeroLook, strokes: Strokes): Containe
     const { pack, antenna, beacon } = HERO_STYLE.rig;
     const light = new Graphics().circle(beacon.x, local(beacon.y), beacon.radius).fill(beacon.color);
     light.label = BEACON_LABEL;
+    // The red light an Exhausted Controller's beacon turns into, and the sparks of its backpack (see the Exhausted clip).
+    const redLight = new Graphics().circle(beacon.x, local(beacon.y), beacon.radius).fill(HERO_STYLE.rig.sparks.red);
+    redLight.label = "beaconRed";
+    redLight.alpha = 0;
     group.addChild(
       box(pack.x, local(pack.y), pack.width, pack.height, pack.radius, look.legs, strokes.body),
       new Graphics().rect(antenna.x, local(antenna.y), antenna.width, antenna.height).fill(antenna.color),
       light,
+      redLight,
     );
   }
+  // The body and its plate turn about the middle of the body (a lean out of Full Cover).
+  const bodyMiddle = local(body.y) + body.height / 2;
   group.addChild(
     arm(heroClass, look, strokes, false),
-    box(-shape.bodyWidth / 2, local(body.y), shape.bodyWidth, body.height, body.radius, look.body, strokes.body),
-    new Graphics()
-      .roundRect(-shape.bodyWidth / 2 + shape.plate.x, local(body.y) + body.plateY, shape.plate.width, body.plateHeight, body.plateRadius)
-      .fill(look.plate),
+    pivoted(
+      "body",
+      0,
+      bodyMiddle,
+      0,
+      box(-shape.bodyWidth / 2, -body.height / 2, shape.bodyWidth, body.height, body.radius, look.body, strokes.body),
+      new Graphics()
+        .roundRect(-shape.bodyWidth / 2 + shape.plate.x, -body.height / 2 + body.plateY, shape.plate.width, body.plateHeight, body.plateRadius)
+        .fill(look.plate),
+    ),
     head(heroClass, look, strokes),
     arm(heroClass, look, strokes, true),
   );
-  // The white flash of a Hit: a white silhouette of body and head over the figure, shown only while a clip moves it.
+  // Silhouettes of body and head over the figure, shown only while a clip moves them: white for the flash of a Hit,
+  // the Exhausted grey for a Hero that goes grey.
   const { head: h } = HERO_STYLE.rig;
-  const flash = new Graphics()
-    .roundRect(-shape.bodyWidth / 2, local(body.y), shape.bodyWidth, body.height, body.radius)
-    .circle(0, local(h.pivotY) - h.size / 2, h.size / 2)
-    .fill(HERO_STYLE.hit);
-  flash.label = "flash";
-  flash.alpha = 0;
-  group.addChild(flash);
+  const silhouette = (label: string, color: number) => {
+    const overlay = new Graphics()
+      .roundRect(-shape.bodyWidth / 2, local(body.y), shape.bodyWidth, body.height, body.radius)
+      .circle(0, local(h.pivotY) - h.size / 2, h.size / 2)
+      .fill(color);
+    overlay.label = label;
+    overlay.alpha = 0;
+    return overlay;
+  };
+  group.addChild(silhouette("flash", HERO_STYLE.hit), silhouette("grey", HERO_STYLE.exhausted));
+  if (heroClass === HeroClass.Controller) {
+    const { sparks } = HERO_STYLE.rig;
+    const spark = new Graphics();
+    for (const { x, y, color } of sparks.dots) spark.circle(x, local(y), sparks.radius).fill(color);
+    spark.label = "sparks";
+    spark.alpha = 0;
+    group.addChild(spark);
+  }
   if (heroClass === HeroClass.Bruiser) {
     const { pad } = HERO_STYLE.rig;
     for (const x of pad.xs) {
@@ -182,16 +206,33 @@ export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose,
     .stroke({ width: worldLineWidth(ring.width, scale * HERO_STYLE.figureScale), color: ring.enemy });
   ringFlash.label = "ring";
   ringFlash.alpha = 0;
+  const teamRing = new Graphics().ellipse(0, 0, ring.radiusX, ring.radiusY).stroke({ width: worldLineWidth(ring.width, inner), color: enemy ? ring.enemy : ring.own });
+  teamRing.label = "teamRing";
   const figure = new Container();
   figure.scale.set(HERO_STYLE.figureScale);
-  figure.addChild(
-    new Graphics().ellipse(0, 0, shadow.radiusX, shadow.radiusY).fill(shadow),
-    new Graphics().ellipse(0, 0, ring.radiusX, ring.radiusY).stroke({ width: worldLineWidth(ring.width, inner), color: enemy ? ring.enemy : ring.own }),
-    ringFlash,
-    rig,
-    pauseMark(),
-  );
+  figure.addChild(new Graphics().ellipse(0, 0, shadow.radiusX, shadow.radiusY).fill(shadow), teamRing, ringFlash, rig);
+  if (heroClass === HeroClass.Assassin) figure.addChild(flungRifle(enemy, strokes.limb));
+  figure.addChild(pauseMark());
   return figure;
+}
+
+/** The rifle an Exhausted Assassin flings away: hidden until the clip throws it, and mirrored with the Hero like the rig. */
+function flungRifle(enemy: boolean, line: Stroke): Container {
+  const { x, y, width, height, color, scope } = HERO_STYLE.rig.flungRifle;
+  const side = new Container();
+  if (enemy) side.scale.x = -1;
+  side.addChild(
+    pivoted(
+      "dropGun",
+      x,
+      y,
+      0,
+      box(-width / 2, 0, width, height, 2, color, line),
+      new Graphics().rect(scope.x, scope.y, scope.width, scope.height).fill(scope.color),
+    ),
+  );
+  side.getChildByLabel("dropGun")!.alpha = 0;
+  return side;
 }
 
 /** The outline of a ruby, a faceted gem pointing down, centred on (x, y). */

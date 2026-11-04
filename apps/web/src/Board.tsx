@@ -1,19 +1,15 @@
 import {
   CoverKind,
   coverAt,
-  destroyCover,
   type GridPosition,
   type HeroClass,
   type RangeTile,
-  REACTOR_DECK,
   type RevealedArea,
   TileKind,
   tileAt,
-  withTile,
-  withWreck,
 } from "game-core";
 import { Application, Assets, Container, Graphics, Sprite, Text } from "pixi.js";
-import { type MutableRefObject, useEffect, useRef, useState } from "react";
+import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPick, Point } from "./card-drag";
 import {
   beginMoveFraming,
@@ -37,9 +33,9 @@ import {
   zoomOnPoint,
 } from "./board-layout";
 import { freeBoardArea } from "./hud-layout";
-import { buildTerrain, depthOf, type Face, floorOutline, footOffset, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
+import { buildTerrain, depthOf, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
 import { applyPose, applyRestPose, type BoundPart, bindParts, ClipPlayer } from "./clip-player";
-import type { ClipName } from "./hero-clips";
+import { type ClipName, restClipName } from "./hero-clips";
 import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
 import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
@@ -390,6 +386,7 @@ export function Board({
   heroScreenRef,
 }: BoardProps) {
   const host = useRef<HTMLDivElement>(null);
+  const coverGrid = useMemo(() => coverGridOf(destroyedCover, placedCover, wreckCover), [destroyedCover, placedCover, wreckCover]);
   const [tokens, setTokens] = useState<Container>();
   const [overlay, setOverlay] = useState<Container>();
   const [terrain, setTerrain] = useState<Terrain>();
@@ -532,7 +529,7 @@ export function Board({
     // The rings of the Heroes that can be tapped as target pulse (issue 209); with reduced motion they stand still.
     const pulsingRings: Graphics[] = [];
     // The figures that play a clip (not the hit or Exhausted ones, which are flat poses).
-    const animated: { id: string; heroClass: HeroClass; parts: BoundPart[] }[] = [];
+    const animated: { id: string; heroClass: HeroClass; cover: CoverKind; parts: BoundPart[] }[] = [];
     const ring = (color: number) =>
       new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color });
     const addToken = (hero: TokenHero, enemy: boolean) => {
@@ -550,15 +547,17 @@ export function Board({
       }
       // A hit Hero plays the Hit clip; with reduced motion nothing moves, so it shows the flat white pose instead.
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const pose = hero.exhausted ? "exhausted" : reduced && hitIds.includes(hero.id) ? "hit" : "idle";
+      // An Exhausted Hero plays its fall in the frame that Exhausts it; at any other time it shows the flat pose (a saved match too).
+      const falling = hero.exhausted && clips[hero.id] === "exhausted" && !reduced;
+      const pose = hero.exhausted && !falling ? "exhausted" : reduced && hitIds.includes(hero.id) ? "hit" : "idle";
       // The enemy Squad is told apart by the red ring under the figure.
       const figure = heroFigure(hero.heroClass, enemy, pose, strokeScale);
       if (hero.ghost) figure.alpha = 0.35;
       if (hero.hidden) figure.alpha = 0.55;
       token.addChild(figure);
       const beacon = figure.getChildByLabel(BEACON_LABEL, true);
-      if (beacon && pose === "idle") cancels.push(animateBeacon(beacon));
-      if (pose === "idle") animated.push({ id: hero.id, heroClass: hero.heroClass, parts: bindParts(figure) });
+      if (beacon && pose === "idle" && !falling) cancels.push(animateBeacon(beacon));
+      if (pose === "idle") animated.push({ id: hero.id, heroClass: hero.heroClass, cover: coverAt(coverGrid, hero.position), parts: bindParts(figure, falling) });
       const heroMarks = hero.ghost ? undefined : marks[hero.id];
       if (heroMarks && (heroMarks.rubies > 0 || heroMarks.icons.length > 0)) {
         token.addChild(marksFigure(heroMarks, strokeScale));
@@ -617,8 +616,9 @@ export function Board({
     // The clip of every Hero: the active one of this frame, Idle otherwise. Reduced motion stands on the rest frame.
     let clipFrame = 0;
     const playClips = (now: number) => {
-      for (const { id, heroClass, parts } of animated) {
-        const name = clips[id] ?? "idle";
+      for (const { id, heroClass, cover, parts } of animated) {
+        // A Hero with nothing to show stands, or stands behind the Cover it is on.
+        const name = clips[id] ?? restClipName(cover);
         if (reducedMotion) {
           applyRestPose(parts, name);
           continue;
@@ -640,15 +640,13 @@ export function Board({
       cancels.forEach((cancel) => cancel());
       created.forEach((token) => token.destroy({ children: true }));
     };
-  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, shotLines, marks]);
+  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, shotLines, marks, coverGrid]);
 
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
   useEffect(() => {
     if (!terrain) return;
     const { floor, objects, planning } = terrain;
-    const known = destroyedCover.reduce(destroyCover, REACTOR_DECK);
-    const withPlaced = placedCover.reduce((current, tile) => withTile(current, tile, TileKind.HalfCover), known);
-    const grid = wreckCover.reduce(withWreck, withPlaced);
+    const grid = coverGrid;
     const created: Container[] = [];
     // Floor tiles share one shape layer; standing pieces are drawn per tile and sort with the Heroes by depth.
     const ground = new Graphics();

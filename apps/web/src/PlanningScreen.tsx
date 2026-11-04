@@ -57,6 +57,7 @@ import { targetsInReach } from "./target-pick";
 import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionCommitLabel } from "./resolution-hud";
 import { buildCommentary, type CommentaryEntry, type CommentarySide, MAX_COMMENTARY_ENTRIES } from "./commentary";
 import { CLIP_SPEED } from "./clip-player";
+import { coverGridOf } from "./terrain";
 import { buildPlaybackFrames, enemyTokens, STEP_MS, tickCountOf } from "./playback";
 import type { ClipName } from "./hero-clips";
 import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,removeQueueAction, selectHero, pickInstruction } from "./planning-selection";
@@ -849,7 +850,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     const classes = new Map([...view.heroes, ...view.enemies].map((unit) => [unit.id, unit.heroClass]));
     // Reduced motion plays no clips, so a frame lasts one step; otherwise until the slowest clip is back at rest.
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    for (const frame of buildPlaybackFrames(result.events, (heroId) => classes.get(heroId))) {
+    const grid = coverGridOf(view.destroyedCover, view.placedCover, view.wreckCover);
+    for (const frame of buildPlaybackFrames(result.events, (heroId) => classes.get(heroId), (tile) => coverAt(grid, tile))) {
       Object.assign(positions, frame.moves);
       for (const [heroId, amount] of Object.entries(frame.shields)) shields[heroId] = (shields[heroId] ?? 0) + amount;
       for (const { targetId, damage, absorbed } of frame.hits) {

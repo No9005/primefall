@@ -104,8 +104,12 @@ export interface BoundPart {
   restScaleY: number;
 }
 
-export function bindParts(figure: Container): BoundPart[] {
-  return PARTS.flatMap((part) => {
+/**
+ * `driveBeacon`: the clip moves the yellow beacon of a Controller (only while it is Exhausted); otherwise the board
+ * blinks it and no clip may touch its opacity.
+ */
+export function bindParts(figure: Container, driveBeacon = false): BoundPart[] {
+  return PARTS.filter((part) => driveBeacon || part !== "beacon").flatMap((part) => {
     const node = figure.getChildByLabel(part, true);
     return node === null ? [] : [{ part, node, restX: node.x, restY: node.y, restScaleX: node.scale.x, restScaleY: node.scale.y }];
   });
@@ -113,12 +117,22 @@ export function bindParts(figure: Container): BoundPart[] {
 
 const DEGREES = Math.PI / 180;
 
-/** Puts a pose on a figure. */
+/** The colour multiplied over a figure that has gone grey (Exhausted): white is untouched. */
+const GREY_TINT = 0x7a828b;
+
+/** The tint of a figure that is `grey` (0 to 1) of the way to the Exhausted grey; integer maths, no allocation. */
+export function greyTint(grey: number): number {
+  const channel = (shift: number) => Math.round(255 + (((GREY_TINT >> shift) & 0xff) - 255) * grey);
+  return (channel(16) << 16) | (channel(8) << 8) | channel(0);
+}
+
+/** Puts a pose on a figure. The rig of an enemy is mirrored, and so are its offsets and its turn. */
 export function applyPose(parts: readonly BoundPart[], pose: Pose): void {
   for (const { part, node, restX, restY, restScaleX, restScaleY } of parts) {
     const p = pose[part];
     node.position.set(restX + p.x * Math.sign(restScaleX), restY + p.y);
-    node.rotation = p.rotation * DEGREES;
+    node.rotation = p.rotation * DEGREES * Math.sign(restScaleX);
+    if (part === "rig") node.tint = greyTint(pose.grey.alpha);
     node.scale.set(restScaleX * p.scaleX, restScaleY * p.scaleY);
     node.alpha = p.alpha;
   }
