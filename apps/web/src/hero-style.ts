@@ -68,7 +68,9 @@ export const HERO_STYLE = {
   /** Height factor of the torso group of an Exhausted Hero (it slumps). */
   exhaustedSquash: 0.65,
   /** The ring under the figure, by Squad. */
-  ring: { own: 0x2ec4b6, enemy: 0xe5484d, width: 2.5, radiusX: 16, radiusY: 8 },
+  ring: { own: 0x2ec4b6, enemy: 0xf0555a, width: 3.5, glowExtra: 3, glowAlpha: 0.25, radiusX: 16, radiusY: 8 },
+  /** The light edge around the whole figure, outside the dark outline, so a Hero reads on any floor. Width in screen px. */
+  rim: { own: 0xdcecff, enemy: 0xffd9d6, width: 1 },
   /** Soft contact shadow under the feet. */
   shadow: { color: 0x000000, alpha: 0.4, radiusX: 18, radiusY: 8 },
   /** Outline widths in screen px: body and head, limbs and small parts. */
