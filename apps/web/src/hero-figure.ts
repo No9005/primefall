@@ -37,8 +37,10 @@ function polygon(shape: { x: number; y: number; width: number; height: number; p
   return new Graphics().poly(points).fill(fill).stroke(line);
 }
 
-function pivoted(x: number, y: number, degrees: number, ...children: Graphics[]): Container {
+/** A container that turns about (x, y); its label is the name the clip player finds it by. */
+function pivoted(label: string, x: number, y: number, degrees: number, ...children: Graphics[]): Container {
   const part = new Container();
+  part.label = label;
   part.position.set(x, y);
   part.rotation = (degrees * Math.PI) / 180;
   part.addChild(...children);
@@ -64,7 +66,7 @@ function arm(heroClass: HeroClass, look: HeroLook, strokes: Strokes, front: bool
   } else if (heroClass === HeroClass.Controller) {
     children.push(box(-2 + wrist.x, -1 + wrist.y, wrist.width, wrist.height, 1, wrist.color, strokes.limb));
   }
-  return pivoted(side.shoulderX, a.shoulderY - hipY, side.angle, ...children);
+  return pivoted(front ? "armF" : "armB", side.shoulderX, a.shoulderY - hipY, side.angle, ...children);
 }
 
 /** The head with its visor slit, and the Assassin's hood on it; it turns about the bottom centre. */
@@ -74,7 +76,7 @@ function head(heroClass: HeroClass, look: HeroLook, strokes: Strokes): Container
   const parts = [new Graphics().circle(0, -h.size / 2, h.size / 2).fill(look.head).stroke(strokes.body)];
   if (heroClass === HeroClass.Assassin) parts.push(polygon({ ...hood, y: hood.y - h.pivotY }, look.accent, strokes.body));
   parts.push(new Graphics().rect(visorX, h.visorY - h.size, h.visorWidth, h.visorHeight).fill(look.visor));
-  return pivoted(0, h.pivotY - hipY, 0, ...parts);
+  return pivoted("head", 0, h.pivotY - hipY, 0, ...parts);
 }
 
 /** The torso group: everything that leans and bobs with the hip, with the class parts. */
@@ -83,10 +85,13 @@ function torso(heroClass: HeroClass, look: HeroLook, strokes: Strokes): Containe
   const shape = HERO_STYLE.shape[heroClass];
   const local = (y: number) => y - hipY;
   const group = new Container();
+  group.label = "torso";
   group.position.set(0, hipY);
   if (heroClass === HeroClass.Assassin) {
     const { cape } = HERO_STYLE.rig;
-    group.addChild(polygon({ ...cape, y: local(cape.y) }, look.arms, strokes.body));
+    // The cape hangs from the top right of its box, where it turns.
+    const hang = cape.x + cape.width * cape.pivot;
+    group.addChild(pivoted("cape", hang, local(cape.y), 0, polygon({ ...cape, x: cape.x - hang, y: 0 }, look.arms, strokes.body)));
   }
   if (heroClass === HeroClass.Controller) {
     const { pack, antenna, beacon } = HERO_STYLE.rig;
@@ -124,10 +129,20 @@ function legs(heroClass: HeroClass, look: HeroLook, strokes: Strokes): Container
   const { legs: l, hipY } = HERO_STYLE.rig;
   const width = HERO_STYLE.shape[heroClass].legWidth;
   const pair = new Container();
-  for (const x of l.xs) {
-    pair.addChild(pivoted(x + 3, hipY, 0, box(-width / 2, 0, width, l.height, l.radius, look.legs, strokes.limb)));
-  }
+  l.xs.forEach((x, i) => {
+    pair.addChild(pivoted(i === 0 ? "legL" : "legR", x + 3, hipY, 0, box(-width / 2, 0, width, l.height, l.radius, look.legs, strokes.limb)));
+  });
   return pair;
+}
+
+/** The grey II above the head, hidden until the Wait clip shows it. It is not mirrored with the rig. */
+function pauseMark(): Graphics {
+  const { y, barWidth, barHeight, gap, color } = HERO_STYLE.rig.pause;
+  const left = -gap / 2 - barWidth;
+  const mark = new Graphics().rect(left, y, barWidth, barHeight).rect(gap / 2, y, barWidth, barHeight).fill(color);
+  mark.label = "pause";
+  mark.alpha = 0;
+  return mark;
 }
 
 /**
@@ -153,6 +168,7 @@ export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose,
     new Graphics().ellipse(0, 0, shadow.radiusX, shadow.radiusY).fill(shadow),
     new Graphics().ellipse(0, 0, ring.radiusX, ring.radiusY).stroke({ width: worldLineWidth(ring.width, scale), color: enemy ? ring.enemy : ring.own }),
     rig,
+    pauseMark(),
   );
   return figure;
 }

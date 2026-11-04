@@ -56,7 +56,8 @@ import { type PrimeCallout, primeCallouts, type PrimeProgress, primeScore, zoneO
 import { targetsInReach } from "./target-pick";
 import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionCommitLabel } from "./resolution-hud";
 import { buildCommentary, type CommentaryEntry, type CommentarySide, MAX_COMMENTARY_ENTRIES } from "./commentary";
-import { buildPlaybackFrames, enemyTokens, tickCountOf } from "./playback";
+import { buildPlaybackFrames, enemyTokens, STEP_MS, tickCountOf } from "./playback";
+import type { ClipName } from "./hero-clips";
 import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,removeQueueAction, selectHero, pickInstruction } from "./planning-selection";
 
 /** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
@@ -70,7 +71,6 @@ const PIPS = Array.from({ length: PRIME_ZONE_WIN_RESOLUTIONS }, (_, i) => i);
 const NO_LABELS: readonly { position: GridPosition; text: string }[] = [];
 
 /** Time one tile of movement takes in the playback. */
-const STEP_MS = 450;
 
 const HERO_NAMES: Record<HeroClass, string> = {
   [HeroClass.Bruiser]: "Bruiser",
@@ -91,6 +91,8 @@ interface PlaybackState {
   exhausted: string[];
   /** Heroes hit in the frame being shown. */
   hit: string[];
+  /** The clip each Hero plays in the frame being shown (Heroes not listed idle). */
+  clips: Record<string, ClipName>;
   /** The commentary of the Tick being shown. */
   commentary: CommentaryEntry[];
   /** The target lines of the actions resolved in the frame being shown. */
@@ -842,7 +844,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     const tickCount = tickCountOf(result.events);
     let commentary: CommentaryEntry[] = [];
     let commentaryTick = 0;
-    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], commentary, lines: [] });
+    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, commentary, lines: [] });
     for (const frame of buildPlaybackFrames(result.events)) {
       Object.assign(positions, frame.moves);
       for (const [heroId, amount] of Object.entries(frame.shields)) shields[heroId] = (shields[heroId] ?? 0) + amount;
@@ -885,6 +887,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         shuffled: { ...shuffled },
         exhausted: [...exhausted],
         hit: frame.hits.map((hit) => hit.targetId),
+        clips: frame.clips,
         commentary,
         lines: replayTargetLines(frame.events, view.heroes, view.enemies, (heroId) => positions[heroId] ?? startPositions[heroId]),
       });
@@ -935,6 +938,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         targetableIds={targetableIds}
         onTargetTap={tapTarget}
         hitIds={playback?.hit ?? []}
+        clips={playback?.clips}
         highlights={highlights}
         zoneTint={zoneTint(score)}
         zoneLabels={NO_LABELS}
