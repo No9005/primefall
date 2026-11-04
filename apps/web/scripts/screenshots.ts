@@ -37,9 +37,21 @@ async function waitForServer(): Promise<void> {
   throw new Error(`The dev server did not answer at ${URL}`);
 }
 
-function ensureChromium(): void {
-  if (existsSync(chromium.executablePath())) return;
+/**
+ * The Chromium to launch. Playwright's own build when it is installed; otherwise one that is already on the machine:
+ * `CHROMIUM_PATH`, or the `chromium` link a sandbox keeps in `PLAYWRIGHT_BROWSERS_PATH` (its build can be a different
+ * version than the one this Playwright expects, which works for screenshots). Only when none exists is one downloaded.
+ */
+export function findChromium(env: NodeJS.ProcessEnv = process.env, exists: (file: string) => boolean = existsSync): string | undefined {
+  const candidates = [chromium.executablePath(), env.CHROMIUM_PATH, env.PLAYWRIGHT_BROWSERS_PATH && path.join(env.PLAYWRIGHT_BROWSERS_PATH, "chromium")];
+  return candidates.find((file): file is string => typeof file === "string" && file !== "" && exists(file));
+}
+
+function ensureChromium(): string | undefined {
+  const found = findChromium();
+  if (found) return found;
   execFileSync("npx", ["playwright", "install", "chromium"], { cwd: webRoot, stdio: "inherit" });
+  return undefined;
 }
 
 /** Taps points over the board until the armed Move card shows up in the queue (the game decides which tiles are legal). */
@@ -90,12 +102,12 @@ async function playStandardPath(page: Page): Promise<void> {
 async function main(): Promise<void> {
   rmSync(OUTPUT_DIR, { recursive: true, force: true });
   mkdirSync(OUTPUT_DIR, { recursive: true });
-  ensureChromium();
+  const executablePath = ensureChromium();
 
   const server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { cwd: webRoot, stdio: "ignore" });
   try {
     await waitForServer();
-    const browser = await chromium.launch({ args: ["--use-gl=swiftshader", "--no-sandbox", "--enable-unsafe-swiftshader"] });
+    const browser = await chromium.launch({ executablePath, args: ["--use-gl=swiftshader", "--no-sandbox", "--enable-unsafe-swiftshader"] });
     try {
       const page = await browser.newPage({ viewport: VIEWPORT });
       await playStandardPath(page);
