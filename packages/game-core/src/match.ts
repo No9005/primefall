@@ -331,7 +331,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
     .map((cover) => ({ ...cover.position }));
   const revealedAreas = match.revealedAreas
     .filter((area) => area.squad === squad)
-    .map(({ center, size }) => ({ center: { ...center }, size }));
+    .map(({ center, size, remaining }) => ({ center: { ...center }, size, remaining }));
   const visibleTiles: GridPosition[] = [];
   for (let row = 0; row < match.grid.height; row++) {
     for (let col = 0; col < match.grid.width; col++) {

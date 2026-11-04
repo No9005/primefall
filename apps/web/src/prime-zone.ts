@@ -1,5 +1,6 @@
 import { findTiles, type GridPosition, PRIME_ZONE_WIN_RESOLUTIONS, REACTOR_DECK, SquadId, TileKind } from "game-core";
 import type { CalloutTone } from "./callout";
+import { type ZoneLook, zoneLook } from "./vision-effects";
 
 export const PRIME_ZONE_CALLOUT_MS = 1700;
 /** The final VICTORY / DEFEAT stays a little longer; the end screen takes over right after it. */
@@ -60,7 +61,7 @@ export function zoneOccupancy(heroes: readonly { position: GridPosition; exhaust
 }
 
 /** The tint of the Prime Zone tiles on the board. */
-export function zoneTint(score: PrimeScore | undefined): "own" | "contested" | "neutral" {
-  if (score?.state === "contested") return "contested";
-  return score?.state === "own" ? "own" : "neutral";
+export function zoneTint(score: PrimeScore | undefined): ZoneLook {
+  if (score?.state === "own") return zoneLook(score.filled >= PRIME_ZONE_WIN_RESOLUTIONS ? "gold" : "own", score.filled);
+  return zoneLook(score?.state === "contested" || score?.state === "enemy" ? score.state : "neutral", score?.filled ?? 0);
 }

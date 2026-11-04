@@ -122,7 +122,7 @@ describe("Scout Drone", () => {
     expect(events).toContainEqual({ kind: EventKind.AreaRevealed, tick: 1, heroId: CONTROLLER, to: { col: 13, row: 5 }, amount: 3, card: "Scout Drone" });
 
     const view = buildSquadView(after, SquadId.Left);
-    expect(view.revealedAreas).toEqual([{ center: { col: 13, row: 5 }, size: 3 }]);
+    expect(view.revealedAreas).toEqual([{ center: { col: 13, row: 5 }, size: 3, remaining: 1 }]);
     expect(view.enemies.find((enemy) => enemy.id === ENEMY)).toMatchObject({ visibility: Visibility.Visible, position: { col: 13, row: 5 } });
     expect(after.ghosts[SquadId.Left][ENEMY]!.position).toEqual({ col: 13, row: 5 });
     // The enemy Squad learns nothing about the area.
