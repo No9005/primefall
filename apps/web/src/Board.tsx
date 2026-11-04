@@ -533,6 +533,8 @@ export function Board({
     const ring = (color: number) =>
       new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color });
     const addToken = (hero: TokenHero, enemy: boolean) => {
+      // An enemy that goes Hidden is not drawn at all (Fog of War); only its own Squad sees the ghost.
+      if (enemy && clips[hero.id] === "hidden") return;
       const { x, y } = gridToWorld(hero.position, angle);
       const token = new Container();
       token.position.set(x, y + footOffset(angle));
@@ -553,7 +555,8 @@ export function Board({
       // The enemy Squad is told apart by the red ring under the figure.
       const figure = heroFigure(hero.heroClass, enemy, pose, strokeScale);
       if (hero.ghost) figure.alpha = 0.35;
-      if (hero.hidden) figure.alpha = 0.55;
+      // The Hidden clip fades the figure itself; reduced motion and every other moment show the ghost at once.
+      if (hero.hidden && (clips[hero.id] !== "hidden" || reduced)) figure.alpha = 0.55;
       token.addChild(figure);
       const beacon = figure.getChildByLabel(BEACON_LABEL, true);
       if (beacon && pose === "idle" && !falling) cancels.push(animateBeacon(beacon));

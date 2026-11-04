@@ -137,6 +137,7 @@ function torso(heroClass: HeroClass, look: HeroLook, strokes: Strokes): Containe
     return overlay;
   };
   group.addChild(silhouette("flash", HERO_STYLE.hit), silhouette("grey", HERO_STYLE.exhausted));
+  if (heroClass === HeroClass.Assassin) group.addChild(silhouette("cloak", HERO_STYLE.rig.cloakFlash));
   if (heroClass === HeroClass.Controller) {
     const { sparks } = HERO_STYLE.rig;
     const spark = new Graphics();
@@ -212,8 +213,26 @@ export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose,
   figure.scale.set(HERO_STYLE.figureScale);
   figure.addChild(new Graphics().ellipse(0, 0, shadow.radiusX, shadow.radiusY).fill(shadow), teamRing, ringFlash, rig);
   if (heroClass === HeroClass.Assassin) figure.addChild(flungRifle(enemy, strokes.limb));
+  if (heroClass === HeroClass.Controller) figure.addChild(scoutDrone(enemy, strokes.limb));
   figure.addChild(pauseMark());
   return figure;
+}
+
+/** The Scout Drone: a flat blue disc with a flickering rotor, hidden until the clip flies it; mirrored with the Hero like the rig. */
+function scoutDrone(enemy: boolean, line: Stroke): Container {
+  const { x, y, width, height, color, rotor } = HERO_STYLE.rig.drone;
+  const side = new Container();
+  if (enemy) side.scale.x = -1;
+  const blade = pivoted(
+    "rotor",
+    x + rotor.dx + rotor.width / 2,
+    y + rotor.dy + rotor.height / 2,
+    0,
+    new Graphics().rect(-rotor.width / 2, -rotor.height / 2, rotor.width, rotor.height).fill({ color: rotor.color, alpha: rotor.alpha }),
+  );
+  side.addChild(pivoted("drone", 0, 0, 0, box(x, y, width, height, height / 2, color, line), blade));
+  side.getChildByLabel("drone")!.alpha = 0;
+  return side;
 }
 
 /** The rifle an Exhausted Assassin flings away: hidden until the clip throws it, and mirrored with the Hero like the rig. */

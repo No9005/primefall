@@ -112,6 +112,10 @@ export const HERO_STYLE = {
         { x: -10, y: -16, color: 0xffd24a },
       ],
     },
+    /** The Scout Drone: a small blue disc over the backpack (its box) and a rotor blade above it, hidden until its clip flies it. */
+    drone: { x: -14, y: -35, width: 12, height: 5, color: 0x8fb2ff, rotor: { dx: -3, dy: -3, width: 18, height: 2, color: 0xdbe4ec, alpha: 0.8 } },
+    /** The cyan flash of an Assassin that goes Hidden or shows itself again. */
+    cloakFlash: 0x7fe8ff,
     /** The rifle an Exhausted Assassin flings away: where it leaves the hand, its size, the scope on it. */
     flungRifle: { x: 11, y: -24, width: 4, height: 26, color: 0x1d242c, scope: { x: -3, y: 8, width: 6, height: 3, color: 0x7fe8ff } },
   },

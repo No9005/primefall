@@ -140,8 +140,8 @@ describe("the playback of attacks", () => {
     const [block] = buildPlaybackFrames([{ kind: EventKind.ShieldGained, tick: 1, heroId: "a", amount: 2 }], classOf);
     expect(block!.clips).toEqual({ a: "block" });
     expect(block!.holdMs).toBe(2900);
-    const [aegis] = buildPlaybackFrames([{ kind: EventKind.ShieldGained, tick: 1, heroId: "a", amount: 2, card: "Aegis Protocol" }], classOf);
-    expect(aegis!.clips).toEqual({});
+    const [bulwark] = buildPlaybackFrames([{ kind: EventKind.ShieldGained, tick: 1, heroId: "a", amount: 2, card: "Bulwark" }], classOf);
+    expect(bulwark!.clips).toEqual({});
   });
 
   it("keeps one step for a frame with only steps, whatever the classes", () => {

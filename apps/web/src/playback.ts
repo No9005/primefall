@@ -111,8 +111,11 @@ export function buildPlaybackFrames(
       if (event.kind === EventKind.AttackHit || event.kind === EventKind.AttackFailed) {
         frame.clips[event.heroId] = attackClipName(event.card);
       }
-      // A Block (a Shield without a card) crouches; the Shield of an Aegis Protocol has its own clip later.
+      // A Block (a Shield without a card) crouches.
       if (event.kind === EventKind.ShieldGained && event.card === undefined) frame.clips[event.heroId] = "block";
+      // The Utility gestures belong to the Hero that played the card; the Shield of an Aegis Protocol is on its target.
+      const gesture = utilityClipName(event);
+      if (gesture !== undefined) frame.clips[gesture.heroId] = gesture.clip;
     }
     // A Move that ends on Cover takes cover (the Hero has walked there in this frame).
     for (const [heroId, { frame, to }] of lastStep) {
@@ -158,6 +161,22 @@ function holdOf(frame: PlaybackFrame, classOf: ((heroId: string) => HeroClass | 
     if (!clip.loop) hold = Math.max(hold, (frame.delays[heroId] ?? 0) + clip.activeEndMs);
   }
   return hold;
+}
+
+/** The gesture a Utility card makes and the Hero that makes it, or undefined for an event without one. */
+export function utilityClipName(event: MatchEvent): { heroId: string; clip: ClipName } | undefined {
+  switch (event.kind) {
+    case EventKind.AreaRevealed:
+      return { heroId: event.heroId, clip: "scoutDrone" };
+    case EventKind.CoverPlaced:
+      return { heroId: event.heroId, clip: "deploy" };
+    case EventKind.HiddenGained:
+      return { heroId: event.heroId, clip: "hidden" };
+    case EventKind.ShieldGained:
+      return event.card === "Aegis Protocol" ? { heroId: event.casterId ?? event.heroId, clip: "aegis" } : undefined;
+    default:
+      return undefined;
+  }
 }
 
 /** Events whose `to` names a tile they act on, not the Hero's destination. */
