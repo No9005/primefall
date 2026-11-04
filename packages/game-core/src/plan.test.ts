@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { HeroClass } from "./cards";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { SquadId, type SquadView } from "./host";
-import { ActionKind, energyPool, type MoveAction, PlanIssueKind, type QueuedAction, validatePlan } from "./plan";
-import type { GridPosition } from "./reactor-deck";
+import { ActionKind, cardRangeArea, energyPool, type MoveAction, PlanIssueKind, type QueuedAction, validatePlan } from "./plan";
+import { type GridPosition, parseGrid } from "./reactor-deck";
 
 // The enemy Bruiser stands in sight of the Squad; the other enemies are still Unknown.
 const match = startRound(createMatch(9));
@@ -160,5 +160,25 @@ describe("validatePlan: Pitch, Energy and Block", () => {
   it("rejects pitching a card that is not in the Hand", () => {
     const outside = [...Array(12).keys()].find((index) => !bruiser.hand.includes(index))!;
     expect(planKinds([outside], [])).toEqual([PlanIssueKind.CardNotInHand]);
+  });
+});
+
+describe("cardRangeArea", () => {
+  const grid = parseGrid(["#########", "#.......#", "#...#...#", "#.......#", "#.......#", "#########"]);
+  const positions = (tiles: ReturnType<typeof cardRangeArea>) => tiles.map(({ position }) => position);
+
+  it("is the square of tiles within the Range, without the origin, cut at the Grid edge", () => {
+    const tiles = positions(cardRangeArea(grid, { col: 0, row: 0 }, { range: 2 }));
+    expect(tiles).toHaveLength(3 * 3 - 1);
+    expect(tiles).not.toContainEqual({ col: 0, row: 0 });
+    expect(tiles).toContainEqual({ col: 2, row: 2 });
+    expect(tiles).not.toContainEqual({ col: 3, row: 0 });
+  });
+
+  it("marks Walls as blocked and is empty for a card without a Range", () => {
+    const tiles = cardRangeArea(grid, { col: 3, row: 3 }, { range: 1 });
+    expect(tiles.find(({ position }) => position.col === 4 && position.row === 2)?.blocked).toBe(true);
+    expect(tiles.find(({ position }) => position.col === 2 && position.row === 3)?.blocked).toBe(false);
+    expect(cardRangeArea(grid, { col: 3, row: 3 }, {})).toEqual([]);
   });
 });

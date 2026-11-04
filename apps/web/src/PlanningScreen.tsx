@@ -1,5 +1,7 @@
 import {
   ActionKind,
+  cardRangeArea,
+  type RangeTile,
   type CardIndex,
   type CardDefinition,
   CardTarget,
@@ -53,6 +55,7 @@ import type { BoardPick, Point } from "./card-drag";
 import { Callout } from "./Callout";
 import { COUNTDOWN_CALLOUT_MS, countdownCallout, formatTimer, timerTone } from "./callout";
 import { type PrimeCallout, primeCallouts, type PrimeProgress, primeScore, zoneOccupancy, zoneTint } from "./prime-zone";
+import { targetsInReach } from "./target-pick";
 import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionCommitLabel } from "./resolution-hud";
 import { buildCommentary, type CommentaryEntry, type CommentarySide, MAX_COMMENTARY_ENTRIES } from "./commentary";
 import { buildPlaybackFrames, enemyTokens, tickCountOf } from "./playback";
@@ -63,6 +66,7 @@ export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
 
 const NO_TILES: readonly GridPosition[] = [];
 const NO_SHOTS: readonly ShotDrawing[] = [];
+const NO_RANGE: readonly RangeTile[] = [];
 const NO_PATHS: readonly PlannedPath[] = [];
 const PIPS = Array.from({ length: PRIME_ZONE_WIN_RESOLUTIONS }, (_, i) => i);
 const NO_LABELS: readonly { position: GridPosition; text: string }[] = [];
@@ -718,7 +722,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     }
     return enemyTargetsOf(mode);
   }
-  const targetableIds = useMemo(() => {
+  const candidateIds = useMemo(() => {
     if (aiming === undefined || playing) return [];
     return [...new Set(aimedModes.flatMap(heroTargetsOf))];
   }, [aiming, aimedModes, needsSecondAlly, playing, selected.id, deployAlly, view.heroes, view.enemies]);
@@ -761,10 +765,25 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   const shotLines = useMemo(
     () =>
       aimedCard?.type === CardType.Attack && aimedCard.range !== undefined && !playing
-        ? drawShots(knownGrid, planningFrom, aimedCard.range, view.enemies, targetableIds)
+        ? drawShots(knownGrid, planningFrom, aimedCard.range, view.enemies, candidateIds)
         : NO_SHOTS,
-    [aimedCard, playing, knownGrid, planningFrom, view.enemies, targetableIds],
+    [aimedCard, playing, knownGrid, planningFrom, view.enemies, candidateIds],
   );
+  // A card that aims at another Hero reaches it only inside its Range area, and a shot must be able to hit (issue 209).
+  const aimsAtOtherHero =
+    aimedCard !== undefined && !aimsAtTile && !aimsAtDeployTile && aimedCard.target !== CardTarget.SelfHero && aimedCard.target !== CardTarget.EnemiesInRange;
+  const targetableIds = useMemo(() => {
+    if (!aimsAtOtherHero) return candidateIds;
+    const candidates = [...view.heroes, ...view.enemies].flatMap((unit) =>
+      candidateIds.includes(unit.id) && "position" in unit ? [{ id: unit.id, position: unit.position }] : [],
+    );
+    return targetsInReach(candidates, planningFrom, aimedCard?.range, (id) => shotLines.find((shot) => shot.targetId === id)?.ringed ?? true);
+  }, [aimsAtOtherHero, candidateIds, view.heroes, view.enemies, planningFrom, aimedCard, shotLines]);
+  const rangeArea = useMemo(
+    () => (aimsAtOtherHero && !playing && aimedCard ? cardRangeArea(knownGrid, planningFrom, aimedCard) : NO_RANGE),
+    [aimsAtOtherHero, playing, knownGrid, planningFrom, aimedCard],
+  );
+  const noEnemyInRange = aimsAtOtherHero && !aimsAtAlly && targetableIds.length === 0;
 
   // The state of the pull is kept in a ref as well, because the window listeners of a gesture read it between renders.
   const pullRef = useRef<PullState>(IDLE);
@@ -1060,6 +1079,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         zoneTint={zoneTint(score)}
         zoneLabels={NO_LABELS}
         areaTiles={NO_TILES}
+        rangeArea={rangeArea}
         shotLines={shotLines}
         targetLines={targetLines}
         marks={marks}
@@ -1216,7 +1236,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
           instruction={
             aimedCard === undefined
               ? "Tap a lit tile"
-              : pickInstruction({ card: aimedCard, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked: deployAlly !== undefined })
+              : pickInstruction({ card: aimedCard, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked: deployAlly !== undefined, noEnemyInRange })
           }
           onCancel={cancelUse}
         />

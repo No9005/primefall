@@ -20,6 +20,22 @@ export enum ReleaseOutcome {
   SpringBack = "spring-back",
 }
 
+/**
+ * The Heroes among `candidates` that can be tapped as target: inside the Range area of the card around `origin`
+ * (Chebyshev distance, like `cardRangeArea` of game-core) and, when the shot is drawn, with a shot that can hit.
+ * A card without a Range reaches every candidate.
+ */
+export function targetsInReach(
+  candidates: readonly { id: string; position: { col: number; row: number } }[],
+  origin: { col: number; row: number },
+  range: number | undefined,
+  canHit: (id: string) => boolean,
+): string[] {
+  return candidates
+    .filter(({ id, position }) => (range === undefined || Math.max(Math.abs(position.col - origin.col), Math.abs(position.row - origin.row)) <= range) && canHit(id))
+    .map(({ id }) => id);
+}
+
 /** How far the card follows the finger: only downwards. */
 export function pullOffset(startY: number, y: number): number {
   return Math.max(0, y - startY);
