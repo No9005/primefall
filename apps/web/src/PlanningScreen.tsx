@@ -56,6 +56,7 @@ import { type PrimeCallout, primeCallouts, type PrimeProgress, primeScore, zoneO
 import { targetsInReach } from "./target-pick";
 import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionCommitLabel } from "./resolution-hud";
 import { buildCommentary, type CommentaryEntry, type CommentarySide, MAX_COMMENTARY_ENTRIES } from "./commentary";
+import { CLIP_SPEED } from "./clip-player";
 import { buildPlaybackFrames, enemyTokens, STEP_MS, tickCountOf } from "./playback";
 import type { ClipName } from "./hero-clips";
 import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,removeQueueAction, selectHero, pickInstruction } from "./planning-selection";
@@ -93,6 +94,8 @@ interface PlaybackState {
   hit: string[];
   /** The clip each Hero plays in the frame being shown (Heroes not listed idle). */
   clips: Record<string, ClipName>;
+  /** Milliseconds after the start of the frame at which a Hero's clip starts (a target reacts at the impact beat). */
+  clipDelays: Record<string, number>;
   /** The commentary of the Tick being shown. */
   commentary: CommentaryEntry[];
   /** The target lines of the actions resolved in the frame being shown. */
@@ -844,8 +847,11 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     const tickCount = tickCountOf(result.events);
     let commentary: CommentaryEntry[] = [];
     let commentaryTick = 0;
-    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, commentary, lines: [] });
-    for (const frame of buildPlaybackFrames(result.events)) {
+    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, commentary, lines: [] });
+    const classes = new Map([...view.heroes, ...view.enemies].map((unit) => [unit.id, unit.heroClass]));
+    // Reduced motion plays no clips, so a frame lasts one step; otherwise until the slowest clip is back at rest.
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    for (const frame of buildPlaybackFrames(result.events, (heroId) => classes.get(heroId))) {
       Object.assign(positions, frame.moves);
       for (const [heroId, amount] of Object.entries(frame.shields)) shields[heroId] = (shields[heroId] ?? 0) + amount;
       for (const { targetId, damage, absorbed } of frame.hits) {
@@ -888,10 +894,11 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         exhausted: [...exhausted],
         hit: frame.hits.map((hit) => hit.targetId),
         clips: frame.clips,
+        clipDelays: frame.delays,
         commentary,
         lines: replayTargetLines(frame.events, view.heroes, view.enemies, (heroId) => positions[heroId] ?? startPositions[heroId]),
       });
-      await new Promise((resolve) => setTimeout(resolve, STEP_MS));
+      await new Promise((resolve) => setTimeout(resolve, reducedMotion ? STEP_MS : Math.max(STEP_MS, frame.holdMs / CLIP_SPEED)));
       if (unmounted.current) return;
     }
     setResolutionStage("done");
@@ -939,6 +946,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         onTargetTap={tapTarget}
         hitIds={playback?.hit ?? []}
         clips={playback?.clips}
+        clipDelays={playback?.clipDelays}
         highlights={highlights}
         zoneTint={zoneTint(score)}
         zoneLabels={NO_LABELS}

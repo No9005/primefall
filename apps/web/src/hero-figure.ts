@@ -112,6 +112,15 @@ function torso(heroClass: HeroClass, look: HeroLook, strokes: Strokes): Containe
     head(heroClass, look, strokes),
     arm(heroClass, look, strokes, true),
   );
+  // The white flash of a Hit: a white silhouette of body and head over the figure, shown only while a clip moves it.
+  const { head: h } = HERO_STYLE.rig;
+  const flash = new Graphics()
+    .roundRect(-shape.bodyWidth / 2, local(body.y), shape.bodyWidth, body.height, body.radius)
+    .circle(0, local(h.pivotY) - h.size / 2, h.size / 2)
+    .fill(HERO_STYLE.hit);
+  flash.label = "flash";
+  flash.alpha = 0;
+  group.addChild(flash);
   if (heroClass === HeroClass.Bruiser) {
     const { pad } = HERO_STYLE.rig;
     for (const x of pad.xs) {
@@ -161,12 +170,21 @@ export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose,
   const hips = torso(heroClass, look, strokes);
   if (pose === "exhausted") hips.scale.y = exhaustedSquash;
   const rig = new Container();
+  rig.label = "rig";
   rig.addChild(legs(heroClass, look, strokes), hips);
   if (enemy) rig.scale.x = -1;
+  // The Squad ring flashes red when the Hero is hit.
+  const ringFlash = new Graphics()
+    .ellipse(0, 0, ring.radiusX, ring.radiusY)
+    .fill({ color: ring.enemy, alpha: 0.33 })
+    .stroke({ width: worldLineWidth(ring.width, scale), color: ring.enemy });
+  ringFlash.label = "ring";
+  ringFlash.alpha = 0;
   const figure = new Container();
   figure.addChild(
     new Graphics().ellipse(0, 0, shadow.radiusX, shadow.radiusY).fill(shadow),
     new Graphics().ellipse(0, 0, ring.radiusX, ring.radiusY).stroke({ width: worldLineWidth(ring.width, scale), color: enemy ? ring.enemy : ring.own }),
+    ringFlash,
     rig,
     pauseMark(),
   );
