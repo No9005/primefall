@@ -1,5 +1,5 @@
 import { destroyCover, type Grid, type GridPosition, isWreck, REACTOR_DECK, TileKind, withTile, withWreck } from "game-core";
-import { OUTLINE, PIECE_SHAPE, type PieceStyle, TERRAIN_STYLE } from "./terrain-style";
+import { PIECE_OUTLINE_WIDTH, PIECE_SHAPE, type PieceStyle, TERRAIN_STYLE } from "./terrain-style";
 
 // The terrain as shapes: the grid and a view angle in, drawing primitives out (floor polygons, and for each
 // standing piece its top and two visible side faces). Pure; the Pixi code only fills the polygons.
@@ -242,7 +242,7 @@ function pieceBoxes({ col, row }: GridPosition, { joins }: PieceChoice, shape: {
 }
 
 /** One box of a standing piece: its visible side faces and its top. */
-function boxFaces(proj: Projection, box: Box, height: number, style: PieceStyle): Face[] {
+function boxFaces(proj: Projection, box: Box, height: number, style: PieceStyle, edgeWidth: number): Face[] {
   const corners = [
     [box.fromCol, box.fromRow],
     [box.toCol, box.fromRow],
@@ -265,10 +265,9 @@ function boxFaces(proj: Projection, box: Box, height: number, style: PieceStyle)
     { role: FaceRole.Left, fill: style.left },
     { role: FaceRole.Right, fill: style.right },
   ];
-  const edgeWidth = OUTLINE.width;
   const faces = sides.map((side, i) => ({ ...roles[i]!, points: side.points, edge: style.edge, edgeWidth }));
   const top = flat(corners.map(([c, r]) => proj.point(c, r, height)));
-  return [...faces, { role: FaceRole.Top, points: top, fill: style.top, edge: style.edge, edgeWidth }];
+  return [...faces, { role: FaceRole.Top, points: top, fill: style.top, edge: style.topEdge ?? style.edge, edgeWidth }];
 }
 
 /** All faces of the piece on a tile, the boxes farthest from the viewer first. */
@@ -278,7 +277,7 @@ function pieceFaces(proj: Projection, position: GridPosition, choice: PieceChoic
   const depthOf = (box: Box) => proj.depth((box.fromCol + box.toCol) / 2, (box.fromRow + box.toRow) / 2);
   return pieceBoxes(position, choice, shape)
     .sort((a, b) => depthOf(a) - depthOf(b))
-    .flatMap((box) => boxFaces(proj, box, shape.height, style));
+    .flatMap((box) => boxFaces(proj, box, shape.height, style, PIECE_OUTLINE_WIDTH[choice.kind]));
 }
 
 /** Every tile of the grid as drawing primitives, sorted so that nearer tiles come last. */
@@ -333,6 +332,29 @@ export function pickWallAt(x: number, y: number, grid: Grid, angle: number = VIE
     if (!best || tile.depth > best.depth || (tile.depth === best.depth && offset < best.offset)) best = { position: tile.position, depth: tile.depth, offset };
   }
   return best?.position;
+}
+
+/** A shield mark on top of a Cover piece, shown while an Attack is aimed: filled for Full Cover, outline only for Half Cover. */
+export interface CoverMark {
+  position: GridPosition;
+  kind: "full" | "half";
+  /** Centre of the piece's top in world pixels. */
+  x: number;
+  y: number;
+}
+
+/** One mark per standing Cover piece (Exhausted Hero wrecks included) while aiming; none otherwise. */
+export function coverMarks(grid: Grid, aiming: boolean, angle: number = VIEW_ANGLE): CoverMark[] {
+  if (!aiming) return [];
+  return grid.tiles.flatMap((line, row) =>
+    line.flatMap((_, col) => {
+      const kind = choosePiece(grid, { col, row })?.kind;
+      if (kind !== "fullCover" && kind !== "halfCover") return [];
+      const { x, y } = gridToWorld({ col, row }, angle);
+      const mark: CoverMark = { position: { col, row }, kind: kind === "fullCover" ? "full" : "half", x, y: y - PIECE_SHAPE[kind].height };
+      return [mark];
+    }),
+  );
 }
 
 /** The Reactor Deck as the Squad knows it: destroyed Cover gone, Cover placed in the match standing, wrecks of Exhausted Heroes as Half Cover. */

@@ -36,7 +36,7 @@ import {
   zoomOnPoint,
 } from "./board-layout";
 import { freeBoardArea } from "./hud-layout";
-import { buildTerrain, depthOf, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
+import { buildTerrain, coverMarks, depthOf, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
@@ -252,6 +252,16 @@ interface Terrain {
 }
 
 /** Fills a face and outlines it with a line that keeps its width on screen at the camera `scale`. */
+/** A shield glyph about 14 px wide on screen, centred on the origin: filled for Full Cover, outline only for Half Cover. */
+function shieldGlyph(kind: "full" | "half", scale: number): Graphics {
+  const unit = 7 / scale;
+  const outline = [-1, -0.8, 1, -0.8, 1, 0.2, 0, 1.1, -1, 0.2].map((value) => value * unit);
+  const color = kind === "full" ? TERRAIN_STYLE.coverOutline.full : TERRAIN_STYLE.coverOutline.half;
+  const glyph = new Graphics().poly(outline);
+  if (kind === "full") glyph.fill({ color });
+  return glyph.stroke({ width: worldLineWidth(1.5, scale), color, join: "round" });
+}
+
 function fillFace(graphics: Graphics, { points, fill, edge, edgeWidth }: Face, scale: number): Graphics {
   return graphics.poly(points).fill(fill).stroke({ width: worldLineWidth(edgeWidth, scale), color: edge, join: "round" });
 }
@@ -475,6 +485,8 @@ export function Board({
   // When the playback frame being shown started. The Shield and the Knockback slide of the Heroes follow it, so a redraw of
   // the figures in the middle of a frame (Cover that changes) does not start them again.
   const frameClock = useRef(performance.now());
+  // Aiming an Attack is the state that draws lines of fire.
+  const aiming = shotLines.length > 0;
   const frameOfEffects = useRef(effects);
   if (frameOfEffects.current !== effects) {
     frameOfEffects.current = effects;
@@ -870,6 +882,14 @@ export function Board({
       }),
     );
 
+    // While an Attack is aimed, a shield mark sits on top of each Cover piece.
+    for (const mark of coverMarks(grid, aiming, angle)) {
+      const glyph = shieldGlyph(mark.kind, strokeScale);
+      glyph.position.set(mark.x, mark.y);
+      planning.addChild(glyph);
+      created.push(glyph);
+    }
+
     // The Prime Zone tint (grey, teal, gold, amber, red); our Squad holding it sends a ring over the zone.
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const zoneTiles: GridPosition[] = [];
@@ -1007,7 +1027,7 @@ export function Board({
       cancelAnimationFrame(effectFrame);
       created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [terrain, angle, strokeScale, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
+  }, [terrain, angle, strokeScale, aiming, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
 
   useEffect(() => {
     const element = host.current;

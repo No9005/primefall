@@ -4,9 +4,15 @@
 /** Outline of every standing piece and Hero: constant on screen, whatever the zoom or rotation. Width in px. */
 export const OUTLINE = { color: 0x0b1016, width: 1.75 } as const;
 
+/** Outline width on screen per kind of standing piece, in px: Cover is drawn thinner so it does not outshine the Heroes. */
+export const PIECE_OUTLINE_WIDTH = { wall: OUTLINE.width, fullCover: 1, halfCover: 1, overwatchNest: OUTLINE.width } as const;
+
+/** Measured mean relative luminance of the Hero sprites at 844 x 390 (planning screenshot, non-floor pixels). Used only by the terrain contrast test. */
+export const HERO_REFERENCE_LUMINANCE = 0.23;
+
 export const TERRAIN_STYLE = {
   /** Plain floor, used when no sight is applied. `edge` is the fine grid line. */
-  floor: { fill: 0x2c3440, fillAlt: 0x303944, edge: 0x465262 },
+  floor: { fill: 0x333c4a, fillAlt: 0x374150, edge: 0x4b596c },
   /** Floor tiles the Squad sees and the fog over the rest. `edge` is the fine grid line. */
   floorLit: { fill: 0x2c4257, edge: 0x3d5a73 },
   floorDark: { fill: 0x0b1016, edge: 0x141c25 },
@@ -27,8 +33,8 @@ export const TERRAIN_STYLE = {
   /** Floor outlines that mark Cover tiles while planning. */
   coverOutline: { full: 0xff8a3d, half: 0x4aa3ff, placed: 0x7be0ff, destroyed: 0x8a8f98 },
   wall: { top: 0x5d7284, left: 0x3a4b5b, right: 0x2a3845, edge: OUTLINE.color },
-  fullCover: { top: 0x5f7f9a, left: 0x486279, right: 0x364b5d, edge: 0xe5b429 },
-  halfCover: { top: 0x6f94b3, left: 0x547591, right: 0x3f5a71, edge: 0xe5b429 },
+  fullCover: { top: 0x75808a, left: 0x56616b, right: 0x3f484f, edge: OUTLINE.color, topEdge: 0x93a3b0 },
+  halfCover: { top: 0x68727b, left: 0x4d565e, right: 0x394046, edge: 0x2e353c },
   overwatchNest: { top: 0x5d7194, left: 0x465676, right: 0x344059, edge: OUTLINE.color },
 } as const;
 
@@ -65,6 +71,8 @@ export interface PieceStyle {
   left: number;
   right: number;
   edge: number;
+  /** Outline colour of the top face only; without it the top uses `edge`. */
+  topEdge?: number;
 }
 
 /**
@@ -75,6 +83,6 @@ export interface PieceStyle {
 export const PIECE_SHAPE = {
   wall: { thickness: 1 / 3, pillar: 0.5, height: 64 },
   fullCover: { thickness: 0.4, pillar: 0.62, height: 44 },
-  halfCover: { thickness: 0.4, pillar: 0.62, height: 20 },
+  halfCover: { thickness: 0.4, pillar: 0.62, height: 16 },
   overwatchNest: { thickness: 0.8, pillar: 0.8, height: 72 },
 } as const;
