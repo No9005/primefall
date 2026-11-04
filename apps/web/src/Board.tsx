@@ -37,7 +37,7 @@ import { buildTerrain, depthOf, type Face, floorOutline, footOffset, coverGridOf
 import { applyPose, applyRestPose, type BoundPart, bindParts, ClipPlayer } from "./clip-player";
 import { EffectsLayer, markedMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import type { EffectCue } from "./weapon-effects";
-import { AREA_COLOR, AREA_PIPS, areaLift, areaRing, enemyFade, GHOST_ALPHA, GHOST_FADE_MS, type ZoneLook, zoneRingAt } from "./vision-effects";
+import { AREA_COLOR, AREA_PIPS, areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, type ZoneLook, zoneRingAt } from "./vision-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
 import { HERO_STYLE } from "./hero-style";
@@ -351,12 +351,12 @@ function ghostMark(): Container {
 }
 
 /** Fades a figure between the real figure and its Ghost; with reduced motion the caller does not call this. Returns a cancel function. */
-function animateFade(figure: Container, kind: "toGhost" | "toSeen"): () => void {
+function animateFade(figure: Container, kind: "toGhost" | "toSeen" | "appear"): () => void {
   const start = performance.now();
   let frame = 0;
   const step = (now: number) => {
     figure.alpha = enemyFade(kind, now - start);
-    if (now - start < GHOST_FADE_MS) frame = requestAnimationFrame(step);
+    if (!finished(now - start, GHOST_FADE_MS)) frame = requestAnimationFrame(step);
   };
   figure.alpha = enemyFade(kind, 0);
   frame = requestAnimationFrame(step);
@@ -446,7 +446,8 @@ export function Board({
   enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
   const bubbleSeen = useRef(new Set<string>());
   const { color: zoneColor, alpha: zoneAlpha, pulse: zonePulse } = zoneTint;
-  const areaSeen = useRef(new Set<string>());
+  const areaSeen = useRef(new Map<string, { center: GridPosition; size: number }>());
+  const ringSeen = useRef("");
   /** Enemy Heroes shown as a Ghost in the last redraw, to fade a change between Ghost and real figure. */
   const ghostSeen = useRef(new Set<string>());
   const enemiesSeen = useRef(new Set<string>());
@@ -608,6 +609,10 @@ export function Board({
         const was = ghostSeen.current.has(hero.id) ? "ghost" : enemiesSeen.current.has(hero.id) ? "seen" : undefined;
         if (hero.ghost && was === "seen") cancels.push(animateFade(figure, "toGhost"));
         else if (!hero.ghost && was === "ghost") cancels.push(animateFade(figure, "toSeen"));
+        else if (!hero.ghost && was === undefined && revealedAreas.some((area) => areaContains(area.center, area.size, hero.position))) {
+          // The Scout Drone lifted the fog over it: it fades in.
+          cancels.push(animateFade(figure, "appear"));
+        }
       }
       token.addChild(figure);
       const beacon = figure.getChildByLabel(BEACON_LABEL, true);
@@ -810,16 +815,21 @@ export function Board({
         zoneRing.scale.set(scale);
         zoneRing.alpha = alpha;
       };
-      if (reducedMotion) zoneRing.visible = false;
+      // One ring per Resolution held: it plays when the hold level (the tint) is new, not on every redraw.
+      const ringKey = `${zoneColor}-${zoneAlpha}`;
+      if (reducedMotion || ringSeen.current === ringKey) zoneRing.visible = false;
       else animated.push((now) => pulseOf(now));
+      ringSeen.current = ringKey;
+    } else {
+      ringSeen.current = "";
     }
 
     // Scout Drone areas: the tiles lift from the middle outwards in cyan, two pips count the Resolutions left.
     // An area that was already there before this redraw stands lifted; only a new one plays.
-    const seenNow = new Set<string>();
+    const seenNow = new Map<string, { center: GridPosition; size: number }>();
     for (const { center, size, remaining } of revealedAreas) {
       const key = `${center.col},${center.row},${size}`;
-      seenNow.add(key);
+      seenNow.set(key, { center, size });
       const plays = !reducedMotion && !areaSeen.current.has(key);
       const reach = Math.floor(size / 2);
       for (let row = center.row - reach; row <= center.row + reach; row++) {
@@ -845,12 +855,34 @@ export function Board({
       planning.addChild(pips);
       created.push(pips);
     }
+    // An area that ran out: the fog closes again from the outside inwards instead of cutting.
+    if (!reducedMotion) {
+      for (const [key, { center, size }] of areaSeen.current) {
+        if (seenNow.has(key)) continue;
+        const reach = Math.floor(size / 2);
+        for (let row = center.row - reach; row <= center.row + reach; row++) {
+          for (let col = center.col - reach; col <= center.col + reach; col++) {
+            if (tileAt(grid, { col, row }) === undefined) continue;
+            const { x, y } = gridToWorld({ col, row }, angle);
+            const tint = new Graphics().poly(floorOutline(angle)).fill({ color: AREA_COLOR, alpha: 0.28 });
+            tint.position.set(x, y);
+            planning.addChild(tint);
+            created.push(tint);
+            const outward = reach - areaRing(center, { col, row });
+            animated.push((now) => {
+              tint.alpha = 1 - areaLift(now, outward);
+            });
+          }
+        }
+      }
+    }
     areaSeen.current = seenNow;
     const effectStart = performance.now();
     let effectFrame = 0;
     const runEffects = (now: number) => {
       for (const update of animated) update(now - effectStart);
-      if (!reducedMotion && animated.length > 0) effectFrame = requestAnimationFrame(runEffects);
+      // Every transition (the longest: a ring of the zone or an area of up to 5 rings) is over within 3 s.
+      if (!reducedMotion && animated.length > 0 && !finished(now - effectStart, 3000)) effectFrame = requestAnimationFrame(runEffects);
     };
     runEffects(effectStart);
     return () => {

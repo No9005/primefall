@@ -1,6 +1,8 @@
 // The transitions of vision and the Prime Zone (docs/design/animation/README.md, "Scout Drone area", "Fog and Ghost",
 // "Prime Zone"). Pure functions of time and state, tested without a browser; `Board.tsx` draws them. What is shown at all
-// is still decided by the visibility rules (Fog of War): these only shape the change.
+// is still decided by the visibility rules (Fog of War): these only shape the change. They take real milliseconds;
+// CLIP_SPEED multiplies every duration here, like in the clip player and the effects layer.
+import { CLIP_SPEED } from "./clip-player";
 
 /** Cyan tint of the Scout Drone area. */
 export const AREA_COLOR = 0x5fd0e6;
@@ -12,7 +14,12 @@ export const AREA_PIPS = 2;
 
 /** 0 (fog) to 1 (lifted) of an area tile `ring` tiles from the centre, `ms` after the drone started to hover. */
 export function areaLift(ms: number, ring: number): number {
-  return Math.min(1, Math.max(0, (ms - ring * AREA_RING_DELAY_MS) / AREA_LIFT_MS));
+  return Math.min(1, Math.max(0, (ms * CLIP_SPEED - ring * AREA_RING_DELAY_MS) / AREA_LIFT_MS));
+}
+
+/** Whether a tile lies in the square area around `center` (not clipped to the Grid). */
+export function areaContains(center: { col: number; row: number }, size: number, tile: { col: number; row: number }): boolean {
+  return areaRing(center, tile) <= Math.floor(size / 2);
 }
 
 /** The ring (Chebyshev distance) of a tile around the centre of an area. */
@@ -23,9 +30,15 @@ export function areaRing(center: { col: number; row: number }, tile: { col: numb
 export const GHOST_ALPHA = 0.45;
 export const GHOST_FADE_MS = 600;
 
-/** The alpha of an enemy figure `ms` after it left sight (to a Ghost) or came back into sight (to the real figure). */
-export function enemyFade(kind: "toGhost" | "toSeen", ms: number): number {
-  const t = Math.min(1, Math.max(0, ms / GHOST_FADE_MS));
+/** True once an animation of `durationMs` has run out after `ms` (at CLIP_SPEED). */
+export function finished(ms: number, durationMs: number): boolean {
+  return ms * CLIP_SPEED >= durationMs;
+}
+
+/** The alpha of an enemy figure `ms` after it left sight (to a Ghost), came back into sight (to the real figure) or appeared in a Scout Drone area. */
+export function enemyFade(kind: "toGhost" | "toSeen" | "appear", ms: number): number {
+  const t = Math.min(1, Math.max(0, (ms * CLIP_SPEED) / GHOST_FADE_MS));
+  if (kind === "appear") return t;
   return kind === "toGhost" ? 1 + (GHOST_ALPHA - 1) * t : GHOST_ALPHA * (1 - t) + t;
 }
 
@@ -56,8 +69,8 @@ export function zoneLook(state: ZoneState, filled: number): ZoneLook {
   }
 }
 
-/** The ring that runs over the zone: scale 0.4 to 1.4 and alpha 0.8 to 0, looping. */
+/** The ring that runs once over the zone per Resolution: scale 0.4 to 1.4 and alpha 0.8 to 0, then it is gone. */
 export function zoneRingAt(ms: number): { scale: number; alpha: number } {
-  const u = (((ms % ZONE_RING_MS) + ZONE_RING_MS) % ZONE_RING_MS) / ZONE_RING_MS;
+  const u = Math.min(1, Math.max(0, (ms * CLIP_SPEED) / ZONE_RING_MS));
   return { scale: 0.4 + u, alpha: 0.8 * (1 - u) };
 }
