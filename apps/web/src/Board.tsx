@@ -269,6 +269,8 @@ interface BoardProps {
   hitIds: readonly string[];
   /** The clip each Hero plays during the playback frame being shown (a Step walks, a Wait waits); Heroes not listed idle. */
   clips?: Readonly<Record<string, ClipName>>;
+  /** Milliseconds after the start of the frame at which a Hero's clip starts (a target reacts at the impact beat). */
+  clipDelays?: Readonly<Record<string, number>>;
   /** Tiles the player may tap right now. */
   highlights: readonly GridPosition[];
   markers: readonly BoardMarker[];
@@ -303,6 +305,7 @@ interface BoardProps {
 
 const NO_RANGE: readonly RangeTile[] = [];
 const NO_CLIPS: Readonly<Record<string, ClipName>> = {};
+const NO_DELAYS: Readonly<Record<string, number>> = {};
 const RANGE_COLOR = 0xe5484d;
 const RANGE_BLOCKED_COLOR = 0x8a99a8;
 const RANGE_ALPHA = 0.27;
@@ -368,6 +371,7 @@ export function Board({
   onTargetTap,
   hitIds,
   clips = NO_CLIPS,
+  clipDelays = NO_DELAYS,
   highlights,
   markers,
   onTileTap,
@@ -544,7 +548,9 @@ export function Board({
         token.addChild(targetRing);
         pulsingRings.push(targetRing);
       }
-      const pose = hero.exhausted ? "exhausted" : hitIds.includes(hero.id) ? "hit" : "idle";
+      // A hit Hero plays the Hit clip; with reduced motion nothing moves, so it shows the flat white pose instead.
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const pose = hero.exhausted ? "exhausted" : reduced && hitIds.includes(hero.id) ? "hit" : "idle";
       // The enemy Squad is told apart by the red ring under the figure.
       const figure = heroFigure(hero.heroClass, enemy, pose, strokeScale);
       if (hero.ghost) figure.alpha = 0.35;
@@ -622,7 +628,7 @@ export function Board({
           player = new ClipPlayer(heroClass, now);
           clipPlayers.current.set(id, player);
         }
-        player.play(name, now);
+        player.play(name, now, clipDelays[id] ?? 0, clips);
         applyPose(parts, player.sample(now));
       }
       if (!reducedMotion) clipFrame = requestAnimationFrame(playClips);
@@ -634,7 +640,7 @@ export function Board({
       cancels.forEach((cancel) => cancel());
       created.forEach((token) => token.destroy({ children: true }));
     };
-  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, shotLines, marks]);
+  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, shotLines, marks]);
 
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
   useEffect(() => {

@@ -34,14 +34,30 @@ export class ClipPlayer {
     return this.clip.name;
   }
 
-  /** Switches to a clip; asking for the one that already plays changes nothing (a Walk goes on from step to step). */
-  play(name: ClipName, now: number): void {
-    if (name === this.clip.name) return;
+  private pending: { name: ClipName; at: number } | undefined;
+  private requestedFrame: object | undefined;
+
+  /**
+   * Switches to a clip, `delayMs` from now (a target reacts at the impact beat). Asking for the clip that already plays
+   * changes nothing (a Walk goes on from step to step), except that a one-shot clip starts again in a new `frame`
+   * (the same card twice in a row plays twice).
+   */
+  play(name: ClipName, now: number, delayMs = 0, frame?: object): void {
+    const asked = this.pending?.name ?? this.clip.name;
+    const sameFrame = frame === undefined || frame === this.requestedFrame;
+    this.requestedFrame = frame;
+    if (name === asked && (sameFrame || clipOf(this.heroClass, name).loop)) return;
+    // Delays are in clip time, so a faster clip speed shortens them too.
+    this.pending = delayMs > 0 ? { name, at: now + delayMs / this.speed } : undefined;
+    if (delayMs <= 0) this.start(name, now);
+  }
+
+  private start(name: ClipName, at: number): void {
     this.previous = this.clip;
     this.previousStartMs = this.startMs;
-    this.fadeStartMs = now;
+    this.fadeStartMs = at;
     this.clip = clipOf(this.heroClass, name);
-    this.startMs = now;
+    this.startMs = at;
   }
 
   private timeOf(clip: Clip, startMs: number, now: number): number {
@@ -51,6 +67,10 @@ export class ClipPlayer {
 
   /** The pose at `now`; the returned object is reused by the next call. */
   sample(now: number): Pose {
+    if (this.pending !== undefined && now >= this.pending.at) {
+      this.start(this.pending.name, this.pending.at);
+      this.pending = undefined;
+    }
     sampleClipInto(this.clip, this.timeOf(this.clip, this.startMs, now), this.current);
     if (this.previous === undefined) return this.current;
     const weight = (now - this.fadeStartMs) / CROSSFADE_MS;
@@ -79,12 +99,15 @@ export interface BoundPart {
   node: Container;
   restX: number;
   restY: number;
+  /** The scale the part has at rest: the rig of an enemy is mirrored (-1), and its offsets are mirrored with it. */
+  restScaleX: number;
+  restScaleY: number;
 }
 
 export function bindParts(figure: Container): BoundPart[] {
   return PARTS.flatMap((part) => {
     const node = figure.getChildByLabel(part, true);
-    return node === null ? [] : [{ part, node, restX: node.x, restY: node.y }];
+    return node === null ? [] : [{ part, node, restX: node.x, restY: node.y, restScaleX: node.scale.x, restScaleY: node.scale.y }];
   });
 }
 
@@ -92,11 +115,11 @@ const DEGREES = Math.PI / 180;
 
 /** Puts a pose on a figure. */
 export function applyPose(parts: readonly BoundPart[], pose: Pose): void {
-  for (const { part, node, restX, restY } of parts) {
+  for (const { part, node, restX, restY, restScaleX, restScaleY } of parts) {
     const p = pose[part];
-    node.position.set(restX + p.x, restY + p.y);
+    node.position.set(restX + p.x * Math.sign(restScaleX), restY + p.y);
     node.rotation = p.rotation * DEGREES;
-    node.scale.set(p.scaleX, p.scaleY);
+    node.scale.set(restScaleX * p.scaleX, restScaleY * p.scaleY);
     node.alpha = p.alpha;
   }
 }
