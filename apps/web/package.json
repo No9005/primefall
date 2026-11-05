@@ -9,7 +9,7 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json",
     "e2e": "npm run build && playwright test",
-    "screenshots": "node scripts/screenshots.ts"
+    "screenshots": "vite-node scripts/screenshots.ts"
   },
   "dependencies": {
     "game-core": "*",
