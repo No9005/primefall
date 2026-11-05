@@ -33,7 +33,8 @@ export const SIDE_TAGLINES: Record<Role, string> = { attack: "Take the Prime Zon
 export const SIDE_TEXTS: Record<Role, string> = {
   attack:
     "Start at your Spawn. Take the Prime Zone: you need at least as many Heroes in it as the Defender, a tie is yours. Control it for 3 Resolutions or Exhaust all three Defenders.",
-  defend: "Start in the Prime Zone. Hold out until the Round limit, or Exhaust all three Attackers. If the Attackers control the Zone for 3 Resolutions, you lose.",
+  // 12 is the default Defender Round limit (DEFENDER_ROUND_LIMIT in game-core host.ts); the Defender wins only by holding out, never by Exhausting the Attackers.
+  defend: "Start in the Prime Zone. Hold out for 12 Rounds. You lose if all three of your Heroes are Exhausted or the Attacker controls the Zone for 3 Resolutions.",
 };
 
 /** The goal line of the role banner. */

@@ -74,9 +74,9 @@ function RouteMarks({ role, layout }: { role: Role; layout: PreviewLayout }) {
       {/* Attack: the Zone is the lower end of the route, so its label stands above it. Defend: the enemy Spawn is the lower end. */}
       {role === "attack" && label("YOUR SPAWN", { x: layout.spawn.x, y: layout.spawn.y + 44 })}
       {role === "attack" && label(zoneLabel, { x: layout.zone.x, y: layout.zone.y - 52 })}
-      {role === "defend" && label(zoneLabel, { x: layout.zone.x, y: layout.zone.y + 44 })}
-      {role === "defend" && label("ENEMY SPAWN", { x: layout.enemySpawn.x, y: layout.enemySpawn.y - 70 })}
-      {role === "defend" && label("ATTACKERS COME FROM HERE", { x: layout.enemySpawn.x, y: layout.enemySpawn.y - 52 })}
+      {role === "defend" && label(zoneLabel, { x: layout.zone.x - 40, y: layout.zone.y + 44 })}
+      {role === "defend" && label("ENEMY SPAWN", { x: layout.enemySpawn.x + 40, y: layout.enemySpawn.y - 70 })}
+      {role === "defend" && label("ATTACKERS COME FROM HERE", { x: layout.enemySpawn.x + 40, y: layout.enemySpawn.y - 52 })}
     </>
   );
 }
