@@ -1,5 +1,6 @@
 import { SquadId, validatePlan } from "game-core";
 import { restoreLocalHost, SNAPSHOT_VERSION } from "game-core/local-host";
+import type { MatchState } from "game-core/server";
 import { describe, expect, it } from "vitest";
 import { parseArgs } from "./screenshots";
 import { preparedPlan, SCENARIO_NAMES, SCENARIOS, scenarioScreenshotNames } from "./scenarios";
@@ -17,7 +18,7 @@ describe("screenshot scenarios", () => {
       expect(new Set(names).size).toBe(names.length);
       expect(names[0]).toBe("01-planned.png");
       expect(names.at(-1)).toMatch(/^\d\d-after\.png$/);
-      for (const name of names.slice(1, -1)) expect(name).toMatch(/^\d\d-resolution-t\d+\.png$/);
+      for (const name of names.slice(1, -1)) expect(name).toMatch(/^\d\d-(round\d-)?(planned|resolution-t\d+)\.png$/);
     }
   });
 
@@ -28,6 +29,17 @@ describe("screenshot scenarios", () => {
       expect(host).toBeDefined();
       const view = await host!.getSquadView(SquadId.Left);
       expect(validatePlan(view, preparedPlan(scenario, match))).toEqual([]);
+    });
+
+    it("has a Round 2 plan that passes validatePlan against the Squad View of Round 2", async () => {
+      if (!scenario.secondRound) return;
+      const match = scenario.buildMatch();
+      const host = restoreLocalHost(JSON.stringify({ version: SNAPSHOT_VERSION, match }))!;
+      await host.submitPlan(preparedPlan(scenario, match));
+      const next = (JSON.parse(host.snapshot()) as { match: MatchState }).match;
+      expect(next.round).toBe(2);
+      const view = await host.getSquadView(SquadId.Left);
+      expect(validatePlan(view, preparedPlan(scenario, next, scenario.secondRound.steps))).toEqual([]);
     });
 
     it("is deterministic", () => {
