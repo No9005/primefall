@@ -764,7 +764,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
   if (experiment.zoneDecay) {
     for (const hero of match.heroes.filter((candidate) => !candidate.exhausted)) {
       if (tileAt(REACTOR_DECK, hero.position) !== TileKind.PrimeZone || hero.deck.length === 0) continue;
-      hero.exile.push(hero.deck.pop()!);
+      for (let i = 0; i < experiment.zoneDecayAmount && hero.deck.length > 0; i++) hero.exile.push(hero.deck.pop()!);
       const shuffled = refillDeck(match, hero);
       if (shuffled > 0) events.push({ kind: EventKind.DeckShuffled, tick: Math.max(ticks, 1), heroId: hero.id, amount: shuffled });
     }

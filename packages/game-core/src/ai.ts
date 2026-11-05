@@ -2,7 +2,7 @@
 // It only ever sees the Squad View, so it cannot read enemy Hands or unseen Heroes: no cheating.
 
 import { experiment } from "./experiment";
-import { type CardIndex, HERO_DECKS, isSimpleAttack } from "./cards";
+import { type CardIndex, HERO_DECKS, HeroClass, isSimpleAttack } from "./cards";
 import { type HeroView, SquadId, type SquadView, Visibility, type VisibleEnemyView } from "./host";
 import {
   ActionKind,
@@ -29,12 +29,12 @@ const tileKey = ({ col, row }: GridPosition) => row * REACTOR_DECK.width + col;
 const isPrimeZoneTile = (tile: GridPosition) => PRIME_ZONE_TILES.some((zone) => zone.col === tile.col && zone.row === tile.row);
 
 /**
- * Walking distance in steps from every tile to the nearest Prime Zone tile that is not in `blocked`, going around
+ * Walking distance in steps from every tile to the nearest of the `goal` tiles that is not in `blocked`, going around
  * Walls and the blocked tiles (a Move can neither cross nor end on one). A Squad that only counted the Zone as a place to walk to
  * froze at its edge behind Squad mates standing in it (issue 147).
  */
-function distancesToPrimeZone(blocked: ReadonlySet<number>): ReadonlyMap<number, number> {
-  const free = PRIME_ZONE_TILES.filter((tile) => !blocked.has(tileKey(tile)));
+function distancesToGoal(goal: readonly GridPosition[], blocked: ReadonlySet<number>): ReadonlyMap<number, number> {
+  const free = goal.filter((tile) => !blocked.has(tileKey(tile)));
   const distances = new Map<number, number>(free.map((tile) => [tileKey(tile), 0]));
   const queue = [...free];
   for (const tile of queue) {
@@ -64,6 +64,24 @@ function blockedTiles(view: SquadView): Set<number> {
 
 const mirrorTile = ({ col, row }: GridPosition): GridPosition => ({ col: REACTOR_DECK.width - 1 - col, row });
 
+const OVERWATCH_NEST_TILES = findTiles(REACTOR_DECK, TileKind.OverwatchNest);
+/** The Half Cover tile beside the Prime Zone where the supporter of the Left Squad stands; the Right Squad mirrors it. */
+const SUPPORT_TILE: GridPosition = { col: 13, row: 6 };
+
+/**
+ * What a Hero walks to. The Squad does not send everyone into the Zone: one Hero contests it (the Bruiser; if it is
+ * Exhausted the next best), the Assassin takes the Overwatch Nest and watches the Zone from there, the Controller
+ * holds the Half Cover beside the Zone and supports. Without a role the Hero goes to the Zone.
+ */
+function goalTiles(view: SquadView, hero: HeroView): readonly GridPosition[] {
+  if (!experiment.aiRoles) return PRIME_ZONE_TILES;
+  const order = [HeroClass.Bruiser, HeroClass.Controller, HeroClass.Assassin];
+  const contester = order.map((heroClass) => view.heroes.find((other) => other.heroClass === heroClass && !other.exhausted)).find(Boolean);
+  if (hero.id === contester?.id) return PRIME_ZONE_TILES;
+  if (hero.heroClass === HeroClass.Assassin) return OVERWATCH_NEST_TILES;
+  return [view.squad === SquadId.Left ? SUPPORT_TILE : mirrorTile(SUPPORT_TILE)];
+}
+
 /**
  * The Move 2 destinations in the order they are tried. The Reactor Deck is mirrored around the Prime Zone, so the
  * Right Squad tries them in the mirrored order: with the same order for both, the tie between equally good
@@ -92,7 +110,8 @@ const tilesAfterSteps = (from: GridPosition, destination: GridPosition): GridPos
  * Moving Heroes do not hinder each other, but a Move cannot step onto a blocked tile (a Hero stays there) or a
  * tile another Hero already claimed for the same step of the queue slot.
  */
-function stepTowardPrimeZone(
+function stepTowardGoal(
+  isGoalTile: (tile: GridPosition) => boolean,
   from: GridPosition,
   squad: SquadId,
   slot: number,
@@ -102,7 +121,9 @@ function stepTowardPrimeZone(
 ): GridPosition | undefined {
   const distanceTo = (tile: GridPosition) => distances.get(tileKey(tile)) ?? Infinity;
   let best: GridPosition | undefined;
-  let bestDistance = isPrimeZoneTile(from) ? 0 : distanceTo(from);
+  // A Hero on a goal tile stays: its distance is 0 and no Move gets closer. (Its own tile is in `blocked`, so the
+  // distance map does not know it: ask the goal directly.)
+  let bestDistance = isGoalTile(from) ? 0 : distanceTo(from);
   for (const destination of destinationsInOrder(from, squad)) {
     const end = moveEnd(from, destination);
     const steps = tilesAfterSteps(from, destination);
@@ -128,6 +149,7 @@ function claimSteps(claimed: ClaimedTiles, slot: number, tiles: readonly GridPos
 function planHero(
   view: SquadView,
   hero: HeroView,
+  goal: readonly GridPosition[],
   claimed: ClaimedTiles,
   blocked: ReadonlySet<number>,
   distances: ReadonlyMap<number, number>,
@@ -158,6 +180,7 @@ function planHero(
     }
   }
 
+  const isGoalTile = (tile: GridPosition) => goal.some((goalTile) => goalTile.col === tile.col && goalTile.row === tile.row);
   const queue: QueuedAction[] = [];
   let position = hero.position;
   let energyNeeded = 0;
@@ -181,7 +204,7 @@ function planHero(
     const card = spare()[0];
     if (card === undefined || cardsLeft - 1 < 0) break;
     const slot = queue.length;
-    const destination = stepTowardPrimeZone(position, view.squad, slot, claimed, unavailable, distances);
+    const destination = stepTowardGoal(isGoalTile, position, view.squad, slot, claimed, unavailable, distances);
     if (destination) {
       queue.push({ kind: ActionKind.Move, card, destination });
       claimSteps(claimed, slot, tilesAfterSteps(position, destination));
@@ -210,10 +233,15 @@ function planHero(
 export function planSquad(view: SquadView, heroIds: readonly string[] = view.heroes.map((hero) => hero.id)): SquadPlan {
   const claimed: ClaimedTiles = new Map();
   const blocked = blockedTiles(view);
-  const distances = distancesToPrimeZone(blocked);
+  const zoneDistances = distancesToGoal(PRIME_ZONE_TILES, blocked);
   const heroes = view.heroes
     .filter((hero) => heroIds.includes(hero.id) && !hero.exhausted)
-    .map((hero) => planHero(view, hero, claimed, blocked, distances));
+    .map((hero) => {
+      const goal = goalTiles(view, hero);
+      // A goal that a Squad mate or an enemy already holds leaves the Hero where it is: it walks to the Zone instead.
+      const own = goal === PRIME_ZONE_TILES ? zoneDistances : distancesToGoal(goal, blocked);
+      return planHero(view, hero, own.size > 0 ? goal : PRIME_ZONE_TILES, claimed, blocked, own.size > 0 ? own : zoneDistances);
+    });
   const plan: SquadPlan = { squad: view.squad, heroes };
   const broken = new Set(validatePlan(view, plan).flatMap((issue) => (issue.heroId ? [issue.heroId] : [])));
   return broken.size === 0 ? plan : { squad: view.squad, heroes: heroes.filter((hero) => !broken.has(hero.heroId)) };

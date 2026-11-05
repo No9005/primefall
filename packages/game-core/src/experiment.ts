@@ -5,6 +5,10 @@ import type { SquadId } from "./host";
 export interface Experiment {
   /** Every Hero that ends a Resolution in the Prime Zone loses the top card of its Deck to the Exile. */
   zoneDecay: boolean;
+  /** Cards a Hero in the Zone loses per Resolution with zoneDecay. */
+  zoneDecayAmount: number;
+  /** AI: roles (Bruiser contests the Zone, Assassin to the Overwatch Nest, Controller on the Half Cover beside the Zone). */
+  aiRoles: boolean;
   /** A Hero counts as holding the Prime Zone only if it pitched at least one card this Round. */
   holdNeedsPitch: boolean;
   /** AI: pitch one card for every Hero whose Queue ends in the Prime Zone (needed by holdNeedsPitch). */
@@ -19,6 +23,8 @@ export interface Experiment {
 
 export const experiment: Experiment = {
   zoneDecay: false,
+  zoneDecayAmount: 1,
+  aiRoles: false,
   holdNeedsPitch: false,
   aiPitchInZone: false,
   defenderRounds: 10,
