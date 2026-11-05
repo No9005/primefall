@@ -19,6 +19,12 @@ export interface Experiment {
   defenderRounds: number;
   /** Defender mode: the Attacker takes control when it has at least as many Heroes in the Zone as the Defender (not strictly more). */
   attackerWinsTies: boolean;
+  /** Extra damage of a single-target Attack against a target that has no Cover against the attacker. */
+  exposedBonus: number;
+  /** Extra damage of a single-target Attack when the attacker stands on a Cover tile. */
+  coverShooterBonus: number;
+  /** Shield of a Block (default: BLOCK_SHIELD). */
+  blockShield?: number;
 }
 
 export const experiment: Experiment = {
@@ -29,6 +35,8 @@ export const experiment: Experiment = {
   aiPitchInZone: false,
   defenderRounds: 10,
   attackerWinsTies: false,
+  exposedBonus: 0,
+  coverShooterBonus: 0,
 };
 
 export const DEFAULT_EXPERIMENT: Experiment = { ...experiment };

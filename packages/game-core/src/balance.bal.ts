@@ -41,6 +41,15 @@ const VARIANTS: Record<string, Tweaks> = {
   "Pitch exiles": { pitchExile: true },
   "Deck 9 + Pitch exiles": { deckCut: 3, pitchExile: true },
   "attacks cost 2": { cardCost: { "Slam Shot": 2, "Pulse Bolt": 2, "Precision Shot": 2 } },
+  "T: exposed target +1": { rules: { exposedBonus: 1 } },
+  "T: shooter in Cover +1": { rules: { coverShooterBonus: 1 } },
+  "T: Block 0 (extreme)": { rules: { blockShield: 0 } },
+  "T: Block 0 + damage 3": { rules: { blockShield: 0 }, attackBonus: 1 },
+  "T: Block 1": { rules: { blockShield: 1 } },
+  "T: Block 1 + exposed +1": { rules: { blockShield: 1, exposedBonus: 1 } },
+  "T: exposed +2": { rules: { exposedBonus: 2 } },
+  "T: damage 3 (attack bonus)": { attackBonus: 1 },
+  "T: exposed +1, defender 3b": { rules: { exposedBonus: 1, defender: true, attackerWinsTies: true } },
   "1 zone decay": { rules: { zoneDecay: true } },
   "2 hold needs pitch (AI pitches)": { rules: { holdNeedsPitch: true, aiPitchInZone: true } },
   "2b hold needs pitch (AI does not)": { rules: { holdNeedsPitch: true } },
@@ -90,6 +99,8 @@ function applyCardTweaks(tweaks: Tweaks): () => void {
   return () => cards.forEach((card, index) => Object.assign(card, original[index]));
 }
 
+const funnel = { absorbed: 0, halfCoverHits: 0, zeroDamageHits: 0 };
+
 interface Totals {
   rounds: number[];
   stalls: number;
@@ -127,6 +138,9 @@ function playMatch(seed: number, tweaks: Tweaks, totals: Totals): void {
       if (event.kind === EventKind.AttackHit) {
         totals.hits++;
         totals.damage += event.damage ?? 0;
+        funnel.absorbed += event.absorbed ?? 0;
+        if (event.halfCover) funnel.halfCoverHits++;
+        if ((event.damage ?? 0) === 0) funnel.zeroDamageHits++;
       }
       if (event.kind === EventKind.Exhausted) exhausted++;
     }
@@ -195,6 +209,7 @@ it("prints one table for all variants", () => {
       tweaks.rules?.defender ? `${percent(totals.attackerWins).toFixed(0)}% / ${percent(totals.defenceHeld).toFixed(0)}%` : "",
     ]);
   }
+  console.log(`funnel per match (last variant): shield absorbed ${(funnel.absorbed / seeds).toFixed(1)}, half-cover hits ${(funnel.halfCoverHits / seeds).toFixed(1)}, zero-damage hits ${(funnel.zeroDamageHits / seeds).toFixed(1)}`);
   const header = ["variant", "rounds", "stalls", "zone win", "w/ exhaustion", "exh. heroes", "hits", "damage", "L/R spread", "att.win/def.timeout"];
   const widths = header.map((title, column) => Math.max(title.length, ...rows.map((row) => row[column]!.length)));
   const line = (cells: string[]) => cells.map((cell, column) => pad(cell, widths[column]!)).join("  ");

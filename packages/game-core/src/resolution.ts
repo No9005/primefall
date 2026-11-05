@@ -284,7 +284,9 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const halfCover =
       coverAgainst(match.grid, hero.position, target.position) === CoverKind.Half && !ignoresHalfCover && !hero.ignoresHalfCover;
     const damageEffect = card.effects.find(({ kind }) => kind === EffectKind.Damage || kind === EffectKind.DamageAtLongRange)!;
-    const damage = damageAtDistance(damageEffect, distance) + hero.attackBonus;
+    const exposed = coverAgainst(match.grid, hero.position, target.position) === CoverKind.None ? experiment.exposedBonus : 0;
+    const shooterInCover = coverAt(match.grid, hero.position) !== CoverKind.None ? experiment.coverShooterBonus : 0;
+    const damage = damageAtDistance(damageEffect, distance) + hero.attackBonus + exposed + shooterInCover;
     const incoming = Math.max(0, damage - (halfCover ? HALF_COVER_REDUCTION : 0));
     dealDamage(match, tick, hero, target, incoming, events);
     if (halfCover && damage > 0) flagHalfCover(events, first);
@@ -699,8 +701,9 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     // Shield exists from its Tick on, so damage resolved later in the same Tick is absorbed by it.
     for (const { hero, action } of actions) {
       if (action.kind === ActionKind.Block) {
-        hero.shield += BLOCK_SHIELD;
-        events.push({ kind: EventKind.ShieldGained, tick, heroId: hero.id, amount: BLOCK_SHIELD });
+        const blockShield = experiment.blockShield ?? BLOCK_SHIELD;
+        hero.shield += blockShield;
+        events.push({ kind: EventKind.ShieldGained, tick, heroId: hero.id, amount: blockShield });
       }
     }
     for (const { hero, action } of actions) {
