@@ -143,7 +143,7 @@ function bruiserCard(
   pitches: number,
   play: Omit<Extract<PlanStep, { slot: number }>, "slot">,
   edit: (hero: (id: string) => HeroState, match: MatchState) => void,
-  resolutionShotsMs: readonly number[] = [400, 1000, 1800, 2600],
+  resolutionShotsMs: readonly number[] = [600, 1300, 2000, 3000, 4500],
 ): Scenario {
   const fillers = [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, BRUISER_CONCUSSION_ROUND, BRUISER_CONCUSSION_ROUND_2].filter((index) => index !== card);
   return {
@@ -169,8 +169,9 @@ export const SCENARIOS: readonly Scenario[] = [
   bruiserCard("concussion-round", "A Bruiser fires Concussion Round (2 damage and Slow) at an enemy Bruiser two tiles away.", 32, BRUISER_CONCUSSION_ROUND, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
-  bruiserCard("breach-charge", "A Bruiser plays Breach Charge on a tile with an enemy Hero on it: 2 damage to the Hero on it.", 33, BRUISER_BREACH_CHARGE, 2, { use: "primary", tile: { col: 14, row: 3 } }, (hero) => {
+  bruiserCard("breach-charge", "A Bruiser plays Breach Charge on a Half Cover tile in front of an enemy Bruiser: the Cover is destroyed, the enemy behind it is not hurt.", 33, BRUISER_BREACH_CHARGE, 2, { use: "primary", tile: { col: 14, row: 4 } }, (hero, match) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+    placeHalfCover(match, { col: 14, row: 4 }, 2);
   }),
   bruiserCard(
     "breach-charge-overdrive",
@@ -178,7 +179,7 @@ export const SCENARIOS: readonly Scenario[] = [
     34,
     BRUISER_BREACH_CHARGE,
     2,
-    { use: "overdrive", tile: { col: 14, row: 3 } },
+    { use: "overdrive", tile: { col: 14, row: 4 } },
     (hero, match) => {
       arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
       arrange(hero(`${SquadId.Right}-controller`), { col: 15, row: 3 }, ENEMIES_WITH_ATTACKS);
