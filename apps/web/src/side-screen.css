@@ -1,0 +1,36 @@
+/* The side screen of Attack and Defend (docs/design/attack-defend/README.md). Stage px as in the Hero Select; the board preview is behind the controls. */
+.hs-chip.mode { color: var(--teal); }
+
+.sd-preview { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+/* One loop is two passes of --move-ms with a rest of 2 s at each end (the first view at the start of the pass stays for a moment). */
+.sd-stage { position: absolute; left: 0; top: 0; opacity: 0.5; transform: translate(var(--from-x), var(--from-y)); animation: sd-move calc(var(--move-ms) * 2 + 4000ms) ease-in-out infinite; }
+.sd-stage .board { pointer-events: none; }
+@keyframes sd-move {
+  0%, 20% { transform: translate(var(--from-x), var(--from-y)); }
+  50%, 70% { transform: translate(var(--to-x), var(--to-y)); }
+  100% { transform: translate(var(--from-x), var(--from-y)); }
+}
+@media (prefers-reduced-motion: reduce) { .sd-stage { animation: none; } }
+.sd-route { position: absolute; left: 0; top: 0; pointer-events: none; }
+.sd-label { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; font: 500 12px var(--font-number); letter-spacing: 0.14em; color: var(--text); text-shadow: 0 1px 3px var(--ink), 0 0 6px var(--ink); }
+.sd-tag { position: absolute; left: 24px; top: 84px; font: 500 12px var(--font-number); letter-spacing: 0.14em; color: var(--muted); }
+
+.sd-role { position: absolute; top: 70px; width: 270px; height: 68px; box-sizing: border-box; padding: 0 18px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 2px; border: 2px solid var(--steel); border-radius: 8px; background: rgba(27, 34, 43, 0.92); text-align: left; cursor: pointer; }
+.sd-role.attack { left: 142px; }
+.sd-role.defend { left: 432px; }
+.sd-role b { font: 700 30px/1 Rajdhani, sans-serif; letter-spacing: 0.14em; }
+.sd-role span { font: 500 12px/1.2 Barlow, system-ui, sans-serif; color: var(--text); }
+.sd-role.attack b { color: var(--orange); }
+.sd-role.defend b { color: var(--blue); }
+.sd-role.attack.selected { border: 2.5px solid var(--orange); background: rgba(70, 40, 20, 0.92); }
+.sd-role.defend.selected { border: 2.5px solid var(--blue); background: rgba(24, 44, 70, 0.92); }
+
+.sd-text { position: absolute; left: 40px; top: 314px; width: 560px; height: 66px; box-sizing: border-box; text-shadow: 0 1px 3px var(--ink), 0 0 8px var(--ink); }
+.sd-text h2 { margin: 0; font: 700 16px Rajdhani, sans-serif; letter-spacing: 0.1em; }
+.sd-text.attack h2 { color: var(--orange); }
+.sd-text.defend h2 { color: var(--blue); }
+.sd-text p { margin: 4px 0 0; font: 500 14px/1.35 Barlow, system-ui, sans-serif; color: var(--text); }
+
+.sd-next { gap: 10px; }
+.sd-next span { display: block; line-height: 1; padding-top: 1px; }
+.sd-next svg { display: block; flex: none; }

@@ -42,7 +42,7 @@ for (const hero of ["controller", "assassin"]) {
   test(`?hero=${hero}: the player plans that Hero, Commits, and the Resolution plays`, async ({ page }) => {
     const errors = watchErrors(page);
     await page.goto(`/?hero=${hero}`);
-    await page.getByRole("button", { name: "Play" }).click();
+    await page.getByTestId("play-classic").click();
     await expect(page.getByTestId("round")).toHaveText("ROUND 1");
     await expect(page.getByRole("list", { name: "Hand" }).getByRole("button").last()).toBeEnabled();
     await page.locator(".wait-card").click();

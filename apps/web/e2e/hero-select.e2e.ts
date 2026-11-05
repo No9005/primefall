@@ -6,7 +6,7 @@ const start = (page: Page) => page.getByRole("button", { name: "START" });
 
 async function openHeroSelect(page: Page): Promise<void> {
   await page.goto("/");
-  await page.getByRole("button", { name: "Play" }).click();
+  await page.getByTestId("play-classic").click();
   await expect(page.getByTestId("hero-select")).toBeVisible();
 }
 
