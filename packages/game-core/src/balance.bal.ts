@@ -12,6 +12,7 @@ import { planSquad } from "./ai";
 import { EffectKind, HERO_DECKS } from "./cards";
 import { EventKind, MatchEndReason, ROUND_LIMIT, SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
+import type { SquadPlan } from "./plan";
 import { resolveRound } from "./resolution";
 
 interface Tweaks {
@@ -76,42 +77,52 @@ interface Totals {
   rightWins: number;
 }
 
-function playMatch(seed: number, tweaks: Tweaks, totals: Totals): void {
+function prepareMatch(seed: number, tweaks: Tweaks): MatchState {
   const created = createMatch(seed);
   created.round = seed % 2 === 0 ? 0 : 1; // half of the matches start one Round later (the AI yields by Round parity)
   for (const hero of created.heroes) {
     if (tweaks.attackBonus) hero.attackBonus = tweaks.attackBonus;
     if (tweaks.deckCut) hero.deck = hero.deck.slice(tweaks.deckCut);
   }
-  let match: MatchState = startRound(created);
-  let exhausted = 0;
-  for (let round = 1; round <= ROUND_LIMIT * 2 && !match.result; round++) {
-    const plans = [SquadId.Left, SquadId.Right].map((squad) => planSquad(buildSquadView(match, squad)));
-    const resolution = resolveRound(match, plans);
-    for (const event of resolution.events) {
-      if (event.kind === EventKind.AttackHit) {
-        totals.hits++;
-        totals.damage += event.damage ?? 0;
-      }
-      if (event.kind === EventKind.Exhausted) exhausted++;
+  return startRound(created);
+}
+
+/** Pitched cards go to the Exile instead of the Discard. */
+function exilePitchedCards(next: MatchState, plans: SquadPlan[]): void {
+  for (const hero of next.heroes) {
+    const pitched = plans.flatMap((plan) => plan.heroes).find((plan) => plan.heroId === hero.id)?.pitched ?? [];
+    for (const card of pitched) {
+      const at = hero.discard.indexOf(card);
+      if (at >= 0) hero.exile.push(...hero.discard.splice(at, 1));
     }
-    const next = resolution.match;
-    if (tweaks.pitchExile) {
-      for (const hero of next.heroes) {
-        const pitched = plans.flatMap((plan) => plan.heroes).find((plan) => plan.heroId === hero.id)?.pitched ?? [];
-        for (const card of pitched) {
-          const at = hero.discard.indexOf(card);
-          if (at >= 0) hero.exile.push(...hero.discard.splice(at, 1));
-        }
-      }
-    }
-    if (tweaks.fatiguePerRound && !next.result) {
-      for (const hero of next.heroes.filter((candidate) => !candidate.exhausted)) {
-        for (let i = 0; i < tweaks.fatiguePerRound && hero.deck.length > 0; i++) hero.exile.push(hero.deck.pop()!);
-      }
-    }
-    match = next.result ? next : startRound(next);
   }
+}
+
+function applyFatigue(next: MatchState, cards: number): void {
+  for (const hero of next.heroes.filter((candidate) => !candidate.exhausted)) {
+    for (let i = 0; i < cards && hero.deck.length > 0; i++) hero.exile.push(hero.deck.pop()!);
+  }
+}
+
+/** Plays one Round, adds its attack hits to the totals and returns the next Match State and the Exhaustion events. */
+function playRound(match: MatchState, tweaks: Tweaks, totals: Totals): { match: MatchState; exhausted: number } {
+  const plans = [SquadId.Left, SquadId.Right].map((squad) => planSquad(buildSquadView(match, squad)));
+  const resolution = resolveRound(match, plans);
+  let exhausted = 0;
+  for (const event of resolution.events) {
+    if (event.kind === EventKind.AttackHit) {
+      totals.hits++;
+      totals.damage += event.damage ?? 0;
+    }
+    if (event.kind === EventKind.Exhausted) exhausted++;
+  }
+  const next = resolution.match;
+  if (tweaks.pitchExile) exilePitchedCards(next, plans);
+  if (tweaks.fatiguePerRound && !next.result) applyFatigue(next, tweaks.fatiguePerRound);
+  return { match: next.result ? next : startRound(next), exhausted };
+}
+
+function recordTotals(match: MatchState, exhausted: number, totals: Totals): void {
   totals.rounds.push(match.round);
   const reason = match.result?.reason;
   if (reason === MatchEndReason.PrimeZoneHeld) totals.zoneEnds++;
@@ -120,6 +131,17 @@ function playMatch(seed: number, tweaks: Tweaks, totals: Totals): void {
   totals.exhaustedHeroes += exhausted;
   if (match.result?.winner === SquadId.Left) totals.leftWins++;
   if (match.result?.winner === SquadId.Right) totals.rightWins++;
+}
+
+function playMatch(seed: number, tweaks: Tweaks, totals: Totals): void {
+  let match = prepareMatch(seed, tweaks);
+  let exhausted = 0;
+  for (let round = 1; round <= ROUND_LIMIT * 2 && !match.result; round++) {
+    const played = playRound(match, tweaks, totals);
+    match = played.match;
+    exhausted += played.exhausted;
+  }
+  recordTotals(match, exhausted, totals);
 }
 
 const pad = (text: string, width: number) => text.padEnd(width);

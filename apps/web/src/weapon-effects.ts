@@ -408,109 +408,162 @@ export function failureText(event: MatchEvent): string {
  * Round or a Slow in the frame starts its state when the dart lands (or at the field beat of the Slow pulse).
  */
 export function effectCuesOf(events: readonly MatchEvent[], fireOf: (heroId: string, card: string | undefined) => number): EffectCue[] {
-  const cues: EffectCue[] = [];
-  const auras = new Map<string, number>();
-  let surgeCaster: string | undefined;
+  const frame: CueFrame = { events, fireOf, cues: [], auras: new Map(), surgeCaster: undefined };
   for (const event of events) {
-    if (event.overdrive) {
-      const actor = overdriveActor(event, events);
-      if (actor !== undefined) auras.set(actor, Math.max(auras.get(actor) ?? 0, auraEndMs(fireOf(actor, event.card))));
-    }
-    if (event.kind === EventKind.AttackHit || event.kind === EventKind.AttackFailed) {
-      if (event.targetId === undefined) continue;
-      const fire = fireOf(event.heroId, event.card);
-      const weapon = weaponOf(event.card);
-      const flight = flightMs(event.card, event.distance);
-      if (event.kind === EventKind.AttackFailed) {
-        if (event.overdrive && event.card === GHOST_SHOT_CARD) {
-          // A Ghost Shot at a tile with nobody on it: the bolt flies there and a grey puff answers.
-          cues.push({ kind: "shot", weapon: "precision", fromId: event.heroId, toId: event.targetId, fireMs: fire, flightMs: flight, overdrive: true, miss: true });
-          cues.push({ kind: "number", toId: event.targetId, startMs: fire + flight + NUMBER_DELAY_MS, text: NOBODY_THERE, style: "failed" });
-          continue;
-        }
-        cues.push({ kind: "number", toId: event.targetId, startMs: fire + NUMBER_DELAY_MS, text: failureText(event), style: "failed" });
-        continue;
-      }
-      if (weapon !== undefined) {
-        cues.push({
-          kind: "shot",
-          weapon,
-          fromId: event.heroId,
-          toId: event.targetId,
-          fireMs: fire,
-          flightMs: flight,
-          // A Long Shot in Overdrive at short range looks like the normal shot: the bonus needs the long range.
-          overdrive: event.overdrive === true && !(event.card === LONG_SHOT_CARD && (event.distance ?? 0) < LONG_RANGE_FROM),
-          ...(event.halfCover && { halfCover: true as const }),
-        });
-      }
-      if (event.card === BREACH_CARD && event.overdrive && event.tile) {
-        addBreach(cues, { kind: "breach", casterId: event.heroId, tile: event.tile, fireMs: fire, flightMs: BREACH_FLIGHT_MS, cover: false, overdrive: true });
-      }
-      cues.push(...hitNumbers(event, fire + flight + NUMBER_DELAY_MS));
-      if (event.halfCover) {
-        cues.push({ kind: "number", toId: event.targetId, startMs: fire + flight + NUMBER_DELAY_MS, text: "Half Cover", style: "failed", drop: 9 });
-      }
-      if ((event.absorbed ?? 0) > 0) cues.push({ kind: "shieldHit", toId: event.targetId, startMs: fire + flight, absorbed: event.absorbed! });
-      if (event.card === SHOCKWAVE_CARD && !cues.some((cue) => cue.kind === "shockwave" && cue.casterId === event.heroId)) {
-        cues.push({ kind: "shockwave", casterId: event.heroId, startMs: fire, ...(event.overdrive && { overdrive: true as const }) });
-      }
-    }
-    if (event.kind === EventKind.Knockback && event.from && event.to) {
-      const shock = events.find((other) => other.kind === EventKind.AttackHit && other.card === event.card);
-      const start = shock === undefined ? 0 : fireOf(shock.heroId, event.card);
-      cues.push({
-        kind: "knockback",
-        toId: event.heroId,
-        from: event.from,
-        to: event.to,
-        startMs: start,
-        tag: `Knockback ${pushOf(event.card)}`,
-        ...(event.overdrive && { overdrive: true as const }),
-      });
-    }
-    if (event.kind === EventKind.CoverDestroyed && event.to) {
-      addBreach(cues, {
-        kind: "breach",
-        casterId: event.heroId,
-        tile: event.to,
-        fireMs: fireOf(event.heroId, event.card),
-        flightMs: BREACH_FLIGHT_MS,
-        cover: true,
-        overdrive: event.overdrive === true,
-      });
-    }
-    if (event.kind === EventKind.AttackBonusGained && event.overdrive) {
-      // Adrenal Surge in Overdrive: the first event is the caster's own bonus, the second the ally's.
-      surgeCaster ??= event.heroId;
-      cues.push({ kind: "surge", casterId: surgeCaster, toId: event.heroId, startMs: SURGE_START_MS });
-    }
-    if (event.kind === EventKind.ShieldGained && event.overdrive && event.card === AEGIS_CARD && event.casterId !== undefined && event.casterId !== event.heroId) {
-      cues.push({ kind: "aegisBeam", casterId: event.casterId, toId: event.heroId, startMs: AEGIS_BEAM_START_MS });
-    }
-    if (event.kind === EventKind.CoverPlaced && event.to) {
-      cues.push({ kind: "coverPlaced", casterId: event.heroId, tile: event.to, startMs: COVER_SLAM_MS });
-    }
-    if (event.kind === EventKind.ShieldGained) {
-      const startMs = event.card === AEGIS_CARD ? AEGIS_RUBIES_MS : BLOCK_RUBIES_MS;
-      cues.push({ kind: "shieldGain", toId: event.heroId, startMs, amount: event.amount ?? 0 });
-    }
-    if (event.kind === EventKind.MarkedApplied && event.targetId !== undefined) {
-      const hit = events.find((other) => other.kind === EventKind.AttackHit && other.heroId === event.heroId && other.targetId === event.targetId);
-      // Mark Target in Overdrive throws its own dart from the Assassin's clip; Tag Round's dart leaves at 730 ms.
-      const startMs = event.card === MARK_TARGET_CARD ? fireOf(event.heroId, event.card) + flightMs(event.card, hit?.distance) : TAG_FIRE_MS + flightMs("Tag Round", hit?.distance);
-      cues.push({ kind: "marked", toId: event.targetId, startMs, ...(event.overdrive && event.card === MARK_TARGET_CARD && { overdrive: true as const }) });
-    }
-    if (event.kind === EventKind.SlowApplied && event.targetId !== undefined) {
-      // Tag Round in Overdrive: Marked and Slow at the same time, when the dart lands.
-      const hit = events.find((other) => other.kind === EventKind.AttackHit && other.heroId === event.heroId && other.targetId === event.targetId);
-      const together = event.overdrive && event.card === "Tag Round";
-      cues.push({ kind: "slow", toId: event.targetId, startMs: together ? TAG_FIRE_MS + flightMs("Tag Round", hit?.distance) : SLOW_FIELD_MS });
-    }
+    if (event.overdrive) noteAura(event, frame);
+    CUE_BUILDERS[event.kind]?.(event, frame);
   }
-  for (const [heroId, endMs] of auras) cues.push({ kind: "aura", heroId, endMs });
-  return cues;
+  for (const [heroId, endMs] of frame.auras) frame.cues.push({ kind: "aura", heroId, endMs });
+  return frame.cues;
 }
+
+/** What the cue builders share while one frame is read: the events, the cues so far and the Overdrive state. */
+interface CueFrame {
+  events: readonly MatchEvent[];
+  fireOf: (heroId: string, card: string | undefined) => number;
+  cues: EffectCue[];
+  auras: Map<string, number>;
+  surgeCaster: string | undefined;
+}
+
+/** The Overdrive aura of the Hero who plays the card lasts until its action is over. */
+function noteAura(event: MatchEvent, frame: CueFrame): void {
+  const actor = overdriveActor(event, frame.events);
+  if (actor === undefined) return;
+  frame.auras.set(actor, Math.max(frame.auras.get(actor) ?? 0, auraEndMs(frame.fireOf(actor, event.card))));
+}
+
+/** The attack hit of the same Hero on the same target as `event` (the Tag Round and Slow cues time themselves by its distance). */
+function hitBefore(event: MatchEvent, events: readonly MatchEvent[]): MatchEvent | undefined {
+  return events.find((other) => other.kind === EventKind.AttackHit && other.heroId === event.heroId && other.targetId === event.targetId);
+}
+
+function failedAttackCues(event: MatchEvent, toId: string, frame: CueFrame): void {
+  const fire = frame.fireOf(event.heroId, event.card);
+  if (event.overdrive && event.card === GHOST_SHOT_CARD) {
+    // A Ghost Shot at a tile with nobody on it: the bolt flies there and a grey puff answers.
+    const flight = flightMs(event.card, event.distance);
+    frame.cues.push({ kind: "shot", weapon: "precision", fromId: event.heroId, toId, fireMs: fire, flightMs: flight, overdrive: true, miss: true });
+    frame.cues.push({ kind: "number", toId, startMs: fire + flight + NUMBER_DELAY_MS, text: NOBODY_THERE, style: "failed" });
+    return;
+  }
+  frame.cues.push({ kind: "number", toId, startMs: fire + NUMBER_DELAY_MS, text: failureText(event), style: "failed" });
+}
+
+function hitCues(event: MatchEvent, toId: string, frame: CueFrame): void {
+  const { cues } = frame;
+  const fire = frame.fireOf(event.heroId, event.card);
+  const weapon = weaponOf(event.card);
+  const flight = flightMs(event.card, event.distance);
+  if (weapon !== undefined) {
+    cues.push({
+      kind: "shot",
+      weapon,
+      fromId: event.heroId,
+      toId,
+      fireMs: fire,
+      flightMs: flight,
+      // A Long Shot in Overdrive at short range looks like the normal shot: the bonus needs the long range.
+      overdrive: event.overdrive === true && !(event.card === LONG_SHOT_CARD && (event.distance ?? 0) < LONG_RANGE_FROM),
+      ...(event.halfCover && { halfCover: true as const }),
+    });
+  }
+  if (event.card === BREACH_CARD && event.overdrive && event.tile) {
+    addBreach(cues, { kind: "breach", casterId: event.heroId, tile: event.tile, fireMs: fire, flightMs: BREACH_FLIGHT_MS, cover: false, overdrive: true });
+  }
+  cues.push(...hitNumbers(event, fire + flight + NUMBER_DELAY_MS));
+  if (event.halfCover) {
+    cues.push({ kind: "number", toId, startMs: fire + flight + NUMBER_DELAY_MS, text: "Half Cover", style: "failed", drop: 9 });
+  }
+  if ((event.absorbed ?? 0) > 0) cues.push({ kind: "shieldHit", toId, startMs: fire + flight, absorbed: event.absorbed! });
+  if (event.card === SHOCKWAVE_CARD && !cues.some((cue) => cue.kind === "shockwave" && cue.casterId === event.heroId)) {
+    cues.push({ kind: "shockwave", casterId: event.heroId, startMs: fire, ...(event.overdrive && { overdrive: true as const }) });
+  }
+}
+
+function attackCues(event: MatchEvent, frame: CueFrame): void {
+  if (event.targetId === undefined) return;
+  if (event.kind === EventKind.AttackFailed) failedAttackCues(event, event.targetId, frame);
+  else hitCues(event, event.targetId, frame);
+}
+
+function knockbackCues(event: MatchEvent, frame: CueFrame): void {
+  if (!event.from || !event.to) return;
+  const shock = frame.events.find((other) => other.kind === EventKind.AttackHit && other.card === event.card);
+  const start = shock === undefined ? 0 : frame.fireOf(shock.heroId, event.card);
+  frame.cues.push({
+    kind: "knockback",
+    toId: event.heroId,
+    from: event.from,
+    to: event.to,
+    startMs: start,
+    tag: `Knockback ${pushOf(event.card)}`,
+    ...(event.overdrive && { overdrive: true as const }),
+  });
+}
+
+function coverDestroyedCues(event: MatchEvent, frame: CueFrame): void {
+  if (!event.to) return;
+  addBreach(frame.cues, {
+    kind: "breach",
+    casterId: event.heroId,
+    tile: event.to,
+    fireMs: frame.fireOf(event.heroId, event.card),
+    flightMs: BREACH_FLIGHT_MS,
+    cover: true,
+    overdrive: event.overdrive === true,
+  });
+}
+
+function attackBonusCues(event: MatchEvent, frame: CueFrame): void {
+  if (!event.overdrive) return;
+  // Adrenal Surge in Overdrive: the first event is the caster's own bonus, the second the ally's.
+  frame.surgeCaster ??= event.heroId;
+  frame.cues.push({ kind: "surge", casterId: frame.surgeCaster, toId: event.heroId, startMs: SURGE_START_MS });
+}
+
+function shieldGainedCues(event: MatchEvent, frame: CueFrame): void {
+  if (event.overdrive && event.card === AEGIS_CARD && event.casterId !== undefined && event.casterId !== event.heroId) {
+    frame.cues.push({ kind: "aegisBeam", casterId: event.casterId, toId: event.heroId, startMs: AEGIS_BEAM_START_MS });
+  }
+  const startMs = event.card === AEGIS_CARD ? AEGIS_RUBIES_MS : BLOCK_RUBIES_MS;
+  frame.cues.push({ kind: "shieldGain", toId: event.heroId, startMs, amount: event.amount ?? 0 });
+}
+
+function coverPlacedCues(event: MatchEvent, frame: CueFrame): void {
+  if (!event.to) return;
+  frame.cues.push({ kind: "coverPlaced", casterId: event.heroId, tile: event.to, startMs: COVER_SLAM_MS });
+}
+
+function markedCues(event: MatchEvent, frame: CueFrame): void {
+  if (event.targetId === undefined) return;
+  const hit = hitBefore(event, frame.events);
+  const markTarget = event.card === MARK_TARGET_CARD;
+  // Mark Target in Overdrive throws its own dart from the Assassin's clip; Tag Round's dart leaves at 730 ms.
+  const startMs = markTarget ? frame.fireOf(event.heroId, event.card) + flightMs(event.card, hit?.distance) : TAG_FIRE_MS + flightMs("Tag Round", hit?.distance);
+  frame.cues.push({ kind: "marked", toId: event.targetId, startMs, ...(event.overdrive && markTarget && { overdrive: true as const }) });
+}
+
+function slowCues(event: MatchEvent, frame: CueFrame): void {
+  if (event.targetId === undefined) return;
+  // Tag Round in Overdrive: Marked and Slow at the same time, when the dart lands.
+  const hit = hitBefore(event, frame.events);
+  const together = event.overdrive && event.card === "Tag Round";
+  frame.cues.push({ kind: "slow", toId: event.targetId, startMs: together ? TAG_FIRE_MS + flightMs("Tag Round", hit?.distance) : SLOW_FIELD_MS });
+}
+
+/** The cue builder of each kind of event that has cues. */
+const CUE_BUILDERS: Partial<Record<EventKind, (event: MatchEvent, frame: CueFrame) => void>> = {
+  [EventKind.AttackHit]: attackCues,
+  [EventKind.AttackFailed]: attackCues,
+  [EventKind.Knockback]: knockbackCues,
+  [EventKind.CoverDestroyed]: coverDestroyedCues,
+  [EventKind.AttackBonusGained]: attackBonusCues,
+  [EventKind.ShieldGained]: shieldGainedCues,
+  [EventKind.CoverPlaced]: coverPlacedCues,
+  [EventKind.MarkedApplied]: markedCues,
+  [EventKind.SlowApplied]: slowCues,
+};
 
 export const LONG_SHOT_CARD = "Long Shot";
 export const GHOST_SHOT_CARD = "Ghost Shot";

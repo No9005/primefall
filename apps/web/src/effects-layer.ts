@@ -99,8 +99,14 @@ function blob(g: Graphics, at: Point, radius: number, color: number, alpha: numb
   g.circle(at.x, at.y, radius * 0.33).fill({ color, alpha });
 }
 
-function line(g: Graphics, from: Point, to: Point, width: number, color: number, alpha: number): void {
-  g.moveTo(from.x, from.y).lineTo(to.x, to.y).stroke({ width, color, alpha, cap: "round" });
+interface Stroke {
+  width: number;
+  color: number;
+  alpha: number;
+}
+
+function line(g: Graphics, from: Point, to: Point, stroke: Stroke): void {
+  g.moveTo(from.x, from.y).lineTo(to.x, to.y).stroke({ ...stroke, cap: "round" });
 }
 
 /** A Marked or Slow state drawn on a Hero: `update(ms)` is the time since it locked on; a state from the start passes a large `ms`. */
@@ -278,16 +284,115 @@ const CHIP_VECTORS = [[-10, -12], [12, -14], [-4, -18], [16, -6]] as const;
 /** How long the chips and the flash of a hit on Half Cover last. */
 const WALL_HIT_MS = 340;
 
-function rotatedRect(g: Graphics, cx: number, cy: number, w: number, h: number, degrees: number): void {
+function rotatedRect(g: Graphics, centre: Point, size: { w: number; h: number }, degrees: number): void {
+  const { w, h } = size;
   const a = (degrees * Math.PI) / 180;
   const cos = Math.cos(a);
   const sin = Math.sin(a);
   const corners = [[-w, -h], [w, -h], [w, h], [-w, h]] as const;
-  g.poly(corners.flatMap(([x, y]) => [cx + (x * cos - y * sin) / 2, cy + (x * sin + y * cos) / 2]));
+  g.poly(corners.flatMap(([x, y]) => [centre.x + (x * cos - y * sin) / 2, centre.y + (x * sin + y * cos) / 2]));
 }
 
 function diamond(g: Graphics, at: Point, halfWidth: number, halfHeight: number): void {
   g.poly([at.x, at.y - halfHeight, at.x + halfWidth, at.y, at.x, at.y + halfHeight, at.x - halfWidth, at.y]);
+}
+
+/** Where a projectile flies: the muzzle, the end point and the unit direction. */
+interface Flight {
+  weapon: Weapon;
+  color: number;
+  muzzle: Point;
+  target: Point;
+  dir: Point;
+}
+
+/** What an impact needs to be drawn: where, in which colour and how strong. */
+interface Impact {
+  color: number;
+  target: Point;
+  look: WeaponLook;
+  boost: number;
+}
+
+/** Length and width (design px) of the bolt of each weapon that draws one (the pulse is a glow, the Long Shot a line). */
+const BOLT_SIZE: Readonly<Record<Exclude<Weapon, "pulse">, readonly [number, number]>> = {
+  slam: [11, 5],
+  precision: [24, 2],
+  long: [14, 3],
+  tag: [14, 3],
+};
+
+/** Overdrive: stronger; the Long Shot's bright impact is the strongest. */
+function overdriveBoost(cue: { overdrive?: boolean; weapon: Weapon }): number {
+  if (!cue.overdrive) return 1;
+  return cue.weapon === "long" ? 1.6 : 1.3;
+}
+
+/** The line of a shot: from the muzzle to `end`; with Half Cover it ends on the wall in front of the target, on the side of the attacker. */
+function shotPath(from: Point, to: Point, halfCover: boolean): { muzzle: Point; end: Point; dir: Point; wallFoot: Point } {
+  const a = { x: from.x, y: from.y - CHEST_LIFT };
+  const toward = Math.hypot(from.x - to.x, from.y - to.y) || 1;
+  const wallFoot = { x: to.x + ((from.x - to.x) / toward) * 14 * F, y: to.y + ((from.y - to.y) / toward) * 7 * F };
+  const end = halfCover ? { x: wallFoot.x, y: wallFoot.y - WALL_HIT_LIFT } : { x: to.x, y: to.y - CHEST_LIFT };
+  const length = Math.hypot(end.x - a.x, end.y - a.y) || 1;
+  const dir = { x: (end.x - a.x) / length, y: (end.y - a.y) / length };
+  const muzzle = { x: a.x + dir.x * 14 * F, y: a.y + dir.y * 14 * F };
+  return { muzzle, end, dir, wallFoot };
+}
+
+/** The Breach Charge on its arc between two points. */
+function drawCharge(g: Graphics, start: Point, end: Point, flight: { progress: number; lift: number }): void {
+  const x = start.x + (end.x - start.x) * flight.progress;
+  const y = start.y + (end.y - start.y) * flight.progress - flight.lift * F;
+  g.circle(x, y, 3.2 * F).fill(SMOKE).stroke({ width: F, color: SHOCK_ORANGE });
+}
+
+/** The blast over the tile; in Overdrive a much bigger gold one that reaches the tiles around, with a white core. */
+function drawFireball(g: Graphics, centre: Point, fire: { scale: number; alpha: number }, overdrive: boolean): void {
+  if (fire.alpha <= 0) return;
+  const burst = { x: centre.x, y: centre.y - 18 * F };
+  if (overdrive) {
+    blob(g, burst, 34 * F * fire.scale, OVERDRIVE_GOLD, fire.alpha * 0.8);
+    blob(g, burst, 22 * F * fire.scale, GOLD, fire.alpha);
+    g.circle(burst.x, burst.y, 8 * F * fire.scale).fill({ color: 0xffffff, alpha: fire.alpha });
+    g.ellipse(centre.x, centre.y, 46 * F * fire.scale * 0.6, 24 * F * fire.scale * 0.6).stroke({ width: 2 * F, color: GOLD, alpha: fire.alpha * 0.8 });
+    return;
+  }
+  blob(g, burst, 16 * F * fire.scale, SHOCK_ORANGE, fire.alpha);
+  blob(g, burst, 9 * F * fire.scale, GOLD, fire.alpha);
+  g.circle(burst.x, burst.y, 3 * F * fire.scale).fill({ color: 0xffffff, alpha: fire.alpha });
+}
+
+/** The four chunks of the broken Cover, `t` ms after the blast. */
+function drawCoverChunks(g: Graphics, centre: Point, t: number): void {
+  for (let chunk = 0; chunk < 4; chunk++) {
+    const state = chunkAt(t, chunk);
+    if (state.alpha <= 0) continue;
+    rotatedRect(g, { x: centre.x + state.x * F, y: centre.y - 10 * F + state.y * F }, { w: 7 * F, h: 5 * F }, state.turn);
+    g.fill({ color: SMOKE, alpha: state.alpha }).stroke({ width: F, color: OUTLINE, alpha: state.alpha });
+  }
+}
+
+/** Muzzle flash: 0 to 1.5 x over 70 ms, gone by `FLASH_MS`. */
+function drawMuzzleFlash(g: Graphics, muzzle: Point, flash: { radius: number; boost: number; color: number }, s: number): void {
+  if (s < 0 || s >= FLASH_MS) return;
+  const grow = Math.min(1, s / 70);
+  const fade = s < 70 ? 1 : 1 - (s - 70) / (FLASH_MS - 70);
+  blob(g, muzzle, flash.radius * F * 1.5 * grow * flash.boost, flash.color, fade);
+}
+
+/** The line a Long Shot leaves, fading over `LONG_LINE_FADE_MS`; in Overdrive a thick gold tracer, bright towards the target. */
+function drawLongTracer(g: Graphics, path: { muzzle: Point; end: Point }, overdrive: boolean | undefined, color: number, s: number): void {
+  if (s < 0 || s >= LONG_LINE_FADE_MS) return;
+  const { muzzle, end } = path;
+  const fade = 1 - s / LONG_LINE_FADE_MS;
+  if (!overdrive) {
+    line(g, muzzle, end, { width: 2 * F, color, alpha: fade });
+    return;
+  }
+  line(g, muzzle, end, { width: 8 * F, color: GOLD, alpha: fade * 0.25 });
+  line(g, muzzle, end, { width: 4 * F, color: OVERDRIVE_GOLD, alpha: fade });
+  line(g, { x: muzzle.x + (end.x - muzzle.x) * 0.5, y: muzzle.y + (end.y - muzzle.y) * 0.5 }, end, { width: 2 * F, color: 0xffffff, alpha: fade });
 }
 
 /**
@@ -433,8 +538,8 @@ export class EffectsLayer {
   /** A gold beam with a soft wide line under it, `length` (0 to 1) of the way from one point to the other. */
   private goldBeam(g: Graphics, from: Point, to: Point, length: number, alpha: number): void {
     const end = { x: from.x + (to.x - from.x) * length, y: from.y + (to.y - from.y) * length };
-    line(g, from, end, 7 * F, OVERDRIVE_GOLD, alpha * 0.25);
-    line(g, from, end, 2 * F, GOLD, alpha);
+    line(g, from, end, { width: 7 * F, color: OVERDRIVE_GOLD, alpha: alpha * 0.25 });
+    line(g, from, end, { width: 2 * F, color: GOLD, alpha });
   }
 
   /** Adrenal Surge in Overdrive: a gold beam to the ally, and both Heroes glow. The badge is state, drawn on the token. */
@@ -497,7 +602,8 @@ export class EffectsLayer {
     if (skid.alpha <= 0) return;
     const from = this.world.tile(cue.from);
     const to = this.world.tile(cue.to);
-    line(g, from, { x: from.x + (to.x - from.x) * skid.length, y: from.y + (to.y - from.y) * skid.length }, (cue.overdrive ? 5 : 3) * F, cue.overdrive ? 0xffffff : DUST, skid.alpha);
+    const end = { x: from.x + (to.x - from.x) * skid.length, y: from.y + (to.y - from.y) * skid.length };
+    line(g, from, end, { width: (cue.overdrive ? 5 : 3) * F, color: cue.overdrive ? 0xffffff : DUST, alpha: skid.alpha });
   }
 
   /** The charge arcs to the tile (26 px high), a fireball and smoke, the Cover breaks into four chunks and a scorch stays. */
@@ -507,14 +613,7 @@ export class EffectsLayer {
     if (this.reduced || !from) return;
     const centre = this.world.tile(cue.tile);
     const s = ms - cue.fireMs;
-    if (s >= 0 && s < cue.flightMs) {
-      const { progress, lift } = chargeAt(s);
-      const start = { x: from.x, y: from.y - CHEST_LIFT };
-      const end = { x: centre.x, y: centre.y - 4 * F };
-      const x = start.x + (end.x - start.x) * progress;
-      const y = start.y + (end.y - start.y) * progress - lift * F;
-      g.circle(x, y, 3.2 * F).fill(SMOKE).stroke({ width: F, color: SHOCK_ORANGE });
-    }
+    if (s >= 0 && s < cue.flightMs) drawCharge(g, { x: from.x, y: from.y - CHEST_LIFT }, { x: centre.x, y: centre.y - 4 * F }, chargeAt(s));
     const t = s - cue.flightMs;
     if (t < 0) return;
     const scorch = scorchAt(t);
@@ -522,29 +621,12 @@ export class EffectsLayer {
       diamond(g, centre, 23 * F, 12 * F);
       g.fill({ color: 0x1a1f26, alpha: scorch * 0.85 });
     }
-    const burst = { x: centre.x, y: centre.y - 18 * F };
-    const fire = cue.overdrive ? bigFireballAt(t) : fireballAt(t);
-    if (fire.alpha > 0 && cue.overdrive) {
-      // Overdrive: a much bigger gold blast that reaches the tiles around, with a white core.
-      blob(g, burst, 34 * F * fire.scale, OVERDRIVE_GOLD, fire.alpha * 0.8);
-      blob(g, burst, 22 * F * fire.scale, GOLD, fire.alpha);
-      g.circle(burst.x, burst.y, 8 * F * fire.scale).fill({ color: 0xffffff, alpha: fire.alpha });
-      g.ellipse(centre.x, centre.y, 46 * F * fire.scale * 0.6, 24 * F * fire.scale * 0.6).stroke({ width: 2 * F, color: GOLD, alpha: fire.alpha * 0.8 });
-    } else if (fire.alpha > 0) {
-      blob(g, burst, 16 * F * fire.scale, SHOCK_ORANGE, fire.alpha);
-      blob(g, burst, 9 * F * fire.scale, GOLD, fire.alpha);
-      g.circle(burst.x, burst.y, 3 * F * fire.scale).fill({ color: 0xffffff, alpha: fire.alpha });
-    }
+    drawFireball(g, centre, cue.overdrive ? bigFireballAt(t) : fireballAt(t), cue.overdrive);
     for (const [dx, dy, radius] of [[-4, -8, 7], [10, -4, 6]] as const) {
       const smoke = smokeAt(t);
       if (smoke.alpha > 0) g.circle(centre.x + dx * F, centre.y + dy * F - smoke.rise * F, radius * F * smoke.scale).fill({ color: SMOKE, alpha: smoke.alpha });
     }
-    for (let chunk = 0; chunk < (cue.cover ? 4 : 0); chunk++) {
-      const state = chunkAt(t, chunk);
-      if (state.alpha <= 0) continue;
-      rotatedRect(g, centre.x + state.x * F, centre.y - 10 * F + state.y * F, 7 * F, 5 * F, state.turn);
-      g.fill({ color: SMOKE, alpha: state.alpha }).stroke({ width: F, color: OUTLINE, alpha: state.alpha });
-    }
+    if (cue.cover) drawCoverChunks(g, centre, t);
   }
 
   /** A team-coloured flash on the tile, then a wall rises out of the ground (0 to 1.15 to 1) with dust; two pips count its Resolutions. */
@@ -584,56 +666,36 @@ export class EffectsLayer {
     if (!from || !to) return false;
     const look = LOOK[cue.weapon];
     const color = cue.overdrive ? GOLD : look.color;
-    const flashColor = cue.overdrive ? GOLD : look.flash;
-    // Overdrive: gold and stronger; the Long Shot's bright impact is the strongest.
-    const boost = cue.overdrive ? (cue.weapon === "long" ? 1.6 : 1.3) : 1;
-    const a = { x: from.x, y: from.y - CHEST_LIFT };
-    // Half Cover: the shot ends on the wall in front of the target, on the side of the attacker.
-    const toward = Math.hypot(from.x - to.x, from.y - to.y) || 1;
-    const wallFoot = { x: to.x + ((from.x - to.x) / toward) * 14 * F, y: to.y + ((from.y - to.y) / toward) * 7 * F };
-    const lift = cue.halfCover ? WALL_HIT_LIFT : CHEST_LIFT;
-    const b = cue.halfCover ? { x: wallFoot.x, y: wallFoot.y - lift } : { x: to.x, y: to.y - CHEST_LIFT };
-    const length = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-    const dir = { x: (b.x - a.x) / length, y: (b.y - a.y) / length };
-    const muzzle = { x: a.x + dir.x * 14 * F, y: a.y + dir.y * 14 * F };
+    const path = shotPath(from, to, cue.halfCover === true);
     const s = ms - cue.fireMs;
-    if (cue.weapon === "long") this.drawLongBefore(g, muzzle, b, s, cue.overdrive ? GOLD : 0xffffff);
-    // Muzzle flash: 0 to 1.5 x over 70 ms, gone by 270 ms.
-    if (s >= 0 && s < FLASH_MS) {
-      const grow = Math.min(1, s / 70);
-      const fade = s < 70 ? 1 : 1 - (s - 70) / (FLASH_MS - 70);
-      blob(g, muzzle, look.flashRadius * F * 1.5 * grow * boost, flashColor, fade);
+    if (cue.weapon === "long") this.drawLongBefore(g, path.muzzle, path.end, s, cue.overdrive ? GOLD : 0xffffff);
+    drawMuzzleFlash(g, path.muzzle, { radius: look.flashRadius, boost: overdriveBoost(cue), color: cue.overdrive ? GOLD : look.flash }, s);
+    if (s >= 0 && s < cue.flightMs && cue.weapon !== "long") {
+      this.drawProjectile(g, { weapon: cue.weapon, color, muzzle: path.muzzle, target: path.end, dir: path.dir }, flightProgress(s, cue.flightMs));
     }
-    const flown = flightProgress(s, cue.flightMs);
-    if (s >= 0 && s < cue.flightMs && cue.weapon !== "long") this.drawProjectile(g, cue.weapon, color, muzzle, b, flown, dir);
-    if (s >= 0 && cue.weapon === "long" && s < LONG_LINE_FADE_MS) {
-      const fade = 1 - s / LONG_LINE_FADE_MS;
-      // Overdrive: a thick gold tracer, bright towards the target.
-      if (cue.overdrive) {
-        line(g, muzzle, b, 8 * F, GOLD, fade * 0.25);
-        line(g, muzzle, b, 4 * F, OVERDRIVE_GOLD, fade);
-        line(g, { x: muzzle.x + (b.x - muzzle.x) * 0.5, y: muzzle.y + (b.y - muzzle.y) * 0.5 }, b, 2 * F, 0xffffff, fade);
-      } else line(g, muzzle, b, 2 * F, color, fade);
-    }
+    if (cue.weapon === "long") drawLongTracer(g, path, cue.overdrive, color, s);
     const arrived = s - cue.flightMs;
-    if (arrived >= 0 && cue.miss) {
+    if (arrived < 0) return true;
+    const impact: Impact = { color, target: to, look, boost: overdriveBoost(cue) };
+    if (cue.miss) {
       // A Ghost Shot at a tile with nobody on it: a grey puff.
       const puff = puffAt(arrived);
       if (puff) blob(g, { x: to.x, y: to.y - 8 * F }, 12 * F * puff.scale, 0x8a99a8, puff.alpha);
-    } else if (arrived >= 0 && cue.halfCover) this.drawWallHit(g, color, wallFoot, look, boost, arrived);
-    else if (arrived >= 0) this.drawImpact(g, color, to, look, boost, arrived, CHEST_LIFT);
+    } else if (cue.halfCover) this.drawWallHit(g, { ...impact, target: path.wallFoot }, arrived);
+    else this.drawImpact(g, impact, arrived, CHEST_LIFT);
     return true;
   }
 
   /** A shot that hits Half Cover: the wall flashes, chips fly off it and a small burst shows where it landed. */
-  private drawWallHit(g: Graphics, color: number, foot: Point, look: WeaponLook, boost: number, ms: number): void {
+  private drawWallHit(g: Graphics, impact: Impact, ms: number): void {
+    const foot = impact.target;
     if (ms < WALL_HIT_MS) {
       const u = ms / WALL_HIT_MS;
       const flash = sampleTrack([[0, 0], [70, 0.7], [WALL_HIT_MS * 0.5, 0.2], [WALL_HIT_MS, 0]], ms);
       g.roundRect(foot.x - 17 * F, foot.y + 4 * F - 12 * F, 34 * F, 12 * F, 2 * F).fill({ color: 0xaebccb, alpha: flash });
       CHIP_VECTORS.forEach(([dx, dy]) => g.rect(foot.x + dx * F * u - F, foot.y - WALL_HIT_LIFT + dy * F * u - F, 2 * F, 2 * F).fill({ color: WALL_TOP, alpha: 1 - u }));
     }
-    this.drawImpact(g, color, foot, look, boost * 0.6, ms, WALL_HIT_LIFT);
+    this.drawImpact(g, { ...impact, boost: impact.boost * 0.6 }, ms, WALL_HIT_LIFT);
   }
 
   /** Long Shot: the red dotted laser for 480 ms before the shot, and a glint of the scope. */
@@ -653,20 +715,21 @@ export class EffectsLayer {
     if (u >= 0 && u < 1) blob(g, muzzle, 4 * F * (0.5 + 1.7 * u), glintColor, u < 0.5 ? u * 2 : (1 - u) * 2);
   }
 
-  private drawProjectile(g: Graphics, weapon: Weapon, color: number, muzzle: Point, target: Point, progress: number, dir: Point): void {
+  private drawProjectile(g: Graphics, flight: Flight, progress: number): void {
+    const { weapon, color, muzzle, target, dir } = flight;
     const p = { x: muzzle.x + (target.x - muzzle.x) * progress, y: muzzle.y + (target.y - muzzle.y) * progress };
-    const half = (length: number) => ({ x: (dir.x * length * F) / 2, y: (dir.y * length * F) / 2 });
     if (weapon === "pulse") {
       blob(g, p, 7 * F * (0.8 + 0.6 * progress), color, 0.9);
       return;
     }
-    const [length, width] = weapon === "slam" ? [11, 5] : weapon === "precision" ? [24, 2] : [14, 3];
-    const h = half(length);
-    line(g, { x: p.x - h.x, y: p.y - h.y }, { x: p.x + h.x, y: p.y + h.y }, width * F, color, 1);
+    const [length, width] = BOLT_SIZE[weapon];
+    const h = { x: (dir.x * length * F) / 2, y: (dir.y * length * F) / 2 };
+    line(g, { x: p.x - h.x, y: p.y - h.y }, { x: p.x + h.x, y: p.y + h.y }, { width: width * F, color, alpha: 1 });
   }
 
   /** The burst, the sparks and the ground ring where the projectile lands. */
-  private drawImpact(g: Graphics, color: number, target: Point, look: WeaponLook, boost: number, ms: number, lift: number): void {
+  private drawImpact(g: Graphics, impact: Impact, ms: number, lift: number): void {
+    const { color, target, look, boost } = impact;
     const chest = { x: target.x, y: target.y - lift };
     const scale = look.impact * boost;
     if (ms < IMPACT_BURST_MS) {
