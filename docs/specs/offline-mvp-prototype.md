@@ -95,7 +95,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 77. As a player, I want the match to end immediately when one Squad controls the Prime Zone during three consecutive Resolutions, so that victory is clear.
 78. As a player, I want Core Rush to be unavailable in the first prototype, so that the Prime Zone remains the only victory path.
 79. As a player, I want the user interface to use the project glossary vocabulary, so that game concepts remain consistent.
-80. As a player, I want to always control the Bruiser in the first prototype, so that the first match is simple to understand.
+80. As a player, I want to control the Bruiser by default and be able to choose another Player Hero, so that the first match is simple to understand and I can still play the other Heroes.
 81. As a player, I want to see the current Round as "Round X / 30", so that I know how much time is left.
 82. As a player, I want the match to end after 30 Rounds with the Squad holding more Deck cards winning, so that every match finishes.
 83. As a player, I want to see my Hand and the number of cards in my Deck and Exile, so that I can plan my economy.
@@ -132,7 +132,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Keep match state in browser memory, with optional localStorage support.
 - Use PixiJS for stylized 2.5D presentation with an orthographic camera.
 - Do not use Matter.js in the MVP; movement, Line of Sight, Cover, and combat are tile-based simulation rules.
-- The player always controls the Bruiser / Vanguard; Hero choice is a later extension.
+- The player controls one Player Hero; the default is the Bruiser / Vanguard, and the other two Heroes of the Squad are planned by the AI. The Hero Select screen that lets the player choose is a separate ticket.
 - A match ends after 30 Rounds (ADR 0019); the Round counter is shown in the UI as "Round X / 30".
 - Only a Match Host computes outcomes; the client sends Squad Plans and renders Squad View and filtered events (ADR 0017). The offline prototype runs the host in the browser main thread behind an asynchronous interface.
 - Card effects are declarative data interpreted by the engine (ADR 0018).

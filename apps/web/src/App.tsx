@@ -2,7 +2,8 @@ import { SquadId, type SquadView } from "game-core";
 import { createLocalHost } from "game-core/local-host";
 import { useEffect, useState } from "react";
 import { EndScreen } from "./EndScreen";
-import { clearSavedMatch, loadSavedMatch, saveMatch } from "./match-storage";
+import { clearSavedMatch, loadSavedMatch, loadSavedPlayerHero, parsePlayerHero, saveMatch } from "./match-storage";
+import { HeroSelectScreen } from "./HeroSelectScreen";
 import { PlanningScreen } from "./PlanningScreen";
 import { TutorialScreen } from "./TutorialScreen";
 
@@ -10,6 +11,9 @@ import { TutorialScreen } from "./TutorialScreen";
 const PLAYER_SQUAD = SquadId.Left;
 
 const newSeed = () => Date.now() >>> 0;
+
+/** A start parameter (?hero=controller) names the Player Hero, so the Hero Select is skipped. */
+const startParameters = new URLSearchParams(window.location.search);
 
 interface StartScreenProps {
   seed: number;
@@ -46,18 +50,20 @@ export function App() {
   const [host, setHost] = useState(() => createLocalHost(newSeed()));
   const seed = host.seed;
   const [started, setStarted] = useState(false);
-  // The Tutorial runs from static data; it never touches the host or the saved match.
-  const [tutorial, setTutorial] = useState(false);
+  // Before the match: the start screen, the Hero Select (Play) or the Tutorial, which runs from static data and never touches the host or the saved match.
+  const [entry, setEntry] = useState<"start" | "select" | "tutorial">("start");
   // A match saved by an earlier visit, offered for Resume on the start screen.
   const [saved] = useState(loadSavedMatch);
+  // The Player Hero: set by the start parameter (?hero=controller); Resume restores the saved match's one.
+  const [playerHero, setPlayerHero] = useState(() => parsePlayerHero(startParameters.get("hero")));
   const [view, setView] = useState<SquadView>();
 
   // The host is at the start of a Round whenever the view changes; save it, or forget a finished match.
   useEffect(() => {
     if (!started || !view) return;
     if (view.result) clearSavedMatch();
-    else saveMatch(host);
-  }, [host, started, view]);
+    else saveMatch(host, undefined, playerHero);
+  }, [host, started, view, playerHero]);
 
   useEffect(() => {
     if (!started) return;
@@ -72,14 +78,16 @@ export function App() {
   }, [host, started]);
 
   function renderStartOrTutorial() {
-    if (tutorial) {
+    if (entry === "tutorial") return <TutorialScreen onPlay={() => setStarted(true)} onClose={() => setEntry("start")} />;
+    if (entry === "select") {
       return (
-        <TutorialScreen
-          onPlay={() => {
-            setTutorial(false);
+        <HeroSelectScreen
+          mode="classic"
+          onBack={() => setEntry("start")}
+          onStart={(hero) => {
+            setPlayerHero(hero);
             setStarted(true);
           }}
-          onClose={() => setTutorial(false)}
         />
       );
     }
@@ -87,12 +95,15 @@ export function App() {
       <StartScreen
         seed={seed}
         canResume={saved !== undefined}
-        onPlay={() => setStarted(true)}
+        onPlay={() => (startParameters.has("hero") ? setStarted(true) : setEntry("select"))}
         onResume={() => {
-          if (saved) setHost(saved);
+          if (saved) {
+            setHost(saved);
+            setPlayerHero(loadSavedPlayerHero());
+          }
           setStarted(true);
         }}
-        onTutorial={() => setTutorial(true)}
+        onTutorial={() => setEntry("tutorial")}
       />
     );
   }
@@ -106,6 +117,7 @@ export function App() {
     return (
       <PlanningScreen
         view={view}
+        playerHeroClass={playerHero}
         submitPlan={(plan) => host.submitPlan(plan)}
         getAllyPlan={(heroIds) => host.getAllyPlan(PLAYER_SQUAD, heroIds)}
         onResolved={setView}

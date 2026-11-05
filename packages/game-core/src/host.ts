@@ -14,6 +14,38 @@ export enum SquadId {
 /** Rounds per match (Round Limit, ADR 0019). */
 export const ROUND_LIMIT = 30;
 
+/** Rounds the Defender must survive in Attack and Defend (ADR 0022); replaces `ROUND_LIMIT` in that mode. */
+export const DEFENDER_ROUND_LIMIT = 12;
+
+export enum MatchMode {
+  Classic = "classic",
+  AttackAndDefend = "attackAndDefend",
+}
+
+/** Who wins a tie in the number of Heroes in the Zone in Attack and Defend (ADR 0022). */
+export enum ZoneTie {
+  Attacker = "attacker",
+  Defender = "defender",
+}
+
+/** The tie rule of Attack and Defend. */
+export const DEFENDER_ZONE_TIE: ZoneTie = ZoneTie.Attacker;
+
+/** Cards each Hero that ends a Resolution in the Zone moves from the top of its Deck to the Exile in Attack and Defend; 0 = off. */
+export const ZONE_DECAY_CARDS = 0;
+
+/** The tunable numbers of Attack and Defend; each defaults to the constant above. The balance harness varies them. */
+export interface AttackAndDefendRules {
+  roundLimit?: number;
+  zoneTie?: ZoneTie;
+  zoneDecay?: number;
+}
+
+/** The mode of a match; in Attack and Defend the other Squad is the Attacker (ADR 0022). */
+export type MatchModeSetting =
+  | { kind: MatchMode.Classic }
+  | ({ kind: MatchMode.AttackAndDefend; defender: SquadId } & AttackAndDefendRules);
+
 /** Seconds a Squad has to plan a Round before the host closes Planning with empty Queues (ADR 0017). */
 export const PLANNING_TIMER_SECONDS = 60;
 
@@ -25,6 +57,8 @@ export enum MatchEndReason {
   AllHeroesExhausted = "allHeroesExhausted",
   /** The Round Limit passed; decided by the cards in all Decks. */
   RoundLimit = "roundLimit",
+  /** Attack and Defend: the Defender survived the Round limit of the mode (ADR 0022). */
+  DefenceHeld = "defenceHeld",
 }
 
 /** The result of a finished match. */
@@ -133,6 +167,8 @@ export interface SquadView {
   squad: SquadId;
   round: number;
   roundLimit: number;
+  /** Only in Attack and Defend (public information): the Defender, and the Rounds left until Defence Held. */
+  attackAndDefend?: { defender: SquadId; roundsLeft: number };
   /** Consecutive Resolutions each Squad has controlled the Prime Zone (0 for the Squad that does not). */
   primeProgress: Record<SquadId, number>;
   /** Set once the match is over; no further plans are accepted. */

@@ -15,5 +15,7 @@ Decisions about how the game looks and behaves that were made in chat and are no
 | Words | Use the glossary terms. The word "Point" is not used in the UI. | owner |
 | Touch targets | Two tiers: primary controls at least 40 x 40 px; secondary, dense controls at least 32 x 32 px with at least 8 px between neighbours; floor 24 x 24 px. | #268 |
 | Text | At least 12 px; contrast at least 4.5:1 (3:1 for large or dimmed text). | #268 |
-| Not designed yet | Hero selection screen, tutorial look, start screen. Do not invent them in other tickets. | owner |
+| Start flow | Start screen with two entries, Classic (default) and Attack and Defend. Classic leads to Hero Select; Attack and Defend leads to a side screen (Attack or Defend, with a dimmed board preview behind it), then Hero Select. Resume and Tutorial skip both. Role colours: ATTACK orange, DEFEND blue. | `docs/design/attack-defend/`, #303 |
+| Hero Select | The player chooses one Hero (Bruiser, Controller or Assassin) before a match and controls only that Hero; the choice holds for the whole match. No Hero preselected, Start disabled until one is selected. Tapping a Hero plays its ready pose (Bruiser aims to the side and fires, Controller releases the drone, Assassin turns invisible). The info box shows the Hero's task and a card list. | `docs/design/hero-select/`, #318, #319 |
+| Not designed yet | Tutorial look. Do not invent it in other tickets. | owner |
 | Agents and screenshots | UI changes are looked at with the screenshot tool at 844 x 390 and deviations are fixed by the agent; a state that cannot be staged is stated openly in the pull request. | `CLAUDE.md`, #261 |

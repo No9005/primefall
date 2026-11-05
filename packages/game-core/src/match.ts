@@ -6,6 +6,9 @@ import {
   type EnemyView,
   type MatchResult,
   type RevealedArea,
+  DEFENDER_ROUND_LIMIT,
+  MatchMode,
+  type MatchModeSetting,
   ROUND_LIMIT,
   SquadId,
   type HeroView,
@@ -105,6 +108,8 @@ export interface MatchState {
   revealedAreas: ActiveReveal[];
   /** The Squad that controls the Prime Zone and for how many consecutive Resolutions (ADR 0010). */
   primeZone: { controller?: SquadId; progress: number };
+  /** Classic by default; in Attack and Defend one Squad is the Defender and the other the Attacker (ADR 0022). */
+  mode: MatchModeSetting;
   /** Set when a victory condition is met; the match accepts no further Rounds. */
   result?: MatchResult;
 }
@@ -128,15 +133,24 @@ function shuffle(state: MatchState, cards: CardIndex[]): void {
   }
 }
 
+const isLeftOfMiddle = (squad: SquadId, col: number) => (squad === SquadId.Left ? col < REACTOR_DECK.width / 2 : col > REACTOR_DECK.width / 2);
+
 function spawnTiles(squad: SquadId): GridPosition[] {
-  const middle = REACTOR_DECK.width / 2;
   return findTiles(REACTOR_DECK, TileKind.Spawn)
-    .filter(({ col }) => (squad === SquadId.Left ? col < middle : col > middle))
+    .filter(({ col }) => isLeftOfMiddle(squad, col))
     .sort((a, b) => a.row - b.row);
 }
 
-/** Creates two Squads of three Heroes on their Spawn tiles, each with a freshly shuffled Deck. */
-export function createMatch(seed: number): MatchState {
+/** The Prime Zone tiles of the inner column next to the Squad's side, where a Defender starts (ADR 0022). */
+function innerZoneTiles(squad: SquadId): GridPosition[] {
+  const zone = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+  const columns = zone.map(({ col }) => col);
+  const sideCol = squad === SquadId.Left ? Math.min(...columns) : Math.max(...columns);
+  return zone.filter(({ col }) => col === sideCol).sort((a, b) => a.row - b.row);
+}
+
+/** Creates two Squads of three Heroes on their start tiles, each with a freshly shuffled Deck. */
+export function createMatch(seed: number, mode: MatchModeSetting = { kind: MatchMode.Classic }): MatchState {
   const match: MatchState = {
     seed,
     rngState: seed >>> 0,
@@ -149,9 +163,10 @@ export function createMatch(seed: number): MatchState {
     placedCover: [],
     revealedAreas: [],
     primeZone: { progress: 0 },
+    mode,
   };
   for (const squad of [SquadId.Left, SquadId.Right]) {
-    const spawns = spawnTiles(squad);
+    const spawns = mode.kind === MatchMode.AttackAndDefend && mode.defender === squad ? innerZoneTiles(squad) : spawnTiles(squad);
     SQUAD_ORDER.forEach((heroClass, i) => {
       const deck = HERO_DECKS[heroClass].map((_, index) => index);
       shuffle(match, deck);
@@ -277,6 +292,8 @@ export function recordSightings(match: MatchState): void {
   }
 }
 
+// `roundsLeft` counts the Round being planned: 12 in Round 1, 1 in the last Round, 0 once the match is over.
+
 /** The Squad View of one Squad: its own Heroes only, with counts instead of Deck contents. */
 export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   const heroes: HeroView[] = match.heroes
@@ -340,7 +357,15 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
       if (canSquadSee(match, squad, { col, row })) visibleTiles.push({ col, row });
     }
   }
+  const { mode } = match;
+  const modeView =
+    mode.kind === MatchMode.AttackAndDefend
+      ? (() => {
+          const roundLimit = mode.roundLimit ?? DEFENDER_ROUND_LIMIT;
+          return { roundLimit, attackAndDefend: { defender: mode.defender, roundsLeft: match.result ? 0 : Math.max(0, roundLimit - match.round + 1) } };
+        })()
+      : { roundLimit: ROUND_LIMIT };
   return {
-    squad, round: match.round, roundLimit: ROUND_LIMIT, primeProgress, ...result, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, enemies,
+    squad, round: match.round, ...modeView, primeProgress, ...result, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, enemies,
   };
 }

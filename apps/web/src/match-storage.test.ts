@@ -1,7 +1,7 @@
-import { SquadId } from "game-core";
+import { HeroClass, SquadId } from "game-core";
 import { createLocalHost } from "game-core/local-host";
 import { describe, expect, it } from "vitest";
-import { clearSavedMatch, loadSavedMatch, saveMatch } from "./match-storage";
+import { clearSavedMatch, loadSavedMatch, loadSavedPlayerHero, parsePlayerHero, PLAYER_HERO_STORAGE_KEY, saveMatch } from "./match-storage";
 
 function fakeStorage() {
   const data = new Map<string, string>();
@@ -32,6 +32,28 @@ describe("match storage", () => {
     saveMatch(host, storage);
     const resumed = loadSavedMatch(storage)!;
     expect(await resumed.getSquadView(SquadId.Left)).toEqual(await host.getSquadView(SquadId.Left));
+  });
+
+  it("resumes the saved Player Hero; an old save without one is a Bruiser save", () => {
+    const storage = fakeStorage();
+    saveMatch(createLocalHost(5), storage, HeroClass.Assassin);
+    expect(loadSavedPlayerHero(storage)).toBe(HeroClass.Assassin);
+    storage.data.delete(PLAYER_HERO_STORAGE_KEY);
+    expect(loadSavedPlayerHero(storage)).toBe(HeroClass.Bruiser);
+    expect(loadSavedMatch(storage)).toBeDefined();
+  });
+
+  it("forgets the Player Hero with the saved match", () => {
+    const storage = fakeStorage();
+    saveMatch(createLocalHost(5), storage, HeroClass.Controller);
+    clearSavedMatch(storage);
+    expect(storage.data.size).toBe(0);
+  });
+
+  it("reads the start parameter; anything invalid is the Bruiser", () => {
+    expect(parsePlayerHero("controller")).toBe(HeroClass.Controller);
+    expect(parsePlayerHero("assassin")).toBe(HeroClass.Assassin);
+    for (const bad of [null, undefined, "", "wizard", "Controller"]) expect(parsePlayerHero(bad)).toBe(HeroClass.Bruiser);
   });
 
   it("discards a snapshot with another schema version", () => {

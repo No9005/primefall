@@ -2,6 +2,7 @@
 // change of a number (card damage, Deck size, ...) can be judged by the same seeds before and after.
 //   BALANCE_SEEDS=500   matches per variant (default 300)
 //   BALANCE_ONLY=name   run only the variants whose name contains this text (the baseline always runs)
+//   BALANCE_SEED_OFFSET=1000   first seed minus one, to repeat a table with other matches
 // A variant is a set of data-level tweaks. They are applied to the card data and the Match State around the real rules,
 // never inside them, so the harness changes no rule. A rule that needs code (for example a new Prime Zone rule) is tried
 // on a branch and measured with the same table. The AI is the measuring instrument, not a player: read its numbers as
@@ -10,7 +11,7 @@
 import { it } from "vitest";
 import { planSquad } from "./ai";
 import { EffectKind, HERO_DECKS } from "./cards";
-import { EventKind, MatchEndReason, ROUND_LIMIT, SquadId } from "./host";
+import { type AttackAndDefendRules, EventKind, MatchEndReason, MatchMode, type MatchModeSetting, ROUND_LIMIT, SquadId, ZoneTie } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import type { SquadPlan } from "./plan";
 import { resolveRound } from "./resolution";
@@ -30,9 +31,11 @@ interface Tweaks {
   pitchExile?: boolean;
   /** Cards every living Hero loses from the Deck to the Exile after each Resolution. */
   fatiguePerRound?: number;
+  /** Plays Attack and Defend with these rules instead of the classic mode (the Defender side alternates by seed parity). */
+  attackAndDefend?: AttackAndDefendRules;
 }
 
-const VARIANTS: Record<string, Tweaks> = {
+const CLASSIC_VARIANTS: Record<string, Tweaks> = {
   baseline: {},
   "damage +1": { attackBonus: 1 },
   "Deck 9": { deckCut: 3 },
@@ -41,6 +44,32 @@ const VARIANTS: Record<string, Tweaks> = {
   "attacks cost 2": { cardCost: { "Slam Shot": 2, "Pulse Bolt": 2, "Precision Shot": 2 } },
 };
 
+const DATA_TWEAKS: Record<string, Tweaks> = {
+  "": {},
+  " + Deck 9": { deckCut: 3 },
+  " + Pitch exiles": { pitchExile: true },
+};
+
+/** Attack and Defend: Round limit x tie rule x Zone Decay, each with the data-level tweaks. */
+function attackAndDefendVariants(): Record<string, Tweaks> {
+  const variants: Record<string, Tweaks> = {};
+  for (const [suffix, data] of Object.entries(DATA_TWEAKS)) {
+    for (const roundLimit of [10, 12, 14]) {
+      for (const zoneTie of [ZoneTie.Attacker, ZoneTie.Defender]) {
+        for (const zoneDecay of [0, 1, 2]) {
+          variants[`A&D limit ${roundLimit}, tie ${zoneTie}, decay ${zoneDecay}${suffix}`] = {
+            ...data,
+            attackAndDefend: { roundLimit, zoneTie, zoneDecay },
+          };
+        }
+      }
+    }
+  }
+  return variants;
+}
+
+const VARIANTS: Record<string, Tweaks> = { ...CLASSIC_VARIANTS, ...attackAndDefendVariants() };
+
 /** What a match should feel like; the table marks a column that misses its target. */
 const TARGETS = {
   roundsMin: 8,
@@ -48,7 +77,12 @@ const TARGETS = {
   stallsMaxPercent: 2,
   exhaustionMinPercent: 30,
   sideSpreadMaxPercent: 5,
+  attackerWinMinPercent: 40,
+  attackerWinMaxPercent: 60,
 };
+
+/** The Defender is the Left Squad in matches with an even seed and the Right Squad in matches with an odd seed. */
+const defenderOf = (seed: number) => (seed % 2 === 0 ? SquadId.Left : SquadId.Right);
 
 const cardsOf = () => [...new Set(Object.values(HERO_DECKS).flatMap((deck) => [...deck]))];
 
@@ -75,11 +109,23 @@ interface Totals {
   damage: number;
   leftWins: number;
   rightWins: number;
+  /** Attack and Defend: matches the Attacker won, matches Defence Held, Exhaustions of Defender Heroes. */
+  attackerWins: number;
+  defenceHeld: number;
+  defenderExhaustions: number;
+  /** Matches the Attacker won, by the Defender side (Left, Right), and the matches played per side. */
+  attackerWinsByDefender: Record<SquadId, number>;
+  matchesByDefender: Record<SquadId, number>;
 }
 
 function prepareMatch(seed: number, tweaks: Tweaks): MatchState {
-  const created = createMatch(seed);
-  created.round = seed % 2 === 0 ? 0 : 1; // half of the matches start one Round later (the AI yields by Round parity)
+  const mode: MatchModeSetting = tweaks.attackAndDefend
+    ? { kind: MatchMode.AttackAndDefend, defender: defenderOf(seed), ...tweaks.attackAndDefend }
+    : { kind: MatchMode.Classic };
+  const created = createMatch(seed, mode);
+  // Half of the matches start one Round later (the AI yields by Round parity). In Attack and Defend the seed parity
+  // already picks the Defender side, so the first Round follows the next bit to keep the two apart.
+  created.round = (tweaks.attackAndDefend ? Math.floor(seed / 2) : seed) % 2 === 0 ? 0 : 1;
   for (const hero of created.heroes) {
     if (tweaks.attackBonus) hero.attackBonus = tweaks.attackBonus;
     if (tweaks.deckCut) hero.deck = hero.deck.slice(tweaks.deckCut);
@@ -108,13 +154,17 @@ function applyFatigue(next: MatchState, cards: number): void {
 function playRound(match: MatchState, tweaks: Tweaks, totals: Totals): { match: MatchState; exhausted: number } {
   const plans = [SquadId.Left, SquadId.Right].map((squad) => planSquad(buildSquadView(match, squad)));
   const resolution = resolveRound(match, plans);
+  const defender = match.mode.kind === MatchMode.AttackAndDefend ? match.mode.defender : undefined;
   let exhausted = 0;
   for (const event of resolution.events) {
     if (event.kind === EventKind.AttackHit) {
       totals.hits++;
       totals.damage += event.damage ?? 0;
     }
-    if (event.kind === EventKind.Exhausted) exhausted++;
+    if (event.kind === EventKind.Exhausted) {
+      exhausted++;
+      if (match.heroes.find((hero) => hero.id === event.heroId)?.squad === defender) totals.defenderExhaustions++;
+    }
   }
   const next = resolution.match;
   if (tweaks.pitchExile) exilePitchedCards(next, plans);
@@ -131,6 +181,15 @@ function recordTotals(match: MatchState, exhausted: number, totals: Totals): voi
   totals.exhaustedHeroes += exhausted;
   if (match.result?.winner === SquadId.Left) totals.leftWins++;
   if (match.result?.winner === SquadId.Right) totals.rightWins++;
+  if (match.mode.kind !== MatchMode.AttackAndDefend) return;
+  const { defender } = match.mode;
+  const attackerWon = match.result?.winner !== undefined && match.result.winner !== defender;
+  if (attackerWon) {
+    totals.attackerWins++;
+    totals.attackerWinsByDefender[defender]++;
+  }
+  if (reason === MatchEndReason.DefenceHeld) totals.defenceHeld++;
+  totals.matchesByDefender[defender]++;
 }
 
 function playMatch(seed: number, tweaks: Tweaks, totals: Totals): void {
@@ -146,16 +205,35 @@ function playMatch(seed: number, tweaks: Tweaks, totals: Totals): void {
 
 const pad = (text: string, width: number) => text.padEnd(width);
 
-it("prints one table for all variants", () => {
+it("prints one table for all variants", async () => {
   const seeds = Number(process.env.BALANCE_SEEDS ?? 300);
   const only = process.env.BALANCE_ONLY;
   const rows: string[][] = [];
+  const offset = Number(process.env.BALANCE_SEED_OFFSET ?? 0);
   for (const [name, tweaks] of Object.entries(VARIANTS)) {
     if (name !== "baseline" && only && !name.includes(only)) continue;
+    // A variant takes seconds of synchronous work: yield so that the test runner can keep talking to its worker.
+    // eslint-disable-next-line no-restricted-globals -- the harness runs in Node, only the shipped code must avoid browser APIs
+    await new Promise((resolve) => setTimeout(resolve, 0));
     const restore = applyCardTweaks(tweaks);
-    const totals: Totals = { rounds: [], stalls: 0, zoneEnds: 0, exhaustedMatches: 0, exhaustedHeroes: 0, hits: 0, damage: 0, leftWins: 0, rightWins: 0 };
+    const totals: Totals = {
+      rounds: [],
+      stalls: 0,
+      zoneEnds: 0,
+      exhaustedMatches: 0,
+      exhaustedHeroes: 0,
+      hits: 0,
+      damage: 0,
+      leftWins: 0,
+      rightWins: 0,
+      attackerWins: 0,
+      defenceHeld: 0,
+      defenderExhaustions: 0,
+      attackerWinsByDefender: { [SquadId.Left]: 0, [SquadId.Right]: 0 },
+      matchesByDefender: { [SquadId.Left]: 0, [SquadId.Right]: 0 },
+    };
     try {
-      for (let seed = 1; seed <= seeds; seed++) playMatch(seed, tweaks, totals);
+      for (let seed = offset + 1; seed <= offset + seeds; seed++) playMatch(seed, tweaks, totals);
     } finally {
       restore();
     }
@@ -166,6 +244,20 @@ it("prints one table for all variants", () => {
     const decided = totals.leftWins + totals.rightWins;
     const spread = decided === 0 ? 0 : Math.abs(percent(totals.leftWins) - percent(totals.rightWins));
     const mark = (ok: boolean) => (ok ? "" : " !");
+    const modeColumns = (): string[] => {
+      if (!tweaks.attackAndDefend) return ["-", "-", "-", "-"];
+      const attackerWin = percent(totals.attackerWins);
+      const share = (count: number, of: number) => (of === 0 ? 0 : (count / of) * 100);
+      const bySide = (side: SquadId) => share(totals.attackerWinsByDefender[side], totals.matchesByDefender[side]);
+      const sideSpread = Math.abs(bySide(SquadId.Left) - bySide(SquadId.Right));
+      const defenderShare = share(totals.defenderExhaustions, totals.exhaustedHeroes);
+      return [
+        `${attackerWin.toFixed(0)}%${mark(attackerWin >= TARGETS.attackerWinMinPercent && attackerWin <= TARGETS.attackerWinMaxPercent)}`,
+        `${percent(totals.defenceHeld).toFixed(0)}%`,
+        `${defenderShare.toFixed(0)}%`,
+        `${sideSpread.toFixed(0)}%${mark(sideSpread <= TARGETS.sideSpreadMaxPercent)}`,
+      ];
+    };
     rows.push([
       name,
       `${averageRounds.toFixed(1)}${mark(averageRounds >= TARGETS.roundsMin && averageRounds <= TARGETS.roundsMax)}`,
@@ -176,9 +268,13 @@ it("prints one table for all variants", () => {
       (totals.hits / seeds).toFixed(0),
       (totals.damage / seeds).toFixed(1),
       `${spread.toFixed(0)}%${mark(spread <= TARGETS.sideSpreadMaxPercent)}`,
+      ...modeColumns(),
     ]);
   }
-  const header = ["variant", "rounds", "stalls", "zone win", "w/ exhaustion", "exh. heroes", "hits", "damage", "L/R spread"];
+  const header = [
+    "variant", "rounds", "stalls", "zone win", "w/ exhaustion", "exh. heroes", "hits", "damage", "L/R spread",
+    "attacker win", "defence held", "exh. on Defender", "Defender side spread",
+  ];
   const widths = header.map((title, column) => Math.max(title.length, ...rows.map((row) => row[column]!.length)));
   const line = (cells: string[]) => cells.map((cell, column) => pad(cell, widths[column]!)).join("  ");
   console.log(`\n${seeds} matches per variant, AI against AI. "!" = misses its target (rounds ${TARGETS.roundsMin}-${TARGETS.roundsMax}, stalls <= ${TARGETS.stallsMaxPercent}%, exhaustion >= ${TARGETS.exhaustionMinPercent}%, side spread <= ${TARGETS.sideSpreadMaxPercent}%)`);

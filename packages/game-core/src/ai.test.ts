@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { playAiMatch } from "./ai-match";
 import { planSquad } from "./ai";
-import { MatchEndReason, SquadId } from "./host";
+import { MatchEndReason, MatchMode, SquadId } from "./host";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { ActionKind, validatePlan } from "./plan";
 import { resolveRound } from "./resolution";
@@ -107,6 +107,49 @@ describe("AI does not freeze", () => {
     const decided = SEEDS.filter((seed) => playAiMatch(seed, MAX_ROUNDS).match.result?.reason !== MatchEndReason.RoundLimit);
     expect(decided.length).toBeGreaterThanOrEqual(SEEDS.length / 2);
   });
+});
+
+describe("AI in Attack and Defend", () => {
+  const mode = (defender: SquadId) => ({ kind: MatchMode.AttackAndDefend as const, defender });
+  const zoneTiles = (match: ReturnType<typeof createMatch>) =>
+    match.heroes.filter((hero) => hero.squad === SquadId.Left).every((hero) => hero.position.col === 14);
+
+  it("keeps the Defender on the Zone tiles while an Attacker Hero is in range", () => {
+    const match = startRound(createMatch(7, mode(SquadId.Left)));
+    expect(zoneTiles(match)).toBe(true);
+    match.heroes.find((hero) => hero.id === "right-bruiser")!.position = { col: 18, row: 8 };
+    const plan = planSquad(buildSquadView(match, SquadId.Left));
+    for (const hero of plan.heroes) expect(hero.queue.filter((action) => action.kind === ActionKind.Move)).toEqual([]);
+  });
+
+  it("sends an Attacker with three Heroes close to the Zone into it in the same Round", () => {
+    const match = startRound(createMatch(7, mode(SquadId.Right)));
+    const starts = [{ col: 8, row: 7 }, { col: 8, row: 8 }, { col: 8, row: 9 }];
+    match.heroes.filter((hero) => hero.squad === SquadId.Left).forEach((hero, i) => (hero.position = starts[i]!));
+    const view = buildSquadView(match, SquadId.Left);
+    const plan = planSquad(view);
+    expect(plan.heroes).toHaveLength(3);
+    for (const hero of plan.heroes) expect(hero.queue.some((action) => action.kind === ActionKind.Move)).toBe(true);
+    const { match: after } = resolveRound(match, [plan, { squad: SquadId.Right, heroes: [] }]);
+    const inZone = after.heroes.filter((hero) => hero.squad === SquadId.Left && hero.position.col >= 14 && hero.position.col <= 16);
+    expect(inZone).toHaveLength(3);
+  });
+
+  it("holds an Attacker Hero back at the staging distance while a Squad mate is still far away", () => {
+    const match = startRound(createMatch(7, mode(SquadId.Right)));
+    const left = match.heroes.filter((hero) => hero.squad === SquadId.Left);
+    [{ col: 9, row: 7 }, { col: 9, row: 8 }, { col: 1, row: 9 }].forEach((tile, i) => (left[i]!.position = tile));
+    const plan = planSquad(buildSquadView(match, SquadId.Left));
+    const near = plan.heroes.find((hero) => hero.heroId === left[0]!.id)!;
+    expect(near.queue.some((action) => action.kind === ActionKind.Move)).toBe(false);
+  });
+
+  it("plays only legal plans for 200 seeds, either Squad defending", () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const { issues } = playAiMatch(seed, 60, 1, mode(seed % 2 === 0 ? SquadId.Left : SquadId.Right));
+      expect({ seed, issues }).toEqual({ seed, issues: [] });
+    }
+  }, 60_000);
 });
 
 describe("AI-versus-AI smoke test", () => {

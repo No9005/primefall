@@ -149,7 +149,7 @@ export function ease(easing: Easing, progress: number): number {
 
 // ---- Sampling --------------------------------------------------------------------------------------------------------
 
-function sampleTrack(keys: readonly Keyframe[], fraction: number): number {
+export function sampleTrack(keys: readonly Keyframe[], fraction: number): number {
   const first = keys[0]!;
   if (fraction <= first.at) return first.value;
   for (let i = 1; i < keys.length; i++) {
@@ -180,15 +180,15 @@ export function sampleClip(clip: Clip, ms: number): Pose {
 // ---- Clip data -------------------------------------------------------------------------------------------------------
 
 /** Keyframes the way the CSS writes them: a value and the percentages at which it holds, `[value, [0, 100]]`. */
-type Frames = readonly (readonly [value: number, percents: readonly number[]])[];
+export type Frames = readonly (readonly [value: number, percents: readonly number[]])[];
 
-function keys(easing: Easing, frames: Frames): Keyframe[] {
+export function keys(easing: Easing, frames: Frames): Keyframe[] {
   return frames
     .flatMap(([value, percents]) => percents.map((percent) => ({ at: percent / 100, value, ease: easing })))
     .sort((a, b) => a.at - b.at);
 }
 
-function track(part: PartName, prop: PropName, easing: Easing, frames: Frames): Track {
+export function track(part: PartName, prop: PropName, easing: Easing, frames: Frames): Track {
   return { part, prop, keys: keys(easing, frames) };
 }
 
