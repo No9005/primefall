@@ -86,7 +86,7 @@ describe("the Hit, Shield-absorbs and Block clips", () => {
 
 describe("the ClipPlayer with attacks", () => {
   it("starts a delayed clip at its time, and again for the same clip in a new frame", () => {
-    const player = new ClipPlayer(HeroClass.Bruiser, 0);
+    const player = new ClipPlayer(HeroClass.Bruiser, 0, 1);
     const first = {};
     player.play("hit", 0, 1100, first);
     expect(player.playing).toBe("idle");

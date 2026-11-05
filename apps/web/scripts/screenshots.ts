@@ -92,9 +92,9 @@ async function playStandardPath(page: Page): Promise<void> {
   await shoot("03-move-queued.png");
 
   await page.getByRole("button", { name: "Commit" }).click();
-  await page.locator(".callout-word", { hasText: "RESOLUTION" }).waitFor();
-  await shoot("04-resolution-start.png");
+  // The big callout is gone within a second; the bar stays for the playback.
   await page.getByTestId("resolution-bar").waitFor();
+  await shoot("04-resolution-start.png");
   await page.waitForTimeout(3000);
   await shoot("05-resolution-mid.png");
 

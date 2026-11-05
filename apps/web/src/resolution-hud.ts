@@ -1,5 +1,5 @@
 /** How long the RESOLUTION callout is shown before the Ticks play. */
-export const RESOLUTION_CALLOUT_MS = 1300;
+export const RESOLUTION_CALLOUT_MS = 800;
 
 /** Opacity of the Hand, the Energy pill and the Deck group while the Resolution runs. */
 export const RESOLUTION_DIM = 0.55;

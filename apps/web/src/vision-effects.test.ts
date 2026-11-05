@@ -5,9 +5,9 @@ import { areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHO
 describe("Scout Drone area", () => {
   it("lifts the tiles from the middle outwards", () => {
     expect(areaLift(0, 0)).toBe(0);
-    expect(areaLift(150, 0)).toBeCloseTo(0.5);
-    expect(areaLift(300, 0)).toBe(1);
-    expect(areaLift(140, 1)).toBe(0);
+    expect(areaLift(150 / CLIP_SPEED, 0)).toBeCloseTo(0.5);
+    expect(areaLift(300 / CLIP_SPEED, 0)).toBe(1);
+    expect(areaLift(140 / CLIP_SPEED, 1)).toBe(0);
     expect(areaLift(440, 1)).toBe(1);
     expect(areaLift(300, 2)).toBeLessThan(areaLift(300, 1));
   });

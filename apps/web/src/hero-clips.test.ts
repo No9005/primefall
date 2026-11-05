@@ -58,7 +58,7 @@ describe("ease", () => {
 
 describe("ClipPlayer", () => {
   it("idles until told otherwise", () => {
-    const player = new ClipPlayer(HeroClass.Bruiser, 0);
+    const player = new ClipPlayer(HeroClass.Bruiser, 0, 1);
     expect(player.playing).toBe("idle");
     expect(player.sample(1000).torso.y).toBeCloseTo(-2);
   });

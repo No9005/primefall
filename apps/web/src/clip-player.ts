@@ -4,7 +4,7 @@ import { type Clip, type ClipName, clipOf, createPose, PARTS, type PartName, typ
 import { STEP_MS } from "./playback";
 
 /** Multiplies the time of every clip (default 1); the one constant that tunes the whole feel. */
-export const CLIP_SPEED = 1;
+export const CLIP_SPEED = 1.8;
 /** How long the pose blends from the clip that was playing to the new one. */
 export const CROSSFADE_MS = 100;
 
@@ -61,8 +61,9 @@ export class ClipPlayer {
   }
 
   private timeOf(clip: Clip, startMs: number, now: number): number {
-    const pace = clip.perStep ? clip.durationMs / 2 / STEP_MS : 1;
-    return (now - startMs) * this.speed * pace;
+    // A Walk keeps the pace of the playback steps whatever the clip speed; every other clip runs at the clip speed.
+    const pace = clip.perStep ? clip.durationMs / 2 / STEP_MS : this.speed;
+    return (now - startMs) * pace;
   }
 
   /** The pose at `now`; the returned object is reused by the next call. */
