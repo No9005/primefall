@@ -26,7 +26,7 @@ ATTACK orange `#ff8a3d`, DEFEND blue `#4da3ff`, own Squad teal `#2ec4b6`, enemy 
 | Element | Size and position (px) | Look and text |
 |---|---|---|
 | Start screen entries | two buttons side by side, each at least 132 high, max total width 600, gap 16 | Classic: teal border 2 px, "DEFAULT" tag, one line of text. Attack and Defend: steel border, orange tag "NEW · TWO ROLES", the text "One Squad storms the Prime Zone, the other holds out. Pick your side next." Resume and Tutorial below, 44 high, steel border |
-| Side screen, title and chip | title centred at top 12, "CHOOSE YOUR SIDE" Rajdhani 700 20 px; chip "ATTACK AND DEFEND" at the right, 34 high | back button at (8, 6), 44 high |
+| Side screen, title and chip | title centred at top 12, "CHOOSE YOUR SIDE" Rajdhani 700 20 px; chip "ATTACK AND DEFEND" at the right, 34 high | back button at (8, 6), 46 high, as on the Hero Select screen (fill steel 70%, border 2 px light, white text 18 px) |
 | Side buttons | two, 290 x 76, tops at 62, lefts at 124 and 430 | label Rajdhani 700 30 px, letter spacing 0.14 em (ATTACK orange, DEFEND blue) with a line below ("Take the Prime Zone", "Hold the Prime Zone"); **selected**: 2.5 px border in the role colour and a tinted background; the other: 2 px steel |
 | Side screen, text | (8, 296), 636 x 88, **no box** | role name in the role colour (Rajdhani 700 16 px) and the text of #303 (Barlow 500 14 px), padded 20 px at the left, a soft text shadow for legibility on the dimmed board |
 | Next button | 176 x 56, right 8, bottom 8 | teal fill, "NEXT" and an arrow |
