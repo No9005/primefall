@@ -1,4 +1,4 @@
-import { coverAt, CoverKind, HeroClass, SquadId, validatePlan, Visibility } from "game-core";
+import { coverAt, CoverKind, EventKind, HeroClass, SquadId, validatePlan, Visibility } from "game-core";
 import { restoreLocalHost, SNAPSHOT_VERSION } from "game-core/local-host";
 import { buildSquadView, canSquadSeeHero, type MatchState } from "game-core/server";
 import { describe, expect, it } from "vitest";
@@ -91,6 +91,47 @@ describe("memory scenarios stage what their names say", () => {
     const enemyAt = (state: MatchState) => buildSquadView(state, SquadId.Left).enemies.find((candidate) => candidate.id === "right-assassin")!;
     expect(enemyAt(start!).visibility).toBe(Visibility.Ghost);
     expect(enemyAt(after!).visibility).toBe(Visibility.Visible);
+  });
+});
+
+describe("Assassin scenarios stage what their names say", () => {
+  /** Plays Round 1 of the scenario through the local host and returns the events of the player's Assassin. */
+  async function assassinEvents(name: string) {
+    const staged = SCENARIOS.find((candidate) => candidate.name === name)!;
+    const match = staged.buildMatch();
+    const host = restoreLocalHost(JSON.stringify({ version: SNAPSHOT_VERSION, match }))!;
+    const { events } = await host.submitPlan(preparedPlan(staged, match));
+    return events.filter((event) => event.heroId === staged.heroId);
+  }
+  const hit = (damage: number) => expect.objectContaining({ kind: "attackHit", damage });
+
+  it.each([
+    ["precision-shot", 2],
+    ["piercing-round", 2],
+    ["long-shot", 2],
+    ["long-shot-overdrive", 4],
+    ["ghost-shot", 2],
+    ["ghost-shot-overdrive", 2],
+    ["execution-round", 3],
+  ])("%s hits for %i", async (name, damage) => {
+    expect(await assassinEvents(name)).toEqual([hit(damage)]);
+  });
+
+  it("ghost-shot-overdrive-miss finds nobody on the remembered tile", async () => {
+    expect(await assassinEvents("ghost-shot-overdrive-miss")).toEqual([expect.objectContaining({ kind: "attackFailed", reason: "emptyTile" })]);
+  });
+
+  it("vanish ends the Resolution Hidden", async () => {
+    expect((await assassinEvents("vanish")).map((event) => event.kind)).toEqual(["step", "step", "hiddenGained"]);
+  });
+
+  it("mark-target marks, and in Overdrive also hits for 1", async () => {
+    expect((await assassinEvents("mark-target")).map((event) => event.kind)).toEqual(["markedApplied"]);
+    expect((await assassinEvents("mark-target-overdrive")).map((event) => event.kind)).toEqual(["markedApplied", "attackHit"]);
+  });
+
+  it("reposition moves three tiles with one Move", async () => {
+    expect((await assassinEvents("reposition")).filter((event) => event.kind === EventKind.Step)).toHaveLength(3);
   });
 });
 
