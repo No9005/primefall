@@ -16,7 +16,7 @@ import {
   type SquadPlan,
   validatePlan,
 } from "./plan";
-import { findTiles, type GridPosition, isStepAllowed, REACTOR_DECK, TileKind } from "./reactor-deck";
+import { CoverKind, coverAt, findTiles, type GridPosition, isStepAllowed, REACTOR_DECK, TileKind } from "./reactor-deck";
 
 /** Actions the AI queues per Hero and Round; fewer than the Queue limit keeps Decks from draining fast. */
 const AI_QUEUE_LENGTH = 3;
@@ -86,6 +86,40 @@ const tilesAfterSteps = (from: GridPosition, destination: GridPosition): GridPos
   return Array.from({ length: MOVE_DISTANCE }, (_, step) => path[step] ?? path.at(-1) ?? from);
 };
 
+/** Attack and Defend (ADR 0022): the Squad View says which role the viewing Squad plays. */
+enum Role {
+  Classic,
+  Attacker,
+  Defender,
+}
+
+/** Steps an Attacker covers in one Round (a full queue of Moves): from this far from the Zone all Heroes can enter together. */
+const ENTRY_DISTANCE = AI_QUEUE_LENGTH * MOVE_DISTANCE;
+/** While the Attacker waits for its Squad mates it stays at least this far from the Zone. */
+const STAGING_DISTANCE = ENTRY_DISTANCE - 1;
+/** With this many Rounds left the Attacker stops waiting for stragglers. */
+const ATTACKER_PATIENCE_ROUNDS = 8;
+/** The Defender queues at most this many actions per Hero: its Deck has to last until the Round limit. */
+const DEFENDER_QUEUE_LENGTH = 2;
+/** The Defender Blocks only when an enemy it can see is this close. */
+const DEFENDER_ALERT_DISTANCE = 8;
+
+interface Approach {
+  /** Prefer a Cover tile among equally close destinations. */
+  preferCover?: boolean;
+  /** Skip destinations closer to the Zone than this (walking distance). */
+  stayAtLeast?: number;
+}
+
+const roleOf = (view: SquadView): Role =>
+  view.attackAndDefend === undefined ? Role.Classic : view.attackAndDefend.defender === view.squad ? Role.Defender : Role.Attacker;
+
+/** The Attacker enters the Zone with all living Heroes in the same Round, so it wins the tie (ADR 0022). */
+function attackerIsReady(view: SquadView, distances: ReadonlyMap<number, number>): boolean {
+  if ((view.attackAndDefend?.roundsLeft ?? Infinity) <= ATTACKER_PATIENCE_ROUNDS) return true;
+  return view.heroes.every((hero) => hero.exhausted || (distances.get(tileKey(hero.position)) ?? Infinity) <= ENTRY_DISTANCE);
+}
+
 /**
  * The Move 2 destination that ends closest to the Prime Zone by walking distance; undefined if none gets closer.
  * Moving Heroes do not hinder each other, but a Move cannot step onto a blocked tile (a Hero stays there) or a
@@ -98,9 +132,12 @@ function stepTowardPrimeZone(
   claimed: ClaimedTiles,
   blocked: ReadonlySet<number>,
   distances: ReadonlyMap<number, number>,
+  approach: Approach = {},
 ): GridPosition | undefined {
   const distanceTo = (tile: GridPosition) => distances.get(tileKey(tile)) ?? Infinity;
+  const inCover = (tile: GridPosition) => coverAt(REACTOR_DECK, tile) !== CoverKind.None;
   let best: GridPosition | undefined;
+  let bestEnd: GridPosition | undefined;
   let bestDistance = isPrimeZoneTile(from) ? 0 : distanceTo(from);
   for (const destination of destinationsInOrder(from, squad)) {
     const end = moveEnd(from, destination);
@@ -109,8 +146,11 @@ function stepTowardPrimeZone(
     // Crossing in the middle of a walk is allowed; only the tile where the Move ends must not be claimed.
     if (claimed.get(claimKey(slot, MOVE_DISTANCE))?.has(tileKey(steps.at(-1)!))) continue;
     const distance = distanceTo(end);
-    if (distance < bestDistance) {
+    if (distance < (approach.stayAtLeast ?? 0)) continue;
+    const coverTie = approach.preferCover && best !== undefined && distance === bestDistance && inCover(end) && !inCover(bestEnd!);
+    if (distance < bestDistance || coverTie) {
       best = destination;
+      bestEnd = end;
       bestDistance = distance;
     }
   }
@@ -130,6 +170,8 @@ function planHero(
   claimed: ClaimedTiles,
   blocked: ReadonlySet<number>,
   distances: ReadonlyMap<number, number>,
+  role: Role,
+  attackerReady: boolean,
 ): HeroPlan {
   const deck = HERO_DECKS[hero.heroClass];
   const isAttackCard = (card: CardIndex) => isSimpleAttack(deck[card]!);
@@ -161,7 +203,12 @@ function planHero(
   let position = hero.position;
   let energyNeeded = 0;
 
-  while (queue.length < Math.min(AI_QUEUE_LENGTH, MAX_QUEUE_LENGTH)) {
+  const queueLength = role === Role.Defender ? DEFENDER_QUEUE_LENGTH : AI_QUEUE_LENGTH;
+  const approach: Approach =
+    role === Role.Attacker ? { preferCover: true, stayAtLeast: attackerReady ? 0 : STAGING_DISTANCE } : {};
+  const enemyClose = () => targets.some((enemy) => chebyshevDistance(hero.position, enemy.position) <= DEFENDER_ALERT_DISTANCE);
+
+  while (queue.length < Math.min(queueLength, MAX_QUEUE_LENGTH)) {
     // Every queued card and every pitched card must come from the Hand; Attacks need their Energy pitched.
     const cardsLeft = hero.hand.length - queue.length - energyNeeded;
     const attackCard = attackCards.find((card) => {
@@ -180,12 +227,12 @@ function planHero(
     const card = spare()[0];
     if (card === undefined || cardsLeft - 1 < 0) break;
     const slot = queue.length;
-    const destination = stepTowardPrimeZone(position, view.squad, slot, claimed, unavailable, distances);
+    const destination = stepTowardPrimeZone(position, view.squad, slot, claimed, unavailable, distances, approach);
     if (destination) {
       queue.push({ kind: ActionKind.Move, card, destination });
       claimSteps(claimed, slot, tilesAfterSteps(position, destination));
       position = moveEnd(position, destination);
-    } else if (targets.length > 0) {
+    } else if (role === Role.Defender ? enemyClose() && !queue.some((action) => action.kind === ActionKind.Block) : targets.length > 0) {
       queue.push({ kind: ActionKind.Block, card });
       claimSteps(claimed, slot, [position, position]);
     } else {
@@ -208,9 +255,11 @@ export function planSquad(view: SquadView, heroIds: readonly string[] = view.her
   const claimed: ClaimedTiles = new Map();
   const blocked = blockedTiles(view);
   const distances = distancesToPrimeZone(blocked);
+  const role = roleOf(view);
+  const attackerReady = role === Role.Attacker && attackerIsReady(view, distances);
   const heroes = view.heroes
     .filter((hero) => heroIds.includes(hero.id) && !hero.exhausted)
-    .map((hero) => planHero(view, hero, claimed, blocked, distances));
+    .map((hero) => planHero(view, hero, claimed, blocked, distances, role, attackerReady));
   const plan: SquadPlan = { squad: view.squad, heroes };
   const broken = new Set(validatePlan(view, plan).flatMap((issue) => (issue.heroId ? [issue.heroId] : [])));
   return broken.size === 0 ? plan : { squad: view.squad, heroes: heroes.filter((hero) => !broken.has(hero.heroId)) };

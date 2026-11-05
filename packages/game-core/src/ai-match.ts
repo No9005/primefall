@@ -1,7 +1,7 @@
 // Plays a whole match with the AI on both sides, for the smoke test and for balance analysis (`npm run sim`).
 
 import { planSquad } from "./ai";
-import { SquadId } from "./host";
+import { type MatchModeSetting, SquadId } from "./host";
 import { createMatch, buildSquadView, type MatchState, startRound } from "./match";
 import { type PlanIssue, type SquadPlan, validatePlan } from "./plan";
 import { resolveRound } from "./resolution";
@@ -18,8 +18,8 @@ export interface AiMatchOutcome {
  * of the first Round: the AI Squads take turns at yielding by the parity of the Round number (see `planHero`), so
  * balance checks play half of their matches with an odd and half with an even first Round.
  */
-export function playAiMatch(seed: number, maxRounds: number, firstRound = 1): AiMatchOutcome {
-  const created = createMatch(seed);
+export function playAiMatch(seed: number, maxRounds: number, firstRound = 1, mode?: MatchModeSetting): AiMatchOutcome {
+  const created = createMatch(seed, mode);
   created.round = firstRound - 1;
   let match = startRound(created);
   const issues: PlanIssue[] = [];
