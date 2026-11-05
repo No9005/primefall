@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { BlastRadius } from "./blast-radius.ts";
 import {
   blastRadiusEnabled,
+  branchWithoutPullRequestComment,
+  isBranchWithoutPullRequest,
+  pullRequestForBranch,
   candidateIssues,
   CommentMarker,
   effectiveBlastRadius,
@@ -498,5 +501,38 @@ describe("formatRunSummary", () => {
     expect(formatRunSummary("Review", null)).toBe(
       ["### Review", "- session: unknown", "- turns: unknown", "- duration: unknown", "- cost: unknown", "- result: unknown", "- denied: none", ""].join("\n"),
     );
+  });
+});
+
+describe("a branch without a pull request", () => {
+  it("is told apart from a branch that has its pull request", () => {
+    expect(isBranchWithoutPullRequest({ hasAgentBranch: true, hasOpenPullRequest: false })).toBe(true);
+    expect(isBranchWithoutPullRequest({ hasAgentBranch: true, hasOpenPullRequest: true })).toBe(false);
+    expect(isBranchWithoutPullRequest({ hasAgentBranch: false, hasOpenPullRequest: false })).toBe(false);
+  });
+
+  it("gets a pull request titled by the last commit and closing the issue", () => {
+    const pr = pullRequestForBranch({ issue: 303, branch: "agent/issue-303-ui", lastCommitSubject: "  Attack and Defend in the web app (#303)\n", runUrl: "https://example.test/run/1" });
+    expect(pr.title).toBe("Attack and Defend in the web app (#303)");
+    expect(pr.body).toContain("Closes #303");
+    expect(pr.body).toContain("`agent/issue-303-ui`");
+    expect(pr.body).toContain("https://example.test/run/1");
+  });
+
+  it("falls back to a title with the issue and the branch when the commit has no subject", () => {
+    expect(pullRequestForBranch({ issue: 5, branch: "agent/issue-5-x", lastCommitSubject: "", runUrl: "" }).title).toBe("Work on #5 (agent/issue-5-x)");
+  });
+
+  it("explains a failed attempt with the branch and the link that opens the pull request by hand", () => {
+    const text = branchWithoutPullRequestComment({ repo: "o/r", defaultBranch: "main", branch: "agent/issue-5-x", error: "HTTP 422", runUrl: "https://example.test/run/2" });
+    expect(text).toContain("`agent/issue-5-x`");
+    expect(text).toContain("HTTP 422");
+    expect(text).toContain("https://github.com/o/r/compare/main...agent/issue-5-x?expand=1");
+    expect(text).toContain("needs-human");
+  });
+
+  it("has its own comment marker", () => {
+    const markers = Object.values(CommentMarker);
+    expect(new Set(markers).size).toBe(markers.length);
   });
 });
