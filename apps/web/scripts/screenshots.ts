@@ -2,13 +2,14 @@
 // Starts the Vite dev server, plays the standard path in Chromium at 844 x 390 and writes PNGs with stable names
 // to apps/web/screenshots/ (git-ignored), so a run before and after a change can be compared name by name.
 import { chromium, type Browser, type Page } from "@playwright/test";
-import { type GridPosition, reachableMoveDestinations } from "game-core";
+import { findTiles, type GridPosition, reachableMoveDestinations, REACTOR_DECK, SquadId, TileKind } from "game-core";
 import { SNAPSHOT_VERSION } from "game-core/local-host";
+import type { MatchState } from "game-core/server";
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { frameMoveCamera, gridToWorld } from "../src/board-layout";
+import { frameMoveCamera, frameSquadCamera, gridToWorld } from "../src/board-layout";
 import { freeBoardArea } from "../src/hud-layout";
 import { type PlanStep, SCENARIO_NAMES, SCENARIO_SCREENSHOT_NAMES, SCENARIOS, type Scenario, scenarioScreenshotNames, type StepUse } from "./scenarios";
 
@@ -168,7 +169,30 @@ async function queueMoveTo(page: Page, slot: number, from: GridPosition, to: Gri
   await queue.getByText(`to ${to.col} · ${to.row}`).waitFor();
 }
 
-async function driveStep(page: Page, from: GridPosition, step: PlanStep): Promise<void> {
+/**
+ * Taps an enemy Hero (or its Ghost) on the board after its card was chosen. The camera is still the start framing the
+ * app computes from the own Squad and the Prime Zone, so the tile is found with the app's own layout functions.
+ */
+async function tapEnemy(page: Page, match: MatchState, targetId: string): Promise<void> {
+  const box = (await page.locator(".board canvas").boundingBox())!;
+  const view = { width: box.width, height: box.height };
+  const own = match.heroes.filter((hero) => hero.squad === SquadId.Left).map((hero) => hero.position);
+  const zoneTiles = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+  const zone = { col: average(zoneTiles.map((tile) => tile.col)), row: average(zoneTiles.map((tile) => tile.row)) };
+  const camera = frameSquadCamera(own, zone, view, freeBoardArea(view, { kind: "idle" }));
+  const enemy = match.heroes.find((hero) => hero.id === targetId);
+  if (!enemy) throw new Error(`No Hero ${targetId}`);
+  const tile = match.ghosts[SquadId.Left][targetId]?.position ?? enemy.position;
+  await page.waitForTimeout(600); // the pick state settles
+  const world = gridToWorld(tile);
+  await page.mouse.click(box.x + camera.x + world.x * camera.scale, box.y + camera.y + world.y * camera.scale);
+}
+
+function average(values: readonly number[]): number {
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+async function driveStep(page: Page, match: MatchState, from: GridPosition, step: PlanStep): Promise<void> {
   if ("wait" in step) {
     await page.locator(".wait-card").click();
     return;
@@ -178,6 +202,7 @@ async function driveStep(page: Page, from: GridPosition, step: PlanStep): Promis
     await queueMoveTo(page, step.slot, from, step.tile);
   } else {
     await useCardAs(page, step.slot, step.use);
+    if (step.target) await tapEnemy(page, match, step.target);
   }
   await page.getByRole("list", { name: "Hand" }).getByRole("button").first().waitFor({ state: "visible" });
   await page.waitForTimeout(500);
@@ -219,7 +244,7 @@ async function playScenario(browser: Browser, scenario: Scenario): Promise<void>
     await page.waitForTimeout(1500); // the first software-rendered frames
 
     const from = match.heroes.find((hero) => hero.id === scenario.heroId)!.position;
-    for (const step of scenario.steps) await driveStep(page, from, step);
+    for (const step of scenario.steps) await driveStep(page, match, from, step);
     await page.waitForTimeout(500);
     await shoot(names[0]!);
 
