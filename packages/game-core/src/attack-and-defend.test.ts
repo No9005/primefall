@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { playAiMatch } from "./ai-match";
-import { DEFENDER_ROUND_LIMIT, MatchEndReason, MatchMode, type MatchModeSetting, SquadId } from "./host";
+import { type AttackAndDefendRules, DEFENDER_ROUND_LIMIT, MatchEndReason, MatchMode, type MatchModeSetting, SquadId, ZoneTie } from "./host";
 import { createLocalHost, restoreLocalHost, SNAPSHOT_VERSION } from "./local-host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
-import { findTiles, TileKind } from "./reactor-deck";
+import { findTiles, TileKind, tileAt } from "./reactor-deck";
 import { resolveRound } from "./resolution";
 
 const mode = (defender: SquadId): MatchModeSetting => ({ kind: MatchMode.AttackAndDefend, defender });
@@ -175,5 +175,57 @@ describe("the classic mode", () => {
     expect(match.result).toEqual({ winner, reason: MatchEndReason.PrimeZoneHeld, round, deckTotals });
     expect(match.heroes.map((hero) => `${hero.position.col},${hero.position.row}:${hero.deck.length}`).join(" ")).toBe(positions);
     expect(match.rngState).toBe(rng);
+  });
+});
+
+describe("Attack and Defend: tunable rules", () => {
+  const withRules = (match: MatchState, rules: AttackAndDefendRules): MatchState => {
+    match.mode = { kind: MatchMode.AttackAndDefend, defender: SquadId.Left, ...rules };
+    return match;
+  };
+
+  it("gives a tie in the Zone to the Defender with the tie rule Defender", () => {
+    const held = resolveEmpty(withRules(matchWith(1, 1), { zoneTie: ZoneTie.Defender }));
+    expect(held.primeZone.controller).toBe(SquadId.Left);
+  });
+
+  it("still gives the Attacker more Heroes in the Zone with the tie rule Defender", () => {
+    const taken = resolveEmpty(withRules(matchWith(2, 1), { zoneTie: ZoneTie.Defender }));
+    expect(taken.primeZone.controller).toBe(SquadId.Right);
+  });
+
+  it("ends with Defence Held at the Round limit of the rules", () => {
+    const match = withRules(matchWith(0, 3), { roundLimit: 10 });
+    match.round = 9;
+    expect(resolveEmpty(match).result).toBeUndefined();
+    match.round = 10;
+    expect(resolveEmpty(match).result).toMatchObject({ reason: MatchEndReason.DefenceHeld, round: 10 });
+  });
+
+  it("shows the Round limit of the rules in the Squad view", () => {
+    const view = buildSquadView(withRules(matchWith(0, 3), { roundLimit: 10 }), SquadId.Right);
+    expect(view.roundLimit).toBe(10);
+    expect(view.attackAndDefend?.roundsLeft).toBe(10);
+  });
+
+  describe("Zone Decay", () => {
+    const decks = (match: MatchState) => match.heroes.map((hero) => hero.deck.length);
+
+    it("is off by default", () => {
+      const before = decks(matchWith(1, 1));
+      expect(decks(resolveEmpty(matchWith(1, 1)))).toEqual(before);
+    });
+
+    it("moves the top cards of the Deck of every Hero that ends the Resolution in the Zone to the Exile", () => {
+      const match = withRules(matchWith(1, 2), { zoneDecay: 2 });
+      const before = decks(match);
+      const next = resolveEmpty(match);
+      next.heroes.forEach((hero, i) => {
+        const inZone = tileAt(next.grid, hero.position) === TileKind.PrimeZone;
+        expect(hero.deck.length).toBe(before[i]! - (inZone ? 2 : 0));
+        expect(hero.exile.length).toBe(inZone ? 2 : 0);
+      });
+      expect(next.heroes.filter((hero) => hero.exile.length > 0)).toHaveLength(3);
+    });
   });
 });

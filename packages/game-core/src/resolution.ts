@@ -20,7 +20,20 @@ import {
   isTileBlast,
   type PLAYABLE_UTILITY_EFFECTS,
 } from "./cards";
-import { AttackFailReason, DEFENDER_ROUND_LIMIT, EventKind, MatchEndReason, MatchMode, type MatchEvent, PRIME_ZONE_WIN_RESOLUTIONS, ROUND_LIMIT, SquadId } from "./host";
+import {
+  AttackFailReason,
+  DEFENDER_ROUND_LIMIT,
+  DEFENDER_ZONE_TIE,
+  EventKind,
+  MatchEndReason,
+  MatchMode,
+  type MatchEvent,
+  PRIME_ZONE_WIN_RESOLUTIONS,
+  ROUND_LIMIT,
+  SquadId,
+  ZONE_DECAY_CARDS,
+  ZoneTie,
+} from "./host";
 import { canSquadSee, canSquadSeeHero, type HeroState, type MatchState, recordSightings, refillDeck, sightRange } from "./match";
 import {
   ActionKind,
@@ -571,9 +584,26 @@ function classicController(previous: SquadId | undefined, left: number, right: n
  * the Defender (a tie goes to the Attacker). Otherwise the Defender holds the Zone with more Heroes there; with
  * nobody in it the previous controller keeps it. Only the Attacker's control counts towards a win.
  */
-function attackAndDefendController(previous: SquadId | undefined, attacker: SquadId, attackers: number, defenders: number): SquadId | undefined {
-  if (attackers > 0 && attackers >= defenders) return attacker;
-  return defenders > attackers ? otherSquad(attacker) : previous;
+function attackAndDefendController(
+  previous: SquadId | undefined,
+  attacker: SquadId,
+  attackers: number,
+  defenders: number,
+  tie: ZoneTie,
+): SquadId | undefined {
+  if (attackers > 0 && (attackers > defenders || (attackers === defenders && tie === ZoneTie.Attacker))) return attacker;
+  return defenders > attackers || (attackers > 0 && attackers === defenders) ? otherSquad(attacker) : previous;
+}
+
+/** Zone Decay (Attack and Defend, off by default): each Hero that ends the Resolution in the Zone loses cards from its Deck to the Exile. */
+function applyZoneDecay(match: MatchState): void {
+  const { mode } = match;
+  const cards = mode.kind === MatchMode.AttackAndDefend ? (mode.zoneDecay ?? ZONE_DECAY_CARDS) : 0;
+  if (cards === 0) return;
+  for (const hero of match.heroes) {
+    if (hero.exhausted || tileAt(REACTOR_DECK, hero.position) !== TileKind.PrimeZone) continue;
+    for (let i = 0; i < cards && hero.deck.length > 0; i++) hero.exile.push(hero.deck.pop()!);
+  }
 }
 
 /**
@@ -589,7 +619,13 @@ function evaluateMatchEnd(match: MatchState): void {
   const { mode } = match;
   const attacker = mode.kind === MatchMode.AttackAndDefend ? otherSquad(mode.defender) : undefined;
   const controller = attacker
-    ? attackAndDefendController(match.primeZone.controller, attacker, inZone(attacker), inZone(otherSquad(attacker)))
+    ? attackAndDefendController(
+        match.primeZone.controller,
+        attacker,
+        inZone(attacker),
+        inZone(otherSquad(attacker)),
+        mode.kind === MatchMode.AttackAndDefend ? (mode.zoneTie ?? DEFENDER_ZONE_TIE) : DEFENDER_ZONE_TIE,
+      )
     : classicController(match.primeZone.controller, inZone(SquadId.Left), inZone(SquadId.Right));
   match.primeZone =
     controller === undefined
@@ -612,7 +648,8 @@ function evaluateMatchEnd(match: MatchState): void {
     return end(MatchEndReason.PrimeZoneHeld, match.primeZone.controller);
   }
   if (attacker) {
-    if (match.round >= DEFENDER_ROUND_LIMIT) end(MatchEndReason.DefenceHeld, otherSquad(attacker));
+    const roundLimit = mode.kind === MatchMode.AttackAndDefend ? (mode.roundLimit ?? DEFENDER_ROUND_LIMIT) : DEFENDER_ROUND_LIMIT;
+    if (match.round >= roundLimit) end(MatchEndReason.DefenceHeld, otherSquad(attacker));
     return;
   }
   if (match.round >= ROUND_LIMIT) {
@@ -769,6 +806,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     const shuffled = refillDeck(match, hero);
     if (shuffled > 0) events.push({ kind: EventKind.DeckShuffled, tick: Math.max(ticks, 1), heroId: hero.id, amount: shuffled });
   }
+  applyZoneDecay(match);
   for (const hero of match.heroes.filter((candidate) => !candidate.exhausted && candidate.deck.length === 0)) {
     hero.exhausted = true;
     match.grid = withWreck(match.grid, hero.position);
