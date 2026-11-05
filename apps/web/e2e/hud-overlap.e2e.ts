@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { startMatch } from "./start-match";
 
 // Measures the real DOM: no two visible HUD elements may intersect (issue 266). The constants-based test in
 // src/hud-layout.test.ts missed the Wait card over Commit, so this one reads getBoundingClientRect.
@@ -58,7 +59,7 @@ for (const view of VIEWS) {
   test(`no HUD elements overlap at ${view.width} x ${view.height}`, async ({ page }) => {
     await page.setViewportSize(view);
     await page.goto("/?prime=contested");
-    await page.getByRole("button", { name: "Play" }).click();
+    await startMatch(page);
     await expect(page.getByTestId("round")).toHaveText("ROUND 1");
     await expect(page.getByRole("list", { name: "Hand" }).getByRole("button").last()).toBeEnabled();
     await expect(page.getByTestId("prime-progress")).toBeVisible();

@@ -1,4 +1,5 @@
 import { expect, test, type CDPSession, type Locator, type Page } from "@playwright/test";
+import { startMatch } from "./start-match";
 
 // The card pull (issue 267): a real pointer drag from the Hand opens the faces, a release in the middle parks the card
 // with the faces open, a low release puts it back.
@@ -13,7 +14,7 @@ async function startPlanning(page: Page) {
     window.addEventListener("dragstart", () => ((window as unknown as { dragStarts: number }).dragStarts += 1), true);
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "Play" }).click();
+  await startMatch(page);
   await expect(page.getByTestId("round")).toHaveText("ROUND 1");
   const hand = page.getByRole("list", { name: "Hand" });
   await expect(hand.getByRole("button").last()).toBeEnabled();

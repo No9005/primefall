@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { startMatch } from "./start-match";
 
 /** Collects uncaught page errors and console errors; the test fails if any occurred. */
 function watchErrors(page: Page): string[] {
@@ -55,7 +56,7 @@ for (const hero of ["controller", "assassin"]) {
 test("start a match, play a Move card onto a tile, Commit", async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto("/");
-  await page.getByRole("button", { name: "Play" }).click();
+  await startMatch(page);
 
   await expect(page.getByTestId("round")).toHaveText("ROUND 1");
   const canvas = page.locator(".board canvas");

@@ -1,11 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
+import { startMatch } from "./start-match";
 
 const energy = (page: Page) => page.getByTestId("energy");
 const removeButtons = (page: Page) => page.getByRole("region", { name: "Queue" }).getByRole("button", { name: /^Remove action/ });
 
 async function startPlanning(page: Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Play" }).click();
+  await startMatch(page);
   await expect(page.getByTestId("round")).toHaveText("ROUND 1");
   const hand = page.getByRole("list", { name: "Hand" });
   await expect(hand.getByRole("button").last()).toBeEnabled();
