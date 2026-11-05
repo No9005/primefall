@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Planning HUD Attacker</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="position:relative;width:844px;height:390px;overflow:hidden;background:#12161c;font-family:Barlow,sans-serif;color:#dbe4ec">
+<div style="position:absolute;inset:0;background:repeating-linear-gradient(30deg,transparent 0 46px,#1b222b 46px 47px),repeating-linear-gradient(150deg,transparent 0 46px,#1b222b 46px 47px)"></div>
+<div style="position:absolute;left:350px;top:120px;width:144px;height:110px;border:2px dashed #2ec4b6;background:rgba(46,196,182,0.10)"></div>
+<div style="position:absolute;left:380px;top:140px;width:34px;height:34px;border-radius:50%;background:#e5484d"></div>
+<div style="position:absolute;left:430px;top:160px;width:34px;height:34px;border-radius:50%;background:#e5484d"></div>
+<div style="position:absolute;left:402px;top:190px;width:34px;height:34px;border-radius:50%;background:#e5484d"></div>
+<div style="position:absolute;left:250px;top:150px;width:34px;height:34px;border-radius:50%;background:#2ec4b6"></div>
+<div style="position:absolute;left:230px;top:200px;width:34px;height:34px;border-radius:50%;background:#2ec4b6"></div>
+<div style="position:absolute;left:280px;top:230px;width:34px;height:34px;border-radius:50%;background:#2ec4b6"></div>
+
+<div style="position:absolute;left:8px;top:4px;height:34px;box-sizing:border-box;padding:0 12px;display:flex;align-items:center;gap:8px;border:1.5px solid #ff8a3d;border-radius:17px;background:rgba(11,16,22,0.93)">
+<span style="width:8px;height:8px;border-radius:50%;background:#ff8a3d"></span>
+<span style="font:700 16px Rajdhani,sans-serif;letter-spacing:0.16em;color:#ff8a3d">ATTACK</span>
+</div>
+
+<div style="position:absolute;left:50%;top:4px;transform:translateX(-50%);height:34px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;gap:10px;border:1.5px solid #ff8a3d;border-radius:17px;background:rgba(11,16,22,0.93);white-space:nowrap">
+<span style="font:700 14px Rajdhani,sans-serif;letter-spacing:0.12em;color:#dbe4ec">ZONE CONTROL</span>
+<span style="display:flex;gap:4px">
+<span style="width:12px;height:12px;border-radius:50%;background:#ff8a3d"></span>
+<span style="width:12px;height:12px;border-radius:50%;background:#ff8a3d"></span>
+<span style="width:12px;height:12px;border-radius:50%;border:1.5px solid #8a99a8"></span>
+</span>
+<span style="font:500 12px 'IBM Plex Mono',monospace;color:#aebccb">2 / 3</span>
+</div>
+
+<div style="position:absolute;right:8px;top:4px;height:34px;box-sizing:border-box;padding:0 12px;display:flex;align-items:center;gap:8px;border:1.5px solid #3d5a73;border-radius:17px;background:rgba(11,16,22,0.93);white-space:nowrap">
+<span style="font:700 14px Rajdhani,sans-serif;letter-spacing:0.1em">ROUND 5 / 12</span>
+<span style="font:500 14px 'IBM Plex Mono',monospace;color:#2ec4b6">0:24</span>
+</div>
+
+<div style="position:absolute;left:0;right:0;bottom:0;height:96px;display:flex;align-items:flex-end;justify-content:center;gap:10px;padding-bottom:0">
+<div style="width:112px;height:72px;box-sizing:border-box;padding:6px 8px;background:#1b222b;border:1.5px solid #3d5a73;border-radius:8px 8px 0 0;display:flex;justify-content:space-between"><span style="font:600 14px Rajdhani,sans-serif">Slam Shot</span><span style="font:500 14px 'IBM Plex Mono',monospace;color:#ff8a3d">2</span></div>
+<div style="width:112px;height:72px;box-sizing:border-box;padding:6px 8px;background:#1b222b;border:1.5px solid #3d5a73;border-radius:8px 8px 0 0;display:flex;justify-content:space-between"><span style="font:600 14px Rajdhani,sans-serif">Reinforce</span><span style="font:500 14px 'IBM Plex Mono',monospace;color:#ff8a3d">1</span></div>
+<div style="width:112px;height:72px;box-sizing:border-box;padding:6px 8px;background:#1b222b;border:1.5px solid #3d5a73;border-radius:8px 8px 0 0;display:flex;justify-content:space-between"><span style="font:600 14px Rajdhani,sans-serif">Dash</span><span style="font:500 14px 'IBM Plex Mono',monospace;color:#ff8a3d">1</span></div>
+</div>
+<div style="position:absolute;right:8px;bottom:12px;height:46px;padding:0 26px;display:flex;align-items:center;background:#2ec4b6;color:#12161c;border-radius:23px;font:700 18px Rajdhani,sans-serif">COMMIT</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":844,"height":390}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

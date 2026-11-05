@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Start screen</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+button{font-family:Rajdhani,sans-serif;cursor:pointer}
+</style>
+</helmet>
+<div style="width:844px;height:390px;box-sizing:border-box;background:#12161c;color:#dbe4ec;font-family:Barlow,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:16px">
+<div style="text-align:center">
+<h1 style="margin:0;font:700 46px/1 Rajdhani,sans-serif;letter-spacing:0.12em">PRIMEFALL</h1>
+<p style="margin:4px 0 0;font:400 12px 'IBM Plex Mono',monospace;color:#aebccb;letter-spacing:0.08em">REACTOR DECK · 3V3 VS AI</p>
+</div>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;width:100%;max-width:600px">
+<button type="button" style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-height:132px;padding:12px 16px;text-align:left;background:#1b222b;color:#dbe4ec;border:2px solid #2ec4b6;border-radius:8px">
+<span style="font:500 12px 'IBM Plex Mono',monospace;color:#2ec4b6;letter-spacing:0.12em">DEFAULT</span>
+<span style="font:700 26px/1 Rajdhani,sans-serif;letter-spacing:0.08em">CLASSIC</span>
+<span style="font:400 13px/1.35 Barlow,sans-serif;color:#c8d3de">Both Squads fight for the Prime Zone. Hold it for 3 Resolutions.</span>
+</button>
+<button type="button" style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-height:132px;padding:12px 16px;text-align:left;background:#1b222b;color:#dbe4ec;border:2px solid #3d5a73;border-radius:8px">
+<span style="font:500 12px 'IBM Plex Mono',monospace;color:#ff8a3d;letter-spacing:0.12em">NEW · TWO ROLES</span>
+<span style="font:700 26px/1 Rajdhani,sans-serif;letter-spacing:0.08em">ATTACK AND DEFEND</span>
+<span style="font:400 13px/1.35 Barlow,sans-serif;color:#c8d3de">One Squad storms the Prime Zone, the other holds out. Pick your side next.</span>
+</button>
+</div>
+<div style="display:flex;gap:10px;align-items:center">
+<button type="button" style="min-height:44px;padding:0 20px;background:transparent;color:#dbe4ec;border:1.5px solid #3d5a73;border-radius:4px;font:700 16px Rajdhani,sans-serif">Resume match</button>
+<button type="button" style="min-height:44px;padding:0 20px;background:transparent;color:#dbe4ec;border:1.5px solid #3d5a73;border-radius:4px;font:700 16px Rajdhani,sans-serif">Tutorial</button>
+<span style="font:400 12px 'IBM Plex Mono',monospace;color:#8a99a8;margin-left:8px">seed 42</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":844,"height":390}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
