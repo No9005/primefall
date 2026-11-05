@@ -13,7 +13,7 @@ const MIN_CONTRAST_LARGE_OR_DIMMED = 3;
 const DIMMED_SELECTOR = /:disabled|aria-disabled|\.exhausted-hud|\.past|\.used|\.resolving/;
 
 const read = readSource;
-const rules = loadRules(["styles.css", "tutorial.css"]);
+const rules = loadRules(["styles.css", "tutorial.css", "hero-select.css"]);
 const tokens = new Map<string, string>();
 for (const rule of rules) {
   if (!rule.selectors.includes(":root")) continue;
@@ -84,7 +84,10 @@ const isLarge = (size: number | undefined, bold: boolean) => size !== undefined 
 // ---- the surface a text sits on, by selector (first match wins); a text rule without one fails ----
 
 const SURFACES: [RegExp, string][] = [
-  [/^\.end-screen button$|^\.commit$|^\.queue-number|^\.hand \.card-use$|^\.drop-chip\.active$|^\.pull-card\.card \.card-cost$|^\.hand \.card-cost$|^\.tutorial-controls button\.primary$|^\.tutorial-hero|^\.tutorial-counter$/, "--teal"],
+  [/^\.end-screen button$|^\.commit$|^\.queue-number|^\.hand \.card-use$|^\.drop-chip\.active$|^\.pull-card\.card \.card-cost$|^\.hand \.card-cost$|^\.tutorial-controls button\.primary$|^\.tutorial-hero|^\.tutorial-counter$|^\.hs-start$/, "--teal"],
+  // The Hero Select: the card list is a panel; the rest stands on the graphite screen.
+  [/^\.hs-card|^\.hs-close$/, "--panel"],
+  [/^\.hs-/, "--graphite"],
   [/^\.od-marker$/, "--overdrive"],
   [/^\.energy\.drop-lit\.active/, "--orange"],
   [/^\.commit\.resolving:disabled$|^\.commit:disabled$|^\.commentary-entry|^\.energy|^\.pitch-undo|^\.queue-|^\.deck-count$|^\.drop-chip|^\.tutorial-controls button|^\.tutorial-progress$/, "--panel"],

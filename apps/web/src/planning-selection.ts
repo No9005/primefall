@@ -67,7 +67,8 @@ const EFFECT_TEXT: Record<EffectKind, (effect: CardEffect) => string> = {
   [EffectKind.DamageHeroesAtAndAroundTarget]: ({ amount }) => `${amount} damage to Heroes at and around the target`,
   [EffectKind.DamageAtLongRange]: ({ amount, longRangeAmount }) => `${amount} damage, ${longRangeAmount} from Range ${LONG_RANGE_FROM}`,
   [EffectKind.ApplySlow]: ({ duration }) => `Slow for ${duration ?? 1} Resolution${duration === 1 || duration === undefined ? "" : "s"}`,
-  [EffectKind.ApplyMarked]: ({ amount, duration }) => `Marked, +${amount} damage taken${duration ? ` for ${duration} Resolutions` : ""}`,
+  // Marked has no damage amount (the card data gives only a duration); the text used to print "+undefined damage taken".
+  [EffectKind.ApplyMarked]: ({ duration }) => `Marked for ${duration ?? 1} Resolution${duration === 1 || duration === undefined ? "" : "s"}`,
   [EffectKind.Knockback]: ({ amount, withinRange }) => `Knockback ${amount}${withinRange ? ` within ${withinRange} tiles` : ""}`,
   [EffectKind.DestroyHalfCover]: () => "destroys Half Cover",
   [EffectKind.DestroyAnyCover]: () => "destroys any Cover",
