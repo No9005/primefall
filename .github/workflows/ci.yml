@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  # The factory starts CI by hand on the branch of a pull request it opened itself: the workflow token cannot start pull_request workflows.
+  workflow_dispatch:
 
 jobs:
   check:

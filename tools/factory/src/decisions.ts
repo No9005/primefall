@@ -23,6 +23,7 @@ export const CommentMarker = {
   NeedsHumanMerge: "<!-- factory:needs-human-merge -->",
   ReviewNotRun: "<!-- factory:review-not-run -->",
   ImplementFailed: "<!-- factory:implement-failed -->",
+  BranchWithoutPullRequest: "<!-- factory:branch-without-pr -->",
   ReworkStalled: "<!-- factory:rework-stalled -->",
   MergeBlocked: "<!-- factory:merge-blocked -->",
   /** Contract with the dashboard (#176): it shows this comment as the recommendation. */
@@ -442,4 +443,37 @@ export function handOverIfStillOpen(actions: AwaitMergeActions): boolean {
 /** Earlier failed reviews of the factory for other commits, to be collapsed once a review passes. */
 export function supersededFailedReviews(reviews: PostedReview[], headSha: string): string[] {
   return reviews.filter((review) => review.commitId !== headSha && review.body?.includes(reviewMarker(ReviewVerdict.Fail))).map((review) => review.nodeId);
+}
+
+/** Whether a ticket was skipped only because an earlier run left an agent branch behind without a pull request. */
+export function isBranchWithoutPullRequest(input: { hasAgentBranch: boolean; hasOpenPullRequest: boolean }): boolean {
+  return input.hasAgentBranch && !input.hasOpenPullRequest;
+}
+
+/**
+ * The pull request the factory opens itself for a branch the agent pushed but never opened a pull request for.
+ * The title is the subject of the branch's last commit; the body carries the closing keyword so the issue closes on merge.
+ */
+export function pullRequestForBranch(input: { issue: number; branch: string; lastCommitSubject: string; runUrl: string }): { title: string; body: string } {
+  const subject = input.lastCommitSubject.trim();
+  const title = subject === "" ? `Work on #${input.issue} (${input.branch})` : subject;
+  const body = [
+    `Closes #${input.issue}`,
+    "",
+    `The implement run pushed \`${input.branch}\` but did not open a pull request (its own \`gh pr create\` did not produce one), so the factory opened this one from the branch. The code is the agent's, unchanged; the title is the subject of its last commit.`,
+    "",
+    `[Run log](${input.runUrl})`,
+  ].join("\n");
+  return { title, body };
+}
+
+/** The issue comment when opening the pull request failed: names the branch and gives the link to open it by hand. */
+export function branchWithoutPullRequestComment(input: { repo: string; defaultBranch: string; branch: string; error: string; runUrl: string }): string {
+  return [
+    `The implement run left the branch \`${input.branch}\` without a pull request, and the factory could not open one: ${input.error.trim() || "no error text"}`,
+    "",
+    `Open it by hand: https://github.com/${input.repo}/compare/${input.defaultBranch}...${input.branch}?expand=1 (the body must contain \`Closes #<issue>\`). The issue is labelled \`needs-human\`; the factory skips a ticket whose agent branch exists, so remove the label only after the branch is merged or deleted.`,
+    "",
+    `[Run log](${input.runUrl})`,
+  ].join("\n");
 }

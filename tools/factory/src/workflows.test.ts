@@ -44,3 +44,18 @@ describe("visual-check rule", () => {
     expect(rules).toContain("state in the pull request exactly which state was not looked at and why, and that the owner checks it in play");
   });
 });
+
+describe("a branch without a pull request", () => {
+  const read = (...parts: string[]) => readFileSync(path.join(github, ...parts), "utf8");
+
+  it("is turned into a pull request before the run looks for one", () => {
+    const run = read("workflows", "factory.yml");
+    const ensure = run.indexOf('cli.ts" ensure-pr "$ISSUE" "$RUN_URL"');
+    expect(ensure).toBeGreaterThan(run.indexOf("implement-report"));
+    expect(ensure).toBeLessThan(run.indexOf("pr-for-issue"));
+  });
+
+  it("lets the factory start CI by hand, because the workflow token cannot start pull_request workflows", () => {
+    expect(read("workflows", "ci.yml")).toMatch(/^ {2}workflow_dispatch:/m);
+  });
+});

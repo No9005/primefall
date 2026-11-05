@@ -42,6 +42,9 @@ import {
   formatOwnerBrief,
   formatMergeBlockedComment,
   handOverIfStillOpen,
+  branchWithoutPullRequestComment,
+  isBranchWithoutPullRequest,
+  pullRequestForBranch,
   mergeBlockReasons,
   ReviewVerdict,
   type IssueEvent,
@@ -52,6 +55,7 @@ const Command = {
   EnsureLabels: "ensure-labels",
   SelectIssue: "select-issue",
   ImplementReport: "implement-report",
+  EnsurePr: "ensure-pr",
   OpenThreads: "open-threads",
   Classify: "classify",
   ReviewReport: "review-report",
@@ -138,9 +142,17 @@ function ensureLabels(): void {
   }
 }
 
-function hasAgentBranch(issue: number): boolean {
-  return api<unknown[]>(`repos/${repo}/git/matching-refs/heads/agent/issue-${issue}-`).length > 0;
+function agentBranches(issue: number): string[] {
+  return api<{ ref: string }[]>(`repos/${repo}/git/matching-refs/heads/agent/issue-${issue}-`).map((ref) => ref.ref.replace(/^refs\/heads\//, ""));
 }
+
+function hasAgentBranch(issue: number): boolean {
+  return agentBranches(issue).length > 0;
+}
+
+const agentBranchName = (issue: number): string => agentBranches(issue)[0] ?? `agent/issue-${issue}-*`;
+/** The reason `isIssueStartable` gives for a ticket that has an agent branch (and no open pull request). */
+const BRANCH_EXISTS_REASON = "an agent branch already exists";
 
 /** The first of the candidates the factory may start now, with the reason for each skipped one printed. */
 function firstStartable(candidates: number[]): number | undefined {
@@ -160,6 +172,9 @@ function firstStartable(candidates: number[]): number | undefined {
       readyLabelSetByOwner: readyLabelSetByOwner(events, owner),
     });
     console.log(`#${candidate}: ${verdict.startable ? "start" : "skip"} (${verdict.reason})`);
+    if (!verdict.startable && verdict.reason === BRANCH_EXISTS_REASON && isBranchWithoutPullRequest({ hasAgentBranch: agentBranch, hasOpenPullRequest: openPullRequest })) {
+      upsertComment(candidate, CommentMarker.BranchWithoutPullRequest, `The factory skipped this ticket: the agent branch \`${agentBranchName(candidate)}\` exists but has no open pull request, so it does not start another run on top of it. Open the pull request from the branch, or delete the branch to let the factory start the ticket again.`);
+    }
     if (verdict.startable) return candidate;
   }
   return undefined;
@@ -200,6 +215,31 @@ function implementReport(issue: number, logFile: string, runUrl: string): void {
   addLabel(issue, Label.NeedsHuman);
   upsertComment(issue, CommentMarker.ImplementFailed, `The implement run ended without a branch or pull request. The issue is labelled \`needs-human\`, so no automatic run will retry it; remove the label to try again.\n\n[Run log](${runUrl})${denied}${last}`);
   output("pull_request", "false");
+}
+
+/**
+ * The implement run can leave a branch behind without a pull request (its `gh pr create` failed). Without this step
+ * the run would end silently (no pull request, so no review, and the next runs skip the ticket because the branch
+ * exists). The factory opens the pull request itself; the workflow token cannot start `pull_request` workflows, so CI
+ * is started by hand on the branch. If opening fails the ticket gets `needs-human` and a comment with the link.
+ */
+function ensurePullRequest(issue: number, runUrl: string): void {
+  const [branch] = agentBranches(issue);
+  if (branch === undefined) return;
+  const open = apiList<{ head: { ref: string } }>(`repos/${repo}/pulls?state=open`).some((pr) => pr.head.ref.startsWith(`agent/issue-${issue}-`));
+  if (open) return;
+  const defaultBranch = api<{ default_branch: string }>(`repos/${repo}`).default_branch;
+  const subject = api<{ commit: { message: string } }>(`repos/${repo}/commits/${encodeURIComponent(branch)}`).commit.message.split("\n")[0] ?? "";
+  const pr = pullRequestForBranch({ issue, branch, lastCommitSubject: subject, runUrl });
+  try {
+    const created = JSON.parse(gh(["api", "-X", "POST", `repos/${repo}/pulls`, "-f", `title=${pr.title}`, "-f", `head=${branch}`, "-f", `base=${defaultBranch}`, "-f", `body=${pr.body}`])) as { number: number };
+    console.log(`Opened #${created.number} from ${branch}.`);
+    gh(["workflow", "run", "ci.yml", "--repo", repo, "--ref", branch]);
+    upsertComment(issue, CommentMarker.BranchWithoutPullRequest, `The implement run left \`${branch}\` without a pull request; the factory opened #${created.number} from it and started CI on the branch.`);
+  } catch (error) {
+    addLabel(issue, Label.NeedsHuman);
+    upsertComment(issue, CommentMarker.BranchWithoutPullRequest, branchWithoutPullRequestComment({ repo, defaultBranch, branch, error: error instanceof Error ? error.message : String(error), runUrl }));
+  }
 }
 
 function classify(number: number, rulesPath: string): void {
@@ -499,6 +539,9 @@ switch (command) {
     break;
   case Command.ImplementReport:
     implementReport(Number(args[0]), args[1] ?? "", args[2] ?? "");
+    break;
+  case Command.EnsurePr:
+    ensurePullRequest(Number(args[0]), args[1] ?? "");
     break;
   case Command.OpenThreads:
     writeOpenThreads(Number(args[0]), args[1] ?? "");

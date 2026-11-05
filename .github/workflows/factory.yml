@@ -116,6 +116,11 @@ jobs:
         run: node "$FACTORY/src/cli.ts" implement-report "$ISSUE" "$RUNNER_TEMP/claude-execution-output.json" "$RUN_URL"
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      # A branch without a pull request (the agent's own `gh pr create` failed) must not end the run silently.
+      - name: Open the pull request if the agent did not
+        run: node "$FACTORY/src/cli.ts" ensure-pr "$ISSUE" "$RUN_URL"
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - name: Find the pull request
         id: pr
         run: node "$FACTORY/src/cli.ts" pr-for-issue "$ISSUE"
