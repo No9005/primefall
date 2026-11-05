@@ -1,0 +1,61 @@
+/* The start screen, the HUD, the banner and the end screens of Attack and Defend (docs/design/attack-defend/README.md). */
+
+/* Start screen */
+.start-screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; text-align: center; }
+.start-screen h1 { margin: 0; font: 700 40px/1 Rajdhani, sans-serif; letter-spacing: 0.2em; padding-left: 0.2em; }
+.start-sub { margin: 10px 0 20px; font: 500 12px var(--font-number); letter-spacing: 0.2em; color: var(--muted); }
+.start-modes { display: flex; gap: 16px; width: 100%; max-width: 600px; }
+.start-mode { flex: 1; min-height: 132px; box-sizing: border-box; padding: 14px 16px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; border: 2px solid var(--steel); border-radius: 8px; background: var(--panel); cursor: pointer; }
+.start-mode.classic { border-color: var(--teal); }
+.start-mode b { font: 700 22px/1.1 Rajdhani, sans-serif; letter-spacing: 0.06em; white-space: nowrap; color: var(--text); }
+.start-tag { font: 700 12px var(--font-number); letter-spacing: 0.16em; color: var(--teal); }
+.attack-defend .start-tag { color: var(--orange); }
+.start-text { font: 500 14px/1.35 Barlow, system-ui, sans-serif; color: var(--muted-light); }
+.start-more { margin-top: 16px; display: flex; align-items: center; gap: 12px; }
+.start-more button { height: 44px; padding: 0 20px; border: 1.5px solid var(--steel); border-radius: 8px; background: none; font: 700 16px Rajdhani, sans-serif; color: var(--text); cursor: pointer; }
+.start-more .seed { margin: 0 0 0 8px; font: 500 12px var(--font-number); color: var(--muted); }
+
+/* HUD: role label (left), centre pill, Round pill */
+.role-label { position: absolute; z-index: var(--z-pill); left: calc(8px + env(safe-area-inset-left)); top: calc(4px + env(safe-area-inset-top)); height: 34px; box-sizing: border-box; padding: 0 14px; display: flex; align-items: center; gap: 8px; border: 1.5px solid; border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); font: 700 16px Rajdhani, sans-serif; letter-spacing: 0.14em; pointer-events: none; }
+.role-label i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.role-label.attack { color: var(--orange); border-color: var(--orange); }
+.role-label.defend { color: var(--blue); border-color: var(--blue); }
+.role-pill { width: auto; padding: 0 16px; }
+.role-pill.attack { border-color: var(--orange); }
+.role-pill.defend { border-color: var(--blue); }
+.role-pill .prime-label { color: var(--text); }
+.role-pill.attack .prime-pip { border-color: var(--orange); }
+.role-pill.attack .prime-pip-filled { background: var(--orange); border-color: var(--orange); }
+.pill-count { font: 500 14px var(--font-number); color: var(--text); }
+.pill-rounds { font: 500 14px var(--font-number); letter-spacing: 0.06em; color: var(--blue); }
+.pill-divider { width: 1px; height: 16px; background: var(--steel); }
+.pill-zone { font: 700 12px var(--font-label); letter-spacing: 0.14em; }
+.pill-zone.yours { color: var(--teal); }
+.pill-zone.contested { color: var(--amber); }
+.pill-zone.enemy { color: var(--red-text); }
+/* With the Resolution bar the centre pill moves down to top 34. */
+.role-pill.resolving { top: calc(34px + env(safe-area-inset-top)); }
+.bar-role { margin-left: auto; font: 700 14px var(--font-label); letter-spacing: 0.2em; }
+.bar-role.attack { color: var(--orange); }
+.bar-role.defend { color: var(--blue); }
+
+/* The role banner: a bar across the screen, as long as the RESOLUTION callout, with the board dimmed behind it. */
+.role-banner-dim { position: fixed; inset: 0; z-index: var(--z-callout); display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--ink) 55%, transparent); pointer-events: none; animation: callout-word var(--callout-ms) ease-out both; }
+.role-banner { width: 100%; height: 130px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; background: color-mix(in srgb, var(--ink) 93%, transparent); }
+.role-banner-small { font: 700 12px var(--font-number); letter-spacing: 0.3em; padding-left: 0.3em; color: var(--muted-light); }
+.role-banner b { font: 700 62px/1 Rajdhani, sans-serif; letter-spacing: 0.2em; padding-left: 0.2em; }
+.role-banner b.attack { color: var(--orange); }
+.role-banner b.defend { color: var(--blue); }
+.role-banner-goal { margin-top: 4px; font: 500 16px Barlow, system-ui, sans-serif; color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .role-banner-dim { animation-name: callout-word; } }
+
+/* End screens */
+.ad-end { gap: 6px; }
+.ad-you-were { margin: 0; font: 700 12px var(--font-number); letter-spacing: 0.2em; }
+.ad-you-were.attack { color: var(--orange); }
+.ad-you-were.defend { color: var(--blue); }
+.ad-end h1 { font-size: 56px; line-height: 1; letter-spacing: 0.12em; padding-left: 0.12em; }
+.ad-end h1.victory { color: var(--teal); }
+.ad-end h1.defeat { color: var(--red); }
+.ad-reason { margin: 4px 0 0; font: 500 12px Barlow, system-ui, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.ad-detail { margin: 0 0 8px; font: 400 14px Barlow, system-ui, sans-serif; color: var(--text); }

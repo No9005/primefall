@@ -26,7 +26,7 @@ import {
   REACTOR_DECK,
   PLANNING_TIMER_SECONDS,
   PRIME_ZONE_WIN_RESOLUTIONS,
-  ROUND_LIMIT,
+  SquadId,
   type SquadPlan,
   type SquadView,
   type SubmitResult,
@@ -51,6 +51,8 @@ import { DeckShuffle } from "./DeckShuffle";
 import { exhaustionHud } from "./exhaustion-hud";
 import type { BoardPick, Point } from "./card-drag";
 import { Callout } from "./Callout";
+import { defenderZone, ROLE_LABELS, roleOf, roundPillText } from "./attack-defend";
+import { AttackerPill, DefenderPill, RoleBanner, RoleLabel } from "./RoleHud";
 import { COUNTDOWN_CALLOUT_MS, countdownCallout, formatTimer, timerTone } from "./callout";
 import { type PrimeCallout, primeCallouts, type PrimeProgress, primeScore, zoneOccupancy, zoneTint } from "./prime-zone";
 import { targetsInReach } from "./target-pick";
@@ -640,6 +642,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const boardEnemies = useMemo(() => enemyTokens(view.enemies, onBoard), [view.enemies, playback]);
   const zone = zoneOccupancy(boardHeroes, boardEnemies);
   const score = primeScore(primeAfter ?? view.primeProgress, view.squad, zone.contested || FORCE_CONTESTED_PILL);
+  const role = roleOf(view);
   const aimsAtAlly =
     aimedCard?.type === CardType.Utility &&
     (aimedCard.target === CardTarget.AllyHero || aimedCard.target === CardTarget.AllyHeroTile);
@@ -1072,22 +1075,34 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         moveFrameHero={frameHero}
         heroScreenRef={heroScreenRef}
       />
-      <div className={`prime-pill prime-${score.state}${playing ? " resolving" : ""}`} data-testid="prime-progress" aria-label={`${score.label}, ${score.filled} of ${PIPS.length}`}>
-        <span className="prime-label">{score.label}</span>
-        <span className="prime-pips">
-          {PIPS.map((pip) => (
-            // The key carries the filled state, so a pip that fills mounts again and plays its pop.
-            <span key={`${pip}-${pip < score.filled}`} className={pip < score.filled ? "prime-pip prime-pip-filled" : "prime-pip"} />
-          ))}
-        </span>
-      </div>
+      {/* During the Resolution the role stands at the right of the Resolution bar instead. */}
+      {role && !playing && <RoleLabel role={role} />}
+      {role === "attack" ? (
+        <AttackerPill filled={(primeAfter ?? view.primeProgress)[view.squad]} resolving={playing} />
+      ) : role === "defend" ? (
+        <DefenderPill
+          roundsLeft={view.attackAndDefend!.roundsLeft}
+          zone={defenderZone(zone, (primeAfter ?? view.primeProgress)[view.squad === SquadId.Left ? SquadId.Right : SquadId.Left])}
+          resolving={playing}
+        />
+      ) : (
+        <div className={`prime-pill prime-${score.state}${playing ? " resolving" : ""}`} data-testid="prime-progress" aria-label={`${score.label}, ${score.filled} of ${PIPS.length}`}>
+          <span className="prime-label">{score.label}</span>
+          <span className="prime-pips">
+            {PIPS.map((pip) => (
+              // The key carries the filled state, so a pip that fills mounts again and plays its pop.
+              <span key={`${pip}-${pip < score.filled}`} className={pip < score.filled ? "prime-pip prime-pip-filled" : "prime-pip"} />
+            ))}
+          </span>
+        </div>
+      )}
       <div
         className={`timer-pill timer-${timerTone(secondsLeft)}${playing ? " resolving" : ""}`}
-        title={`Round ${view.round} / ${ROUND_LIMIT}`}
-        aria-label={`Round ${view.round} of ${ROUND_LIMIT}`}
+        title={`Round ${view.round} / ${view.roundLimit}`}
+        aria-label={`Round ${view.round} of ${view.roundLimit}`}
       >
         <span data-testid="round" className="timer-round">
-          ROUND {view.round}
+          {role ? roundPillText(view.round, view.roundLimit) : `ROUND ${view.round}`}
         </span>
         <span data-testid="timer" className="timer-time" aria-label="Planning time left">
           {secondsLeft === 0 || playing ? "LOCKED" : formatTimer(secondsLeft)}
@@ -1096,10 +1111,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
       {!playing && countdownCallout(secondsLeft) !== undefined && (
         <Callout kind="number" text={countdownCallout(secondsLeft)!.text} tone={countdownCallout(secondsLeft)!.tone} durationMs={COUNTDOWN_CALLOUT_MS} />
       )}
+      {role && view.round === 1 && <RoleBanner role={role} roundLimit={view.roundLimit} />}
       {resolutionStage === "callout" && <Callout kind="word" text="RESOLUTION" tone="teal" durationMs={RESOLUTION_CALLOUT_MS} />}
       {playing && (
         <div className="resolution-bar" data-testid="resolution-bar" aria-hidden="true">
           {resolutionBarText(resolutionStage!, playback?.tick ?? 0, playback?.tickCount ?? 0)}
+          {role && <span className={`bar-role ${role}`}>{ROLE_LABELS[role]}</span>}
         </div>
       )}
       {primeCallout !== undefined && <Callout kind="word" text={primeCallout.text} tone={primeCallout.tone} durationMs={primeCallout.durationMs} />}

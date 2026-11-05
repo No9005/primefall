@@ -330,6 +330,8 @@ interface BoardProps {
   pickRef: MutableRefObject<((point: Point) => BoardPick) | undefined>;
   /** Filled with a function that tells where a Hero is on screen (viewport pixels), to place the card sheet beside it. */
   heroScreenRef?: MutableRefObject<((heroId: string) => Point | undefined) | undefined>;
+  /** The whole board at the fitted camera, as the side screen preview shows it (no framing of the Squad). */
+  overview?: boolean;
 }
 
 const NO_RANGE: readonly RangeTile[] = [];
@@ -452,6 +454,7 @@ export function Board({
   collisionTiles,
   pickRef,
   heroScreenRef,
+  overview = false,
 }: BoardProps) {
   const host = useRef<HTMLDivElement>(null);
   const coverGrid = useMemo(() => coverGridOf(destroyedCover, placedCover, wreckCover), [destroyedCover, placedCover, wreckCover]);
@@ -1144,7 +1147,7 @@ export function Board({
       const startFraming = (): Camera => {
         const view = size();
         const zone = zoneCentre();
-        return zone ? frameSquadCamera(ownPositionsRef.current, zone, view, freeBoardArea(view, { kind: "idle" })) : fitCamera(view);
+        return zone && !overview ? frameSquadCamera(ownPositionsRef.current, zone, view, freeBoardArea(view, { kind: "idle" })) : fitCamera(view);
       };
       let camera = startFraming();
       const setCamera = (next: Camera) => {
