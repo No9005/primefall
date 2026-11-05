@@ -37,6 +37,21 @@ test("the blank-board check fails on a blank canvas", async ({ page }) => {
   expect(await canvasIsDrawn(page, page.locator("#blank"))).toBe(false);
 });
 
+for (const hero of ["controller", "assassin"]) {
+  test(`?hero=${hero}: the player plans that Hero, Commits, and the Resolution plays`, async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.goto(`/?hero=${hero}`);
+    await page.getByRole("button", { name: "Play" }).click();
+    await expect(page.getByTestId("round")).toHaveText("ROUND 1");
+    await expect(page.getByRole("list", { name: "Hand" }).getByRole("button").last()).toBeEnabled();
+    await page.locator(".wait-card").click();
+    await page.getByRole("button", { name: "Commit" }).click();
+    await expect(page.getByTestId("resolution-bar")).toBeVisible();
+    await expect(page.getByTestId("round")).toHaveText("ROUND 2", { timeout: 40_000 });
+    expect(errors).toEqual([]);
+  });
+}
+
 test("start a match, play a Move card onto a tile, Commit", async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto("/");

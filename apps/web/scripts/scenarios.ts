@@ -3,7 +3,7 @@
 // real rules API and plain edits; the tool resumes it in the browser through the Resume button, and the real local
 // host plays the Resolution. Nothing here forges a rule. To add a scenario: see "Screenshots of UI changes" in
 // docs/agents/software-factory.md.
-import { ActionKind, type CardIndex, type GridPosition, type HeroPlan, type QueuedAction, type SquadPlan, SquadId, tileAt, TileKind, withTile } from "game-core";
+import { ActionKind, type CardIndex, type GridPosition, type HeroClass, type HeroPlan, type QueuedAction, type SquadPlan, SquadId, tileAt, TileKind, withTile } from "game-core";
 import { createMatch, type HeroState, type MatchState, recordSightings, startRound } from "game-core/server";
 
 /** How a Hand card is used in a planning step. `overdrive` is the primary effect in its Overdrive face. */
@@ -33,6 +33,8 @@ export interface Scenario {
   description: string;
   /** Builds the Match State at the start of Round 1. Deterministic: same result every call. */
   buildMatch: () => MatchState;
+  /** The Player Hero's class; the Bruiser when absent. `heroId` must be the Left Squad's Hero of this class. */
+  playerHero?: HeroClass;
   /** The player's Hero (always of the Left Squad) and its steps, driven through the UI in this order. */
   heroId: string;
   steps: readonly PlanStep[];
@@ -90,9 +92,9 @@ const BRUISER_BREACH_CHARGE = 4;
 const BRUISER_SHOCKWAVE = 5;
 const BRUISER_BULWARK = 6;
 
-// Controller cards. The web app lets the player control only the Bruiser (PLAYER_HERO_CLASS in PlanningScreen.tsx), so a
-// Controller card can only be seen when the allied AI plays it, and the AI plays only simple Attacks (isSimpleAttack in
-// cards.ts). Those are the Controller scenarios below; the Utility cards and every Overdrive face cannot be staged.
+// Controller cards. These scenarios keep the Bruiser as the Player Hero, so the Controller's card is played by the allied
+// AI, which plays only simple Attacks (isSimpleAttack in cards.ts). A scenario with `playerHero` set can play the other
+// cards itself.
 const CONTROLLER_PULSE_BOLT = 0;
 const CONTROLLER_TAG_ROUND = 2;
 const CONTROLLER_SHOCK_PULSE = 3;
