@@ -44,6 +44,18 @@ export default tseslint.config(
       "max-statements": ["warn", 30],
     },
   },
+  {
+    // Files cleaned of readability warnings (#188): the six rules are errors here, with the same thresholds.
+    files: ["apps/web/src/effects-layer.ts", "apps/web/src/weapon-effects.ts", "packages/game-core/src/balance.bal.ts"],
+    rules: {
+      "no-nested-ternary": "error",
+      complexity: ["error", 15],
+      "max-depth": ["error", 4],
+      "max-params": ["error", 5],
+      "max-lines-per-function": ["error", { max: 80, skipBlankLines: true, skipComments: true }],
+      "max-statements": ["error", 30],
+    },
+  },
   { files: ["*.js", "**/*.config.ts"], languageOptions: { globals: globals.node } },
   {
     // game-core is deterministic and pure: no browser APIs, no Math.random (use the seeded PRNG).
