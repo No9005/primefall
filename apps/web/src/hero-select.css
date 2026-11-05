@@ -1,0 +1,46 @@
+/* The Hero Select screen (docs/design/hero-select/README.md). The stage is 844 x 390 and is scaled to the window; every
+   size and position below is in stage px, as in the acceptance table. The Heroes are drawn on the canvas below the controls. */
+:root { --cyan: #7fe8ff; }
+.hero-select { position: absolute; inset: 0; overflow: hidden; background: var(--graphite); }
+.hs-stage { position: absolute; left: 50%; top: 50%; width: 844px; height: 390px; }
+.hs-grid { position: absolute; inset: 0; background: repeating-linear-gradient(30deg, transparent 0 46px, var(--panel) 46px 47px), repeating-linear-gradient(150deg, transparent 0 46px, var(--panel) 46px 47px); }
+.hs-canvas { position: absolute; inset: 0; pointer-events: none; }
+.hs-canvas canvas { display: block; }
+
+.hs-back { position: absolute; left: 24px; top: 12px; height: 40px; box-sizing: border-box; padding: 0 20px 0 14px; display: flex; align-items: center; gap: 8px; border: 2px solid var(--text); border-radius: 20px; background: rgba(61, 90, 115, 0.7); font: 700 16px Rajdhani, sans-serif; letter-spacing: 0.1em; color: var(--text); cursor: pointer; }
+.hs-back svg { display: block; flex: none; }
+.hs-back span { display: block; line-height: 1; padding-top: 1px; }
+.hs-title { position: absolute; left: 0; right: 0; top: 20px; height: 24px; margin: 0; text-align: center; font: 700 18px/24px Rajdhani, sans-serif; letter-spacing: 0.22em; color: var(--text); pointer-events: none; }
+.hs-chip { position: absolute; right: 24px; top: 17px; height: 30px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; border: 1.5px solid; border-radius: 15px; font: 700 13px Rajdhani, sans-serif; letter-spacing: 0.16em; }
+.hs-chip.classic { color: var(--teal); }
+.hs-chip.attack { color: var(--orange); }
+.hs-chip.defend { color: var(--blue); }
+
+/* The tap area of a Hero: nothing is drawn, the Hero stands on the board background. */
+.hs-hero { position: absolute; box-sizing: border-box; padding: 0; border: 0; background: none; cursor: pointer; }
+.hs-name { position: absolute; left: 0; right: 0; bottom: 9px; text-align: center; font: 700 19px/1 Rajdhani, sans-serif; letter-spacing: 0.12em; color: var(--text); }
+.hs-hero.selected .hs-name { color: var(--teal); }
+.hs-bar { position: absolute; left: 50%; bottom: 0; width: 36px; height: 3px; margin-left: -18px; border-radius: 2px; background: var(--teal); }
+
+.hs-info { position: absolute; left: 40px; top: 276px; width: 560px; height: 100px; box-sizing: border-box; color: var(--muted-light); }
+.hs-info h2 { margin: 0; font: 700 17px Rajdhani, sans-serif; letter-spacing: 0.12em; color: var(--teal); }
+.hs-info p { margin: 4px 0 0; font: 500 14px/1.35 Barlow, system-ui, sans-serif; color: var(--text); }
+.hs-info.empty h2, .hs-info.empty p { color: var(--muted-light); }
+.hs-view-cards { margin-top: 10px; display: inline-flex; align-items: center; min-height: 32px; box-sizing: border-box; padding: 0 14px; border: 1px solid var(--steel); border-radius: 16px; background: none; font: 600 13px Rajdhani, sans-serif; letter-spacing: 0.08em; color: var(--muted-light); cursor: pointer; }
+
+.hs-start { position: absolute; right: 24px; bottom: 20px; width: 160px; height: 48px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--teal); border-radius: 24px; background: var(--teal); color: var(--graphite); font: 700 20px Rajdhani, sans-serif; letter-spacing: 0.12em; cursor: pointer; }
+.hs-start:disabled { border-color: var(--steel); background: none; color: var(--muted); cursor: default; }
+
+.hs-cards-overlay { position: absolute; inset: 0; background: rgba(11, 16, 22, 0.72); }
+.hs-cards { position: absolute; left: 40px; top: 16px; width: 764px; height: 358px; box-sizing: border-box; padding: 14px 24px 10px; display: flex; flex-direction: column; overflow: hidden; background: var(--panel); border: 1.5px solid var(--teal); border-radius: 10px; }
+.hs-cards-header { flex: none; display: flex; justify-content: space-between; align-items: center; height: 48px; margin-bottom: 10px; }
+.hs-cards-header h2 { margin: 0; font: 700 19px Rajdhani, sans-serif; letter-spacing: 0.12em; color: var(--teal); }
+.hs-close { width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--steel); border-radius: 20px; background: none; font: 700 20px Rajdhani, sans-serif; color: var(--text); cursor: pointer; }
+.hs-cards ul { flex: 1; min-height: 0; margin: 0; padding: 0; list-style: none; overflow-y: auto; }
+.hs-cards li { display: flex; align-items: center; gap: 10px; min-height: 29px; box-sizing: border-box; border-top: 1px solid #26313d; font: 500 14px Barlow, system-ui, sans-serif; }
+.hs-card-name { flex: none; width: 150px; font: 700 16px Rajdhani, sans-serif; color: var(--text); }
+.hs-card-type { flex: none; width: 60px; font: 600 13px Rajdhani, sans-serif; }
+.hs-card-type.attack { color: var(--orange); }
+.hs-card-type.utility { color: var(--cyan); }
+.hs-card-cost { flex: none; width: 24px; font: 500 14px var(--font-number); color: var(--orange); }
+.hs-card-effect { color: var(--text-soft); }

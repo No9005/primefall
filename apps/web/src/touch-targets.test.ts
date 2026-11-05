@@ -138,7 +138,7 @@ const TARGETS: Target[] = [
   { name: "Pull backdrop", tier: { none: "the whole view behind the pulled card; a tap anywhere outside the card closes it" }, jsx: [{ file: "game-parts.tsx", includes: "pull-backdrop" }] },
 ];
 
-const styleRules = loadRules(["styles.css", "tutorial.css"]);
+const styleRules = loadRules(["styles.css", "tutorial.css", "hero-select.css"]);
 
 /** The declarations of the rules with exactly this selector, merged in source order. */
 function declarationsOf(selector: string): Map<string, string> {

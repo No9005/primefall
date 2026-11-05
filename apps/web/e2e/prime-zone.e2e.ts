@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { startMatch } from "./start-match";
 
 test("the Prime Zone pill shows from the start of Planning with three empty pips", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Play" }).click();
+  await startMatch(page);
   await expect(page.getByTestId("round")).toHaveText("ROUND 1");
 
   const pill = page.getByTestId("prime-progress");

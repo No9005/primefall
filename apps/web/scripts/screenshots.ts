@@ -75,11 +75,57 @@ async function queueMove(page: Page): Promise<void> {
   throw new Error("No tapped tile accepted the Move card");
 }
 
+/** On the Hero Select: taps a Hero and Start. */
+async function chooseHeroAndStart(page: Page, hero: HeroClass): Promise<void> {
+  await page.getByTestId(`hero-${hero}`).click();
+  await page.getByRole("button", { name: "START" }).click();
+}
+
+/** Screens that are not a match scenario, played by clicking through the app. Their frames are in the order they are taken. */
+export const SCREEN_SCENARIOS: Record<string, { description: string; shots: readonly string[] }> = {
+  "hero-select": {
+    description: "The Hero Select: nothing selected, each Hero ready (Bruiser mid-shots, Controller with the drone out, Assassin Hidden), the card list",
+    shots: ["01-idle.png", "02-bruiser-ready.png", "03-controller-ready.png", "04-assassin-ready.png", "05-cards.png"],
+  },
+};
+
+/** Looks at the Hero Select at the moments the design sheets show: the Bruiser mid-shots, the drone out, the Assassin Hidden. */
+async function playHeroSelect(browser: Browser): Promise<void> {
+  const directory = path.join(OUTPUT_DIR, "hero-select");
+  rmSync(directory, { recursive: true, force: true });
+  mkdirSync(directory, { recursive: true });
+  const page = await browser.newPage({ viewport: VIEWPORT });
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const shoot = (name: string) => page.screenshot({ path: path.join(directory, name) });
+  await page.goto(URL);
+  await page.getByRole("button", { name: "Play" }).click();
+  await page.getByTestId("hero-canvas").and(page.locator("[data-ready]")).waitFor();
+  await page.waitForTimeout(800);
+  await shoot("01-idle.png");
+  await page.getByTestId("hero-bruiser").click();
+  await page.waitForTimeout(2100); // the second of the three shots (at 22 %, 34 % and 46 % of 6 s; the frame is taken a little late)
+  await shoot("02-bruiser-ready.png");
+  await page.getByTestId("hero-controller").click();
+  await page.waitForTimeout(3300); // the drone is out and hovers
+  await shoot("03-controller-ready.png");
+  await page.getByTestId("hero-assassin").click();
+  await page.waitForTimeout(3300); // invisible, the label floats up
+  await shoot("04-assassin-ready.png");
+  await page.getByRole("button", { name: "VIEW CARDS" }).click();
+  await page.getByTestId("card-list").waitFor();
+  await shoot("05-cards.png");
+  if (errors.length > 0) throw new Error(`hero-select: ${errors.join("; ")}`);
+  checkWritten(directory, SCREEN_SCENARIOS["hero-select"]!.shots);
+}
+
 async function playStandardPath(page: Page, hero?: HeroClass): Promise<void> {
   const shoot = (name: ScreenshotName) => page.screenshot({ path: path.join(OUTPUT_DIR, name) });
 
   await page.goto(hero ? `${URL}/?hero=${hero}` : URL);
   await page.getByRole("button", { name: "Play" }).click();
+  // Without ?hero= the Hero Select comes first: the Bruiser, then Start.
+  if (!hero) await chooseHeroAndStart(page, HeroClass.Bruiser);
   await page.getByTestId("round").filter({ hasText: "ROUND 1" }).waitFor();
   const hand = page.getByRole("list", { name: "Hand" });
   await hand.getByRole("button").last().waitFor({ state: "visible" });
@@ -351,15 +397,18 @@ export function parseArgs(args: readonly string[]): CliOptions {
   const name = args[at + 1];
   if (name === undefined || name.startsWith("--")) return { list: false, scenarios: [], error: "--scenario needs a name" };
   if (name === "all") return { list: false, scenarios: [...SCENARIO_NAMES] };
-  if (!SCENARIO_NAMES.includes(name)) return { list: false, scenarios: [], error: `Unknown scenario "${name}"` };
+  if (!SCENARIO_NAMES.includes(name) && !(name in SCREEN_SCENARIOS)) return { list: false, scenarios: [], error: `Unknown scenario "${name}"` };
   return { list: false, scenarios: [name] };
 }
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   if (options.list || options.error) {
-    if (options.error) console.error(`${options.error}. Valid names: all, ${SCENARIO_NAMES.join(", ")}`);
-    else for (const scenario of SCENARIOS) console.log(`${scenario.name}\t${scenario.description}`);
+    if (options.error) console.error(`${options.error}. Valid names: all, ${[...SCENARIO_NAMES, ...Object.keys(SCREEN_SCENARIOS)].join(", ")}`);
+    else {
+      for (const scenario of SCENARIOS) console.log(`${scenario.name}\t${scenario.description}`);
+      for (const [name, screen] of Object.entries(SCREEN_SCENARIOS)) console.log(`${name}\t${screen.description}`);
+    }
     process.exitCode = options.error ? 1 : 0;
     return;
   }
@@ -377,6 +426,11 @@ async function main(): Promise<void> {
         await playStandardPath(page, options.hero);
       }
       for (const name of options.scenarios) {
+        if (name in SCREEN_SCENARIOS) {
+          await playHeroSelect(browser);
+          console.log(`Scenario ${name}: ${path.join(OUTPUT_DIR, name)}\n${SCREEN_SCENARIOS[name]!.shots.join("\n")}`);
+          continue;
+        }
         await playScenario(browser, SCENARIOS.find((scenario) => scenario.name === name)!);
         console.log(`Scenario ${name}: ${path.join(OUTPUT_DIR, name)}\n${SCENARIO_SCREENSHOT_NAMES[name]!.join("\n")}`);
       }
