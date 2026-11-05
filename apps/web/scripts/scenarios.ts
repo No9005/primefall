@@ -3,7 +3,7 @@
 // real rules API and plain edits; the tool resumes it in the browser through the Resume button, and the real local
 // host plays the Resolution. Nothing here forges a rule. To add a scenario: see "Screenshots of UI changes" in
 // docs/agents/software-factory.md.
-import { ActionKind, type CardIndex, type GridPosition, type HeroPlan, type QueuedAction, type SquadPlan, SquadId } from "game-core";
+import { ActionKind, type CardIndex, type GridPosition, type HeroPlan, type QueuedAction, type SquadPlan, SquadId, tileAt, TileKind, withTile } from "game-core";
 import { createMatch, type HeroState, type MatchState, recordSightings, startRound } from "game-core/server";
 
 /** How a Hand card is used in a planning step. `overdrive` is the primary effect in its Overdrive face. */
@@ -65,6 +65,16 @@ function arrange(hero: HeroState, position: GridPosition, cards: { hand: CardInd
   hero.deck = cards.deck ?? all.filter((index) => !taken.has(index));
 }
 
+/**
+ * The state Deploy Cover leaves behind, written the way the rules write it: Half Cover on an empty tile for the
+ * Left Squad, and the tile kind to restore. Only the Bruiser is played in the UI, and the AI never plays Deploy Cover
+ * or Scout Drone, so these effects cannot be played in a scenario; they start in place.
+ */
+function placeHalfCover(match: MatchState, position: GridPosition, remaining: number): void {
+  match.placedCover.push({ squad: SquadId.Left, position: { ...position }, originalKind: tileAt(match.grid, position)!, remaining });
+  match.grid = withTile(match.grid, position, TileKind.HalfCover);
+}
+
 /** Round 1 of a fresh match with the edits applied; Ghost memory and Fog of War are brought up to date afterwards. */
 function stage(seed: number, edit: (hero: (id: string) => HeroState, match: MatchState) => void): MatchState {
   const match = startRound(createMatch(seed));
@@ -79,9 +89,6 @@ const BRUISER_SLAM_SHOT_2 = 1;
 const BRUISER_BREACH_CHARGE = 4;
 const BRUISER_SHOCKWAVE = 5;
 const BRUISER_BULWARK = 6;
-const CONTROLLER_SCOUT_DRONE = 4;
-const CONTROLLER_DEPLOY_COVER = 8;
-const PLAYER_CONTROLLER = `${SquadId.Left}-controller`;
 
 export const SCENARIOS: readonly Scenario[] = [
   {
@@ -127,18 +134,16 @@ export const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "cover-placed-expires",
-    description: "A Controller plays Deploy Cover; the Half Cover rises in Resolution 1, stands in Resolution 2 and is gone afterwards.",
+    description: "Half Cover placed by Deploy Cover (2 Resolutions left) stands through Resolution 1 and expires at the end of Resolution 2.",
     buildMatch: () =>
-      stage(21, (hero) => {
-        arrange(hero(PLAYER_CONTROLLER), { col: 8, row: 3 }, { hand: [CONTROLLER_DEPLOY_COVER, 0, 1, 2] });
+      stage(21, (hero, match) => {
+        arrange(hero(PLAYER_BRUISER), { col: 8, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        placeHalfCover(match, { col: 10, row: 3 }, 2);
       }),
-    heroId: PLAYER_CONTROLLER,
-    steps: [
-      { slot: 1, use: "pitch" },
-      { slot: 0, use: "primary", tile: { col: 10, row: 3 } },
-    ],
-    resolutionShotsMs: [400, 1200, 2800],
-    secondRound: { steps: [{ wait: true }], resolutionShotsMs: [400, 2800] },
+    heroId: PLAYER_BRUISER,
+    steps: [{ wait: true }],
+    resolutionShotsMs: [400, 1500, 3000],
+    secondRound: { steps: [{ wait: true }], resolutionShotsMs: [400, 1500, 3000] },
   },
   {
     name: "cover-destroyed",
@@ -157,34 +162,33 @@ export const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "scout-drone-area-over-time",
-    description: "A Controller sends a Scout Drone over a wall; the 3 x 3 area shows an enemy Hero in Resolutions 1 and 2, then the fog closes.",
+    description: "A Scout Drone area (3 x 3, 2 Resolutions left) shows an enemy Hero behind a wall in Resolutions 1 and 2; then the fog closes.",
     buildMatch: () =>
-      stage(23, (hero) => {
-        arrange(hero(PLAYER_CONTROLLER), { col: 8, row: 3 }, { hand: [CONTROLLER_SCOUT_DRONE, 0, 1, 2] });
-        // Behind the wall of row 6: out of sight for the Squad until the area covers it.
+      stage(23, (hero, match) => {
+        arrange(hero(PLAYER_BRUISER), { col: 8, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        // Behind the wall of row 6: out of sight for the Squad until the area covers it. The sighting makes it a Ghost later.
         hero("right-assassin").position = { col: 12, row: 7 };
+        match.revealedAreas.push({ squad: SquadId.Left, center: { col: 12, row: 6 }, size: 3, remaining: 2 });
       }),
-    heroId: PLAYER_CONTROLLER,
-    steps: [
-      { slot: 1, use: "pitch" },
-      { slot: 0, use: "primary", tile: { col: 12, row: 6 } },
-    ],
+    heroId: PLAYER_BRUISER,
+    steps: [{ wait: true }],
     resolutionShotsMs: [400, 1500, 3000],
-    secondRound: { steps: [{ wait: true }], resolutionShotsMs: [400, 2800] },
+    secondRound: { steps: [{ wait: true }], resolutionShotsMs: [400, 1500, 3000] },
   },
   {
     name: "ghost-enemy",
     description: "An enemy Assassin seen earlier is out of sight and shown as a Ghost with the last seen tag; the Bruiser then moves close enough to see it again.",
     buildMatch: () =>
       stage(24, (hero, match) => {
-        arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
-        // Seen at 6 tiles, then 8 tiles away, beyond the sight range of 7: the Squad remembers the first tile.
-        hero("right-assassin").position = { col: 10, row: 1 };
+        arrange(hero(PLAYER_BRUISER), { col: 7, row: 8 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        // Seen 6 tiles away, then 8 tiles away on the Prime Zone, beyond the sight range of 7: the Squad remembers the first tile.
+        hero("right-assassin").position = { col: 13, row: 8 };
         recordSightings(match);
-        hero("right-assassin").position = { col: 12, row: 1 };
+        hero("right-assassin").position = { col: 15, row: 8 };
       }),
     heroId: PLAYER_BRUISER,
-    steps: [{ slot: 0, use: "move", tile: { col: 6, row: 1 } }],
+    // The enemy holds the Prime Zone; the Move brings it to 6 tiles.
+    steps: [{ slot: 0, use: "move", tile: { col: 9, row: 8 } }],
     resolutionShotsMs: [800, 2500],
   },
 ];
