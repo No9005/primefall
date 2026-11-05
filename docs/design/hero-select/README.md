@@ -39,6 +39,14 @@ Touch targets and text follow `docs/design/decisions.md` (primary controls at le
 
 Tapping the selected Hero plays its ready transition again from the start. Tapping another Hero returns the previous one to its idle pose and plays the new one. With `prefers-reduced-motion`: no animation, the static last frame of the ready transition (and the idle poses held still). These poses are for this screen only; on the board the Heroes keep their clips.
 
+## Alignment (check this explicitly; the owner does not want rounds of micro corrections)
+
+- **Icons and labels in a button**: the arrow of Back and Next is a drawn icon (SVG or a Pixi shape), **not a text glyph** (a glyph falls back to another font and sits too low). Its vertical centre is the vertical centre of the capital letters of the label, the gap to the label is 8 px (Back) and 10 px (Next), and icon plus label together are centred in the pill. Compare the cropped buttons in the images.
+- **Shared centre lines**: Back, the title and the mode chip share one vertical centre (y 32); the Start/Next button and its neighbours share their right edge (right 24); the chip's right edge and the Start/Next button's right edge are the same x.
+- **Shared edges**: the left edge of the Back button, of the info text and of the View cards button is the same x where the references show it so (Back at 24, text and View cards at 40 on the Hero Select screen). Hero names are centred under their Heroes' Squad rings.
+- **Rows**: elements in a row have the same height and the same top (the two role buttons, the three Hero areas); gaps between them are equal.
+- Spacing and sizes are multiples of 2 px, as in the tables. A deviation of more than 1 px from the table is a defect to fix, not to list.
+
 ## How a ticket uses this
 
 Take a screenshot of each state with the screenshot tool (a scenario for the Hero Select is part of ticket #318), compare it with the matching `overview/screen-*.png` and the table above, fix every deviation yourself (sizes, positions, colours, the pose at the moment shown in the sheets) and attach the final screenshots to the pull request.
