@@ -13,7 +13,7 @@ The UI direction (orientation, layout, input, board rotation, terrain, style) is
 
 ## Screens
 
-1. **Start**: product name, "Play" (Reactor Deck, 3v3 vs AI, you control the Bruiser), seed shown small for bug reports.
+1. **Start**: product name, "Play" (Reactor Deck, 3v3 vs AI, you control the Player Hero, the Bruiser by default), seed shown small for bug reports.
 2. **Planning** (main screen, layout in ADR 0021): "Round X / 30", planning timer and Prime Zone control progress (0 to 3 Resolutions per Squad) in the top pill. The Squad panel shows the three Heroes (Deck / Exile counts, selected Hero highlighted; allied Heroes are AI planned and show their queue read-only) and the Queue of the selected Hero. The Hand of up to 4 cards, the Energy orb and the Commit button.
 3. **Resolution**: same board, HUD reduced to Tick indicator ("Tick 2 / 4"), an event log that names cause and effect ("Bruiser Slam Shot hits Enemy Assassin, 2 Deck Damage"), play / pause / speed (1x, 2x) and skip to end.
 4. **End**: result (victory, defeat, draw), reason (Prime Zone held, all Heroes Exhausted, Round Limit with Deck totals), Round reached, "Play again" and the match seed.

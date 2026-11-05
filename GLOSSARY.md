@@ -14,6 +14,14 @@ _Avoid_: Character, unit, champion
 A group of three Heroes fighting together.
 _Avoid_: Team, faction
 
+**Player Hero**:
+The Hero the player controls in a match. The other Heroes of the player's Squad are planned by the AI.
+_Avoid_: Avatar, main
+
+**Hero Select**:
+The screen where the player chooses the Player Hero before a match.
+_Avoid_: Character select
+
 **Exhaustion**:
 The state of a Hero that has no card left in its Deck and its Discard at the end of a Resolution (cards in the Hand do not count). An exhausted Hero is out of the match: it acts no more, is no obstacle to Moves, and its tile becomes Half Cover until that Cover is destroyed.
 _Avoid_: Death, KO, defeat
