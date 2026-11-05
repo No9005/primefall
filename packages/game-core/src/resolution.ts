@@ -20,6 +20,7 @@ import {
   isTileBlast,
   type PLAYABLE_UTILITY_EFFECTS,
 } from "./cards";
+import { experiment } from "./experiment";
 import { AttackFailReason, EventKind, MatchEndReason, type MatchEvent, PRIME_ZONE_WIN_RESOLUTIONS, ROUND_LIMIT, SquadId } from "./host";
 import { canSquadSee, canSquadSeeHero, type HeroState, type MatchState, recordSightings, refillDeck, sightRange } from "./match";
 import {
@@ -565,13 +566,22 @@ const otherSquad = (squad: SquadId) => (squad === SquadId.Left ? SquadId.Right :
  * (ADR 0010, ADR 0011, ADR 0019). Squad loss is checked first: an Exhausted Squad cannot win by keeping
  * control on a tie. Sets `match.result` when the match is over.
  */
-function evaluateMatchEnd(match: MatchState): void {
+function evaluateMatchEnd(match: MatchState, pitchers: ReadonlySet<string> = new Set()): void {
   const inZone = (squad: SquadId) =>
     match.heroes.filter(
-      (hero) => hero.squad === squad && !hero.exhausted && tileAt(REACTOR_DECK, hero.position) === TileKind.PrimeZone,
+      (hero) =>
+        hero.squad === squad &&
+        !hero.exhausted &&
+        tileAt(REACTOR_DECK, hero.position) === TileKind.PrimeZone &&
+        (!experiment.holdNeedsPitch || pitchers.has(hero.id)),
     ).length;
   const [left, right] = [inZone(SquadId.Left), inZone(SquadId.Right)];
-  const controller = left === right ? match.primeZone.controller : left > right ? SquadId.Left : SquadId.Right;
+  let controller = left === right ? match.primeZone.controller : left > right ? SquadId.Left : SquadId.Right;
+  if (experiment.defender && experiment.attackerWinsTies) {
+    const attacker = otherSquad(experiment.defender);
+    const [attackers, defenders] = attacker === SquadId.Left ? [left, right] : [right, left];
+    controller = attackers > 0 && attackers >= defenders ? attacker : defenders > 0 ? experiment.defender : match.primeZone.controller;
+  }
   match.primeZone =
     controller === undefined
       ? { progress: 0 }
@@ -589,7 +599,12 @@ function evaluateMatchEnd(match: MatchState): void {
   const lost = SQUADS.filter((squad) => match.heroes.filter((hero) => hero.squad === squad).every((hero) => hero.exhausted));
   if (lost.length === 2) return end(MatchEndReason.AllHeroesExhausted);
   if (lost.length === 1) return end(MatchEndReason.AllHeroesExhausted, otherSquad(lost[0]!));
-  if (match.primeZone.progress >= PRIME_ZONE_WIN_RESOLUTIONS) {
+  if (experiment.defender) {
+    if (match.primeZone.progress >= PRIME_ZONE_WIN_RESOLUTIONS && match.primeZone.controller !== experiment.defender) {
+      return end(MatchEndReason.PrimeZoneHeld, match.primeZone.controller);
+    }
+    if (match.round >= experiment.defenderRounds) return end(MatchEndReason.DefenceHeld, experiment.defender);
+  } else if (match.primeZone.progress >= PRIME_ZONE_WIN_RESOLUTIONS) {
     return end(MatchEndReason.PrimeZoneHeld, match.primeZone.controller);
   }
   if (match.round >= ROUND_LIMIT) {
@@ -746,12 +761,21 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     const shuffled = refillDeck(match, hero);
     if (shuffled > 0) events.push({ kind: EventKind.DeckShuffled, tick: Math.max(ticks, 1), heroId: hero.id, amount: shuffled });
   }
+  if (experiment.zoneDecay) {
+    for (const hero of match.heroes.filter((candidate) => !candidate.exhausted)) {
+      if (tileAt(REACTOR_DECK, hero.position) !== TileKind.PrimeZone || hero.deck.length === 0) continue;
+      hero.exile.push(hero.deck.pop()!);
+      const shuffled = refillDeck(match, hero);
+      if (shuffled > 0) events.push({ kind: EventKind.DeckShuffled, tick: Math.max(ticks, 1), heroId: hero.id, amount: shuffled });
+    }
+  }
   for (const hero of match.heroes.filter((candidate) => !candidate.exhausted && candidate.deck.length === 0)) {
     hero.exhausted = true;
     match.grid = withWreck(match.grid, hero.position);
     events.push({ kind: EventKind.Exhausted, tick: Math.max(ticks, 1), heroId: hero.id });
   }
-  evaluateMatchEnd(match);
+  const pitchers = new Set(plans.flatMap((plan) => plan.heroes.filter((hero) => (hero.pitched?.length ?? 0) > 0).map((hero) => hero.heroId)));
+  evaluateMatchEnd(match, pitchers);
   endTick();
   return { match, events, perceivedBy };
 }

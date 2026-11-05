@@ -25,6 +25,8 @@ export enum MatchEndReason {
   AllHeroesExhausted = "allHeroesExhausted",
   /** The Round Limit passed; decided by the cards in all Decks. */
   RoundLimit = "roundLimit",
+  /** EXPERIMENT: the Defender kept the Prime Zone until the Defender time limit. */
+  DefenceHeld = "defenceHeld",
 }
 
 /** The result of a finished match. */

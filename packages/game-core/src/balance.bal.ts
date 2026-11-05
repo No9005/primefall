@@ -9,6 +9,7 @@
 
 import { it } from "vitest";
 import { planSquad } from "./ai";
+import { DEFAULT_EXPERIMENT, type Experiment, experiment } from "./experiment";
 import { EffectKind, HERO_DECKS } from "./cards";
 import { EventKind, MatchEndReason, ROUND_LIMIT, SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
@@ -29,6 +30,8 @@ interface Tweaks {
   pitchExile?: boolean;
   /** Cards every living Hero loses from the Deck to the Exile after each Resolution. */
   fatiguePerRound?: number;
+  /** EXPERIMENT rule switches (see experiment.ts); `defender` here is true: the Defender alternates by seed parity. */
+  rules?: Partial<Omit<Experiment, "defender">> & { defender?: boolean };
 }
 
 const VARIANTS: Record<string, Tweaks> = {
@@ -38,6 +41,19 @@ const VARIANTS: Record<string, Tweaks> = {
   "Pitch exiles": { pitchExile: true },
   "Deck 9 + Pitch exiles": { deckCut: 3, pitchExile: true },
   "attacks cost 2": { cardCost: { "Slam Shot": 2, "Pulse Bolt": 2, "Precision Shot": 2 } },
+  "1 zone decay": { rules: { zoneDecay: true } },
+  "2 hold needs pitch (AI pitches)": { rules: { holdNeedsPitch: true, aiPitchInZone: true } },
+  "2b hold needs pitch (AI does not)": { rules: { holdNeedsPitch: true } },
+  "3 defender (R10)": { rules: { defender: true } },
+  "3b defender, attacker wins ties": { rules: { defender: true, attackerWinsTies: true } },
+  "3c defender R14, attacker ties": { rules: { defender: true, attackerWinsTies: true, defenderRounds: 14 } },
+  "1+2": { rules: { zoneDecay: true, holdNeedsPitch: true, aiPitchInZone: true } },
+  "1+Deck 9+Pitch exiles": { rules: { zoneDecay: true }, deckCut: 3, pitchExile: true },
+  "2+Deck 9+Pitch exiles": { rules: { holdNeedsPitch: true, aiPitchInZone: true }, deckCut: 3, pitchExile: true },
+  "1+2+Deck 9+Pitch exiles": { rules: { zoneDecay: true, holdNeedsPitch: true, aiPitchInZone: true }, deckCut: 3, pitchExile: true },
+  "3b+1": { rules: { defender: true, attackerWinsTies: true, zoneDecay: true } },
+  "3b+Deck 9+Pitch exiles": { rules: { defender: true, attackerWinsTies: true }, deckCut: 3, pitchExile: true },
+  "3b+1+Deck 9+Pitch exiles": { rules: { defender: true, attackerWinsTies: true, zoneDecay: true }, deckCut: 3, pitchExile: true },
 };
 
 /** What a match should feel like; the table marks a column that misses its target. */
@@ -74,11 +90,20 @@ interface Totals {
   damage: number;
   leftWins: number;
   rightWins: number;
+  defenceHeld: number;
+  attackerWins: number;
 }
 
 function playMatch(seed: number, tweaks: Tweaks, totals: Totals): void {
   const created = createMatch(seed);
   created.round = seed % 2 === 0 ? 0 : 1; // half of the matches start one Round later (the AI yields by Round parity)
+  const { defender: defends, ...rules } = tweaks.rules ?? {};
+  Object.assign(experiment, DEFAULT_EXPERIMENT, rules);
+  experiment.defender = defends ? (seed % 2 === 0 ? SquadId.Left : SquadId.Right) : undefined;
+  if (experiment.defender) {
+    const col = experiment.defender === SquadId.Left ? 14 : 16;
+    created.heroes.filter((hero) => hero.squad === experiment.defender).forEach((hero, i) => (hero.position = { col, row: 7 + i }));
+  }
   for (const hero of created.heroes) {
     if (tweaks.attackBonus) hero.attackBonus = tweaks.attackBonus;
     if (tweaks.deckCut) hero.deck = hero.deck.slice(tweaks.deckCut);
@@ -116,6 +141,9 @@ function playMatch(seed: number, tweaks: Tweaks, totals: Totals): void {
   const reason = match.result?.reason;
   if (reason === MatchEndReason.PrimeZoneHeld) totals.zoneEnds++;
   if (reason === MatchEndReason.RoundLimit || !reason) totals.stalls++;
+  if (reason === MatchEndReason.DefenceHeld) totals.defenceHeld++;
+  if (experiment.defender && match.result?.winner && match.result.winner !== experiment.defender) totals.attackerWins++;
+  Object.assign(experiment, DEFAULT_EXPERIMENT);
   if (exhausted > 0) totals.exhaustedMatches++;
   totals.exhaustedHeroes += exhausted;
   if (match.result?.winner === SquadId.Left) totals.leftWins++;
@@ -131,7 +159,7 @@ it("prints one table for all variants", () => {
   for (const [name, tweaks] of Object.entries(VARIANTS)) {
     if (name !== "baseline" && only && !name.includes(only)) continue;
     const restore = applyCardTweaks(tweaks);
-    const totals: Totals = { rounds: [], stalls: 0, zoneEnds: 0, exhaustedMatches: 0, exhaustedHeroes: 0, hits: 0, damage: 0, leftWins: 0, rightWins: 0 };
+    const totals: Totals = { rounds: [], stalls: 0, zoneEnds: 0, exhaustedMatches: 0, exhaustedHeroes: 0, hits: 0, damage: 0, leftWins: 0, rightWins: 0, defenceHeld: 0, attackerWins: 0 };
     try {
       for (let seed = 1; seed <= seeds; seed++) playMatch(seed, tweaks, totals);
     } finally {
@@ -154,9 +182,10 @@ it("prints one table for all variants", () => {
       (totals.hits / seeds).toFixed(0),
       (totals.damage / seeds).toFixed(1),
       `${spread.toFixed(0)}%${mark(spread <= TARGETS.sideSpreadMaxPercent)}`,
+      tweaks.rules?.defender ? `${percent(totals.attackerWins).toFixed(0)}% / ${percent(totals.defenceHeld).toFixed(0)}%` : "",
     ]);
   }
-  const header = ["variant", "rounds", "stalls", "zone win", "w/ exhaustion", "exh. heroes", "hits", "damage", "L/R spread"];
+  const header = ["variant", "rounds", "stalls", "zone win", "w/ exhaustion", "exh. heroes", "hits", "damage", "L/R spread", "att.win/def.timeout"];
   const widths = header.map((title, column) => Math.max(title.length, ...rows.map((row) => row[column]!.length)));
   const line = (cells: string[]) => cells.map((cell, column) => pad(cell, widths[column]!)).join("  ");
   console.log(`\n${seeds} matches per variant, AI against AI. "!" = misses its target (rounds ${TARGETS.roundsMin}-${TARGETS.roundsMax}, stalls <= ${TARGETS.stallsMaxPercent}%, exhaustion >= ${TARGETS.exhaustionMinPercent}%, side spread <= ${TARGETS.sideSpreadMaxPercent}%)`);

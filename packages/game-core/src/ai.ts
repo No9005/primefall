@@ -1,6 +1,7 @@
 // AI planning (ADR 0017, ADR 0018). A pure, deterministic function from a Squad View to a Squad Plan.
 // It only ever sees the Squad View, so it cannot read enemy Hands or unseen Heroes: no cheating.
 
+import { experiment } from "./experiment";
 import { type CardIndex, HERO_DECKS, isSimpleAttack } from "./cards";
 import { type HeroView, SquadId, type SquadView, Visibility, type VisibleEnemyView } from "./host";
 import {
@@ -195,7 +196,9 @@ function planHero(
     pool.splice(pool.indexOf(card), 1);
   }
 
-  const pitched = spare().slice(0, energyNeeded);
+  // EXPERIMENT (aiPitchInZone): a Hero that ends the Round in the Prime Zone pitches at least one card.
+  const holdsZone = experiment.aiPitchInZone && isPrimeZoneTile(position);
+  const pitched = spare().slice(0, Math.max(energyNeeded, holdsZone ? 1 : 0));
   return { heroId: hero.id, queue, pitched };
 }
 
