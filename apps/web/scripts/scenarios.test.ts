@@ -1,8 +1,9 @@
-import { SquadId, validatePlan } from "game-core";
+import { coverAt, CoverKind, SquadId, validatePlan, Visibility } from "game-core";
 import { restoreLocalHost, SNAPSHOT_VERSION } from "game-core/local-host";
+import { buildSquadView, canSquadSeeHero, type MatchState } from "game-core/server";
 import { describe, expect, it } from "vitest";
 import { parseArgs } from "./screenshots";
-import { preparedPlan, SCENARIO_NAMES, SCENARIOS, scenarioScreenshotNames } from "./scenarios";
+import { preparedPlan, SCENARIO_NAMES, SCENARIOS, scenarioRounds, scenarioScreenshotNames } from "./scenarios";
 
 describe("screenshot scenarios", () => {
   it("have unique kebab-case names", () => {
@@ -17,7 +18,7 @@ describe("screenshot scenarios", () => {
       expect(new Set(names).size).toBe(names.length);
       expect(names[0]).toBe("01-planned.png");
       expect(names.at(-1)).toMatch(/^\d\d-after\.png$/);
-      for (const name of names.slice(1, -1)) expect(name).toMatch(/^\d\d-resolution-t\d+\.png$/);
+      for (const name of names.slice(1, -1)) expect(name).toMatch(/^\d\d-(round\d-)?(planned|resolution-t\d+)\.png$/);
     }
   });
 
@@ -30,9 +31,66 @@ describe("screenshot scenarios", () => {
       expect(validatePlan(view, preparedPlan(scenario, match))).toEqual([]);
     });
 
+    it("has a Round 2 plan that passes validatePlan against the Squad View of Round 2", async () => {
+      if (!scenario.secondRound) return;
+      const match = scenario.buildMatch();
+      const host = restoreLocalHost(JSON.stringify({ version: SNAPSHOT_VERSION, match }))!;
+      await host.submitPlan(preparedPlan(scenario, match));
+      const next = (JSON.parse(host.snapshot()) as { match: MatchState }).match;
+      expect(next.round).toBe(2);
+      const view = await host.getSquadView(SquadId.Left);
+      expect(validatePlan(view, preparedPlan(scenario, next, scenario.secondRound.steps))).toEqual([]);
+    });
+
     it("is deterministic", () => {
       expect(scenario.buildMatch()).toEqual(scenario.buildMatch());
     });
+  });
+});
+
+describe("memory scenarios stage what their names say", () => {
+  const scenario = (name: string) => SCENARIOS.find((candidate) => candidate.name === name)!;
+  /** Plays the scenario's Rounds through the local host; returns the Match State at the start of each following Round. */
+  async function playRounds(name: string): Promise<MatchState[]> {
+    const staged = scenario(name);
+    const match = staged.buildMatch();
+    const host = restoreLocalHost(JSON.stringify({ version: SNAPSHOT_VERSION, match }))!;
+    const states: MatchState[] = [match];
+    for (const round of scenarioRounds(staged)) {
+      const current = states.at(-1)!;
+      await host.submitPlan(preparedPlan(staged, current, round.steps));
+      states.push((JSON.parse(host.snapshot()) as { match: MatchState }).match);
+    }
+    return states;
+  }
+
+  it("cover-placed-expires: the Half Cover stands after Resolution 1 and is gone after Resolution 2", async () => {
+    const [start, afterOne, afterTwo] = await playRounds("cover-placed-expires");
+    expect(coverAt(start!.grid, { col: 10, row: 3 })).toBe(CoverKind.Half);
+    expect(coverAt(afterOne!.grid, { col: 10, row: 3 })).toBe(CoverKind.Half);
+    expect(coverAt(afterTwo!.grid, { col: 10, row: 3 })).toBe(CoverKind.None);
+  });
+
+  it("cover-destroyed: Breach Charge destroys the Half Cover", async () => {
+    const [start, after] = await playRounds("cover-destroyed");
+    expect(coverAt(start!.grid, { col: 8, row: 2 })).toBe(CoverKind.Half);
+    expect(coverAt(after!.grid, { col: 8, row: 2 })).toBe(CoverKind.None);
+  });
+
+  it("scout-drone-area-over-time: the area lasts two Resolutions and shows the enemy behind the wall", async () => {
+    const [start, afterOne, afterTwo] = await playRounds("scout-drone-area-over-time");
+    expect(start!.revealedAreas).toHaveLength(1);
+    expect(afterOne!.revealedAreas).toHaveLength(1);
+    expect(afterTwo!.revealedAreas).toHaveLength(0);
+    expect(canSquadSeeHero(start!, SquadId.Left, start!.heroes.find((hero) => hero.id === "right-assassin")!)).toBe(true);
+    expect(start!.ghosts[SquadId.Left]["right-assassin"]?.position).toEqual({ col: 12, row: 7 });
+  });
+
+  it("ghost-enemy: starts as a Ghost and is seen again after the Move", async () => {
+    const [start, after] = await playRounds("ghost-enemy");
+    const enemyAt = (state: MatchState) => buildSquadView(state, SquadId.Left).enemies.find((candidate) => candidate.id === "right-assassin")!;
+    expect(enemyAt(start!).visibility).toBe(Visibility.Ghost);
+    expect(enemyAt(after!).visibility).toBe(Visibility.Visible);
   });
 });
 

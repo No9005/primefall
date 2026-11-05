@@ -2,15 +2,16 @@
 // Starts the Vite dev server, plays the standard path in Chromium at 844 x 390 and writes PNGs with stable names
 // to apps/web/screenshots/ (git-ignored), so a run before and after a change can be compared name by name.
 import { chromium, type Browser, type Page } from "@playwright/test";
-import { type GridPosition, reachableMoveDestinations } from "game-core";
+import { type CardDefinition, CardTarget, coverAt, CoverKind, type GridPosition, HERO_DECKS, moveDestinations, reachableMoveDestinations, REACTOR_DECK, Visibility } from "game-core";
 import { SNAPSHOT_VERSION } from "game-core/local-host";
+import { buildSquadView, type MatchState } from "game-core/server";
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { frameMoveCamera, gridToWorld } from "../src/board-layout";
 import { freeBoardArea } from "../src/hud-layout";
-import { type PlanStep, SCENARIO_NAMES, SCENARIO_SCREENSHOT_NAMES, SCENARIOS, type Scenario, scenarioScreenshotNames, type StepUse } from "./scenarios";
+import { type PlanStep, SCENARIO_NAMES, SCENARIO_SCREENSHOT_NAMES, SCENARIOS, type Scenario, scenarioRounds, scenarioScreenshotNames, type StepUse } from "./scenarios";
 
 /** The standard set, in the order the path plays them. Names are stable on purpose; do not rename without need. */
 export const SCREENSHOT_NAMES = [
@@ -168,14 +169,50 @@ async function queueMoveTo(page: Page, slot: number, from: GridPosition, to: Gri
   await queue.getByText(`to ${to.col} · ${to.row}`).waitFor();
 }
 
-async function driveStep(page: Page, from: GridPosition, step: PlanStep): Promise<void> {
+/** The Cards of the Hero's Deck, for the Range of a card that is aimed at a tile. */
+function cardOf(match: MatchState, heroId: string, slot: number): CardDefinition {
+  const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
+  return HERO_DECKS[hero.heroClass][hero.hand[slot]!]!;
+}
+
+/**
+ * Aims a card at a tile with one tap, like `queueMoveTo`: the tiles the card can be aimed at frame the camera (the
+ * same list PlanningScreen builds: every non-Wall tile within Range, for Deploy Cover only empty ones).
+ */
+async function aimCardAt(page: Page, match: MatchState, heroId: string, step: { slot: number; use: StepUse; tile: GridPosition }): Promise<void> {
+  const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
+  const card = cardOf(match, heroId, step.slot);
+  const view = buildSquadView(match, hero.squad);
+  const occupied = [...view.heroes, ...view.enemies.filter((enemy) => enemy.visibility === Visibility.Visible)].map((unit) => unit.position);
+  const lit = moveDestinations(hero.position, REACTOR_DECK, card.range ?? Math.max(REACTOR_DECK.width, REACTOR_DECK.height)).filter(
+    (tile) =>
+      card.target !== CardTarget.EmptyTile ||
+      (coverAt(match.grid, tile) === CoverKind.None &&
+        !view.placedCover.some((cover) => cover.col === tile.col && cover.row === tile.row) &&
+        !occupied.some((position) => position.col === tile.col && position.row === tile.row)),
+  );
+  const box = (await page.locator(".board canvas").boundingBox())!;
+  const size = { width: box.width, height: box.height };
+  await useCardAs(page, step.slot, step.use);
+  await page.getByTestId("floating-card").waitFor();
+  await page.waitForTimeout(800); // the camera eases onto the Hero
+  const camera = frameMoveCamera(hero.position, lit, size, freeBoardArea(size, { kind: "picking" }));
+  const world = gridToWorld(step.tile);
+  await page.mouse.click(box.x + camera.x + world.x * camera.scale, box.y + camera.y + world.y * camera.scale);
+  await page.getByRole("region", { name: "Queue" }).getByText(`to ${step.tile.col} · ${step.tile.row}`).waitFor();
+}
+
+async function driveStep(page: Page, match: MatchState, heroId: string, step: PlanStep): Promise<void> {
   if ("wait" in step) {
     await page.locator(".wait-card").click();
     return;
   }
+  const from = match.heroes.find((hero) => hero.id === heroId)!.position;
   if (step.use === "move") {
     if (!step.tile) throw new Error("A Move step needs a tile");
     await queueMoveTo(page, step.slot, from, step.tile);
+  } else if (step.tile) {
+    await aimCardAt(page, match, heroId, { ...step, tile: step.tile });
   } else {
     await useCardAs(page, step.slot, step.use);
   }
@@ -218,21 +255,27 @@ async function playScenario(browser: Browser, scenario: Scenario): Promise<void>
     await page.waitForFunction(() => !document.querySelector(".hand-bar button:disabled"), undefined, { timeout: 15_000 }).catch(() => {});
     await page.waitForTimeout(1500); // the first software-rendered frames
 
-    const from = match.heroes.find((hero) => hero.id === scenario.heroId)!.position;
-    for (const step of scenario.steps) await driveStep(page, from, step);
-    await page.waitForTimeout(500);
-    await shoot(names[0]!);
+    let frame = 0;
+    for (const [index, round] of scenarioRounds(scenario).entries()) {
+      if (index > 0) {
+        await page.getByTestId("round").filter({ hasText: `ROUND ${index + 1}` }).waitFor({ timeout: 40_000 });
+        await page.waitForTimeout(1500);
+      }
+      for (const step of round.steps) await driveStep(page, match, scenario.heroId, step);
+      await page.waitForTimeout(500);
+      await shoot(names[frame++]!);
 
-    await page.getByRole("button", { name: "Commit" }).click();
-    await page.getByTestId("resolution-bar").waitFor();
-    const started = Date.now();
-    for (const [index, ms] of scenario.resolutionShotsMs.entries()) {
-      await page.waitForTimeout(Math.max(0, ms - (Date.now() - started)));
-      await shoot(names[index + 1]!);
+      await page.getByRole("button", { name: "Commit" }).click();
+      await page.getByTestId("resolution-bar").waitFor();
+      const started = Date.now();
+      for (const ms of round.resolutionShotsMs) {
+        await page.waitForTimeout(Math.max(0, ms - (Date.now() - started)));
+        await shoot(names[frame++]!);
+      }
     }
-    await page.getByTestId("round").filter({ hasText: "ROUND 2" }).waitFor({ timeout: 40_000 });
+    await page.getByTestId("round").filter({ hasText: `ROUND ${scenarioRounds(scenario).length + 1}` }).waitFor({ timeout: 40_000 });
     await page.waitForTimeout(1500);
-    await shoot(names[names.length - 1]!);
+    await shoot(names[frame]!);
   } catch (error) {
     await page.screenshot({ path: path.join(directory, "failed.png") }).catch(() => {}); // what the page showed when the step failed
     throw error;
