@@ -40,6 +40,14 @@ ATTACK orange `#ff8a3d`, DEFEND blue `#4da3ff`, own Squad teal `#2ec4b6`, enemy 
 | End screens | centred stack | first line "YOU WERE: ATTACK" (orange) or "YOU WERE: DEFEND" (blue), IBM Plex Mono 700 12 px; result word (Rajdhani 700 56 px, teal VICTORY, red DEFEAT); reason line (Barlow 500 12 px, upper case, `#8a99a8`); detail line (Barlow 14 px); "Play again" 44 high; seed |
 | End reasons | | Attacker victory: "Prime Zone controlled for 3 Resolutions" or "All Defender Heroes Exhausted". Defender victory: "Defence held · 12 Rounds played". Attacker defeat: "Defence held · 12 Rounds played". Defender defeat: "All your Heroes were Exhausted" or "Prime Zone controlled for 3 Resolutions" |
 
+## Alignment (check this explicitly; the owner does not want rounds of micro corrections)
+
+- **Icons and labels in a button**: the arrow of Back and Next is a drawn icon (SVG or a Pixi shape), **not a text glyph** (a glyph falls back to another font and sits too low). Its vertical centre is the vertical centre of the capital letters of the label, the gap to the label is 8 px (Back) and 10 px (Next), and icon plus label together are centred in the pill. Compare the cropped buttons in the images.
+- **Shared centre lines**: Back, the title and the mode chip share one vertical centre (y 32); the Start/Next button and its neighbours share their right edge (right 24); the chip's right edge and the Start/Next button's right edge are the same x.
+- **Shared edges**: the left edge of the Back button, of the info text and of the View cards button is the same x where the references show it so (Back at 24, text and View cards at 40 on the Hero Select screen). Hero names are centred under their Heroes' Squad rings.
+- **Rows**: elements in a row have the same height and the same top (the two role buttons, the three Hero areas); gaps between them are equal.
+- Spacing and sizes are multiples of 2 px, as in the tables. A deviation of more than 1 px from the table is a defect to fix, not to list.
+
 ## How a ticket uses this
 
 Take a screenshot of each state with the screenshot tool, compare it with the matching image and the table (sizes, positions, colours, texts, timing), fix every deviation yourself and attach the final screenshots to the pull request. State exactly which state could not be staged and why.
