@@ -74,88 +74,127 @@ export function buildPlaybackFrames(
   classOf?: (heroId: string) => HeroClass | undefined,
   coverOf?: (tile: GridPosition) => CoverKind,
 ): PlaybackFrame[] {
-  const frames: PlaybackFrame[] = [];
   const ticks = [...new Set(events.map((event) => event.tick))].sort((a, b) => a - b);
-  for (const tick of ticks) {
-    const seen = new Map<string, number>();
-    const tickFrames: PlaybackFrame[] = [];
-    /** The last Step of each Hero in the Tick: where its Move ends. */
-    const lastStep = new Map<string, { frame: PlaybackFrame; to: GridPosition }>();
-    for (const event of events.filter((candidate) => candidate.tick === tick)) {
-      const occurrence = seen.get(event.heroId) ?? 0;
-      seen.set(event.heroId, occurrence + 1);
-      tickFrames[occurrence] ??= { tick, moves: {}, shields: {}, hits: [], exhausted: [], clips: {}, delays: {}, effects: [], coverEdits: [], holdMs: STEP_MS, events: [] };
-      const frame = tickFrames[occurrence];
-      frame.events.push(event);
-      // `to` of a Cover or area event is a tile of the board, not a place the Hero moves to.
-      if (event.to && !TILE_EVENTS.includes(event.kind)) frame.moves[event.heroId] = event.to;
-      if (event.kind === EventKind.ShieldGained) frame.shields[event.heroId] = event.amount ?? 0;
-      if (event.kind === EventKind.AttackHit) {
-        frame.hits.push({
-          targetId: event.targetId!,
-          damage: event.damage ?? 0,
-          absorbed: event.absorbed ?? 0,
-          ...(event.card !== undefined && { card: event.card }),
-          ...(event.overdrive && { overdrive: true }),
-          ...(event.distance !== undefined && { distance: event.distance }),
-        });
-      }
-      if (event.kind === EventKind.Exhausted) {
-        frame.exhausted.push(event.heroId);
-        frame.clips[event.heroId] = "exhausted";
-      }
-      if (event.kind === EventKind.Step) {
-        frame.clips[event.heroId] = "walk";
-        if (event.to) lastStep.set(event.heroId, { frame, to: event.to });
-      }
-      if (event.kind === EventKind.AttackHit || event.kind === EventKind.AttackFailed) {
-        frame.clips[event.heroId] = attackClipName(event.card);
-      }
-      // A Block (a Shield without a card) crouches.
-      if (event.kind === EventKind.ShieldGained && event.card === undefined) frame.clips[event.heroId] = "block";
-      // The Utility gestures belong to the Hero that played the card; the Shield of an Aegis Protocol is on its target.
-      const gesture = utilityClipName(event);
-      if (gesture !== undefined) frame.clips[gesture.heroId] = gesture.clip;
-    }
-    // A Move that ends on Cover takes cover (the Hero has walked there in this frame).
-    for (const [heroId, { frame, to }] of lastStep) {
-      const cover = coverOf?.(to) ?? CoverKind.None;
-      if (cover !== CoverKind.None && frame.clips[heroId] === "walk") frame.clips[heroId] = takeCoverClipName(cover);
-    }
-    // The targets react at the impact beat of the attacker's clip, unless they do something of their own in the frame.
-    for (const frame of tickFrames) {
-      for (const event of frame.events) {
-        if (event.kind !== EventKind.AttackHit || event.targetId === undefined) continue;
-        const attackerClass = classOf?.(event.heroId);
-        const fire = attackerClass === undefined ? undefined : clipOf(attackerClass, attackClipName(event.card)).fireMs;
-        const absorbed = (event.absorbed ?? 0) > 0 && (event.damage ?? 0) === 0;
-        // The target reacts when the projectile arrives.
-        const arrival = impactMs(event.card, event.distance, fire ?? DEFAULT_FIRE_MS);
-        if (frame.clips[event.targetId] === "exhausted") {
-          // The Exhausted clip has its own hit flash: it starts early enough for the flash to land with the impact.
-          frame.delays[event.targetId] = Math.max(0, arrival - EXHAUSTED_HIT_FLASH_MS);
-          continue;
-        }
-        if (frame.clips[event.targetId] !== undefined) continue;
-        frame.clips[event.targetId] = absorbed ? "absorb" : "hit";
-        frame.delays[event.targetId] = arrival;
-      }
-      const fireOf = (heroId: string, card: string | undefined) => {
-        const heroClass = classOf?.(heroId);
-        return heroClass === undefined ? DEFAULT_FIRE_MS : clipOf(heroClass, attackClipName(card)).fireMs ?? DEFAULT_FIRE_MS;
-      };
-      frame.effects = effectCuesOf(frame.events, fireOf);
-      frame.coverEdits = coverEditsOf(frame.effects);
-    }
-    // A Wait lasts the whole Tick; a Step in the same frame wins over it.
-    for (const event of events) {
-      if (event.tick !== tick || event.kind !== EventKind.Wait) continue;
-      for (const frame of tickFrames) frame.clips[event.heroId] ??= "wait";
-    }
-    for (const frame of tickFrames) frame.holdMs = holdOf(frame, classOf);
-    frames.push(...tickFrames);
+  return ticks.flatMap((tick) =>
+    buildTickFrames(
+      events.filter((event) => event.tick === tick),
+      tick,
+      classOf,
+      coverOf,
+    ),
+  );
+}
+
+type ClassOf = ((heroId: string) => HeroClass | undefined) | undefined;
+
+/** The frames of one Tick: its n-th event of every Hero lands in its n-th frame. */
+function buildTickFrames(tickEvents: readonly MatchEvent[], tick: number, classOf: ClassOf, coverOf: ((tile: GridPosition) => CoverKind) | undefined): PlaybackFrame[] {
+  const seen = new Map<string, number>();
+  const tickFrames: PlaybackFrame[] = [];
+  /** The last Step of each Hero in the Tick: where its Move ends. */
+  const lastStep = new Map<string, { frame: PlaybackFrame; to: GridPosition }>();
+  for (const event of tickEvents) {
+    const occurrence = seen.get(event.heroId) ?? 0;
+    seen.set(event.heroId, occurrence + 1);
+    tickFrames[occurrence] ??= emptyFrame(tick);
+    const frame = tickFrames[occurrence];
+    addEventToFrame(frame, event);
+    if (event.kind === EventKind.Step && event.to) lastStep.set(event.heroId, { frame, to: event.to });
   }
-  return frames;
+  takeCoverAtMoveEnd(lastStep, coverOf);
+  for (const frame of tickFrames) addEffects(frame, classOf);
+  // A Wait lasts the whole Tick; a Step in the same frame wins over it.
+  for (const event of tickEvents) {
+    if (event.kind !== EventKind.Wait) continue;
+    for (const frame of tickFrames) frame.clips[event.heroId] ??= "wait";
+  }
+  for (const frame of tickFrames) frame.holdMs = holdOf(frame, classOf);
+  return tickFrames;
+}
+
+/** A Move that ends on Cover takes cover (the Hero has walked there in this frame). */
+function takeCoverAtMoveEnd(lastStep: ReadonlyMap<string, { frame: PlaybackFrame; to: GridPosition }>, coverOf: ((tile: GridPosition) => CoverKind) | undefined): void {
+  for (const [heroId, { frame, to }] of lastStep) {
+    const cover = coverOf?.(to) ?? CoverKind.None;
+    if (cover !== CoverKind.None && frame.clips[heroId] === "walk") frame.clips[heroId] = takeCoverClipName(cover);
+  }
+}
+
+function emptyFrame(tick: number): PlaybackFrame {
+  return { tick, moves: {}, shields: {}, hits: [], exhausted: [], clips: {}, delays: {}, effects: [], coverEdits: [], holdMs: STEP_MS, events: [] };
+}
+
+/** Records what one event changes in its frame: moves, Shield, hits, Exhaustion and the clip of the Hero. */
+function addEventToFrame(frame: PlaybackFrame, event: MatchEvent): void {
+  frame.events.push(event);
+  // `to` of a Cover or area event is a tile of the board, not a place the Hero moves to.
+  if (event.to && !TILE_EVENTS.includes(event.kind)) frame.moves[event.heroId] = event.to;
+  if (event.kind === EventKind.ShieldGained) frame.shields[event.heroId] = event.amount ?? 0;
+  if (event.kind === EventKind.AttackHit) frame.hits.push(hitOf(event));
+  if (event.kind === EventKind.Exhausted) frame.exhausted.push(event.heroId);
+  const clip = clipOfEvent(event);
+  if (clip) frame.clips[clip.heroId] = clip.clip;
+  // The Utility gestures belong to the Hero that played the card; the Shield of an Aegis Protocol is on its target.
+  const gesture = utilityClipName(event);
+  if (gesture !== undefined) frame.clips[gesture.heroId] = gesture.clip;
+}
+
+function hitOf(event: MatchEvent): PlaybackHit {
+  return {
+    targetId: event.targetId!,
+    damage: event.damage ?? 0,
+    absorbed: event.absorbed ?? 0,
+    ...(event.card !== undefined && { card: event.card }),
+    ...(event.overdrive && { overdrive: true }),
+    ...(event.distance !== undefined && { distance: event.distance }),
+  };
+}
+
+/** The clip of the acting Hero for the events that have one of their own, before the Utility gestures. */
+function clipOfEvent(event: MatchEvent): { heroId: string; clip: ClipName } | undefined {
+  switch (event.kind) {
+    case EventKind.Exhausted:
+      return { heroId: event.heroId, clip: "exhausted" };
+    case EventKind.Step:
+      return { heroId: event.heroId, clip: "walk" };
+    case EventKind.AttackHit:
+    case EventKind.AttackFailed:
+      return { heroId: event.heroId, clip: attackClipName(event.card) };
+    case EventKind.ShieldGained:
+      // A Block (a Shield without a card) crouches.
+      return event.card === undefined ? { heroId: event.heroId, clip: "block" } : undefined;
+    default:
+      return undefined;
+  }
+}
+
+/** The targets react at the impact beat of the attacker's clip, unless they do something of their own in the frame; then the effects. */
+function addEffects(frame: PlaybackFrame, classOf: ClassOf): void {
+  for (const event of frame.events) {
+    if (event.kind === EventKind.AttackHit && event.targetId !== undefined) reactToHit(frame, event, event.targetId, classOf);
+  }
+  const fireOf = (heroId: string, card: string | undefined) => {
+    const heroClass = classOf?.(heroId);
+    return heroClass === undefined ? DEFAULT_FIRE_MS : clipOf(heroClass, attackClipName(card)).fireMs ?? DEFAULT_FIRE_MS;
+  };
+  frame.effects = effectCuesOf(frame.events, fireOf);
+  frame.coverEdits = coverEditsOf(frame.effects);
+}
+
+function reactToHit(frame: PlaybackFrame, event: MatchEvent, targetId: string, classOf: ClassOf): void {
+  const attackerClass = classOf?.(event.heroId);
+  const fire = attackerClass === undefined ? undefined : clipOf(attackerClass, attackClipName(event.card)).fireMs;
+  const absorbed = (event.absorbed ?? 0) > 0 && (event.damage ?? 0) === 0;
+  // The target reacts when the projectile arrives.
+  const arrival = impactMs(event.card, event.distance, fire ?? DEFAULT_FIRE_MS);
+  if (frame.clips[targetId] === "exhausted") {
+    // The Exhausted clip has its own hit flash: it starts early enough for the flash to land with the impact.
+    frame.delays[targetId] = Math.max(0, arrival - EXHAUSTED_HIT_FLASH_MS);
+    return;
+  }
+  if (frame.clips[targetId] !== undefined) return;
+  frame.clips[targetId] = absorbed ? "absorb" : "hit";
+  frame.delays[targetId] = arrival;
 }
 
 /** A frame lasts until its slowest one-shot clip has reached its active end (looping Walk and Wait clips run per step). */

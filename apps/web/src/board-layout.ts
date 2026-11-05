@@ -58,14 +58,8 @@ export function pickTileAt(x: number, y: number, grid: Grid = REACTOR_DECK, angl
 }
 
 /** Inverse of a camera: a point in view pixels to world pixels. Without a camera, the fitted one. */
-export function viewToWorld(
-  viewX: number,
-  viewY: number,
-  viewWidth: number,
-  viewHeight: number,
-  grid: Grid = REACTOR_DECK,
-  camera: Camera = computeCamera(viewWidth, viewHeight, grid),
-) {
+export function viewToWorld(viewX: number, viewY: number, viewWidth: number, viewHeight: number, ...optional: [grid?: Grid, camera?: Camera]) {
+  const [grid = REACTOR_DECK, camera = computeCamera(viewWidth, viewHeight, grid)] = optional;
   return { x: (viewX - camera.x) / camera.scale, y: (viewY - camera.y) / camera.scale };
 }
 
@@ -125,16 +119,26 @@ function clampCameraIn(camera: Camera, view: CameraView, area: Rect): Camera {
   const bounds = boardBounds(grid, angle);
   const marginX = (bounds.right - bounds.left) * CAMERA_MARGIN;
   const marginY = (bounds.bottom - bounds.top) * CAMERA_MARGIN;
-  const clampAxis = (offset: number, near: number, far: number, low: number, high: number, margin: number) => {
-    const min = far - (high + margin) * scale; // the area's far edge at the board's far edge plus margin
-    const max = near - (low - margin) * scale; // the area's near edge at the board's near edge minus margin
-    return min > max ? (min + max) / 2 : Math.min(Math.max(offset, min), max);
-  };
   return {
     scale,
-    x: clampAxis(camera.x, area.left, area.right, bounds.left, bounds.right, marginX),
-    y: clampAxis(camera.y, area.top, area.bottom, bounds.top, bounds.bottom, marginY),
+    x: clampAxis(camera.x, scale, { near: area.left, far: area.right, low: bounds.left, high: bounds.right, margin: marginX }),
+    y: clampAxis(camera.y, scale, { near: area.top, far: area.bottom, low: bounds.top, high: bounds.bottom, margin: marginY }),
   };
+}
+
+/** One axis of the clamp: `near`/`far` are the area's edges, `low`/`high` the board's, all in the same unit as the offset. */
+interface AxisSpan {
+  near: number;
+  far: number;
+  low: number;
+  high: number;
+  margin: number;
+}
+
+function clampAxis(offset: number, scale: number, { near, far, low, high, margin }: AxisSpan): number {
+  const min = far - (high + margin) * scale; // the area's far edge at the board's far edge plus margin
+  const max = near - (low - margin) * scale; // the area's near edge at the board's near edge minus margin
+  return min > max ? (min + max) / 2 : Math.min(Math.max(offset, min), max);
 }
 
 /** Sets the scale (clamped) so that the world point under the view point stays under it. */
@@ -283,10 +287,9 @@ export function resolveTap(
   x: number,
   y: number,
   { heroes, targetableIds, highlights }: TapCandidates,
-  grid: Grid = REACTOR_DECK,
-  angle: number = VIEW_ANGLE,
-  scale = 1,
+  ...optional: [grid?: Grid, angle?: number, scale?: number]
 ): TapTarget {
+  const [grid = REACTOR_DECK, angle = VIEW_ANGLE, scale = 1] = optional;
   const point = worldToGrid(x, y, angle);
   const touchRadius = MIN_TOUCH_RADIUS / scale;
   let nearest: { id: string; distance: number } | undefined;

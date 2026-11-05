@@ -11,6 +11,36 @@ const PLAYER_SQUAD = SquadId.Left;
 
 const newSeed = () => Date.now() >>> 0;
 
+interface StartScreenProps {
+  seed: number;
+  canResume: boolean;
+  onPlay: () => void;
+  onResume: () => void;
+  onTutorial: () => void;
+}
+
+function StartScreen({ seed, canResume, onPlay, onResume, onTutorial }: StartScreenProps) {
+  return (
+    <section className="end-screen" aria-label="Start" data-testid="start-screen">
+      <h1>Primefall</h1>
+      <button type="button" onClick={onPlay}>
+        Play
+      </button>
+      {canResume && (
+        <button type="button" data-testid="resume" onClick={onResume}>
+          Resume
+        </button>
+      )}
+      <button type="button" data-testid="tutorial-button" onClick={onTutorial}>
+        Tutorial
+      </button>
+      <p className="seed" data-testid="start-seed">
+        Seed {seed}
+      </p>
+    </section>
+  );
+}
+
 export function App() {
   // A fresh seed per match; the start and end screens show it for bug reports.
   const [host, setHost] = useState(() => createLocalHost(newSeed()));
@@ -41,10 +71,9 @@ export function App() {
     };
   }, [host, started]);
 
-  return (
-    <main className="app">
-      <div className="rotate-notice">Rotate your device</div>
-      {!started && tutorial ? (
+  function renderStartOrTutorial() {
+    if (tutorial) {
+      return (
         <TutorialScreen
           onPlay={() => {
             setTutorial(false);
@@ -52,43 +81,42 @@ export function App() {
           }}
           onClose={() => setTutorial(false)}
         />
-      ) : !started ? (
-        <section className="end-screen" aria-label="Start" data-testid="start-screen">
-          <h1>Primefall</h1>
-          <button type="button" onClick={() => setStarted(true)}>
-            Play
-          </button>
-          {saved && (
-            <button
-              type="button"
-              data-testid="resume"
-              onClick={() => {
-                setHost(saved);
-                setStarted(true);
-              }}
-            >
-              Resume
-            </button>
-          )}
-          <button type="button" data-testid="tutorial-button" onClick={() => setTutorial(true)}>
-            Tutorial
-          </button>
-          <p className="seed" data-testid="start-seed">
-            Seed {seed}
-          </p>
-        </section>
-      ) : !view ? (
-        <p className="loading">Loading…</p>
-      ) : view.result ? (
-        <EndScreen result={view.result} squad={PLAYER_SQUAD} seed={seed} onPlayAgain={() => setHost(createLocalHost(newSeed()))} />
-      ) : (
-        <PlanningScreen
-          view={view}
-          submitPlan={(plan) => host.submitPlan(plan)}
-          getAllyPlan={(heroIds) => host.getAllyPlan(PLAYER_SQUAD, heroIds)}
-          onResolved={setView}
-        />
-      )}
+      );
+    }
+    return (
+      <StartScreen
+        seed={seed}
+        canResume={saved !== undefined}
+        onPlay={() => setStarted(true)}
+        onResume={() => {
+          if (saved) setHost(saved);
+          setStarted(true);
+        }}
+        onTutorial={() => setTutorial(true)}
+      />
+    );
+  }
+
+  function renderScreen() {
+    if (!started) return renderStartOrTutorial();
+    if (!view) return <p className="loading">Loading…</p>;
+    if (view.result) {
+      return <EndScreen result={view.result} squad={PLAYER_SQUAD} seed={seed} onPlayAgain={() => setHost(createLocalHost(newSeed()))} />;
+    }
+    return (
+      <PlanningScreen
+        view={view}
+        submitPlan={(plan) => host.submitPlan(plan)}
+        getAllyPlan={(heroIds) => host.getAllyPlan(PLAYER_SQUAD, heroIds)}
+        onResolved={setView}
+      />
+    );
+  }
+
+  return (
+    <main className="app">
+      <div className="rotate-notice">Rotate your device</div>
+      {renderScreen()}
     </main>
   );
 }
