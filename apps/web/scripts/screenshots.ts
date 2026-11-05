@@ -2,14 +2,14 @@
 // Starts the Vite dev server, plays the standard path in Chromium at 844 x 390 and writes PNGs with stable names
 // to apps/web/screenshots/ (git-ignored), so a run before and after a change can be compared name by name.
 import { chromium, type Browser, type Page } from "@playwright/test";
-import { type CardDefinition, CardTarget, coverAt, CoverKind, type GridPosition, HERO_DECKS, moveDestinations, reachableMoveDestinations, REACTOR_DECK, Visibility } from "game-core";
+import { type CardDefinition, CardTarget, coverAt, CoverKind, findTiles, type GridPosition, HERO_DECKS, moveDestinations, reachableMoveDestinations, REACTOR_DECK, TileKind, Visibility } from "game-core";
 import { SNAPSHOT_VERSION } from "game-core/local-host";
 import { buildSquadView, type MatchState } from "game-core/server";
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { frameMoveCamera, gridToWorld } from "../src/board-layout";
+import { frameMoveCamera, frameSquadCamera, gridToWorld } from "../src/board-layout";
 import { freeBoardArea } from "../src/hud-layout";
 import { type PlanStep, SCENARIO_NAMES, SCENARIO_SCREENSHOT_NAMES, SCENARIOS, type Scenario, scenarioRounds, scenarioScreenshotNames, type StepUse } from "./scenarios";
 
@@ -202,6 +202,38 @@ async function aimCardAt(page: Page, match: MatchState, heroId: string, step: { 
   await page.getByRole("region", { name: "Queue" }).getByText(`to ${step.tile.col} · ${step.tile.row}`).waitFor();
 }
 
+/**
+ * Aims a card at a Hero with one tap (Forward Deploy then taps a tile for the ally to move to). Picking a Hero does not
+ * move the camera, so it is still the start framing the board computes: the own Squad and the Prime Zone.
+ */
+async function aimCardAtHero(page: Page, match: MatchState, heroId: string, step: { slot: number; use: StepUse; target: string; tile?: GridPosition }): Promise<void> {
+  const squad = match.heroes.find((candidate) => candidate.id === heroId)!.squad;
+  const target = match.heroes.find((candidate) => candidate.id === step.target)!;
+  const box = (await page.locator(".board canvas").boundingBox())!;
+  const size = { width: box.width, height: box.height };
+  const tiles = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+  const zone = { col: tiles.reduce((sum, tile) => sum + tile.col, 0) / tiles.length, row: tiles.reduce((sum, tile) => sum + tile.row, 0) / tiles.length };
+  const own = match.heroes.filter((hero) => hero.squad === squad).map((hero) => hero.position);
+  const queue = page.getByRole("region", { name: "Queue" });
+  const queued = await queue.getByRole("button", { name: /^Remove action/ }).count();
+  await useCardAs(page, step.slot, step.use);
+  await page.getByTestId("floating-card").waitFor();
+  await page.waitForTimeout(800);
+  const camera = frameSquadCamera(own, zone, size, freeBoardArea(size, { kind: "idle" }));
+  const world = gridToWorld(target.position);
+  await page.mouse.click(box.x + camera.x + world.x * camera.scale, box.y + camera.y + world.y * camera.scale);
+  if (step.tile) {
+    await page.waitForTimeout(800); // the camera eases onto the ally and its Move tiles
+    const framed = frameMoveCamera(target.position, moveDestinations(target.position), size, freeBoardArea(size, { kind: "picking" }));
+    const tileWorld = gridToWorld(step.tile);
+    await page.mouse.click(box.x + framed.x + tileWorld.x * framed.scale, box.y + framed.y + tileWorld.y * framed.scale);
+  }
+  await page.waitForFunction(
+    (count) => document.querySelectorAll('[aria-label="Queue"] button[aria-label^="Remove action"]').length > count,
+    queued,
+  );
+}
+
 async function driveStep(page: Page, match: MatchState, heroId: string, step: PlanStep): Promise<void> {
   if ("wait" in step) {
     await page.locator(".wait-card").click();
@@ -211,6 +243,8 @@ async function driveStep(page: Page, match: MatchState, heroId: string, step: Pl
   if (step.use === "move") {
     if (!step.tile) throw new Error("A Move step needs a tile");
     await queueMoveTo(page, step.slot, from, step.tile);
+  } else if (step.target) {
+    await aimCardAtHero(page, match, heroId, { ...step, target: step.target });
   } else if (step.tile) {
     await aimCardAt(page, match, heroId, { ...step, tile: step.tile });
   } else {

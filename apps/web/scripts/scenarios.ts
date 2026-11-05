@@ -15,7 +15,7 @@ export type PlanStep =
    * primary or overdrive use of a card aimed at a tile or area (Breach Charge, Scout Drone, Deploy Cover) needs the
    * tile that is tapped.
    */
-  | { slot: number; use: StepUse; tile?: GridPosition }
+  | { slot: number; use: StepUse; tile?: GridPosition; target?: string }
   /** The Wait card: one Tick of nothing. */
   | { wait: true };
 
@@ -119,7 +119,112 @@ function controllerAttack(name: string, description: string, seed: number, card:
   };
 }
 
+// The rest of the Bruiser's Deck list (packages/game-core/src/cards.ts).
+const BRUISER_CONCUSSION_ROUND = 2;
+const BRUISER_CONCUSSION_ROUND_2 = 3;
+const BRUISER_FORWARD_DEPLOY = 8;
+const BRUISER_SUPPRESS = 9;
+const BRUISER_REINFORCE = 10;
+const BRUISER_ADRENAL_SURGE = 11;
+
+const ALLY_CONTROLLER = `${SquadId.Left}-controller`;
+const ENEMY_BRUISER = `${SquadId.Right}-bruiser`;
+
+/**
+ * A Bruiser card played from the Hand's first slot, paid by pitching the next slots (a card of Energy cost 2 needs two
+ * Pitches). `edit` places the other Heroes where the effect is visible. The enemies hold Attacks, so the AI shoots
+ * back instead of walking away.
+ */
+function bruiserCard(
+  name: string,
+  description: string,
+  seed: number,
+  card: CardIndex,
+  pitches: number,
+  play: Omit<Extract<PlanStep, { slot: number }>, "slot">,
+  edit: (hero: (id: string) => HeroState, match: MatchState) => void,
+  resolutionShotsMs: readonly number[] = [400, 1000, 1800, 2600],
+): Scenario {
+  const fillers = [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, BRUISER_CONCUSSION_ROUND, BRUISER_CONCUSSION_ROUND_2].filter((index) => index !== card);
+  return {
+    name,
+    description,
+    buildMatch: () =>
+      stage(seed, (hero, match) => {
+        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [card, ...fillers.slice(0, 3)] });
+        edit(hero, match);
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [...Array.from({ length: pitches }, (_, index): PlanStep => ({ slot: index + 1, use: "pitch" })), { slot: 0, ...play }],
+    resolutionShotsMs,
+  };
+}
+
+const ENEMIES_WITH_ATTACKS = { hand: [0, 1, 2, 3] };
+
 export const SCENARIOS: readonly Scenario[] = [
+  bruiserCard("slam-shot", "A Bruiser fires Slam Shot (2 damage, Range 3) at an enemy Bruiser two tiles away.", 31, BRUISER_SLAM_SHOT, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+    arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+  }),
+  bruiserCard("concussion-round", "A Bruiser fires Concussion Round (2 damage and Slow) at an enemy Bruiser two tiles away.", 32, BRUISER_CONCUSSION_ROUND, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+    arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+  }),
+  bruiserCard("breach-charge", "A Bruiser plays Breach Charge on a tile with an enemy Hero on it: 2 damage to the Hero on it.", 33, BRUISER_BREACH_CHARGE, 2, { use: "primary", tile: { col: 14, row: 3 } }, (hero) => {
+    arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+  }),
+  bruiserCard(
+    "breach-charge-overdrive",
+    "A Bruiser plays Breach Charge in Overdrive on a Half Cover tile with enemy Heroes around it: the Cover is destroyed and every Hero at and around the tile takes 2 damage.",
+    34,
+    BRUISER_BREACH_CHARGE,
+    2,
+    { use: "overdrive", tile: { col: 14, row: 3 } },
+    (hero, match) => {
+      arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+      arrange(hero(`${SquadId.Right}-controller`), { col: 15, row: 3 }, ENEMIES_WITH_ATTACKS);
+      placeHalfCover(match, { col: 14, row: 4 }, 2);
+    },
+  ),
+  bruiserCard("shockwave", "A Bruiser plays Shockwave: 2 damage and knockback to two enemy Heroes within Range 1.", 35, BRUISER_SHOCKWAVE, 2, { use: "primary" }, (hero) => {
+    arrange(hero(ENEMY_BRUISER), { col: 13, row: 3 }, ENEMIES_WITH_ATTACKS);
+    arrange(hero(`${SquadId.Right}-controller`), { col: 12, row: 4 }, ENEMIES_WITH_ATTACKS);
+  }),
+  bruiserCard("bulwark", "A Bruiser plays Bulwark: the Shield (3) bubble appears and soaks the enemy Slam Shots of the Resolution.", 36, BRUISER_BULWARK, 1, { use: "primary" }, (hero) => {
+    arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+  }),
+  bruiserCard(
+    "forward-deploy",
+    "A Bruiser plays Forward Deploy on the allied Controller: it gets an extra Move of 2 tiles.",
+    37,
+    BRUISER_FORWARD_DEPLOY,
+    1,
+    { use: "primary", target: ALLY_CONTROLLER, tile: { col: 11, row: 5 } },
+    (hero) => {
+      arrange(hero(ALLY_CONTROLLER), { col: 10, row: 3 }, { hand: [0, 1, 2, 3] });
+    },
+  ),
+  bruiserCard("suppress", "A Bruiser plays Suppress on an enemy Bruiser: Slow, and it cannot go Hidden.", 38, BRUISER_SUPPRESS, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+    arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+  }),
+  bruiserCard("reinforce", "A Bruiser plays Reinforce on the allied Controller: Shield (2) on the ally while the enemy shoots.", 39, BRUISER_REINFORCE, 1, { use: "primary", target: ALLY_CONTROLLER }, (hero) => {
+    arrange(hero(ALLY_CONTROLLER), { col: 11, row: 3 }, { hand: [0, 1, 2, 3] });
+    arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+  }),
+  bruiserCard("adrenal-surge", "A Bruiser plays Adrenal Surge: a permanent +1 Attack for itself.", 40, BRUISER_ADRENAL_SURGE, 2, { use: "primary" }, (hero) => {
+    arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+  }),
+  bruiserCard(
+    "adrenal-surge-overdrive",
+    "A Bruiser plays Adrenal Surge in Overdrive: the Bruiser and the allied Controller each gain the permanent +1 Attack.",
+    41,
+    BRUISER_ADRENAL_SURGE,
+    2,
+    { use: "overdrive", target: ALLY_CONTROLLER },
+    (hero) => {
+      arrange(hero(ALLY_CONTROLLER), { col: 11, row: 3 }, { hand: [0, 1, 2, 3] });
+      arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+    },
+  ),
   {
     name: "shockwave-overdrive",
     description: "A Bruiser plays Shockwave in Overdrive with two enemy Heroes within Range 1.",
@@ -269,7 +374,7 @@ export function preparedPlan(scenario: Scenario, match: MatchState, steps: reado
     else if (step.use === "move") {
       if (!step.tile) throw new Error(`${scenario.name}: a Move needs a tile`);
       queue.push({ kind: ActionKind.Move, card, destination: step.tile });
-    } else queue.push({ kind: ActionKind.Primary, card, target: hero.id, ...(step.tile ? { tile: step.tile } : {}), overdrive: step.use === "overdrive" });
+    } else queue.push({ kind: ActionKind.Primary, card, target: step.target ?? hero.id, ...(step.tile ? { tile: step.tile } : {}), overdrive: step.use === "overdrive" });
   }
   const heroPlan: HeroPlan = { heroId: hero.id, queue, pitched };
   return { squad: hero.squad, heroes: [heroPlan] };
