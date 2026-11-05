@@ -61,4 +61,9 @@ export default tseslint.config(
       "no-restricted-imports": ["error", { patterns: [{ group: ["game-core/server", "game-core/server/*"], message: "apps/web must not import the server entry point (ADR 0017)." }] }],
     },
   },
+  {
+    // The screenshot tool runs in Node, never ships to the browser, and builds Match States with the real rules (apps/web/scripts/scenarios.ts).
+    files: ["apps/web/scripts/**/*.ts"],
+    rules: { "no-restricted-imports": "off" },
+  },
 );
