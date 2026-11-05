@@ -2,7 +2,7 @@
 // prototype behind the same interface a network host will use later (ADR 0017).
 
 import { planSquad } from "./ai";
-import { type MatchHost, SquadId, type SquadView, type SubmitResult } from "./host";
+import { type MatchHost, MatchMode, type MatchModeSetting, SquadId, type SquadView, type SubmitResult } from "./host";
 import { buildSquadView, createMatch, type MatchState, recordSightings, startRound } from "./match";
 import { type SquadPlan, validatePlan } from "./plan";
 import { withWreck } from "./reactor-deck";
@@ -13,7 +13,7 @@ export const LOCAL_HOST_ENTRY = "game-core/local-host" as const;
 export const LOCAL_HOST_BACKEND = SERVER_ENTRY;
 
 /** Schema version of a saved match; bump it whenever the Match State changes shape. */
-export const SNAPSHOT_VERSION = 1;
+export const SNAPSHOT_VERSION = 2;
 
 /** A local host can save the running match as text, to resume it later. */
 export interface LocalMatchHost extends MatchHost {
@@ -24,8 +24,8 @@ export interface LocalMatchHost extends MatchHost {
 }
 
 /** Starts a match at Round 1 with all Hands drawn. The AI plans the enemy Squad and the allied Heroes the player leaves out of a plan. */
-export function createLocalHost(seed: number): LocalMatchHost {
-  return hostFor(startRound(createMatch(seed)));
+export function createLocalHost(seed: number, mode?: MatchModeSetting): LocalMatchHost {
+  return hostFor(startRound(createMatch(seed, mode)));
 }
 
 /** Resumes a saved match. Returns undefined if the text is unreadable or has another schema version. */
@@ -34,7 +34,8 @@ export function restoreLocalHost(snapshot: string): LocalMatchHost | undefined {
     const saved: unknown = JSON.parse(snapshot);
     if (typeof saved !== "object" || saved === null) return undefined;
     const { version, match } = saved as { version?: unknown; match?: Partial<MatchState> };
-    if (version !== SNAPSHOT_VERSION || typeof match !== "object" || match === null) return undefined;
+    // Version 1 is the same shape without a mode: it is a classic match.
+    if ((version !== SNAPSHOT_VERSION && version !== 1) || typeof match !== "object" || match === null) return undefined;
     if (!Array.isArray(match.heroes) || typeof match.round !== "number" || typeof match.rngState !== "number") return undefined;
     return hostFor(upgradeSavedMatch(match as MatchState));
   } catch {
@@ -47,6 +48,7 @@ export function restoreLocalHost(snapshot: string): LocalMatchHost | undefined {
  * Cover on its tile now, and each Squad knows the wrecks it could have seen.
  */
 function upgradeSavedMatch(match: MatchState): MatchState {
+  if (match.mode === undefined) match = { ...match, mode: { kind: MatchMode.Classic } };
   if (match.knownWrecks !== undefined) return match;
   const grid = match.heroes.filter((hero) => hero.exhausted).reduce((current, hero) => withWreck(current, hero.position), match.grid);
   const upgraded: MatchState = { ...match, grid, knownWrecks: { [SquadId.Left]: [], [SquadId.Right]: [] } };
