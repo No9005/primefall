@@ -78,11 +78,18 @@ class GitHub {
 
 const names = (labels: ApiLabel[]) => labels.map((l) => l.name);
 
+function runState(run: ApiCheckRuns["check_runs"][number]): CiState {
+  if (run.status !== "completed") return CiState.Pending;
+  return ["success", "neutral", "skipped"].includes(run.conclusion ?? "") ? CiState.Success : CiState.Failure;
+}
+
+function statusState(status: ApiStatuses["statuses"][number]): CiState {
+  if (status.state === "success") return CiState.Success;
+  return status.state === "pending" ? CiState.Pending : CiState.Failure;
+}
+
 function checksState(runs: ApiCheckRuns["check_runs"], statuses: ApiStatuses["statuses"]): CiState {
-  const states = [
-    ...runs.map((r) => (r.status !== "completed" ? CiState.Pending : ["success", "neutral", "skipped"].includes(r.conclusion ?? "") ? CiState.Success : CiState.Failure)),
-    ...statuses.map((s) => (s.state === "success" ? CiState.Success : s.state === "pending" ? CiState.Pending : CiState.Failure)),
-  ];
+  const states = [...runs.map(runState), ...statuses.map(statusState)];
   if (states.length === 0) return CiState.None;
   if (states.includes(CiState.Failure)) return CiState.Failure;
   return states.includes(CiState.Pending) ? CiState.Pending : CiState.Success;

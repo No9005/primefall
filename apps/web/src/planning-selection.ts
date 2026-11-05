@@ -61,48 +61,31 @@ export function rangeDamageLabel(card: CardDefinition, attacker: GridPosition, t
   return `Range ${distance} · ${damage} damage${distance >= LONG_RANGE_FROM ? " (long range bonus)" : ""}`;
 }
 
+/** The card text of each kind of effect. */
+const EFFECT_TEXT: Record<EffectKind, (effect: CardEffect) => string> = {
+  [EffectKind.Damage]: ({ amount }) => `${amount} damage`,
+  [EffectKind.DamageHeroesAtAndAroundTarget]: ({ amount }) => `${amount} damage to Heroes at and around the target`,
+  [EffectKind.DamageAtLongRange]: ({ amount, longRangeAmount }) => `${amount} damage, ${longRangeAmount} from Range ${LONG_RANGE_FROM}`,
+  [EffectKind.ApplySlow]: ({ duration }) => `Slow for ${duration ?? 1} Resolution${duration === 1 || duration === undefined ? "" : "s"}`,
+  [EffectKind.ApplyMarked]: ({ amount, duration }) => `Marked, +${amount} damage taken${duration ? ` for ${duration} Resolutions` : ""}`,
+  [EffectKind.Knockback]: ({ amount, withinRange }) => `Knockback ${amount}${withinRange ? ` within ${withinRange} tiles` : ""}`,
+  [EffectKind.DestroyHalfCover]: () => "destroys Half Cover",
+  [EffectKind.DestroyAnyCover]: () => "destroys any Cover",
+  [EffectKind.IgnoreHalfCover]: () => "ignores Half Cover",
+  [EffectKind.GainShield]: ({ amount }) => `Shield ${amount}`,
+  [EffectKind.GrantExtraMove]: ({ amount }) => `ally Moves ${amount} more tiles`,
+  [EffectKind.ExtendMove]: ({ amount }) => `next Move covers ${amount} tiles`,
+  [EffectKind.PreventHidden]: () => "prevents Hidden",
+  [EffectKind.GainPermanentAttack]: ({ amount }) => `+${amount} Attack damage for the rest of the match`,
+  [EffectKind.RevealArea]: ({ size }) => `reveals a ${size}x${size} area`,
+  [EffectKind.PlaceHalfCover]: () => "places Half Cover",
+  [EffectKind.BecomeHidden]: () => "become Hidden",
+  [EffectKind.TargetGhost]: () => "shoots a Ghost's last known position",
+  [EffectKind.RemoveHalfCoverReduction]: () => "Half Cover does not reduce the damage",
+};
+
 function describeEffect(effect: CardEffect): string {
-  const { amount, duration, size, longRangeAmount, withinRange } = effect;
-  switch (effect.kind) {
-    case EffectKind.Damage:
-      return `${amount} damage`;
-    case EffectKind.DamageHeroesAtAndAroundTarget:
-      return `${amount} damage to Heroes at and around the target`;
-    case EffectKind.DamageAtLongRange:
-      return `${amount} damage, ${longRangeAmount} from Range ${LONG_RANGE_FROM}`;
-    case EffectKind.ApplySlow:
-      return `Slow for ${duration ?? 1} Resolution${duration === 1 || duration === undefined ? "" : "s"}`;
-    case EffectKind.ApplyMarked:
-      return `Marked, +${amount} damage taken${duration ? ` for ${duration} Resolutions` : ""}`;
-    case EffectKind.Knockback:
-      return `Knockback ${amount}${withinRange ? ` within ${withinRange} tiles` : ""}`;
-    case EffectKind.DestroyHalfCover:
-      return "destroys Half Cover";
-    case EffectKind.DestroyAnyCover:
-      return "destroys any Cover";
-    case EffectKind.IgnoreHalfCover:
-      return "ignores Half Cover";
-    case EffectKind.GainShield:
-      return `Shield ${amount}`;
-    case EffectKind.GrantExtraMove:
-      return `ally Moves ${amount} more tiles`;
-    case EffectKind.ExtendMove:
-      return `next Move covers ${amount} tiles`;
-    case EffectKind.PreventHidden:
-      return "prevents Hidden";
-    case EffectKind.GainPermanentAttack:
-      return `+${amount} Attack damage for the rest of the match`;
-    case EffectKind.RevealArea:
-      return `reveals a ${size}x${size} area`;
-    case EffectKind.PlaceHalfCover:
-      return "places Half Cover";
-    case EffectKind.BecomeHidden:
-      return "become Hidden";
-    case EffectKind.TargetGhost:
-      return "shoots a Ghost's last known position";
-    case EffectKind.RemoveHalfCoverReduction:
-      return "Half Cover does not reduce the damage";
-  }
+  return EFFECT_TEXT[effect.kind](effect);
 }
 
 /** One line of card text for a mode of a card: its effects in order, `undefined` for a card without that mode. */
@@ -262,6 +245,12 @@ export function energyReadout(heroClass: HeroClass, queue: readonly QueuedAction
   return { pitched: total, spent, available: total - spent };
 }
 
+/** Why the Primary effect of a card cannot be chosen, ignoring a full Queue. */
+function primaryReason(definition: CardDefinition, overdrive: boolean, available: number): string | undefined {
+  if (!isPlayableCard(definition, overdrive)) return overdrive ? "Overdrive is not playable yet" : "effect is not playable yet";
+  return definition.energyCost > available ? `needs ${definition.energyCost} Energy` : undefined;
+}
+
 /** For each use of a card: `undefined` when it can be chosen, otherwise the reason it is disabled. */
 export function cardUseReasons(
   heroClass: HeroClass,
@@ -271,18 +260,9 @@ export function cardUseReasons(
   overdrive = false,
 ): Record<CardUse, string | undefined> {
   const queueFull = queue.length >= MAX_QUEUE_LENGTH ? "Queue is full" : undefined;
-  const cost = HERO_DECKS[heroClass][card]!.energyCost;
   const { available } = energyReadout(heroClass, queue, pitched);
   return {
-    [CardUse.Primary]:
-      queueFull ??
-      (!isPlayableCard(HERO_DECKS[heroClass][card]!, overdrive)
-        ? overdrive
-          ? "Overdrive is not playable yet"
-          : "effect is not playable yet"
-        : cost > available
-          ? `needs ${cost} Energy`
-          : undefined),
+    [CardUse.Primary]: queueFull ?? primaryReason(HERO_DECKS[heroClass][card]!, overdrive, available),
     [CardUse.Pitch]: undefined,
     [CardUse.Move]: queueFull,
     [CardUse.Block]: queueFull,

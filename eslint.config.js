@@ -46,7 +46,18 @@ export default tseslint.config(
   },
   {
     // Files cleaned of readability warnings (#188): the six rules are errors here, with the same thresholds.
-    files: ["apps/web/src/effects-layer.ts", "apps/web/src/weapon-effects.ts", "packages/game-core/src/balance.bal.ts"],
+    files: [
+      "apps/web/src/effects-layer.ts",
+      "apps/web/src/weapon-effects.ts",
+      "packages/game-core/src/balance.bal.ts",
+      "apps/web/src/App.tsx",
+      "apps/dashboard/src/github.ts",
+      "apps/web/src/board-layout.ts",
+      "apps/web/src/hero-figure.ts",
+      "apps/web/src/target-lines.ts",
+      "apps/web/src/planning-selection.ts",
+      "apps/web/src/playback.ts",
+    ],
     rules: {
       "no-nested-ternary": "error",
       complexity: ["error", 15],
