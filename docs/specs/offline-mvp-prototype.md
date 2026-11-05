@@ -150,6 +150,45 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Use the Reactor Deck layout and the MVP card set as stable fixtures for deterministic scenario tests.
 - Treat AI behaviour as heuristic: test that AI actions are legal and objective-oriented, not that a specific action is always chosen.
 
+## Attack and Defend Mode (second mode)
+
+A second mode next to the classic mode described above, decided in ADR 0022 (Proposed). Everything above describes the classic mode, which stays the default and does not change. In this section "the Zone" is the Prime Zone.
+
+### User Stories
+
+88. As a player, I want to choose the mode when a match starts, so that I can play the classic mode or Attack and Defend.
+89. As a player, I want one Squad to be the Defender and the other the Attacker, so that the two sides have different jobs.
+90. As a player, I want the Defender's Heroes to start on the Prime Zone tiles next to their side (column 14 for the Left Squad, column 16 for the Right Squad, rows 7 to 9), so that the Attacker has to fight its way in.
+91. As a player, I want the Attacker to start on its Spawn tiles, so that it has to cross the Reactor Deck first.
+92. As a player, I want the Attacker to take control of the Prime Zone when at least one of its Heroes stands in it and it has at least as many Heroes in it as the Defender, so that the Defender has to Exhaust or push out the Attacker Heroes instead of just standing there.
+93. As a player, I want the previous controller to keep the Zone when the Attacker does not take it, so that control does not flicker.
+94. As an Attacker, I want to win by controlling the Zone during 3 consecutive Resolutions, so that pressure on the Zone is rewarded.
+95. As an Attacker, I want to win by Exhausting all three Defender Heroes, so that I can also win by wearing down the Decks.
+96. As a Defender, I want to win when the Round limit of the mode (default 12) has been played without an Attacker win (Defence Held), so that surviving with my Decks matters more than holding the Zone.
+97. As a player, I want the Round counter to show the Round limit of the mode, so that I know how long the Defender has to hold.
+98. As a player, I want every other rule (Decks, Energy, Pitch, cards, Fog of War, Exhaustion) to stay as in the classic mode, so that I only have to learn the roles.
+
+### What the Mode Changes
+
+- Start positions of the Defender, the control rule of the Zone, the win paths and the Round limit (replacing the 30 Round limit and the Deck tiebreak of ADR 0019 for this mode).
+- A new match end reason: Defence Held.
+- The saved snapshot of a match carries the mode and the Attacker's Squad.
+
+### What Stays Unchanged
+
+The classic mode and ADR 0010 are valid for it. Decks, Energy, Pitch, the MVP card set, Cover, Line of Sight, Fog of War, Exhaustion (ADR 0011), simultaneous planning and priority-interleaved Resolution (ADR 0013) are the same in both modes.
+
+### Testing Decisions
+
+Through the Match Simulation seam, with the Reactor Deck and the MVP card set as fixtures:
+
+- Zone control with ties: one Attacker Hero against one Defender Hero in the Zone gives the Attacker control; one against two does not and the previous controller keeps it; no Attacker Hero in the Zone never gives it control, whatever the count of Defender Heroes.
+- Exhausted Heroes do not count towards the Zone.
+- The two win paths: control during 3 consecutive Resolutions (progress resets when control is lost), and all three Defender Heroes Exhausted.
+- The Defender's Round limit: after the last Round of the limit without an Attacker win the match ends with Defence Held and the Defender wins; the 30 Round limit and the Deck tiebreak do not apply; an Attacker win in the last Round of the limit wins over Defence Held.
+- The Defender's start positions for both sides, and that the classic mode is unchanged.
+- The AI produces legal plans for both roles (heuristic, as in the classic mode).
+
 ## Future Work: UI Tests
 
 Browser tests are intentionally not part of the MVP. Rough idea for later: a small Playwright suite that starts the app, plays a complete offline match against the AI with a fixed seed, and asserts the main flow (planning, commit, Resolution playback, end screen with Round counter); plus screenshot comparisons for the HUD and card Hand at a mobile viewport. It should run separately from `npm test` and, if added to CI, in its own job.

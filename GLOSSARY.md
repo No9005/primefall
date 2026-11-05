@@ -144,6 +144,18 @@ _Avoid_: Point, base, capture zone
 The maximum of 30 Rounds per match. If no Squad has won by then, the Squad with more cards in its Heroes' Decks wins; equal totals are a draw.
 _Avoid_: Timeout, turn cap
 
+**Attacker**:
+In Attack and Defend mode, the Squad that starts on its Spawn tiles and wins by controlling the Prime Zone during three consecutive Resolutions or by Exhausting all Heroes of the Defender. It takes control of the Prime Zone when at least one of its Heroes stands in it and it has at least as many Heroes in it as the Defender (a tie goes to the Attacker). In the classic mode the Squads have no roles.
+_Avoid_: Aggressor, invader
+
+**Defender**:
+In Attack and Defend mode, the Squad whose Heroes start on the Prime Zone tiles of the inner column next to its side. It never wins by holding the Zone; it wins with Defence Held.
+_Avoid_: Guard, holder
+
+**Defence Held**:
+The end reason of an Attack and Defend match in which the Round limit of the mode (default 12) was played without an Attacker win. The Defender wins.
+_Avoid_: Timeout, draw
+
 **Overwatch Nest**:
 The single Full Cover position with a sightline into the Prime Zone. It is the Assassin’s secondary objective.
 _Avoid_: Sniper nest, camp spot
