@@ -2,7 +2,7 @@ import { SquadId, type SquadView } from "game-core";
 import { createLocalHost } from "game-core/local-host";
 import { useEffect, useState } from "react";
 import { EndScreen } from "./EndScreen";
-import { clearSavedMatch, loadSavedMatch, saveMatch } from "./match-storage";
+import { clearSavedMatch, loadSavedMatch, loadSavedPlayerHero, parsePlayerHero, saveMatch } from "./match-storage";
 import { PlanningScreen } from "./PlanningScreen";
 import { TutorialScreen } from "./TutorialScreen";
 
@@ -50,14 +50,16 @@ export function App() {
   const [tutorial, setTutorial] = useState(false);
   // A match saved by an earlier visit, offered for Resume on the start screen.
   const [saved] = useState(loadSavedMatch);
+  // The Player Hero: set by the start parameter (?hero=controller); Resume restores the saved match's one.
+  const [playerHero, setPlayerHero] = useState(() => parsePlayerHero(new URLSearchParams(window.location.search).get("hero")));
   const [view, setView] = useState<SquadView>();
 
   // The host is at the start of a Round whenever the view changes; save it, or forget a finished match.
   useEffect(() => {
     if (!started || !view) return;
     if (view.result) clearSavedMatch();
-    else saveMatch(host);
-  }, [host, started, view]);
+    else saveMatch(host, undefined, playerHero);
+  }, [host, started, view, playerHero]);
 
   useEffect(() => {
     if (!started) return;
@@ -89,7 +91,10 @@ export function App() {
         canResume={saved !== undefined}
         onPlay={() => setStarted(true)}
         onResume={() => {
-          if (saved) setHost(saved);
+          if (saved) {
+            setHost(saved);
+            setPlayerHero(loadSavedPlayerHero());
+          }
           setStarted(true);
         }}
         onTutorial={() => setTutorial(true)}
@@ -106,6 +111,7 @@ export function App() {
     return (
       <PlanningScreen
         view={view}
+        playerHeroClass={playerHero}
         submitPlan={(plan) => host.submitPlan(plan)}
         getAllyPlan={(heroIds) => host.getAllyPlan(PLAYER_SQUAD, heroIds)}
         onResolved={setView}

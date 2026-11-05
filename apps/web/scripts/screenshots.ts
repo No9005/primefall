@@ -2,7 +2,7 @@
 // Starts the Vite dev server, plays the standard path in Chromium at 844 x 390 and writes PNGs with stable names
 // to apps/web/screenshots/ (git-ignored), so a run before and after a change can be compared name by name.
 import { chromium, type Browser, type Page } from "@playwright/test";
-import { type CardDefinition, CardTarget, coverAt, CoverKind, findTiles, type GridPosition, HERO_DECKS, moveDestinations, reachableMoveDestinations, REACTOR_DECK, TileKind, Visibility } from "game-core";
+import { type CardDefinition, CardTarget, coverAt, CoverKind, findTiles, type GridPosition, HERO_DECKS, HeroClass, moveDestinations, reachableMoveDestinations, REACTOR_DECK, TileKind, Visibility } from "game-core";
 import { SNAPSHOT_VERSION } from "game-core/local-host";
 import { buildSquadView, type MatchState } from "game-core/server";
 import { execFileSync, spawn } from "node:child_process";
@@ -75,10 +75,10 @@ async function queueMove(page: Page): Promise<void> {
   throw new Error("No tapped tile accepted the Move card");
 }
 
-async function playStandardPath(page: Page): Promise<void> {
+async function playStandardPath(page: Page, hero?: HeroClass): Promise<void> {
   const shoot = (name: ScreenshotName) => page.screenshot({ path: path.join(OUTPUT_DIR, name) });
 
-  await page.goto(URL);
+  await page.goto(hero ? `${URL}/?hero=${hero}` : URL);
   await page.getByRole("button", { name: "Play" }).click();
   await page.getByTestId("round").filter({ hasText: "ROUND 1" }).waitFor();
   const hand = page.getByRole("list", { name: "Hand" });
@@ -133,6 +133,7 @@ async function playStandardPath(page: Page): Promise<void> {
 }
 
 const STORAGE_KEY = "primefall.match"; // apps/web/src/match-storage.ts
+const PLAYER_HERO_STORAGE_KEY = "primefall.playerHero"; // the same
 const SCENARIO_ACTION_TIMEOUT_MS = 10_000;
 const USE_FACE_NAMES: Record<StepUse, RegExp | string> = {
   primary: "Primary",
@@ -279,7 +280,13 @@ async function playScenario(browser: Browser, scenario: Scenario): Promise<void>
     // The page has no favicon; the browser asks for it anyway.
     if (message.type() === "error" && !message.location().url.endsWith("/favicon.ico")) errors.push(`console error: ${message.text()} (${message.location().url})`);
   });
-  await page.addInitScript(([key, value]) => localStorage.setItem(key!, value!), [STORAGE_KEY, snapshot]);
+  await page.addInitScript(
+    ([key, value, heroKey, hero]) => {
+      localStorage.setItem(key!, value!);
+      localStorage.setItem(heroKey!, hero!);
+    },
+    [STORAGE_KEY, snapshot, PLAYER_HERO_STORAGE_KEY, scenario.playerHero ?? HeroClass.Bruiser],
+  );
   try {
     await page.goto(URL);
     await page.getByTestId("resume").click();
@@ -326,11 +333,19 @@ export interface CliOptions {
   scenarios: string[];
   /** Set when the arguments name a scenario that does not exist or are malformed. */
   error?: string;
+  /** The Player Hero of the standard path (`--hero controller`); the Bruiser when absent. */
+  hero?: HeroClass;
 }
 
-/** Reads `--list`, `--scenario <name>` and `--scenario all`. No arguments: the standard path. */
+/** Reads `--list`, `--scenario <name>`, `--scenario all` and `--hero <class>`. No arguments: the standard path. */
 export function parseArgs(args: readonly string[]): CliOptions {
   if (args.includes("--list")) return { list: true, scenarios: [] };
+  const heroAt = args.indexOf("--hero");
+  if (heroAt >= 0) {
+    const hero = Object.values(HeroClass).find((heroClass) => heroClass === args[heroAt + 1]);
+    if (!hero) return { list: false, scenarios: [], error: `--hero needs one of ${Object.values(HeroClass).join(", ")}` };
+    return { list: false, scenarios: [], hero };
+  }
   const at = args.indexOf("--scenario");
   if (at < 0) return { list: false, scenarios: [] };
   const name = args[at + 1];
@@ -359,7 +374,7 @@ async function main(): Promise<void> {
     try {
       if (options.scenarios.length === 0) {
         const page = await browser.newPage({ viewport: VIEWPORT });
-        await playStandardPath(page);
+        await playStandardPath(page, options.hero);
       }
       for (const name of options.scenarios) {
         await playScenario(browser, SCENARIOS.find((scenario) => scenario.name === name)!);

@@ -1,9 +1,9 @@
-import { coverAt, CoverKind, SquadId, validatePlan, Visibility } from "game-core";
+import { coverAt, CoverKind, HeroClass, SquadId, validatePlan, Visibility } from "game-core";
 import { restoreLocalHost, SNAPSHOT_VERSION } from "game-core/local-host";
 import { buildSquadView, canSquadSeeHero, type MatchState } from "game-core/server";
 import { describe, expect, it } from "vitest";
 import { parseArgs } from "./screenshots";
-import { preparedPlan, SCENARIO_NAMES, SCENARIOS, scenarioRounds, scenarioScreenshotNames } from "./scenarios";
+import { preparedPlan, SCENARIO_NAMES, SCENARIOS, type Scenario, scenarioRounds, scenarioScreenshotNames } from "./scenarios";
 
 describe("screenshot scenarios", () => {
   it("have unique kebab-case names", () => {
@@ -94,7 +94,23 @@ describe("memory scenarios stage what their names say", () => {
   });
 });
 
+describe("a scenario with another Player Hero", () => {
+  it("can be staged: the Controller's Wait plan passes validatePlan", async () => {
+    const base = SCENARIOS[0]!;
+    const scenario: Scenario = { ...base, playerHero: HeroClass.Controller, heroId: `${SquadId.Left}-controller`, steps: [{ wait: true }] };
+    const match = scenario.buildMatch();
+    const host = restoreLocalHost(JSON.stringify({ version: SNAPSHOT_VERSION, match }))!;
+    const view = await host.getSquadView(SquadId.Left);
+    expect(validatePlan(view, preparedPlan(scenario, match))).toEqual([]);
+  });
+});
+
 describe("screenshot tool arguments", () => {
+  it("plays the standard path with a Player Hero", () => {
+    expect(parseArgs(["--hero", "assassin"])).toEqual({ list: false, scenarios: [], hero: HeroClass.Assassin });
+    expect(parseArgs(["--hero", "wizard"]).error).toBeDefined();
+  });
+
   it("plays the standard path without arguments", () => {
     expect(parseArgs([])).toEqual({ list: false, scenarios: [] });
   });

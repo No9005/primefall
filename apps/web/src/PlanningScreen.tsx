@@ -63,9 +63,6 @@ import type { ClipName } from "./hero-clips";
 import type { EffectCue } from "./weapon-effects";
 import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,removeQueueAction, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
 
-/** The Hero the player plans for; the other two are AI planned (offline prototype spec). */
-export const PLAYER_HERO_CLASS = HeroClass.Bruiser;
-
 const NO_TILES: readonly GridPosition[] = [];
 const NO_SHOTS: readonly ShotDrawing[] = [];
 const NO_RANGE: readonly RangeTile[] = [];
@@ -393,8 +390,8 @@ interface DrawState {
  * The draw of a Round: nothing flies with reduced motion, or when no card is new. `deckBefore` is the Deck count the
  * Resolution left; when the draw needed more cards than that, the Discard was shuffled in first.
  */
-function startDraw(view: SquadView, previousHand: readonly CardIndex[] | undefined, deckBefore: number | undefined): DrawState {
-  const hero = view.heroes.find((candidate) => candidate.heroClass === PLAYER_HERO_CLASS)!;
+function startDraw(view: SquadView, playerHeroClass: HeroClass, previousHand: readonly CardIndex[] | undefined, deckBefore: number | undefined): DrawState {
+  const hero = view.heroes.find((candidate) => candidate.heroClass === playerHeroClass)!;
   const cards = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? [] : newCards(previousHand, hero.hand);
   const shuffled = deckBefore === undefined ? 0 : shuffledWhileDrawing(deckBefore, cards.length, hero.deckCount);
   return { view, heroId: hero.id, hand: hero.hand, cards, departed: 0, shuffled, deckBefore: deckBefore ?? 0, shuffleDone: shuffled === 0, done: cards.length === 0 };
@@ -402,6 +399,8 @@ function startDraw(view: SquadView, previousHand: readonly CardIndex[] | undefin
 
 interface PlanningScreenProps {
   view: SquadView;
+  /** The Player Hero: the Hero the player plans for; the other two Heroes of the Squad are AI planned. */
+  playerHeroClass: HeroClass;
   submitPlan: (plan: SquadPlan) => Promise<SubmitResult>;
   /** What the AI plans for the given allied Heroes this Round, to draw their paths. */
   getAllyPlan: (heroIds: readonly string[]) => Promise<SquadPlan>;
@@ -409,8 +408,8 @@ interface PlanningScreenProps {
   onResolved: (view: SquadView) => void;
 }
 
-export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: PlanningScreenProps) {
-  const initial = view.heroes.find((hero) => hero.heroClass === PLAYER_HERO_CLASS)!;
+export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan, onResolved }: PlanningScreenProps) {
+  const initial = view.heroes.find((hero) => hero.heroClass === playerHeroClass)!;
   const [selectedId, setSelectedId] = useState(initial.id);
   const selected = view.heroes.find((hero) => hero.id === selectedId) ?? initial;
   const [queue, setQueue] = useState<readonly QueuedAction[]>([]);
@@ -457,8 +456,8 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   // derived while rendering the first time a view is seen, so no card shows face up before it has flown.
   // The Deck count the last Resolution left for the player's Hero, to see whether the draw shuffled the Discard in.
   const deckAfterResolution = useRef<number | undefined>(undefined);
-  const [draw, setDraw] = useState(() => startDraw(view, undefined, undefined));
-  if (draw.view !== view) setDraw(startDraw(view, draw.hand, deckAfterResolution.current));
+  const [draw, setDraw] = useState(() => startDraw(view, playerHeroClass, undefined, undefined));
+  if (draw.view !== view) setDraw(startDraw(view, playerHeroClass, draw.hand, deckAfterResolution.current));
   const drawing = !draw.done && selected.id === draw.heroId;
   useEffect(() => {
     if (draw.done || draw.view !== view) return;
@@ -503,7 +502,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   useEffect(() => {
     let cancelled = false;
     setAllyPlan(undefined);
-    const allyIds = view.heroes.filter((hero) => hero.heroClass !== PLAYER_HERO_CLASS).map((hero) => hero.id);
+    const allyIds = view.heroes.filter((hero) => hero.heroClass !== playerHeroClass).map((hero) => hero.id);
     void getAllyPlanRef.current(allyIds).then((planned) => {
       if (!cancelled) setAllyPlan(planned);
     });
@@ -511,7 +510,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
       cancelled = true;
     };
   }, [view]);
-  const playerHeroId = view.heroes.find((hero) => hero.heroClass === PLAYER_HERO_CLASS)!.id;
+  const playerHeroId = view.heroes.find((hero) => hero.heroClass === playerHeroClass)!.id;
   const squadPlans = useMemo(
     () => [{ ...plan, heroes: plan.heroes.filter((planned) => planned.heroId === playerHeroId) }, ...(allyPlan ? [allyPlan] : [])],
     [plan, allyPlan, playerHeroId],
@@ -660,7 +659,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
   const sideOf = (heroId: string): CommentarySide => {
     const ownSquadHero = view.heroes.find((hero) => hero.id === heroId);
     if (ownSquadHero === undefined) return "enemy";
-    return ownSquadHero.heroClass === PLAYER_HERO_CLASS ? "own" : "ally";
+    return ownSquadHero.heroClass === playerHeroClass ? "own" : "ally";
   };
   const nameOf = (heroId: string) => {
     const unit = [...view.heroes, ...view.enemies].find((candidate) => candidate.id === heroId);
@@ -884,7 +883,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         setQueue([]);
         const emptyPlan: SquadPlan = {
           squad: view.squad,
-          heroes: view.heroes.filter((hero) => hero.heroClass === PLAYER_HERO_CLASS).map((hero) => ({ heroId: hero.id, queue: [], pitched: [] })),
+          heroes: view.heroes.filter((hero) => hero.heroClass === playerHeroClass).map((hero) => ({ heroId: hero.id, queue: [], pitched: [] })),
         };
         void commitRef.current?.(emptyPlan);
       }
@@ -918,7 +917,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
     const shields: Record<string, number> = {};
     const deckDamage: Record<string, number> = {};
     const shuffled: Record<string, number> = {};
-    const playerHero = view.heroes.find((hero) => hero.heroClass === PLAYER_HERO_CLASS)!;
+    const playerHero = view.heroes.find((hero) => hero.heroClass === playerHeroClass)!;
     const exhausted: string[] = [];
     const tickCount = tickCountOf(result.events);
     let commentary: CommentaryEntry[] = [];
@@ -1050,7 +1049,7 @@ export function PlanningScreen({ view, submitPlan, getAllyPlan, onResolved }: Pl
         heroes={boardHeroes}
         enemies={boardEnemies}
         selectedId={selected.id}
-        onSelect={(id) => view.heroes.find((hero) => hero.id === id)?.heroClass === PLAYER_HERO_CLASS && changeSelection(id)}
+        onSelect={(id) => view.heroes.find((hero) => hero.id === id)?.heroClass === playerHeroClass && changeSelection(id)}
         targetableIds={targetableIds}
         onTargetTap={tapTarget}
         hitIds={playback?.hit ?? []}
