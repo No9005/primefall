@@ -90,6 +90,35 @@ const BRUISER_BREACH_CHARGE = 4;
 const BRUISER_SHOCKWAVE = 5;
 const BRUISER_BULWARK = 6;
 
+// Controller cards. The web app lets the player control only the Bruiser (PLAYER_HERO_CLASS in PlanningScreen.tsx), so a
+// Controller card can only be seen when the allied AI plays it, and the AI plays only simple Attacks (isSimpleAttack in
+// cards.ts). Those are the Controller scenarios below; the Utility cards and every Overdrive face cannot be staged.
+const CONTROLLER_PULSE_BOLT = 0;
+const CONTROLLER_TAG_ROUND = 2;
+const CONTROLLER_SHOCK_PULSE = 3;
+/** The rest of the Controller's Hand: Utility cards only, so the AI plays the Attack under test (it plays the first Attack in the Hand that is in Range). */
+const CONTROLLER_FILLER_CARDS: readonly CardIndex[] = [11, 9, 5];
+
+/**
+ * The allied Controller stands on open floor two tiles from an enemy Bruiser (Controller Range is 2): the AI plans an
+ * Attack with the card under test. The player's Bruiser just waits.
+ */
+function controllerAttack(name: string, description: string, seed: number, card: CardIndex): Scenario {
+  return {
+    name,
+    description,
+    buildMatch: () =>
+      stage(seed, (hero) => {
+        arrange(hero(`${SquadId.Left}-controller`), { col: 12, row: 3 }, { hand: [card, ...CONTROLLER_FILLER_CARDS] });
+        // An enemy with Attacks in its Hand shoots back instead of walking out of the Controller's Range.
+        arrange(hero("right-bruiser"), { col: 14, row: 3 }, { hand: [0, 1, 2, 3] });
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [{ wait: true }],
+    resolutionShotsMs: [400, 1000, 1800, 2600],
+  };
+}
+
 export const SCENARIOS: readonly Scenario[] = [
   {
     name: "shockwave-overdrive",
@@ -132,6 +161,9 @@ export const SCENARIOS: readonly Scenario[] = [
     steps: [{ slot: 0, use: "move", tile: { col: 6, row: 1 } }],
     resolutionShotsMs: [800, 2500],
   },
+  controllerAttack("pulse-bolt", "The allied Controller fires Pulse Bolt (2 damage, Range 2) at an enemy Bruiser two tiles away; the player's Bruiser waits.", 21, CONTROLLER_PULSE_BOLT),
+  controllerAttack("tag-round", "The allied Controller fires Tag Round at an enemy Bruiser two tiles away: 1 damage and Marked; the player's Bruiser waits.", 22, CONTROLLER_TAG_ROUND),
+  controllerAttack("shock-pulse", "The allied Controller fires Shock Pulse at an enemy Bruiser two tiles away: 1 damage and Slow; the player's Bruiser waits.", 23, CONTROLLER_SHOCK_PULSE),
   {
     name: "cover-placed-expires",
     description: "Half Cover placed by Deploy Cover (2 Resolutions left) stands through Resolution 1 and expires at the end of Resolution 2.",
