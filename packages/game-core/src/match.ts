@@ -360,7 +360,10 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   const { mode } = match;
   const modeView =
     mode.kind === MatchMode.AttackAndDefend
-      ? { roundLimit: DEFENDER_ROUND_LIMIT, attackAndDefend: { defender: mode.defender, roundsLeft: match.result ? 0 : Math.max(0, DEFENDER_ROUND_LIMIT - match.round + 1) } }
+      ? (() => {
+          const roundLimit = mode.roundLimit ?? DEFENDER_ROUND_LIMIT;
+          return { roundLimit, attackAndDefend: { defender: mode.defender, roundsLeft: match.result ? 0 : Math.max(0, roundLimit - match.round + 1) } };
+        })()
       : { roundLimit: ROUND_LIMIT };
   return {
     squad, round: match.round, ...modeView, primeProgress, ...result, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, enemies,
