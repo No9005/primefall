@@ -21,6 +21,8 @@ function reasonText(result: MatchResult, squad: SquadId): string {
     case MatchEndReason.AllHeroesExhausted:
       if (result.winner === undefined) return "All Heroes of both Squads are Exhausted.";
       return `All Heroes of ${own ? "the enemy Squad" : "your Squad"} are Exhausted.`;
+    case MatchEndReason.DefenceHeld:
+      return `${own ? "Your Squad" : "The enemy Squad"} held the defence until the Round limit.`;
     case MatchEndReason.RoundLimit: {
       const enemy = squad === SquadId.Left ? SquadId.Right : SquadId.Left;
       return `Round Limit reached. Cards in all Decks: you ${result.deckTotals[squad]}, enemy ${result.deckTotals[enemy]}.`;
