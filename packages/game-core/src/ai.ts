@@ -1,8 +1,8 @@
 // AI planning (ADR 0017, ADR 0018). A pure, deterministic function from a Squad View to a Squad Plan.
 // It only ever sees the Squad View, so it cannot read enemy Hands or unseen Heroes: no cheating.
 
-import { type CardIndex, HERO_DECKS, isSimpleAttack } from "./cards";
-import { type HeroView, SquadId, type SquadView, Visibility, type VisibleEnemyView } from "./host";
+import { type CardIndex, type HeroClass, HERO_DECKS, isSimpleAttack } from "./cards";
+import { type GhostEnemyView, type HeroView, SquadId, type SquadView, Visibility, type VisibleEnemyView } from "./host";
 import {
   ActionKind,
   chebyshevDistance,
@@ -185,7 +185,35 @@ export const AI_WEIGHTS = {
   spreadLine: 2,
   /** Keeping a Visible enemy in Range from the end tile (the Hero can shoot it). */
   keepShot: 3,
+  /** Per remembered (Ghost) enemy that could hit the tile from where it was last seen, before Cover and age. */
+  ghostDanger: 4,
+  /** A Hero with a long Range Attack ending on the Overwatch Nest, which has sight over the Zone approach. */
+  nest: 6,
 };
+
+/** A Ghost counts as a threat for this many Rounds after it was last seen; it counts less the older it is. */
+export const GHOST_MEMORY_ROUNDS = 4;
+/** From this weapon Range on, a Hero values the Overwatch Nest (long-range damage applies from Range 6). */
+const LONG_RANGE = 6;
+const OVERWATCH_NEST_TILES = findTiles(REACTOR_DECK, TileKind.OverwatchNest);
+
+/** A remembered enemy and how much of its threat is left (1 when just seen, 0 after `GHOST_MEMORY_ROUNDS`). */
+export interface GhostThreat {
+  position: GridPosition;
+  heroClass: HeroClass;
+  freshness: number;
+}
+
+/** The Ghosts of the Squad View as threats. The view carries the Round a Ghost was last seen, which gives its age. */
+const ghostThreats = (view: SquadView): GhostThreat[] =>
+  view.enemies
+    .filter((enemy): enemy is GhostEnemyView => enemy.visibility === Visibility.Ghost)
+    .map((ghost) => ({
+      position: ghost.position,
+      heroClass: ghost.heroClass,
+      freshness: Math.max(0, 1 - (view.round - ghost.lastSeenRound) / GHOST_MEMORY_ROUNDS),
+    }))
+    .filter((ghost) => ghost.freshness > 0);
 
 /** Longest weapon Range of an enemy Hero class. */
 const WEAPON_RANGE = Object.fromEntries(
@@ -198,23 +226,30 @@ const WEAPON_RANGE = Object.fromEntries(
 const canShoot = (from: GridPosition, to: GridPosition, range: number) =>
   chebyshevDistance(from, to) <= range && hasLineOfSight(REACTOR_DECK, from, to);
 
+/** True when the tile is an Overwatch Nest with sight on a Prime Zone tile within `weapon` Range. */
+const nestOverwatchesZone = (tile: GridPosition, weapon: number) =>
+  weapon >= LONG_RANGE &&
+  OVERWATCH_NEST_TILES.some((nest) => nest.col === tile.col && nest.row === tile.row) &&
+  PRIME_ZONE_TILES.some((zone) => canShoot(tile, zone, weapon));
+
 /** How much the tile's Cover is worth against the enemies that can hit it (0 to 1). */
-const coverShare = (tile: GridPosition, threats: readonly VisibleEnemyView[]) => {
+const coverShare = (tile: GridPosition, threats: readonly { position: GridPosition }[]) => {
   if (threats.length === 0 || threats.every((enemy) => chebyshevDistance(tile, enemy.position) <= 1)) return 0;
   const cover = coverAt(REACTOR_DECK, tile);
   return cover === CoverKind.Full ? 1 : cover === CoverKind.Half ? 0.5 : 0;
 };
 
 /**
- * Scores a tile a Hero could end a Move on. `mates` are the tiles Squad mates planned to end this slot on,
- * `weapon` the Range of the Hero's attacks.
+ * Scores a tile a Hero could end a Move on (exported so tests can compare tiles of equal distance). `mates` are the
+ * tiles Squad mates planned to end this slot on, `weapon` the Range of the Hero's attacks, `ghosts` the remembered enemies.
  */
-function scoreTile(
+export function scoreTile(
   tile: GridPosition,
   distance: number,
   targets: readonly VisibleEnemyView[],
   mates: readonly GridPosition[],
   weapon: number,
+  ghosts: readonly GhostThreat[],
 ): number {
   const W = AI_WEIGHTS;
   const hitters = targets.filter((enemy) => canShoot(enemy.position, tile, WEAPON_RANGE[enemy.heroClass] ?? 0));
@@ -222,6 +257,11 @@ function scoreTile(
   // Holding the Zone is the goal: its tiles are never scored down for danger or crowding (the Heroes there fight anyway).
   const goal = isPrimeZoneTile(tile);
   const danger = goal ? 0 : hitters.length * (1 - cover);
+  const ghostRisk = goal
+    ? 0
+    : ghosts
+        .filter((ghost) => canShoot(ghost.position, tile, WEAPON_RANGE[ghost.heroClass] ?? 0))
+        .reduce((sum, ghost) => sum + ghost.freshness * (1 - coverShare(tile, [ghost])), 0);
   const shootable = targets.filter((enemy) => canShoot(tile, enemy.position, weapon));
   const flanks = shootable.some((enemy) => Math.abs(enemy.position.row - tile.row) >= 2) && hitters.length <= 1;
   const close = goal ? 0 : mates.filter((mate) => chebyshevDistance(mate, tile) <= 1).length;
@@ -229,7 +269,9 @@ function scoreTile(
   return (
     -W.progress * distance +
     W.cover * cover -
-    W.danger * danger +
+    W.danger * danger -
+    W.ghostDanger * ghostRisk +
+    (nestOverwatchesZone(tile, weapon) ? W.nest : 0) +
     (flanks ? W.flank : 0) +
     (shootable.length > 0 ? W.keepShot : 0) -
     W.spreadClose * close -
@@ -251,10 +293,11 @@ function chooseDestination(
   targets: readonly VisibleEnemyView[],
   mates: readonly GridPosition[],
   weapon: number,
+  ghosts: readonly GhostThreat[],
 ): GridPosition | undefined {
   const distanceTo = (tile: GridPosition) => (isPrimeZoneTile(tile) ? 0 : distances.get(tileKey(tile)) ?? Infinity);
   let best: GridPosition | undefined;
-  let bestScore = scoreTile(from, distanceTo(from), targets, mates, weapon);
+  let bestScore = scoreTile(from, distanceTo(from), targets, mates, weapon, ghosts);
   for (const destination of destinationsInOrder(from, squad)) {
     const end = moveEnd(from, destination);
     const steps = tilesAfterSteps(from, destination);
@@ -262,7 +305,8 @@ function chooseDestination(
     if (claimed.get(claimKey(slot, MOVE_DISTANCE))?.has(tileKey(steps.at(-1)!))) continue;
     const distance = distanceTo(end);
     if (!Number.isFinite(distance)) continue;
-    const score = scoreTile(end, distance, targets, mates, weapon);    if (score > bestScore) {
+    const score = scoreTile(end, distance, targets, mates, weapon, ghosts);
+    if (score > bestScore) {
       best = destination;
       bestScore = score;
     }
@@ -323,6 +367,7 @@ function planHero(
     heroes.reduce((sum, candidate) => sum + (candidate.exhausted ? 0 : candidate.deckCount), 0);
   const outnumberedInZone = inZone(targets) > inZone(view.heroes) || deckTotal(view.heroes) < deckTotal(targets);
   const weapon = Math.max(0, ...deck.filter(isSimpleAttack).map((card) => card.range ?? 0));
+  const ghosts = ghostThreats(view);
   const queue: QueuedAction[] = [];
   let position = hero.position;
   let energyNeeded = 0;
@@ -366,7 +411,7 @@ function planHero(
     const slot = queue.length;
     const destination =
       role === Role.Classic
-        ? chooseDestination(position, view.squad, slot, claimed, unavailable, distances, targets, matesEndingSlot(claimed, slot), weapon)
+        ? chooseDestination(position, view.squad, slot, claimed, unavailable, distances, targets, matesEndingSlot(claimed, slot), weapon, ghosts)
         : stepTowardPrimeZone(position, view.squad, slot, claimed, unavailable, distances, approach);
     if (destination) {
       queue.push({ kind: ActionKind.Move, card, destination });

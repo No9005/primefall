@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { playAiMatch } from "./ai-match";
-import { planSquad } from "./ai";
-import { MatchEndReason, MatchMode, SquadId } from "./host";
+import { GHOST_MEMORY_ROUNDS, planSquad, scoreTile } from "./ai";
+import { MatchEndReason, MatchMode, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { ActionKind, moveEnd, validatePlan } from "./plan";
 import { CoverKind, coverAt, type GridPosition, REACTOR_DECK } from "./reactor-deck";
@@ -77,6 +77,41 @@ describe("AI scoring of Moves", () => {
     const enemy = { col: 17, row: 8 };
     const end = firstMove(arrange({ col: 11, row: 8 }, enemy))!;
     expect(Math.abs(end.row - enemy.row)).toBeGreaterThanOrEqual(2);
+  });
+
+  /** The same view, but the Right Assassin is a Ghost last seen at `position` (or stays Unknown). */
+  const withGhost = (view: ReturnType<typeof arrange>, position?: GridPosition, lastSeenRound = view.round) => ({
+    ...view,
+    enemies: view.enemies.map((enemy) =>
+      enemy.id === "right-assassin" && position
+        ? { id: enemy.id, heroClass: enemy.heroClass, visibility: Visibility.Ghost as const, position, deckCount: 8, discardCount: 0, exileCount: 0, lastSeenRound }
+        : enemy,
+    ),
+  });
+
+  it("leaves the straight way that a remembered enemy covers, less the older the Ghost is", () => {
+    // From (11, 7) the open tiles (13, 7) to (13, 9) are equally far from the Zone. A Ghost at (13, 1) reaches
+    // 7 tiles (Long Shot) down the column: it covers (13, 7) and (13, 8) but not (13, 9).
+    const base = arrange({ col: 11, row: 7 }, { col: 29, row: 1 });
+    const ghost = { col: 13, row: 1 };
+    expect(firstMove(base)).toEqual({ col: 13, row: 7 });
+    expect(firstMove(withGhost(base, ghost))).toEqual({ col: 13, row: 9 });
+    expect(firstMove(withGhost(base, ghost, base.round - GHOST_MEMORY_ROUNDS))).toEqual({ col: 13, row: 7 });
+  });
+
+  it("gives the same plan for the same view with a Ghost", () => {
+    const view = withGhost(arrange({ col: 11, row: 7 }, { col: 29, row: 1 }), { col: 13, row: 1 });
+    expect(planSquad(view)).toEqual(planSquad(view));
+  });
+
+  it("values the Overwatch Nest for a long Range Hero only, over an equally far open tile", () => {
+    const nest = { col: 15, row: 1 };
+    const open = { col: 14, row: 1 };
+    expect(coverAt(REACTOR_DECK, nest)).toBe(CoverKind.Full);
+    const longRange = 7;
+    const bruiserRange = 3;
+    expect(scoreTile(nest, 6, [], [], longRange, [])).toBeGreaterThan(scoreTile(open, 6, [], [], longRange, []));
+    expect(scoreTile(nest, 6, [], [], bruiserRange, [])).toBe(scoreTile(open, 6, [], [], bruiserRange, []));
   });
 
   it("plans a whole Squad in well under 50 ms", () => {
