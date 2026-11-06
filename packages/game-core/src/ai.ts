@@ -86,6 +86,8 @@ const destinationsInOrder = (from: GridPosition, squad: SquadId): GridPosition[]
  * where a Move ends is checked: two Heroes ending on one tile both stop one step early (ADR 0013).
  */
 type ClaimedTiles = Map<number, Set<number>>;
+/** The enemy ids Squad mates planned an Attack on, by queue slot. */
+type PlannedAttacks = Map<number, Set<string>>;
 
 const claimKey = (slot: number, step: number) => slot * MOVE_DISTANCE + step - 1;
 
@@ -189,6 +191,8 @@ export const AI_WEIGHTS = {
   ghostDanger: 4,
   /** A Hero with a long Range Attack ending on the Overwatch Nest, which has sight over the Zone approach. */
   nest: 6,
+  /** Aiming at an enemy a Squad mate attacks in the same Tick or the Tick before or after (Crossfire needs consecutive Ticks). */
+  focus: 5,
 };
 
 export type AiWeights = typeof AI_WEIGHTS;
@@ -408,6 +412,7 @@ function planHero(
   role: Role,
   attackerReady: boolean,
   weights: AiWeights,
+  plannedAttacks: PlannedAttacks,
 ): HeroPlan {
   const deck = HERO_DECKS[hero.heroClass];
   const isAttackCard = (card: CardIndex) => isSimpleAttack(deck[card]!);
@@ -474,7 +479,24 @@ function planHero(
     }
     if (attackCard !== undefined) {
       const cost = deck[attackCard]!.energyCost;
-      const target = inRangeTargets(position, attackCard).sort((a, b) => a.deckCount - b.deckCount)[0]!;
+      const slot = queue.length;
+      const matesAim = (id: string, at: number) => plannedAttacks.get(at)?.has(id) ?? false;
+      const focusScore = (enemy: VisibleEnemyView) =>
+        [slot - 1, slot, slot + 1].some((at) => matesAim(enemy.id, at)) ? weights.focus : 0;
+      const target = inRangeTargets(position, attackCard).sort(
+        (a, b) => focusScore(b) - focusScore(a) || a.deckCount - b.deckCount,
+      )[0]!;
+      // A mate hits this target in this very Tick and none in the Tick before or after: shield first, so the hits are consecutive.
+      if (
+        matesAim(target.id, slot) && !matesAim(target.id, slot - 1) && !matesAim(target.id, slot + 1) &&
+        otherCards.length > 0 && cardsLeft - 2 - cost >= 0 && slot + 1 < Math.min(queueLength, MAX_QUEUE_LENGTH)
+      ) {
+        const card = otherCards.shift()!;
+        claimSteps(claimed, slot, [position, position]);
+        queue.push({ kind: ActionKind.Block, card });
+        continue;
+      }
+      plannedAttacks.set(slot, (plannedAttacks.get(slot) ?? new Set<string>()).add(target.id));
       attackCards.splice(attackCards.indexOf(attackCard), 1);
       claimSteps(claimed, queue.length, [position, position]);
       queue.push({ kind: ActionKind.Primary, card: attackCard, target: target.id });
@@ -526,10 +548,11 @@ export function planSquad(
   const role = roleOf(view);
   const attackerReady = role === Role.Attacker && attackerIsReady(view, distances);
   const roles = assignRoles(view, heroIds);
+  const plannedAttacks: PlannedAttacks = new Map();
   const heroes = view.heroes
     .filter((hero) => heroIds.includes(hero.id) && !hero.exhausted)
     .map((hero) =>
-      planHero(view, hero, claimed, blocked, distances, role, attackerReady, weightsFor(style, roles.get(hero.id) ?? SquadRole.None)),
+      planHero(view, hero, claimed, blocked, distances, role, attackerReady, weightsFor(style, roles.get(hero.id) ?? SquadRole.None), plannedAttacks),
     );
   const plan: SquadPlan = { squad: view.squad, heroes };
   const broken = new Set(validatePlan(view, plan).flatMap((issue) => (issue.heroId ? [issue.heroId] : [])));

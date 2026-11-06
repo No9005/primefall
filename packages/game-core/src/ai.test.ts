@@ -305,3 +305,47 @@ describe("AI-versus-AI smoke test", () => {
     expect(validatePlan(view, planSquad(view))).toEqual([]);
   });
 });
+
+describe("AI focus fire", () => {
+  /** Two Left Heroes beside each other, two Right Heroes in front of them, all in Range and in sight. */
+  const arrange = (positions: Record<string, GridPosition>) => {
+    const match = startRound(createMatch(5));
+    for (const [id, position] of Object.entries(positions)) match.heroes.find((hero) => hero.id === id)!.position = position;
+    return buildSquadView(match, SquadId.Left);
+  };
+  const attacks = (plan: ReturnType<typeof planSquad>, heroId: string) =>
+    plan.heroes
+      .find((hero) => hero.heroId === heroId)!
+      .queue.flatMap((action, slot) => (action.kind === ActionKind.Primary ? [{ slot, target: action.target }] : []));
+  const duel = () =>
+    arrange({
+      "left-bruiser": { col: 8, row: 4 },
+      "left-controller": { col: 8, row: 5 },
+      "right-bruiser": { col: 10, row: 4 },
+      "right-assassin": { col: 10, row: 5 },
+    });
+
+  it("names the same enemy for both Heroes and puts the Attacks in consecutive Ticks", () => {
+    const view = duel();
+    const plan = planSquad(view);
+    const first = attacks(plan, "left-bruiser")[0];
+    const second = attacks(plan, "left-controller")[0];
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+    expect(second!.target).toBe(first!.target);
+    expect(Math.abs(second!.slot - first!.slot)).toBe(1);
+    expect(validatePlan(view, plan)).toEqual([]);
+  });
+
+  it("changes nothing when only one Hero has an enemy in Range", () => {
+    const view = arrange({ "left-bruiser": { col: 8, row: 4 }, "right-bruiser": { col: 10, row: 4 } });
+    const plan = planSquad(view);
+    expect(attacks(plan, "left-controller")).toEqual([]);
+    expect(validatePlan(view, plan)).toEqual([]);
+  });
+
+  it("is deterministic", () => {
+    const view = duel();
+    expect(planSquad(view)).toEqual(planSquad(view));
+  });
+});
