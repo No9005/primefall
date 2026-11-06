@@ -499,6 +499,20 @@ export const SCENARIOS: readonly Scenario[] = [
     steps: [{ slot: 0, use: "move", tile: { col: 6, row: 1 } }],
     resolutionShotsMs: [150, 300, 450, 600, 850, 1100],
   },
+  {
+    name: "crossfire",
+    description: "Two enemies with Attacks shoot the waiting Bruiser in consecutive Ticks: the second hit shows CROSSFIRE +1 above the damage numbers.",
+    buildMatch: () =>
+      stage(31, (hero) => {
+        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        // Both enemies stand in Range and in sight with Attacks in their Hands, so the AI shoots the Bruiser.
+        arrange(hero("right-bruiser"), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+        arrange(hero("right-assassin"), { col: 15, row: 4 }, ENEMIES_WITH_ATTACKS);
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [{ wait: true }],
+    resolutionShotsMs: [400, 900, 1400, 1900, 2600, 3200],
+  },
   ...ASSASSIN_SCENARIOS,
 ];
 

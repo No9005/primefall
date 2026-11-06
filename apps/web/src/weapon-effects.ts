@@ -41,6 +41,10 @@ export const SHAKE_PX = 1.5;
 export const NUMBER_DELAY_MS = 20;
 export const NUMBER_RISE_MS = 800;
 export const NUMBER_RISE_PX = 14;
+/** The CROSSFIRE label: fixed 700 ms, rises 8 px and fades; it sits above the Shield and damage numbers, one step higher per earlier label on the target. */
+export const CROSSFIRE_MS = 700;
+export const CROSSFIRE_RISE_PX = 8;
+export const CROSSFIRE_STEP_PX = 10;
 export const FLASH_MS = 270;
 export const IMPACT_BURST_MS = 330;
 export const IMPACT_RING_MS = 500;
@@ -90,7 +94,9 @@ export type EffectCue =
   /** A Hero gains Shield: the rubies pop and the bubble forms. `startMs` is when the rubies pop. */
   | { kind: "shieldGain"; toId: string; startMs: number; amount: number }
   /** A hit that the Shield absorbed (`absorbed` rubies burst) at `startMs`, the impact. */
-  | { kind: "shieldHit"; toId: string; startMs: number; absorbed: number };
+  | { kind: "shieldHit"; toId: string; startMs: number; absorbed: number }
+  /** A hit with Crossfire: the label "CROSSFIRE +N" above the numbers; `stack` counts the labels already on the target in this frame. */
+  | { kind: "crossfire"; toId: string; startMs: number; amount: number; stack: number };
 
 /** When a cue is over, for the length of the frame. */
 export function cueEndMs(cue: EffectCue): number {
@@ -102,6 +108,8 @@ export function cueEndMs(cue: EffectCue): number {
     }
     case "number":
       return cue.startMs + NUMBER_RISE_MS;
+    case "crossfire":
+      return cue.startMs + CROSSFIRE_MS;
     case "shockwave":
       return cue.startMs + SHOCKWAVE_MS;
     case "knockback":
@@ -451,6 +459,13 @@ function failedAttackCues(event: MatchEvent, toId: string, frame: CueFrame): voi
   frame.cues.push({ kind: "number", toId, startMs: fire + NUMBER_DELAY_MS, text: failureText(event), style: "failed" });
 }
 
+/** The CROSSFIRE label of a hit with Crossfire, stacked above the labels the target already has in this frame. */
+function crossfireCue(event: MatchEvent, toId: string, startMs: number, cues: EffectCue[]): void {
+  if ((event.crossfire ?? 0) <= 0) return;
+  const stack = cues.filter((cue) => cue.kind === "crossfire" && cue.toId === toId).length;
+  cues.push({ kind: "crossfire", toId, startMs, amount: event.crossfire!, stack });
+}
+
 function hitCues(event: MatchEvent, toId: string, frame: CueFrame): void {
   const { cues } = frame;
   const fire = frame.fireOf(event.heroId, event.card);
@@ -473,6 +488,7 @@ function hitCues(event: MatchEvent, toId: string, frame: CueFrame): void {
     addBreach(cues, { kind: "breach", casterId: event.heroId, tile: event.tile, fireMs: fire, flightMs: BREACH_FLIGHT_MS, cover: false, overdrive: true });
   }
   cues.push(...hitNumbers(event, fire + flight + NUMBER_DELAY_MS));
+  crossfireCue(event, toId, fire + flight + NUMBER_DELAY_MS, cues);
   if (event.halfCover) {
     cues.push({ kind: "number", toId, startMs: fire + flight + NUMBER_DELAY_MS, text: "Half Cover", style: "failed", drop: 9 });
   }
@@ -621,6 +637,13 @@ export function numberAt(ms: number): { rise: number; alpha: number } {
   if (ms < 0 || ms >= NUMBER_RISE_MS) return { rise: ms < 0 ? 0 : NUMBER_RISE_PX, alpha: 0 };
   const t = ms / NUMBER_RISE_MS;
   return { rise: NUMBER_RISE_PX * t, alpha: t < 0.5 ? 1 : 1 - (t - 0.5) / 0.5 };
+}
+
+/** The CROSSFIRE label `ms` after it appears: rises 8 px and fades out over 700 ms. */
+export function crossfireAt(ms: number): { rise: number; alpha: number } {
+  if (ms < 0 || ms >= CROSSFIRE_MS) return { rise: ms < 0 ? 0 : CROSSFIRE_RISE_PX, alpha: 0 };
+  const t = ms / CROSSFIRE_MS;
+  return { rise: CROSSFIRE_RISE_PX * t, alpha: t < 0.4 ? 1 : 1 - (t - 0.4) / 0.6 };
 }
 
 /** The scale of a Marked reticle `ms` after it locks on: 2.4 x down to 1 x, turning 45 degrees. */
