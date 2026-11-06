@@ -480,6 +480,18 @@ export const SCENARIOS: readonly Scenario[] = [
     steps: [{ slot: 0, use: "move", tile: { col: 9, row: 8 } }],
     resolutionShotsMs: [800, 2500],
   },
+  {
+    name: "walk-glide",
+    description: "A Bruiser walks two tiles with one Move: frames inside a step show the figure between two tiles, walking from A to B.",
+    buildMatch: () =>
+      stage(14, (hero) => {
+        arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+      }),
+    heroId: PLAYER_BRUISER,
+    // Row 1 and a destination without Cover in front of it: a tall prop would catch the tap instead of the tile.
+    steps: [{ slot: 0, use: "move", tile: { col: 6, row: 1 } }],
+    resolutionShotsMs: [150, 300, 450, 600, 850, 1100],
+  },
   ...ASSASSIN_SCENARIOS,
 ];
 

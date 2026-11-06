@@ -6,6 +6,14 @@ import { type CoverEdit, coverEditsOf, cueEndMs, type EffectCue, effectCuesOf, i
 /** How long the playback shows one step (one frame) at least; slow enough to follow who does what. The animation never changes it. */
 export const STEP_MS = 650;
 
+/**
+ * How far a walking Hero has come on its tile (0 to 1), `ms` after its frame started. It glides at a constant speed for one
+ * step, so the steps of a Move run into each other and the figure walks from A to B instead of jumping from tile to tile.
+ */
+export function walkProgress(ms: number): number {
+  return Math.min(1, Math.max(0, ms / STEP_MS));
+}
+
 /** Where the hit flash is in the Exhausted clip (12 % of 5400 ms). */
 const EXHAUSTED_HIT_FLASH_MS = 650;
 /** The fire beat when the class of the attacker is not known. */
@@ -41,6 +49,8 @@ export interface PlaybackFrame {
   tick: number;
   /** New tile per Hero id; Heroes that did not move are absent. */
   moves: Record<string, GridPosition>;
+  /** The tile each Hero walks from in this frame (a Step only, not a Knockback): the board glides the figure from there to its new tile. */
+  walks: Record<string, GridPosition>;
   /** Shield gained per Hero id in this frame. */
   shields: Record<string, number>;
   /** Attacks that hit in this frame. */
@@ -121,7 +131,7 @@ function takeCoverAtMoveEnd(lastStep: ReadonlyMap<string, { frame: PlaybackFrame
 }
 
 function emptyFrame(tick: number): PlaybackFrame {
-  return { tick, moves: {}, shields: {}, hits: [], exhausted: [], clips: {}, delays: {}, effects: [], coverEdits: [], holdMs: STEP_MS, events: [] };
+  return { tick, moves: {}, walks: {}, shields: {}, hits: [], exhausted: [], clips: {}, delays: {}, effects: [], coverEdits: [], holdMs: STEP_MS, events: [] };
 }
 
 /** Records what one event changes in its frame: moves, Shield, hits, Exhaustion and the clip of the Hero. */
@@ -129,6 +139,7 @@ function addEventToFrame(frame: PlaybackFrame, event: MatchEvent): void {
   frame.events.push(event);
   // `to` of a Cover or area event is a tile of the board, not a place the Hero moves to.
   if (event.to && !TILE_EVENTS.includes(event.kind)) frame.moves[event.heroId] = event.to;
+  if (event.kind === EventKind.Step && event.from) frame.walks[event.heroId] = event.from;
   if (event.kind === EventKind.ShieldGained) frame.shields[event.heroId] = event.amount ?? 0;
   if (event.kind === EventKind.AttackHit) frame.hits.push(hitOf(event));
   if (event.kind === EventKind.Exhausted) frame.exhausted.push(event.heroId);
