@@ -3,6 +3,8 @@
 //   BALANCE_SEEDS=500   matches per variant (default 300)
 //   BALANCE_ONLY=name   run only the variants whose name contains this text (the baseline always runs)
 //   BALANCE_SEED_OFFSET=1000   first seed minus one, to repeat a table with other matches
+// Each setting can also be given as an npm flag, which a command that must not start with a variable (the software
+// factory allows only `npm ...` commands) can use: `npm run balance --balance-seeds=200 --balance-only=style`.
 // A variant is a set of data-level tweaks. They are applied to the card data and the Match State around the real rules,
 // never inside them, so the harness changes no rule. A rule that needs code (for example a new Prime Zone rule) is tried
 // on a branch and measured with the same table. The AI is the measuring instrument, not a player: read its numbers as
@@ -203,13 +205,16 @@ function playMatch(seed: number, tweaks: Tweaks, totals: Totals): void {
   recordTotals(match, exhausted, totals);
 }
 
+/** A setting from `BALANCE_<NAME>` or from the npm flag `--balance-<name>` (npm passes it on as `npm_config_balance_<name>`). */
+const setting = (name: string): string | undefined => process.env[`BALANCE_${name.toUpperCase()}`] ?? process.env[`npm_config_balance_${name}`];
+
 const pad = (text: string, width: number) => text.padEnd(width);
 
 it("prints one table for all variants", async () => {
-  const seeds = Number(process.env.BALANCE_SEEDS ?? 300);
-  const only = process.env.BALANCE_ONLY;
+  const seeds = Number(setting("seeds") ?? 300);
+  const only = setting("only");
   const rows: string[][] = [];
-  const offset = Number(process.env.BALANCE_SEED_OFFSET ?? 0);
+  const offset = Number(setting("seed_offset") ?? 0);
   for (const [name, tweaks] of Object.entries(VARIANTS)) {
     if (name !== "baseline" && only && !name.includes(only)) continue;
     // A variant takes seconds of synchronous work: yield so that the test runner can keep talking to its worker.

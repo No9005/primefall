@@ -65,6 +65,8 @@ In a factory run, the issue named in the run prompt is your ticket (there is no 
 
 - Work from the repository root. Run every command on its own: no chaining (`&&`, `;`), no `git -C <path>`, no heredoc scripts. Change files with the Edit and Write tools, not with `sed` or `python`.
 - Push with the full branch name, as its own command: `git push -u origin agent/issue-<number>-<short-slug>`. Never push `HEAD`.
+- A command must start with `npm`, `npx`, `node` or `git`: a leading variable (`BALANCE_SEEDS=200 npm run balance`) is denied. Give the balance harness its settings as npm flags: `npm run balance --balance-seeds=200 --balance-only=style`.
+- Run long commands (balance, test, build) in the foreground with the Bash timeout raised (up to 10 minutes; fewer seeds if it would take longer). **Never end your turn to wait for a background process**: a factory run ends with your last message, no branch and no pull request are made for you, and the ticket is lost. If a check cannot finish in the time you have, commit and push what you have, open the pull request and say in it what is not measured yet.
 
 ## Agent skills
 
