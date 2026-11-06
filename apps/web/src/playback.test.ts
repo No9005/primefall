@@ -1,6 +1,6 @@
 import { type EnemyView, EventKind, HeroClass, type MatchEvent, Visibility } from "game-core";
 import { describe, expect, it } from "vitest";
-import { buildPlaybackFrames, enemyIsDrawn, enemyTokens, tickCountOf } from "./playback";
+import { buildPlaybackFrames, enemyIsDrawn, enemyTokens, STEP_MS, tickCountOf, walkProgress } from "./playback";
 
 const step = (tick: number, heroId: string, col: number): MatchEvent => ({
   kind: EventKind.Step,
@@ -127,5 +127,27 @@ describe("enemyTokens", () => {
     expect(tokens.map((token) => token.id)).toEqual(["v", "g"]);
     expect(tokens.find((token) => token.id === "g")?.ghost).toBe(true);
     expect(tokens.find((token) => token.id === "v")?.ghost).toBeUndefined();
+  });
+});
+
+describe("walking from tile to tile", () => {
+  it("remembers the tile each Hero walks from in every frame", () => {
+    const frames = buildPlaybackFrames([step(1, "a", 1), step(1, "a", 2), step(1, "b", 5)]);
+    expect(frames[0]!.walks).toEqual({ a: { col: 0, row: 0 }, b: { col: 4, row: 0 } });
+    expect(frames[1]!.walks).toEqual({ a: { col: 1, row: 0 } });
+  });
+
+  it("does not glide a Hero that is pushed by Knockback or does something else", () => {
+    const frames = buildPlaybackFrames([{ kind: EventKind.Knockback, tick: 1, heroId: "a", from: { col: 3, row: 3 }, to: { col: 4, row: 3 } }]);
+    expect(frames[0]!.moves.a).toEqual({ col: 4, row: 3 });
+    expect(frames[0]!.walks).toEqual({});
+  });
+
+  it("covers one tile in one step at a constant speed, and never overshoots", () => {
+    expect(walkProgress(0)).toBe(0);
+    expect(walkProgress(STEP_MS / 2)).toBe(0.5);
+    expect(walkProgress(STEP_MS)).toBe(1);
+    expect(walkProgress(STEP_MS * 3)).toBe(1);
+    expect(walkProgress(-10)).toBe(0);
   });
 });

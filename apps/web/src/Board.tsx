@@ -41,6 +41,7 @@ import { buildTerrain, coverMarks, depthOf, type Face, floorOutline, footOffset,
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
+import { walkProgress } from "./playback";
 import { AREA_COLOR, AREA_PIPS, areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, TRANSITION_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
@@ -298,6 +299,8 @@ interface BoardProps {
   clips?: Readonly<Record<string, ClipName>>;
   /** Milliseconds after the start of the frame at which a Hero's clip starts (a target reacts at the impact beat). */
   clipDelays?: Readonly<Record<string, number>>;
+  /** The tile each walking Hero comes from in the playback frame being shown: its figure glides from there to its tile. */
+  walks?: Readonly<Record<string, GridPosition>>;
   /** The effects of the attacks of the playback frame being shown (flash, projectile, impact, numbers, Marked and Slow). */
   effects?: readonly EffectCue[];
   /** Tiles the player may tap right now. */
@@ -337,6 +340,7 @@ interface BoardProps {
 const NO_RANGE: readonly RangeTile[] = [];
 const NO_CLIPS: Readonly<Record<string, ClipName>> = {};
 const NO_DELAYS: Readonly<Record<string, number>> = {};
+const NO_WALKS: Readonly<Record<string, GridPosition>> = {};
 const NO_EFFECTS: readonly EffectCue[] = [];
 const RANGE_COLOR = 0xe5484d;
 const RANGE_BLOCKED_COLOR = 0x8a99a8;
@@ -437,6 +441,7 @@ export function Board({
   hitIds,
   clips = NO_CLIPS,
   clipDelays = NO_DELAYS,
+  walks = NO_WALKS,
   effects = NO_EFFECTS,
   highlights,
   markers,
@@ -630,6 +635,8 @@ export function Board({
     // Shields that change in this frame, and Heroes that slide one tile of Knockback (the rules moved them already).
     const shieldMarks: StatusMark[] = [];
     const slides: { token: Container; fromX: number; fromY: number; startMs: number }[] = [];
+    // Heroes that walk one tile in this frame glide from the tile they came from.
+    const glides: { token: Container; fromX: number; fromY: number }[] = [];
     // The figures that play a clip (not the hit or Exhausted ones, which are flat poses).
     const animated: { id: string; heroClass: HeroClass; cover: CoverKind; parts: BoundPart[] }[] = [];
     const ring = (color: number) =>
@@ -647,6 +654,11 @@ export function Board({
         // The token starts on the tile it was pushed from and slides to the one the rules put it on.
         const from = gridToWorld(slide.from, angle);
         slides.push({ token, fromX: from.x - x, fromY: from.y - y, startMs: slide.startMs });
+      }
+      const walkedFrom = walks[hero.id];
+      if (walkedFrom !== undefined && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const from = gridToWorld(walkedFrom, angle);
+        glides.push({ token, fromX: from.x - x, fromY: from.y - y });
       }
       if (hero.id === selectedId) token.addChild(ring(0x2ec4b6));
       const cannotHit = shotLines.some((shot) => shot.targetId === hero.id && !shot.ringed);
@@ -773,6 +785,8 @@ export function Board({
         const left = 1 - slideProgress(frameMs - startMs);
         token.pivot.set(-fromX * left, -fromY * left);
       }
+      const walked = walkProgress(now - frameClock.current);
+      for (const { token, fromX, fromY } of glides) token.pivot.set(-fromX * (1 - walked), -fromY * (1 - walked));
       // Marked and Slow are past their lock-on here; the Slow field keeps breathing.
       for (const mark of statusMarks) mark.update(reducedMotion ? STATUS_AT_REST_MS : 300 + now - pulseStart);
       for (const { id, heroClass, cover, parts } of animated) {
@@ -799,7 +813,7 @@ export function Board({
       cancels.forEach((cancel) => cancel());
       created.forEach((token) => token.destroy({ children: true }));
     };
-  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, effects, shotLines, marks, coverGrid]);
+  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, walks, effects, shotLines, marks, coverGrid]);
 
   // The effects of the attacks of the frame being shown. They read the latest Heroes and angle from refs, so a redraw of
   // the tokens does not restart them; a new frame (a new `effects` array) does.
