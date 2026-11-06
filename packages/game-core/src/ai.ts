@@ -1,7 +1,7 @@
 // AI planning (ADR 0017, ADR 0018). A pure, deterministic function from a Squad View to a Squad Plan.
 // It only ever sees the Squad View, so it cannot read enemy Hands or unseen Heroes: no cheating.
 
-import { type CardIndex, type HeroClass, HERO_DECKS, isSimpleAttack } from "./cards";
+import { type CardIndex, HeroClass, HERO_DECKS, isSimpleAttack } from "./cards";
 import { type GhostEnemyView, type HeroView, SquadId, type SquadView, Visibility, type VisibleEnemyView } from "./host";
 import {
   ActionKind,
@@ -191,6 +191,79 @@ export const AI_WEIGHTS = {
   nest: 6,
 };
 
+export type AiWeights = typeof AI_WEIGHTS;
+
+/** AI Styles (GLOSSARY): a named set of multipliers on `AI_WEIGHTS`. Progress is never scaled, so every style heads for the Zone. */
+export enum AiStyle {
+  Balanced = "balanced",
+  Aggressive = "aggressive",
+  Defensive = "defensive",
+  Flanker = "flanker",
+}
+
+type WeightScale = Partial<Record<keyof AiWeights, number>>;
+
+const STYLE_SCALES: Record<AiStyle, WeightScale> = {
+  [AiStyle.Balanced]: {},
+  [AiStyle.Aggressive]: { danger: 0.2, ghostDanger: 0.2, cover: 0.3, keepShot: 2.5 },
+  [AiStyle.Defensive]: { danger: 1.5, ghostDanger: 1.5, cover: 1.6, flank: 0.5 },
+  [AiStyle.Flanker]: { flank: 1.4, spreadLine: 4, spreadClose: 3, keepShot: 0.5 },
+};
+
+const AI_STYLES = Object.values(AiStyle);
+
+/** The AI Style of a Squad: a pure function of the match seed and the Squad, so the same seed always gives the same Styles. */
+export function aiStyleFor(seed: number, squad: SquadId): AiStyle {
+  let h = Math.imul((seed >>> 0) ^ (squad === SquadId.Left ? 0x9e3779b9 : 0x85ebca6b), 0x45d9f3b);
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
+  h ^= h >>> 13;
+  return AI_STYLES[(h >>> 0) % AI_STYLES.length]!;
+}
+
+/** What a Hero does for its Squad. A role only shifts weights; it never fixes a path, the goal stays the Prime Zone. */
+export enum SquadRole {
+  /** Goes at the Zone head-on: danger counts less. */
+  Breaker = "breaker",
+  /** Takes the flank or the Overwatch Nest. */
+  Flanker = "flanker",
+  /** Takes Cover beside the Zone. */
+  Anchor = "anchor",
+  /** No role (a lone Hero). */
+  None = "none",
+}
+
+const ROLE_SCALES: Record<SquadRole, WeightScale> = {
+  [SquadRole.Breaker]: { danger: 0.3, ghostDanger: 0.3, cover: 0.3, flank: 0.5, spreadClose: 0.5 },
+  [SquadRole.Flanker]: { nest: 2, spreadLine: 2, cover: 0.5 },
+  [SquadRole.Anchor]: { cover: 2, danger: 1.5, flank: 0.3 },
+  [SquadRole.None]: {},
+};
+
+const CLASS_ROLE: Record<HeroClass, SquadRole> = {
+  [HeroClass.Bruiser]: SquadRole.Breaker,
+  [HeroClass.Assassin]: SquadRole.Flanker,
+  [HeroClass.Controller]: SquadRole.Anchor,
+};
+
+/** The Squad coordinator: a role for each Hero to plan from its class and the situation (a Hero alone has no one to coordinate with). */
+export function assignRoles(view: SquadView, heroIds: readonly string[]): Map<string, SquadRole> {
+  const living = view.heroes.filter((hero) => !hero.exhausted);
+  return new Map(
+    living
+      .filter((hero) => heroIds.includes(hero.id))
+      .map((hero) => [hero.id, living.length < 2 ? SquadRole.None : (CLASS_ROLE[hero.heroClass] ?? SquadRole.None)]),
+  );
+}
+
+/** The weights a Hero scores with: the base weights scaled by the Squad's Style, then by the Hero's role. */
+export function weightsFor(style: AiStyle, role: SquadRole): AiWeights {
+  const scaled = { ...AI_WEIGHTS };
+  for (const scale of [STYLE_SCALES[style], ROLE_SCALES[role]]) {
+    for (const key of Object.keys(scale) as (keyof AiWeights)[]) scaled[key] *= scale[key]!;
+  }
+  return scaled;
+}
+
 /** A Ghost counts as a threat for this many Rounds after it was last seen; it counts less the older it is. */
 export const GHOST_MEMORY_ROUNDS = 4;
 /** From this weapon Range on, a Hero values the Overwatch Nest (long-range damage applies from Range 6). */
@@ -250,8 +323,8 @@ export function scoreTile(
   mates: readonly GridPosition[],
   weapon: number,
   ghosts: readonly GhostThreat[],
+  W: AiWeights = AI_WEIGHTS,
 ): number {
-  const W = AI_WEIGHTS;
   const hitters = targets.filter((enemy) => canShoot(enemy.position, tile, WEAPON_RANGE[enemy.heroClass] ?? 0));
   const cover = coverShare(tile, hitters);
   // Holding the Zone is the goal: its tiles are never scored down for danger or crowding (the Heroes there fight anyway).
@@ -294,10 +367,11 @@ function chooseDestination(
   mates: readonly GridPosition[],
   weapon: number,
   ghosts: readonly GhostThreat[],
+  weights: AiWeights,
 ): GridPosition | undefined {
   const distanceTo = (tile: GridPosition) => (isPrimeZoneTile(tile) ? 0 : distances.get(tileKey(tile)) ?? Infinity);
   let best: GridPosition | undefined;
-  let bestScore = scoreTile(from, distanceTo(from), targets, mates, weapon, ghosts);
+  let bestScore = scoreTile(from, distanceTo(from), targets, mates, weapon, ghosts, weights);
   for (const destination of destinationsInOrder(from, squad)) {
     const end = moveEnd(from, destination);
     const steps = tilesAfterSteps(from, destination);
@@ -305,7 +379,7 @@ function chooseDestination(
     if (claimed.get(claimKey(slot, MOVE_DISTANCE))?.has(tileKey(steps.at(-1)!))) continue;
     const distance = distanceTo(end);
     if (!Number.isFinite(distance)) continue;
-    const score = scoreTile(end, distance, targets, mates, weapon, ghosts);
+    const score = scoreTile(end, distance, targets, mates, weapon, ghosts, weights);
     if (score > bestScore) {
       best = destination;
       bestScore = score;
@@ -333,6 +407,7 @@ function planHero(
   distances: ReadonlyMap<number, number>,
   role: Role,
   attackerReady: boolean,
+  weights: AiWeights,
 ): HeroPlan {
   const deck = HERO_DECKS[hero.heroClass];
   const isAttackCard = (card: CardIndex) => isSimpleAttack(deck[card]!);
@@ -411,7 +486,7 @@ function planHero(
     const slot = queue.length;
     const destination =
       role === Role.Classic
-        ? chooseDestination(position, view.squad, slot, claimed, unavailable, distances, targets, matesEndingSlot(claimed, slot), weapon, ghosts)
+        ? chooseDestination(position, view.squad, slot, claimed, unavailable, distances, targets, matesEndingSlot(claimed, slot), weapon, ghosts, weights)
         : stepTowardPrimeZone(position, view.squad, slot, claimed, unavailable, distances, approach);
     if (destination) {
       queue.push({ kind: ActionKind.Move, card, destination });
@@ -440,15 +515,22 @@ function planHero(
  * Range, Block while holding the Zone or facing enemies. Any Hero whose plan fails `validatePlan` plans
  * nothing, so the result is always committable.
  */
-export function planSquad(view: SquadView, heroIds: readonly string[] = view.heroes.map((hero) => hero.id)): SquadPlan {
+export function planSquad(
+  view: SquadView,
+  heroIds: readonly string[] = view.heroes.map((hero) => hero.id),
+  style: AiStyle = AiStyle.Balanced,
+): SquadPlan {
   const claimed: ClaimedTiles = new Map();
   const blocked = blockedTiles(view);
   const distances = distancesToPrimeZone(blocked);
   const role = roleOf(view);
   const attackerReady = role === Role.Attacker && attackerIsReady(view, distances);
+  const roles = assignRoles(view, heroIds);
   const heroes = view.heroes
     .filter((hero) => heroIds.includes(hero.id) && !hero.exhausted)
-    .map((hero) => planHero(view, hero, claimed, blocked, distances, role, attackerReady));
+    .map((hero) =>
+      planHero(view, hero, claimed, blocked, distances, role, attackerReady, weightsFor(style, roles.get(hero.id) ?? SquadRole.None)),
+    );
   const plan: SquadPlan = { squad: view.squad, heroes };
   const broken = new Set(validatePlan(view, plan).flatMap((issue) => (issue.heroId ? [issue.heroId] : [])));
   return broken.size === 0 ? plan : { squad: view.squad, heroes: heroes.filter((hero) => !broken.has(hero.heroId)) };

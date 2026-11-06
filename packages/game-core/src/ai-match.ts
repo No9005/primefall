@@ -1,6 +1,6 @@
 // Plays a whole match with the AI on both sides, for the smoke test and for balance analysis (`npm run sim`).
 
-import { planSquad } from "./ai";
+import { aiStyleFor, planSquad } from "./ai";
 import { type MatchModeSetting, SquadId } from "./host";
 import { createMatch, buildSquadView, type MatchState, startRound } from "./match";
 import { type PlanIssue, type SquadPlan, validatePlan } from "./plan";
@@ -27,7 +27,7 @@ export function playAiMatch(seed: number, maxRounds: number, firstRound = 1, mod
   for (let round = 1; round <= maxRounds && !match.result; round++) {
     const roundPlans = [SquadId.Left, SquadId.Right].map((squad) => {
       const view = buildSquadView(match, squad);
-      const plan = planSquad(view);
+      const plan = planSquad(view, undefined, aiStyleFor(seed, squad));
       issues.push(...validatePlan(view, plan));
       return plan;
     });
