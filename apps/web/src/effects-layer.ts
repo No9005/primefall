@@ -47,6 +47,8 @@ import {
   IMPACT_RING_MS,
   LASER_MS,
   LONG_LINE_FADE_MS,
+  CROSSFIRE_STEP_PX,
+  crossfireAt,
   type NumberStyle,
   numberAt,
   reticleAt,
@@ -85,6 +87,10 @@ const NUMBER_COLOR: Readonly<Record<NumberStyle, number>> = { damage: 0xff6b6b, 
 const MARKED_RED = 0xff6b6b;
 const SLOW_VIOLET = 0xc18bff;
 const OUTLINE = 0x0b1016;
+/** Crossfire label colours: the enemy red for hits on the player's Heroes, teal for the player's hits. */
+const CROSSFIRE_ENEMY = 0xe5484d;
+const CROSSFIRE_OWN = 0x2ec4b6;
+const CROSSFIRE_FONT = 9;
 const SPARK_ANGLES = [0.6, 2.2, 3.7, 5.3];
 
 export interface Point {
@@ -432,6 +438,7 @@ export class EffectsLayer {
     for (const shape of this.shapes) shape.clear();
     cues.forEach((cue, i) => {
       if (cue.kind === "number") this.prepareLabel(i, cue.text, NUMBER_COLOR[cue.style]);
+      else if (cue.kind === "crossfire") this.prepareCrossfire(i, cue.amount, world.own(cue.toId));
       else if (cue.kind === "knockback") this.prepareLabel(i, cue.tag, SHOCK_ORANGE);
       else if (cue.kind === "aura") this.prepareLabel(i, "OVERDRIVE", OVERDRIVE_GOLD);
       else if (cue.kind === "marked" || cue.kind === "slow") {
@@ -442,7 +449,7 @@ export class EffectsLayer {
     });
     for (let i = 0; i < this.texts.length; i++) {
       const kind = cues[i]?.kind;
-      if (kind !== "number" && kind !== "knockback" && kind !== "aura") this.texts[i]!.visible = false;
+      if (kind !== "number" && kind !== "crossfire" && kind !== "knockback" && kind !== "aura") this.texts[i]!.visible = false;
     }
   }
 
@@ -466,6 +473,9 @@ export class EffectsLayer {
     const label = this.texts[i]!;
     label.text = text;
     label.style.fill = color;
+    // Pooled labels: undo what a Crossfire label set.
+    label.style.fontFamily = "IBM Plex Mono";
+    label.style.letterSpacing = 0;
   }
 
   /** Draws the cues `now`; returns the shake offset in world pixels. */
@@ -474,20 +484,10 @@ export class EffectsLayer {
     let shake: Point = { x: 0, y: 0 };
     this.cues.forEach((cue, i) => {
       if (cue.kind === "number") this.drawNumber(this.texts[i]!, cue, ms);
+      else if (cue.kind === "crossfire") this.drawCrossfire(this.texts[i]!, cue, ms);
       else if (cue.kind === "knockback") this.drawKnockback(this.shapeAt(i), this.texts[i]!, cue, ms);
-      else if (cue.kind === "shot") {
-        const s = this.reduced ? undefined : this.drawShot(this.shapeAt(i), cue, ms);
-        if (s && cue.weapon === "long") {
-          const offset = shakeAt(ms - cue.fireMs);
-          shake = { x: offset.x * F, y: offset.y * F };
-        }
-      } else if (cue.kind === "shockwave") {
-        this.drawShockwave(this.shapeAt(i), cue, ms);
-        if (cue.overdrive && !this.reduced) {
-          const offset = shakeAt(ms - cue.startMs);
-          shake = { x: offset.x * F, y: offset.y * F };
-        }
-      } else if (cue.kind === "aura") this.drawAura(this.shapeAt(i), this.texts[i]!, cue, ms);
+      else if (cue.kind === "shot" || cue.kind === "shockwave") shake = this.drawShaking(i, cue, ms) ?? shake;
+      else if (cue.kind === "aura") this.drawAura(this.shapeAt(i), this.texts[i]!, cue, ms);
       else if (cue.kind === "surge") this.drawSurge(this.shapeAt(i), cue, ms);
       else if (cue.kind === "aegisBeam") this.drawAegisBeam(this.shapeAt(i), cue, ms);
       else if (cue.kind === "breach") this.drawBreach(this.shapeAt(i), cue, ms);
@@ -500,6 +500,37 @@ export class EffectsLayer {
       mark.update(this.reduced ? STATUS_AT_REST_MS : ms - cue.startMs);
     }
     return shake;
+  }
+
+  /** A shot or a shockwave: drawn, and the screen shake it causes (a Long Shot, an Overdrive Shockwave) in world pixels. */
+  private drawShaking(i: number, cue: Extract<EffectCue, { kind: "shot" | "shockwave" }>, ms: number): Point | undefined {
+    let offset;
+    if (cue.kind === "shot") {
+      const drawn = this.reduced ? undefined : this.drawShot(this.shapeAt(i), cue, ms);
+      if (drawn && cue.weapon === "long") offset = shakeAt(ms - cue.fireMs);
+    } else {
+      this.drawShockwave(this.shapeAt(i), cue, ms);
+      if (cue.overdrive && !this.reduced) offset = shakeAt(ms - cue.startMs);
+    }
+    return offset && { x: offset.x * F, y: offset.y * F };
+  }
+
+  /** "CROSSFIRE +1": the enemy red on a hit against the own Squad, teal on a hit by it; Rajdhani, with the dark outline of the numbers. */
+  private prepareCrossfire(i: number, amount: number, onOwnHero: boolean): void {
+    this.prepareLabel(i, `CROSSFIRE +${amount}`, onOwnHero ? CROSSFIRE_ENEMY : CROSSFIRE_OWN);
+    const style = this.texts[i]!.style;
+    style.fontFamily = "Rajdhani";
+    style.letterSpacing = 0.08 * CROSSFIRE_FONT * F;
+  }
+
+  private drawCrossfire(label: Text, cue: Extract<EffectCue, { kind: "crossfire" }>, ms: number): void {
+    const at = this.place(cue.toId);
+    const { rise, alpha } = crossfireAt(ms - cue.startMs);
+    label.visible = at !== undefined && ms >= cue.startMs && alpha > 0;
+    if (!at) return;
+    // Above the Shield and damage numbers; with reduced motion it stays where it appears and only fades.
+    label.position.set(at.x, at.y - HEAD_LIFT - (this.reduced ? 0 : rise * F) - (CROSSFIRE_STEP_PX + cue.stack * CROSSFIRE_STEP_PX) * F);
+    label.alpha = alpha;
   }
 
   private drawNumber(label: Text, cue: Extract<EffectCue, { kind: "number" }>, ms: number): void {

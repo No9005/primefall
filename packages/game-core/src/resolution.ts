@@ -82,19 +82,41 @@ function applySlow(tick: number, source: HeroState, target: HeroState, effect: C
   events.push({ kind: EventKind.SlowApplied, tick, heroId: source.id, targetId: target.id });
 }
 
+/** Per Resolution, per target: the Tick of the last hit by each attacker. Crossfire needs no state between Rounds. */
+const hitTicks = new WeakMap<MatchState, Map<string, Map<string, number>>>();
+
 /**
+ * Crossfire: +1 when a different attacker hit this target in the same Tick or the Tick directly before.
+ * Records this hit. Hits on allies create no Crossfire; neither does the same attacker twice.
+ */
+function crossfireBonus(match: MatchState, tick: number, source: HeroState, target: HeroState): number {
+  if (source.squad === target.squad) return 0;
+  const byTarget = hitTicks.get(match) ?? new Map<string, Map<string, number>>();
+  hitTicks.set(match, byTarget);
+  const byAttacker = byTarget.get(target.id) ?? new Map<string, number>();
+  byTarget.set(target.id, byAttacker);
+  const joined = [...byAttacker].some(([attackerId, lastTick]) => attackerId !== source.id && tick - lastTick <= 1);
+  byAttacker.set(source.id, tick);
+  return joined ? 1 : 0;
+}
+
+/**
+ * Crossfire raises the incoming damage before Shield absorbs.
  * Shield absorbs first; the rest is Deck Damage: the top cards, one per point, leave the cycle (Exile) so the
  * damage lasts. When the Deck runs out on the way, the Discard is shuffled into it and the damage goes on.
  * Then the events read: AttackHit (cards burned so far), DeckShuffled, AttackHit (the rest).
  */
-function dealDamage(match: MatchState, tick: number, source: HeroState, target: HeroState, incoming: number, events: MatchEvent[]): void {
+function dealDamage(match: MatchState, tick: number, source: HeroState, target: HeroState, baseDamage: number, events: MatchEvent[]): void {
+  let crossfire = crossfireBonus(match, tick, source, target);
+  const incoming = baseDamage + crossfire;
   const absorbed = Math.min(target.shield, incoming);
   target.shield -= absorbed;
   let remaining = incoming - absorbed;
   let burned = 0;
   let alreadyAbsorbed = absorbed;
   const reportHit = () => {
-    events.push({ kind: EventKind.AttackHit, tick, heroId: source.id, targetId: target.id, absorbed: alreadyAbsorbed, damage: burned });
+    events.push({ kind: EventKind.AttackHit, tick, heroId: source.id, targetId: target.id, absorbed: alreadyAbsorbed, damage: burned, crossfire });
+    crossfire = 0;
     alreadyAbsorbed = 0;
     burned = 0;
   };

@@ -70,6 +70,10 @@ _Avoid_: Armor, barrier, HP
 Using any card to create Shield 2 instead of playing its primary effect.
 _Avoid_: Defend, guard, parry
 
+**Crossfire**:
+A hit on a Hero by a different attacker in the same Tick or the Tick directly after a hit by another attacker on that Hero; it deals 1 extra damage.
+_Avoid_: Flanking bonus, focus bonus
+
 **Deck Damage**:
 Unblocked damage that removes cards from the top of the target’s Deck. One damage removes one card into the Exile; if the Deck runs out on the way, the Discard is shuffled into it and the damage goes on.
 _Avoid_: HP damage, wound

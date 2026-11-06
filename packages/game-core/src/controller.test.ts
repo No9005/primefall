@@ -49,7 +49,7 @@ describe("Tag Round", () => {
     const match = setup([TAG_ROUND, PULSE_BOLT, 1, 5]);
     const { match: after, events } = resolveRound(match, [planOf(CONTROLLER, [primary(TAG_ROUND, ENEMY)], [PULSE_BOLT])]);
     expect(events).toContainEqual({
-      kind: EventKind.AttackHit, tick: 1, heroId: CONTROLLER, targetId: ENEMY, absorbed: 0, damage: 1, card: "Tag Round", distance: expect.any(Number),
+      kind: EventKind.AttackHit, tick: 1, heroId: CONTROLLER, targetId: ENEMY, absorbed: 0, damage: 1, crossfire: 0, card: "Tag Round", distance: expect.any(Number),
     });
     expect(events).toContainEqual({ kind: EventKind.MarkedApplied, tick: 1, heroId: CONTROLLER, targetId: ENEMY, card: "Tag Round" });
     expect(hero(after, ENEMY).slow).toBe(0);
@@ -81,7 +81,7 @@ describe("Pulse Bolt, Shock Pulse and Gravity Snare", () => {
     const match = setup([PULSE_BOLT, 1, 5, 9]);
     const { events } = resolveRound(match, [planOf(CONTROLLER, [primary(PULSE_BOLT, ENEMY)], [1])]);
     expect(events).toEqual([
-      { kind: EventKind.AttackHit, tick: 1, heroId: CONTROLLER, targetId: ENEMY, absorbed: 0, damage: 2, card: "Pulse Bolt", distance: expect.any(Number) },
+      { kind: EventKind.AttackHit, tick: 1, heroId: CONTROLLER, targetId: ENEMY, absorbed: 0, damage: 2, crossfire: 0, card: "Pulse Bolt", distance: expect.any(Number) },
     ]);
   });
 
