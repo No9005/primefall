@@ -10,13 +10,22 @@
 // on a branch and measured with the same table. The AI is the measuring instrument, not a player: read its numbers as
 // comparisons between variants.
 
-import { it } from "vitest";
+import { it, vi } from "vitest";
 import { AiStyle, aiStyleFor, planSquad } from "./ai";
-import { EffectKind, HERO_DECKS } from "./cards";
+import { CardTarget, CardType, EffectKind, HERO_DECKS, HeroClass } from "./cards";
 import { type AttackAndDefendRules, EventKind, MatchEndReason, MatchMode, type MatchModeSetting, ROUND_LIMIT, SquadId, ZoneTie } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
-import type { SquadPlan } from "./plan";
+import { ActionKind, type HeroPlan, type SquadPlan } from "./plan";
 import { resolveRound } from "./resolution";
+
+// `BLOCK_SHIELD` is a constant of plan.ts that the rules read, so the harness cannot assign it. The mock below makes the
+// imported binding read a value the harness sets for the variant (the `blockShield` tweak). This changes no rule and no
+// shipped file; a variant that does not set it gets the real value.
+const block = vi.hoisted(() => ({ shield: undefined as number | undefined }));
+vi.mock("./plan", async (importOriginal) => {
+  const original = await importOriginal<typeof import("./plan")>();
+  return Object.defineProperty({ ...original }, "BLOCK_SHIELD", { get: () => block.shield ?? original.BLOCK_SHIELD, enumerable: true });
+});
 
 interface Tweaks {
   /** Damage of the Damage effect of the named cards. */
@@ -35,6 +44,8 @@ interface Tweaks {
   fatiguePerRound?: number;
   /** Plays Attack and Defend with these rules instead of the classic mode (the Defender side alternates by seed parity). */
   attackAndDefend?: AttackAndDefendRules;
+  /** Shield a Block creates instead of the real value (2). */
+  blockShield?: number;
   /** AI Styles of the Left and Right Squad; without it both play the default (Balanced) Style. "seeded" takes them from the match seed. */
   styles?: readonly [AiStyle, AiStyle] | "seeded";
 }
@@ -62,6 +73,7 @@ const CLASSIC_VARIANTS: Record<string, Tweaks> = {
   "Deck 9": { deckCut: 3 },
   "Pitch exiles": { pitchExile: true },
   "Deck 9 + Pitch exiles": { deckCut: 3, pitchExile: true },
+  block1: { blockShield: 1 },
   "attacks cost 2": { cardCost: { "Slam Shot": 2, "Pulse Bolt": 2, "Precision Shot": 2 } },
 };
 
@@ -110,6 +122,7 @@ const cardsOf = () => [...new Set(Object.values(HERO_DECKS).flatMap((deck) => [.
 function applyCardTweaks(tweaks: Tweaks): () => void {
   const cards = cardsOf();
   const original = cards.map((card) => structuredClone(card));
+  block.shield = tweaks.blockShield;
   for (const card of cards) {
     const target = card as unknown as { energyCost: number; range?: number; effects: { kind: EffectKind; amount?: number }[] };
     if (tweaks.cardCost?.[card.name] !== undefined) target.energyCost = tweaks.cardCost[card.name]!;
@@ -117,7 +130,89 @@ function applyCardTweaks(tweaks: Tweaks): () => void {
     const damage = tweaks.cardDamage?.[card.name];
     if (damage !== undefined) for (const effect of target.effects) if (effect.kind === EffectKind.Damage) effect.amount = damage;
   }
-  return () => cards.forEach((card, index) => Object.assign(card, original[index]));
+  return () => {
+    block.shield = undefined;
+    cards.forEach((card, index) => Object.assign(card, original[index]));
+  };
+}
+
+// "Exposed Hero": a staged situation, not a match. A Hero of the Left Squad stands on a Prime Zone tile and does not move
+// away; a Bruiser and an Assassin of the Right Squad stand two tiles from it, in Range and Line of Sight, and attack it
+// with as many Attack cards as their Hand and Pitch allow in every Round. The other Heroes plan nothing.
+const EXPOSED_TILE = { col: 14, row: 8 };
+const ENEMY_TILES = [{ col: 16, row: 7 }, { col: 16, row: 9 }];
+const ENEMY_CLASSES = [HeroClass.Bruiser, HeroClass.Assassin];
+const EXPOSED_ROUND_CAP = 10;
+
+/** The most Attack cards of the Hand that the Energy of the other Hand cards pays for (Pitch gives 1 Energy per card). */
+function attackPlan(match: MatchState, heroId: string, target: string): HeroPlan {
+  const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
+  const cards = HERO_DECKS[hero.heroClass];
+  const attacks = hero.hand
+    .filter((card) => cards[card]!.type === CardType.Attack && cards[card]!.target === CardTarget.VisibleEnemy)
+    .sort((a, b) => cards[a]!.energyCost - cards[b]!.energyCost);
+  for (let count = attacks.length; count > 0; count--) {
+    const chosen = attacks.slice(0, count);
+    const cost = chosen.reduce((sum, card) => sum + cards[card]!.energyCost, 0);
+    const rest = hero.hand.filter((card) => !chosen.includes(card));
+    if (rest.length >= cost) {
+      const queue = chosen.map((card) => ({ kind: ActionKind.Primary as const, card, target }));
+      return { heroId, queue, pitched: rest.slice(0, cost) };
+    }
+  }
+  return { heroId, queue: [] };
+}
+
+/** Gives the enemy a freshly shuffled full Deck except for its Hand, so that it can attack every Round instead of running out of cards. */
+function refillEnemy(match: MatchState, heroId: string, salt: number): void {
+  const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
+  const deck = HERO_DECKS[hero.heroClass].map((_, index) => index).filter((card) => !hero.hand.includes(card));
+  let state = (match.seed * 7919 + salt * 104729) >>> 0;
+  for (let i = deck.length - 1; i > 0; i--) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    const j = state % (i + 1);
+    [deck[i], deck[j]] = [deck[j]!, deck[i]!];
+  }
+  Object.assign(hero, { deck, discard: [], exile: [], exhausted: false });
+}
+
+/** Rounds until the exposed Hero is Exhausted (the cap if it survives), with or without a Block in the first Tick of every Round. */
+function exposedRounds(seed: number, heroClass: HeroClass, blocks: boolean): { rounds: number; exhausted: boolean } {
+  const created = createMatch(seed);
+  const exposedId = `${SquadId.Left}-${heroClass}`;
+  created.heroes.find((hero) => hero.id === exposedId)!.position = { ...EXPOSED_TILE };
+  ENEMY_CLASSES.forEach((enemyClass, i) => {
+    created.heroes.find((hero) => hero.id === `${SquadId.Right}-${enemyClass}`)!.position = { ...ENEMY_TILES[i]! };
+  });
+  let match = startRound(created);
+  for (let round = 1; round <= EXPOSED_ROUND_CAP; round++) {
+    const exposed = match.heroes.find((hero) => hero.id === exposedId)!;
+    const left: HeroPlan[] = blocks ? [{ heroId: exposedId, queue: [{ kind: ActionKind.Block, card: exposed.hand[0]! }] }] : [];
+    const right = ENEMY_CLASSES.map((enemyClass) => `${SquadId.Right}-${enemyClass}`).map((id) => attackPlan(match, id, exposedId));
+    const resolution = resolveRound(match, [
+      { squad: SquadId.Left, heroes: left },
+      { squad: SquadId.Right, heroes: right },
+    ]);
+    if (resolution.events.some((event) => event.kind === EventKind.Exhausted && event.heroId === exposedId)) return { rounds: round, exhausted: true };
+    // Two enemies in the Zone against one Hero would end the match by Prime Zone hold: this situation measures Exhaustion only.
+    match = { ...resolution.match, result: undefined, primeZone: { progress: 0 } };
+    // The enemies are the constant of this measurement: give them Decks again, then draw a new Hand for everyone.
+    ENEMY_CLASSES.forEach((enemyClass) => refillEnemy(match, `${SquadId.Right}-${enemyClass}`, round));
+    match = startRound(match);
+  }
+  return { rounds: EXPOSED_ROUND_CAP, exhausted: false };
+}
+
+/** Mean Rounds until Exhaustion per Hero class and case; Heroes that survive the cap count as the cap and are counted next to it. */
+function exposedCells(seeds: number, offset: number): string[] {
+  return Object.values(HeroClass).flatMap((heroClass) =>
+    [false, true].map((blocks) => {
+      const results = Array.from({ length: seeds }, (_, i) => exposedRounds(offset + i + 1, heroClass, blocks));
+      const mean = results.reduce((sum, result) => sum + result.rounds, 0) / seeds;
+      const survived = results.filter((result) => !result.exhausted).length;
+      return survived > 0 ? `${mean.toFixed(1)} (${survived} survive)` : mean.toFixed(1);
+    }),
+  );
 }
 
 interface Totals {
@@ -233,38 +328,48 @@ const setting = (name: string): string | undefined => process.env[`BALANCE_${nam
 
 const pad = (text: string, width: number) => text.padEnd(width);
 
+/** Plays the matches of one variant and, for the classic mode, the staged exposed-Hero Rounds, with the variant's tweaks applied. */
+function playVariant(tweaks: Tweaks, seeds: number, offset: number): { totals: Totals; exposed?: string[] } {
+  const restore = applyCardTweaks(tweaks);
+  const totals: Totals = {
+    rounds: [],
+    stalls: 0,
+    zoneEnds: 0,
+    exhaustedMatches: 0,
+    exhaustedHeroes: 0,
+    hits: 0,
+    damage: 0,
+    leftWins: 0,
+    rightWins: 0,
+    attackerWins: 0,
+    defenceHeld: 0,
+    defenderExhaustions: 0,
+    attackerWinsByDefender: { [SquadId.Left]: 0, [SquadId.Right]: 0 },
+    matchesByDefender: { [SquadId.Left]: 0, [SquadId.Right]: 0 },
+  };
+  try {
+    for (let seed = offset + 1; seed <= offset + seeds; seed++) playMatch(seed, tweaks, totals);
+    // The staged situation does not depend on the AI Style or the mode: measure it once per data-level variant.
+    const staged = !tweaks.attackAndDefend && !tweaks.styles;
+    return { totals, exposed: staged ? exposedCells(seeds, offset) : undefined };
+  } finally {
+    restore();
+  }
+}
+
 it("prints one table for all variants", async () => {
   const seeds = Number(setting("seeds") ?? 300);
   const only = setting("only");
   const rows: string[][] = [];
+  const exposedRows: string[][] = [];
   const offset = Number(setting("seed_offset") ?? 0);
   for (const [name, tweaks] of Object.entries(VARIANTS)) {
     if (name !== "baseline" && only && !name.includes(only)) continue;
     // A variant takes seconds of synchronous work: yield so that the test runner can keep talking to its worker.
     // eslint-disable-next-line no-restricted-globals -- the harness runs in Node, only the shipped code must avoid browser APIs
     await new Promise((resolve) => setTimeout(resolve, 0));
-    const restore = applyCardTweaks(tweaks);
-    const totals: Totals = {
-      rounds: [],
-      stalls: 0,
-      zoneEnds: 0,
-      exhaustedMatches: 0,
-      exhaustedHeroes: 0,
-      hits: 0,
-      damage: 0,
-      leftWins: 0,
-      rightWins: 0,
-      attackerWins: 0,
-      defenceHeld: 0,
-      defenderExhaustions: 0,
-      attackerWinsByDefender: { [SquadId.Left]: 0, [SquadId.Right]: 0 },
-      matchesByDefender: { [SquadId.Left]: 0, [SquadId.Right]: 0 },
-    };
-    try {
-      for (let seed = offset + 1; seed <= offset + seeds; seed++) playMatch(seed, tweaks, totals);
-    } finally {
-      restore();
-    }
+    const { totals, exposed } = playVariant(tweaks, seeds, offset);
+    if (exposed) exposedRows.push([name, ...exposed]);
     const percent = (count: number) => (count / seeds) * 100;
     const averageRounds = totals.rounds.reduce((sum, round) => sum + round, 0) / seeds;
     const stalls = percent(totals.stalls);
@@ -310,5 +415,11 @@ it("prints one table for all variants", async () => {
   console.log(`\n${seeds} matches per variant, AI against AI. "!" = misses its target (rounds ${TARGETS.roundsMin}-${TARGETS.roundsMax}, stalls <= ${TARGETS.stallsMaxPercent}%, exhaustion >= ${TARGETS.exhaustionMinPercent}%, side spread <= ${TARGETS.sideSpreadMaxPercent}%)`);
   console.log(line(header));
   rows.forEach((row) => console.log(line(row)));
+  const exposedHeader = ["exposed Hero, mean Rounds", ...Object.values(HeroClass).flatMap((heroClass) => [`${heroClass} no Block`, `${heroClass} Block`])];
+  const exposedWidths = exposedHeader.map((title, column) => Math.max(title.length, ...exposedRows.map((row) => row[column]!.length)));
+  const exposedLine = (cells: string[]) => cells.map((cell, column) => pad(cell, exposedWidths[column]!)).join("  ");
+  console.log(`\nExposed Hero: a Left Hero on a Prime Zone tile, a Bruiser and an Assassin two tiles away attack it every Round. Mean Rounds until Exhausted (targets: 2 without Block, 3-4 with Block; cap ${EXPOSED_ROUND_CAP})`);
+  console.log(exposedLine(exposedHeader));
+  exposedRows.forEach((row) => console.log(exposedLine(row)));
 });
 
