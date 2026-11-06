@@ -167,3 +167,15 @@ describe("screenshot tool arguments", () => {
     expect(parseArgs(["--scenario"]).error).toBeDefined();
   });
 });
+
+describe("crossfire scenario stages what its name says", () => {
+  it("two different enemies hit the Bruiser and a hit carries Crossfire", async () => {
+    const staged = SCENARIOS.find((candidate) => candidate.name === "crossfire")!;
+    const match = staged.buildMatch();
+    const host = restoreLocalHost(JSON.stringify({ version: SNAPSHOT_VERSION, match }))!;
+    const { events } = await host.submitPlan(preparedPlan(staged, match));
+    const hits = events.filter((event) => event.kind === EventKind.AttackHit && event.targetId === staged.heroId);
+    expect(new Set(hits.map((hit) => hit.heroId)).size).toBeGreaterThan(1);
+    expect(hits.some((hit) => (hit.crossfire ?? 0) > 0)).toBe(true);
+  });
+});
