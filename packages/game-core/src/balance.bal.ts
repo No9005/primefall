@@ -177,11 +177,15 @@ function playRound(match: MatchState, tweaks: Tweaks, totals: Totals): { match: 
   const resolution = resolveRound(match, plans);
   const defender = match.mode.kind === MatchMode.AttackAndDefend ? match.mode.defender : undefined;
   let exhausted = 0;
+  let previous: (typeof resolution.events)[number] | undefined;
   for (const event of resolution.events) {
     if (event.kind === EventKind.AttackHit) {
-      totals.hits++;
+      // An Attack that empties the Deck gives two AttackHit events (before and after the shuffle): count it once.
+      const secondHalf = previous?.kind === EventKind.DeckShuffled && previous.heroId === event.targetId;
+      if (!secondHalf) totals.hits++;
       totals.damage += event.damage ?? 0;
     }
+    previous = event;
     if (event.kind === EventKind.Exhausted) {
       exhausted++;
       if (match.heroes.find((hero) => hero.id === event.heroId)?.squad === defender) totals.defenderExhaustions++;
