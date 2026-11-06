@@ -16,7 +16,16 @@ import {
   type SquadPlan,
   validatePlan,
 } from "./plan";
-import { CoverKind, coverAt, findTiles, type GridPosition, isStepAllowed, REACTOR_DECK, TileKind } from "./reactor-deck";
+import {
+  CoverKind,
+  coverAt,
+  findTiles,
+  type GridPosition,
+  hasLineOfSight,
+  isStepAllowed,
+  REACTOR_DECK,
+  TileKind,
+} from "./reactor-deck";
 
 /** Actions the AI queues per Hero and Round; fewer than the Queue limit keeps Decks from draining fast. */
 const AI_QUEUE_LENGTH = 3;
@@ -157,6 +166,114 @@ function stepTowardPrimeZone(
   return best;
 }
 
+/**
+ * The weights of the Classic mode scoring: the single default AI Style. Each consideration is a count or a share (0 to 1)
+ * times its weight. Progress dominates on purpose: one step closer to the Zone beats everything else except a real
+ * flank or a Full Cover, so Squads cannot stand off for ever.
+ */
+export const AI_WEIGHTS = {
+  /** Per step closer to the Prime Zone. */
+  progress: 10,
+  /** Ending in Cover while a Visible enemy is near: Full Cover 1, Half Cover 0.5. */
+  cover: 8,
+  /** Per Visible enemy that could hit the tile this Round, before Cover. */
+  danger: 6,
+  /** A tile beside a Visible enemy (not straight in front) that few enemies can hit. */
+  flank: 7,
+  /** Per Squad mate ending within one tile, and per Squad mate ending in the same row. */
+  spreadClose: 5,
+  spreadLine: 2,
+  /** Keeping a Visible enemy in Range from the end tile (the Hero can shoot it). */
+  keepShot: 3,
+};
+
+/** Longest weapon Range of an enemy Hero class. */
+const WEAPON_RANGE = Object.fromEntries(
+  Object.entries(HERO_DECKS).map(([heroClass, deck]) => [
+    heroClass,
+    Math.max(...deck.filter(isSimpleAttack).map((card) => card.range ?? 0)),
+  ]),
+);
+
+const canShoot = (from: GridPosition, to: GridPosition, range: number) =>
+  chebyshevDistance(from, to) <= range && hasLineOfSight(REACTOR_DECK, from, to);
+
+/** How much the tile's Cover is worth against the enemies that can hit it (0 to 1). */
+const coverShare = (tile: GridPosition, threats: readonly VisibleEnemyView[]) => {
+  if (threats.length === 0 || threats.every((enemy) => chebyshevDistance(tile, enemy.position) <= 1)) return 0;
+  const cover = coverAt(REACTOR_DECK, tile);
+  return cover === CoverKind.Full ? 1 : cover === CoverKind.Half ? 0.5 : 0;
+};
+
+/**
+ * Scores a tile a Hero could end a Move on. `mates` are the tiles Squad mates planned to end this slot on,
+ * `weapon` the Range of the Hero's attacks.
+ */
+function scoreTile(
+  tile: GridPosition,
+  distance: number,
+  targets: readonly VisibleEnemyView[],
+  mates: readonly GridPosition[],
+  weapon: number,
+): number {
+  const W = AI_WEIGHTS;
+  const hitters = targets.filter((enemy) => canShoot(enemy.position, tile, WEAPON_RANGE[enemy.heroClass] ?? 0));
+  const cover = coverShare(tile, hitters);
+  // Holding the Zone is the goal: its tiles are never scored down for danger or crowding (the Heroes there fight anyway).
+  const goal = isPrimeZoneTile(tile);
+  const danger = goal ? 0 : hitters.length * (1 - cover);
+  const shootable = targets.filter((enemy) => canShoot(tile, enemy.position, weapon));
+  const flanks = shootable.some((enemy) => Math.abs(enemy.position.row - tile.row) >= 2) && hitters.length <= 1;
+  const close = goal ? 0 : mates.filter((mate) => chebyshevDistance(mate, tile) <= 1).length;
+  const inLine = goal ? 0 : mates.filter((mate) => mate.row === tile.row).length;
+  return (
+    -W.progress * distance +
+    W.cover * cover -
+    W.danger * danger +
+    (flanks ? W.flank : 0) +
+    (shootable.length > 0 ? W.keepShot : 0) -
+    W.spreadClose * close -
+    W.spreadLine * inLine
+  );
+}
+
+/**
+ * The Move 2 destination with the best score, or undefined when staying put scores best. Legal destinations are the same
+ * as for `stepTowardPrimeZone`: no blocked tile, no tile another Hero already claimed for this step.
+ */
+function chooseDestination(
+  from: GridPosition,
+  squad: SquadId,
+  slot: number,
+  claimed: ClaimedTiles,
+  blocked: ReadonlySet<number>,
+  distances: ReadonlyMap<number, number>,
+  targets: readonly VisibleEnemyView[],
+  mates: readonly GridPosition[],
+  weapon: number,
+): GridPosition | undefined {
+  const distanceTo = (tile: GridPosition) => (isPrimeZoneTile(tile) ? 0 : distances.get(tileKey(tile)) ?? Infinity);
+  let best: GridPosition | undefined;
+  let bestScore = scoreTile(from, distanceTo(from), targets, mates, weapon);
+  for (const destination of destinationsInOrder(from, squad)) {
+    const end = moveEnd(from, destination);
+    const steps = tilesAfterSteps(from, destination);
+    if (blocked.has(tileKey(end)) || steps.some((tile) => blocked.has(tileKey(tile)))) continue;
+    if (claimed.get(claimKey(slot, MOVE_DISTANCE))?.has(tileKey(steps.at(-1)!))) continue;
+    const distance = distanceTo(end);
+    if (!Number.isFinite(distance)) continue;
+    const score = scoreTile(end, distance, targets, mates, weapon);    if (score > bestScore) {
+      best = destination;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+/** The tiles Heroes planned earlier end the given queue slot on. */
+const matesEndingSlot = (claimed: ClaimedTiles, slot: number): GridPosition[] =>
+  [...(claimed.get(claimKey(slot, MOVE_DISTANCE)) ?? [])].map((key) => ({ col: key % REACTOR_DECK.width, row: Math.floor(key / REACTOR_DECK.width) }));
+
 function claimSteps(claimed: ClaimedTiles, slot: number, tiles: readonly GridPosition[]): void {
   tiles.forEach((tile, step) => {
     const key = claimKey(slot, step + 1);
@@ -199,6 +316,13 @@ function planHero(
     }
   }
 
+  // Equal Squads in the Zone shielding every Round never hurt each other (a stalemate); only the outnumbered one turtles.
+  const inZone = (heroes: readonly { position: GridPosition; exhausted: boolean }[]) =>
+    heroes.filter((candidate) => !candidate.exhausted && isPrimeZoneTile(candidate.position)).length;
+  const deckTotal = (heroes: readonly { deckCount: number; exhausted: boolean }[]) =>
+    heroes.reduce((sum, candidate) => sum + (candidate.exhausted ? 0 : candidate.deckCount), 0);
+  const outnumberedInZone = inZone(targets) > inZone(view.heroes) || deckTotal(view.heroes) < deckTotal(targets);
+  const weapon = Math.max(0, ...deck.filter(isSimpleAttack).map((card) => card.range ?? 0));
   const queue: QueuedAction[] = [];
   let position = hero.position;
   let energyNeeded = 0;
@@ -215,6 +339,19 @@ function planHero(
       const cost = deck[card]!.energyCost;
       return inRangeTargets(position, card).length > 0 && cardsLeft - 1 - cost >= 0;
     });
+    // Under fire, raise the Shield before shooting, so it is up when the enemy shoots. Not while holding the Zone level:
+    // Squads that shield every Round never hurt each other.
+    const underFire = targets.some((enemy) => canShoot(enemy.position, position, WEAPON_RANGE[enemy.heroClass] ?? 0));
+    if (
+      role === Role.Classic && attackCard !== undefined && underFire && otherCards.length > 0 &&
+      (!isPrimeZoneTile(position) || outnumberedInZone) &&
+      !queue.some((action) => action.kind === ActionKind.Block) && cardsLeft - 2 - deck[attackCard]!.energyCost >= 0
+    ) {
+      const card = otherCards.shift()!;
+      claimSteps(claimed, queue.length, [position, position]);
+      queue.push({ kind: ActionKind.Block, card });
+      continue;
+    }
     if (attackCard !== undefined) {
       const cost = deck[attackCard]!.energyCost;
       const target = inRangeTargets(position, attackCard).sort((a, b) => a.deckCount - b.deckCount)[0]!;
@@ -227,12 +364,19 @@ function planHero(
     const card = spare()[0];
     if (card === undefined || cardsLeft - 1 < 0) break;
     const slot = queue.length;
-    const destination = stepTowardPrimeZone(position, view.squad, slot, claimed, unavailable, distances, approach);
+    const destination =
+      role === Role.Classic
+        ? chooseDestination(position, view.squad, slot, claimed, unavailable, distances, targets, matesEndingSlot(claimed, slot), weapon)
+        : stepTowardPrimeZone(position, view.squad, slot, claimed, unavailable, distances, approach);
     if (destination) {
       queue.push({ kind: ActionKind.Move, card, destination });
       claimSteps(claimed, slot, tilesAfterSteps(position, destination));
       position = moveEnd(position, destination);
-    } else if (role === Role.Defender ? enemyClose() && !queue.some((action) => action.kind === ActionKind.Block) : targets.length > 0) {
+    } else if (
+      role === Role.Defender
+        ? enemyClose() && !queue.some((action) => action.kind === ActionKind.Block)
+        : targets.length > 0 && (role !== Role.Classic || !isPrimeZoneTile(position) || outnumberedInZone)
+    ) {
       queue.push({ kind: ActionKind.Block, card });
       claimSteps(claimed, slot, [position, position]);
     } else {
