@@ -374,8 +374,7 @@ it("prints one table for all variants", async () => {
     const averageRounds = totals.rounds.reduce((sum, round) => sum + round, 0) / seeds;
     const stalls = percent(totals.stalls);
     const exhaustion = percent(totals.exhaustedMatches);
-    const decided = totals.leftWins + totals.rightWins;
-    const spread = decided === 0 ? 0 : Math.abs(percent(totals.leftWins) - percent(totals.rightWins));
+    const spread = totals.leftWins + totals.rightWins === 0 ? 0 : Math.abs(percent(totals.leftWins) - percent(totals.rightWins));
     const mark = (ok: boolean) => (ok ? "" : " !");
     const modeColumns = (): string[] => {
       if (!tweaks.attackAndDefend) return ["-", "-", "-", "-"];
