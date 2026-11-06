@@ -163,9 +163,9 @@ describe("Attack and Defend: Squad View and host", () => {
 });
 
 describe("the classic mode", () => {
-  // Recorded from the classic path (AI against AI, 60 Rounds at most); re-recorded when the AI began to score its Moves (#329).
+  // Recorded from the classic path (AI against AI, 60 Rounds at most); re-recorded when the AI began to score its Moves (#329) and for seed 3 when Crossfire was added (#342).
   const recorded = [
-    { seed: 3, round: 5, winner: SquadId.Left, deckTotals: { left: 10, right: 7 }, positions: "14,7:4 15,7:2 14,8:4 16,7:1 16,8:2 17,9:4", rng: 112729797 },
+    { seed: 3, round: 5, winner: SquadId.Left, deckTotals: { left: 10, right: 10 }, positions: "14,7:4 15,7:2 14,8:4 16,7:2 16,8:4 17,9:4", rng: 3775861423 },
     { seed: 11, round: 5, winner: SquadId.Left, deckTotals: { left: 12, right: 10 }, positions: "14,7:4 15,7:4 14,8:4 16,7:2 16,8:4 17,9:4", rng: 1312459948 },
     { seed: 42, round: 5, winner: SquadId.Left, deckTotals: { left: 8, right: 10 }, positions: "14,7:2 15,7:2 14,8:4 16,7:2 16,8:4 16,9:4", rng: 2576131319 },
   ];

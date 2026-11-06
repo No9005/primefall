@@ -267,6 +267,8 @@ export interface MatchEvent {
   targetId?: string;
   /** Damage absorbed by Shield, for `AttackHit`. */
   absorbed?: number;
+  /** Crossfire damage added to this hit (0 or 1), for `AttackHit`. Set on the first event of a hit that splits at a shuffle. */
+  crossfire?: number;
   /**
    * Cards removed from the target's Deck (Deck Damage), for `AttackHit`. An Attack that empties the Deck
    * gives AttackHit, DeckShuffled, AttackHit: the damage is the sum, the order is the order of the piles.

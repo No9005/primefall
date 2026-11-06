@@ -39,7 +39,7 @@ describe("Attacks and Deck Damage", () => {
     expect(hero(after, RIGHT_BRUISER).deck).toEqual(deck.slice(0, -2));
     expect(hero(after, RIGHT_BRUISER).exile).toEqual(deck.slice(-2));
     expect(events).toEqual([
-      { kind: EventKind.AttackHit, tick: 1, heroId: LEFT_BRUISER, targetId: RIGHT_BRUISER, absorbed: 0, damage: 2, card: "Slam Shot", distance: 2 },
+      { kind: EventKind.AttackHit, tick: 1, heroId: LEFT_BRUISER, targetId: RIGHT_BRUISER, absorbed: 0, damage: 2, crossfire: 0, card: "Slam Shot", distance: 2 },
     ]);
   });
 

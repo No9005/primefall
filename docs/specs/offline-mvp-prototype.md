@@ -144,7 +144,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Test external behaviour, not implementation details.
 - Use the authoritative Match Simulation as the primary test seam.
 - Given a starting Match State and two committed Squad Plans, the simulation must produce exactly one deterministic resulting Match State.
-- Test movement, collision conflicts, Line of Sight, Cover, Hidden, Marked, Ghosts, Energy, Deck Damage, Exhaustion, and victory conditions through this seam.
+- Test movement, collision conflicts, Line of Sight, Cover, Hidden, Marked, Ghosts, Energy, Deck Damage, Crossfire, Exhaustion, and victory conditions through this seam.
 - Test Declared Targets through this seam: an Attack hits when its target is valid in the Tick it fires (after the Hero's Moves or the enemy's Moves), and misses with one reason per failing check, without damage and without stopping later actions.
 - Prefer existing seams; do not introduce additional seams unless a higher-level test cannot otherwise be expressed.
 - Use the Reactor Deck layout and the MVP card set as stable fixtures for deterministic scenario tests.
@@ -167,6 +167,7 @@ A second mode next to the classic mode described above, decided in ADR 0022 (Pro
 96. As a Defender, I want to win when the Round limit of the mode (default 12) has been played without an Attacker win (Defence Held), so that surviving with my Decks matters more than holding the Zone.
 97. As a player, I want the Round counter to show the Round limit of the mode, so that I know how long the Defender has to hold.
 98. As a player, I want every other rule (Decks, Energy, Pitch, cards, Fog of War, Exhaustion) to stay as in the classic mode, so that I only have to learn the roles.
+99. As a player, I want a hit on a Hero to deal 1 extra damage when a different attacker hit that Hero in the same Tick or the Tick directly before (Crossfire), so that flanking beats rushing in alone and the middle is dangerous. This applies in both modes.
 
 ### What the Mode Changes
 
