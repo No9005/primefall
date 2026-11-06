@@ -37,7 +37,7 @@ describe("Events carry the card that caused them", () => {
     const match = scene({ [ASSASSIN]: { col: 2, row: 1 }, [ENEMY]: { col: 8, row: 1 } });
     const { events } = resolveRound(match, [plan(ASSASSIN, { kind: ActionKind.Primary, card: LONG_SHOT, target: ENEMY }, [0])]);
     expect(events).toEqual([
-      { kind: EventKind.AttackHit, tick: 1, heroId: ASSASSIN, targetId: ENEMY, absorbed: 0, damage: 2, card: "Long Shot", distance: 6 },
+      { kind: EventKind.AttackHit, tick: 1, heroId: ASSASSIN, targetId: ENEMY, absorbed: 0, damage: 2, crossfire: 0, card: "Long Shot", distance: 6 },
     ]);
   });
 
