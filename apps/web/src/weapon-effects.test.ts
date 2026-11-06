@@ -1,7 +1,7 @@
 import { AttackFailReason, EventKind, HeroClass, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
 import { buildPlaybackFrames } from "./playback";
-import { cueEndMs, effectCuesOf, flightMs, flightProgress, impactMs, numberAt, reticleAt, shakeAt, weaponOf } from "./weapon-effects";
+import { crossfireAt, cueEndMs, effectCuesOf, flightMs, flightProgress, impactMs, numberAt, reticleAt, shakeAt, weaponOf } from "./weapon-effects";
 
 const hit = (extra: Partial<MatchEvent>): MatchEvent => ({ kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", ...extra });
 const fireOf = (_heroId: string, card: string | undefined) => (card === "Long Shot" ? 1650 : 620);
@@ -55,6 +55,14 @@ describe("the cues of the events", () => {
     expect(numbers.map((cue) => (cue.kind === "number" ? [cue.text, cue.style] : []))).toEqual([["Shield -1", "shield"], ["-1", "damage"]]);
   });
 
+  it("adds a CROSSFIRE cue to a hit with Crossfire and stacks a second one on the same target", () => {
+    const crossfire = (cues: ReturnType<typeof effectCuesOf>) => cues.filter((cue) => cue.kind === "crossfire");
+    expect(crossfire(effectCuesOf([hit({ card: "Slam Shot", damage: 2, distance: 3 })], fireOf))).toEqual([]);
+    const cues = effectCuesOf([hit({ card: "Slam Shot", damage: 3, crossfire: 1, distance: 3 }), hit({ heroId: "b", card: "Slam Shot", damage: 3, crossfire: 2, distance: 3 })], fireOf);
+    expect(crossfire(cues).map((cue) => (cue.kind === "crossfire" ? [cue.amount, cue.stack] : []))).toEqual([[1, 0], [2, 1]]);
+    expect(cueEndMs(crossfire(cues)[0]!)).toBe(crossfire(cues)[0]!.startMs + 700);
+  });
+
   it("names a failed Attack by its reason: Out of range, Not visible, or Blocked", () => {
     const failed = (reason: AttackFailReason): MatchEvent => ({ kind: EventKind.AttackFailed, tick: 1, heroId: "a", targetId: "t", card: "Slam Shot", reason });
     expect(effectCuesOf([failed(AttackFailReason.NoLineOfSight)], fireOf)).toEqual([{ kind: "number", toId: "t", startMs: 640, text: "Blocked", style: "failed" }]);
@@ -92,6 +100,12 @@ describe("the curves", () => {
     expect(numberAt(0)).toEqual({ rise: 0, alpha: 1 });
     expect(numberAt(400).rise).toBe(7);
     expect(numberAt(800)).toEqual({ rise: 14, alpha: 0 });
+  });
+
+  it("rises the CROSSFIRE label 8 px over 700 ms while it fades out", () => {
+    expect(crossfireAt(0)).toEqual({ rise: 0, alpha: 1 });
+    expect(crossfireAt(350).rise).toBe(4);
+    expect(crossfireAt(700)).toEqual({ rise: 8, alpha: 0 });
   });
 
   it("locks the reticle on from 2.4 x to 1 x, turning 45 degrees", () => {
