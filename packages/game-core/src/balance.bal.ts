@@ -11,7 +11,7 @@
 // comparisons between variants.
 
 import { it } from "vitest";
-import { planSquad } from "./ai";
+import { AiStyle, aiStyleFor, planSquad } from "./ai";
 import { EffectKind, HERO_DECKS } from "./cards";
 import { type AttackAndDefendRules, EventKind, MatchEndReason, MatchMode, type MatchModeSetting, ROUND_LIMIT, SquadId, ZoneTie } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
@@ -35,6 +35,25 @@ interface Tweaks {
   fatiguePerRound?: number;
   /** Plays Attack and Defend with these rules instead of the classic mode (the Defender side alternates by seed parity). */
   attackAndDefend?: AttackAndDefendRules;
+  /** AI Styles of the Left and Right Squad; without it both play the default (Balanced) Style. "seeded" takes them from the match seed. */
+  styles?: readonly [AiStyle, AiStyle] | "seeded";
+}
+
+const squadStyle = (tweaks: Tweaks, match: MatchState, squad: SquadId): AiStyle =>
+  tweaks.styles === "seeded"
+    ? aiStyleFor(match.seed, squad)
+    : (tweaks.styles?.[squad === SquadId.Left ? 0 : 1] ?? AiStyle.Balanced);
+
+/** Every ordered pair of AI Styles, to see how a Style fares against the default and against each other. */
+function styleVariants(): Record<string, Tweaks> {
+  const variants: Record<string, Tweaks> = { "style: from seed": { styles: "seeded" } };
+  const all = Object.values(AiStyle);
+  for (const left of all) {
+    for (const right of all) {
+      if (left !== AiStyle.Balanced || right !== AiStyle.Balanced) variants[`style: ${left} (L) vs ${right} (R)`] = { styles: [left, right] };
+    }
+  }
+  return variants;
 }
 
 const CLASSIC_VARIANTS: Record<string, Tweaks> = {
@@ -70,7 +89,7 @@ function attackAndDefendVariants(): Record<string, Tweaks> {
   return variants;
 }
 
-const VARIANTS: Record<string, Tweaks> = { ...CLASSIC_VARIANTS, ...attackAndDefendVariants() };
+const VARIANTS: Record<string, Tweaks> = { ...CLASSIC_VARIANTS, ...styleVariants(), ...attackAndDefendVariants() };
 
 /** What a match should feel like; the table marks a column that misses its target. */
 const TARGETS = {
@@ -154,7 +173,7 @@ function applyFatigue(next: MatchState, cards: number): void {
 
 /** Plays one Round, adds its attack hits to the totals and returns the next Match State and the Exhaustion events. */
 function playRound(match: MatchState, tweaks: Tweaks, totals: Totals): { match: MatchState; exhausted: number } {
-  const plans = [SquadId.Left, SquadId.Right].map((squad) => planSquad(buildSquadView(match, squad)));
+  const plans = [SquadId.Left, SquadId.Right].map((squad) => planSquad(buildSquadView(match, squad), undefined, squadStyle(tweaks, match, squad)));
   const resolution = resolveRound(match, plans);
   const defender = match.mode.kind === MatchMode.AttackAndDefend ? match.mode.defender : undefined;
   let exhausted = 0;
@@ -273,11 +292,13 @@ it("prints one table for all variants", async () => {
       (totals.hits / seeds).toFixed(0),
       (totals.damage / seeds).toFixed(1),
       `${spread.toFixed(0)}%${mark(spread <= TARGETS.sideSpreadMaxPercent)}`,
+      `${percent(totals.leftWins).toFixed(0)}%`,
+      `${percent(totals.rightWins).toFixed(0)}%`,
       ...modeColumns(),
     ]);
   }
   const header = [
-    "variant", "rounds", "stalls", "zone win", "w/ exhaustion", "exh. heroes", "hits", "damage", "L/R spread",
+    "variant", "rounds", "stalls", "zone win", "w/ exhaustion", "exh. heroes", "hits", "damage", "L/R spread", "L wins", "R wins",
     "attacker win", "defence held", "exh. on Defender", "Defender side spread",
   ];
   const widths = header.map((title, column) => Math.max(title.length, ...rows.map((row) => row[column]!.length)));

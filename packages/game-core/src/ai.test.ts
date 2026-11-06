@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { playAiMatch } from "./ai-match";
-import { GHOST_MEMORY_ROUNDS, planSquad, scoreTile } from "./ai";
+import { AI_WEIGHTS, AiStyle, aiStyleFor, assignRoles, GHOST_MEMORY_ROUNDS, planSquad, scoreTile, SquadRole, weightsFor } from "./ai";
 import { MatchEndReason, MatchMode, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { ActionKind, moveEnd, validatePlan } from "./plan";
@@ -114,11 +114,73 @@ describe("AI scoring of Moves", () => {
     expect(scoreTile(nest, 6, [], [], bruiserRange, [])).toBe(scoreTile(open, 6, [], [], bruiserRange, []));
   });
 
+  it("gives the Assassin another tile than the Bruiser from the same start", () => {
+    const start = { col: 6, row: 5 };
+    const match = startRound(createMatch(5));
+    match.heroes.find((hero) => hero.id === "right-assassin")!.position = { col: 12, row: 2 };
+    for (const hero of match.heroes.filter((candidate) => candidate.squad === SquadId.Left)) hero.position = start;
+    const sameStart = buildSquadView(match, SquadId.Left);
+    const endOf = (heroId: string, plan: ReturnType<typeof planSquad>) => {
+      const move = plan.heroes.find((hero) => hero.heroId === heroId)!.queue.find((action) => action.kind === ActionKind.Move);
+      return move?.kind === ActionKind.Move ? moveEnd(start, move.destination) : undefined;
+    };
+    // One Hero planned at a time, so claimed tiles do not separate them: only the role does.
+    const alone = (heroId: string) => planSquad(sameStart, [heroId]);
+    const roles = assignRoles(sameStart, sameStart.heroes.map((hero) => hero.id));
+    expect(roles.get("left-bruiser")).toBe(SquadRole.Breaker);
+    expect(roles.get("left-assassin")).toBe(SquadRole.Flanker);
+    expect(endOf("left-assassin", alone("left-assassin"))).not.toEqual(endOf("left-bruiser", alone("left-bruiser")));
+  });
+
+  it("gives a Hero without Squad mates no role", () => {
+    const view = arrange({ col: 11, row: 8 }, { col: 17, row: 8 });
+    const lone = { ...view, heroes: view.heroes.map((hero, i) => ({ ...hero, exhausted: i > 0 })) };
+    expect([...assignRoles(lone, [lone.heroes[0]!.id]).values()]).toEqual([SquadRole.None]);
+  });
+
   it("plans a whole Squad in well under 50 ms", () => {
     const views = SEEDS.map((seed) => buildSquadView(startRound(createMatch(seed)), SquadId.Left));
     const start = performance.now();
     for (const view of views) planSquad(view);
     expect((performance.now() - start) / views.length).toBeLessThan(10);
+  });
+});
+
+describe("AI Styles", () => {
+  it("gives the same Style for the same seed and at least three Styles over a range of seeds", () => {
+    const styles = (seed: number) => [aiStyleFor(seed, SquadId.Left), aiStyleFor(seed, SquadId.Right)];
+    const seen = new Set<AiStyle>();
+    for (let seed = 1; seed <= 100; seed++) {
+      expect(styles(seed)).toEqual(styles(seed));
+      styles(seed).forEach((style) => seen.add(style));
+    }
+    expect(seen.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it("gives the same plan for the same seed's Style and scales weights without touching progress", () => {
+    const view = buildSquadView(startRound(createMatch(7)), SquadId.Left);
+    const style = aiStyleFor(7, SquadId.Left);
+    expect(planSquad(view, undefined, style)).toEqual(planSquad(view, undefined, style));
+    for (const each of Object.values(AiStyle)) expect(weightsFor(each, SquadRole.None).progress).toBe(AI_WEIGHTS.progress);
+    expect(weightsFor(AiStyle.Aggressive, SquadRole.None).danger).toBeLessThan(weightsFor(AiStyle.Defensive, SquadRole.None).danger);
+  });
+
+  it("plays only legal plans with every pair of Styles", () => {
+    const styles = Object.values(AiStyle);
+    for (const [i, left] of styles.entries()) {
+      const right = styles[(i + 1) % styles.length]!;
+      let match = startRound(createMatch(3 + i));
+      for (let round = 1; round <= 30 && !match.result; round++) {
+        const plans = [SquadId.Left, SquadId.Right].map((squad) => {
+          const view = buildSquadView(match, squad);
+          const plan = planSquad(view, undefined, squad === SquadId.Left ? left : right);
+          expect(validatePlan(view, plan)).toEqual([]);
+          return plan;
+        });
+        const resolution = resolveRound(match, plans);
+        match = resolution.match.result ? resolution.match : startRound(resolution.match);
+      }
+    }
   });
 });
 
