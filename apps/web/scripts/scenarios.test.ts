@@ -107,7 +107,8 @@ describe("Assassin scenarios stage what their names say", () => {
 
   it.each([
     ["precision-shot", 2],
-    ["piercing-round", 2],
+    ["cover-breaker", 2],
+    ["assassin-shield-breaker", 2],
     ["long-shot", 2],
     ["long-shot-overdrive", 4],
     ["ghost-shot", 2],

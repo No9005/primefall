@@ -163,11 +163,11 @@ describe("Attack and Defend: Squad View and host", () => {
 });
 
 describe("the classic mode", () => {
-  // Recorded from the classic path (AI against AI, 60 Rounds at most); re-recorded when the AI began to score its Moves (#329) and for seed 3 when Crossfire was added (#342).
+  // Recorded from the classic path (AI against AI, 60 Rounds at most); re-recorded when the AI began to score its Moves (#329) and for seed 3 when Crossfire was added (#342) and for seed 42 when Shield Breaker joined the Assassin Deck (#344).
   const recorded = [
     { seed: 3, round: 5, winner: SquadId.Left, deckTotals: { left: 10, right: 10 }, positions: "14,7:4 15,7:2 14,8:4 16,7:2 16,8:4 17,9:4", rng: 3775861423 },
     { seed: 11, round: 5, winner: SquadId.Left, deckTotals: { left: 12, right: 10 }, positions: "14,7:4 15,7:4 14,8:4 16,7:2 16,8:4 17,9:4", rng: 1312459948 },
-    { seed: 42, round: 5, winner: SquadId.Left, deckTotals: { left: 8, right: 10 }, positions: "14,7:2 15,7:2 14,8:4 16,7:2 16,8:4 16,9:4", rng: 2576131319 },
+    { seed: 42, round: 6, winner: SquadId.Right, deckTotals: { left: 22, right: 8 }, positions: "14,7:4 15,7:6 13,10:12 16,7:2 16,8:4 16,9:2", rng: 2888261004 },
   ];
 
   it.each(recorded)("plays seed $seed exactly as recorded", ({ seed, round, winner, deckTotals, positions, rng }) => {

@@ -101,15 +101,16 @@ function crossfireBonus(match: MatchState, tick: number, source: HeroState, targ
 }
 
 /**
- * Crossfire raises the incoming damage before Shield absorbs.
+ * Crossfire raises the incoming damage before Shield absorbs. Piercing Damage skips the Shield.
  * Shield absorbs first; the rest is Deck Damage: the top cards, one per point, leave the cycle (Exile) so the
  * damage lasts. When the Deck runs out on the way, the Discard is shuffled into it and the damage goes on.
  * Then the events read: AttackHit (cards burned so far), DeckShuffled, AttackHit (the rest).
  */
-function dealDamage(match: MatchState, tick: number, source: HeroState, target: HeroState, baseDamage: number, events: MatchEvent[]): void {
+function dealDamage(match: MatchState, tick: number, source: HeroState, target: HeroState, baseDamage: number, events: MatchEvent[], piercing = false): void {
   let crossfire = crossfireBonus(match, tick, source, target);
   const incoming = baseDamage + crossfire;
-  const absorbed = Math.min(target.shield, incoming);
+  // Piercing Damage (Crossfire bonus included) leaves the Shield untouched.
+  const absorbed = piercing ? 0 : Math.min(target.shield, incoming);
   target.shield -= absorbed;
   let remaining = incoming - absorbed;
   let burned = 0;
@@ -320,7 +321,8 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const damageEffect = card.effects.find(({ kind }) => kind === EffectKind.Damage || kind === EffectKind.DamageAtLongRange)!;
     const damage = damageAtDistance(damageEffect, distance) + hero.attackBonus;
     const incoming = Math.max(0, damage - (halfCover ? HALF_COVER_REDUCTION : 0));
-    dealDamage(match, tick, hero, target, incoming, events);
+    const piercing = card.effects.some(({ kind }) => kind === EffectKind.PiercingDamage);
+    dealDamage(match, tick, hero, target, incoming, events, piercing);
     if (halfCover && damage > 0) flagHalfCover(events, first);
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplySlow)) {
       applySlow(tick, hero, target, effect, events);

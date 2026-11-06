@@ -73,6 +73,7 @@ const EFFECT_TEXT: Record<EffectKind, (effect: CardEffect) => string> = {
   [EffectKind.DestroyHalfCover]: () => "destroys Half Cover",
   [EffectKind.DestroyAnyCover]: () => "destroys any Cover",
   [EffectKind.IgnoreHalfCover]: () => "ignores Half Cover",
+  [EffectKind.PiercingDamage]: () => "Piercing Damage: ignores Shield",
   [EffectKind.GainShield]: ({ amount }) => `Shield ${amount}`,
   [EffectKind.GrantExtraMove]: ({ amount }) => `ally Moves ${amount} more tiles`,
   [EffectKind.ExtendMove]: ({ amount }) => `next Move covers ${amount} tiles`,

@@ -168,7 +168,8 @@ const ENEMIES_WITH_ATTACKS = { hand: [0, 1, 2, 3] };
 const PLAYER_ASSASSIN = `${SquadId.Left}-assassin`;
 // Assassin Deck list indices (the first copy of each card).
 const PRECISION_SHOT = 0;
-const PIERCING_ROUND = 2;
+const COVER_BREAKER = 2;
+const SHIELD_BREAKER = 3;
 const LONG_SHOT = 4;
 const GHOST_SHOT = 6;
 const EXECUTION_ROUND = 7;
@@ -176,7 +177,7 @@ const VANISH = 8;
 const MARK_TARGET = 10;
 const REPOSITION = 11;
 /** Cards that fill the rest of an Assassin's Hand; the ones in slots 1 and 2 are the Pitch for Energy. */
-const ASSASSIN_FILLERS: CardIndex[] = [9, 1, 3];
+const ASSASSIN_FILLERS: CardIndex[] = [9, 1, 5];
 
 /** The Squad remembers an enemy Hero at a tile it can no longer see (a Ghost). */
 function remember(match: MatchState, enemyId: string, position: GridPosition): void {
@@ -242,9 +243,9 @@ const ASSASSIN_SCENARIOS: readonly Scenario[] = [
     use: [SHOOT_AT_BRUISER],
   }),
   assassinScenario({
-    name: "piercing-round",
-    description: "An Assassin fires Piercing Round at an enemy Bruiser standing on Half Cover, which the shot ignores.",
-    seed: 22, at: { col: 9, row: 3 }, card: PIERCING_ROUND, enemies: { [RIGHT_BRUISER]: { col: 13, row: 2 } },
+    name: "cover-breaker",
+    description: "An Assassin fires Cover Breaker at an enemy Bruiser standing on Half Cover, which the shot ignores.",
+    seed: 22, at: { col: 9, row: 3 }, card: COVER_BREAKER, enemies: { [RIGHT_BRUISER]: { col: 13, row: 2 } },
     use: [SHOOT_AT_BRUISER],
   }),
   assassinScenario({
@@ -278,6 +279,12 @@ const ASSASSIN_SCENARIOS: readonly Scenario[] = [
     description: "An Assassin fires Ghost Shot in Overdrive at the last known position of a Ghost that has left the tile: the shot hits nobody.",
     seed: 27, at: { col: 10, row: 3 }, card: GHOST_SHOT, ghosts: { [RIGHT_BRUISER]: { col: 13, row: 3 } },
     use: [{ slot: 0, use: "overdrive", target: RIGHT_BRUISER }],
+  }),
+  assassinScenario({
+    name: "assassin-shield-breaker",
+    description: "An Assassin fires Shield Breaker (2 Energy, 2 Piercing Damage) at an enemy Bruiser at Range 4.",
+    seed: 29, at: { col: 10, row: 3 }, card: SHIELD_BREAKER, enemies: { [RIGHT_BRUISER]: { col: 14, row: 3 } },
+    pitch: 2, use: [SHOOT_AT_BRUISER],
   }),
   assassinScenario({
     name: "execution-round",
