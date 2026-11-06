@@ -164,6 +164,9 @@ _Avoid_: Guard, holder
 The end reason of an Attack and Defend match in which the Round limit of the mode (default 12) was played without an Attacker win. The Defender wins.
 _Avoid_: Timeout, draw
 
+**AI Style**:
+A set of weights chosen per match from the match seed (for example Aggressive, Defensive, Flanker) that shifts how the AI scores its options.
+
 **Overwatch Nest**:
 The single Full Cover position with a sightline into the Prime Zone. It is the Assassin’s secondary objective.
 _Avoid_: Sniper nest, camp spot

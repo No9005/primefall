@@ -4,7 +4,8 @@ import { playAiMatch } from "./ai-match";
 import { planSquad } from "./ai";
 import { MatchEndReason, MatchMode, SquadId } from "./host";
 import { buildSquadView, createMatch, startRound } from "./match";
-import { ActionKind, validatePlan } from "./plan";
+import { ActionKind, moveEnd, validatePlan } from "./plan";
+import { CoverKind, coverAt, type GridPosition, REACTOR_DECK } from "./reactor-deck";
 import { resolveRound } from "./resolution";
 
 const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
@@ -48,6 +49,41 @@ describe("AI planning", () => {
     const source = readFileSync(new URL("./ai.ts", import.meta.url), "utf8");
     expect(source).not.toMatch(/from "\.\/(match|resolution|server)"/);
     expect(planSquad.length).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("AI scoring of Moves", () => {
+  /** The Left Bruiser stands at `start`, the Right Assassin at `enemy`; the other Heroes stay at their Spawn. */
+  const arrange = (start: GridPosition, enemy: GridPosition) => {
+    const match = startRound(createMatch(5));
+    match.heroes.find((hero) => hero.id === "left-bruiser")!.position = start;
+    match.heroes.find((hero) => hero.id === "right-assassin")!.position = enemy;
+    return buildSquadView(match, SquadId.Left);
+  };
+  const firstMove = (view: ReturnType<typeof arrange>) => {
+    const queue = planSquad(view).heroes.find((hero) => hero.heroId === "left-bruiser")!.queue;
+    const move = queue.find((action) => action.kind === ActionKind.Move);
+    return move?.kind === ActionKind.Move ? moveEnd(view.heroes.find((hero) => hero.id === "left-bruiser")!.position, move.destination) : undefined;
+  };
+
+  it("ends the Move in Cover when an open tile is equally far from the Prime Zone and an enemy is Visible", () => {
+    // From (11, 8) the Half Cover at (13, 6) and the open tiles (13, 7) to (13, 9) are all one step from the Zone.
+    const end = firstMove(arrange({ col: 11, row: 8 }, { col: 17, row: 7 }));
+    expect(end).toEqual({ col: 13, row: 6 });
+    expect(coverAt(REACTOR_DECK, end!)).not.toBe(CoverKind.None);
+  });
+
+  it("takes the flank tile beside the enemy instead of the straight advance", () => {
+    const enemy = { col: 17, row: 8 };
+    const end = firstMove(arrange({ col: 11, row: 8 }, enemy))!;
+    expect(Math.abs(end.row - enemy.row)).toBeGreaterThanOrEqual(2);
+  });
+
+  it("plans a whole Squad in well under 50 ms", () => {
+    const views = SEEDS.map((seed) => buildSquadView(startRound(createMatch(seed)), SquadId.Left));
+    const start = performance.now();
+    for (const view of views) planSquad(view);
+    expect((performance.now() - start) / views.length).toBeLessThan(10);
   });
 });
 
