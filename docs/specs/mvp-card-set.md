@@ -54,8 +54,8 @@ Overdrive modes: Tag Round, Scout Drone (both cards) and Aegis Protocol (four Ov
 
 1. **Precision Shot** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 5 with a clear Line of Sight when the Attack fires; otherwise it misses.
 2. **Precision Shot** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 5 with a clear Line of Sight when the Attack fires; otherwise it misses.
-3. **Piercing Round** — Attack, 1 Energy: Deal 2 damage; ignore Half Cover.
-4. **Piercing Round** — Attack, 1 Energy: Deal 2 damage; ignore Half Cover.
+3. **Cover Breaker** — Attack, 1 Energy: Deal 2 damage; ignore Half Cover.
+4. **Shield Breaker** — Attack, 2 Energy: Deal 2 Piercing Damage to the named visible enemy Hero if it is allowed when the Attack fires (see Declared Target, Range 4); otherwise it misses. Shield is not reduced by it. Half Cover still reduces the damage by 1; Full Cover still blocks.
 5. **Long Shot** — Attack, 1 Energy: Range 7; deal 2 damage. **Overdrive:** Range 7; deal 4 damage if the target is at Range 6 or 7, otherwise deal 2 damage.
 6. **Long Shot** — Attack, 1 Energy: Range 7; deal 2 damage. **Overdrive:** Range 7; deal 4 damage if the target is at Range 6 or 7, otherwise deal 2 damage.
 7. **Ghost Shot** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is allowed when the Attack fires (see Declared Target); otherwise it misses. **Overdrive:** Target the last known position of a Ghost instead; the shot hits only if an enemy occupies that tile during Resolution.

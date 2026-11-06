@@ -67,7 +67,7 @@ Durations are the whole clip at normal speed. "Active" means from the start unti
 | Walk | all | `Step` | loop 640 (Assassin 500) | one stride per tile step: a half cycle per step | same |
 | Wait | all | `Wait` | loop 3200 | look left at 830, right at 2200; a grey II mark above the head | same |
 | Attack: Slam Shot | Bruiser | `AttackHit` / `AttackFailed` of Slam Shot, Concussion Round | once 2400 | aim 290-580, **fire 620**, settle 910, rest 1540 | `bruiser-1` |
-| Attack: Precision Shot | Assassin | Precision Shot, Piercing Round, Execution Round, Ghost Shot | once 2200 | aim 260-480, **fire 570**, rest 1450 | `assassin-1` |
+| Attack: Precision Shot | Assassin | Precision Shot, Cover Breaker, Shield Breaker, Execution Round, Ghost Shot | once 2200 | aim 260-480, **fire 570**, rest 1450 | `assassin-1` |
 | Attack: Long Shot | Assassin | Long Shot | once 3600 | kneel 290-790, scope glint 1370, **fire 1650**, stand 2590-3170 | `assassin-2` |
 | Attack: Pulse Bolt | Controller | Pulse Bolt, Shock Pulse | once 2400 | raise 240-530, **fire 620**, rest 1630 | `controller-1` |
 | Attack: Tag Round | Controller | Tag Round | once 2800 | raise, **fire 730**, reticle 1290-1400 | `controller-1` |

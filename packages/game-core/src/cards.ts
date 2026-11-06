@@ -36,6 +36,8 @@ export enum EffectKind {
   DestroyHalfCover = "destroyHalfCover",
   DestroyAnyCover = "destroyAnyCover",
   IgnoreHalfCover = "ignoreHalfCover",
+  /** The card's damage is Piercing Damage: it does not use up Shield and goes straight into Deck Damage. */
+  PiercingDamage = "piercingDamage",
   GainShield = "gainShield",
   GrantExtraMove = "grantExtraMove",
   /** The Hero's next Move action in the Queue covers `amount` tiles instead of 2 (ADR 0020). */
@@ -124,6 +126,7 @@ export function isSimpleAttack(card: CardDefinition): boolean {
       (effect) =>
         effect.kind === EffectKind.ApplySlow ||
         effect.kind === EffectKind.IgnoreHalfCover ||
+        effect.kind === EffectKind.PiercingDamage ||
         effect.kind === EffectKind.ApplyMarked,
     )
   );
@@ -340,9 +343,13 @@ const precisionShot: CardDefinition = {
   name: "Precision Shot", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE,
   target: CardTarget.VisibleEnemy, effects: [damage(2)],
 };
-const piercingRound: CardDefinition = {
-  name: "Piercing Round", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE,
+const coverBreaker: CardDefinition = {
+  name: "Cover Breaker", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE,
   target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.IgnoreHalfCover }],
+};
+const shieldBreaker: CardDefinition = {
+  name: "Shield Breaker", type: CardType.Attack, energyCost: 2, range: 4,
+  target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.PiercingDamage }],
 };
 const longShot: CardDefinition = {
   name: "Long Shot", type: CardType.Attack, energyCost: 1, range: 7,
@@ -389,7 +396,7 @@ export const HERO_DECKS: Record<HeroClass, readonly CardDefinition[]> = {
     aegisProtocol, fortify, deployCover, deployCover, gravitySnare, overwatchUplink,
   ],
   [HeroClass.Assassin]: [
-    precisionShot, precisionShot, piercingRound, piercingRound, longShot, longShot,
+    precisionShot, precisionShot, coverBreaker, shieldBreaker, longShot, longShot,
     ghostShot, executionRound, vanish, vanish, markTarget, reposition,
   ],
 };

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { HERO_DECKS, HeroClass } from "./cards";
 import { EventKind, SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, recordSightings, SIGHT_RANGE, startRound } from "./match";
 import { ActionKind, PlanIssueKind, type QueuedAction, type SquadPlan, validatePlan } from "./plan";
@@ -7,9 +8,10 @@ import { Visibility } from "./host";
 
 const ASSASSIN = "left-assassin";
 const ENEMY = "right-bruiser";
-// Assassin cards: 0 Precision Shot, 2 Piercing Round, 4 Long Shot, 6 Ghost Shot, 7 Execution Round,
+// Assassin cards: 0 Precision Shot, 2 Cover Breaker, 3 Shield Breaker, 4 Long Shot, 6 Ghost Shot, 7 Execution Round,
 // 8 Vanish, 10 Mark Target, 11 Reposition; card 1 (Precision Shot) serves as Pitch.
-const PIERCING_ROUND = 2;
+const COVER_BREAKER = 2;
+const SHIELD_BREAKER = 3;
 const GHOST_SHOT = 6;
 const EXECUTION_ROUND = 7;
 const VANISH = 8;
@@ -46,20 +48,56 @@ function scene(from = OPEN, enemyAt = { col: from.col + 3, row: from.row }, hand
 
 const deckLoss = (before: MatchState, after: MatchState, id = ENEMY) => hero(before, id).deck.length - hero(after, id).deck.length;
 
-describe("Precision Shot, Piercing Round and Execution Round", () => {
+describe("Precision Shot, Cover Breaker and Execution Round", () => {
   it("Execution Round deals 3 damage for 2 Energy", () => {
     const match = scene(OPEN, undefined, [PITCH, 0, EXECUTION_ROUND, REPOSITION]);
     const { match: after } = resolveRound(match, [plan([primary(EXECUTION_ROUND, ENEMY)], [PITCH, 0])]);
     expect(deckLoss(match, after)).toBe(3);
   });
 
-  it("Piercing Round ignores Half Cover while a Precision Shot is reduced by it", () => {
+  it("Cover Breaker ignores Half Cover while a Precision Shot is reduced by it", () => {
     const attacker = { col: 11, row: 5 };
-    const hand = [PITCH, PIERCING_ROUND, 0, REPOSITION];
+    const hand = [PITCH, COVER_BREAKER, 0, REPOSITION];
     const match = scene(attacker, HALF_COVER, hand);
-    const piercing = resolveRound(match, [plan([primary(PIERCING_ROUND, ENEMY)])]).match;
+    const breaker = resolveRound(match, [plan([primary(COVER_BREAKER, ENEMY)])]).match;
     const precision = resolveRound(match, [plan([primary(0, ENEMY)])]).match;
-    expect([deckLoss(match, piercing), deckLoss(match, precision)]).toEqual([2, 1]);
+    expect([deckLoss(match, breaker), deckLoss(match, precision)]).toEqual([2, 1]);
+  });
+});
+
+describe("Shield Breaker (Piercing Damage)", () => {
+  const hand = [PITCH, 0, SHIELD_BREAKER, REPOSITION];
+  const fire = (match: MatchState) => resolveRound(match, [plan([primary(SHIELD_BREAKER, ENEMY)], [PITCH, 0])]);
+
+  it("ignores Shield 3: nothing is absorbed and 2 cards leave the Deck, where a Precision Shot is absorbed", () => {
+    const match = scene(OPEN, { col: 6, row: 1 }, [PITCH, 0, SHIELD_BREAKER, 4]);
+    hero(match, ENEMY).shield = 3;
+    const { match: after, events } = fire(match);
+    expect(deckLoss(match, after)).toBe(2);
+    expect(events).toContainEqual(expect.objectContaining({ kind: EventKind.AttackHit, absorbed: 0, damage: 2 }));
+    const precision = resolveRound(match, [plan([primary(4, ENEMY)])]);
+    expect(deckLoss(match, precision.match)).toBe(0);
+    expect(precision.events).toContainEqual(expect.objectContaining({ kind: EventKind.AttackHit, absorbed: 2, damage: 0 }));
+  });
+
+  it("is reduced by 1 by Half Cover and blocked by Full Cover", () => {
+    const half = scene({ col: 11, row: 5 }, HALF_COVER, hand);
+    expect(deckLoss(half, fire(half).match)).toBe(1);
+    const full = scene({ col: 12, row: 1 }, OVERWATCH_NEST, hand);
+    expect(deckLoss(full, fire(full).match)).toBe(0);
+  });
+
+  it("misses beyond Range 4", () => {
+    const match = scene(OPEN, { col: 7, row: 1 }, hand);
+    expect(deckLoss(match, fire(match).match)).toBe(0);
+  });
+
+  it("is one Shield Breaker and one Cover Breaker in the 12-card Deck", () => {
+    const names = HERO_DECKS[HeroClass.Assassin].map(({ name }) => name);
+    expect(names).toHaveLength(12);
+    expect(names.filter((name) => name === "Shield Breaker")).toHaveLength(1);
+    expect(names.filter((name) => name === "Cover Breaker")).toHaveLength(1);
+    expect(names).not.toContain("Piercing Round");
   });
 });
 

@@ -74,6 +74,10 @@ _Avoid_: Defend, guard, parry
 A hit on a Hero by a different attacker in the same Tick or the Tick directly after a hit by another attacker on that Hero; it deals 1 extra damage.
 _Avoid_: Flanking bonus, focus bonus
 
+**Piercing Damage**:
+Damage that does not use up Shield; it goes straight into Deck Damage. Cover still applies to it.
+_Avoid_: True damage, armor piercing
+
 **Deck Damage**:
 Unblocked damage that removes cards from the top of the target’s Deck. One damage removes one card into the Exile; if the Deck runs out on the way, the Discard is shuffled into it and the damage goes on.
 _Avoid_: HP damage, wound
