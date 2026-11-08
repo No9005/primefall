@@ -2,7 +2,7 @@ import { HeroClass } from "game-core";
 import { useEffect, useRef, useState } from "react";
 import { Board, type TokenHero } from "./Board";
 import type { BoardPick, Point } from "./card-drag";
-import { BlockChip, CardFace, EnergyPill, ModeFaceCard } from "./game-parts";
+import { CardFace, EnergyPill, ModeFaceCard } from "./game-parts";
 import "./tutorial.css";
 import { OVERDRIVE_FACES, SIGHT_SCENE, TUTORIAL_STEP_SECONDS, TUTORIAL_STEPS, TutorialDrop, TutorialTopic } from "./tutorial";
 import { zoneLook } from "./vision-effects";
@@ -118,7 +118,7 @@ export function TutorialScreen({ onPlay, onClose }: { onPlay: () => void; onClos
               return <div key={i} className={tileClasses(col, row, step.topic)} />;
             })}
             <div className="tutorial-hero ally" style={{ gridColumn: heroPosition.col + 1, gridRow: heroPosition.row + 1 }}>
-              {step.topic === TutorialTopic.Block && dropped ? "Shield 2" : "Hero"}
+              Hero
             </div>
             <div className="tutorial-hero enemy" style={{ gridColumn: ENEMY.col + 1, gridRow: ENEMY.row + 1 }}>
               Hero
@@ -131,7 +131,6 @@ export function TutorialScreen({ onPlay, onClose }: { onPlay: () => void; onClos
           </div>
         )}
         <div className="tutorial-side">
-          <BlockChip allowed={step.drop === TutorialDrop.BlockChip} active={step.drop === TutorialDrop.BlockChip && dropped} />
           <EnergyPill available={step.drop === TutorialDrop.EnergyOrb && dropped ? 1 : 0} lit={step.drop === TutorialDrop.EnergyOrb} active={step.drop === TutorialDrop.EnergyOrb && dropped} />
         </div>
         {step.card && (

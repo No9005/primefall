@@ -7,11 +7,10 @@ const glossary = readFileSync(path.resolve(__dirname, "../../../GLOSSARY.md"), "
 const definedTerms = [...glossary.matchAll(/^\*\*(.+?)\*\*:/gm)].map((match) => match[1]);
 
 describe("Tutorial steps", () => {
-  it("cover the seven topics in order", () => {
+  it("cover the six topics in order", () => {
     expect(TUTORIAL_STEPS.map((step) => step.topic)).toEqual([
       TutorialTopic.Goal,
       TutorialTopic.Move,
-      TutorialTopic.Block,
       TutorialTopic.Pitch,
       TutorialTopic.Attack,
       TutorialTopic.Overdrive,
@@ -31,7 +30,7 @@ describe("Tutorial steps", () => {
   it("reuses the game's own card face, drop targets and Board instead of defining its own", () => {
     const screen = readFileSync(path.resolve(__dirname, "TutorialScreen.tsx"), "utf8");
     expect(screen).toMatch(/import \{[^}]*\bCardFace\b[^}]*\bModeFaceCard\b[^}]*\} from "\.\/game-parts"/);
-    expect(screen).toMatch(/import \{[^}]*\bBlockChip\b[^}]*\bEnergyPill\b[^}]*\} from "\.\/game-parts"/);
+    expect(screen).toMatch(/import \{[^}]*\bEnergyPill\b[^}]*\} from "\.\/game-parts"/);
     expect(screen).toContain('from "./Board"');
     expect(screen).not.toMatch(/className="card-(name|cost|text|type)"/);
     expect(screen).not.toMatch(/inShadow|tutorial-sight-line/);

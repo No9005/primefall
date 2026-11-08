@@ -86,24 +86,30 @@ describe("the faces of a card", () => {
   const withOverdrive = HERO_DECKS[HeroClass.Assassin].find((card) => card.overdrive)!;
   const without = HERO_DECKS[HeroClass.Assassin].find((card) => !card.overdrive)!;
 
-  it("has four faces, five on a card with an Overdrive", () => {
-    expect(faceViews(without, allFree, undefined, { primary: "x", overdrive: undefined }).map(({ face }) => face)).toEqual([
+  it("has four faces, five on a card with an Overdrive, and no Block face in the classic mode", () => {
+    expect(faceViews(without, allFree, undefined, { primary: "x", overdrive: undefined }, true).map(({ face }) => face)).toEqual([
       CardUse.Primary,
       CardUse.Pitch,
       CardUse.Move,
       CardUse.Block,
     ]);
-    expect(faceViews(withOverdrive, allFree, undefined, { primary: "x", overdrive: "y" }).map(({ face }) => face)).toEqual([
+    expect(faceViews(withOverdrive, allFree, undefined, { primary: "x", overdrive: "y" }, true).map(({ face }) => face)).toEqual([
       CardUse.Primary,
       CardUse.Pitch,
       CardUse.Move,
       CardUse.Block,
       "overdrive",
     ]);
+    expect(faceViews(withOverdrive, allFree, undefined, { primary: "x", overdrive: "y" }, false).map(({ face }) => face)).toEqual([
+      CardUse.Primary,
+      CardUse.Pitch,
+      CardUse.Move,
+      "overdrive",
+    ]);
   });
 
   it("shows an unaffordable cost as Not enough Energy and keeps other reasons", () => {
-    const faces = faceViews(withOverdrive, { ...allFree, [CardUse.Primary]: "needs 2 Energy", [CardUse.Move]: "Queue is full" }, "needs 2 Energy", { primary: "x", overdrive: "y" });
+    const faces = faceViews(withOverdrive, { ...allFree, [CardUse.Primary]: "needs 2 Energy", [CardUse.Move]: "Queue is full" }, "needs 2 Energy", { primary: "x", overdrive: "y" }, true);
     const reason = (face: Face) => faces.find((candidate) => candidate.face === face)?.reason;
     expect(reason(CardUse.Primary)).toBe("Not enough Energy");
     expect(reason("overdrive")).toBe("Not enough Energy");
