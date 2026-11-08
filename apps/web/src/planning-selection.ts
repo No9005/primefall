@@ -5,6 +5,8 @@ import {
   type CardEffect,
   type CardIndex,
   CardTarget,
+  CHARGE_DAMAGE_BONUS,
+  CHARGE_SHIELD,
   chebyshevDistance,
   CoverKind,
   coverAgainst,
@@ -84,6 +86,10 @@ const EFFECT_TEXT: Record<EffectKind, (effect: CardEffect) => string> = {
   [EffectKind.BecomeHidden]: () => "become Hidden",
   [EffectKind.TargetGhost]: () => "shoots a Ghost's last known position",
   [EffectKind.RemoveHalfCoverReduction]: () => "Half Cover does not reduce the damage",
+  [EffectKind.Pull]: ({ amount }) => `Pull ${amount}: the enemy moves up to ${amount} tiles toward this Hero`,
+  [EffectKind.Charge]: ({ amount }) =>
+    `moves up to ${amount} tiles toward the enemy and ends next to it, Shield ${CHARGE_SHIELD} until the end of the Round, +${CHARGE_DAMAGE_BONUS} damage on the next Attack at Range 1`,
+  [EffectKind.CloseRangeBonus]: ({ amount }) => `+${amount} damage at Range 1`,
 };
 
 function describeEffect(effect: CardEffect): string {
