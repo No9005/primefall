@@ -24,7 +24,7 @@ const BREACH_CHARGE = 4;
 const SLAM_SHOT = 0;
 
 const HALF_COVER_TILE = { col: 14, row: 5 };
-const FULL_COVER_TILE ={ col: 15, row: 1 };
+const FULL_COVER_TILE = { col: 15, row: 1 };
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 
