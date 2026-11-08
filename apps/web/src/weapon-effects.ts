@@ -543,6 +543,19 @@ function knockbackCues(event: MatchEvent, frame: CueFrame): void {
   });
 }
 
+/** Pull slides the enemy toward the caster: the Knockback slide, tagged with the Pull of the card. */
+function pullCues(event: MatchEvent, frame: CueFrame): void {
+  if (!event.from || !event.to) return;
+  frame.cues.push({
+    kind: "knockback",
+    toId: event.heroId,
+    from: event.from,
+    to: event.to,
+    startMs: 0,
+    tag: "Pull",
+  });
+}
+
 function coverDestroyedCues(event: MatchEvent, frame: CueFrame): void {
   if (!event.to) return;
   addBreach(frame.cues, {
@@ -598,6 +611,7 @@ const CUE_BUILDERS: Partial<Record<EventKind, (event: MatchEvent, frame: CueFram
   [EventKind.AttackHit]: attackCues,
   [EventKind.AttackFailed]: attackCues,
   [EventKind.Knockback]: knockbackCues,
+  [EventKind.Pull]: pullCues,
   [EventKind.CoverDestroyed]: coverDestroyedCues,
   [EventKind.AttackBonusGained]: attackBonusCues,
   [EventKind.ShieldGained]: shieldGainedCues,
@@ -620,6 +634,7 @@ function auraEndMs(fireMs: number): number {
 function overdriveActor(event: MatchEvent, events: readonly MatchEvent[]): string | undefined {
   switch (event.kind) {
     case EventKind.Knockback:
+    case EventKind.Pull:
     case EventKind.CoverReductionIgnored:
     case EventKind.HiddenGained:
       return undefined;

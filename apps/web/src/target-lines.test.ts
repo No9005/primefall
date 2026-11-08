@@ -40,9 +40,9 @@ const attack = (target: string): QueuedAction => ({ kind: ActionKind.Primary, ca
 describe("plannedTargetLines", () => {
   it("draws a teal Attack line numbered with its Tick when the shot can hit", () => {
     const move: QueuedAction = { kind: ActionKind.Move, card: 0, destination: { col: 1, row: 1 } };
-    const lines = plannedTargetLines(grid, heroes, [visible("e", { col: 4, row: 1 })], [plan("b", [move, attack("e")])]);
+    const lines = plannedTargetLines(grid, heroes, [visible("e", { col: 3, row: 1 })], [plan("b", [move, attack("e")])]);
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toMatchObject({ kind: LineKind.Attack, tone: LineTone.Clear, tick: 2, own: true, from: bruiser.position, to: { col: 4, row: 1 } });
+    expect(lines[0]).toMatchObject({ kind: LineKind.Attack, tone: LineTone.Clear, tick: 2, own: true, from: bruiser.position, to: { col: 3, row: 1 } });
     expect(lines[0]!.shot?.cross).toBeUndefined();
     expect(lines[0]).toMatchObject({ planned: true, unreachable: false });
   });
@@ -50,11 +50,11 @@ describe("plannedTargetLines", () => {
   it("checks an Attack from the position after the Moves before it", () => {
     const far = parseGrid(["####################", "#..................#", "####################"]);
     const target = [visible("e", { col: 18, row: 1 })];
-    const move: QueuedAction = { kind: ActionKind.Move, card: 0, destination: { col: 15, row: 1 } };
+    const move: QueuedAction = { kind: ActionKind.Move, card: 0, destination: { col: 16, row: 1 } };
     const [before] = plannedTargetLines(far, [bruiser], target, [plan("b", [attack("e")])]);
     const [after] = plannedTargetLines(far, [bruiser], target, [plan("b", [move, attack("e")])]);
     expect(before).toMatchObject({ unreachable: true, tone: LineTone.Red });
-    expect(after).toMatchObject({ unreachable: false, tone: LineTone.Clear, from: { col: 15, row: 1 } });
+    expect(after).toMatchObject({ unreachable: false, tone: LineTone.Clear, from: { col: 16, row: 1 } });
   });
 
   it("hints that a Tick 4 shot may miss, with the reason, and says nothing when it can hit", () => {
@@ -67,7 +67,7 @@ describe("plannedTargetLines", () => {
     const closer: QueuedAction = { kind: ActionKind.Move, card: 0, destination: { col: 16, row: 1 } };
     const [inReach] = plannedTargetLines(far, [bruiser], target, [plan("b", [closer, wait, wait, attack("e")])]);
     expect(inReach!.missHint).toBeUndefined();
-    const [walled] = plannedTargetLines(grid, [hero("b", HeroClass.Bruiser, { col: 2, row: 2 })], [visible("e", { col: 5, row: 2 })], [plan("b", [attack("e")])]);
+    const [walled] = plannedTargetLines(grid, [hero("b", HeroClass.Bruiser, { col: 3, row: 2 })], [visible("e", { col: 5, row: 2 })], [plan("b", [attack("e")])]);
     expect(walled!.missHint).toBe("may miss: no clear shot from the planned position");
   });
 
