@@ -204,7 +204,7 @@ _Avoid_: Timeout, draw
 A set of weights chosen per match from the match seed (for example Aggressive, Defensive, Flanker) that shifts how the AI scores its options.
 
 **Overwatch Nest**:
-The single Full Cover position with a sightline into the Prime Zone. It is the Assassin’s secondary objective.
+The single Full Cover position with a sightline into the Prime Zone. **Removed for now** (ADR 0024): no map places it at present.
 _Avoid_: Sniper nest, camp spot
 
 **Reactor Deck**:

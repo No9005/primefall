@@ -189,8 +189,6 @@ export const AI_WEIGHTS = {
   keepShot: 3,
   /** Per remembered (Ghost) enemy that could hit the tile from where it was last seen, before Cover and age. */
   ghostDanger: 4,
-  /** A Hero with a long Range Attack ending on the Overwatch Nest, which has sight over the Zone approach. */
-  nest: 6,
   /** Aiming at an enemy a Squad mate attacks in the same Tick or the Tick before or after (Crossfire needs consecutive Ticks). */
   focus: 5,
 };
@@ -228,7 +226,7 @@ export function aiStyleFor(seed: number, squad: SquadId): AiStyle {
 export enum SquadRole {
   /** Goes at the Zone head-on: danger counts less. */
   Breaker = "breaker",
-  /** Takes the flank or the Overwatch Nest. */
+  /** Takes the flank. */
   Flanker = "flanker",
   /** Takes Cover beside the Zone. */
   Anchor = "anchor",
@@ -238,7 +236,7 @@ export enum SquadRole {
 
 const ROLE_SCALES: Record<SquadRole, WeightScale> = {
   [SquadRole.Breaker]: { danger: 0.3, ghostDanger: 0.3, cover: 0.3, flank: 0.5, spreadClose: 0.5 },
-  [SquadRole.Flanker]: { nest: 2, spreadLine: 2, cover: 0.5 },
+  [SquadRole.Flanker]: { spreadLine: 2, cover: 0.5 },
   [SquadRole.Anchor]: { cover: 2, danger: 1.5, flank: 0.3 },
   [SquadRole.None]: {},
 };
@@ -270,9 +268,6 @@ export function weightsFor(style: AiStyle, role: SquadRole): AiWeights {
 
 /** A Ghost counts as a threat for this many Rounds after it was last seen; it counts less the older it is. */
 export const GHOST_MEMORY_ROUNDS = 4;
-/** From this weapon Range on, a Hero values the Overwatch Nest (long-range damage applies from Range 6). */
-const LONG_RANGE = 6;
-const OVERWATCH_NEST_TILES = findTiles(REACTOR_DECK, TileKind.OverwatchNest);
 
 /** A remembered enemy and how much of its threat is left (1 when just seen, 0 after `GHOST_MEMORY_ROUNDS`). */
 export interface GhostThreat {
@@ -302,12 +297,6 @@ const WEAPON_RANGE = Object.fromEntries(
 
 const canShoot = (from: GridPosition, to: GridPosition, range: number) =>
   chebyshevDistance(from, to) <= range && hasLineOfSight(REACTOR_DECK, from, to);
-
-/** True when the tile is an Overwatch Nest with sight on a Prime Zone tile within `weapon` Range. */
-const nestOverwatchesZone = (tile: GridPosition, weapon: number) =>
-  weapon >= LONG_RANGE &&
-  OVERWATCH_NEST_TILES.some((nest) => nest.col === tile.col && nest.row === tile.row) &&
-  PRIME_ZONE_TILES.some((zone) => canShoot(tile, zone, weapon));
 
 /** How much the tile's Cover is worth against the enemies that can hit it (0 to 1). */
 const coverShare = (tile: GridPosition, threats: readonly { position: GridPosition }[]) => {
@@ -348,7 +337,6 @@ export function scoreTile(
     W.cover * cover -
     W.danger * danger -
     W.ghostDanger * ghostRisk +
-    (nestOverwatchesZone(tile, weapon) ? W.nest : 0) +
     (flanks ? W.flank : 0) +
     (shootable.length > 0 ? W.keepShot : 0) -
     W.spreadClose * close -

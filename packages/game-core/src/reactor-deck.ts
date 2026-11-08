@@ -222,11 +222,11 @@ export function shotLine(grid: Grid, from: GridPosition, to: GridPosition, range
 /**
  * The Reactor Deck: 31 by 17 tiles, mirror-symmetric around the centre column (ADR 0016).
  * The two Outposts (3 by 2 tiles, rows 3-4 and 12-13) are an interim placement; the real map comes later.
- * `#` Wall, `H` Half Cover, `P` Prime Zone, `X` Outpost, `O` Overwatch Nest, `S` Spawn, `.` open floor.
+ * `#` Wall, `H` Half Cover, `P` Prime Zone, `X` Outpost, `S` Spawn, `.` open floor.
  */
 export const REACTOR_DECK: Grid = parseGrid([
   "###############################",
-  "#..............O..............#",
+  "#.............................#",
   "#...H...HH...HH.HH...HH...H...#",
   "#.............XXX.............#",
   "#.....HH..##.HXXXH.##..HH.....#",

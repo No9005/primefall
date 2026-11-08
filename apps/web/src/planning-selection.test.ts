@@ -1,4 +1,4 @@
-import { ActionKind, cardInMode, HERO_DECKS, HeroClass, PlanIssueKind, type QueuedAction, SquadId, validatePlan } from "game-core";
+import { ActionKind, cardInMode, HERO_DECKS, HeroClass, parseGrid, PlanIssueKind, type QueuedAction, SquadId, validatePlan } from "game-core";
 import { createLocalHost } from "game-core/local-host";
 import { describe, expect, it } from "vitest";
 import { actionUsesCard, addWaitAction, cardFace, CardUse, cardUseReasons, modeChoiceFaces, primaryAction, queueRowLabel,removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
@@ -56,7 +56,8 @@ describe("describeEffects", () => {
 describe("coverProtectionLabel", () => {
   it("names the protection a target tile gives against the attacker", () => {
     expect(coverProtectionLabel({ col: 17, row: 5 }, { col: 14, row: 5 })).toBe("Half Cover · damage -1");
-    expect(coverProtectionLabel({ col: 15, row: 4 }, { col: 15, row: 1 })).toBe("Full Cover · cannot be attacked");
+    const fullCoverGrid = parseGrid([".....", ".....", "..F..", ".....", "....."]);
+    expect(coverProtectionLabel({ col: 2, row: 4 }, { col: 2, row: 2 }, fullCoverGrid)).toBe("Full Cover · cannot be attacked");
   });
 
   it("shows nothing on open floor or at Range 1", () => {

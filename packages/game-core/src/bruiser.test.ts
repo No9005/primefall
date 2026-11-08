@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { withFullCover } from "./full-cover-fixture";
 import { EventKind, SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, PlanIssueKind, type PrimaryAction, type SquadPlan, validatePlan } from "./plan";
@@ -83,12 +84,12 @@ describe("Breach Charge Overdrive", () => {
   });
 
   it("destroys any Cover on the tile, Full Cover included", () => {
-    const nest = { col: 15, row: 1 };
-    const match = fight({ [BRUISER]: { col: 15, row: 4 }, [ENEMY]: { col: 13, row: 7 } });
-    expect(coverAt(match.grid, nest)).toBe(CoverKind.Full);
-    const { match: after, events } = blast(match, nest);
-    expect(coverAt(after.grid, nest)).toBe(CoverKind.None);
-    expect(events).toContainEqual(expect.objectContaining({ kind: EventKind.CoverDestroyed, to: nest }));
+    const fullCover = { col: 15, row: 1 };
+    const match = withFullCover(fight({ [BRUISER]: { col: 15, row: 4 }, [ENEMY]: { col: 13, row: 7 } }), fullCover);
+    expect(coverAt(match.grid, fullCover)).toBe(CoverKind.Full);
+    const { match: after, events } = blast(match, fullCover);
+    expect(coverAt(after.grid, fullCover)).toBe(CoverKind.None);
+    expect(events).toContainEqual(expect.objectContaining({ kind: EventKind.CoverDestroyed, to: fullCover }));
   });
 
   it("Exiles the card", () => {
