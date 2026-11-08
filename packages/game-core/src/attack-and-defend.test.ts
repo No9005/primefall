@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { playAiMatch } from "./ai-match";
-import { type AttackAndDefendRules, DEFENDER_ROUND_LIMIT, MatchEndReason, MatchMode, type MatchModeSetting, SquadId, ZoneTie } from "./host";
+import { type AttackAndDefendRules, DEFENDER_ROUND_LIMIT, MatchEndReason, MatchMode, type MatchModeSetting, ROUND_LIMIT, SquadId, ZoneTie } from "./host";
 import { createLocalHost, restoreLocalHost, SNAPSHOT_VERSION } from "./local-host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { findTiles, TileKind, tileAt } from "./reactor-deck";
@@ -117,7 +117,7 @@ describe("Attack and Defend: match end", () => {
     expect(resolveEmpty(match).result).toMatchObject({ winner: SquadId.Right, reason: MatchEndReason.PrimeZoneHeld });
   });
 
-  it("does not apply the 30 Round limit", () => {
+  it("does not apply the classic Round limit", () => {
     const match = matchWith(0, 3);
     match.round = 29;
     expect(resolveEmpty(match).result?.reason).toBe(MatchEndReason.DefenceHeld);
@@ -149,7 +149,7 @@ describe("Attack and Defend: Squad View and host", () => {
     const resumed = restoreLocalHost(JSON.stringify({ ...saved, version: 1 }))!;
     expect(SNAPSHOT_VERSION).toBeGreaterThan(1);
     expect((await resumed.getSquadView(SquadId.Left)).attackAndDefend).toBeUndefined();
-    expect((await resumed.getSquadView(SquadId.Left)).roundLimit).toBe(30);
+    expect((await resumed.getSquadView(SquadId.Left)).roundLimit).toBe(ROUND_LIMIT);
   });
 
   it("is deterministic, whatever the order of the plans", () => {
@@ -163,16 +163,18 @@ describe("Attack and Defend: Squad View and host", () => {
 });
 
 describe("the classic mode", () => {
-  // Recorded from the classic path (AI against AI, 60 Rounds at most); re-recorded when the AI began to score its Moves (#329) for seed 3 when Crossfire was added (#342), when the AI began to focus fire (#347),, for seed 11 when Shield Breaker joined the Assassin Deck (#344), and all three when the classic mode lost the Block action (#358).
+  // Recorded from the classic path (AI against AI, 60 Rounds at most). Re-recorded when the classic mode became Victory Points
+  // from three zones (#357) and after the merge of the new decks and the Block change (#352, #358); seed 42 is a draw (0 to 0, equal card totals): the matches now end at the Round limit of 15 or by points, not by three Resolutions in the Prime Zone.
   const recorded = [
-    { seed: 3, round: 7, winner: SquadId.Left, deckTotals: { left: 14, right: 16 }, positions: "14,7:4 15,7:2 14,8:8 16,7:4 16,8:4 16,9:8", rng: 4151932305 },
-    { seed: 11, round: 6, winner: SquadId.Right, deckTotals: { left: 9, right: 11 }, positions: "14,7:4 15,7:4 14,8:1 16,7:6 16,8:4 16,9:1", rng: 1880354421 },
-    { seed: 42, round: 5, winner: SquadId.Left, deckTotals: { left: 10, right: 14 }, positions: "14,7:4 15,7:2 14,8:4 16,7:6 16,8:4 16,9:4", rng: 3207966989 },
+    { seed: 3, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 2, right: 0 }, deckTotals: { left: 7, right: 12 }, positions: "14,7:4 15,7:2 14,8:1 16,7:4 16,8:4 16,9:4", rng: 1049118852 },
+    { seed: 11, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 20 }, deckTotals: { left: 7, right: 11 }, positions: "14,7:0 15,7:4 14,8:3 16,7:6 16,8:4 16,9:1", rng: 3256755555 },
+    { seed: 42, round: 15, winner: undefined, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 0 }, deckTotals: { left: 7, right: 9 }, positions: "14,7:4 15,7:2 14,8:1 16,7:4 16,8:4 16,9:1", rng: 1113060088 },
   ];
 
-  it.each(recorded)("plays seed $seed exactly as recorded", ({ seed, round, winner, deckTotals, positions, rng }) => {
+  it.each(recorded)("plays seed $seed exactly as recorded", ({ seed, round, winner, reason, scores, deckTotals, positions, rng }) => {
     const { match } = playAiMatch(seed, 60);
-    expect(match.result).toEqual({ winner, reason: MatchEndReason.PrimeZoneHeld, round, deckTotals });
+    expect(match.result).toMatchObject({ reason, round, scores, deckTotals });
+    expect(match.result?.winner).toBe(winner);
     expect(match.heroes.map((hero) => `${hero.position.col},${hero.position.row}:${hero.deck.length}`).join(" ")).toBe(positions);
     expect(match.rngState).toBe(rng);
   });

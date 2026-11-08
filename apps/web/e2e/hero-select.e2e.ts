@@ -34,7 +34,7 @@ test("the chosen Hero reaches the match", async ({ page }) => {
   await openHeroSelect(page);
   await page.getByTestId("hero-assassin").click();
   await start(page).click();
-  await expect(page.getByTestId("round")).toHaveText("ROUND 1");
+  await expect(page.getByTestId("round")).toHaveText("ROUND 1 / 15");
   // The match is saved with its Player Hero.
   await expect.poll(() => page.evaluate(() => localStorage.getItem("primefall.playerHero"))).toBe("assassin");
 });

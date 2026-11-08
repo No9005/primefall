@@ -1,4 +1,4 @@
-import { findTiles, type GridPosition, PRIME_ZONE_WIN_RESOLUTIONS, REACTOR_DECK, SquadId, TileKind } from "game-core";
+import { findTiles, type GridPosition, PRIME_ZONE_WIN_RESOLUTIONS, REACTOR_DECK, SquadId, TileKind, ZoneKind, type ZoneView } from "game-core";
 import type { CalloutTone } from "./callout";
 import { type ZoneLook, zoneLook } from "./vision-effects";
 
@@ -49,6 +49,18 @@ export function primeScore(progress: PrimeProgress, you: SquadId, contested: boo
   if (contested) return { filled: 0, state: "contested", label: "CONTESTED" };
   if (progress[enemy] > 0) return { filled: progress[enemy], state: "enemy", label: "ENEMY HOLDS" };
   return { filled: progress[you], state: progress[you] > 0 ? "own" : "neutral", label: "PRIME ZONE" };
+}
+
+/**
+ * Classic mode: the look of the Prime Zone from the Squad View. Teal when we control it, red when the enemy does, amber when
+ * Heroes of both Squads stand in it (or the last Resolution left it Contested), grey while nobody controls it or it is inactive.
+ */
+export function pointsZoneScore(zones: readonly ZoneView[], you: SquadId, contestedNow: boolean): PrimeScore {
+  const prime = zones.find((zone) => zone.kind === ZoneKind.PrimeZone);
+  if (!prime?.active) return { filled: 0, state: "neutral", label: "VP" };
+  if (contestedNow || prime.contested) return { filled: 0, state: "contested", label: "VP" };
+  if (prime.controller === undefined) return { filled: 0, state: "neutral", label: "VP" };
+  return { filled: 0, state: prime.controller === you ? "own" : "enemy", label: "VP" };
 }
 
 /** Which Squads have a Hero (not Exhausted) in the Prime Zone. */

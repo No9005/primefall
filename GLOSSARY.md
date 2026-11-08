@@ -165,7 +165,7 @@ One simultaneous Resolution step in which each non-exhausted Hero processes the 
 _Avoid_: Turn, phase
 
 **Prime Zone**:
-The central 3 by 3 objective area. A squad wins by controlling it during three consecutive Resolutions.
+The central 3 by 3 zone, worth 2 Victory Points per Resolution in the classic mode. It is inactive (scores nothing) until Round 4. In Attack and Defend the Attacker wins by controlling it during three consecutive Resolutions.
 _Avoid_: Point, base, capture zone
 
 **Outpost**:
@@ -185,7 +185,7 @@ The score of the classic mode (ADR 0024): each Resolution a Squad earns the valu
 _Avoid_: Score points, kills, health
 
 **Round Limit**:
-The maximum of 30 Rounds per match. If no Squad has won by then, the Squad with more cards in its Heroes' Decks wins; equal totals are a draw.
+The maximum of Rounds per match in the classic mode (15). When it is played, the Squad with more Victory Points wins; equal points go to the Squad with more cards not in the Exile (Deck, Discard and Hand of all its Heroes); if still equal the match is a draw. Attack and Defend has its own Round limit.
 _Avoid_: Timeout, turn cap
 
 **Attacker**:

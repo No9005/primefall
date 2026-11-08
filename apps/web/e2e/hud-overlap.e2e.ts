@@ -60,7 +60,7 @@ for (const view of VIEWS) {
     await page.setViewportSize(view);
     await page.goto("/?prime=contested");
     await startMatch(page);
-    await expect(page.getByTestId("round")).toHaveText("ROUND 1");
+    await expect(page.getByTestId("round")).toHaveText("ROUND 1 / 15");
     await expect(page.getByRole("list", { name: "Hand" }).getByRole("button").last()).toBeEnabled();
     await expect(page.getByTestId("prime-progress")).toBeVisible();
 

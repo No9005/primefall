@@ -25,7 +25,6 @@ import {
   type QueuedAction,
   REACTOR_DECK,
   PLANNING_TIMER_SECONDS,
-  PRIME_ZONE_WIN_RESOLUTIONS,
   SquadId,
   type SquadPlan,
   type SquadView,
@@ -54,7 +53,7 @@ import { Callout } from "./Callout";
 import { defenderZone, ROLE_LABELS, roleOf, roundPillText } from "./attack-defend";
 import { AttackerPill, DefenderPill, RoleBanner, RoleLabel } from "./RoleHud";
 import { COUNTDOWN_CALLOUT_MS, countdownCallout, formatTimer, timerTone } from "./callout";
-import { type PrimeCallout, primeCallouts, type PrimeProgress, primeScore, zoneOccupancy, zoneTint } from "./prime-zone";
+import { type PrimeCallout, primeCallouts, type PrimeProgress, pointsZoneScore, primeScore, zoneOccupancy, zoneTint } from "./prime-zone";
 import { targetsInReach } from "./target-pick";
 import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionBarText, resolutionCommitLabel } from "./resolution-hud";
 import { buildCommentary, type CommentaryEntry, type CommentarySide, MAX_COMMENTARY_ENTRIES } from "./commentary";
@@ -72,7 +71,6 @@ const NO_PATHS: readonly PlannedPath[] = [];
 /** Test hook: `?prime=contested` shows the CONTESTED Prime Zone pill, which is hard to reach in a normal run (e2e and screenshots). */
 const FORCE_CONTESTED_PILL = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("prime") === "contested";
 
-const PIPS =Array.from({ length: PRIME_ZONE_WIN_RESOLUTIONS }, (_, i) => i);
 const NO_LABELS: readonly { position: GridPosition; text: string }[] = [];
 
 const HERO_NAMES: Record<HeroClass, string> = {
@@ -453,6 +451,8 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const [resolutionStage, setResolutionStage] = useState<ResolutionStage>();
   /** The counts after the Resolution and the callout being shown, from the end of the Ticks until the next view arrives. */
   const [primeAfter, setPrimeAfter] = useState<PrimeProgress>();
+  /** Classic: the Victory Points after the Resolution, shown once its playback is done. */
+  const [scoresAfter, setScoresAfter] = useState<PrimeProgress>();
   const [primeCallout, setPrimeCallout] = useState<PrimeCallout>();
   const playing = resolutionStage !== undefined;
 
@@ -643,7 +643,10 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   // Unknown enemies have no marker; Ghosts stay where they were last seen, faded.
   const boardEnemies = useMemo(() => enemyTokens(view.enemies, onBoard), [view.enemies, playback]);
   const zone = zoneOccupancy(boardHeroes, boardEnemies);
-  const score = primeScore(primeAfter ?? view.primeProgress, view.squad, zone.contested || FORCE_CONTESTED_PILL);
+  const contestedNow = zone.contested || FORCE_CONTESTED_PILL;
+  const score = view.zones ? pointsZoneScore(view.zones, view.squad, contestedNow) : primeScore(primeAfter ?? view.primeProgress, view.squad, contestedNow);
+  const points = scoresAfter ?? view.scores;
+  const enemySquad = view.squad === SquadId.Left ? SquadId.Right : SquadId.Left;
   const role = roleOf(view);
   const aimsAtAlly =
     aimedCard?.type === CardType.Utility &&
@@ -1017,6 +1020,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
       if (unmounted.current) return;
     }
     setResolutionStage("done");
+    if (result.view.scores) setScoresAfter(result.view.scores);
     // The Prime Zone counts after the Resolution: pips fill and the callouts play one after the other.
     for (const callout of primeCallouts(view.primeProgress, result.view.primeProgress, view.squad)) {
       setPrimeAfter(result.view.primeProgress);
@@ -1037,6 +1041,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     setPlayback(undefined);
     setResolutionStage(undefined);
     setPrimeAfter(undefined);
+    setScoresAfter(undefined);
     setPrimeCallout(undefined);
     setQueue([]);
     setPitched([]);
@@ -1091,14 +1096,15 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
           resolving={playing}
         />
       ) : (
-        <div className={`prime-pill prime-${score.state}${playing ? " resolving" : ""}`} data-testid="prime-progress" aria-label={`${score.label}, ${score.filled} of ${PIPS.length}`}>
+        <div
+          className={`prime-pill prime-${score.state}${playing ? " resolving" : ""}`}
+          data-testid="prime-progress"
+          aria-label={`Victory Points, you ${points?.[view.squad] ?? 0}, enemy ${points?.[enemySquad] ?? 0}`}
+        >
           <span className="prime-label">{score.label}</span>
-          <span className="prime-pips">
-            {PIPS.map((pip) => (
-              // The key carries the filled state, so a pip that fills mounts again and plays its pop.
-              <span key={`${pip}-${pip < score.filled}`} className={pip < score.filled ? "prime-pip prime-pip-filled" : "prime-pip"} />
-            ))}
-          </span>
+          <span className="prime-vp-score prime-vp-own">{points?.[view.squad] ?? 0}</span>
+          <span className="prime-vp-divider">:</span>
+          <span className="prime-vp-score prime-vp-enemy">{points?.[enemySquad] ?? 0}</span>
         </div>
       )}
       <div
@@ -1107,7 +1113,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         aria-label={`Round ${view.round} of ${view.roundLimit}`}
       >
         <span data-testid="round" className="timer-round">
-          {role ? roundPillText(view.round, view.roundLimit) : `ROUND ${view.round}`}
+          {role ? roundPillText(view.round, view.roundLimit) : `ROUND ${view.round} / ${view.roundLimit}`}
         </span>
         <span data-testid="timer" className="timer-time" aria-label="Planning time left">
           {secondsLeft === 0 || playing ? "LOCKED" : formatTimer(secondsLeft)}

@@ -15,7 +15,7 @@ async function startPlanning(page: Page) {
   });
   await page.goto("/");
   await startMatch(page);
-  await expect(page.getByTestId("round")).toHaveText("ROUND 1");
+  await expect(page.getByTestId("round")).toHaveText("ROUND 1 / 15");
   const hand = page.getByRole("list", { name: "Hand" });
   await expect(hand.getByRole("button").last()).toBeEnabled();
   await page.waitForTimeout(1500); // the draw animation

@@ -31,10 +31,11 @@ import {
   PRIME_ZONE_WIN_RESOLUTIONS,
   ROUND_LIMIT,
   SquadId,
+  VICTORY_POINTS_TO_WIN,
   ZONE_DECAY_CARDS,
   ZoneTie,
 } from "./host";
-import { canSquadSee, canSquadSeeHero, type HeroState, type MatchState, recordSightings, refillDeck, sightRange } from "./match";
+import { canSquadSee, canSquadSeeHero, type HeroState, type MatchState, recordSightings, refillDeck, sightRange, ZONES } from "./match";
 import {
   ActionKind,
   BLOCK_SHIELD,
@@ -50,6 +51,7 @@ import {
   coverAgainst,
   coverAt,
   destroyCover,
+  findTiles,
   type GridPosition,
   isStepAllowed,
   isWall,
@@ -72,6 +74,7 @@ export interface ResolutionResult {
 }
 
 const SQUADS = [SquadId.Left, SquadId.Right];
+const PRIME_ZONE_TILES = findTiles(REACTOR_DECK, TileKind.PrimeZone);
 
 /** Tiles a Slowed Hero's Move covers at most (Move 1). */
 const SLOWED_MOVE_DISTANCE = 1;
@@ -597,12 +600,6 @@ function expireTemporaryEffects(match: MatchState): void {
 
 const otherSquad = (squad: SquadId) => (squad === SquadId.Left ? SquadId.Right : SquadId.Left);
 
-/** Classic mode: the Squad with more Heroes in the Zone controls it; on a tie the previous controller keeps it. */
-function classicController(previous: SquadId | undefined, left: number, right: number): SquadId | undefined {
-  if (left === right) return previous;
-  return left > right ? SquadId.Left : SquadId.Right;
-}
-
 /**
  * Attack and Defend (ADR 0022): the Attacker takes control with a Hero in the Zone and at least as many Heroes as
  * the Defender (a tie goes to the Attacker). Otherwise the Defender holds the Zone with more Heroes there; with
@@ -636,51 +633,90 @@ function applyZoneDecay(match: MatchState): void {
  * control on a tie. Sets `match.result` when the match is over.
  */
 function evaluateMatchEnd(match: MatchState): void {
-  const inZone = (squad: SquadId) =>
-    match.heroes.filter(
-      (hero) => hero.squad === squad && !hero.exhausted && tileAt(REACTOR_DECK, hero.position) === TileKind.PrimeZone,
-    ).length;
   const { mode } = match;
   const attacker = mode.kind === MatchMode.AttackAndDefend ? otherSquad(mode.defender) : undefined;
-  const controller = attacker
-    ? attackAndDefendController(
-        match.primeZone.controller,
-        attacker,
-        inZone(attacker),
-        inZone(otherSquad(attacker)),
-        mode.kind === MatchMode.AttackAndDefend ? (mode.zoneTie ?? DEFENDER_ZONE_TIE) : DEFENDER_ZONE_TIE,
-      )
-    : classicController(match.primeZone.controller, inZone(SquadId.Left), inZone(SquadId.Right));
-  match.primeZone =
-    controller === undefined
-      ? { progress: 0 }
-      : { controller, progress: controller === match.primeZone.controller ? match.primeZone.progress + 1 : 1 };
+  if (attacker) {
+    const controller = attackAndDefendController(
+      match.primeZone.controller,
+      attacker,
+      heroesIn(match, attacker, PRIME_ZONE_TILES),
+      heroesIn(match, otherSquad(attacker), PRIME_ZONE_TILES),
+      mode.kind === MatchMode.AttackAndDefend ? (mode.zoneTie ?? DEFENDER_ZONE_TIE) : DEFENDER_ZONE_TIE,
+    );
+    match.primeZone =
+      controller === undefined
+        ? { progress: 0 }
+        : { controller, progress: controller === match.primeZone.controller ? match.primeZone.progress + 1 : 1 };
+  } else {
+    scoreZones(match);
+  }
 
   const deckTotals = {
     [SquadId.Left]: 0,
     [SquadId.Right]: 0,
   };
   for (const hero of match.heroes) deckTotals[hero.squad] += hero.deck.length;
+  const classicTotals = attacker
+    ? {}
+    : {
+        scores: { ...match.scores },
+        cardTotals: { [SquadId.Left]: cardsNotExiled(match, SquadId.Left), [SquadId.Right]: cardsNotExiled(match, SquadId.Right) },
+      };
   const end = (reason: MatchEndReason, winner?: SquadId) => {
-    match.result = { ...(winner ? { winner } : {}), reason, round: match.round, deckTotals };
+    match.result = { ...(winner ? { winner } : {}), reason, round: match.round, deckTotals, ...classicTotals };
+  };
+  /** The higher score wins; equal scores go to the larger number of cards not in the Exile; still equal is a draw. */
+  const winnerOnPoints = (): SquadId | undefined => {
+    for (const totals of [match.scores, ...(classicTotals.cardTotals ? [classicTotals.cardTotals] : [])]) {
+      if (totals[SquadId.Left] !== totals[SquadId.Right]) return totals[SquadId.Left] > totals[SquadId.Right] ? SquadId.Left : SquadId.Right;
+    }
+    return undefined;
   };
 
   const lost = SQUADS.filter((squad) => match.heroes.filter((hero) => hero.squad === squad).every((hero) => hero.exhausted));
   if (lost.length === 2) return end(MatchEndReason.AllHeroesExhausted);
   if (lost.length === 1) return end(MatchEndReason.AllHeroesExhausted, otherSquad(lost[0]!));
-  if (match.primeZone.progress >= PRIME_ZONE_WIN_RESOLUTIONS && (!attacker || match.primeZone.controller === attacker)) {
-    return end(MatchEndReason.PrimeZoneHeld, match.primeZone.controller);
-  }
   if (attacker) {
+    if (match.primeZone.progress >= PRIME_ZONE_WIN_RESOLUTIONS && match.primeZone.controller === attacker) {
+      return end(MatchEndReason.PrimeZoneHeld, match.primeZone.controller);
+    }
     const roundLimit = mode.kind === MatchMode.AttackAndDefend ? (mode.roundLimit ?? DEFENDER_ROUND_LIMIT) : DEFENDER_ROUND_LIMIT;
     if (match.round >= roundLimit) end(MatchEndReason.DefenceHeld, otherSquad(attacker));
     return;
   }
-  if (match.round >= ROUND_LIMIT) {
-    const difference = deckTotals[SquadId.Left] - deckTotals[SquadId.Right];
-    end(MatchEndReason.RoundLimit, difference === 0 ? undefined : difference > 0 ? SquadId.Left : SquadId.Right);
-  }
+  if (SQUADS.some((squad) => match.scores[squad] >= VICTORY_POINTS_TO_WIN)) return end(MatchEndReason.VictoryPoints, winnerOnPoints());
+  if (match.round >= ROUND_LIMIT) end(MatchEndReason.RoundLimit, winnerOnPoints());
 }
+
+/** The number of non-Exhausted Heroes of a Squad standing on the given tiles. */
+function heroesIn(match: MatchState, squad: SquadId, tiles: readonly GridPosition[]): number {
+  return match.heroes.filter(
+    (hero) => hero.squad === squad && !hero.exhausted && tiles.some((tile) => tile.col === hero.position.col && tile.row === hero.position.row),
+  ).length;
+}
+
+/**
+ * Classic mode: the control of every zone at the end of a Resolution and the Victory Points it earns. More
+ * non-Exhausted Heroes control a zone; equal numbers with at least one each is Contested; an inactive zone
+ * has no control and scores nothing.
+ */
+function scoreZones(match: MatchState): void {
+  ZONES.forEach((zone, i) => {
+    if (match.round < zone.unlockRound) {
+      match.zoneControl[i] = { contested: false };
+      return;
+    }
+    const left = heroesIn(match, SquadId.Left, zone.tiles);
+    const right = heroesIn(match, SquadId.Right, zone.tiles);
+    const controller = left > right ? SquadId.Left : right > left ? SquadId.Right : undefined;
+    match.zoneControl[i] = controller ? { controller, contested: false } : { contested: left > 0 };
+    if (controller) match.scores[controller] += zone.value;
+  });
+}
+
+/** Cards of the Squad's Heroes that are not in the Exile: Deck, Discard and Hand. */
+const cardsNotExiled = (match: MatchState, squad: SquadId): number =>
+  match.heroes.filter((hero) => hero.squad === squad).reduce((sum, hero) => sum + hero.deck.length + hero.discard.length + hero.hand.length, 0);
 
 interface HeroQueue {
   heroId: string;
