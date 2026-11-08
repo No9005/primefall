@@ -29,6 +29,8 @@ import {
   MatchMode,
   type MatchEvent,
   PRIME_ZONE_WIN_RESOLUTIONS,
+  TAKEOVER_BONUS_FACTOR,
+  TAKEOVER_COOLDOWN,
   ROUND_LIMIT,
   SquadId,
   VICTORY_POINTS_TO_WIN,
@@ -192,6 +194,7 @@ function tagCardEvents(
 /** Which Squads perceive the events from `first` on, judged by the current positions (see `getSquadEvents`). */
 function perceivers(match: MatchState, events: readonly MatchEvent[], first: number): SquadId[][] {
   return events.slice(first).map((event) => {
+    if (event.kind === EventKind.ZoneTakenOver) return [...SQUADS];
     // Only the attacker's Squad learns that a shot at an unseen target missed.
     if (event.reason === AttackFailReason.NotVisible) {
       return SQUADS.filter((squad) => match.heroes.some((hero) => hero.id === event.heroId && hero.squad === squad));
@@ -632,7 +635,7 @@ function applyZoneDecay(match: MatchState): void {
  * (ADR 0010, ADR 0011, ADR 0019). Squad loss is checked first: an Exhausted Squad cannot win by keeping
  * control on a tie. Sets `match.result` when the match is over.
  */
-function evaluateMatchEnd(match: MatchState): void {
+function evaluateMatchEnd(match: MatchState, events: MatchEvent[], tick: number): void {
   const { mode } = match;
   const attacker = mode.kind === MatchMode.AttackAndDefend ? otherSquad(mode.defender) : undefined;
   if (attacker) {
@@ -648,7 +651,7 @@ function evaluateMatchEnd(match: MatchState): void {
         ? { progress: 0 }
         : { controller, progress: controller === match.primeZone.controller ? match.primeZone.progress + 1 : 1 };
   } else {
-    scoreZones(match);
+    scoreZones(match, events, tick);
   }
 
   const deckTotals = {
@@ -700,8 +703,14 @@ function heroesIn(match: MatchState, squad: SquadId, tiles: readonly GridPositio
  * non-Exhausted Heroes control a zone; equal numbers with at least one each is Contested; an inactive zone
  * has no control and scores nothing.
  */
-function scoreZones(match: MatchState): void {
+function scoreZones(match: MatchState, events: MatchEvent[], tick: number): void {
+  const classic = match.mode.kind === MatchMode.Classic ? match.mode : undefined;
+  const factor = classic?.takeoverBonusFactor ?? TAKEOVER_BONUS_FACTOR;
+  const cooldown = classic?.takeoverCooldown ?? TAKEOVER_COOLDOWN;
   ZONES.forEach((zone, i) => {
+    const before = match.zoneControl[i]!.controller;
+    const cooling = match.takeoverCooldown[i]! > 0;
+    match.takeoverCooldown[i] = Math.max(0, match.takeoverCooldown[i]! - 1);
     if (match.round < zone.unlockRound) {
       match.zoneControl[i] = { contested: false };
       return;
@@ -710,7 +719,14 @@ function scoreZones(match: MatchState): void {
     const right = heroesIn(match, SquadId.Right, zone.tiles);
     const controller = left > right ? SquadId.Left : right > left ? SquadId.Right : undefined;
     match.zoneControl[i] = controller ? { controller, contested: false } : { contested: left > 0 };
-    if (controller) match.scores[controller] += zone.value;
+    if (!controller) return;
+    match.scores[controller] += zone.value;
+    // A takeover is a flip from the enemy's control; Contested or empty before is not one.
+    if (before === undefined || before === controller) return;
+    const bonus = cooling ? 0 : zone.value * factor;
+    if (!cooling) match.takeoverCooldown[i] = cooldown;
+    match.scores[controller] += bonus;
+    events.push({ kind: EventKind.ZoneTakenOver, tick, heroId: "", squad: controller, zone: i, amount: bonus });
   });
 }
 
@@ -872,7 +888,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     match.grid = withWreck(match.grid, hero.position);
     events.push({ kind: EventKind.Exhausted, tick: Math.max(ticks, 1), heroId: hero.id });
   }
-  evaluateMatchEnd(match);
+  evaluateMatchEnd(match, events, Math.max(ticks, 1));
   endTick();
   return { match, events, perceivedBy };
 }

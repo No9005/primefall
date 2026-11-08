@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  EventKind,
   MatchEndReason,
+  MatchMode,
   OUTPOST_UNLOCK_ROUND,
   OUTPOST_VALUE,
   PRIME_ZONE_UNLOCK_ROUND,
@@ -11,7 +13,7 @@ import {
   ZoneKind,
 } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound, ZONES } from "./match";
-import { resolveRound } from "./resolution";
+import { getSquadEvents, resolveRound } from "./resolution";
 
 const PRIME_ZONE = ZONES.findIndex((zone) => zone.kind === ZoneKind.PrimeZone);
 const OUTPOSTS = ZONES.flatMap((zone, i) => (zone.kind === ZoneKind.Outpost ? [i] : []));
@@ -237,5 +239,60 @@ describe("Round Limit", () => {
     const result = resolveEmpty(match).result!;
     expect(result.reason).toBe(MatchEndReason.RoundLimit);
     expect(result.winner).toBeUndefined();
+  });
+});
+
+describe("the takeover bonus", () => {
+  const withRules = (rules: { takeoverBonusFactor?: number; takeoverCooldown?: number }, left: number, right: number) => {
+    const match = matchWithHeroesInZone(left, right);
+    match.mode = { kind: MatchMode.Classic, ...rules };
+    return match;
+  };
+  /** Resolves once with the given numbers of Heroes in the Prime Zone, keeping the state of the match. */
+  const resolveWith = (match: MatchState, left: number, right: number) => {
+    place(match, SquadId.Left, left);
+    place(match, SquadId.Right, right);
+    return resolveRound(match, []);
+  };
+  const takeovers = (events: readonly { kind: EventKind }[]) => events.filter((event) => event.kind === EventKind.ZoneTakenOver);
+
+  it("is off by default: a flip scores only the zone value, and the event carries a bonus of 0", () => {
+    const first = resolveWith(withRules({}, 2, 0), 2, 0).match;
+    const second = resolveWith(first, 0, 2);
+    expect(second.match.scores).toEqual({ [SquadId.Left]: PRIME_ZONE_VALUE, [SquadId.Right]: PRIME_ZONE_VALUE });
+    expect(takeovers(second.events)).toMatchObject([{ squad: SquadId.Right, zone: PRIME_ZONE, amount: 0 }]);
+  });
+
+  it("with factor 1 gives the zone's value once on a flip", () => {
+    const first = resolveWith(withRules({ takeoverBonusFactor: 1 }, 2, 0), 2, 0).match;
+    const second = resolveWith(first, 0, 2);
+    expect(second.match.scores[SquadId.Right]).toBe(PRIME_ZONE_VALUE * 2);
+    expect(takeovers(second.events)).toMatchObject([{ amount: PRIME_ZONE_VALUE }]);
+  });
+
+  it("gives nothing during the cooldown, and again after it", () => {
+    let match = resolveWith(withRules({ takeoverBonusFactor: 1, takeoverCooldown: 2 }, 2, 0), 2, 0).match;
+    match = resolveWith(match, 0, 2).match; // takeover: Right
+    const flipBack = resolveWith(match, 2, 0); // during the cooldown
+    expect(takeovers(flipBack.events)).toMatchObject([{ squad: SquadId.Left, amount: 0 }]);
+    const second = resolveWith(flipBack.match, 0, 2); // still cooling
+    expect(takeovers(second.events)).toMatchObject([{ amount: 0 }]);
+    const third = resolveWith(second.match, 2, 0); // cooldown over
+    expect(takeovers(third.events)).toMatchObject([{ squad: SquadId.Left, amount: PRIME_ZONE_VALUE }]);
+  });
+
+  it("gives nothing for a zone that was Contested or empty before", () => {
+    const contested = resolveWith(withRules({ takeoverBonusFactor: 1 }, 1, 1), 1, 1).match;
+    const afterContested = resolveWith(contested, 2, 0);
+    expect(takeovers(afterContested.events)).toEqual([]);
+    expect(afterContested.match.scores[SquadId.Left]).toBe(PRIME_ZONE_VALUE);
+    const empty = resolveWith(withRules({ takeoverBonusFactor: 1 }, 0, 0), 0, 0).match;
+    expect(takeovers(resolveWith(empty, 0, 2).events)).toEqual([]);
+  });
+
+  it("is perceived by both Squads", () => {
+    const first = resolveWith(withRules({}, 2, 0), 2, 0).match;
+    const result = resolveWith(first, 0, 2);
+    for (const squad of [SquadId.Left, SquadId.Right]) expect(takeovers(getSquadEvents(squad, result))).toHaveLength(1);
   });
 });

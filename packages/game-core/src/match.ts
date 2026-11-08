@@ -156,6 +156,8 @@ export interface MatchState {
   scores: Record<SquadId, number>;
   /** Classic: control of each zone of `ZONES` after the last Resolution. */
   zoneControl: ZoneControl[];
+  /** Classic: Resolutions left in which each zone gives no takeover bonus. */
+  takeoverCooldown: number[];
   /** Classic by default; in Attack and Defend one Squad is the Defender and the other the Attacker (ADR 0022). */
   mode: MatchModeSetting;
   /** Set when a victory condition is met; the match accepts no further Rounds. */
@@ -213,6 +215,7 @@ export function createMatch(seed: number, mode: MatchModeSetting = { kind: Match
     primeZone: { progress: 0 },
     scores: { [SquadId.Left]: 0, [SquadId.Right]: 0 },
     zoneControl: ZONES.map(() => ({ contested: false })),
+    takeoverCooldown: ZONES.map(() => 0),
     mode,
   };
   for (const squad of [SquadId.Left, SquadId.Right]) {
