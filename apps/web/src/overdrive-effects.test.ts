@@ -1,6 +1,7 @@
 import { EventKind, type MatchEvent } from "game-core";
 import { CLIP_SPEED } from "./clip-player";
 import { Container } from "pixi.js";
+import { coverLook } from "./terrain";
 import { describe, expect, it } from "vitest";
 import { attackBadge, EffectsLayer, type EffectsWorld } from "./effects-layer";
 import {
@@ -155,6 +156,7 @@ describe("drawing the Overdrive effects", () => {
     place: (id) => ({ x: id === "a" ? 0 : 128, y: id === "g" ? 40 : 0 }),
     tile: ({ col, row }) => ({ x: col * 64, y: row * 32 }),
     own: (id) => id === "a",
+    builtCover: (position, grow) => coverLook(position, "half", true, undefined, grow),
   };
   const cues: EffectCue[] = [
     { kind: "aura", heroId: "a", endMs: 1200 },

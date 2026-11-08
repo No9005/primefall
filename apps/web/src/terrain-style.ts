@@ -35,6 +35,8 @@ export const TERRAIN_STYLE = {
   spawnMarker: 0x2ec4b6,
   /** Floor outlines that mark Cover tiles while planning. */
   coverOutline: { full: 0xff8a3d, half: 0x4aa3ff, placed: 0x7be0ff, destroyed: 0x8a8f98 },
+  /** The look of Cover (docs/design/role-visuals): the map's own as blue panels on a plinth, built as yellow-black bars. */
+  coverLook: { plinthTop: 0x2a323c, plinthSide: 0x14181e, blue: 0x4da3ff, yellow: 0xffd24a, black: 0x14181e, grey: 0xd9dee4, outline: 0x0b1016 },
   wall: { top: 0x5d7284, left: 0x3a4b5b, right: 0x2a3845, edge: OUTLINE.color },
   fullCover: { top: 0x75808a, left: 0x56616b, right: 0x3f484f, edge: OUTLINE.color, topEdge: 0x93a3b0 },
   halfCover: { top: 0x68727b, left: 0x4d565e, right: 0x394046, edge: 0x2e353c },
