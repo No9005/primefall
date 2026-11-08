@@ -286,6 +286,8 @@ interface BoardProps {
   wreckCover: readonly GridPosition[];
   /** Areas a Scout Drone reveals: tinted yellow. */
   revealedAreas: readonly RevealedArea[];
+  /** Areas the enemy's Scout Drones scan: a red outline, nothing about what is in them. */
+  scannedAreas?: readonly Pick<RevealedArea, "center" | "size">[];
   /** Tiles the Squad sees; every other tile is drawn dark. */
   visibleTiles: readonly GridPosition[];
   heroes: readonly TokenHero[];
@@ -428,11 +430,16 @@ function animateFadeOut(shape: Graphics, ms: number): () => void {
 /** Length of the camera ease when a Move is armed, placed or cancelled. */
 const FRAME_MS = 250;
 
+const NO_SCANNED_AREAS: readonly Pick<RevealedArea, "center" | "size">[] = [];
+/** Red outline of an area the enemy scans. */
+const SCANNED_COLOR = 0xff4d4d;
+
 export function Board({
   destroyedCover,
   placedCover,
   wreckCover,
   revealedAreas,
+  scannedAreas = NO_SCANNED_AREAS,
   visibleTiles,
   heroes,
   enemies,
@@ -1088,6 +1095,24 @@ export function Board({
       planning.addChild(pips);
       created.push(pips);
     }
+    // Areas the enemy scans: only an outline around the square.
+    const outline = floorOutline(angle);
+    for (const { center, size } of scannedAreas) {
+      const reach = Math.floor(size / 2);
+      const corner = (col: number, row: number, index: number) => {
+        const { x, y } = gridToWorld({ col, row }, angle);
+        return [x + outline[index * 2]!, y + outline[index * 2 + 1]!];
+      };
+      const points = [
+        corner(center.col - reach, center.row - reach, 0),
+        corner(center.col + reach, center.row - reach, 1),
+        corner(center.col + reach, center.row + reach, 2),
+        corner(center.col - reach, center.row + reach, 3),
+      ].flat();
+      const frame = new Graphics().poly(points).fill({ color: SCANNED_COLOR, alpha: 0.08 }).stroke({ width: 2, color: SCANNED_COLOR, alpha: 0.9 });
+      planning.addChild(frame);
+      created.push(frame);
+    }
     // An area that ran out: the fog closes again from the outside inwards instead of cutting.
     if (!reducedMotion) {
       for (const [key, { center, size }] of areaSeen.current) {
@@ -1124,7 +1149,7 @@ export function Board({
       cancelAnimationFrame(effectFrame);
       created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [terrain, angle, strokeScale, aiming, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
+  }, [terrain, angle, strokeScale, aiming, destroyedCover, placedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
 
   useEffect(() => {
     const element = host.current;

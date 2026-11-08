@@ -42,7 +42,7 @@ function bruiserPlan(match: MatchState, cards: number[], queue: QueuedAction[]):
 }
 
 const use = (card: number, target = ENEMY): QueuedAction => ({ kind: ActionKind.Primary, card, target });
-const hits = (events: readonly { kind: EventKind }[]) => events.filter(({ kind }) => kind === EventKind.AttackHit);
+const hits = <T extends { kind: EventKind }>(events: readonly T[]) => events.filter(({ kind }) => kind === EventKind.AttackHit);
 /** Deck Damage the enemy took. */
 const damageTaken = (before: MatchState, after: MatchState) => hero(before, ENEMY).deck.length - hero(after, ENEMY).deck.length;
 

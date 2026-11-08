@@ -152,18 +152,42 @@ describe("Scout Drone", () => {
     expect(enemyView(second).visibility).not.toBe(Visibility.Visible);
   });
 
-  it("does not reveal a Hidden enemy and fails beyond Range 4", () => {
+  it("shows a Hidden enemy inside the area, which stays Hidden", () => {
     const match = blockedSight([SCOUT_DRONE, PULSE_BOLT, 1, 5]);
     hero(match, ENEMY).hidden = 2;
     const tile = { col: 13, row: 5 };
-    const inRange = resolveRound(match, [planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile })], [PULSE_BOLT])]);
-    expect(enemyView(inRange.match).visibility).not.toBe(Visibility.Visible);
+    const { match: after } = resolveRound(match, [planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile })], [PULSE_BOLT])]);
+    expect(enemyView(after).visibility).toBe(Visibility.Visible);
+    expect(hero(after, ENEMY).hidden).toBeGreaterThan(0);
+    // Outside the area a Hidden enemy is still not seen.
+    hero(after, ENEMY).position = { col: 15, row: 5 };
+    expect(enemyView(after).visibility).not.toBe(Visibility.Visible);
+  });
 
-    hero(match, ENEMY).hidden = 0;
-    const far = { col: 14, row: 5 };
-    const tooFar = resolveRound(match, [planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile: far })], [PULSE_BOLT])]);
-    expect(tooFar.events).toEqual([{ kind: EventKind.ActionFailed, tick: 1, heroId: CONTROLLER }]);
-    expect(tooFar.match.revealedAreas).toEqual([]);
+  it("reaches any tile of the map, also far from the Controller and in the Fog", () => {
+    const match = blockedSight([SCOUT_DRONE, PULSE_BOLT, 1, 5]);
+    const far = { col: 19, row: 1 };
+    hero(match, ENEMY).position = far;
+    const plan = planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile: far })], [PULSE_BOLT]);
+    expect(validatePlan(buildSquadView(match, SquadId.Left), plan)).toEqual([]);
+    const { match: after } = resolveRound(match, [plan]);
+    expect(buildSquadView(after, SquadId.Left).revealedAreas).toHaveLength(1);
+    expect(enemyView(after)).toMatchObject({ visibility: Visibility.Visible, position: far });
+  });
+
+  it("tells the enemy only which area was scanned, not what is in it", () => {
+    const match = blockedSight([SCOUT_DRONE, PULSE_BOLT, 1, 5]);
+    const tile = { col: 13, row: 5 };
+    const { match: after } = resolveRound(match, [planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile })], [PULSE_BOLT])]);
+    const enemySide = buildSquadView(after, SquadId.Right);
+    expect(enemySide.scannedAreas).toEqual([{ center: tile, size: 3 }]);
+    expect(buildSquadView(after, SquadId.Left).scannedAreas).toEqual([]);
+    expect(enemySide.revealedAreas).toEqual([]);
+    // The scanning Squad's Heroes stay as unknown to the enemy as before.
+    expect(enemySide.enemies.every((enemy) => enemy.visibility !== Visibility.Visible || enemy.id !== CONTROLLER)).toBe(true);
+    // The area ends after two Resolutions.
+    const later = resolveRound(startRound(resolveRound(startRound(after), []).match), []).match;
+    expect(buildSquadView(later, SquadId.Right).scannedAreas).toEqual([]);
   });
 });
 
@@ -284,10 +308,10 @@ describe("Placed Cover", () => {
 });
 
 describe("Overwatch Uplink", () => {
-  // The enemy Bruiser stands on Half Cover at (6,4); the allied Bruiser attacks it from (9,4) with Slam Shot (card 0, 2 damage).
+  // The enemy Bruiser stands on Half Cover at (6,4); the allied Bruiser attacks it from (8,4) with Slam Shot (card 0, 2 damage at Range 2).
   function coverFight(): MatchState {
     const match = setup([OVERWATCH_UPLINK, PULSE_BOLT, 1, 5]);
-    hero(match, BRUISER).position = { col: 9, row: 4 };
+    hero(match, BRUISER).position = { col: 8, row: 4 };
     hero(match, BRUISER).hand = [0, 1, 2, 3];
     hero(match, ENEMY).position = { col: 6, row: 4 };
     return match;
@@ -319,7 +343,7 @@ describe("Overwatch Uplink", () => {
       squad: SquadId.Left,
       heroes: [
         // The Uplink is the Controller's second action; the Bruiser attacks in Tick 1 and again in Tick 2.
-        { heroId: CONTROLLER, queue: [move(1, { col: 8, row: 4 }), primary(OVERWATCH_UPLINK, BRUISER)], pitched: [PULSE_BOLT] },
+        { heroId: CONTROLLER, queue: [move(1, { col: 8, row: 3 }), primary(OVERWATCH_UPLINK, BRUISER)], pitched: [PULSE_BOLT] },
         { heroId: BRUISER, queue: [primary(0, ENEMY), primary(1, ENEMY)], pitched: [2, 3] },
       ],
     };

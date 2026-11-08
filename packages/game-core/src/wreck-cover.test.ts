@@ -11,7 +11,7 @@ const LEFT_BRUISER = "left-bruiser";
 const RIGHT_BRUISER = "right-bruiser";
 const RIGHT_ASSASSIN = "right-assassin";
 // Bruiser card 0 is Slam Shot (Range 3); card 4 is Breach Charge (destroys Half Cover).
-const SLAM_SHOT = 0;
+const SLAM_SHOT = 2; // Concussion Round: damage 2, Range 3 (Slam Shot is Range 1 to 2 since ADR 0025)
 const BREACH_CHARGE = 4;
 
 const WRECK_TILE: GridPosition = { col: 8, row: 3 };
@@ -38,7 +38,7 @@ const slam = (target: string): SquadPlan => ({
 /** The Deck Damage a Slam Shot from the attacker's tile does to the Right Bruiser standing on `tile`. */
 function slamDamage(match: MatchState, from: GridPosition, tile: GridPosition): number {
   hero(match, LEFT_BRUISER).position = from;
-  hero(match, LEFT_BRUISER).hand = [SLAM_SHOT, 1, 2, 3];
+  hero(match, LEFT_BRUISER).hand = [SLAM_SHOT, 0, 1, 3];
   hero(match, RIGHT_BRUISER).position = tile;
   const { events } = resolveRound(match, [slam(RIGHT_BRUISER)]);
   const hit = events.find(({ kind }) => kind === EventKind.AttackHit)!;

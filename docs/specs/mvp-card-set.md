@@ -45,8 +45,8 @@ Overdrive modes: Breach Charge, Shockwave, and Adrenal Surge (three Overdrive ca
 2. **Pulse Bolt** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 2 with a clear Line of Sight when the Attack fires; otherwise it misses.
 3. **Tag Round** — Attack, 1 Energy: Deal 1 damage and apply Marked until the end of the next Resolution. **Overdrive:** Deal 1 damage; apply Marked and Slow until the end of the next Resolution.
 4. **Shock Pulse** — Attack, 1 Energy: Deal 1 damage to the named visible enemy Hero if it is visible and within Range 2 with a clear Line of Sight when the Attack fires, and apply Slow until the end of the next Resolution.
-5. **Scout Drone** — Utility, 1 Energy: Reveal a 3 by 3 area within Range 4 for two Resolutions. **Overdrive:** Reveal a 5 by 5 area within Range 4 for two Resolutions.
-6. **Scout Drone** — Utility, 1 Energy: Reveal a 3 by 3 area within Range 4 for two Resolutions. **Overdrive:** Reveal a 5 by 5 area within Range 4 for two Resolutions.
+5. **Scout Drone** — Utility, 1 Energy: Reveal a 3 by 3 area anywhere on the map (no Range, also in the Fog) for two Resolutions. A Hidden enemy inside is shown but stays Hidden. The enemy Squad sees which area was scanned, not what is in it. **Overdrive:** Reveal a 5 by 5 area.
+6. **Scout Drone** — Utility, 1 Energy: Reveal a 3 by 3 area anywhere on the map (no Range, also in the Fog) for two Resolutions. A Hidden enemy inside is shown but stays Hidden. The enemy Squad sees which area was scanned, not what is in it. **Overdrive:** Reveal a 5 by 5 area.
 7. **Aegis Protocol** — Utility, 1 Energy: An allied Hero gains Shield 3. **Overdrive:** Two allied Heroes each gain Shield 3.
 8. **Fortify** — Utility, 1 Energy: Place Half Cover on the tile of an allied Hero within Range 3. It stays until it is destroyed (Placed Cover: at most three tiles per Squad, the oldest disappears first).
 9. **Deploy Cover** — Utility, 1 Energy: Place Half Cover on an empty tile. It stays until it is destroyed (Placed Cover).

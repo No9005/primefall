@@ -1057,6 +1057,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         placedCover={shownPlaced}
         wreckCover={view.wreckCover}
         revealedAreas={view.revealedAreas}
+        scannedAreas={view.scannedAreas}
         visibleTiles={view.visibleTiles}
         heroes={boardHeroes}
         enemies={boardEnemies}
