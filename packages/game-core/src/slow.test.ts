@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cardIndex, HeroClass } from "./cards";
 import { EventKind, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type QueuedAction, type SquadPlan } from "./plan";
@@ -6,10 +7,11 @@ import { resolveRound } from "./resolution";
 
 const BRUISER = "left-bruiser";
 const RIGHT_BRUISER = "right-bruiser";
-// Bruiser cards: 0 Slam Shot, 2 Concussion Round (2 damage, Slow), 9 Suppress (Slow on a visible enemy).
+// Bruiser cards: 0 Slam Shot, Concussion Round (2 damage, Slow). Controller: Gravity Snare (2 Energy, Slow on a visible enemy).
 const SLAM_SHOT = 0;
-const CONCUSSION_ROUND = 2;
-const SUPPRESS = 9;
+const CONCUSSION_ROUND = cardIndex(HeroClass.Bruiser, "Concussion Round");
+const CONTROLLER = "left-controller";
+const GRAVITY_SNARE = cardIndex(HeroClass.Controller, "Gravity Snare");
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 const use = (card: number, target: string): QueuedAction => ({ kind: ActionKind.Primary, card, target });
@@ -27,11 +29,18 @@ const leftPlan = (queue: QueuedAction[], pitched: number[] = []): SquadPlan => (
   heroes: [{ heroId: BRUISER, queue, pitched }],
 });
 
+const snarePlan = (target: string): SquadPlan => ({
+  squad: SquadId.Left,
+  heroes: [{ heroId: CONTROLLER, queue: [use(GRAVITY_SNARE, target)], pitched: [0, 1] }],
+});
+
 function duel(): MatchState {
   const match = startRound(createMatch(5));
   hero(match, BRUISER).position = { col: 8, row: 3 };
   hero(match, RIGHT_BRUISER).position = { col: 11, row: 3 };
-  hero(match, BRUISER).hand = [CONCUSSION_ROUND, SUPPRESS, SLAM_SHOT, 1];
+  hero(match, BRUISER).hand = [CONCUSSION_ROUND, SLAM_SHOT, 1, 3];
+  hero(match, CONTROLLER).position = { col: 8, row: 4 };
+  hero(match, CONTROLLER).hand = [GRAVITY_SNARE, 0, 1, 2];
   hero(match, RIGHT_BRUISER).hand = [0, 1, 2, 3];
   return match;
 }
@@ -59,18 +68,18 @@ describe("Slow", () => {
     expect(hero(after, RIGHT_BRUISER).slow).toBe(0);
   });
 
-  it("Suppress Slows a visible enemy", () => {
-    const { match: after, events } = resolveRound(duel(), [leftPlan([use(SUPPRESS, RIGHT_BRUISER)], [SLAM_SHOT])]);
-    expect(events).toEqual([{ kind: EventKind.SlowApplied, tick: 1, heroId: BRUISER, targetId: RIGHT_BRUISER, card: "Suppress" }]);
+  it("Gravity Snare Slows a visible enemy", () => {
+    const { match: after, events } = resolveRound(duel(), [snarePlan(RIGHT_BRUISER)]);
+    expect(events).toEqual([{ kind: EventKind.SlowApplied, tick: 1, heroId: CONTROLLER, targetId: RIGHT_BRUISER, card: "Gravity Snare" }]);
     expect(buildSquadView(after, SquadId.Right).heroes.find(({ id }) => id === RIGHT_BRUISER)?.slowed).toBe(true);
   });
 
-  it("Suppress fails against an enemy that is not visible, an ally or an Exhausted Hero", () => {
+  it("Gravity Snare fails against an enemy that is not visible or an ally", () => {
     const hidden = duel();
     hero(hidden, RIGHT_BRUISER).position = { col: 19, row: 3 };
-    const failed = [{ kind: EventKind.ActionFailed, tick: 1, heroId: BRUISER }];
-    expect(resolveRound(hidden, [leftPlan([use(SUPPRESS, RIGHT_BRUISER)], [SLAM_SHOT])]).events).toEqual(failed);
-    expect(resolveRound(duel(), [leftPlan([use(SUPPRESS, "left-controller")], [SLAM_SHOT])]).events).toEqual(failed);
+    const failed = [{ kind: EventKind.ActionFailed, tick: 1, heroId: CONTROLLER }];
+    expect(resolveRound(hidden, [snarePlan(RIGHT_BRUISER)]).events).toEqual(failed);
+    expect(resolveRound(duel(), [snarePlan(BRUISER)]).events).toEqual(failed);
   });
 
   it("a Slowed Hero's Move 2 becomes a Move 1 and uses the Slow up", () => {
@@ -84,7 +93,7 @@ describe("Slow", () => {
 
   it("Slow also applies to a Move planned in the Resolution that Slows, after the Slow", () => {
     const { match: after } = resolveRound(duel(), [
-      leftPlan([use(SUPPRESS, RIGHT_BRUISER)], [SLAM_SHOT]),
+      snarePlan(RIGHT_BRUISER),
       rightPlan([{ kind: ActionKind.Block, card: 0 }, move(1, 13, 3)]),
     ]);
     expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 12, row: 3 });

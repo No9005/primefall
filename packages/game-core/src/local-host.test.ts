@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HAND_SIZE } from "./cards";
+import { HAND_SIZE, HERO_DECKS } from "./cards";
 import { ROUND_LIMIT, SquadId } from "./host";
 import { ActionKind, type SquadPlan } from "./plan";
 import { createLocalHost, restoreLocalHost, SNAPSHOT_VERSION } from "./local-host";
@@ -14,7 +14,7 @@ describe("local host", () => {
     expect(view.heroes).toHaveLength(3);
     for (const hero of view.heroes) {
       expect(hero.hand).toHaveLength(HAND_SIZE);
-      expect(hero.deckCount).toBe(12 - HAND_SIZE);
+      expect(hero.deckCount).toBe(HERO_DECKS[hero.heroClass].length - HAND_SIZE);
       expect(hero.exileCount).toBe(0);
       expect(hero.discardCount).toBe(0);
       expect(hero.position.col).toBeLessThan(15);

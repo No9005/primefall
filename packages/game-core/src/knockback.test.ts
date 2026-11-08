@@ -1,3 +1,4 @@
+import { cardIndex, HeroClass } from "./cards";
 import { describe, expect, it } from "vitest";
 import { withFullCover } from "./full-cover-fixture";
 import { EventKind, SquadId } from "./host";
@@ -11,7 +12,7 @@ const LEFT_CONTROLLER = "left-controller";
 const RIGHT_BRUISER = "right-bruiser";
 const RIGHT_CONTROLLER = "right-controller";
 // Bruiser card 5 is Shockwave: 2 Energy, Range 1, damage 2 to every enemy Hero in Range, then Knockback 2.
-const SHOCKWAVE = 5;
+const SHOCKWAVE = cardIndex(HeroClass.Bruiser, "Shockwave");
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 

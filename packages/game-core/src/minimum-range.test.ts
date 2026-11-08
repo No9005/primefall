@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cardIndex, HeroClass } from "./cards";
 import { withFullCover } from "./full-cover-fixture";
 import { AttackFailReason, EventKind, SquadId } from "./host";
 import { createMatch, type MatchState, recordSightings, startRound } from "./match";
@@ -7,10 +8,10 @@ import { resolveRound } from "./resolution";
 
 const ASSASSIN = "left-assassin";
 const ENEMY = "right-bruiser";
-// Assassin cards: 0 Precision Shot (Minimum Range 2), 4 Long Shot (Minimum Range 3); card 1 serves as Pitch.
+// Assassin cards: 0 Precision Shot (Minimum Range 2), Long Shot (Minimum Range 3); Cover Breaker serves as Pitch.
 const PRECISION_SHOT = 0;
-const LONG_SHOT = 4;
-const PITCH = 1;
+const LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot");
+const PITCH = cardIndex(HeroClass.Assassin, "Cover Breaker");
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 
@@ -18,7 +19,7 @@ const hero = (match: MatchState, id: string) => match.heroes.find((candidate) =>
 function sceneAt(distance: number): MatchState {
   const match = startRound(createMatch(5));
   hero(match, ASSASSIN).position = { col: 2, row: 1 };
-  hero(match, ASSASSIN).hand = [PITCH, PRECISION_SHOT, LONG_SHOT, 2];
+  hero(match, ASSASSIN).hand = [PITCH, PRECISION_SHOT, LONG_SHOT, 4];
   hero(match, ENEMY).position = { col: 2 + distance, row: 1 };
   recordSightings(match);
   return match;

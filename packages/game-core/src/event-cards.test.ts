@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cardIndex, HeroClass } from "./cards";
 import { AttackFailReason, EventKind, SquadId } from "./host";
 import { createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type QueuedAction, type SquadPlan } from "./plan";
@@ -9,19 +10,18 @@ const ASSASSIN = "left-assassin";
 const BRUISER = "left-bruiser";
 const ENEMY = "right-bruiser";
 const OTHER_ENEMY = "right-controller";
-// Assassin: 0 Precision Shot, 4 Long Shot (Overdrive 4 at Range 6 or more). Bruiser: 0 Slam Shot, 4 Breach Charge,
-// 5 Shockwave, 6 Bulwark.
-const LONG_SHOT = 4;
-const SLAM_SHOT = 0;
-const BREACH_CHARGE = 4;
-const SHOCKWAVE = 5;
-const BULWARK = 6;
+// Assassin: Precision Shot (0), Long Shot (Overdrive 4 at Range 6 or more). Bruiser: Slam Shot, Breach Charge, Shockwave, Bulwark.
+const LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot", 1);
+const SLAM_SHOT = cardIndex(HeroClass.Bruiser, "Slam Shot");
+const BREACH_CHARGE = cardIndex(HeroClass.Bruiser, "Breach Charge");
+const SHOCKWAVE = cardIndex(HeroClass.Bruiser, "Shockwave");
+const BULWARK = cardIndex(HeroClass.Bruiser, "Bulwark");
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 
 function scene(positions: Record<string, GridPosition>): MatchState {
   const match = startRound(createMatch(5));
-  hero(match, ASSASSIN).hand = [LONG_SHOT, 0, 1, 2];
+  hero(match, ASSASSIN).hand = [LONG_SHOT, 0, 1, 3];
   hero(match, BRUISER).hand = [SLAM_SHOT, 1, 2, 3, BREACH_CHARGE, SHOCKWAVE, BULWARK];
   for (const [id, position] of Object.entries(positions)) hero(match, id).position = position;
   return match;

@@ -613,7 +613,7 @@ function resolveUtility(
     chebyshevDistance(caster.position, enemy.position) <= sightRange(caster) &&
     hasLineOfSight(match.grid, caster.position, enemy.position);
   const isAlly = (hero: HeroState | undefined) => hero !== undefined && !hero.exhausted && hero.squad === caster.squad && hero !== caster;
-  // Scout Drone and Fortify reach as far as the card's Range (no Line of Sight needed).
+  // Scout Drone, Fortify and Barricade reach as far as the card's Range (no Line of Sight needed).
   const inCardRange = (position: GridPosition | undefined) =>
     position !== undefined && chebyshevDistance(caster.position, position) <= (card.range ?? Infinity);
   const needsSecond = card.effects.some(({ recipient }) => recipient === EffectRecipient.SecondTarget);
@@ -634,7 +634,7 @@ function resolveUtility(
       validTarget = target === caster && inCardRange(tile);
       break;
     case CardTarget.EmptyTile:
-      validTarget = target === caster;
+      validTarget = target === caster && inCardRange(tile);
       break;
     case CardTarget.AllyHeroTile:
       validTarget = isAlly(target) && inCardRange(target!.position);

@@ -1,3 +1,4 @@
+import { cardIndex, HeroClass } from "./cards";
 import { describe, expect, it } from "vitest";
 import { withFullCover } from "./full-cover-fixture";
 import { EventKind, SquadId } from "./host";
@@ -20,8 +21,8 @@ import { getSquadEvents, resolveRound } from "./resolution";
 const LEFT_BRUISER = "left-bruiser";
 const RIGHT_BRUISER = "right-bruiser";
 // Bruiser card 4 is Breach Charge (2 Energy, Range 3, 2 damage, destroys Half Cover); card 0 is Slam Shot.
-const BREACH_CHARGE = 4;
-const SLAM_SHOT = 0;
+const BREACH_CHARGE = cardIndex(HeroClass.Bruiser, "Breach Charge");
+const SLAM_SHOT = cardIndex(HeroClass.Bruiser, "Slam Shot");
 
 const HALF_COVER_TILE = { col: 14, row: 5 };
 const FULL_COVER_TILE = { col: 15, row: 1 };

@@ -1,3 +1,4 @@
+import { cardIndex, HeroClass } from "./cards";
 import { describe, expect, it } from "vitest";
 import { withFullCover } from "./full-cover-fixture";
 import { EventKind, SquadId } from "./host";
@@ -12,7 +13,7 @@ const RIGHT_BRUISER = "right-bruiser";
 const RIGHT_ASSASSIN = "right-assassin";
 // Bruiser card 0 is Slam Shot (Range 3); card 4 is Breach Charge (destroys Half Cover).
 const SLAM_SHOT = 2; // Concussion Round: damage 2, Range 3 (Slam Shot is Range 1 to 2 since ADR 0025)
-const BREACH_CHARGE = 4;
+const BREACH_CHARGE = cardIndex(HeroClass.Bruiser, "Breach Charge");
 
 const WRECK_TILE: GridPosition = { col: 8, row: 3 };
 const OPEN_TILE: GridPosition = { col: 8, row: 5 };
