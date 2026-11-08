@@ -91,6 +91,8 @@ export interface HeroState {
   attackBonus: number;
   /** Overwatch Uplink: this Hero's Attacks ignore the Half Cover damage reduction until the end of the Round. */
   ignoresHalfCover: boolean;
+  /** Charge: extra damage of the Hero's next Attack at Range 1; absent when none is pending. Expires at the end of the Round. */
+  chargeBonus?: number;
   /** Reposition: the Hero's next Move action covers this many tiles; absent when none is pending. */
   extendedMove?: number;
   /** Set after a Resolution that leaves the Deck and the Discard empty; an Exhausted Hero is out of the match (ADR 0006). */

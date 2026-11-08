@@ -18,8 +18,8 @@ An Attack that hits a single enemy Hero (every Attack except Shockwave and Breac
 
 ## Bruiser / Vanguard — 12 cards
 
-1. **Slam Shot** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 3 with a clear Line of Sight when the Attack fires; otherwise it misses.
-2. **Slam Shot** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 3 with a clear Line of Sight when the Attack fires; otherwise it misses.
+1. **Slam Shot** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 2 with a clear Line of Sight when the Attack fires; otherwise it misses. Deals 3 damage at Range 1 (ADR 0025).
+2. **Slam Shot** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 2 with a clear Line of Sight when the Attack fires; otherwise it misses. Deals 3 damage at Range 1 (ADR 0025).
 3. **Concussion Round** — Attack, 1 Energy: Deal 2 damage; apply Slow until the end of the next Resolution.
 4. **Concussion Round** — Attack, 1 Energy: Deal 2 damage; apply Slow until the end of the next Resolution.
 5. **Breach Charge** — Attack, 2 Energy: Deal 2 damage and destroy Half Cover on the target tile. **Overdrive:** Destroy any Cover on the target tile and deal 2 damage to each Hero on the target tile and on adjacent tiles, including allied Heroes and this Hero.
@@ -32,6 +32,12 @@ An Attack that hits a single enemy Hero (every Attack except Shockwave and Breac
 12. **Adrenal Surge** — Utility, 2 Energy: This Hero permanently gains +1 Attack until Exhaustion. **Overdrive:** This Hero and an allied Hero each permanently gain +1 Attack until Exhaustion.
 
 Overdrive modes: Breach Charge, Shockwave, and Adrenal Surge (three Overdrive cards).
+
+### New Bruiser cards (ADR 0025; effects are built, the Deck change follows in the deck ticket)
+
+- **Charge** — Utility, 1 Energy: Move up to 3 tiles toward the named visible, not Exhausted enemy Hero and end next to it; the move stops early at a wall, Full Cover or another Hero. This Hero gains Shield 1 until the end of the Round and +1 damage on its next Attack at Range 1 in that Round (used once; it expires with the Round). A Slam Shot at Range 1 after a Charge deals 4.
+- **Pull** — Utility, 1 Energy, Range 4: Move the named visible enemy Hero up to 2 tiles directly toward this Hero. It stops early at a wall, Full Cover or another Hero, like Knockback, and may leave a zone.
+- **Wrecking Blow** — Attack, 1 Energy, Range 2: Deal 2 damage to the named visible enemy Hero; destroy any Cover (Half or Full) on the target tile after the damage of the Tick.
 
 ## Controller / Tactician — 12 cards
 

@@ -2,6 +2,8 @@
 // always give the same result. Only Move actions exist so far.
 
 import {
+  CHARGE_DAMAGE_BONUS,
+  CHARGE_SHIELD,
   type CardDefinition,
   type CardEffect,
   type CardIndex,
@@ -60,6 +62,7 @@ import {
   HALF_COVER_REDUCTION,
   hasLineOfSight,
   REACTOR_DECK,
+  stepTowards,
   TileKind,
   tileAt,
   withTile,
@@ -161,7 +164,7 @@ function applyMarked(tick: number, source: HeroState, target: HeroState, effect:
 const CARD_EVENT_KINDS: ReadonlySet<EventKind> = new Set([
   EventKind.AttackHit, EventKind.AttackFailed, EventKind.SlowApplied, EventKind.MarkedApplied, EventKind.HiddenGained,
   EventKind.Knockback, EventKind.CoverPlaced, EventKind.CoverDestroyed, EventKind.AreaRevealed,
-  EventKind.CoverReductionIgnored, EventKind.AttackBonusGained, EventKind.ShieldGained,
+  EventKind.CoverReductionIgnored, EventKind.AttackBonusGained, EventKind.ShieldGained, EventKind.Pull, EventKind.Charged,
 ]);
 
 /**
@@ -327,7 +330,11 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const halfCover =
       coverAgainst(match.grid, hero.position, target.position) === CoverKind.Half && !ignoresHalfCover && !hero.ignoresHalfCover;
     const damageEffect = card.effects.find(({ kind }) => kind === EffectKind.Damage || kind === EffectKind.DamageAtLongRange)!;
-    const damage = damageAtDistance(damageEffect, distance) + hero.attackBonus;
+    const closeRange = card.effects.find(({ kind }) => kind === EffectKind.CloseRangeBonus);
+    // A Charge's bonus goes to the next Attack that lands at Range 1, once.
+    const chargeBonus = distance === 1 ? (hero.chargeBonus ?? 0) : 0;
+    if (chargeBonus > 0) delete hero.chargeBonus;
+    const damage = damageAtDistance(damageEffect, distance) + (distance === 1 ? (closeRange?.amount ?? 0) : 0) + chargeBonus + hero.attackBonus;
     const incoming = Math.max(0, damage - (halfCover ? HALF_COVER_REDUCTION : 0));
     const piercing = card.effects.some(({ kind }) => kind === EffectKind.PiercingDamage);
     dealDamage(match, tick, hero, target, incoming, events, piercing);
@@ -345,6 +352,13 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const first = events.length;
     resolveTileAttack(match, tick, attack, events);
     tagCardEvents(match, events, first, attack.hero, attack.card, attack.overdrive, attack.tile);
+  }
+  // Wrecking Blow destroys the Cover on its target's tile after the damage of the Tick, like a tile Attack.
+  for (const { hero, card, targetId, overdrive } of landed) {
+    if (!card.effects.some(({ kind }) => kind === EffectKind.DestroyAnyCover)) continue;
+    const first = events.length;
+    destroyCoverAt(match, tick, hero, match.heroes.find((candidate) => candidate.id === targetId)!.position, events);
+    tagCardEvents(match, events, first, hero, card, overdrive);
   }
   // Knockback comes after all damage of the Tick, in Hero order, so an earlier push can block a later one.
   for (const { hero, card, targetId, overdrive } of landed) {
@@ -388,12 +402,15 @@ function resolveTileAttack(match: MatchState, tick: number, { hero, card, tile }
       if (reduced && amount > 0) flagHalfCover(events, first);
     }
   }
-  const destroysAny = isTileBlast(card);
-  if (destroysAny ? coverAt(match.grid, tile) !== CoverKind.None : coverAt(match.grid, tile) === CoverKind.Half) {
-    match.grid = destroyCover(match.grid, tile);
-    match.placedCover = match.placedCover.filter((placed) => !samePosition(placed.position, tile));
-    events.push({ kind: EventKind.CoverDestroyed, tick, heroId: hero.id, to: { ...tile } });
-  }
+  if (isTileBlast(card) || coverAt(match.grid, tile) === CoverKind.Half) destroyCoverAt(match, tick, hero, tile, events);
+}
+
+/** Destroys the Cover (Half or Full, Placed or original) on a tile; does nothing on a tile without Cover. */
+function destroyCoverAt(match: MatchState, tick: number, hero: HeroState, tile: GridPosition, events: MatchEvent[]): void {
+  if (coverAt(match.grid, tile) === CoverKind.None) return;
+  match.grid = destroyCover(match.grid, tile);
+  match.placedCover = match.placedCover.filter((placed) => !samePosition(placed.position, tile));
+  events.push({ kind: EventKind.CoverDestroyed, tick, heroId: hero.id, to: { ...tile } });
 }
 
 /**
@@ -412,6 +429,19 @@ function knockBack(
     col: Math.sign(target.position.col - attacker.position.col),
     row: Math.sign(target.position.row - attacker.position.row),
   };
+  slideHero(match, tick, target, direction, distance, EventKind.Knockback, events);
+}
+
+/** Moves `target` up to `distance` tiles in `direction`, one event per tile, and stops early at the obstacles Knockback stops at. */
+function slideHero(
+  match: MatchState,
+  tick: number,
+  target: HeroState,
+  direction: { col: number; row: number },
+  distance: number,
+  kind: EventKind.Knockback | EventKind.Pull,
+  events: MatchEvent[],
+): void {
   for (let step = 0; step < distance; step++) {
     const to = { col: target.position.col + direction.col, row: target.position.row + direction.row };
     const blocked =
@@ -419,9 +449,24 @@ function knockBack(
       coverAt(match.grid, to) === CoverKind.Full ||
       match.heroes.some((other) => !other.exhausted && samePosition(other.position, to));
     if (blocked) return;
-    events.push({ kind: EventKind.Knockback, tick, heroId: target.id, from: { ...target.position }, to });
+    events.push({ kind, tick, heroId: target.id, from: { ...target.position }, to });
     target.position = to;
   }
+}
+
+/** Charge: the caster walks up to `distance` tiles toward `target` and stops next to it, or earlier at an obstacle (Step events, like a Move). */
+function chargeAt(match: MatchState, tick: number, caster: HeroState, target: HeroState, distance: number, events: MatchEvent[]): void {
+  for (let step = 0; step < distance && chebyshevDistance(caster.position, target.position) > 1; step++) {
+    const to = stepTowards(caster.position, target.position);
+    const blocked =
+      !isStepAllowed(caster.position, to) ||
+      coverAt(match.grid, to) === CoverKind.Full ||
+      match.heroes.some((other) => other !== caster && !other.exhausted && samePosition(other.position, to));
+    if (blocked) break;
+    events.push({ kind: EventKind.Step, tick, heroId: caster.id, from: { ...caster.position }, to });
+    caster.position = to;
+  }
+  events.push({ kind: EventKind.Charged, tick, heroId: caster.id, targetId: target.id });
 }
 
 interface UtilityUse {
@@ -494,6 +539,20 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
     target.ignoresHalfCover = true;
     events.push({ kind: EventKind.CoverReductionIgnored, tick, heroId: caster.id, targetId: target.id });
   },
+  // Pull: the enemy slides toward the caster. Charge: the caster closes in, then gains its Shield and its Range 1 bonus.
+  [EffectKind.Pull]: ({ match, tick, effect, caster, target, events }) => {
+    const direction = {
+      col: Math.sign(caster.position.col - target.position.col),
+      row: Math.sign(caster.position.row - target.position.row),
+    };
+    slideHero(match, tick, target, direction, effect.amount ?? 0, EventKind.Pull, events);
+  },
+  [EffectKind.Charge]: ({ match, tick, effect, caster, target, events }) => {
+    chargeAt(match, tick, caster, target, effect.amount ?? 0, events);
+    caster.shield += CHARGE_SHIELD;
+    events.push({ kind: EventKind.ShieldGained, tick, heroId: caster.id, amount: CHARGE_SHIELD, casterId: caster.id });
+    caster.chargeBonus = CHARGE_DAMAGE_BONUS;
+  },
   [EffectKind.ApplySlow]: ({ tick, effect, caster, target, events }) => applySlow(tick, caster, target, effect, events),
   [EffectKind.PreventHidden]: ({ target }) => {
     target.hiddenPrevented = true;
@@ -561,7 +620,9 @@ function resolveUtility(
   let validTarget: boolean;
   switch (card.target) {
     case CardTarget.VisibleEnemy:
-      validTarget = target !== undefined && !target.exhausted && target.squad !== caster.squad && canSquadSeeHero(match, caster.squad, target);
+      validTarget =
+        target !== undefined && !target.exhausted && target.squad !== caster.squad && canSquadSeeHero(match, caster.squad, target) &&
+        (card.range === undefined || inCardRange(target.position));
       break;
     case CardTarget.EnemyInSight:
       validTarget = target !== undefined && !target.exhausted && target.squad !== caster.squad && inOwnSight(target);
@@ -871,6 +932,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     hero.hiddenPrevented = false;
     hero.ignoresHalfCover = false;
     delete hero.extendedMove;
+    delete hero.chargeBonus;
   }
   expireTemporaryEffects(match);
   // An empty Deck is refilled from the Discard right now. Exhaustion takes effect only after that, when no
