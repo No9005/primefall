@@ -513,6 +513,38 @@ export const SCENARIOS: readonly Scenario[] = [
     steps: [{ wait: true }],
     resolutionShotsMs: [400, 900, 1400, 1900, 2600, 3200],
   },
+  {
+    name: "crossfire-ring",
+    description: "Planning: the Bruiser and the allied Controller both plan an Attack on the same enemy, so the Tick ring shows a possible Crossfire (orange segments, +1 ? chip).",
+    buildMatch: () =>
+      stage(31, (hero) => {
+        arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero("left-controller"), { col: 4, row: 2 }, { hand: [CONTROLLER_PULSE_BOLT, ...CONTROLLER_FILLER_CARDS] });
+        arrange(hero("right-bruiser"), { col: 6, row: 1 }, ENEMIES_WITH_ATTACKS);
+        arrange(hero("right-assassin"), { col: 20, row: 6 }, ENEMIES_WITH_ATTACKS);
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [{ slot: 1, use: "pitch" }, { slot: 0, use: "primary", target: "right-bruiser" }],
+    resolutionShotsMs: [400],
+  },
+  {
+    name: "double-attack-ring",
+    description: "Planning: the Bruiser attacks the same enemy in Ticks 1 and 2 and the allies are out of reach: the ring has two teal segments, no Crossfire.",
+    buildMatch: () =>
+      stage(31, (hero) => {
+        arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero("right-bruiser"), { col: 6, row: 1 }, ENEMIES_WITH_ATTACKS);
+        arrange(hero("right-assassin"), { col: 20, row: 6 }, ENEMIES_WITH_ATTACKS);
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [
+      { slot: 2, use: "pitch" },
+      { slot: 3, use: "pitch" },
+      { slot: 0, use: "primary", target: "right-bruiser" },
+      { slot: 1, use: "primary", target: "right-bruiser" },
+    ],
+    resolutionShotsMs: [400],
+  },
   ...ASSASSIN_SCENARIOS,
 ];
 
