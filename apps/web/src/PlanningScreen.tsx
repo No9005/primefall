@@ -750,6 +750,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
           cardUseReasons(selected.heroClass, heldInHand, queue, pitched),
           cardUseReasons(selected.heroClass, heldInHand, queue, pitched, true)[CardUse.Primary],
           { primary: describeEffects(pulledCard.effects) ?? "", overdrive: describeEffects(pulledCard.overdrive) },
+          view.attackAndDefend !== undefined,
         );
 
   /** Puts a chosen use of a card on its way: straight into the Queue when it needs no target, otherwise to the picking. */
