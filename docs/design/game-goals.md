@@ -34,7 +34,7 @@ Matches are one-sided. Both Squads run to the Prime Zone and play Shield plus At
 | Length | At most 15 Rounds. |
 | Public | Control of each zone and both scores are always visible; enemy Heroes stay in the Fog. |
 | Takeover bonus | Off by default. Two constants (bonus, cooldown per zone) exist for the case that the tug-of-war gauge is missed: a one-time bonus equal to the zone's value when a Squad takes a zone the enemy controlled in the previous Resolution. |
-| Attack and Defend | Unchanged (ADR 0022, #302). |
+| Attack and Defend | Keeps its own win rules, Round limit and Block (ADR 0022). The new decks and combat rules apply to both modes, so its balance (#302) is measured again after the decks. |
 | Overwatch Nest | Removed for now (the tile, its rules and the AI weight). The card Overwatch Uplink stays. |
 
 At most 4 Victory Points a Resolution can be scored (2 + 1 + 1) from Round 4, 2 before; at most about 54 in a match.

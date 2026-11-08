@@ -20,7 +20,7 @@ For the **classic mode** only:
 - **Block** is no longer an action of every card. Shield comes from Shield cards. The refill rule is decided after the Exposed Hero measurement is repeated.
 - **Information:** control of each zone and both scores are public; enemy Heroes stay in the Fog.
 - The Overwatch Nest is removed for now.
-- Attack and Defend (ADR 0022) is unchanged.
+- Attack and Defend (ADR 0022) keeps its own win rules, Round limit and Block. The cards and combat rules of ADR 0023 to 0025 (decks, Crossfire, Minimum Range, Placed Cover) apply to both modes, so its balance (#302) is measured again after the new decks.
 
 Considered and not chosen now: three mission types per game (hidden objectives, a later layer if the zones are not enough), a rotating zone (the way across the map takes two to three Rounds, so it would be out of reach), a progress track with Abbau and decay for a tie in one zone (#341, replaced by the points).
 
