@@ -3,7 +3,7 @@
 // real rules API and plain edits; the tool resumes it in the browser through the Resume button, and the real local
 // host plays the Resolution. Nothing here forges a rule. To add a scenario: see "Screenshots of UI changes" in
 // docs/agents/software-factory.md.
-import { ActionKind, type CardIndex, type GridPosition, HeroClass, type HeroPlan, type QueuedAction, type SquadPlan, SquadId, tileAt, TileKind, withTile } from "game-core";
+import { ActionKind, type CardIndex, type GridPosition, HeroClass, type HeroPlan, type QueuedAction, type SquadPlan, SquadId, TileKind, withTile } from "game-core";
 import { createMatch, type HeroState, type MatchState, recordSightings, startRound } from "game-core/server";
 
 /** How a Hand card is used in a planning step. `overdrive` is the primary effect in its Overdrive face. */
@@ -69,11 +69,11 @@ function arrange(hero: HeroState, position: GridPosition, cards: { hand: CardInd
 
 /**
  * The state Deploy Cover leaves behind, written the way the rules write it: Half Cover on an empty tile for the
- * Left Squad, and the tile kind to restore. Only the Bruiser is played in the UI, and the AI never plays Deploy Cover
+ * Left Squad. Only the Bruiser is played in the UI, and the AI never plays Deploy Cover
  * or Scout Drone, so these effects cannot be played in a scenario; they start in place.
  */
-function placeHalfCover(match: MatchState, position: GridPosition, remaining: number): void {
-  match.placedCover.push({ squad: SquadId.Left, position: { ...position }, originalKind: tileAt(match.grid, position)!, remaining });
+function placeHalfCover(match: MatchState, position: GridPosition): void {
+  match.placedCover.push({ squad: SquadId.Left, position: { ...position } });
   match.grid = withTile(match.grid, position, TileKind.HalfCover);
 }
 
@@ -329,7 +329,7 @@ export const SCENARIOS: readonly Scenario[] = [
   }),
   bruiserCard("breach-charge", "A Bruiser plays Breach Charge on a Half Cover tile in front of an enemy Bruiser: the Cover is destroyed, the enemy behind it is not hurt.", 33, BRUISER_BREACH_CHARGE, 2, { use: "primary", tile: { col: 14, row: 4 } }, (hero, match) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
-    placeHalfCover(match, { col: 14, row: 4 }, 2);
+    placeHalfCover(match, { col: 14, row: 4 });
   }),
   bruiserCard(
     "breach-charge-overdrive",
@@ -341,7 +341,7 @@ export const SCENARIOS: readonly Scenario[] = [
     (hero, match) => {
       arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
       arrange(hero(`${SquadId.Right}-controller`), { col: 15, row: 3 }, ENEMIES_WITH_ATTACKS);
-      placeHalfCover(match, { col: 14, row: 4 }, 2);
+      placeHalfCover(match, { col: 14, row: 4 });
     },
   ),
   bruiserCard("shockwave", "A Bruiser plays Shockwave: 2 damage and knockback to two enemy Heroes within Range 1.", 35, BRUISER_SHOCKWAVE, 2, { use: "primary" }, (hero) => {
@@ -429,12 +429,12 @@ export const SCENARIOS: readonly Scenario[] = [
   controllerAttack("tag-round", "The allied Controller fires Tag Round at an enemy Bruiser two tiles away: 1 damage and Marked; the player's Bruiser waits.", 22, CONTROLLER_TAG_ROUND),
   controllerAttack("shock-pulse", "The allied Controller fires Shock Pulse at an enemy Bruiser two tiles away: 1 damage and Slow; the player's Bruiser waits.", 23, CONTROLLER_SHOCK_PULSE),
   {
-    name: "cover-placed-expires",
-    description: "Half Cover placed by Deploy Cover (2 Resolutions left) stands through Resolution 1 and expires at the end of Resolution 2.",
+    name: "cover-placed-stays",
+    description: "Half Cover placed by Deploy Cover stands through Resolution 1 and is still there after Resolution 2.",
     buildMatch: () =>
       stage(21, (hero, match) => {
         arrange(hero(PLAYER_BRUISER), { col: 8, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
-        placeHalfCover(match, { col: 10, row: 3 }, 2);
+        placeHalfCover(match, { col: 10, row: 3 });
       }),
     heroId: PLAYER_BRUISER,
     steps: [{ wait: true }],

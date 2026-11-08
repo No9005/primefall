@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { EventKind, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, PlanIssueKind, type QueuedAction, type SquadPlan, validatePlan } from "./plan";
-import { CoverKind, coverAt, type GridPosition, REACTOR_DECK, TileKind, tileAt, withTile } from "./reactor-deck";
+import { CoverKind, coverAt, type GridPosition, TileKind, withTile } from "./reactor-deck";
 import { resolveRound } from "./resolution";
 
 const CONTROLLER = "left-controller";
@@ -207,7 +207,7 @@ describe("Aegis Protocol", () => {
 describe("Placed Cover", () => {
   const PRIME_TILE = { col: 14, row: 7 };
 
-  it("Deploy Cover turns an empty tile into Half Cover for two Resolutions and then restores the tile", () => {
+  it("Deploy Cover turns an empty tile into Half Cover that stays", () => {
     const match = setup([DEPLOY_COVER, PULSE_BOLT, 1, 5]);
     hero(match, CONTROLLER).position = { col: 13, row: 5 };
     const tile = PRIME_TILE;
@@ -217,15 +217,10 @@ describe("Placed Cover", () => {
     expect(coverAt(first.grid, tile)).toBe(CoverKind.Half);
     expect(buildSquadView(first, SquadId.Left).placedCover).toEqual([tile]);
 
-    // It protects through the next Round's planning and Resolution, then it is gone.
-    const nextRound = startRound(first);
-    expect(coverAt(nextRound.grid, tile)).toBe(CoverKind.Half);
-    const second = resolveRound(nextRound, []).match;
-    expect(coverAt(second.grid, tile)).toBe(CoverKind.None);
-    // The Prime Zone tile is back, not plain floor.
-    expect(tileAt(second.grid, tile)).toBe(TileKind.PrimeZone);
-    expect(second.placedCover).toEqual([]);
-    expect(buildSquadView(second, SquadId.Left).placedCover).toEqual([]);
+    // It is still there after further Rounds.
+    const second = resolveRound(startRound(resolveRound(startRound(first), []).match), []).match;
+    expect(coverAt(second.grid, tile)).toBe(CoverKind.Half);
+    expect(buildSquadView(second, SquadId.Left).placedCover).toEqual([tile]);
   });
 
   it("Deploy Cover fails on a Wall, on existing Cover and on a tile with a Hero", () => {
@@ -286,15 +281,6 @@ describe("Placed Cover", () => {
     expect(buildSquadView(after, SquadId.Right).placedCover).toEqual([]);
   });
 
-  it("destroyed placed Cover does not come back when it would expire", () => {
-    const match = setup([DEPLOY_COVER, PULSE_BOLT, 1, 5]);
-    const tile = { col: 8, row: 3 };
-    const { match: placed } = resolveRound(match, [planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile })], [PULSE_BOLT])]);
-    placed.grid = withTile(placed.grid, tile, TileKind.Floor);
-    const later = resolveRound(startRound(resolveRound(startRound(placed), []).match), []).match;
-    expect(coverAt(later.grid, tile)).toBe(CoverKind.None);
-    expect(tileAt(REACTOR_DECK, tile)).toBe(TileKind.Floor);
-  });
 });
 
 describe("Overwatch Uplink", () => {

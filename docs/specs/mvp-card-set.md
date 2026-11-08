@@ -42,9 +42,9 @@ Overdrive modes: Breach Charge, Shockwave, and Adrenal Surge (three Overdrive ca
 5. **Scout Drone** — Utility, 1 Energy: Reveal a 3 by 3 area within Range 4 for two Resolutions. **Overdrive:** Reveal a 5 by 5 area within Range 4 for two Resolutions.
 6. **Scout Drone** — Utility, 1 Energy: Reveal a 3 by 3 area within Range 4 for two Resolutions. **Overdrive:** Reveal a 5 by 5 area within Range 4 for two Resolutions.
 7. **Aegis Protocol** — Utility, 1 Energy: An allied Hero gains Shield 3. **Overdrive:** Two allied Heroes each gain Shield 3.
-8. **Fortify** — Utility, 1 Energy: Place Half Cover on the tile of an allied Hero within Range 3 for two Resolutions.
-9. **Deploy Cover** — Utility, 1 Energy: Place Half Cover on an empty tile for two Resolutions.
-10. **Deploy Cover** — Utility, 1 Energy: Place Half Cover on an empty tile for two Resolutions.
+8. **Fortify** — Utility, 1 Energy: Place Half Cover on the tile of an allied Hero within Range 3. It stays until it is destroyed (Placed Cover: at most three tiles per Squad, the oldest disappears first).
+9. **Deploy Cover** — Utility, 1 Energy: Place Half Cover on an empty tile. It stays until it is destroyed (Placed Cover).
+10. **Deploy Cover** — Utility, 1 Energy: Place Half Cover on an empty tile. It stays until it is destroyed (Placed Cover).
 11. **Gravity Snare** — Utility, 2 Energy: A visible enemy gains Slow until the end of the next Resolution.
 12. **Overwatch Uplink** — Utility, 1 Energy: An allied Hero may attack an enemy in Half Cover during this round without the Half Cover damage reduction.
 

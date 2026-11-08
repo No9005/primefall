@@ -278,7 +278,7 @@ function zoneCentre(): GridPosition | undefined {
 interface BoardProps {
   /** Cover tiles the Squad has seen destroyed; the board draws them as open floor. */
   destroyedCover: readonly GridPosition[];
-  /** Temporary Half Cover the Squad knows of: drawn as Half Cover with a cyan outline. */
+  /** Placed Cover the Squad knows of (it stays until destroyed): drawn as Half Cover with a cyan outline. */
   placedCover: readonly GridPosition[];
   /** Half Cover left by Exhausted Heroes the Squad knows of: a low slab under the downed figure. */
   wreckCover: readonly GridPosition[];

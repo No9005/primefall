@@ -80,7 +80,7 @@ const EFFECT_TEXT: Record<EffectKind, (effect: CardEffect) => string> = {
   [EffectKind.PreventHidden]: () => "prevents Hidden",
   [EffectKind.GainPermanentAttack]: ({ amount }) => `+${amount} Attack damage for the rest of the match`,
   [EffectKind.RevealArea]: ({ size }) => `reveals a ${size}x${size} area`,
-  [EffectKind.PlaceHalfCover]: () => "places Half Cover",
+  [EffectKind.PlaceCover]: ({ cover }) => `places ${cover === CoverKind.Full ? "Full" : "Half"} Cover until it is destroyed`,
   [EffectKind.BecomeHidden]: () => "become Hidden",
   [EffectKind.TargetGhost]: () => "shoots a Ghost's last known position",
   [EffectKind.RemoveHalfCoverReduction]: () => "Half Cover does not reduce the damage",
