@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cardIndex, HeroClass } from "./cards";
 import { SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, PlanIssueKind, type SquadPlan, validatePlan } from "./plan";
@@ -6,11 +7,12 @@ import { resolveRound } from "./resolution";
 
 const ASSASSIN = "left-assassin";
 const TARGET = "right-bruiser";
-// Assassin cards 4 and 5 are Long Shot (Range 7, cost 1, damage 2; Overdrive 4 at Range 6 or 7); 0 and 1 are
-// Precision Shots that serve as Pitch.
-const LONG_SHOT = 4;
-const OTHER_LONG_SHOT = 5;
+// Assassin cards 1 and 2 are Long Shot (Range 7, cost 1, damage 2; Overdrive 4 at Range 6 or 7); Precision Shot (0)
+// serves as Pitch.
+const LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot");
+const OTHER_LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot", 1);
 const PRECISION_SHOT = 0;
+const COVER_BREAKER = cardIndex(HeroClass.Assassin, "Cover Breaker");
 
 const hero = (match: MatchState, heroId: string) => match.heroes.find((candidate) => candidate.id === heroId)!;
 
@@ -18,7 +20,7 @@ const hero = (match: MatchState, heroId: string) => match.heroes.find((candidate
 function shootout(distance: number): MatchState {
   const match = startRound(createMatch(5));
   hero(match, ASSASSIN).position = { col: 2, row: 1 };
-  hero(match, ASSASSIN).hand = [LONG_SHOT, OTHER_LONG_SHOT, PRECISION_SHOT, 1];
+  hero(match, ASSASSIN).hand = [LONG_SHOT, OTHER_LONG_SHOT, PRECISION_SHOT, 3];
   hero(match, TARGET).position = { col: 2 + distance, row: 1 };
   return match;
 }
@@ -91,11 +93,11 @@ describe("validatePlan and Overdrive", () => {
     const [hero0] = plan.heroes;
     const noOverdrive: SquadPlan = {
       ...plan,
-      heroes: [{ ...hero0!, queue: [{ kind: ActionKind.Primary, card: 1, target: TARGET, overdrive: true }], pitched: [PRECISION_SHOT] }],
+      heroes: [{ ...hero0!, queue: [{ kind: ActionKind.Primary, card: COVER_BREAKER, target: TARGET, overdrive: true }], pitched: [PRECISION_SHOT] }],
     };
     const issues = validatePlan(view, noOverdrive);
     expect(issues.map((issue) => issue.kind)).toEqual([PlanIssueKind.NoOverdrive]);
-    expect(issues[0]!.message).toContain("Precision Shot has no Overdrive");
+    expect(issues[0]!.message).toContain("Cover Breaker has no Overdrive");
   });
 
   it("fails an Overdrive action on a card without one in the simulation and keeps the card", () => {
@@ -103,7 +105,7 @@ describe("validatePlan and Overdrive", () => {
     const plan: SquadPlan = {
       squad: SquadId.Left,
       heroes: [
-        { heroId: ASSASSIN, queue: [{ kind: ActionKind.Primary, card: 1, target: TARGET, overdrive: true }], pitched: [PRECISION_SHOT] },
+        { heroId: ASSASSIN, queue: [{ kind: ActionKind.Primary, card: COVER_BREAKER, target: TARGET, overdrive: true }], pitched: [PRECISION_SHOT] },
       ],
     };
     const after = resolveRound(match, [plan]).match;

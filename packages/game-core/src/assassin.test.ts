@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HERO_DECKS, HeroClass } from "./cards";
+import { cardIndex, HERO_DECKS, HeroClass } from "./cards";
 import { withFullCover } from "./full-cover-fixture";
 import { EventKind, SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, recordSightings, SIGHT_RANGE, startRound } from "./match";
@@ -9,16 +9,16 @@ import { Visibility } from "./host";
 
 const ASSASSIN = "left-assassin";
 const ENEMY = "right-bruiser";
-// Assassin cards: 0 Precision Shot, 2 Cover Breaker, 3 Shield Breaker, 4 Long Shot, 6 Ghost Shot, 7 Execution Round,
-// 8 Vanish, 10 Mark Target, 11 Reposition; card 1 (Precision Shot) serves as Pitch.
-const COVER_BREAKER = 2;
-const SHIELD_BREAKER = 3;
-const GHOST_SHOT = 6;
-const EXECUTION_ROUND = 7;
-const VANISH = 8;
-const MARK_TARGET = 10;
-const REPOSITION = 11;
-const PITCH = 1;
+const idx = (name: string, copy = 0) => cardIndex(HeroClass.Assassin, name, copy);
+// Precision Shot is card 0; a second Long Shot serves as Pitch.
+const COVER_BREAKER = idx("Cover Breaker");
+const SHIELD_BREAKER = idx("Shield Breaker");
+const LONG_SHOT = idx("Long Shot");
+const GHOST_SHOT = idx("Ghost Shot");
+const EXECUTION_ROUND = idx("Execution Round");
+const VANISH = idx("Vanish");
+const REPOSITION = idx("Reposition");
+const PITCH = idx("Long Shot", 1);
 
 // Row 1 is open floor; (14,5) is Half Cover (H) with open floor on both sides; the tests that need Full Cover put it at (15,1).
 const OPEN = { col: 2, row: 1 };
@@ -38,7 +38,7 @@ const plan = (queue: QueuedAction[], pitched: number[] = [PITCH], squad = SquadI
 });
 
 /** The Assassin at `from` with the given cards in the Hand and the enemy Bruiser at `enemyAt`. */
-function scene(from = OPEN, enemyAt = { col: from.col + 3, row: from.row }, hand = [PITCH, VANISH, MARK_TARGET, REPOSITION]) {
+function scene(from = OPEN, enemyAt = { col: from.col + 3, row: from.row }, hand = [PITCH, VANISH, GHOST_SHOT, REPOSITION]) {
   const match = startRound(createMatch(5));
   hero(match, ASSASSIN).position = { ...from };
   hero(match, ASSASSIN).hand = hand;
@@ -56,6 +56,13 @@ describe("Precision Shot, Cover Breaker and Execution Round", () => {
     expect(deckLoss(match, after)).toBe(3);
   });
 
+  it("Execution Round ignores Half Cover (ADR 0025): 3 damage through it, where Precision Shot is reduced", () => {
+    const hand = [PITCH, EXECUTION_ROUND, 0, REPOSITION];
+    const match = scene({ col: 11, row: 5 }, HALF_COVER, hand);
+    const execution = resolveRound(match, [plan([primary(EXECUTION_ROUND, ENEMY)], [PITCH, 0])]).match;
+    expect(deckLoss(match, execution)).toBe(3);
+  });
+
   it("Cover Breaker ignores Half Cover while a Precision Shot is reduced by it", () => {
     const attacker = { col: 11, row: 5 };
     const hand = [PITCH, COVER_BREAKER, 0, REPOSITION];
@@ -71,12 +78,12 @@ describe("Shield Breaker (Piercing Damage)", () => {
   const fire = (match: MatchState) => resolveRound(match, [plan([primary(SHIELD_BREAKER, ENEMY)], [PITCH, 0])]);
 
   it("ignores Shield 3: nothing is absorbed and 2 cards leave the Deck, where a Precision Shot is absorbed", () => {
-    const match = scene(OPEN, { col: 6, row: 1 }, [PITCH, 0, SHIELD_BREAKER, 4]);
+    const match = scene(OPEN, { col: 6, row: 1 }, [PITCH, 0, SHIELD_BREAKER, LONG_SHOT]);
     hero(match, ENEMY).shield = 3;
     const { match: after, events } = fire(match);
     expect(deckLoss(match, after)).toBe(2);
     expect(events).toContainEqual(expect.objectContaining({ kind: EventKind.AttackHit, absorbed: 0, damage: 2 }));
-    const precision = resolveRound(match, [plan([primary(4, ENEMY)])]);
+    const precision = resolveRound(match, [plan([primary(LONG_SHOT, ENEMY)])]);
     expect(deckLoss(match, precision.match)).toBe(0);
     expect(precision.events).toContainEqual(expect.objectContaining({ kind: EventKind.AttackHit, absorbed: 2, damage: 0 }));
   });
@@ -93,43 +100,12 @@ describe("Shield Breaker (Piercing Damage)", () => {
     expect(deckLoss(match, fire(match).match)).toBe(0);
   });
 
-  it("is one Shield Breaker and one Cover Breaker in the 12-card Deck", () => {
+  it("is one Shield Breaker and one Cover Breaker in the 9-card Deck", () => {
     const names = HERO_DECKS[HeroClass.Assassin].map(({ name }) => name);
-    expect(names).toHaveLength(12);
+    expect(names).toHaveLength(9);
     expect(names.filter((name) => name === "Shield Breaker")).toHaveLength(1);
     expect(names.filter((name) => name === "Cover Breaker")).toHaveLength(1);
     expect(names).not.toContain("Piercing Round");
-  });
-});
-
-describe("Mark Target", () => {
-  it("Marks an enemy in sight, so the Squad sees it until the end of the next Resolution", () => {
-    const match = scene(OPEN, { col: 2 + SIGHT_RANGE, row: 1 });
-    const { match: after, events } = resolveRound(match, [plan([primary(MARK_TARGET, ENEMY)])]);
-    expect(events).toContainEqual({ kind: EventKind.MarkedApplied, tick: 1, heroId: ASSASSIN, targetId: ENEMY, card: "Mark Target" });
-    expect(hero(after, ENEMY).marked).toBe(1);
-    // The Assassin walks out of sight but still sees the Marked enemy.
-    hero(after, ASSASSIN).position = { col: 1, row: 9 };
-    expect(buildSquadView(after, SquadId.Left).enemies.find(({ id }) => id === ENEMY)?.visibility).toBe(Visibility.Visible);
-    const next = resolveRound(startRound(after), []).match;
-    expect(hero(next, ENEMY).marked).toBe(0);
-  });
-
-  it("Overdrive also deals 1 damage within Range 5, and only the Mark further away; the card is Exiled", () => {
-    const hand = [PITCH, MARK_TARGET, 0, REPOSITION];
-    const near = scene(OPEN, { col: 7, row: 1 }, hand);
-    const far = scene(OPEN, { col: 9, row: 1 }, hand);
-    const nearAfter = resolveRound(near, [plan([primary(MARK_TARGET, ENEMY, true)])]).match;
-    const farAfter = resolveRound(far, [plan([primary(MARK_TARGET, ENEMY, true)])]).match;
-    expect([deckLoss(near, nearAfter), deckLoss(far, farAfter)]).toEqual([1, 0]);
-    expect(hero(farAfter, ENEMY).marked).toBeGreaterThan(0);
-    expect(hero(nearAfter, ASSASSIN).exile).toEqual([MARK_TARGET]);
-  });
-
-  it("fails against an enemy outside the sight range", () => {
-    const match = scene(OPEN, { col: 2 + SIGHT_RANGE + 1, row: 1 });
-    const { events } = resolveRound(match, [plan([primary(MARK_TARGET, ENEMY)])]);
-    expect(events).toEqual([{ kind: EventKind.ActionFailed, tick: 1, heroId: ASSASSIN }]);
   });
 });
 
@@ -178,19 +154,6 @@ describe("Hidden", () => {
     expect(hero(after, ASSASSIN).hidden).toBe(0);
   });
 
-  it("Suppress, played earlier in the Round, prevents it", () => {
-    const match = scene(HALF_COVER, { col: 17, row: 5 }, [PITCH, VANISH, 0, REPOSITION]);
-    hero(match, ENEMY).hand = [9, 0, 1, 2];
-    // Tick 1: the enemy Bruiser Suppresses the Visible Assassin (Bruiser card 9); tick 2: the Assassin's Vanish.
-    const block: QueuedAction = { kind: ActionKind.Block, card: 0 };
-    const result = resolveRound(match, [
-      plan([block, primary(VANISH, ASSASSIN)], [PITCH]),
-      { squad: SquadId.Right, heroes: [{ heroId: ENEMY, queue: [primary(9, ASSASSIN)], pitched: [0] }] },
-    ]);
-    expect(hero(result.match, ASSASSIN).hidden).toBe(0);
-    expect(result.events).toContainEqual({ kind: EventKind.ActionFailed, tick: 2, heroId: ASSASSIN });
-  });
-
   it("lasts two Resolutions: the Hero stays Hidden through the next one", () => {
     const { match: after } = vanished();
     expect(hero(after, ASSASSIN).hidden).toBe(1);
@@ -212,17 +175,6 @@ describe("Hidden", () => {
     hero(match, ASSASSIN).hidden = 2;
     // An enemy Hero cannot see a Hidden Assassin, but the Assassin sees the enemy and may attack it.
     const { match: after, events } = resolveRound(match, [plan([primary(0, ENEMY)])]);
-    expect(events).toContainEqual({ kind: EventKind.HiddenEnded, tick: 1, heroId: ASSASSIN });
-    expect(hero(after, ASSASSIN).hidden).toBe(0);
-  });
-
-  it("ends when the Hero is Marked", () => {
-    const match = scene(HALF_COVER, { col: 17, row: 5 });
-    hero(match, ASSASSIN).hidden = 2;
-    const enemyPlan = { squad: SquadId.Right, heroes: [{ heroId: "right-assassin", queue: [primary(MARK_TARGET, ASSASSIN)], pitched: [PITCH] }] };
-    hero(match, "right-assassin").hand = [PITCH, MARK_TARGET, 0, 3];
-    hero(match, "right-assassin").position = { col: 18, row: 5 };
-    const { match: after, events } = resolveRound(match, [enemyPlan]);
     expect(events).toContainEqual({ kind: EventKind.HiddenEnded, tick: 1, heroId: ASSASSIN });
     expect(hero(after, ASSASSIN).hidden).toBe(0);
   });

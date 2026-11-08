@@ -1,7 +1,7 @@
 // Card data for the three fixed Hero Decks (docs/specs/mvp-card-set.md, ADR 0009, ADR 0015).
 // Effects are declarative descriptors; interpreting them belongs to the resolution rules.
 
-import type { CoverKind } from "./reactor-deck";
+import { CoverKind } from "./reactor-deck";
 
 export enum HeroClass {
   Bruiser = "bruiser",
@@ -290,7 +290,7 @@ const breachCharge: CardDefinition = {
   // Destroys any Cover and hurts every Hero on the target tile and around it, allies and the caster included.
   overdrive: [{ kind: EffectKind.DestroyAnyCover }, { kind: EffectKind.DamageHeroesAtAndAroundTarget, amount: 2 }],
 };
-// Not in a Deck yet (the deck ticket adds them): the Bruiser's tools to close in, to move enemies and to wreck Cover.
+// The Bruiser's tools to close in, to move enemies and to wreck Cover (ADR 0025).
 export const charge: CardDefinition = {
   name: "Charge", type: CardType.Utility, energyCost: 1,
   target: CardTarget.VisibleEnemy, effects: [{ kind: EffectKind.Charge, amount: 3 }],
@@ -310,14 +310,6 @@ const shockwave: CardDefinition = {
 const bulwark: CardDefinition = {
   name: "Bulwark", type: CardType.Utility, energyCost: 1, target: CardTarget.SelfHero, effects: [shield(3)],
 };
-const forwardDeploy: CardDefinition = {
-  name: "Forward Deploy", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.AllyHero, effects: [{ kind: EffectKind.GrantExtraMove, amount: 2 }],
-};
-const suppress: CardDefinition = {
-  name: "Suppress", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.VisibleEnemy, effects: [slow, { kind: EffectKind.PreventHidden }],
-};
 const reinforce: CardDefinition = {
   name: "Reinforce", type: CardType.Utility, energyCost: 1, target: CardTarget.AllyHero, effects: [shield(2)],
 };
@@ -332,17 +324,9 @@ const adrenalSurge: CardDefinition = {
   ],
 };
 
-const pulseBolt: CardDefinition = {
-  name: "Pulse Bolt", type: CardType.Attack, energyCost: 1, range: CONTROLLER_RANGE,
-  target: CardTarget.VisibleEnemy, effects: [damage(2)],
-};
 const tagRound: CardDefinition = {
   name: "Tag Round", type: CardType.Attack, energyCost: 1, range: CONTROLLER_RANGE,
   target: CardTarget.VisibleEnemy, effects: [damage(1), marked], overdrive: [damage(1), marked, slow],
-};
-const shockPulse: CardDefinition = {
-  name: "Shock Pulse", type: CardType.Attack, energyCost: 1, range: CONTROLLER_RANGE,
-  target: CardTarget.VisibleEnemy, effects: [damage(1), slow],
 };
 const scoutDrone: CardDefinition = {
   name: "Scout Drone", type: CardType.Utility, energyCost: 1, target: CardTarget.Area, // no Range: any tile of the map
@@ -365,6 +349,10 @@ const fortify: CardDefinition = {
 const deployCover: CardDefinition = {
   name: "Deploy Cover", type: CardType.Utility, energyCost: 1,
   target: CardTarget.EmptyTile, effects: [{ kind: EffectKind.PlaceCover }],
+};
+const barricade: CardDefinition = {
+  name: "Barricade", type: CardType.Utility, energyCost: 1, range: 3,
+  target: CardTarget.EmptyTile, effects: [{ kind: EffectKind.PlaceCover, cover: CoverKind.Full }],
 };
 const gravitySnare: CardDefinition = {
   name: "Gravity Snare", type: CardType.Utility, energyCost: 2, target: CardTarget.VisibleEnemy, effects: [slow],
@@ -400,17 +388,11 @@ const ghostShot: CardDefinition = {
 };
 const executionRound: CardDefinition = {
   name: "Execution Round", type: CardType.Attack, energyCost: 2, range: ASSASSIN_RANGE, minRange: 2,
-  target: CardTarget.VisibleEnemy, effects: [damage(3)],
+  target: CardTarget.VisibleEnemy, effects: [damage(3), { kind: EffectKind.IgnoreHalfCover }],
 };
 const vanish: CardDefinition = {
   name: "Vanish", type: CardType.Utility, energyCost: 1,
   target: CardTarget.SelfHero, effects: [{ kind: EffectKind.BecomeHidden, duration: 2 }],
-};
-const markTarget: CardDefinition = {
-  name: "Mark Target", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.EnemyInSight, effects: [marked],
-  // Overdrive: also 1 damage, but only within the Assassin's weapon range.
-  overdrive: [marked, { ...damage(1), withinRange: ASSASSIN_RANGE }],
 };
 const reposition: CardDefinition = {
   name: "Reposition", type: CardType.Utility, energyCost: 1,
@@ -418,20 +400,28 @@ const reposition: CardDefinition = {
 };
 
 /**
- * The fixed 12-card Decks, in the order of the MVP card set. A card is identified within its Hero by
- * its index in this list, so identical cards stay distinct (for example in Hand or Exile).
+ * The fixed Hero Decks (ADR 0025): Bruiser 12, Controller 10, Assassin 9 cards, in the order of the MVP card set. A
+ * card is identified within its Hero by its index in this list, so identical cards stay distinct (for example in Hand or Exile).
  */
 export const HERO_DECKS: Record<HeroClass, readonly CardDefinition[]> = {
   [HeroClass.Bruiser]: [
-    slamShot, slamShot, concussionRound, concussionRound, breachCharge, shockwave,
-    bulwark, bulwark, forwardDeploy, suppress, reinforce, adrenalSurge,
+    slamShot, slamShot, concussionRound, breachCharge, shockwave, bulwark,
+    bulwark, charge, charge, pull, adrenalSurge, wreckingBlow,
   ],
   [HeroClass.Controller]: [
-    pulseBolt, pulseBolt, tagRound, shockPulse, scoutDrone, scoutDrone,
-    aegisProtocol, fortify, deployCover, deployCover, gravitySnare, overwatchUplink,
+    tagRound, scoutDrone, scoutDrone, aegisProtocol, reinforce,
+    fortify, deployCover, barricade, gravitySnare, overwatchUplink,
   ],
   [HeroClass.Assassin]: [
-    precisionShot, precisionShot, coverBreaker, shieldBreaker, longShot, longShot,
-    ghostShot, executionRound, vanish, vanish, markTarget, reposition,
+    precisionShot, longShot, longShot, coverBreaker, shieldBreaker,
+    ghostShot, executionRound, vanish, reposition,
   ],
 };
+
+/** The index of the `copy`-th (0-based) card called `name` in a Hero's Deck, so callers need not count positions. */
+export function cardIndex(heroClass: HeroClass, name: string, copy = 0): CardIndex {
+  const indices = HERO_DECKS[heroClass].flatMap((card, index) => (card.name === name ? [index] : []));
+  const index = indices[copy];
+  if (index === undefined) throw new Error(`${heroClass} has no card ${name} (copy ${copy})`);
+  return index;
+}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cardIndex, HeroClass } from "./cards";
 import { EventKind, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, PlanIssueKind, type QueuedAction, type SquadPlan, validatePlan } from "./plan";
@@ -10,17 +11,17 @@ const BRUISER = "left-bruiser";
 const ASSASSIN = "left-assassin";
 const ENEMY = "right-bruiser";
 
-// Controller cards: 2 Tag Round, 3 Shock Pulse, 4 Scout Drone, 6 Aegis Protocol, 7 Fortify, 8 Deploy Cover,
-// 10 Gravity Snare, 11 Overwatch Uplink; 0 Pulse Bolt and 1 Pulse Bolt serve as Pitch fodder.
-const PULSE_BOLT = 0;
-const TAG_ROUND = 2;
-const SHOCK_PULSE = 3;
-const SCOUT_DRONE = 4;
-const AEGIS_PROTOCOL = 6;
-const FORTIFY = 7;
-const DEPLOY_COVER = 8;
-const GRAVITY_SNARE = 10;
-const OVERWATCH_UPLINK = 11;
+const idx = (name: string, copy = 0) => cardIndex(HeroClass.Controller, name, copy);
+// Reinforce serves as Pitch fodder.
+const PULSE_BOLT = idx("Reinforce");
+const TAG_ROUND = idx("Tag Round");
+const SCOUT_DRONE = idx("Scout Drone");
+const AEGIS_PROTOCOL = idx("Aegis Protocol");
+const FORTIFY = idx("Fortify");
+const DEPLOY_COVER = idx("Deploy Cover");
+const BARRICADE = idx("Barricade");
+const GRAVITY_SNARE = idx("Gravity Snare");
+const OVERWATCH_UPLINK = idx("Overwatch Uplink");
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 const primary = (card: number, target: string, extra: Partial<QueuedAction> = {}): QueuedAction =>
@@ -76,22 +77,7 @@ describe("Tag Round", () => {
   });
 });
 
-describe("Pulse Bolt, Shock Pulse and Gravity Snare", () => {
-  it("Pulse Bolt deals 2 damage", () => {
-    const match = setup([PULSE_BOLT, 1, 5, 9]);
-    const { events } = resolveRound(match, [planOf(CONTROLLER, [primary(PULSE_BOLT, ENEMY)], [1])]);
-    expect(events).toEqual([
-      { kind: EventKind.AttackHit, tick: 1, heroId: CONTROLLER, targetId: ENEMY, absorbed: 0, damage: 2, crossfire: 0, card: "Pulse Bolt", distance: expect.any(Number) },
-    ]);
-  });
-
-  it("Shock Pulse deals 1 damage and Slows", () => {
-    const match = setup([SHOCK_PULSE, PULSE_BOLT, 1, 5]);
-    const { match: after, events } = resolveRound(match, [planOf(CONTROLLER, [primary(SHOCK_PULSE, ENEMY)], [PULSE_BOLT])]);
-    expect(events[0]).toMatchObject({ kind: EventKind.AttackHit, damage: 1 });
-    expect(hero(after, ENEMY).slow).toBeGreaterThan(0);
-  });
-
+describe("Gravity Snare", () => {
   it("Gravity Snare costs 2 Energy and Slows a visible enemy", () => {
     const match = setup([GRAVITY_SNARE, PULSE_BOLT, 1, 5]);
     const { match: after } = resolveRound(match, [planOf(CONTROLLER, [primary(GRAVITY_SNARE, ENEMY)], [PULSE_BOLT, 1])]);
@@ -257,6 +243,20 @@ describe("Placed Cover", () => {
     }
     const plan = planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile: { col: 5, row: 6 } })], [PULSE_BOLT]);
     expect(validatePlan(buildSquadView(match, SquadId.Left), plan).map(({ kind }) => kind)).toEqual([PlanIssueKind.BadTarget]);
+  });
+
+  it("Barricade turns an empty tile within Range 3 into Full Cover that stays, and fails beyond Range 3", () => {
+    const match = setup([BARRICADE, PULSE_BOLT, 1, 5]);
+    const near = { col: 8, row: 8 };
+    const { match: after, events } = resolveRound(match, [planOf(CONTROLLER, [primary(BARRICADE, CONTROLLER, { tile: near })], [PULSE_BOLT])]);
+    expect(events).toEqual([{ kind: EventKind.CoverPlaced, tick: 1, heroId: CONTROLLER, to: near, card: "Barricade" }]);
+    expect(coverAt(after.grid, near)).toBe(CoverKind.Full);
+    expect(buildSquadView(after, SquadId.Left).placedCover).toEqual([near]);
+
+    const far = { col: 8, row: 9 };
+    const missed = resolveRound(match, [planOf(CONTROLLER, [primary(BARRICADE, CONTROLLER, { tile: far })], [PULSE_BOLT])]);
+    expect(missed.events.some(({ kind }) => kind === EventKind.CoverPlaced)).toBe(false);
+    expect(missed.match.placedCover).toEqual([]);
   });
 
   it("Half Cover placed in a Tick reduces damage from then on", () => {

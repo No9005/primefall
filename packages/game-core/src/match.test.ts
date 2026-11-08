@@ -8,8 +8,12 @@ function hero(match: MatchState, squad: SquadId, heroClass: HeroClass): HeroStat
 }
 
 describe("card data", () => {
-  it("gives every Hero a Deck of 12 cards", () => {
-    for (const deck of Object.values(HERO_DECKS)) expect(deck).toHaveLength(12);
+  it("gives each class its Deck size: Bruiser 12, Controller 10, Assassin 9 cards (ADR 0025)", () => {
+    expect(Object.entries(HERO_DECKS).map(([heroClass, deck]) => [heroClass, deck.length])).toEqual([
+      [HeroClass.Bruiser, 12],
+      [HeroClass.Controller, 10],
+      [HeroClass.Assassin, 9],
+    ]);
   });
 });
 
@@ -62,7 +66,7 @@ describe("startRound", () => {
     expect(match.round).toBe(1);
     for (const h of match.heroes) {
       expect(h.hand).toHaveLength(HAND_SIZE);
-      expect(h.deck).toHaveLength(8);
+      expect(h.deck).toHaveLength(HERO_DECKS[h.heroClass].length - HAND_SIZE);
     }
   });
 

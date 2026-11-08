@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { EffectKind, HERO_DECKS, HeroClass } from "./cards";
+import { describe, expect, it } from "vitest";
+import { cardIndex, HeroClass } from "./cards";
 import { EventKind, SquadId } from "./host";
 import { createMatch, MAX_PLACED_COVER_PER_SQUAD, type MatchState, startRound } from "./match";
 import { ActionKind, type SquadPlan } from "./plan";
@@ -11,31 +11,24 @@ const RIGHT_CONTROLLER = "right-controller";
 const LEFT_BRUISER = "left-bruiser";
 const RIGHT_BRUISER = "right-bruiser";
 
-// Controller card 8 is Deploy Cover, card 9 (the second Deploy Cover) is swapped for a Full Cover test card
-// until the Barricade comes with the deck ticket; Pulse Bolt (0, 1) is Pitch fodder.
-const DEPLOY_COVER = 8;
-const TEST_BARRICADE = 9;
-const BRUISER_BREACH_CHARGE = 4;
-const BRUISER_SLAM_SHOT = 2; // Concussion Round: damage 2, Range 3
-
-const decks = HERO_DECKS as Record<HeroClass, unknown[]>;
-const originalCard = HERO_DECKS[HeroClass.Controller][TEST_BARRICADE]!;
-afterEach(() => {
-  decks[HeroClass.Controller]![TEST_BARRICADE] = originalCard;
-});
+// Reinforce (card 4) is Pitch fodder.
+const DEPLOY_COVER = cardIndex(HeroClass.Controller, "Deploy Cover");
+const BARRICADE = cardIndex(HeroClass.Controller, "Barricade");
+const BRUISER_BREACH_CHARGE = cardIndex(HeroClass.Bruiser, "Breach Charge");
+const BRUISER_SLAM_SHOT = cardIndex(HeroClass.Bruiser, "Concussion Round"); // damage 2, Range 3
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 const tileOf = (index: number): GridPosition => ({ col: 8 + index, row: 3 });
 
-/** Plays `card` (Deploy Cover or the test Barricade) with the Controller of `squad` onto `tile`, in a new Round. */
+/** Plays `card` (Deploy Cover or Barricade) with the Controller of `squad` onto `tile`, in a new Round. */
 function place(match: MatchState, squad: SquadId, card: number, tile: GridPosition) {
   const next = startRound(match);
   const id = squad === SquadId.Left ? LEFT_CONTROLLER : RIGHT_CONTROLLER;
   hero(next, id).position = { col: tile.col, row: 5 };
-  hero(next, id).hand = [card, 0, 1, 5];
+  hero(next, id).hand = [card, 4, 1, 5];
   const plan: SquadPlan = {
     squad,
-    heroes: [{ heroId: id, queue: [{ kind: ActionKind.Primary, card, target: id, tile }], pitched: [0] }],
+    heroes: [{ heroId: id, queue: [{ kind: ActionKind.Primary, card, target: id, tile }], pitched: [4] }],
   };
   return resolveRound(next, [plan]);
 }
@@ -108,11 +101,7 @@ describe("Placed Cover", () => {
   });
 
   it("Full Cover blocks an Attack", () => {
-    decks[HeroClass.Controller]![TEST_BARRICADE] = {
-      name: "Test Barricade", type: originalCard.type, energyCost: 1, target: originalCard.target,
-      effects: [{ kind: EffectKind.PlaceCover, cover: CoverKind.Full }],
-    };
-    const { match, events } = attackOnCoveredTile(TEST_BARRICADE, CoverKind.Full);
+    const { match, events } = attackOnCoveredTile(BARRICADE, CoverKind.Full);
     expect(coverAgainst(match.grid, { col: 5, row: 3 }, tileOf(0))).toBe(CoverKind.Full);
     expect(events.some(({ kind }) => kind === EventKind.AttackHit)).toBe(false);
     expect(events.some(({ kind }) => kind === EventKind.AttackFailed)).toBe(true);
@@ -123,7 +112,7 @@ describe("Placed Cover", () => {
     const placed = place(startRound(createMatch(5)), SquadId.Left, DEPLOY_COVER, tileOf(0)).match;
     const next = startRound(placed);
     hero(next, LEFT_BRUISER).position = { col: 5, row: 3 };
-    hero(next, LEFT_BRUISER).hand = [BRUISER_BREACH_CHARGE, BRUISER_SLAM_SHOT, 1, 2];
+    hero(next, LEFT_BRUISER).hand = [BRUISER_BREACH_CHARGE, BRUISER_SLAM_SHOT, 1, 5];
     const plan: SquadPlan = {
       squad: SquadId.Left,
       heroes: [{
@@ -146,7 +135,7 @@ describe("Placed Cover", () => {
       expect(tileAt(placed.grid, primeTile)).toBe(TileKind.HalfCover);
       const next = startRound(placed);
       hero(next, LEFT_BRUISER).position = { col: 12, row: 7 };
-      hero(next, LEFT_BRUISER).hand = [BRUISER_BREACH_CHARGE, BRUISER_SLAM_SHOT, 1, 2];
+      hero(next, LEFT_BRUISER).hand = [BRUISER_BREACH_CHARGE, BRUISER_SLAM_SHOT, 1, 5];
       const plan: SquadPlan = {
         squad: SquadId.Left,
         heroes: [{

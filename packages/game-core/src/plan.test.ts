@@ -76,13 +76,13 @@ describe("validatePlan: Pitch, Energy and Block", () => {
   });
 
   it("rejects a Queue whose Energy costs exceed the pool and accepts one that fits", () => {
-    // Execution Round (Assassin card 7) costs 2.
+    // Execution Round (Assassin card 6) costs 2.
     const assassin = view.heroes.find((hero) => hero.heroClass === HeroClass.Assassin)!;
     const withHand: SquadView = {
       ...view,
-      heroes: view.heroes.map((hero) => (hero === assassin ? { ...hero, hand: [7, 0, 1, 2] } : hero)),
+      heroes: view.heroes.map((hero) => (hero === assassin ? { ...hero, hand: [6, 0, 1, 2] } : hero)),
     };
-    const action: QueuedAction = { kind: ActionKind.Primary, card: 7, target: enemy.id };
+    const action: QueuedAction = { kind: ActionKind.Primary, card: 6, target: enemy.id };
     const kindsFor = (pitched: number[]) =>
       validatePlan(withHand, { squad: SquadId.Left, heroes: [{ heroId: assassin.id, queue: [action], pitched }] }).map((issue) => issue.kind);
     expect(kindsFor([])).toEqual([PlanIssueKind.NotEnoughEnergy]);
@@ -94,7 +94,7 @@ describe("validatePlan: Pitch, Energy and Block", () => {
     const attack = (card: number, target: string): QueuedAction => ({ kind: ActionKind.Primary, card, target });
     const withHand: SquadView = {
       ...view,
-      heroes: view.heroes.map((hero) => (hero === bruiser ? { ...hero, hand: [0, 1, 8, 7] } : hero)),
+      heroes: view.heroes.map((hero) => (hero === bruiser ? { ...hero, hand: [0, 1, 5, 7] } : hero)),
     };
     const check = (queue: QueuedAction[]) =>
       validatePlan(withHand, { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue, pitched: [1] }] }).map((issue) => issue.kind);
@@ -103,8 +103,8 @@ describe("validatePlan: Pitch, Energy and Block", () => {
     expect(check([attack(0, "nobody")])).toEqual([PlanIssueKind.BadTarget]);
     // Only a Visible enemy can be targeted: right-controller is still Unknown.
     expect(check([attack(0, "right-controller")])).toEqual([PlanIssueKind.BadTarget]);
-    // Bruiser card 8 is Forward Deploy: an ally card, so an enemy is no target (and it needs a tile).
-    expect(check([attack(8, enemy.id)])).toEqual([PlanIssueKind.BadTarget, PlanIssueKind.BadTarget]);
+    // Bruiser card 5 is Bulwark: a self card, so an enemy is no target.
+    expect(check([attack(5, enemy.id)])).toEqual([PlanIssueKind.BadTarget]);
   });
 
   it("accepts a Visible enemy that is out of Range, because the Attack is checked in the Tick it fires", () => {
@@ -121,21 +121,22 @@ describe("validatePlan: Pitch, Energy and Block", () => {
   });
 
   it("plans Utility cards at this Hero or an allied Hero only", () => {
+    const controller = view.heroes.find((hero) => hero.heroClass === HeroClass.Controller)!;
     const withHand: SquadView = {
       ...view,
-      heroes: view.heroes.map((hero) => (hero === bruiser ? { ...hero, hand: [6, 10, 0, 1] } : hero)),
+      heroes: view.heroes.map((hero) => (hero === bruiser ? { ...hero, hand: [5, 6, 0, 1] } : hero === controller ? { ...hero, hand: [4, 0, 1, 2] } : hero)),
     };
     const use = (card: number, target: string): QueuedAction => ({ kind: ActionKind.Primary, card, target });
-    const check = (queue: QueuedAction[], pitched: number[] = [0, 1]) =>
-      validatePlan(withHand, { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue, pitched }] }).map((issue) => issue.kind);
-    // Bulwark (6) is self only, Reinforce (10) allied only.
-    expect(check([use(6, bruiser.id)])).toEqual([]);
-    expect(check([use(6, "left-controller")])).toEqual([PlanIssueKind.BadTarget]);
-    expect(check([use(10, "left-controller")])).toEqual([]);
-    expect(check([use(10, bruiser.id)])).toEqual([PlanIssueKind.BadTarget]);
-    expect(check([use(10, enemy.id)])).toEqual([PlanIssueKind.BadTarget]);
+    const check = (heroId: string, queue: QueuedAction[], pitched: number[] = [0, 1]) =>
+      validatePlan(withHand, { squad: SquadId.Left, heroes: [{ heroId, queue, pitched }] }).map((issue) => issue.kind);
+    // Bulwark (Bruiser 5) is self only, Reinforce (Controller 4) allied only.
+    expect(check(bruiser.id, [use(5, bruiser.id)])).toEqual([]);
+    expect(check(bruiser.id, [use(5, controller.id)])).toEqual([PlanIssueKind.BadTarget]);
+    expect(check(controller.id, [use(4, bruiser.id)])).toEqual([]);
+    expect(check(controller.id, [use(4, controller.id)])).toEqual([PlanIssueKind.BadTarget]);
+    expect(check(controller.id, [use(4, enemy.id)])).toEqual([PlanIssueKind.BadTarget]);
     // Utility cards cost Energy like Attacks.
-    expect(check([use(6, bruiser.id)], [])).toEqual([PlanIssueKind.NotEnoughEnergy]);
+    expect(check(bruiser.id, [use(5, bruiser.id)], [])).toEqual([PlanIssueKind.NotEnoughEnergy]);
   });
 
   it("plans Shockwave on this Hero, without an enemy target", () => {

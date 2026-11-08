@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cardIndex, HeroClass } from "./cards";
 import { EventKind, SquadId } from "./host";
 import { createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type QueuedAction, type SquadPlan } from "./plan";
@@ -7,12 +8,11 @@ import { resolveRound } from "./resolution";
 const BRUISER = "left-bruiser";
 const CONTROLLER = "left-controller";
 const RIGHT_BRUISER = "right-bruiser";
-// Bruiser cards: 0 Slam Shot (Attack), 6 Bulwark (Shield 3 on self), 10 Reinforce (Shield 2 on an ally),
-// 8 Forward Deploy.
+// Bruiser cards: 0 Slam Shot (Attack), Bulwark (Shield 3 on self). Controller card: Reinforce (Shield 2 on an ally).
 const SLAM_SHOT = 0;
-const BULWARK = 6;
-const FORWARD_DEPLOY = 8;
-const REINFORCE = 10;
+const BULWARK = cardIndex(HeroClass.Bruiser, "Bulwark");
+const REINFORCE = cardIndex(HeroClass.Controller, "Reinforce");
+const CONTROLLER_PITCH = 0;
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 const use = (card: number, target: string): QueuedAction => ({ kind: ActionKind.Primary, card, target });
@@ -25,7 +25,8 @@ function duel(): MatchState {
   const match = startRound(createMatch(5));
   hero(match, BRUISER).position = { col: 8, row: 5 };
   hero(match, RIGHT_BRUISER).position = { col: 10, row: 5 };
-  hero(match, BRUISER).hand = [SLAM_SHOT, BULWARK, REINFORCE, FORWARD_DEPLOY];
+  hero(match, BRUISER).hand = [SLAM_SHOT, BULWARK, 1, 2];
+  hero(match, CONTROLLER).hand = [REINFORCE, CONTROLLER_PITCH, 1, 2];
   hero(match, RIGHT_BRUISER).hand = [0, 1, 2, 3];
   return match;
 }
@@ -46,22 +47,17 @@ describe("Utility cards: Shield", () => {
   });
 
   it("Reinforce gives an allied Hero Shield 2", () => {
-    const { match: after, events } = resolveRound(duel(), [planOf(BRUISER, [use(REINFORCE, CONTROLLER)], [SLAM_SHOT])]);
-    expect(events).toEqual([{ kind: EventKind.ShieldGained, tick: 1, heroId: CONTROLLER, amount: 2, card: "Reinforce", casterId: BRUISER }]);
+    const { match: after, events } = resolveRound(duel(), [planOf(CONTROLLER, [use(REINFORCE, BRUISER)], [CONTROLLER_PITCH])]);
+    expect(events).toEqual([{ kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 2, card: "Reinforce", casterId: CONTROLLER }]);
     expect(after.heroes.every((candidate) => candidate.shield === 0)).toBe(true);
   });
 
   it("fails when the target is not an allowed Hero", () => {
-    const failed = (card: number, target: string) =>
-      resolveRound(duel(), [planOf(BRUISER, [use(card, target)], [SLAM_SHOT])]).events;
-    const action = [{ kind: EventKind.ActionFailed, tick: 1, heroId: BRUISER }];
-    expect(failed(BULWARK, CONTROLLER)).toEqual(action);
-    expect(failed(REINFORCE, BRUISER)).toEqual(action);
-    expect(failed(REINFORCE, RIGHT_BRUISER)).toEqual(action);
-  });
-
-  it("fails for Forward Deploy without a destination tile", () => {
-    const events = resolveRound(duel(), [planOf(BRUISER, [use(FORWARD_DEPLOY, CONTROLLER)], [SLAM_SHOT])]).events;
-    expect(events).toEqual([{ kind: EventKind.ActionFailed, tick: 1, heroId: BRUISER }]);
+    const failed = (heroId: string, card: number, target: string) =>
+      resolveRound(duel(), [planOf(heroId, [use(card, target)], [heroId === BRUISER ? SLAM_SHOT : CONTROLLER_PITCH])]).events;
+    const action = (heroId: string) => [{ kind: EventKind.ActionFailed, tick: 1, heroId }];
+    expect(failed(BRUISER, BULWARK, CONTROLLER)).toEqual(action(BRUISER));
+    expect(failed(CONTROLLER, REINFORCE, CONTROLLER)).toEqual(action(CONTROLLER));
+    expect(failed(CONTROLLER, REINFORCE, RIGHT_BRUISER)).toEqual(action(CONTROLLER));
   });
 });

@@ -8,7 +8,7 @@ const BRUISER = "left-bruiser";
 const CONTROLLER = "left-controller";
 const ASSASSIN = "left-assassin";
 const TARGET = "right-bruiser";
-// Card 0 of the Bruiser (Slam Shot), the Controller (Pulse Bolt) and the Assassin (Precision Shot) is a damage 2 Attack.
+// Card 0 of the Bruiser (Slam Shot) and the Assassin (Precision Shot) is a damage 2 Attack, of the Controller (Tag Round) a damage 1 Attack.
 const ATTACK_CARD = 0;
 
 const hero = (match: MatchState, heroId: string) => match.heroes.find((candidate) => candidate.id === heroId)!;
@@ -43,8 +43,8 @@ describe("Crossfire", () => {
   it("adds 1 damage to the second hit of two attackers in the same Tick", () => {
     const match = setup();
     const { match: after, events } = resolveRound(match, [plan({ [BRUISER]: [hit()], [CONTROLLER]: [hit()] })]);
-    expect(events.filter(({ kind }) => kind === EventKind.AttackHit).map(({ damage, crossfire }) => [damage, crossfire])).toEqual([[2, 0], [3, 1]]);
-    expect(hero(after, TARGET).exile).toHaveLength(5);
+    expect(events.filter(({ kind }) => kind === EventKind.AttackHit).map(({ damage, crossfire }) => [damage, crossfire])).toEqual([[2, 0], [2, 1]]);
+    expect(hero(after, TARGET).exile).toHaveLength(4);
   });
 
   it("counts a hit in the Tick directly after a hit by another attacker", () => {
@@ -69,7 +69,7 @@ describe("Crossfire", () => {
     const { events } = resolveRound(match, [plan({ [BRUISER]: [hit()], [CONTROLLER]: [wait, hit()] })]);
     expect(events.filter(({ kind }) => kind === EventKind.AttackHit)).toMatchObject([
       { absorbed: 2, damage: 0, crossfire: 0 },
-      { absorbed: 1, damage: 2, crossfire: 1 },
+      { absorbed: 1, damage: 1, crossfire: 1 },
     ]);
   });
 

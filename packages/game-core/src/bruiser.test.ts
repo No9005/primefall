@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { withFullCover } from "./full-cover-fixture";
+import { cardIndex, HeroClass } from "./cards";
 import { EventKind, SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, PlanIssueKind, type PrimaryAction, type SquadPlan, validatePlan } from "./plan";
@@ -11,16 +12,14 @@ const CONTROLLER = "left-controller";
 const ENEMY = "right-bruiser";
 const ENEMY_CONTROLLER = "right-controller";
 const ENEMY_ASSASSIN = "right-assassin";
-// Bruiser cards: 0 and 1 Slam Shot, 2 Concussion Round, 4 Breach Charge, 5 Shockwave, 8 Forward Deploy,
-// 9 Suppress, 11 Adrenal Surge. The other cards of the Hand serve as Pitch.
-const SLAM_SHOT = 0;
-const CONCUSSION_ROUND = 2;
-const BREACH_CHARGE = 4;
-const SHOCKWAVE = 5;
-const FORWARD_DEPLOY = 8;
-const SUPPRESS = 9;
-const ADRENAL_SURGE = 11;
-const PITCH = [1, 3, 6, 7];
+const idx = (name: string, copy = 0) => cardIndex(HeroClass.Bruiser, name, copy);
+// Pitch fodder: the second Slam Shot, both Bulwarks and the first Charge.
+const SLAM_SHOT = idx("Slam Shot");
+const CONCUSSION_ROUND = idx("Concussion Round");
+const BREACH_CHARGE = idx("Breach Charge");
+const SHOCKWAVE = idx("Shockwave");
+const ADRENAL_SURGE = idx("Adrenal Surge");
+const PITCH = [idx("Slam Shot", 1), idx("Bulwark"), idx("Bulwark", 1), idx("Charge")];
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 const deckSize = (match: MatchState, id: string) => hero(match, id).deck.length;
@@ -119,36 +118,6 @@ describe("Shockwave", () => {
     expect(deckSize(match, ENEMY) - deckSize(after, ENEMY)).toBe(3);
     expect(hero(after, ENEMY).position).toEqual({ col: 12, row: 5 });
     expect(hero(after, BRUISER).exile).toEqual([SHOCKWAVE]);
-  });
-});
-
-describe("Forward Deploy", () => {
-  it("gives an allied Hero an additional Move 2 towards the chosen tile", () => {
-    const match = fight();
-    const { match: after, events } = resolveRound(match, [
-      play(match, FORWARD_DEPLOY, { target: CONTROLLER, tile: { col: 11, row: 3 } }, 1),
-    ]);
-    expect(hero(after, CONTROLLER).position).toEqual({ col: 11, row: 3 });
-    expect(events.filter(({ kind }) => kind === EventKind.Step)).toHaveLength(2);
-  });
-
-  it("needs a destination tile when planned", () => {
-    const match = fight();
-    const issues = (action: Partial<PrimaryAction>) => {
-      const plan = play(match, FORWARD_DEPLOY, { target: CONTROLLER, ...action }, 1);
-      return validatePlan(buildSquadView(match, SquadId.Left), plan);
-    };
-    expect(issues({}).map(({ kind }) => kind)).toEqual([PlanIssueKind.BadTarget]);
-    expect(issues({ tile: { col: 9, row: 4 } })).toEqual([]);
-  });
-});
-
-describe("Suppress", () => {
-  it("Slows a visible enemy", () => {
-    const match = fight();
-    const { match: after, events } = resolveRound(match, [play(match, SUPPRESS, {}, 1)]);
-    expect(events).toContainEqual(expect.objectContaining({ kind: EventKind.SlowApplied, targetId: ENEMY }));
-    expect(hero(after, ENEMY).slow).toBe(1);
   });
 });
 
