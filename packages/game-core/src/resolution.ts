@@ -35,7 +35,7 @@ import {
   ZONE_DECAY_CARDS,
   ZoneTie,
 } from "./host";
-import { canSquadSee, canSquadSeeHero, type HeroState, type MatchState, recordSightings, refillDeck, sightRange, ZONES } from "./match";
+import { canSquadSee, canSquadSeeHero, type HeroState, MAX_PLACED_COVER_PER_SQUAD, type MatchState, recordSightings, refillDeck, sightRange, ZONES } from "./match";
 import {
   ActionKind,
   BLOCK_SHIELD,
@@ -386,6 +386,7 @@ function resolveTileAttack(match: MatchState, tick: number, { hero, card, tile }
   const destroysAny = isTileBlast(card);
   if (destroysAny ? coverAt(match.grid, tile) !== CoverKind.None : coverAt(match.grid, tile) === CoverKind.Half) {
     match.grid = destroyCover(match.grid, tile);
+    match.placedCover = match.placedCover.filter((placed) => !samePosition(placed.position, tile));
     events.push({ kind: EventKind.CoverDestroyed, tick, heroId: hero.id, to: { ...tile } });
   }
 }
@@ -434,21 +435,26 @@ interface UtilityUse {
   events: MatchEvent[];
 }
 
-/** Puts temporary Half Cover on a tile without Cover; the tile gets its kind back when `duration` Resolutions are over. */
-function placeHalfCover(use: UtilityUse, position: GridPosition, requireEmpty: boolean): void {
+/**
+ * Puts Cover on a tile without Cover. It stays until destroyed; when the Squad already has the maximum of
+ * Placed Cover tiles, its oldest one is removed first (shown as a destroyed Cover).
+ */
+function placeCover(use: UtilityUse, position: GridPosition, requireEmpty: boolean): void {
   const { match, tick, effect, caster, events } = use;
   const occupied = match.heroes.some((other) => !other.exhausted && samePosition(other.position, position));
   if (isWall(position) || tileAt(match.grid, position) === undefined || coverAt(match.grid, position) !== CoverKind.None || (requireEmpty && occupied)) {
     events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
     return;
   }
-  match.placedCover.push({
-    squad: caster.squad,
-    position: { ...position },
-    originalKind: tileAt(match.grid, position)!,
-    remaining: effect.duration ?? 1,
-  });
-  match.grid = withTile(match.grid, position, TileKind.HalfCover);
+  const own = match.placedCover.filter((placed) => placed.squad === caster.squad);
+  if (own.length >= MAX_PLACED_COVER_PER_SQUAD) {
+    const oldest = own[0]!;
+    match.placedCover = match.placedCover.filter((placed) => placed !== oldest);
+    match.grid = destroyCover(match.grid, oldest.position);
+    events.push({ kind: EventKind.CoverDestroyed, tick, heroId: caster.id, to: { ...oldest.position } });
+  }
+  match.placedCover.push({ squad: caster.squad, position: { ...position } });
+  match.grid = withTile(match.grid, position, effect.cover === CoverKind.Full ? TileKind.FullCover : TileKind.HalfCover);
   events.push({ kind: EventKind.CoverPlaced, tick, heroId: caster.id, to: { ...position } });
 }
 
@@ -472,10 +478,10 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
     events.push({ kind: EventKind.AreaRevealed, tick, heroId: caster.id, to: { ...tile }, amount: size });
   },
   // Deploy Cover needs an empty tile; Fortify covers the tile the allied Hero stands on.
-  [EffectKind.PlaceHalfCover]: (use) => {
+  [EffectKind.PlaceCover]: (use) => {
     const fortify = use.card.target === CardTarget.AllyHeroTile;
     const position = fortify ? use.target.position : use.tile;
-    if (position) placeHalfCover(use, position, !fortify);
+    if (position) placeCover(use, position, !fortify);
     else use.events.push({ kind: EventKind.ActionFailed, tick: use.tick, heroId: use.caster.id });
   },
   // From this Tick on, so Attacks resolved in earlier Ticks of the Round keep the reduction.
@@ -581,19 +587,8 @@ function resolveUtility(
   }
 }
 
-/**
- * Ends one Resolution for placed Cover and revealed areas. Expired Cover gives the tile its kind back,
- * unless the Cover was destroyed in the meantime (the tile then stays open floor).
- */
+/** Ends one Resolution for revealed areas (Placed Cover does not expire). */
 function expireTemporaryEffects(match: MatchState): void {
-  for (const cover of match.placedCover) {
-    cover.remaining -= 1;
-    if (cover.remaining > 0) continue;
-    if (coverAt(match.grid, cover.position) === CoverKind.Half) {
-      match.grid = withTile(match.grid, cover.position, cover.originalKind);
-    }
-  }
-  match.placedCover = match.placedCover.filter((cover) => cover.remaining > 0);
   for (const area of match.revealedAreas) area.remaining -= 1;
   match.revealedAreas = match.revealedAreas.filter((area) => area.remaining > 0);
 }

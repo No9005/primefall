@@ -1,6 +1,8 @@
 // Card data for the three fixed Hero Decks (docs/specs/mvp-card-set.md, ADR 0009, ADR 0015).
 // Effects are declarative descriptors; interpreting them belongs to the resolution rules.
 
+import type { CoverKind } from "./reactor-deck";
+
 export enum HeroClass {
   Bruiser = "bruiser",
   Controller = "controller",
@@ -45,7 +47,8 @@ export enum EffectKind {
   PreventHidden = "preventHidden",
   GainPermanentAttack = "gainPermanentAttack",
   RevealArea = "revealArea",
-  PlaceHalfCover = "placeHalfCover",
+  /** Placed Cover: stays until destroyed; `cover` picks the kind (Half unless stated). */
+  PlaceCover = "placeCover",
   BecomeHidden = "becomeHidden",
   TargetGhost = "targetGhost",
   RemoveHalfCoverReduction = "removeHalfCoverReduction",
@@ -67,6 +70,8 @@ export interface CardEffect {
   duration?: number;
   /** Side length of a square area. */
   size?: number;
+  /** For Placed Cover: Full instead of the default Half. */
+  cover?: CoverKind.Half | CoverKind.Full;
   /** For damage that is higher at long range: the damage at Range 6 or 7 (`amount` applies closer). */
   longRangeAmount?: number;
   /** The effect only applies when the target is within this many tiles. */
@@ -156,7 +161,7 @@ export const PLAYABLE_UTILITY_EFFECTS = [
   EffectKind.GrantExtraMove,
   EffectKind.GainPermanentAttack,
   EffectKind.RevealArea,
-  EffectKind.PlaceHalfCover,
+  EffectKind.PlaceCover,
   EffectKind.RemoveHalfCoverReduction,
 ] as const;
 
@@ -325,11 +330,11 @@ const aegisProtocol: CardDefinition = {
 };
 const fortify: CardDefinition = {
   name: "Fortify", type: CardType.Utility, energyCost: 1, range: 3,
-  target: CardTarget.AllyHeroTile, effects: [{ kind: EffectKind.PlaceHalfCover, duration: 2 }],
+  target: CardTarget.AllyHeroTile, effects: [{ kind: EffectKind.PlaceCover }],
 };
 const deployCover: CardDefinition = {
   name: "Deploy Cover", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.EmptyTile, effects: [{ kind: EffectKind.PlaceHalfCover, duration: 2 }],
+  target: CardTarget.EmptyTile, effects: [{ kind: EffectKind.PlaceCover }],
 };
 const gravitySnare: CardDefinition = {
   name: "Gravity Snare", type: CardType.Utility, energyCost: 2, target: CardTarget.VisibleEnemy, effects: [slow],

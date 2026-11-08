@@ -116,15 +116,14 @@ export function sightRange(hero: HeroState): number {
   return SIGHT_RANGE + (hero.hidden > 0 && hero.heroClass === HeroClass.Assassin ? HIDDEN_SIGHT_BONUS : 0);
 }
 
-/** Temporary Half Cover (Deploy Cover, Fortify) that gives the tile back its kind when it expires. */
+/** Cover a Hero put on a tile with a card; it stays until destroyed. `match.placedCover` keeps the order of placing, oldest first. */
 export interface PlacedCover {
   squad: SquadId;
   position: GridPosition;
-  /** The tile kind to restore on expiry. */
-  originalKind: TileKind;
-  /** Resolution ends left before the Cover expires. */
-  remaining: number;
 }
+
+/** A Squad has at most this many Placed Cover tiles; placing another removes its oldest. */
+export const MAX_PLACED_COVER_PER_SQUAD = 3;
 
 /** An area a Squad's Scout Drone reveals. */
 export interface ActiveReveal extends RevealedArea {
