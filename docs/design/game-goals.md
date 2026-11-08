@@ -33,6 +33,7 @@ Matches are one-sided. Both Squads run to the Prime Zone and play Shield plus At
 | Victory | First to 30 Victory Points wins at once. Otherwise after Round 15 the higher score wins; a tie goes to the larger card advantage (cards not in the Exile). Exhaustion of a whole Squad still ends the match at once. |
 | Length | At most 15 Rounds. |
 | Public | Control of each zone and both scores are always visible; enemy Heroes stay in the Fog. |
+| Takeover bonus | Off by default. Two constants (bonus, cooldown per zone) exist for the case that the tug-of-war gauge is missed: a one-time bonus equal to the zone's value when a Squad takes a zone the enemy controlled in the previous Resolution. |
 | Attack and Defend | Unchanged (ADR 0022, #302). |
 | Overwatch Nest | Removed for now (the tile, its rules and the AI weight). The card Overwatch Uplink stays. |
 

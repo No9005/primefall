@@ -24,6 +24,10 @@ For the **classic mode** only:
 
 Considered and not chosen now: three mission types per game (hidden objectives, a later layer if the zones are not enough), a rotating zone (the way across the map takes two to three Rounds, so it would be out of reach), a progress track with Abbau and decay for a tie in one zone (#341, replaced by the points).
 
+## Open: a takeover bonus
+
+Taking a zone from the enemy (it controlled the zone at the end of the previous Resolution, you control it now) may give a one-time bonus. It is built as two tunable constants, **off by default** (bonus 0): the bonus equals the value of the zone (2 for the Prime Zone, 1 for an Outpost) and a cooldown per zone (3 Resolutions) against passing a zone back and forth. It is switched on only if the tug-of-war gauge (`docs/design/game-goals.md`) misses its target: the lead changes at least twice in at least half of the matches.
+
 ## Consequences
 
 - ADR 0010 and ADR 0019 stop applying to the classic mode; they still describe the history and Attack and Defend keeps its own rules.
