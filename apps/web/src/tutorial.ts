@@ -2,7 +2,6 @@
 // Numbers come from the card data and rule constants, so a rule change cannot make the tutorial lie.
 
 import {
-  BLOCK_SHIELD,
   type CardDefinition,
   HALF_COVER_REDUCTION,
   HERO_DECKS,
@@ -21,7 +20,6 @@ import { drawShot } from "./shot-lines";
 export enum TutorialTopic {
   Goal = "goal",
   Move = "move",
-  Block = "block",
   Pitch = "pitch",
   Attack = "attack",
   Overdrive = "overdrive",
@@ -32,7 +30,6 @@ export enum TutorialTopic {
 export enum TutorialDrop {
   None = "none",
   Tile = "tile",
-  BlockChip = "blockChip",
   EnergyOrb = "energyOrb",
   EnemyHero = "enemyHero",
 }
@@ -104,14 +101,6 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     terms: ["Hero"],
     card: anyCard,
     drop: TutorialDrop.Tile,
-  },
-  {
-    topic: TutorialTopic.Block,
-    title: `Block ${BLOCK_SHIELD}`,
-    caption: `Drag a card onto the Block chip: the Hero gets Shield ${BLOCK_SHIELD} for the Round.`,
-    terms: ["Block", "Shield", "Hero"],
-    card: anyCard,
-    drop: TutorialDrop.BlockChip,
   },
   {
     topic: TutorialTopic.Pitch,

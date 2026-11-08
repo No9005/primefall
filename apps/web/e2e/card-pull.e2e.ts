@@ -47,8 +47,8 @@ test("a drag up from the first card opens the faces, a release in the middle par
   await expect(faces(page)).toBeVisible();
   await expect(page.locator(".pull-card.parked")).toBeVisible();
   await expect(faces(page)).toHaveCSS("opacity", "1");
-  await faces(page).getByRole("button", { name: "Block 2" }).click();
-  await expect(removeButtons(page)).toHaveCount(1);
+  await faces(page).getByRole("button", { name: /^Pitch/ }).click();
+  await expect(faces(page)).toHaveCount(0);
   expect(await dragStarts(page)).toBe(0);
 });
 
@@ -56,8 +56,8 @@ test("the same from the last card", async ({ page }) => {
   const hand = await startPlanning(page);
   await mouseDrag(page, await fanPoint(hand, 0.95, 30), { x: 400, y: 215 });
   await expect(faces(page)).toBeVisible();
-  await faces(page).getByRole("button", { name: "Block 2" }).click();
-  await expect(removeButtons(page)).toHaveCount(1);
+  await faces(page).getByRole("button", { name: /^Pitch/ }).click();
+  await expect(faces(page)).toHaveCount(0);
 });
 
 test("a drag that starts in the top band at the left end of the fan grabs the card", async ({ page }) => {
@@ -110,8 +110,8 @@ test.describe("with touch", () => {
     for (let step = 1; step <= 8; step += 1) await touch(cdp, "touchMove", { x: from.x + step * 30, y: from.y - step * 18 });
     await touch(cdp, "touchEnd");
     await expect(faces(page)).toBeVisible();
-    await faces(page).getByRole("button", { name: "Block 2" }).click();
-    await expect(removeButtons(page)).toHaveCount(1);
+    await faces(page).getByRole("button", { name: /^Pitch/ }).click();
+    await expect(faces(page)).toHaveCount(0);
 
     const second = await fanPoint(hand, 0.9, 30);
     await touch(cdp, "touchStart", second);

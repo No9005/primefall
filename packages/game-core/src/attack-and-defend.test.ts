@@ -164,16 +164,17 @@ describe("Attack and Defend: Squad View and host", () => {
 
 describe("the classic mode", () => {
   // Recorded from the classic path (AI against AI, 60 Rounds at most). Re-recorded when the classic mode became Victory Points
-  // from three zones (#357): the matches now end at the Round limit of 15 or by points, not by three Resolutions in the Prime Zone.
+  // from three zones (#357) and after the merge of the new decks and the Block change (#352, #358); seed 42 is a draw (0 to 0, equal card totals): the matches now end at the Round limit of 15 or by points, not by three Resolutions in the Prime Zone.
   const recorded = [
-    { seed: 3, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 0 }, deckTotals: { left: 18, right: 13 }, positions: "14,7:2 15,7:4 14,8:12 16,7:8 16,8:4 16,9:1", rng: 3441002838 },
-    { seed: 11, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 24 }, deckTotals: { left: 5, right: 6 }, positions: "14,7:4 15,7:0 14,8:1 16,7:2 16,8:3 16,9:1", rng: 1297307348 },
-    { seed: 42, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 22 }, deckTotals: { left: 18, right: 20 }, positions: "14,7:2 15,7:4 14,8:12 16,7:5 16,8:3 16,9:12", rng: 1417613473 },
+    { seed: 3, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 2, right: 0 }, deckTotals: { left: 7, right: 12 }, positions: "14,7:4 15,7:2 14,8:1 16,7:4 16,8:4 16,9:4", rng: 1049118852 },
+    { seed: 11, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 20 }, deckTotals: { left: 7, right: 11 }, positions: "14,7:0 15,7:4 14,8:3 16,7:6 16,8:4 16,9:1", rng: 3256755555 },
+    { seed: 42, round: 15, winner: undefined, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 0 }, deckTotals: { left: 7, right: 9 }, positions: "14,7:4 15,7:2 14,8:1 16,7:4 16,8:4 16,9:1", rng: 1113060088 },
   ];
 
   it.each(recorded)("plays seed $seed exactly as recorded", ({ seed, round, winner, reason, scores, deckTotals, positions, rng }) => {
     const { match } = playAiMatch(seed, 60);
-    expect(match.result).toMatchObject({ winner, reason, round, scores, deckTotals });
+    expect(match.result).toMatchObject({ reason, round, scores, deckTotals });
+    expect(match.result?.winner).toBe(winner);
     expect(match.heroes.map((hero) => `${hero.position.col},${hero.position.row}:${hero.deck.length}`).join(" ")).toBe(positions);
     expect(match.rngState).toBe(rng);
   });

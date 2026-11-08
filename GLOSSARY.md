@@ -67,7 +67,7 @@ A temporary defensive value that absorbs damage during the current round and dis
 _Avoid_: Armor, barrier, HP
 
 **Block**:
-Using any card to create Shield 2 instead of playing its primary effect.
+Using any card to create Shield 2 instead of playing its primary effect. Only in Attack and Defend; the classic mode has no Block, its Shield comes from Shield cards.
 _Avoid_: Defend, guard, parry
 
 **Crossfire**:
@@ -101,6 +101,18 @@ _Avoid_: Hinder, debuff
 **Knockback**:
 A forced movement effect that moves the target directly away from the attacker. The target stops at a wall, Full Cover, or another Hero.
 _Avoid_: Push, displacement
+
+**Pull**:
+A forced movement effect that moves the target directly toward the caster. The target stops at a wall, Full Cover, or another Hero. The counterpart of Knockback.
+_Avoid_: Hook, drag, grab
+
+**Minimum Range**:
+The shortest distance at which an Attack can hit; closer targets cannot be hit by it. Some Assassin Attacks have a Minimum Range of 2 or 3.
+_Avoid_: Dead zone, blind range
+
+**Placed Cover**:
+Cover that a Hero put on a tile with a card. It stays until it is destroyed; a Squad has at most three Placed Cover tiles at once and the oldest disappears when a fourth is placed.
+_Avoid_: Temporary Cover, wall, barricade (a card name)
 
 **Long Shot**:
 An Assassin Attack with Range 7. Its Overdrive deals bonus damage when the target is at Range 6 or 7.
@@ -157,15 +169,20 @@ The central 3 by 3 zone, worth 2 Victory Points per Resolution in the classic mo
 _Avoid_: Point, base, capture zone
 
 **Outpost**:
-One of the two smaller zones of the classic mode (3 by 2 tiles), worth 1 Victory Point per Resolution. Active from Round 1.
-_Avoid_: Flag, side point
+One of two side zones of the classic mode, worth 1 Victory Point per Resolution to the Squad that controls it (ADR 0024). Active from Round 1.
+_Avoid_: Capture point, flag, side zone
 
-**Victory Points**:
-The score of a Squad in the classic mode. At the end of each Resolution a Squad earns the value of every zone it controls: the Squad with more non-Exhausted Heroes in a zone controls it. Equal numbers with at least one Hero each is Contested and nobody scores; an empty zone scores nothing. The first Squad to reach 30 wins at once.
-_Avoid_: Score points, capture points
+**Control**:
+A Squad controls a zone when it has more non-exhausted Heroes in it than the other Squad (classic mode, ADR 0024).
+_Avoid_: Capture, own, claim
 
 **Contested**:
-A zone with equally many non-Exhausted Heroes of both Squads, at least one each. Nobody controls it and nobody scores.
+A zone with the same number of non-exhausted Heroes of both Squads in it, and at least one each. Nobody controls it and it scores for nobody (classic mode, ADR 0024).
+_Avoid_: Neutral, locked, disputed
+
+**Victory Points**:
+The score of the classic mode (ADR 0024): each Resolution a Squad earns the value of every zone it controls. The first Squad to reach the threshold wins; after the Round Limit the higher score wins.
+_Avoid_: Score points, kills, health
 
 **Round Limit**:
 The maximum of Rounds per match in the classic mode (15). When it is played, the Squad with more Victory Points wins; equal points go to the Squad with more cards not in the Exile (Deck, Discard and Hand of all its Heroes); if still equal the match is a draw. Attack and Defend has its own Round limit.

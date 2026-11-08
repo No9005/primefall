@@ -65,8 +65,10 @@ describe("validatePlan", () => {
 });
 
 describe("validatePlan: Pitch, Energy and Block", () => {
+  // Block exists in Attack and Defend only; the classic mode has none.
+  const blockView: SquadView = { ...view, attackAndDefend: { defender: SquadId.Left, roundsLeft: 12 } };
   const planKinds = (pitched: number[], queue: QueuedAction[]) =>
-    validatePlan(view, { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue, pitched }] }).map((issue) => issue.kind);
+    validatePlan(blockView, { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue, pitched }] }).map((issue) => issue.kind);
 
   it("gives 1 Energy per pitched card", () => {
     expect(energyPool([])).toBe(0);
@@ -157,6 +159,13 @@ describe("validatePlan: Pitch, Energy and Block", () => {
     };
     const plan = { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue: [{ kind: ActionKind.Block as const, card: bruiser.hand[0]! }] }] };
     expect(validatePlan(exhausted, plan).map((issue) => issue.kind)).toEqual([PlanIssueKind.HeroExhausted]);
+  });
+
+  it("rejects a Block in the classic mode and accepts it in Attack and Defend", () => {
+    const [a] = bruiser.hand;
+    const plan = { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue: [{ kind: ActionKind.Block as const, card: a! }] }] };
+    expect(validatePlan(view, plan).map((issue) => issue.kind)).toEqual([PlanIssueKind.BlockNotAllowed]);
+    expect(validatePlan(blockView, plan)).toEqual([]);
   });
 
   it("makes Move 2 and Block 2 free", () => {

@@ -176,8 +176,17 @@ function refillEnemy(match: MatchState, heroId: string, salt: number): void {
   Object.assign(hero, { deck, discard: [], exile: [], exhausted: false });
 }
 
-/** Rounds until the exposed Hero is Exhausted (the cap if it survives), with or without a Block in the first Tick of every Round. */
-function exposedRounds(seed: number, heroClass: HeroClass, blocks: boolean): { rounds: number; exhausted: boolean } {
+/** The exposed Bruiser plays Bulwark (Shield 3) in the first Tick when it holds it, paying its Energy by pitching another card. */
+function bulwarkPlan(hero: MatchState["heroes"][number]): HeroPlan[] {
+  const cards = HERO_DECKS[hero.heroClass];
+  const card = hero.hand.find((candidate) => cards[candidate]!.name === "Bulwark");
+  const pitch = hero.hand.find((candidate) => candidate !== card);
+  if (card === undefined || pitch === undefined) return [];
+  return [{ heroId: hero.id, queue: [{ kind: ActionKind.Primary, card, target: hero.id }], pitched: [pitch] }];
+}
+
+/** Rounds until the exposed Hero is Exhausted (the cap if it survives), without a Shield card, or with the Bruiser playing Bulwark whenever it is in the Hand (the classic mode has no Block action, #358). */
+function exposedRounds(seed: number, heroClass: HeroClass, bulwark: boolean): { rounds: number; exhausted: boolean } {
   const created = createMatch(seed);
   const exposedId = `${SquadId.Left}-${heroClass}`;
   created.heroes.find((hero) => hero.id === exposedId)!.position = { ...EXPOSED_TILE };
@@ -187,7 +196,7 @@ function exposedRounds(seed: number, heroClass: HeroClass, blocks: boolean): { r
   let match = startRound(created);
   for (let round = 1; round <= EXPOSED_ROUND_CAP; round++) {
     const exposed = match.heroes.find((hero) => hero.id === exposedId)!;
-    const left: HeroPlan[] = blocks ? [{ heroId: exposedId, queue: [{ kind: ActionKind.Block, card: exposed.hand[0]! }] }] : [];
+    const left: HeroPlan[] = bulwark ? bulwarkPlan(exposed) : [];
     const right = ENEMY_CLASSES.map((enemyClass) => `${SquadId.Right}-${enemyClass}`).map((id) => attackPlan(match, id, exposedId));
     const resolution = resolveRound(match, [
       { squad: SquadId.Left, heroes: left },
@@ -206,8 +215,10 @@ function exposedRounds(seed: number, heroClass: HeroClass, blocks: boolean): { r
 /** Mean Rounds until Exhaustion per Hero class and case; Heroes that survive the cap count as the cap and are counted next to it. */
 function exposedCells(seeds: number, offset: number): string[] {
   return Object.values(HeroClass).flatMap((heroClass) =>
-    [false, true].map((blocks) => {
-      const results = Array.from({ length: seeds }, (_, i) => exposedRounds(offset + i + 1, heroClass, blocks));
+    [false, true].map((bulwark) => {
+      // Only the Bruiser has a Shield card that the Hero plays on itself with one card of Energy; the Assassin has none.
+      if (bulwark && heroClass !== HeroClass.Bruiser) return "-";
+      const results = Array.from({ length: seeds }, (_, i) => exposedRounds(offset + i + 1, heroClass, bulwark));
       const mean = results.reduce((sum, result) => sum + result.rounds, 0) / seeds;
       const survived = results.filter((result) => !result.exhausted).length;
       return survived > 0 ? `${mean.toFixed(1)} (${survived} survive)` : mean.toFixed(1);
@@ -417,10 +428,10 @@ it("prints one table for all variants", async () => {
   console.log(`\n${seeds} matches per variant, AI against AI. "!" = misses its target (rounds ${TARGETS.roundsMin}-${TARGETS.roundsMax}, stalls <= ${TARGETS.stallsMaxPercent}%, exhaustion >= ${TARGETS.exhaustionMinPercent}%, side spread <= ${TARGETS.sideSpreadMaxPercent}%)`);
   console.log(line(header));
   rows.forEach((row) => console.log(line(row)));
-  const exposedHeader = ["exposed Hero, mean Rounds", ...Object.values(HeroClass).flatMap((heroClass) => [`${heroClass} no Block`, `${heroClass} Block`])];
+  const exposedHeader = ["exposed Hero, mean Rounds", ...Object.values(HeroClass).flatMap((heroClass) => [`${heroClass} no Shield card`, `${heroClass} Bulwark`])];
   const exposedWidths = exposedHeader.map((title, column) => Math.max(title.length, ...exposedRows.map((row) => row[column]!.length)));
   const exposedLine = (cells: string[]) => cells.map((cell, column) => pad(cell, exposedWidths[column]!)).join("  ");
-  console.log(`\nExposed Hero: a Left Hero on a Prime Zone tile, a Bruiser and an Assassin two tiles away attack it every Round. Mean Rounds until Exhausted (targets: 2 without Block, 3-4 with Block; cap ${EXPOSED_ROUND_CAP})`);
+  console.log(`\nExposed Hero: a Left Hero on a Prime Zone tile, a Bruiser and an Assassin two tiles away attack it every Round. Mean Rounds until Exhausted (no Block action in the classic mode; cap ${EXPOSED_ROUND_CAP})`);
   console.log(exposedLine(exposedHeader));
   exposedRows.forEach((row) => console.log(exposedLine(row)));
 });
