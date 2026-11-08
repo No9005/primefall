@@ -17,7 +17,7 @@ import { createLocalHost } from "game-core/local-host";
 import { describe, expect, it } from "vitest";
 import { buildPlaybackFrames } from "./playback";
 import { SegmentStyle } from "./shot-lines";
-import { LineKind, LineTone, plannedTargetLines, replayTargetLines } from "./target-lines";
+import { crossfireRings, LineKind, LineTone, plannedTargetLines, replayTargetLines, RingSegment } from "./target-lines";
 
 const grid = parseGrid(["#########", "#.......#", "#...#...#", "#.......#", "#.......#", "#########"]);
 
@@ -201,5 +201,48 @@ describe("replayTargetLines over a recorded Resolution", () => {
       }
     }
     expect(attackLines).toBeGreaterThan(0);
+  });
+});
+
+describe("crossfireRings", () => {
+  const wait: QueuedAction = { kind: ActionKind.Wait };
+  const block: QueuedAction = { kind: ActionKind.Block, card: 0 };
+  const second = hero("c", HeroClass.Bruiser, { col: 1, row: 3 });
+  const squad = [bruiser, second];
+  const targets = [visible("e", { col: 3, row: 2 }), visible("f", { col: 5, row: 3 })];
+  const plans = (queueB: QueuedAction[], queueC: QueuedAction[]): SquadPlan[] =>
+    [{ squad: "a", heroes: [{ heroId: "b", queue: queueB }, { heroId: "c", queue: queueC }] }] as unknown as SquadPlan[];
+  const ringsOf = (planList: SquadPlan[], enemies: EnemyView[] = targets) => crossfireRings(plannedTargetLines(grid, squad, enemies, planList), enemies);
+  const E = RingSegment.Empty;
+  const A = RingSegment.Attack;
+  const X = RingSegment.Crossfire;
+
+  it("marks consecutive Ticks of two different Heroes as Crossfire", () => {
+    expect(ringsOf(plans([attack("e")], [wait, attack("e")]))).toMatchObject([{ targetId: "e", segments: [X, X, E, E] }]);
+  });
+
+  it("marks the same Tick of two different Heroes as Crossfire", () => {
+    expect(ringsOf(plans([attack("e")], [attack("e")]))[0]!.segments).toEqual([X, E, E, E]);
+  });
+
+  it("does not mark Ticks 1 and 3", () => {
+    expect(ringsOf(plans([attack("e")], [wait, wait, attack("e")]))[0]!.segments).toEqual([A, E, A, E]);
+  });
+
+  it("does not mark the same Hero attacking in two consecutive Ticks", () => {
+    expect(ringsOf(plans([attack("e"), attack("e")], [wait]))[0]!.segments).toEqual([A, A, E, E]);
+  });
+
+  it("counts Ticks from the Queue position, whatever is in between", () => {
+    expect(ringsOf(plans([attack("e"), block, attack("e")], [wait]))[0]!.segments).toEqual([A, E, A, E]);
+  });
+
+  it("gives each target its own ring", () => {
+    const rings = ringsOf(plans([attack("e")], [wait, attack("f")]));
+    expect(rings.map((ring) => [ring.targetId, ring.segments])).toEqual([["e", [A, E, E, E]], ["f", [E, A, E, E]]]);
+  });
+
+  it("shows no ring for a Ghost or an Unknown enemy", () => {
+    expect(ringsOf(plans([attack("e")], [attack("u")]), [ghost("e", { col: 3, row: 2 }), unknown("u")])).toEqual([]);
   });
 });

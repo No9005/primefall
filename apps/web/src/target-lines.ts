@@ -47,6 +47,8 @@ export interface TargetLine {
   tone: LineTone;
   /** The Tick of the action (1-based). */
   tick: number;
+  /** For an Attack: the id of the targeted enemy. */
+  targetId?: string;
   from: GridPosition;
   to: GridPosition;
   /** For an Attack: the drawing of the shot with its block, cross and Cover tile. */
@@ -120,7 +122,7 @@ function attackLines(grid: Grid, enemies: readonly EnemyView[], shotAt: { base: 
   const tooClose = chebyshevDistance(from, target.position) < minRange;
   const clear = !tooClose && shot.segments.every((segment) => segment.style === SegmentStyle.Clear) && shot.ringed;
   const missHint = clear ? undefined : mayMissHint(from, target.position, range, minRange);
-  return [{ ...base, kind: LineKind.Attack, tone: clear ? LineTone.Clear : LineTone.Red, from, to: target.position, shot, unreachable: !clear, missHint }];
+  return [{ ...base, kind: LineKind.Attack, tone: clear ? LineTone.Clear : LineTone.Red, targetId: target.id, from, to: target.position, shot, unreachable: !clear, missHint }];
 }
 
 function allyLines(heroes: readonly HeroView[], hero: HeroView, base: LineBase, from: GridPosition, action: PrimaryAction): TargetLine[] {
@@ -214,4 +216,46 @@ function replayAttackLines(event: MatchEvent, base: LineBase, actor: GridPositio
     ringed: !failed,
   };
   return [{ ...base, kind: LineKind.Attack, tone: replayTone(base.own, !failed), from: actor, to: target, shot }];
+}
+
+export enum RingSegment {
+  /** No own Attack on the target in this Tick. */
+  Empty = "empty",
+  /** An own Attack on the target in this Tick. */
+  Attack = "attack",
+  /** An Attack that may form a Crossfire with one of another own Hero in the same or the next Tick. */
+  Crossfire = "crossfire",
+}
+
+/** The Tick ring of a Visible enemy that own planned Attacks declare as target: one segment per Tick. */
+export interface CrossfireRing {
+  targetId: string;
+  position: GridPosition;
+  /** Segment state of Ticks 1 to 4, in order. */
+  segments: RingSegment[];
+}
+
+export const RING_TICKS = 4;
+
+/**
+ * The Tick rings of the plan preview: which Ticks of each Visible enemy are attacked by own Heroes and which of those may
+ * be a Crossfire (different Heroes, same or consecutive Ticks; judged on the declared targets only, so the Attacks can
+ * still miss). Ghosts and Unknown enemies get no ring. The plan is only read.
+ */
+export function crossfireRings(lines: readonly TargetLine[], enemies: readonly EnemyView[]): CrossfireRing[] {
+  const attacks = lines.filter((line) => line.planned && line.kind === LineKind.Attack && line.targetId && line.tick <= RING_TICKS);
+  const targetIds = [...new Set(attacks.map((line) => line.targetId!))];
+  return targetIds.flatMap((targetId) => {
+    const enemy = enemies.find((candidate) => candidate.id === targetId);
+    if (enemy?.visibility !== Visibility.Visible) return [];
+    const onTarget = attacks.filter((line) => line.targetId === targetId);
+    const segments = Array.from({ length: RING_TICKS }, (_, index) => {
+      const tick = index + 1;
+      const here = onTarget.filter((line) => line.tick === tick);
+      if (here.length === 0) return RingSegment.Empty;
+      const crossfire = onTarget.some((other) => Math.abs(other.tick - tick) <= 1 && here.some((line) => line.heroId !== other.heroId));
+      return crossfire ? RingSegment.Crossfire : RingSegment.Attack;
+    });
+    return [{ targetId, position: enemy.position, segments }];
+  });
 }

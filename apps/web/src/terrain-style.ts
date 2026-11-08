@@ -73,6 +73,8 @@ export const PLAN_STYLE = {
   ally: 0xe5b429,
   allyAlpha: 0.22,
   danger: 0xe5484d,
+  crossfire: 0xff8a3d,
+  steel: 0x3d5a73,
   badgeText: 0x12161c,
   width: 3,
   dash: 8,
