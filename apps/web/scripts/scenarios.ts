@@ -515,11 +515,11 @@ export const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "crossfire-ring",
-    description: "Planning: the Bruiser and the allied Controller both plan an Attack on the same enemy, so the Tick ring shows a possible Crossfire (orange segments, +1 ? chip).",
+    description: "Planning: the Bruiser and the allied Controller (Tag Round) both plan an Attack on the same enemy, so the Tick ring shows a possible Crossfire (orange segments, +1 ? chip).",
     buildMatch: () =>
       stage(31, (hero) => {
         arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
-        arrange(hero("left-controller"), { col: 4, row: 2 }, { hand: [CONTROLLER_PULSE_BOLT, ...CONTROLLER_FILLER_CARDS] });
+        arrange(hero("left-controller"), { col: 4, row: 2 }, { hand: [CONTROLLER_TAG_ROUND, ...CONTROLLER_FILLER_CARDS] });
         arrange(hero("right-bruiser"), { col: 6, row: 1 }, ENEMIES_WITH_ATTACKS);
         arrange(hero("right-assassin"), { col: 20, row: 6 }, ENEMIES_WITH_ATTACKS);
       }),
