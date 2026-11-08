@@ -15,10 +15,7 @@ const WEAPON_OF_CARD: Readonly<Record<string, Weapon>> = {
   "Execution Round": "precision",
   "Ghost Shot": "precision",
   "Long Shot": "long",
-  "Pulse Bolt": "pulse",
-  "Shock Pulse": "pulse",
   "Tag Round": "tag",
-  "Mark Target": "tag",
 };
 
 /** The weapon a card fires; cards without a projectile of their own (Breach Charge, Shockwave) have none yet. */
@@ -592,10 +589,8 @@ function coverPlacedCues(event: MatchEvent, frame: CueFrame): void {
 function markedCues(event: MatchEvent, frame: CueFrame): void {
   if (event.targetId === undefined) return;
   const hit = hitBefore(event, frame.events);
-  const markTarget = event.card === MARK_TARGET_CARD;
-  // Mark Target in Overdrive throws its own dart from the Assassin's clip; Tag Round's dart leaves at 730 ms.
-  const startMs = markTarget ? frame.fireOf(event.heroId, event.card) + flightMs(event.card, hit?.distance) : TAG_FIRE_MS + flightMs("Tag Round", hit?.distance);
-  frame.cues.push({ kind: "marked", toId: event.targetId, startMs, ...(event.overdrive && markTarget && { overdrive: true as const }) });
+  // Tag Round's dart leaves at 730 ms.
+  frame.cues.push({ kind: "marked", toId: event.targetId, startMs: TAG_FIRE_MS + flightMs("Tag Round", hit?.distance) });
 }
 
 function slowCues(event: MatchEvent, frame: CueFrame): void {
@@ -622,7 +617,6 @@ const CUE_BUILDERS: Partial<Record<EventKind, (event: MatchEvent, frame: CueFram
 
 export const LONG_SHOT_CARD = "Long Shot";
 export const GHOST_SHOT_CARD = "Ghost Shot";
-export const MARK_TARGET_CARD = "Mark Target";
 export const NOBODY_THERE = "nobody there";
 
 /** How long the aura of an Overdrive action lasts when the Hero fires at `fireMs`. */

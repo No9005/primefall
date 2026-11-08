@@ -109,13 +109,7 @@ describe("the nine Overdrive effects", () => {
     expect(badgeAt(100000)).toEqual({ scale: 1, alpha: 1 });
   });
 
-  it("throws the Mark Target dart with a gold reticle, and applies Marked and Slow of Tag Round together", () => {
-    const mark = effectCuesOf(
-      [od({ kind: EventKind.AttackHit, targetId: "t", card: "Mark Target", damage: 1, distance: 3 }), od({ kind: EventKind.MarkedApplied, targetId: "t", card: "Mark Target" })],
-      fireOf,
-    );
-    expect(mark.find((cue) => cue.kind === "shot")).toMatchObject({ weapon: "tag", overdrive: true });
-    expect(mark.find((cue) => cue.kind === "marked")).toMatchObject({ overdrive: true, startMs: 620 + 240 });
+  it("applies Marked and Slow of Tag Round together", () => {
     const tag = effectCuesOf(
       [
         od({ kind: EventKind.AttackHit, targetId: "t", card: "Tag Round", damage: 1, distance: 3 }),
