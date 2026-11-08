@@ -51,7 +51,7 @@ import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
 import { chestOf, dashRuns, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
 import { finalTile, PathOwner, type PlannedPath } from "./ally-paths";
-import { LineKind, LineTone, type TargetLine } from "./target-lines";
+import { type CrossfireRing, LineKind, LineTone, RingSegment, type TargetLine } from "./target-lines";
 import { PLAN_STYLE, SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
 import { pulseAlpha } from "./target-pick";
 
@@ -138,6 +138,54 @@ function collisionCross(tile: GridPosition, angle: number): Graphics {
     .moveTo(x + size, y - size)
     .lineTo(x - size, y + size)
     .stroke({ width: 6, color: COLLISION_COLOR, cap: "round" });
+}
+
+const RING_GAP = 0.12;
+
+/** A badge scaled about its own centre: the planning camera is zoomed out, so the ring's numbers must stay readable. */
+function enlarged(badge: Container): Container {
+  badge.scale.set(1.8);
+  return badge;
+}
+const NO_RINGS: readonly CrossfireRing[] = [];
+
+/**
+ * The Tick ring under an enemy a plan attacks: four 90° arcs on the floor, Tick 1 at the top and clockwise. An attacked Tick
+ * is a thick teal arc (orange when it may be a Crossfire) with its number outside the ring; a free Tick is thin and steel.
+ * A chip "+1 ?" above the target says a Crossfire may happen (the Attacks can still miss).
+ */
+function crossfireRingGraphics(ring: CrossfireRing, angle: number): { ground: Container; top: Container } {
+  const ground = new Container();
+  const top = new Container();
+  const centre = gridToWorld(ring.position, angle);
+  // Under the Hero's feet, not under the middle of the tile.
+  const x = centre.x;
+  const y = centre.y + footOffset(angle);
+  const rx = TILE_WIDTH * 1.1;
+  const ry = TILE_HEIGHT * 1.1;
+  const at = (theta: number, scale = 1) => ({ x: x + Math.cos(theta) * rx * scale, y: y + Math.sin(theta) * ry * scale });
+  const arcs = new Graphics();
+  const labels: Container[] = [];
+  ring.segments.forEach((segment, index) => {
+    const start = -Math.PI / 2 + (index * Math.PI) / 2 + RING_GAP;
+    const end = start + Math.PI / 2 - 2 * RING_GAP;
+    const active = segment !== RingSegment.Empty;
+    const color = segment === RingSegment.Crossfire ? PLAN_STYLE.crossfire : active ? PLAN_STYLE.own : PLAN_STYLE.steel;
+    const first = at(start);
+    arcs.moveTo(first.x, first.y);
+    for (let step = 1; step <= 8; step++) {
+      const point = at(start + ((end - start) * step) / 8);
+      arcs.lineTo(point.x, point.y);
+    }
+    arcs.stroke({ width: active ? 9 : 5, color, alpha: active ? 1 : 0.7, cap: "round" });
+    if (!active) return;
+    const label = at((start + end) / 2, 1.3);
+    labels.push(enlarged(slotBadge(String(index + 1), label.x, label.y, color)));
+  });
+  ground.addChild(arcs);
+  top.addChild(...labels);
+  if (ring.segments.includes(RingSegment.Crossfire)) top.addChild(enlarged(slotBadge("+1 ?", x, y - TILE_HEIGHT * 2.4, PLAN_STYLE.crossfire)));
+  return { ground, top };
 }
 
 /** A target line: the shot drawing for an Attack, an arrow to an allied Hero, a ring on a tile; the Tick sits in the middle. */
@@ -329,6 +377,8 @@ interface BoardProps {
   paths: readonly PlannedPath[];
   /** Who targets whom: queued actions while planning, the actions of the current Tick during the replay. */
   targetLines: readonly TargetLine[];
+  /** Planning only: the Tick rings under the enemies the own plans attack. */
+  crossfireRings?: readonly CrossfireRing[];
   /** Shield rubies, the shield bubble and planned-action icons per Hero id; Heroes without an entry have none. */
   marks: Readonly<Record<string, HeroMarks>>;
   /** Planning only: destinations of Moves that will fail through another Hero of the Squad. */
@@ -463,6 +513,7 @@ export function Board({
   dropTile,
   shotLines,
   targetLines,
+  crossfireRings = NO_RINGS,
   marks,
   paths,
   collisionTiles,
@@ -605,6 +656,12 @@ export function Board({
       overlay.addChild(label);
       created.push(label);
     });
+    for (const ring of crossfireRings) {
+      const drawn = crossfireRingGraphics(ring, angle);
+      overlay.addChild(drawn.ground);
+      overlayTop.addChild(drawn.top);
+      created.push(drawn.ground, drawn.top);
+    }
     for (const targetLine of targetLines) {
       const drawn = targetLineGraphics(targetLine, angle);
       overlay.addChild(drawn);
@@ -630,7 +687,7 @@ export function Board({
       cancelAnimationFrame(pulseFrame);
       created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [overlay, overlayTop, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, paths, collisionTiles, strokeScale]);
+  }, [overlay, overlayTop, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, crossfireRings, paths, collisionTiles, strokeScale]);
 
   useEffect(() => {
     if (!tokens) return;
