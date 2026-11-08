@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HERO_DECKS, HeroClass } from "./cards";
+import { withFullCover } from "./full-cover-fixture";
 import { EventKind, SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, recordSightings, SIGHT_RANGE, startRound } from "./match";
 import { ActionKind, PlanIssueKind, type QueuedAction, type SquadPlan, validatePlan } from "./plan";
@@ -19,10 +20,10 @@ const MARK_TARGET = 10;
 const REPOSITION = 11;
 const PITCH = 1;
 
-// Row 1 is open floor; (14,5) is Half Cover (H) with open floor on both sides; the Nest is at (15,1).
+// Row 1 is open floor; (14,5) is Half Cover (H) with open floor on both sides; the tests that need Full Cover put it at (15,1).
 const OPEN = { col: 2, row: 1 };
 const HALF_COVER = { col: 14, row: 5 };
-const OVERWATCH_NEST = { col: 15, row: 1 };
+const FULL_COVER = { col: 15, row: 1 };
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 const primary = (card: number, target: string, overdrive?: boolean): QueuedAction => ({
@@ -83,7 +84,7 @@ describe("Shield Breaker (Piercing Damage)", () => {
   it("is reduced by 1 by Half Cover and blocked by Full Cover", () => {
     const half = scene({ col: 11, row: 5 }, HALF_COVER, hand);
     expect(deckLoss(half, fire(half).match)).toBe(1);
-    const full = scene({ col: 12, row: 1 }, OVERWATCH_NEST, hand);
+    const full = withFullCover(scene({ col: 12, row: 1 }, FULL_COVER, hand), FULL_COVER);
     expect(deckLoss(full, fire(full).match)).toBe(0);
   });
 
@@ -286,9 +287,9 @@ describe("Ghost Shot Overdrive", () => {
   });
 
   it("is blocked by Full Cover and reduced by Half Cover", () => {
-    const full = ghostScene(OVERWATCH_NEST, { col: 15, row: 5 });
+    const full = withFullCover(ghostScene(FULL_COVER, { col: 15, row: 5 }), FULL_COVER);
     hero(full, ASSASSIN).position = { col: 12, row: 1 };
-    hero(full, ENEMY).position = OVERWATCH_NEST;
+    hero(full, ENEMY).position = FULL_COVER;
     expect(deckLoss(full, shoot(full).match)).toBe(0);
     const half = ghostScene(HALF_COVER, HALF_COVER);
     hero(half, ASSASSIN).position = { col: 11, row: 5 };

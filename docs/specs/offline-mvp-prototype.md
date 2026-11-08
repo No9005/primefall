@@ -27,7 +27,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 9. As a player, I want no direct Line of Sight from either Spawn area into the Prime Zone, so that early scouting matters.
 10. As a player, I want side corridors with Half Cover, so that I can flank, retreat, and move without being permanently exposed.
 11. As a player, I want main routes to be at least two tiles wide, so that movement does not become blocked by frustrating one-tile chokepoints.
-12. As a player, I want one Overwatch Nest with Full Cover, so that I can contest a valuable scouting position.
+12. _(Removed for now, ADR 0024; stories 12 to 14.)_ As a player, I want one Overwatch Nest with Full Cover, so that I can contest a valuable scouting position.
 13. As a player, I want the Overwatch Nest to have a limited sightline into the Prime Zone, so that it rewards positioning without automatically controlling the objective.
 14. As a player, I want only one Overwatch Nest, so that controlling information becomes a meaningful secondary objective.
 15. As a player, I want terrain to remain visible at all times, so that I can plan movement and positioning even when enemies are concealed.
@@ -111,7 +111,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Place the 3 by 3 Prime Zone at columns 14–16 and rows 7–9.
 - Keep the Prime Zone free of permanent Cover.
 - Classic mode: two Outposts of 3 by 2 tiles, interim at columns 14–16, rows 3–4 and rows 12–13 (the real map comes later).
-- Provide exactly one Overwatch Nest at column 15, row 1, with Full Cover and a limited sightline into the Prime Zone.
+- ~~Provide exactly one Overwatch Nest at column 15, row 1, with Full Cover and a limited sightline into the Prime Zone.~~ Removed for now (ADR 0024): the Reactor Deck has no Overwatch Nest.
 - Spawn one Squad on the left edge (column 1, rows 7–9) and the other on the right edge (column 29, rows 7–9), without direct Line of Sight into the Prime Zone.
 - Implement three Hero classes: Bruiser/Vanguard, Controller/Tactician, and Assassin/Striker.
 - Give each Hero a fixed 12-card Deck with no Flex cards.

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { withFullCover } from "./full-cover-fixture";
 import { EventKind, SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type SquadPlan } from "./plan";
@@ -15,7 +16,6 @@ const BREACH_CHARGE = 4;
 
 const WRECK_TILE: GridPosition = { col: 8, row: 3 };
 const OPEN_TILE: GridPosition = { col: 8, row: 5 };
-const NEST_TILE: GridPosition = { col: 15, row: 1 };
 const ATTACKER: GridPosition = { col: 5, row: 3 };
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
@@ -88,9 +88,9 @@ describe("Half Cover left by an Exhausted Hero", () => {
     expect(tileAt(after.grid, WRECK_TILE)).toBe(TileKind.Floor);
   });
 
-  it("keeps Full Cover on an Overwatch Nest", () => {
-    const match = matchWithWreck(NEST_TILE);
-    expect(coverAt(match.grid, NEST_TILE)).toBe(CoverKind.Full);
+  it("keeps Full Cover on a Full Cover tile", () => {
+    const match = withFullCover(matchWithWreck(WRECK_TILE), WRECK_TILE);
+    expect(coverAt(match.grid, WRECK_TILE)).toBe(CoverKind.Full);
   });
 });
 

@@ -36,7 +36,7 @@ The UI direction (orientation, layout, input, board rotation, terrain, style) is
 | Energy | Pitched total, spent, available |
 | Queue slot | empty, filled (card + use + target), may miss at plan time (hint, still sendable), failed at execution (Resolution log) |
 | Hero token | selected, allied, Visible enemy, Ghost enemy, Hidden, Marked, Slow, Shielded, Exhausted |
-| Grid tile | normal, in range of selected card, target candidate (every Visible enemy for an Attack), Prime Zone, Cover (Full / Half), Overwatch Nest |
+| Grid tile | normal, in range of selected card, target candidate (every Visible enemy for an Attack), Prime Zone, Cover (Full / Half) |
 | Commit | idle, waiting for enemy Squad, timer expired |
 
 ## Design tokens

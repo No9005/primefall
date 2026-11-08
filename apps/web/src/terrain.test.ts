@@ -61,12 +61,12 @@ describe("buildTerrain at 45 degrees", () => {
     expect(points.some((p) => Math.abs(p.x - corner.x) < 1e-6 && Math.abs(p.y - corner.y) < 1e-6)).toBe(true);
   });
 
-  it("gives Cover and the Overwatch Nest a standing piece and open floor none", () => {
-    for (const kind of [TileKind.HalfCover, TileKind.FullCover, TileKind.OverwatchNest]) {
+  it("gives Cover a standing piece and open floor none", () => {
+    for (const kind of [TileKind.HalfCover, TileKind.FullCover]) {
       const tile = tiles.find((t) => t.kind === kind);
       if (tile) expect(tile.piece?.length, kind).toBeGreaterThanOrEqual(3);
     }
-    expect(tiles.find((t) => t.kind === TileKind.OverwatchNest)).toBeDefined();
+    expect(tiles.some((t) => t.kind === TileKind.OverwatchNest)).toBe(false);
     expect(tiles.find((t) => t.kind === TileKind.Floor)?.piece).toBeUndefined();
   });
 
@@ -140,9 +140,6 @@ describe("choosePiece", () => {
     expect(choose(["HF"], 0, 0)?.form).toBe("pillar");
   });
 
-  it("keeps the Overwatch Nest alone", () => {
-    expect(choose(["OO"], 0, 0)).toEqual({ kind: "overwatchNest", form: "pillar", joins: 0 });
-  });
 
   it("draws Full Cover at least twice as tall as Half Cover", () => {
     expect(PIECE_SHAPE.fullCover.height).toBeGreaterThanOrEqual(2 * PIECE_SHAPE.halfCover.height);
@@ -205,9 +202,8 @@ describe("tile brightness from sight", () => {
 describe("the look of the terrain (artboard J)", () => {
   const faces = (rows: string[]) => buildTerrain(parseGrid(rows)).flatMap((tile) => tile.piece ?? []);
 
-  it("outlines Wall and Nest faces dark, Full Cover with a bright top edge, Half Cover without one", () => {
+  it("outlines Wall faces dark, Full Cover with a bright top edge, Half Cover without one", () => {
     for (const face of faces(["#"])) expect(face.edge).toBe(OUTLINE.color);
-    for (const face of faces(["O"])) expect(face.edge).toBe(OUTLINE.color);
     for (const face of faces(["F"])) expect(face.edge).toBe(face.role === FaceRole.Top ? TERRAIN_STYLE.fullCover.topEdge : OUTLINE.color);
     expect(faces(["F"]).some((face) => face.role === FaceRole.Top)).toBe(true);
     for (const face of faces(["H"])) expect(face.edge).toBe(TERRAIN_STYLE.halfCover.edge);

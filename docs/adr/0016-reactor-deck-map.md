@@ -1,5 +1,7 @@
 # Reactor Deck Map
 
+**Status:** The Overwatch Nest is not in use; it is removed for now (ADR 0024). The Reactor Deck has no `O` tile and no Full Cover tile at present. The rest of this record stands.
+
 The first Primefall map is the Reactor Deck: a damaged cargo ship whose central reactor is the Prime Zone. The map is horizontally oriented and mirror-symmetric: one squad spawns on the left edge and the other on the right edge.
 
 The map uses a 31 by 17 tile grid. It has no interactive doors and no vertical levels in the first prototype.

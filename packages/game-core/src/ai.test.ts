@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { playAiMatch } from "./ai-match";
-import { AI_WEIGHTS, AiStyle, aiStyleFor, assignRoles, GHOST_MEMORY_ROUNDS, planSquad, scoreTile, SquadRole, weightsFor } from "./ai";
+import { AI_WEIGHTS, AiStyle, aiStyleFor, assignRoles, GHOST_MEMORY_ROUNDS, planSquad, SquadRole, weightsFor } from "./ai";
 import { MatchMode, ROUND_LIMIT, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { ActionKind, moveEnd, validatePlan } from "./plan";
@@ -102,16 +102,6 @@ describe("AI scoring of Moves", () => {
   it("gives the same plan for the same view with a Ghost", () => {
     const view = withGhost(arrange({ col: 11, row: 7 }, { col: 29, row: 1 }), { col: 13, row: 1 });
     expect(planSquad(view)).toEqual(planSquad(view));
-  });
-
-  it("values the Overwatch Nest for a long Range Hero only, over an equally far open tile", () => {
-    const nest = { col: 15, row: 1 };
-    const open = { col: 14, row: 1 };
-    expect(coverAt(REACTOR_DECK, nest)).toBe(CoverKind.Full);
-    const longRange = 7;
-    const bruiserRange = 3;
-    expect(scoreTile(nest, 6, [], [], longRange, [])).toBeGreaterThan(scoreTile(open, 6, [], [], longRange, []));
-    expect(scoreTile(nest, 6, [], [], bruiserRange, [])).toBe(scoreTile(open, 6, [], [], bruiserRange, []));
   });
 
   it("gives the Assassin another tile than the Bruiser from the same start", () => {

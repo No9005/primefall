@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { withFullCover } from "./full-cover-fixture";
 import { AttackFailReason, EventKind, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, type MatchState, recordSightings, startRound } from "./match";
 import { ActionKind, type QueuedAction, type SquadPlan } from "./plan";
@@ -80,8 +81,7 @@ describe("Declared Target: a miss has one reason and does nothing", () => {
   });
 
   it("misses with FullCover when the enemy ends on Full Cover against the attacker", () => {
-    // The Overwatch Nest at (15,1) is Full Cover.
-    const match = scene({ col: 15, row: 3 }, { col: 15, row: 2 });
+    const match = withFullCover(scene({ col: 15, row: 3 }, { col: 15, row: 2 }), { col: 15, row: 1 });
     expect(miss(match, [leftPlan(wait, shoot()), rightPlan(move(2, 15, 1))])).toMatchObject({
       reason: AttackFailReason.FullCover,
     });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { withFullCover } from "./full-cover-fixture";
 import { EventKind, SquadId } from "./host";
 import { createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type SquadPlan } from "./plan";
@@ -92,8 +93,7 @@ describe("Shockwave: area damage and Knockback", () => {
   });
 
   it("stops at a Full Cover tile", () => {
-    // The Overwatch Nest (Full Cover) is at column 15, row 1.
-    const match = setup({ [LEFT_BRUISER]: { col: 15, row: 3 }, [RIGHT_BRUISER]: { col: 15, row: 2 } });
+    const match = withFullCover(setup({ [LEFT_BRUISER]: { col: 15, row: 3 }, [RIGHT_BRUISER]: { col: 15, row: 2 } }), { col: 15, row: 1 });
     const { match: after, events } = resolveRound(match, [shockwavePlan()]);
     expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 15, row: 2 });
     expect(knockbacks(events)).toHaveLength(0);

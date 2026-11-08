@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { withFullCover } from "./full-cover-fixture";
 import { EventKind, SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, recordSightings, startRound } from "./match";
 import { ActionKind, moveDestinations, PlanIssueKind, type SquadPlan, validatePlan } from "./plan";
@@ -23,7 +24,7 @@ const BREACH_CHARGE = 4;
 const SLAM_SHOT = 0;
 
 const HALF_COVER_TILE = { col: 14, row: 5 };
-const NEST_TILE = { col: 15, row: 1 };
+const FULL_COVER_TILE ={ col: 15, row: 1 };
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 
@@ -58,10 +59,10 @@ describe("Breach Charge", () => {
   });
 
   it("leaves Full Cover standing and blocks the damage to a Hero on it", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 15, row: 4 }, [RIGHT_BRUISER]: NEST_TILE });
-    const { match: after, events } = resolveRound(match, [breachPlan(NEST_TILE)]);
+    const match = withFullCover(setup({ [LEFT_BRUISER]: { col: 15, row: 4 }, [RIGHT_BRUISER]: FULL_COVER_TILE }), FULL_COVER_TILE);
+    const { match: after, events } = resolveRound(match, [breachPlan(FULL_COVER_TILE)]);
     expect(events.map(({ kind }) => kind)).toEqual([EventKind.AttackFailed]);
-    expect(coverAt(after.grid, NEST_TILE)).toBe(CoverKind.Full);
+    expect(coverAt(after.grid, FULL_COVER_TILE)).toBe(CoverKind.Full);
     expect(hero(after, RIGHT_BRUISER).deck).toHaveLength(hero(match, RIGHT_BRUISER).deck.length);
   });
 

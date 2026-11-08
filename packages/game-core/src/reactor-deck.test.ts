@@ -45,10 +45,9 @@ describe("Reactor Deck", () => {
     expect(REACTOR_DECK.height).toBe(17);
   });
 
-  it("is mirror-symmetric left-right and top-bottom, except the Nest", () => {
-    const withoutNest = REACTOR_DECK.tiles.map((line) => line.map((tile) => (tile === TileKind.OverwatchNest ? TileKind.Floor : tile)));
-    for (const line of withoutNest) expect([...line].reverse()).toEqual([...line]);
-    expect([...withoutNest].reverse()).toEqual(withoutNest);
+  it("is mirror-symmetric left-right and top-bottom", () => {
+    for (const line of REACTOR_DECK.tiles) expect([...line].reverse()).toEqual([...line]);
+    expect([...REACTOR_DECK.tiles].reverse()).toEqual(REACTOR_DECK.tiles);
     expect(centreColumn).toBe(15);
   });
 
@@ -80,8 +79,8 @@ describe("Reactor Deck", () => {
     }
   });
 
-  it("has exactly one Overwatch Nest, on the central column in the top row", () => {
-    expect(findTiles(REACTOR_DECK, TileKind.OverwatchNest)).toEqual([{ col: 15, row: 1 }]);
+  it("has no Overwatch Nest (removed for now, ADR 0024)", () => {
+    expect(findTiles(REACTOR_DECK, TileKind.OverwatchNest)).toEqual([]);
   });
 });
 
