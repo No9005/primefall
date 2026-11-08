@@ -81,6 +81,8 @@ export interface CardDefinition {
   energyCost: number;
   /** Range in tiles (Chebyshev); absent for cards that do not reach a target. */
   range?: number;
+  /** Minimum Range in tiles: a target closer than this cannot be hit (a Miss with `TooClose`). Default 0. */
+  minRange?: number;
   target: CardTarget;
   effects: readonly CardEffect[];
   /** Present only on cards with an Overdrive mode; replaces the standard effects (ADR 0003). */
@@ -340,31 +342,31 @@ const overwatchUplink: CardDefinition = {
 };
 
 const precisionShot: CardDefinition = {
-  name: "Precision Shot", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE,
+  name: "Precision Shot", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE, minRange: 2,
   target: CardTarget.VisibleEnemy, effects: [damage(2)],
 };
 const coverBreaker: CardDefinition = {
-  name: "Cover Breaker", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE,
+  name: "Cover Breaker", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE, minRange: 2,
   target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.IgnoreHalfCover }],
 };
 const shieldBreaker: CardDefinition = {
-  name: "Shield Breaker", type: CardType.Attack, energyCost: 2, range: 4,
+  name: "Shield Breaker", type: CardType.Attack, energyCost: 2, range: 4, minRange: 2,
   target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.PiercingDamage }],
 };
 const longShot: CardDefinition = {
-  name: "Long Shot", type: CardType.Attack, energyCost: 1, range: 7,
+  name: "Long Shot", type: CardType.Attack, energyCost: 1, range: 7, minRange: 3,
   target: CardTarget.VisibleEnemy, effects: [damage(2)],
   // Overdrive: 4 damage at Range 6 or 7, otherwise the usual 2.
   overdrive: [{ kind: EffectKind.DamageAtLongRange, amount: 2, longRangeAmount: 4 }],
 };
 const ghostShot: CardDefinition = {
-  name: "Ghost Shot", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE,
+  name: "Ghost Shot", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE, minRange: 2,
   target: CardTarget.VisibleEnemy, effects: [damage(2)],
   overdriveTarget: CardTarget.GhostEnemy,
   overdrive: [{ kind: EffectKind.TargetGhost }, damage(2)],
 };
 const executionRound: CardDefinition = {
-  name: "Execution Round", type: CardType.Attack, energyCost: 2, range: ASSASSIN_RANGE,
+  name: "Execution Round", type: CardType.Attack, energyCost: 2, range: ASSASSIN_RANGE, minRange: 2,
   target: CardTarget.VisibleEnemy, effects: [damage(3)],
 };
 const vanish: CardDefinition = {
