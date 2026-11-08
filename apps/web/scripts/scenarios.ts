@@ -442,6 +442,32 @@ export const SCENARIOS: readonly Scenario[] = [
     secondRound: { steps: [{ wait: true }], resolutionShotsMs: [400, 1500, 3000] },
   },
   {
+    name: "cover-drop",
+    description: "The Controller plays Deploy Cover: the crate drops onto the tile, lands and unfolds into the striped bars, which stay.",
+    buildMatch: () =>
+      stage(25, (hero) => {
+        arrange(hero(`${SquadId.Left}-controller`), { col: 11, row: 3 }, { hand: [8, 0, 1, 2] });
+      }),
+    playerHero: HeroClass.Controller,
+    heroId: `${SquadId.Left}-controller`,
+    steps: [
+      { slot: 1, use: "pitch" },
+      { slot: 0, use: "primary", tile: { col: 13, row: 3 } },
+    ],
+    resolutionShotsMs: [260, 330, 400, 460, 520, 580, 640, 700],
+  },
+  {
+    name: "cover-natural",
+    description: "The map's own Half and Full Cover next to the waiting Bruiser: blue shield panels on a plinth and the shield glyphs.",
+    buildMatch: () =>
+      stage(26, (hero) => {
+        arrange(hero(PLAYER_BRUISER), { col: 8, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [{ wait: true }],
+    resolutionShotsMs: [400],
+  },
+  {
     name: "cover-destroyed",
     description: "A Bruiser plays Breach Charge on a Half Cover tile; the Cover is destroyed and the scorch tile stays.",
     buildMatch: () =>

@@ -335,28 +335,194 @@ export function pickWallAt(x: number, y: number, grid: Grid, angle: number = VIE
   return best?.position;
 }
 
-/** A shield mark on top of a Cover piece, shown while an Attack is aimed: filled for Full Cover, outline only for Half Cover. */
+/** Game px (a tile is the 46 x 24 diamond of the design canvas) to world px. */
+const GAME_PX = TILE_WIDTH / 46;
+
+/** Where the cover look of design `docs/design/role-visuals` is measured: heights and thicknesses in game px. */
+const COVER_LOOK = {
+  plinth: 2,
+  natural: { half: 16, full: 34 },
+  built: { half: 9, full: 22, rail: 10, thickness: 0.2 },
+  stripe: { band: 4, angle: 35 },
+} as const;
+
+/** A shield panel on a back edge of a tile: a translucent quad that fades towards its top, with a foot line. */
+export interface CoverPanel {
+  points: number[];
+  /** The foot line as x1, y1, x2, y2. */
+  foot: number[];
+  /** The top line as x1, y1, x2, y2. */
+  top: number[];
+}
+
+/** One face of a construction bar, with the black bands drawn over its yellow. */
+export interface BarFace {
+  points: number[];
+  fill: number;
+  stripes: number[][];
+}
+
+/** The look of a Cover tile, in drawing order: the plinth and panels of natural Cover, or the bars of built Cover. */
+export interface CoverLook {
+  kind: "full" | "half";
+  built: boolean;
+  /** Natural Cover: the flat dark plinth. */
+  plinth: Face[];
+  /** Natural Cover: the two panels on the back edges. */
+  panels: CoverPanel[];
+  /** Built Cover: faces of the bars (sides first, then tops). */
+  bars: BarFace[];
+  /** Built Cover of Full height: the rail as line segments x1, y1, x2, y2. */
+  rails: number[][];
+}
+
+const clipHalfPlane = (polygon: number[][], inside: (p: number[]) => number): number[][] => {
+  const out: number[][] = [];
+  polygon.forEach((p, i) => {
+    const q = polygon[(i + 1) % polygon.length]!;
+    const dp = inside(p);
+    const dq = inside(q);
+    if (dp >= 0) out.push(p);
+    if (dp >= 0 !== dq >= 0) {
+      const t = dp / (dp - dq);
+      out.push([p[0]! + (q[0]! - p[0]!) * t, p[1]! + (q[1]! - p[1]!) * t]);
+    }
+  });
+  return out;
+};
+
+/**
+ * The diagonal bands on a side face (a, b, b lifted, a lifted): yellow base, black bands of 4 game px at -35 degrees,
+ * measured in the face's own plane (u along the edge, v up).
+ */
+function stripesOn(face: number[]): number[][] {
+  const [ax, ay, bx, by, , , , liftedY] = face as [number, number, number, number, number, number, number, number];
+  const width = Math.hypot(bx - ax, by - ay);
+  const height = ay - liftedY;
+  if (width < 1e-6 || height < 1e-6) return [];
+  const turn = (COVER_LOOK.stripe.angle * Math.PI) / 180;
+  const along = { x: Math.cos(turn), y: -Math.sin(turn) };
+  const across = { x: Math.sin(turn), y: Math.cos(turn) };
+  const band = COVER_LOOK.stripe.band * GAME_PX;
+  const reach = width + height;
+  const last = Math.ceil((width * across.x + height * across.y) / (2 * band));
+  const toScreen = ([u, v]: number[]) => [ax + ((bx - ax) * u!) / width, ay + ((by - ay) * u!) / width - v!];
+  const bands: number[][] = [];
+  for (let k = 0; k <= last; k++) {
+    const s0 = k * 2 * band;
+    const s1 = s0 + band;
+    let polygon = [
+      [across.x * s0 - along.x * reach, across.y * s0 - along.y * reach],
+      [across.x * s1 - along.x * reach, across.y * s1 - along.y * reach],
+      [across.x * s1 + along.x * reach, across.y * s1 + along.y * reach],
+      [across.x * s0 + along.x * reach, across.y * s0 + along.y * reach],
+    ];
+    polygon = clipHalfPlane(polygon, (p) => p[0]!);
+    polygon = clipHalfPlane(polygon, (p) => width - p[0]!);
+    polygon = clipHalfPlane(polygon, (p) => p[1]!);
+    polygon = clipHalfPlane(polygon, (p) => height - p[1]!);
+    if (polygon.length >= 3) bands.push(polygon.flatMap(toScreen));
+  }
+  return bands;
+}
+
+/** The look of a Cover tile at a view angle; `built` is Cover a Hero placed (bars), otherwise the map's own (panels). */
+export function coverLook(position: GridPosition, kind: "full" | "half", built: boolean, angle: number = VIEW_ANGLE, grow = 1): CoverLook {
+  const proj = projection(angle);
+  const { col, row } = position;
+  const colors = TERRAIN_STYLE.coverLook;
+  const edges = [
+    { from: [-0.5, -0.5], to: [0.5, -0.5], inward: [0, 1] },
+    { from: [0.5, -0.5], to: [0.5, 0.5], inward: [-1, 0] },
+    { from: [0.5, 0.5], to: [-0.5, 0.5], inward: [0, -1] },
+    { from: [-0.5, 0.5], to: [-0.5, -0.5], inward: [1, 0] },
+  ] as const;
+  const centreY = proj.point(col, row).y;
+  const back = edges.filter((edge) => {
+    const middle = proj.point(col + (edge.from[0] + edge.to[0]) / 2, row + (edge.from[1] + edge.to[1]) / 2);
+    return middle.y < centreY - EPSILON;
+  });
+  const look: CoverLook = { kind, built, plinth: [], panels: [], bars: [], rails: [] };
+  if (!built) {
+    const plinthStyle: PieceStyle = { top: colors.plinthTop, left: colors.plinthSide, right: colors.plinthSide, edge: colors.outline };
+    const whole = { fromCol: col - 0.5, toCol: col + 0.5, fromRow: row - 0.5, toRow: row + 0.5 };
+    look.plinth = boxFaces(proj, whole, COVER_LOOK.plinth * GAME_PX, plinthStyle, 1);
+    const lift = COVER_LOOK.plinth * GAME_PX;
+    const height = COVER_LOOK.natural[kind] * GAME_PX;
+    for (const edge of back) {
+      const a = proj.point(col + edge.from[0], row + edge.from[1], lift);
+      const b = proj.point(col + edge.to[0], row + edge.to[1], lift);
+      look.panels.push({
+        points: [a.x, a.y, b.x, b.y, b.x, b.y - height, a.x, a.y - height],
+        foot: [a.x, a.y, b.x, b.y],
+        top: [a.x, a.y - height, b.x, b.y - height],
+      });
+    }
+    return look;
+  }
+  const height = Math.max(0.5, COVER_LOOK.built[kind] * GAME_PX * grow);
+  const thick = COVER_LOOK.built.thickness;
+  const boxes: Box[] = back.map((edge, i) => {
+    const [fromCol, toCol] = [edge.from[0], edge.to[0]].sort((x, y) => x - y) as [number, number];
+    const [fromRow, toRow] = [edge.from[1], edge.to[1]].sort((x, y) => x - y) as [number, number];
+    const box: Box = {
+      fromCol: col + (edge.inward[0] === 1 ? fromCol : edge.inward[0] === -1 ? toCol - thick : fromCol),
+      toCol: col + (edge.inward[0] === 1 ? fromCol + thick : edge.inward[0] === -1 ? toCol : toCol),
+      fromRow: row + (edge.inward[1] === 1 ? fromRow : edge.inward[1] === -1 ? toRow - thick : fromRow),
+      toRow: row + (edge.inward[1] === 1 ? fromRow + thick : edge.inward[1] === -1 ? toRow : toRow),
+    };
+    // The second bar stops where the first one's thickness ends, so they meet in a clean corner.
+    if (i === 1) {
+      const first = back[0]!;
+      if (first.inward[1] !== 0) box[first.inward[1] === 1 ? "fromRow" : "toRow"] += first.inward[1] === 1 ? thick : -thick;
+      else box[first.inward[0] === 1 ? "fromCol" : "toCol"] += first.inward[0] === 1 ? thick : -thick;
+    }
+    return box;
+  });
+  const faces = boxes.flatMap((box) => boxFaces(proj, box, height, { top: colors.grey, left: colors.yellow, right: colors.yellow, edge: colors.outline }, 1));
+  for (const face of faces) {
+    if (face.role !== FaceRole.Top) look.bars.push({ points: face.points, fill: colors.yellow, stripes: stripesOn(face.points) });
+  }
+  for (const face of faces) if (face.role === FaceRole.Top) look.bars.push({ points: face.points, fill: colors.grey, stripes: [] });
+  if (kind === "full") {
+    const rail = COVER_LOOK.built.rail * GAME_PX;
+    for (const box of boxes) {
+      const a = proj.point(box.fromCol, box.fromRow, height + rail);
+      const b = proj.point(box.toCol, box.toRow, height + rail);
+      const foot = [proj.point(box.fromCol, box.fromRow, height), proj.point(box.toCol, box.toRow, height)];
+      look.rails.push([a.x, a.y, b.x, b.y], [a.x, a.y, a.x, foot[0]!.y], [b.x, b.y, b.x, foot[1]!.y]);
+    }
+  }
+  return look;
+}
+
+/** A shield mark above a Cover piece of the map: filled for Full Cover, half filled for Half Cover. */
 export interface CoverMark {
   position: GridPosition;
   kind: "full" | "half";
-  /** Centre of the piece's top in world pixels. */
+  /** Above the back corner of the tile, over the panels, in world pixels. */
   x: number;
   y: number;
 }
 
-/** One mark per standing Cover piece (Exhausted Hero wrecks included) while aiming; none otherwise. */
-export function coverMarks(grid: Grid, aiming: boolean, angle: number = VIEW_ANGLE): CoverMark[] {
-  if (!aiming) return [];
+/** One mark per standing piece of natural Cover (Exhausted Hero wrecks and built Cover have none). */
+export function coverMarks(grid: Grid, angle: number = VIEW_ANGLE, built: ReadonlySet<string> = new Set()): CoverMark[] {
+  const proj = projection(angle);
   return grid.tiles.flatMap((line, row) =>
-    line.flatMap((_, col) => {
-      const kind = choosePiece(grid, { col, row })?.kind;
-      if (kind !== "fullCover" && kind !== "halfCover") return [];
-      const { x, y } = gridToWorld({ col, row }, angle);
-      const mark: CoverMark = { position: { col, row }, kind: kind === "fullCover" ? "full" : "half", x, y: y - PIECE_SHAPE[kind].height };
+    line.flatMap((tileKind, col) => {
+      const kind = tileKind === TileKind.FullCover ? "full" : tileKind === TileKind.HalfCover ? "half" : undefined;
+      if (!kind || built.has(tileKey({ col, row }))) return [];
+      const corner = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]].map(([c, r]) => proj.point(col + c!, row + r!)).reduce((a, b) => (b.y < a.y ? b : a));
+      const mark: CoverMark = { position: { col, row }, kind, x: corner.x, y: corner.y - COVER_LOOK.natural[kind] * GAME_PX - 12 };
       return [mark];
     }),
   );
 }
+
+/** Whether a tile is drawn with the cover look (a Cover tile) rather than as a plain standing piece. */
+export const hasCoverLook = (kind: TileKind): kind is TileKind.FullCover | TileKind.HalfCover => kind === TileKind.FullCover || kind === TileKind.HalfCover;
+
+export { tileKey };
 
 /** The Reactor Deck as the Squad knows it: destroyed Cover gone, Cover placed in the match standing, wrecks of Exhausted Heroes as Half Cover. */
 export function coverGridOf(destroyed: readonly GridPosition[], placed: readonly GridPosition[], wrecks: readonly GridPosition[]): Grid {

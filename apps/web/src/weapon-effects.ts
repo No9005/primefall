@@ -145,10 +145,10 @@ export const KNOCKBACK_TAG_MS = 800;
 export const BREACH_FLIGHT_MS = UNARMED_FLIGHT_MS;
 export const BREACH_ARC_PX = 26;
 export const BREACH_AFTER_MS = 1464;
-/** The Controller slams the ground at 950 ms; the wall is up (1.15 x) 480 ms after the flash starts, and holds to 2720. */
+/** The Controller slams the ground at 950 ms; the crate falls (0.45 s), lands (0.22 s) and unfolds (0.5 s): the bars stand 1.17 s later. */
 export const COVER_SLAM_MS = 950;
-export const COVER_WALL_UP_MS = 480;
-export const COVER_PLACED_MS = 1770;
+export const COVER_WALL_UP_MS = 1170;
+export const COVER_PLACED_MS = 1400;
 /** Overdrive: the aura lasts at least this long (the two rings rise in a 1200 ms loop), and until the shot has left. */
 export const AURA_MIN_MS = 1200;
 export const AURA_AFTER_FIRE_MS = 400;
@@ -312,23 +312,46 @@ export function scorchAt(ms: number): number {
   return sampleTrack([[0, 0], [72, 0], [264, 1], [1200, 1], [1464, 0]], ms);
 }
 
-/** The team-coloured flash on a tile where Cover is placed, `ms` after the slam. */
-export function coverFlashAt(ms: number): number {
-  return sampleTrack([[0, 0], [100, 0.8], [400, 0]], ms);
+/** The phases of the drop of built Cover (design `cover-drop.webp`): the crate falls, lands, unfolds into the bars. */
+export const COVER_FALL_MS = 450;
+export const COVER_LAND_MS = 220;
+export const COVER_UNFOLD_MS = 500;
+
+const easeIn = (u: number) => u * u;
+const easeOut = (u: number) => 1 - (1 - u) * (1 - u);
+
+export interface CoverDrop {
+  /** The yellow dashed target and the growing shadow (0 to 1); gone once the bars stand. */
+  target: number;
+  /** Shadow size (0 to 1) under the falling crate. */
+  shadow: number;
+  /** How far above its tile the crate still is (1 at the start, 0 on landing); 0 when it is not drawn. */
+  crateHeight: number;
+  /** The landing ring and dust: 0 before the landing, then 0 to 1 over its 0.22 s. */
+  landing: number;
+  /** The tile flash (yellow) on landing, 0 to 1 to 0. */
+  flash: number;
+  /** The share of its final height the unfolding bars have (0 to 1); 0 before they start. */
+  unfold: number;
+  /** The crate itself is still visible (before it unfolds). */
+  crate: boolean;
 }
 
-/** The wall that rises on the tile (scale 0 to 1.15 to 1), dust at its foot and the two pips counting the Resolutions it stays. */
-export function coverWallAt(ms: number): { scaleY: number; alpha: number } {
+/** The state of the drop of built Cover `ms` after it starts. Ends with the terrain taking over at `COVER_WALL_UP_MS`. */
+export function coverDropAt(ms: number): CoverDrop {
+  const fall = Math.min(1, Math.max(0, ms / COVER_FALL_MS));
+  const sinceLanding = ms - COVER_FALL_MS;
+  const landing = Math.min(1, Math.max(0, sinceLanding / COVER_LAND_MS));
+  const unfold = Math.min(1, Math.max(0, (sinceLanding - COVER_LAND_MS) / COVER_UNFOLD_MS));
   return {
-    scaleY: sampleTrack([[0, 0], [70, 0.2], [COVER_WALL_UP_MS, 1.15], [COVER_WALL_UP_MS + 150, 1]], ms),
-    alpha: ms < 70 ? 0 : 1,
+    target: ms < COVER_WALL_UP_MS ? 1 : 0,
+    shadow: easeIn(fall),
+    crateHeight: ms >= COVER_FALL_MS ? 0 : 1 - easeIn(fall),
+    landing: sinceLanding < 0 ? 0 : landing,
+    flash: sinceLanding < 0 || sinceLanding > COVER_LAND_MS ? 0 : 1 - Math.abs(2 * landing - 1),
+    unfold: easeOut(unfold),
+    crate: unfold === 0,
   };
-}
-
-/** Pip 0 or 1 above the wall: both lit once it is up; the first dims as the first Resolution passes, the second as the last starts. */
-export function coverPipAt(ms: number, index: number): number {
-  if (ms < COVER_WALL_UP_MS) return 0;
-  return index === 0 ? sampleTrack([[1400, 1], [1500, 0.15]], ms) : sampleTrack([[1650, 1], [1770, 0.15]], ms);
 }
 
 /** A ruby of the Shield pops (0 to 1.5 to 1) `ms` after its turn; `index` staggers them by 60 ms. */

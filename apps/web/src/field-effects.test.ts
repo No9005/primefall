@@ -8,7 +8,7 @@ import {
   chargeAt,
   chunkAt,
   coverEditsOf,
-  coverWallAt,
+  coverDropAt,
   cueEndMs,
   effectCuesOf,
   fireballAt,
@@ -83,17 +83,20 @@ describe("Breach Charge", () => {
 });
 
 describe("Cover placed and Half Cover", () => {
-  it("flashes the tile at the slam and has the wall up 480 ms later, when the terrain gets it", () => {
+  it("drops the crate at the slam and has the bars up 1.17 s later, when the terrain gets them", () => {
     const [cue] = effectCuesOf([{ kind: EventKind.CoverPlaced, tick: 1, heroId: "c", to: at(2, 2), card: "Deploy Cover" }], fireOf);
     expect(cue).toEqual({ kind: "coverPlaced", casterId: "c", tile: at(2, 2), startMs: 950 });
-    expect(coverEditsOf([cue!])).toEqual([{ kind: "placed", tile: at(2, 2), atMs: 950 + 480 }]);
-    expect(cueEndMs(cue!)).toBe(2720);
+    expect(coverEditsOf([cue!])).toEqual([{ kind: "placed", tile: at(2, 2), atMs: 950 + 1170 }]);
+    expect(cueEndMs(cue!)).toBe(950 + 1400);
   });
 
-  it("raises the wall from 0 to 1.15 x and settles at 1 x", () => {
-    expect(coverWallAt(0).scaleY).toBe(0);
-    expect(coverWallAt(480).scaleY).toBe(1.15);
-    expect(coverWallAt(630).scaleY).toBe(1);
+  it("drops in three phases: falls 0.45 s, lands 0.22 s, unfolds 0.5 s", () => {
+    expect(coverDropAt(0)).toMatchObject({ crateHeight: 1, landing: 0, unfold: 0, crate: true });
+    expect(coverDropAt(450)).toMatchObject({ crateHeight: 0, landing: 0, crate: true });
+    expect(coverDropAt(450 + 110).flash).toBe(1);
+    expect(coverDropAt(450 + 220)).toMatchObject({ landing: 1, unfold: 0 });
+    expect(coverDropAt(450 + 220 + 250)).toMatchObject({ crate: false, unfold: 0.75 });
+    expect(coverDropAt(1170).unfold).toBe(1);
   });
 
   it("sends the projectile into the wall and tags the reduced number Half Cover", () => {

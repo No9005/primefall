@@ -2,7 +2,7 @@ import { parseGrid, REACTOR_DECK, TileKind } from "game-core";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildTerrain, choosePiece, coverMarks, FaceRole, gridToWorld, Join, lineScale, litTiles, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE, worldLineWidth } from "./terrain";
+import { buildTerrain, choosePiece, coverLook, coverMarks, FaceRole, gridToWorld, Join, lineScale, litTiles, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE, worldLineWidth } from "./terrain";
 import { HERO_REFERENCE_LUMINANCE, OUTLINE, PIECE_SHAPE, TERRAIN_STYLE } from "./terrain-style";
 
 /** WCAG relative luminance of a 0xRRGGBB colour. */
@@ -244,12 +244,37 @@ describe("the look of the terrain (artboard J)", () => {
     }
   });
 
-  it("marks Cover with a shield only while aiming, once per Cover tile", () => {
+  it("marks the map's own Cover with a shield, once per Cover tile and none on built Cover", () => {
     const grid = parseGrid(["FH.", "#.F"]);
-    expect(coverMarks(grid, false)).toEqual([]);
-    const marks = coverMarks(grid, true);
+    const marks = coverMarks(grid);
     expect(marks.map((mark) => mark.kind).sort()).toEqual(["full", "full", "half"]);
     expect(new Set(marks.map((mark) => `${mark.position.col},${mark.position.row}`)).size).toBe(3);
+    expect(coverMarks(grid, VIEW_ANGLE, new Set(["1,0"])).map((mark) => mark.kind).sort()).toEqual(["full", "full"]);
+  });
+
+  it("draws natural Cover as two panels on the back edges, 16 and 34 game px high", () => {
+    const gamePx = TILE_WIDTH / 46;
+    const height = (kind: "half" | "full") => {
+      const [first] = coverLook({ col: 1, row: 1 }, kind, false).panels;
+      return first!.foot[1]! - first!.top[1]!;
+    };
+    expect(coverLook({ col: 1, row: 1 }, "half", false).panels).toHaveLength(2);
+    expect(height("half")).toBeCloseTo(16 * gamePx);
+    expect(height("full")).toBeCloseTo(34 * gamePx);
+  });
+
+  it("draws built Cover as striped bars, 9 and 22 game px high, the Full one with a rail", () => {
+    const gamePx = TILE_WIDTH / 46;
+    const half = coverLook({ col: 1, row: 1 }, "half", true);
+    const full = coverLook({ col: 1, row: 1 }, "full", true);
+    expect(half.panels).toEqual([]);
+    expect(half.bars.some((bar) => bar.stripes.length > 0)).toBe(true);
+    expect(half.rails).toEqual([]);
+    expect(full.rails.length).toBeGreaterThan(0);
+    const centreY = gridToWorld({ col: 1, row: 1 }).y;
+    const tops = (look: typeof half) => Math.min(...look.bars.flatMap((bar) => bar.points.filter((_, i) => i % 2 === 1)));
+    expect(centreY - 32 - tops(half) - 0).toBeCloseTo(9 * gamePx, 0);
+    expect(centreY - 32 - tops(full) - 0).toBeCloseTo(22 * gamePx, 0);
   });
 
   it("draws the floor with fine grid lines, thinner than the piece outline", () => {

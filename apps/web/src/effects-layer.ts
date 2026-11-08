@@ -3,7 +3,8 @@ import { Container, Graphics, Text } from "pixi.js";
 import { CLIP_SPEED } from "./clip-player";
 import { rubyPieces, shieldBubble } from "./hero-figure";
 import { HERO_STYLE } from "./hero-style";
-import { TILE_HEIGHT } from "./terrain";
+import { drawCoverLook } from "./cover-look";
+import { coverLook, type CoverLook, TILE_HEIGHT } from "./terrain";
 import {
   aegisBeamAt,
   AURA_SPARKS,
@@ -18,9 +19,7 @@ import {
   chargeAt,
   chunkAt,
   COVER_WALL_UP_MS,
-  coverFlashAt,
-  coverPipAt,
-  coverWallAt,
+  coverDropAt,
   dustAt,
   type EffectCue,
   bubbleFormAt,
@@ -178,15 +177,18 @@ const OVERDRIVE_GOLD = 0xffb000;
 export function attackBadge(): StatusMark {
   const container = new Container();
   const badge = new Container();
+  // A 30 x 13 frame centred above the head; the double chevron is centred on the frame's middle line.
+  const frame = new Graphics().roundRect(-15 * F, -6.5 * F, 30 * F, 13 * F, 4 * F).fill(OUTLINE).stroke({ width: 1.2 * F, color: GOLD });
   const chevrons = new Graphics();
-  for (const y of [-3, 2]) {
-    chevrons.poly([-4 * F, y * F + 3 * F, 0, y * F - 1 * F, 4 * F, y * F + 3 * F]).fill(OVERDRIVE_GOLD).stroke({ width: F, color: OUTLINE });
+  for (const y of [-1.8, 1.8]) {
+    chevrons.moveTo(-9.5 * F, (y + 1.6) * F).lineTo(-6 * F, (y - 1.6) * F).lineTo(-2.5 * F, (y + 1.6) * F);
   }
-  const label = new Text({ text: "+1", style: { fontFamily: "IBM Plex Mono", fontSize: 6.5 * F, fontWeight: "700", fill: GOLD, stroke: { color: OUTLINE, width: 2 * F } } });
+  chevrons.stroke({ width: 1.5 * F, color: GOLD, join: "round", cap: "round" });
+  const label = new Text({ text: "+1", style: { fontFamily: "Rajdhani", fontSize: 10 * F, fontWeight: "700", fill: GOLD } });
   label.anchor.set(0, 0.5);
-  label.position.set(6 * F, 0);
-  badge.addChild(chevrons, label);
-  badge.position.set(24 * F, -4 * F);
+  label.position.set(-0.5 * F, 0);
+  badge.addChild(frame, chevrons, label);
+  badge.position.set(0, -50 * F);
   container.addChild(badge);
   return {
     container,
@@ -279,9 +281,10 @@ export interface EffectsWorld {
   tile(tile: GridPosition): Point;
   /** True for a Hero of the player's own Squad. */
   own(heroId: string): boolean;
+  /** The look of built Cover on a tile at the current view angle, grown to `grow` (0 to 1) of its height. */
+  builtCover(tile: GridPosition, grow: number): CoverLook;
 }
 
-const WALL_FILL = 0x5a6877;
 const WALL_TOP = 0x77899b;
 const SMOKE = 0x3a4653;
 const DUST = 0x8a99a8;
@@ -301,6 +304,47 @@ function rotatedRect(g: Graphics, centre: Point, size: { w: number; h: number },
 
 function diamond(g: Graphics, at: Point, halfWidth: number, halfHeight: number): void {
   g.poly([at.x, at.y - halfHeight, at.x + halfWidth, at.y, at.x, at.y + halfHeight, at.x - halfWidth, at.y]);
+}
+
+/** The yellow dashed diamond that marks where built Cover drops. */
+function drawDropTarget(g: Graphics, centre: Point): void {
+  const corners = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
+  const dashes = 12;
+  const at = (t: number): Point => {
+    const side = Math.min(3, Math.floor(t));
+    const [x1, y1] = corners[side]!;
+    const [x2, y2] = corners[(side + 1) % 4]!;
+    const u = t - side;
+    return { x: centre.x + (x1 + (x2 - x1) * u) * 23 * F, y: centre.y + (y1 + (y2 - y1) * u) * 12 * F };
+  };
+  for (let i = 0; i < dashes; i++) {
+    const from = at((i / dashes) * 4);
+    const to = at(Math.min(((i + 0.55) / dashes) * 4, 3.999));
+    g.moveTo(from.x, from.y).lineTo(to.x, to.y);
+  }
+  g.stroke({ width: 1.5 * F, color: GOLD, alpha: 0.9 });
+}
+
+/** The yellow ring and the grey dust of the crate landing; `landing` runs 0 to 1. */
+function drawDropLanding(g: Graphics, centre: Point, landing: number): void {
+  g.ellipse(centre.x, centre.y, (10 + 16 * landing) * F, (5 + 8 * landing) * F).stroke({ width: 1.5 * F, color: GOLD, alpha: 1 - landing });
+  for (let puff = 0; puff < 4; puff++) {
+    const side = puff < 2 ? -1 : 1;
+    const out = (puff % 2 === 0 ? 12 : 20) + 10 * landing;
+    g.ellipse(centre.x + side * out * F, centre.y - 2 * F * landing, 4 * F * (0.6 + landing), 2.4 * F * (0.6 + landing)).fill({ color: DUST, alpha: 0.7 * (1 - landing) });
+  }
+}
+
+/** The striped crate (16 x 10 game px), `lift` world px above its tile. */
+function drawCrate(g: Graphics, centre: Point, lift: number): void {
+  const x = centre.x - 8 * F;
+  const y = centre.y - 10 * F - lift;
+  g.roundRect(x, y, 16 * F, 10 * F, F).fill(GOLD).stroke({ width: F, color: OUTLINE });
+  for (const offset of [4, 10]) {
+    const left = Math.max(x, x + (offset - 4) * F);
+    const right = Math.min(x + 16 * F, x + (offset + 2) * F);
+    g.poly([x + offset * F, y, right, y, x + (offset - 1) * F, y + 10 * F, left, y + 10 * F]).fill(0x14181e);
+  }
 }
 
 /** Where a projectile flies: the muzzle, the end point and the unit direction. */
@@ -411,7 +455,7 @@ export class EffectsLayer {
   private readonly texts: Text[] = [];
   private cues: readonly EffectCue[] = [];
   private statuses: { cue: Extract<EffectCue, { kind: "marked" | "slow" }>; mark: StatusMark }[] = [];
-  private world: EffectsWorld = { place: () => undefined, tile: () => ({ x: 0, y: 0 }), own: () => true };
+  private world: EffectsWorld = { place: () => undefined, tile: () => ({ x: 0, y: 0 }), own: () => true, builtCover: (tile, grow) => coverLook(tile, "half", true, undefined, grow) };
   private startMs = 0;
   private reduced = false;
 
@@ -660,34 +704,31 @@ export class EffectsLayer {
     if (cue.cover) drawCoverChunks(g, centre, t);
   }
 
-  /** A team-coloured flash on the tile, then a wall rises out of the ground (0 to 1.15 to 1) with dust; two pips count its Resolutions. */
+  /**
+   * The drop of built Cover: a yellow dashed target and a growing shadow, a striped crate falls onto it, lands with a yellow
+   * ring and grey dust (the tile flashes yellow) and unfolds into the bars. With reduced motion the bars fade in.
+   */
   private drawCoverPlaced(g: Graphics, cue: Extract<EffectCue, { kind: "coverPlaced" }>, ms: number): void {
     g.clear();
-    if (this.reduced) return;
+    g.alpha = 1;
     const s = ms - cue.startMs;
-    if (s < 0) return;
+    if (s < 0 || s >= COVER_WALL_UP_MS) return;
+    if (this.reduced) {
+      g.alpha = Math.min(1, s / 300);
+      drawCoverLook(g, this.world.builtCover(cue.tile, 1), 1);
+      return;
+    }
     const centre = this.world.tile(cue.tile);
-    const color = this.world.own(cue.casterId) ? HERO_STYLE.ring.own : HERO_STYLE.ring.enemy;
-    const flash = coverFlashAt(s);
-    if (flash > 0) {
+    const drop = coverDropAt(s);
+    drawDropTarget(g, centre);
+    if (drop.flash > 0) {
       diamond(g, centre, 23 * F, 12 * F);
-      g.fill({ color, alpha: flash * 0.6 });
+      g.fill({ color: GOLD, alpha: drop.flash * 0.45 });
     }
-    // The terrain's own wall stands from the moment it is up; until then this one rises, and it is the one shown a while longer.
-    const wall = coverWallAt(s);
-    if (wall.alpha > 0 && s < COVER_WALL_UP_MS + 150) {
-      const height = 12 * F * wall.scaleY;
-      g.roundRect(centre.x - 17 * F, centre.y + 4 * F - height, 34 * F, height, 2 * F).fill(WALL_FILL).stroke({ width: 1.5 * F, color: OUTLINE });
-      g.rect(centre.x - 15 * F, centre.y + 4 * F - height + 1.5 * F, 30 * F, Math.min(3 * F, height)).fill(WALL_TOP);
-    }
-    for (let puff = 0; puff < 3; puff++) {
-      const state = dustAt(s - 70, puff * 50);
-      if (state) g.ellipse(centre.x + (puff - 1) * 16 * F, centre.y + 2 * F - state.rise * F, 5 * F * state.scale, 3 * F * state.scale).fill({ color: DUST, alpha: state.alpha });
-    }
-    for (let pip = 0; pip < 2; pip++) {
-      const alpha = coverPipAt(s, pip);
-      if (alpha > 0) g.circle(centre.x + (pip === 0 ? -5 : 5) * F, centre.y - 22 * F, 2.2 * F).fill({ color, alpha }).stroke({ width: F, color: OUTLINE, alpha });
-    }
+    if (drop.crateHeight > 0) g.ellipse(centre.x, centre.y, 14 * F * drop.shadow, 7 * F * drop.shadow).fill({ color: 0x000000, alpha: 0.45 * drop.shadow });
+    if (drop.landing > 0 && drop.landing < 1) drawDropLanding(g, centre, drop.landing);
+    if (drop.crate) drawCrate(g, centre, drop.crateHeight * 60 * F);
+    else drawCoverLook(g, this.world.builtCover(cue.tile, drop.unfold), 1);
   }
 
   private drawShot(g: Graphics, cue: Extract<EffectCue, { kind: "shot" }>, ms: number): boolean {

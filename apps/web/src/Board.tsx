@@ -11,6 +11,7 @@ import {
   tileAt,
 } from "game-core";
 import { Application, Assets, Container, Graphics, Text } from "pixi.js";
+import { COVER_BLUE, drawCoverLook } from "./cover-look";
 import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPick, Point } from "./card-drag";
 import {
@@ -37,7 +38,7 @@ import {
 } from "./board-layout";
 import { freeBoardArea } from "./hud-layout";
 import { FogClouds, fogShape } from "./fog-clouds";
-import { buildTerrain, coverMarks, depthOf, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
+import { buildTerrain, coverLook, coverMarks, depthOf, hasCoverLook, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
@@ -256,11 +257,12 @@ interface Terrain {
 /** A shield glyph about 14 px wide on screen, centred on the origin: filled for Full Cover, outline only for Half Cover. */
 function shieldGlyph(kind: "full" | "half", scale: number): Graphics {
   const unit = 7 / scale;
-  const outline = [-1, -0.8, 1, -0.8, 1, 0.2, 0, 1.1, -1, 0.2].map((value) => value * unit);
-  const color = kind === "full" ? TERRAIN_STYLE.coverOutline.full : TERRAIN_STYLE.coverOutline.half;
-  const glyph = new Graphics().poly(outline);
-  if (kind === "full") glyph.fill({ color });
-  return glyph.stroke({ width: worldLineWidth(1.5, scale), color, join: "round" });
+  const scaled = (values: number[]) => values.map((value) => value * unit);
+  const color = COVER_BLUE;
+  const glyph = new Graphics().poly(scaled([-1, -0.8, 1, -0.8, 1, 0.2, 0, 1.1, -1, 0.2])).fill({ color: 0x0b1016 });
+  if (kind === "full") glyph.poly(scaled([-1, -0.8, 1, -0.8, 1, 0.2, 0, 1.1, -1, 0.2])).fill({ color });
+  else glyph.poly(scaled([-1, -0.3, 1, -0.3, 1, 0.2, 0, 1.1, -1, 0.2])).fill({ color });
+  return glyph.poly(scaled([-1, -0.8, 1, -0.8, 1, 0.2, 0, 1.1, -1, 0.2])).stroke({ width: worldLineWidth(1.5, scale), color, join: "round" });
 }
 
 /** Fills a face and outlines it with a line that keeps its width on screen at the camera `scale`. */
@@ -841,6 +843,7 @@ export function Board({
         return hero && tile(hero.position);
       },
       tile,
+      builtCover: (position, grow) => coverLook(position, "half", true, angleRef.current, grow),
       own: (id) => !enemyIdsRef.current.has(id),
     };
     layer.play(effects, frameClock.current, world, reduced);
@@ -946,7 +949,10 @@ export function Board({
       if (tile.marker) ground.poly(tile.marker.points).stroke({ width: 2, color: tile.marker.color, alpha: 0.9 });
       if (!tile.piece) continue;
       const piece = new Graphics();
-      for (const face of tile.piece) fillFace(piece, face, strokeScale);
+      if (hasCoverLook(tile.kind)) {
+        const built = placedCover.some((p) => p.col === tile.position.col && p.row === tile.position.row);
+        drawCoverLook(piece, coverLook(tile.position, tile.kind === TileKind.FullCover ? "full" : "half", built, angle), strokeScale);
+      } else for (const face of tile.piece) fillFace(piece, face, strokeScale);
       piece.zIndex = tile.depth;
       if (!tile.lit) piece.alpha = TERRAIN_STYLE.fogPieceAlpha;
       objects.addChild(piece);
@@ -962,18 +968,19 @@ export function Board({
         const placed = placedCover.some(isTile);
         const destroyed = !placed && destroyedCover.some(isTile);
         if (cover === CoverKind.None && !destroyed) return;
-        const outlines = TERRAIN_STYLE.coverOutline;
-        const color = destroyed ? outlines.destroyed : placed ? outlines.placed : cover === CoverKind.Full ? outlines.full : outlines.half;
+        // Standing Cover has its own look (panels or bars); only the broken tile keeps a floor outline.
+        if (!destroyed) return;
         const { x, y } = gridToWorld({ col, row }, angle);
-        const outline = new Graphics().poly(floorOutline(angle)).stroke({ width: destroyed ? 2 : placed ? 5 : 3, color, alpha: destroyed ? 0.6 : 0.9 });
+        const outline = new Graphics().poly(floorOutline(angle)).stroke({ width: 2, color: TERRAIN_STYLE.coverOutline.destroyed, alpha: 0.6 });
         outline.position.set(x, y);
         planning.addChild(outline);
         created.push(outline);
       }),
     );
 
-    // While an Attack is aimed, a shield mark sits on top of each Cover piece.
-    for (const mark of coverMarks(grid, aiming, angle)) {
+    // A shield glyph sits above each piece of the map's own Cover.
+    const builtTiles = new Set(placedCover.map((p) => `${p.col},${p.row}`));
+    for (const mark of coverMarks(grid, angle, builtTiles)) {
       const glyph = shieldGlyph(mark.kind, strokeScale);
       glyph.position.set(mark.x, mark.y);
       planning.addChild(glyph);
