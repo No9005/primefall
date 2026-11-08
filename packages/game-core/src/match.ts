@@ -116,15 +116,14 @@ export function sightRange(hero: HeroState): number {
   return SIGHT_RANGE + (hero.hidden > 0 && hero.heroClass === HeroClass.Assassin ? HIDDEN_SIGHT_BONUS : 0);
 }
 
-/** Temporary Half Cover (Deploy Cover, Fortify) that gives the tile back its kind when it expires. */
+/** Cover a Hero put on a tile with a card; it stays until destroyed. `match.placedCover` keeps the order of placing, oldest first. */
 export interface PlacedCover {
   squad: SquadId;
   position: GridPosition;
-  /** The tile kind to restore on expiry. */
-  originalKind: TileKind;
-  /** Resolution ends left before the Cover expires. */
-  remaining: number;
 }
+
+/** A Squad has at most this many Placed Cover tiles; placing another removes its oldest. */
+export const MAX_PLACED_COVER_PER_SQUAD = 3;
 
 /** An area a Squad's Scout Drone reveals. */
 export interface ActiveReveal extends RevealedArea {
@@ -156,6 +155,8 @@ export interface MatchState {
   scores: Record<SquadId, number>;
   /** Classic: control of each zone of `ZONES` after the last Resolution. */
   zoneControl: ZoneControl[];
+  /** Classic: Resolutions left in which each zone gives no takeover bonus. */
+  takeoverCooldown: number[];
   /** Classic by default; in Attack and Defend one Squad is the Defender and the other the Attacker (ADR 0022). */
   mode: MatchModeSetting;
   /** Set when a victory condition is met; the match accepts no further Rounds. */
@@ -213,6 +214,7 @@ export function createMatch(seed: number, mode: MatchModeSetting = { kind: Match
     primeZone: { progress: 0 },
     scores: { [SquadId.Left]: 0, [SquadId.Right]: 0 },
     zoneControl: ZONES.map(() => ({ contested: false })),
+    takeoverCooldown: ZONES.map(() => 0),
     mode,
   };
   for (const squad of [SquadId.Left, SquadId.Right]) {

@@ -64,11 +64,11 @@ describe("memory scenarios stage what their names say", () => {
     return states;
   }
 
-  it("cover-placed-expires: the Half Cover stands after Resolution 1 and is gone after Resolution 2", async () => {
-    const [start, afterOne, afterTwo] = await playRounds("cover-placed-expires");
+  it("cover-placed-stays: the Half Cover stands after Resolution 1 and after Resolution 2", async () => {
+    const [start, afterOne, afterTwo] = await playRounds("cover-placed-stays");
     expect(coverAt(start!.grid, { col: 10, row: 3 })).toBe(CoverKind.Half);
     expect(coverAt(afterOne!.grid, { col: 10, row: 3 })).toBe(CoverKind.Half);
-    expect(coverAt(afterTwo!.grid, { col: 10, row: 3 })).toBe(CoverKind.None);
+    expect(coverAt(afterTwo!.grid, { col: 10, row: 3 })).toBe(CoverKind.Half);
   });
 
   it("cover-destroyed: Breach Charge destroys the Half Cover", async () => {

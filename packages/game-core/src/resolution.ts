@@ -29,13 +29,15 @@ import {
   MatchMode,
   type MatchEvent,
   PRIME_ZONE_WIN_RESOLUTIONS,
+  TAKEOVER_BONUS_FACTOR,
+  TAKEOVER_COOLDOWN,
   ROUND_LIMIT,
   SquadId,
   VICTORY_POINTS_TO_WIN,
   ZONE_DECAY_CARDS,
   ZoneTie,
 } from "./host";
-import { canSquadSee, canSquadSeeHero, type HeroState, type MatchState, recordSightings, refillDeck, sightRange, ZONES } from "./match";
+import { canSquadSee, canSquadSeeHero, type HeroState, MAX_PLACED_COVER_PER_SQUAD, type MatchState, recordSightings, refillDeck, sightRange, ZONES } from "./match";
 import {
   ActionKind,
   BLOCK_SHIELD,
@@ -192,6 +194,7 @@ function tagCardEvents(
 /** Which Squads perceive the events from `first` on, judged by the current positions (see `getSquadEvents`). */
 function perceivers(match: MatchState, events: readonly MatchEvent[], first: number): SquadId[][] {
   return events.slice(first).map((event) => {
+    if (event.kind === EventKind.ZoneTakenOver) return [...SQUADS];
     // Only the attacker's Squad learns that a shot at an unseen target missed.
     if (event.reason === AttackFailReason.NotVisible) {
       return SQUADS.filter((squad) => match.heroes.some((hero) => hero.id === event.heroId && hero.squad === squad));
@@ -388,6 +391,7 @@ function resolveTileAttack(match: MatchState, tick: number, { hero, card, tile }
   const destroysAny = isTileBlast(card);
   if (destroysAny ? coverAt(match.grid, tile) !== CoverKind.None : coverAt(match.grid, tile) === CoverKind.Half) {
     match.grid = destroyCover(match.grid, tile);
+    match.placedCover = match.placedCover.filter((placed) => !samePosition(placed.position, tile));
     events.push({ kind: EventKind.CoverDestroyed, tick, heroId: hero.id, to: { ...tile } });
   }
 }
@@ -436,21 +440,26 @@ interface UtilityUse {
   events: MatchEvent[];
 }
 
-/** Puts temporary Half Cover on a tile without Cover; the tile gets its kind back when `duration` Resolutions are over. */
-function placeHalfCover(use: UtilityUse, position: GridPosition, requireEmpty: boolean): void {
+/**
+ * Puts Cover on a tile without Cover. It stays until destroyed; when the Squad already has the maximum of
+ * Placed Cover tiles, its oldest one is removed first (shown as a destroyed Cover).
+ */
+function placeCover(use: UtilityUse, position: GridPosition, requireEmpty: boolean): void {
   const { match, tick, effect, caster, events } = use;
   const occupied = match.heroes.some((other) => !other.exhausted && samePosition(other.position, position));
   if (isWall(position) || tileAt(match.grid, position) === undefined || coverAt(match.grid, position) !== CoverKind.None || (requireEmpty && occupied)) {
     events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
     return;
   }
-  match.placedCover.push({
-    squad: caster.squad,
-    position: { ...position },
-    originalKind: tileAt(match.grid, position)!,
-    remaining: effect.duration ?? 1,
-  });
-  match.grid = withTile(match.grid, position, TileKind.HalfCover);
+  const own = match.placedCover.filter((placed) => placed.squad === caster.squad);
+  if (own.length >= MAX_PLACED_COVER_PER_SQUAD) {
+    const oldest = own[0]!;
+    match.placedCover = match.placedCover.filter((placed) => placed !== oldest);
+    match.grid = destroyCover(match.grid, oldest.position);
+    events.push({ kind: EventKind.CoverDestroyed, tick, heroId: caster.id, to: { ...oldest.position } });
+  }
+  match.placedCover.push({ squad: caster.squad, position: { ...position } });
+  match.grid = withTile(match.grid, position, effect.cover === CoverKind.Full ? TileKind.FullCover : TileKind.HalfCover);
   events.push({ kind: EventKind.CoverPlaced, tick, heroId: caster.id, to: { ...position } });
 }
 
@@ -474,10 +483,10 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
     events.push({ kind: EventKind.AreaRevealed, tick, heroId: caster.id, to: { ...tile }, amount: size });
   },
   // Deploy Cover needs an empty tile; Fortify covers the tile the allied Hero stands on.
-  [EffectKind.PlaceHalfCover]: (use) => {
+  [EffectKind.PlaceCover]: (use) => {
     const fortify = use.card.target === CardTarget.AllyHeroTile;
     const position = fortify ? use.target.position : use.tile;
-    if (position) placeHalfCover(use, position, !fortify);
+    if (position) placeCover(use, position, !fortify);
     else use.events.push({ kind: EventKind.ActionFailed, tick: use.tick, heroId: use.caster.id });
   },
   // From this Tick on, so Attacks resolved in earlier Ticks of the Round keep the reduction.
@@ -583,19 +592,8 @@ function resolveUtility(
   }
 }
 
-/**
- * Ends one Resolution for placed Cover and revealed areas. Expired Cover gives the tile its kind back,
- * unless the Cover was destroyed in the meantime (the tile then stays open floor).
- */
+/** Ends one Resolution for revealed areas (Placed Cover does not expire). */
 function expireTemporaryEffects(match: MatchState): void {
-  for (const cover of match.placedCover) {
-    cover.remaining -= 1;
-    if (cover.remaining > 0) continue;
-    if (coverAt(match.grid, cover.position) === CoverKind.Half) {
-      match.grid = withTile(match.grid, cover.position, cover.originalKind);
-    }
-  }
-  match.placedCover = match.placedCover.filter((cover) => cover.remaining > 0);
   for (const area of match.revealedAreas) area.remaining -= 1;
   match.revealedAreas = match.revealedAreas.filter((area) => area.remaining > 0);
 }
@@ -634,7 +632,7 @@ function applyZoneDecay(match: MatchState): void {
  * (ADR 0010, ADR 0011, ADR 0019). Squad loss is checked first: an Exhausted Squad cannot win by keeping
  * control on a tie. Sets `match.result` when the match is over.
  */
-function evaluateMatchEnd(match: MatchState): void {
+function evaluateMatchEnd(match: MatchState, events: MatchEvent[], tick: number): void {
   const { mode } = match;
   const attacker = mode.kind === MatchMode.AttackAndDefend ? otherSquad(mode.defender) : undefined;
   if (attacker) {
@@ -650,7 +648,7 @@ function evaluateMatchEnd(match: MatchState): void {
         ? { progress: 0 }
         : { controller, progress: controller === match.primeZone.controller ? match.primeZone.progress + 1 : 1 };
   } else {
-    scoreZones(match);
+    scoreZones(match, events, tick);
   }
 
   const deckTotals = {
@@ -702,8 +700,14 @@ function heroesIn(match: MatchState, squad: SquadId, tiles: readonly GridPositio
  * non-Exhausted Heroes control a zone; equal numbers with at least one each is Contested; an inactive zone
  * has no control and scores nothing.
  */
-function scoreZones(match: MatchState): void {
+function scoreZones(match: MatchState, events: MatchEvent[], tick: number): void {
+  const classic = match.mode.kind === MatchMode.Classic ? match.mode : undefined;
+  const factor = classic?.takeoverBonusFactor ?? TAKEOVER_BONUS_FACTOR;
+  const cooldown = classic?.takeoverCooldown ?? TAKEOVER_COOLDOWN;
   ZONES.forEach((zone, i) => {
+    const before = match.zoneControl[i]!.controller;
+    const cooling = match.takeoverCooldown[i]! > 0;
+    match.takeoverCooldown[i] = Math.max(0, match.takeoverCooldown[i]! - 1);
     if (match.round < zone.unlockRound) {
       match.zoneControl[i] = { contested: false };
       return;
@@ -712,7 +716,14 @@ function scoreZones(match: MatchState): void {
     const right = heroesIn(match, SquadId.Right, zone.tiles);
     const controller = left > right ? SquadId.Left : right > left ? SquadId.Right : undefined;
     match.zoneControl[i] = controller ? { controller, contested: false } : { contested: left > 0 };
-    if (controller) match.scores[controller] += zone.value;
+    if (!controller) return;
+    match.scores[controller] += zone.value;
+    // A takeover is a flip from the enemy's control; Contested or empty before is not one.
+    if (before === undefined || before === controller) return;
+    const bonus = cooling ? 0 : zone.value * factor;
+    if (!cooling) match.takeoverCooldown[i] = cooldown;
+    match.scores[controller] += bonus;
+    events.push({ kind: EventKind.ZoneTakenOver, tick, heroId: "", squad: controller, zone: i, amount: bonus });
   });
 }
 
@@ -874,7 +885,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     match.grid = withWreck(match.grid, hero.position);
     events.push({ kind: EventKind.Exhausted, tick: Math.max(ticks, 1), heroId: hero.id });
   }
-  evaluateMatchEnd(match);
+  evaluateMatchEnd(match, events, Math.max(ticks, 1));
   endTick();
   return { match, events, perceivedBy };
 }

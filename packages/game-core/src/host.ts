@@ -26,6 +26,14 @@ export const PRIME_ZONE_UNLOCK_ROUND = 4;
 /** The Round from which an Outpost scores. */
 export const OUTPOST_UNLOCK_ROUND = 1;
 
+/**
+ * Takeover bonus (ADR 0024, off by default): the factor of the zone's value a Squad earns once when it takes a
+ * zone that the enemy controlled at the end of the previous Resolution. 0 = off; the intended value when on is 1.
+ */
+export const TAKEOVER_BONUS_FACTOR = 0;
+/** Resolutions after a takeover during which the same zone gives no further takeover bonus. */
+export const TAKEOVER_COOLDOWN = 3;
+
 export enum ZoneKind {
   PrimeZone = "primeZone",
   Outpost = "outpost",
@@ -77,9 +85,15 @@ export interface AttackAndDefendRules {
   zoneDecay?: number;
 }
 
+/** The tunable numbers of the classic mode; each defaults to the constant above. */
+export interface ClassicRules {
+  takeoverBonusFactor?: number;
+  takeoverCooldown?: number;
+}
+
 /** The mode of a match; in Attack and Defend the other Squad is the Attacker (ADR 0022). */
 export type MatchModeSetting =
-  | { kind: MatchMode.Classic }
+  | ({ kind: MatchMode.Classic } & ClassicRules)
   | ({ kind: MatchMode.AttackAndDefend; defender: SquadId } & AttackAndDefendRules);
 
 /** Seconds a Squad has to plan a Round before the host closes Planning with empty Queues (ADR 0017). */
@@ -283,6 +297,8 @@ export enum EventKind {
   Wait = "wait",
   /** A Hero has no card left in its Deck and Discard after the Resolution; it is removed from the match. */
   Exhausted = "exhausted",
+  /** Classic: `squad` took the zone `zone` (index in `ZONES`) from the enemy and earned `amount` Victory Points (0 when the bonus is off). Public; `heroId` is empty. */
+  ZoneTakenOver = "zoneTakenOver",
 }
 
 /** Why an Attack missed when it fired (a Declared Target is checked in that Tick, ADR 0013). */
@@ -335,6 +351,10 @@ export interface MatchEvent {
   distance?: number;
   /** The tile a tile Attack (Breach Charge) was aimed at, for its `AttackHit` and `AttackFailed`. */
   tile?: GridPosition;
+  /** The Squad that took the zone, for `ZoneTakenOver`. */
+  squad?: SquadId;
+  /** The index of the zone in `ZONES`, for `ZoneTakenOver`. */
+  zone?: number;
 }
 
 export interface SubmitResult {
