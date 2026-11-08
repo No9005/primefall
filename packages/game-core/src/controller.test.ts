@@ -308,10 +308,10 @@ describe("Placed Cover", () => {
 });
 
 describe("Overwatch Uplink", () => {
-  // The enemy Bruiser stands on Half Cover at (6,4); the allied Bruiser attacks it from (9,4) with Slam Shot (card 0, 2 damage).
+  // The enemy Bruiser stands on Half Cover at (6,4); the allied Bruiser attacks it from (8,4) with Slam Shot (card 0, 2 damage at Range 2).
   function coverFight(): MatchState {
     const match = setup([OVERWATCH_UPLINK, PULSE_BOLT, 1, 5]);
-    hero(match, BRUISER).position = { col: 9, row: 4 };
+    hero(match, BRUISER).position = { col: 8, row: 4 };
     hero(match, BRUISER).hand = [0, 1, 2, 3];
     hero(match, ENEMY).position = { col: 6, row: 4 };
     return match;
@@ -343,7 +343,7 @@ describe("Overwatch Uplink", () => {
       squad: SquadId.Left,
       heroes: [
         // The Uplink is the Controller's second action; the Bruiser attacks in Tick 1 and again in Tick 2.
-        { heroId: CONTROLLER, queue: [move(1, { col: 8, row: 4 }), primary(OVERWATCH_UPLINK, BRUISER)], pitched: [PULSE_BOLT] },
+        { heroId: CONTROLLER, queue: [move(1, { col: 8, row: 3 }), primary(OVERWATCH_UPLINK, BRUISER)], pitched: [PULSE_BOLT] },
         { heroId: BRUISER, queue: [primary(0, ENEMY), primary(1, ENEMY)], pitched: [2, 3] },
       ],
     };

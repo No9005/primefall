@@ -16,7 +16,7 @@ const RIGHT_BRUISER = "right-bruiser";
 const DEPLOY_COVER = 8;
 const TEST_BARRICADE = 9;
 const BRUISER_BREACH_CHARGE = 4;
-const BRUISER_SLAM_SHOT = 0;
+const BRUISER_SLAM_SHOT = 2; // Concussion Round: damage 2, Range 3
 
 const decks = HERO_DECKS as Record<HeroClass, unknown[]>;
 const originalCard = HERO_DECKS[HeroClass.Controller][TEST_BARRICADE]!;

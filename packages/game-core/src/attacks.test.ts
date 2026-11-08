@@ -8,7 +8,7 @@ import { resolveRound } from "./resolution";
 const LEFT_BRUISER = "left-bruiser";
 const LEFT_CONTROLLER = "left-controller";
 const RIGHT_BRUISER = "right-bruiser";
-// Bruiser cards 0 and 1 are Slam Shot: damage 2, Range 3, cost 1. Cards 2 and 3 serve as Move or Block.
+// Bruiser cards 0 and 1 are Slam Shot: damage 2, Range 1 to 2, cost 1. Cards 2 and 3 serve as Move or Block.
 const SLAM_SHOT = 0;
 
 const hero = (match: MatchState, heroId: string) => match.heroes.find((candidate) => candidate.id === heroId)!;
@@ -89,9 +89,9 @@ describe("Range and Line of Sight", () => {
   });
 
   it("measures Range as Chebyshev distance", () => {
-    const near = duel({ [LEFT_BRUISER]: { col: 8, row: 11 }, [RIGHT_BRUISER]: { col: 11, row: 14 } });
+    const near = duel({ [LEFT_BRUISER]: { col: 8, row: 11 }, [RIGHT_BRUISER]: { col: 10, row: 13 } });
     expect(resolveRound(near, [leftAttacks()]).events[0]!.kind).toBe(EventKind.AttackHit);
-    const far = duel({ [LEFT_BRUISER]: { col: 8, row: 11 }, [RIGHT_BRUISER]: { col: 12, row: 14 } });
+    const far = duel({ [LEFT_BRUISER]: { col: 8, row: 11 }, [RIGHT_BRUISER]: { col: 11, row: 13 } });
     expect(resolveRound(far, [leftAttacks()]).events[0]!.kind).toBe(EventKind.AttackFailed);
   });
 

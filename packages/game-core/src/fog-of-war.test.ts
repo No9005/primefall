@@ -187,7 +187,7 @@ describe("events outside the Squad's perception are not delivered", () => {
   });
 
   it("delivers an Attack to the attacked Squad even from out of sight, without revealing the position", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 1, row: 1 }, [RIGHT_BRUISER]: { col: 4, row: 1 } });
+    const match = setup({ [LEFT_BRUISER]: { col: 1, row: 1 }, [RIGHT_BRUISER]: { col: 3, row: 1 } });
     match.heroes.find((hero) => hero.id === RIGHT_BRUISER)!.hand = [0, 1, 2, 3];
     const plan: SquadPlan = {
       squad: SquadId.Right,

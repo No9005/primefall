@@ -56,10 +56,13 @@ function play(match: MatchState, card: number, action: Partial<PrimaryAction> = 
 }
 
 describe("Slam Shot and Concussion Round", () => {
-  it("Slam Shot deals 2 damage", () => {
-    const match = fight();
-    const after = resolveRound(match, [play(match, SLAM_SHOT, {}, 1)]).match;
-    expect(deckSize(match, ENEMY) - deckSize(after, ENEMY)).toBe(2);
+  it("Slam Shot deals 2 damage at Range 2 and 3 damage at Range 1 (ADR 0025)", () => {
+    const far = fight({ [ENEMY]: { col: 11, row: 5 } });
+    const afterFar = resolveRound(far, [play(far, SLAM_SHOT, {}, 1)]).match;
+    expect(deckSize(far, ENEMY) - deckSize(afterFar, ENEMY)).toBe(2);
+    const close = fight();
+    const afterClose = resolveRound(close, [play(close, SLAM_SHOT, {}, 1)]).match;
+    expect(deckSize(close, ENEMY) - deckSize(afterClose, ENEMY)).toBe(3);
   });
 
   it("Concussion Round deals 2 damage and Slows the target until the end of the next Resolution", () => {
@@ -155,7 +158,7 @@ describe("Adrenal Surge", () => {
     const { match: after, events } = resolveRound(match, [play(match, ADRENAL_SURGE, { target: BRUISER })]);
     expect(hero(after, BRUISER).attackBonus).toBe(1);
     expect(events).toContainEqual({ kind: EventKind.AttackBonusGained, tick: 1, heroId: BRUISER, amount: 1, card: "Adrenal Surge" });
-    const next = fight();
+    const next = fight({ [ENEMY]: { col: 11, row: 5 } });
     hero(next, BRUISER).attackBonus = hero(after, BRUISER).attackBonus;
     const slammed = resolveRound(next, [play(next, SLAM_SHOT, {}, 1)]).match;
     expect(deckSize(next, ENEMY) - deckSize(slammed, ENEMY)).toBe(3);

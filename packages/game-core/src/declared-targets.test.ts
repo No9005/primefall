@@ -8,7 +8,7 @@ import { getSquadEvents, resolveRound } from "./resolution";
 
 const LEFT = "left-bruiser";
 const RIGHT = "right-bruiser";
-// Bruiser cards 0 and 1 are Slam Shot (damage 2, Range 3); cards 2 and 3 serve as Moves.
+// Bruiser cards 0 and 1 are Slam Shot (damage 2, Range 1 to 2); cards 2 and 3 serve as Moves.
 const SLAM_SHOT = 0;
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
@@ -38,13 +38,13 @@ const attackEvents = (events: readonly { kind: EventKind }[]) =>
 
 describe("Declared Target: hits when it is valid in the Tick the Attack fires", () => {
   it("hits an enemy that was out of Range at planning time once the Moves have brought the Hero close", () => {
-    const match = scene({ col: 3, row: 5 }, { col: 10, row: 5 });
+    const match = scene({ col: 3, row: 5 }, { col: 9, row: 5 });
     const { events } = resolveRound(match, [leftPlan(move(2, 5, 5), move(3, 7, 5), wait, shoot())]);
     expect(attackEvents(events)).toMatchObject([{ kind: EventKind.AttackHit, tick: 4, heroId: LEFT, targetId: RIGHT, damage: 2 }]);
   });
 
   it("hits an enemy that moved into Range before the Tick", () => {
-    const match = scene({ col: 4, row: 5 }, { col: 10, row: 5 });
+    const match = scene({ col: 5, row: 5 }, { col: 10, row: 5 });
     const { events } = resolveRound(match, [leftPlan(wait, wait, shoot()), rightPlan(move(2, 8, 5), move(3, 7, 5))]);
     expect(attackEvents(events)).toMatchObject([{ kind: EventKind.AttackHit, tick: 3, targetId: RIGHT }]);
   });

@@ -8,8 +8,8 @@ import { withFullCover } from "./full-cover-fixture";
 
 const LEFT_BRUISER = "left-bruiser";
 const RIGHT_BRUISER = "right-bruiser";
-// Slam Shot: damage 2, Range 3.
-const SLAM_SHOT = 0;
+// Concussion Round (card 2) serves as the damage 2, Range 3 Attack.
+const SLAM_SHOT = 2; // Concussion Round: damage 2, Range 3 (Slam Shot is Range 1 to 2 since ADR 0025)
 
 // The Reactor Deck has no Full Cover tile; the matches here get one at (15,1).
 const FULL_COVER = { col: 15, row: 1 };
