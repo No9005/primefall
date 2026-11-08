@@ -23,7 +23,6 @@ export enum CardTarget {
   Tile = "tile",
   EmptyTile = "emptyTile",
   Area = "area",
-  EnemyInSight = "enemyInSight",
   /** An enemy Hero that is a Ghost for the Squad: the shot goes to its last known position (ADR 0005). */
   GhostEnemy = "ghostEnemy",
 }
@@ -41,10 +40,8 @@ export enum EffectKind {
   /** The card's damage is Piercing Damage: it does not use up Shield and goes straight into Deck Damage. */
   PiercingDamage = "piercingDamage",
   GainShield = "gainShield",
-  GrantExtraMove = "grantExtraMove",
   /** The Hero's next Move action in the Queue covers `amount` tiles instead of 2 (ADR 0020). */
   ExtendMove = "extendMove",
-  PreventHidden = "preventHidden",
   GainPermanentAttack = "gainPermanentAttack",
   RevealArea = "revealArea",
   /** Placed Cover: stays until destroyed; `cover` picks the kind (Half unless stated). */
@@ -84,8 +81,6 @@ export interface CardEffect {
   cover?: CoverKind.Half | CoverKind.Full;
   /** For damage that is higher at long range: the damage at Range 6 or 7 (`amount` applies closer). */
   longRangeAmount?: number;
-  /** The effect only applies when the target is within this many tiles. */
-  withinRange?: number;
   /** Who receives the effect; defaults to the card's target. */
   recipient?: EffectRecipient;
 }
@@ -167,12 +162,8 @@ export function isGhostAttack(card: CardDefinition): boolean {
 export const PLAYABLE_UTILITY_EFFECTS = [
   EffectKind.GainShield,
   EffectKind.ApplySlow,
-  EffectKind.PreventHidden,
   EffectKind.BecomeHidden,
   EffectKind.ExtendMove,
-  EffectKind.ApplyMarked,
-  EffectKind.Damage,
-  EffectKind.GrantExtraMove,
   EffectKind.GainPermanentAttack,
   EffectKind.RevealArea,
   EffectKind.PlaceCover,
@@ -183,7 +174,7 @@ export const PLAYABLE_UTILITY_EFFECTS = [
 
 /**
  * Utility cards whose effects all have an interpreter and that are aimed at this Hero, an allied Hero (or its
- * tile), a visible enemy, an enemy in sight, a tile or an area. Tile and area cards are confirmed on this Hero.
+ * tile), a visible enemy, a tile or an area. Tile and area cards are confirmed on this Hero.
  */
 export function isPlayableUtility(card: CardDefinition): boolean {
   return (
@@ -193,7 +184,6 @@ export function isPlayableUtility(card: CardDefinition): boolean {
       card.target === CardTarget.AllyHeroTile ||
       card.target === CardTarget.EmptyTile ||
       card.target === CardTarget.Area ||
-      card.target === CardTarget.EnemyInSight ||
       card.target === CardTarget.VisibleEnemy) &&
     card.effects.every((effect) => (PLAYABLE_UTILITY_EFFECTS as readonly EffectKind[]).includes(effect.kind))
   );
@@ -256,7 +246,7 @@ export function isPlayableCard(card: CardDefinition, overdrive?: boolean): boole
       isGhostAttack(mode) ||
       isAreaAttack(mode) ||
       isTileBlast(mode) ||
-      ((mode.target === CardTarget.EnemyInSight || mode.target === CardTarget.Area || allyWithRecipients) &&
+      ((mode.target === CardTarget.Area || allyWithRecipients) &&
         isPlayableUtility(mode))
     );
   }

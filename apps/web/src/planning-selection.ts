@@ -71,15 +71,13 @@ const EFFECT_TEXT: Record<EffectKind, (effect: CardEffect) => string> = {
   [EffectKind.ApplySlow]: ({ duration }) => `Slow for ${duration ?? 1} Resolution${duration === 1 || duration === undefined ? "" : "s"}`,
   // Marked has no damage amount (the card data gives only a duration); the text used to print "+undefined damage taken".
   [EffectKind.ApplyMarked]: ({ duration }) => `Marked for ${duration ?? 1} Resolution${duration === 1 || duration === undefined ? "" : "s"}`,
-  [EffectKind.Knockback]: ({ amount, withinRange }) => `Knockback ${amount}${withinRange ? ` within ${withinRange} tiles` : ""}`,
+  [EffectKind.Knockback]: ({ amount }) => `Knockback ${amount}`,
   [EffectKind.DestroyHalfCover]: () => "destroys Half Cover",
   [EffectKind.DestroyAnyCover]: () => "destroys any Cover",
   [EffectKind.IgnoreHalfCover]: () => "ignores Half Cover",
   [EffectKind.PiercingDamage]: () => "Piercing Damage: ignores Shield",
   [EffectKind.GainShield]: ({ amount }) => `Shield ${amount}`,
-  [EffectKind.GrantExtraMove]: ({ amount }) => `ally Moves ${amount} more tiles`,
   [EffectKind.ExtendMove]: ({ amount }) => `next Move covers ${amount} tiles`,
-  [EffectKind.PreventHidden]: () => "prevents Hidden",
   [EffectKind.GainPermanentAttack]: ({ amount }) => `+${amount} Attack damage for the rest of the match`,
   [EffectKind.RevealArea]: ({ size }) => `reveals a ${size}x${size} area`,
   [EffectKind.PlaceCover]: ({ cover }) => `places ${cover === CoverKind.Full ? "Full" : "Half"} Cover until it is destroyed`,
@@ -220,8 +218,6 @@ export interface AimState {
   /** The card needs a highlighted tile (Breach Charge). */
   aimsAtTile: boolean;
   aimsAtAlly: boolean;
-  /** Forward Deploy: the ally is picked, the tile it moves towards is next. */
-  aimsAtDeployTile: boolean;
   needsSecondAlly: boolean;
   /** An ally has already been picked (Aegis Protocol Overdrive). */
   allyPicked: boolean;
@@ -230,13 +226,12 @@ export interface AimState {
 }
 
 /** The one-line instruction on the floating card: what to tap next while a card is aimed. */
-export function pickInstruction({ card, aimsAtTile, aimsAtAlly, aimsAtDeployTile, needsSecondAlly, allyPicked, noEnemyInRange }: AimState): string {
+export function pickInstruction({ card, aimsAtTile, aimsAtAlly, needsSecondAlly, allyPicked, noEnemyInRange }: AimState): string {
   if (noEnemyInRange) return "No enemy in sight";
   if (card.target === CardTarget.Area || card.target === CardTarget.EmptyTile || aimsAtTile) return "Tap a lit tile";
   if (needsSecondAlly) return allyPicked ? "Tap the second ally" : "Tap the first ally";
   if (card.target === CardTarget.SelfHero || card.target === CardTarget.EnemiesInRange) return "Tap your Hero";
   if (card.target === CardTarget.GhostEnemy) return "Tap a Ghost";
-  if (aimsAtDeployTile) return "Tap a lit tile";
   if (aimsAtAlly) return "Tap an ally";
   return "Tap an enemy";
 }

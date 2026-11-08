@@ -39,7 +39,7 @@ import {
   ZONE_DECAY_CARDS,
   ZoneTie,
 } from "./host";
-import { canSquadSee, canSquadSeeHero, type HeroState, MAX_PLACED_COVER_PER_SQUAD, type MatchState, recordSightings, refillDeck, sightRange, ZONES } from "./match";
+import { canSquadSee, canSquadSeeHero, type HeroState, MAX_PLACED_COVER_PER_SQUAD, type MatchState, recordSightings, refillDeck, ZONES } from "./match";
 import {
   ActionKind,
   BLOCK_SHIELD,
@@ -480,7 +480,7 @@ interface UtilityUse {
   target: HeroState;
   /** The second allied Hero of an Overdrive that affects two (Aegis Protocol). */
   secondTarget?: HeroState;
-  /** For Forward Deploy: the tile the allied Hero heads for. For Scout Drone and Deploy Cover: the tile aimed at. */
+  /** For Scout Drone, Deploy Cover and Barricade: the tile aimed at. */
   tile?: GridPosition;
   events: MatchEvent[];
 }
@@ -554,25 +554,14 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
     caster.chargeBonus = CHARGE_DAMAGE_BONUS;
   },
   [EffectKind.ApplySlow]: ({ tick, effect, caster, target, events }) => applySlow(tick, caster, target, effect, events),
-  [EffectKind.PreventHidden]: ({ target }) => {
-    target.hiddenPrevented = true;
-  },
-  // Hidden needs Cover where the Hero stands; Suppress in the same Round prevents it.
+  // Hidden needs Cover where the Hero stands.
   [EffectKind.BecomeHidden]: ({ match, tick, effect, caster, events }) => {
-    if (caster.hiddenPrevented || coverAt(match.grid, caster.position) === CoverKind.None) {
+    if (coverAt(match.grid, caster.position) === CoverKind.None) {
       events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
       return;
     }
     caster.hidden = effect.duration ?? 1;
     events.push({ kind: EventKind.HiddenGained, tick, heroId: caster.id });
-  },
-  // The ally takes an additional Move of `amount` tiles towards the tile; Slow cuts it like any Move.
-  [EffectKind.GrantExtraMove]: ({ match, tick, effect, caster, target, tile, events }) => {
-    if (!tile || tileAt(match.grid, tile) === undefined || isWall(tile)) {
-      events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
-      return;
-    }
-    resolveMoves(match, tick, [{ heroId: target.id, destination: tile, distance: effect.amount ?? MOVE_DISTANCE }], events);
   },
   // Without a recipient the effect goes to the card's target; Adrenal Surge's Overdrive names both Heroes.
   [EffectKind.GainPermanentAttack]: ({ tick, effect, caster, target, events }) => {
@@ -583,12 +572,6 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
   },
   [EffectKind.ExtendMove]: ({ effect, caster }) => {
     caster.extendedMove = effect.amount;
-  },
-  [EffectKind.ApplyMarked]: ({ tick, effect, caster, target, events }) => applyMarked(tick, caster, target, effect, events),
-  // Damage on a Utility card (Mark Target's Overdrive) ignores Cover; it only reaches `withinRange`.
-  [EffectKind.Damage]: ({ match, tick, effect, caster, target, events }) => {
-    const reaches = effect.withinRange === undefined || chebyshevDistance(caster.position, target.position) <= effect.withinRange;
-    if (reaches) dealDamage(match, tick, caster, target, effect.amount ?? 0, events);
   },
 };
 
@@ -608,10 +591,6 @@ function resolveUtility(
 ): void {
   const target = match.heroes.find((candidate) => candidate.id === targetId);
   const secondTarget = match.heroes.find((candidate) => candidate.id === secondTargetId);
-  // Mark Target needs the enemy within this Hero's own sight range (9 while Hidden), which also finds Hidden enemies.
-  const inOwnSight = (enemy: HeroState) =>
-    chebyshevDistance(caster.position, enemy.position) <= sightRange(caster) &&
-    hasLineOfSight(match.grid, caster.position, enemy.position);
   const isAlly = (hero: HeroState | undefined) => hero !== undefined && !hero.exhausted && hero.squad === caster.squad && hero !== caster;
   // Scout Drone, Fortify and Barricade reach as far as the card's Range (no Line of Sight needed).
   const inCardRange = (position: GridPosition | undefined) =>
@@ -623,9 +602,6 @@ function resolveUtility(
       validTarget =
         target !== undefined && !target.exhausted && target.squad !== caster.squad && canSquadSeeHero(match, caster.squad, target) &&
         (card.range === undefined || inCardRange(target.position));
-      break;
-    case CardTarget.EnemyInSight:
-      validTarget = target !== undefined && !target.exhausted && target.squad !== caster.squad && inOwnSight(target);
       break;
     case CardTarget.SelfHero:
       validTarget = target === caster;
@@ -929,7 +905,6 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     hero.slow = Math.max(0, hero.slow - 1);
     hero.hidden = Math.max(0, hero.hidden - 1);
     hero.marked = Math.max(0, hero.marked - 1);
-    hero.hiddenPrevented = false;
     hero.ignoresHalfCover = false;
     delete hero.extendedMove;
     delete hero.chargeBonus;

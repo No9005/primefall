@@ -78,7 +78,6 @@ const LOOK: Readonly<Record<Weapon, WeaponLook>> = {
   slam: { color: 0xff8a3d, flash: 0xffb066, flashRadius: 7, impact: 1.2, sparks: 4, rings: 1 },
   precision: { color: 0x9fd4ff, flash: 0x9fd4ff, flashRadius: 4, impact: 0.6, sparks: 3, rings: 1 },
   long: { color: 0xe8ffff, flash: 0xffffff, flashRadius: 9, impact: 1.5, sparks: 4, rings: 1 },
-  pulse: { color: 0xbfe0ff, flash: 0x5aa0ff, flashRadius: 6, impact: 1, sparks: 0, rings: 2 },
   tag: { color: 0xff8fb0, flash: 0xff8fb0, flashRadius: 3.5, impact: 0.5, sparks: 2, rings: 0 },
 };
 const GOLD = 0xffd24a;
@@ -364,8 +363,8 @@ interface Impact {
   boost: number;
 }
 
-/** Length and width (design px) of the bolt of each weapon that draws one (the pulse is a glow, the Long Shot a line). */
-const BOLT_SIZE: Readonly<Record<Exclude<Weapon, "pulse">, readonly [number, number]>> = {
+/** Length and width (design px) of the bolt of each weapon that draws one (the Long Shot is a line). */
+const BOLT_SIZE: Readonly<Record<Weapon, readonly [number, number]>> = {
   slam: [11, 5],
   precision: [24, 2],
   long: [14, 3],
@@ -790,10 +789,6 @@ export class EffectsLayer {
   private drawProjectile(g: Graphics, flight: Flight, progress: number): void {
     const { weapon, color, muzzle, target, dir } = flight;
     const p = { x: muzzle.x + (target.x - muzzle.x) * progress, y: muzzle.y + (target.y - muzzle.y) * progress };
-    if (weapon === "pulse") {
-      blob(g, p, 7 * F * (0.8 + 0.6 * progress), color, 0.9);
-      return;
-    }
     const [length, width] = BOLT_SIZE[weapon];
     const h = { x: (dir.x * length * F) / 2, y: (dir.y * length * F) / 2 };
     line(g, { x: p.x - h.x, y: p.y - h.y }, { x: p.x + h.x, y: p.y + h.y }, { width: width * F, color, alpha: 1 });

@@ -50,7 +50,7 @@ describe("the cues of the events", () => {
   });
 
   it("shows the Shield that absorbed in blue, before the Deck Damage", () => {
-    const numbers = effectCuesOf([hit({ card: "Pulse Bolt", damage: 1, absorbed: 1, distance: 2 })], fireOf).filter((cue) => cue.kind === "number");
+    const numbers = effectCuesOf([hit({ card: "Tag Round", damage: 1, absorbed: 1, distance: 2 })], fireOf).filter((cue) => cue.kind === "number");
     expect(numbers.map((cue) => (cue.kind === "number" ? [cue.text, cue.style] : []))).toEqual([["Shield -1", "shield"], ["-1", "damage"]]);
   });
 

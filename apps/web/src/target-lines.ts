@@ -27,7 +27,7 @@ export enum LineKind {
   Attack = "attack",
   /** A card effect on an allied Hero: teal, with an arrow head. */
   Ally = "ally",
-  /** A card effect on a tile (Breach Charge, Scout Drone, Deploy Cover, the destination of Forward Deploy): ends in a ring. */
+  /** A card effect on a tile (Breach Charge, Scout Drone, Deploy Cover, Barricade): ends in a ring. */
   Tile = "tile",
 }
 
@@ -65,7 +65,7 @@ export interface TargetLine {
 
 const NO_RANGE_LIMIT = Number.MAX_SAFE_INTEGER;
 
-const ENEMY_TARGETS = [CardTarget.VisibleEnemy, CardTarget.EnemyInSight, CardTarget.GhostEnemy];
+const ENEMY_TARGETS = [CardTarget.VisibleEnemy, CardTarget.GhostEnemy];
 const ALLY_TARGETS = [CardTarget.AllyHero, CardTarget.AllyHeroTile];
 const TILE_TARGETS = [CardTarget.Tile, CardTarget.EmptyTile, CardTarget.Area];
 
@@ -127,10 +127,8 @@ function attackLines(grid: Grid, enemies: readonly EnemyView[], shotAt: { base: 
 
 function allyLines(heroes: readonly HeroView[], hero: HeroView, base: LineBase, from: GridPosition, action: PrimaryAction): TargetLine[] {
   const ally = heroes.find((candidate) => candidate.id === action.target);
-  if (!ally || ally.id === hero.id) return action.tile && ally ? [tileLine(base, from, action.tile)] : [];
-  const toAlly: TargetLine = { ...base, kind: LineKind.Ally, tone: LineTone.Clear, from, to: ally.position };
-  // Forward Deploy: the allied Hero then moves towards the tile.
-  return action.tile ? [toAlly, tileLine(base, ally.position, action.tile)] : [toAlly];
+  if (!ally || ally.id === hero.id) return [];
+  return [{ ...base, kind: LineKind.Ally, tone: LineTone.Clear, from, to: ally.position }];
 }
 
 function tileLine(base: Pick<TargetLine, "heroId" | "own" | "tick">, from: GridPosition, to: GridPosition): TargetLine {

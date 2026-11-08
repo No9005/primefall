@@ -49,9 +49,8 @@ export interface PrimaryAction {
    */
   target: string;
   /**
-   * For a card aimed at a tile or area (Breach Charge, Scout Drone, Deploy Cover): the tile (the centre of
+   * For a card aimed at a tile or area (Breach Charge, Scout Drone, Deploy Cover, Barricade): the tile (the centre of
    * an area); `target` is then the casting Hero.
-   * For Forward Deploy: the tile the allied `target` moves towards.
    */
   tile?: GridPosition;
   /** For an Overdrive that affects two allied Heroes (Aegis Protocol): the second one, distinct from `target`. */
@@ -250,7 +249,7 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
           if (action.target !== heroId || kind === undefined || kind === TileKind.Wall) {
             report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a tile that is not a Wall as its target.` });
           }
-        } else if (card.target !== CardTarget.VisibleEnemy && card.target !== CardTarget.EnemyInSight) {
+        } else if (card.target !== CardTarget.VisibleEnemy) {
           // Self cards and area Attacks are confirmed on this Hero; ally cards need another Hero.
           const isSelfCard = card.target === CardTarget.SelfHero || card.target === CardTarget.EnemiesInRange;
           const validTarget = isSelfCard
@@ -268,14 +267,6 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
             if (!second || second.id === heroId || second.id === action.target || second.exhausted) {
               report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a second, different allied Hero.` });
             }
-          }
-          // Forward Deploy also names the tile the ally heads for; where the ally stands by then is checked when it resolves.
-          const destination = action.tile && tileAt(REACTOR_DECK, action.tile);
-          if (
-            card.effects.some(({ kind }) => kind === EffectKind.GrantExtraMove) &&
-            (destination === undefined || destination === TileKind.Wall)
-          ) {
-            report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a destination tile that is not a Wall.` });
           }
         } else if (!view.enemies.some(
             (enemy) => enemy.id === action.target && enemy.visibility === Visibility.Visible && !enemy.exhausted,

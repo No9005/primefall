@@ -85,8 +85,6 @@ export interface HeroState {
   hidden: number;
   /** Resolution ends left before Marked expires (0: not Marked); a Marked Hero is Visible to the enemy Squad. */
   marked: number;
-  /** Suppress: this Hero cannot become Hidden for the rest of the Round. */
-  hiddenPrevented: boolean;
   /** Adrenal Surge: extra damage of every Attack this Hero plays; lasts until Exhaustion (ADR 0003). */
   attackBonus: number;
   /** Overwatch Uplink: this Hero's Attacks ignore the Half Cover damage reduction until the end of the Round. */
@@ -237,7 +235,6 @@ export function createMatch(seed: number, mode: MatchModeSetting = { kind: Match
         slow: 0,
         hidden: 0,
         marked: 0,
-        hiddenPrevented: false,
         attackBonus: 0,
         ignoresHalfCover: false,
         exhausted: false,

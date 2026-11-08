@@ -66,7 +66,6 @@ describe("the HUD elements", () => {
       });
       const states: Record<string, Record<string, Rect>> = {
         Planning: { primePill: primePillRect(view, "planning"), timerPill: timerPillRect(view, "planning"), ...bottom() },
-        "Planning with a fifth Queue row": { primePill: primePillRect(view, "planning"), timerPill: timerPillRect(view, "planning"), ...bottom(5) },
         Resolution: {
           bar: barRect(view),
           primePill: primePillRect(view, "resolution"),
@@ -98,16 +97,16 @@ describe("the HUD elements", () => {
       });
 
       it("keep the Wait card 6 px clear of the Queue column", () => {
-        expect(commitRect(view, 5).left - waitCardRect(view).right).toBeGreaterThanOrEqual(6);
+        expect(commitRect(view).left - waitCardRect(view).right).toBeGreaterThanOrEqual(6);
       });
 
       it("keep clear of the idle free board area", () => {
         const free = freeBoardArea(view, { kind: "idle" });
-        for (const hud of [commitRect(view, 5), handRect(view), waitCardRect(view)]) expect(overlaps(free, hud)).toBe(false);
+        for (const hud of [commitRect(view), handRect(view), waitCardRect(view)]) expect(overlaps(free, hud)).toBe(false);
       });
 
       it("stay inside the view", () => {
-        for (const rect of [commitRect(view, 5), waitCardRect(view)]) {
+        for (const rect of [commitRect(view), waitCardRect(view)]) {
           expect(rect.left >= 0 && rect.top >= 0 && rect.right <= view.width && rect.bottom <= view.height).toBe(true);
         }
       });

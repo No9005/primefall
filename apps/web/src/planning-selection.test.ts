@@ -21,7 +21,7 @@ describe("rangeDamageLabel", () => {
 
 describe("pickInstruction", () => {
   const card = HERO_DECKS[HeroClass.Assassin][0]!;
-  const base = { card, aimsAtTile: false, aimsAtAlly: false, aimsAtDeployTile: false, needsSecondAlly: false, allyPicked: false };
+  const base = { card, aimsAtTile: false, aimsAtAlly: false, needsSecondAlly: false, allyPicked: false };
 
   it("tells the player to pick an enemy by default and an ally for ally cards", () => {
     expect(pickInstruction(base)).toBe("Tap an enemy");
@@ -37,9 +37,8 @@ describe("pickInstruction", () => {
     expect(pickInstruction({ ...base, needsSecondAlly: true, allyPicked: true })).toBe("Tap the second ally");
   });
 
-  it("asks for a lit tile for tile cards and the Deploy tile", () => {
+  it("asks for a lit tile for tile cards", () => {
     expect(pickInstruction({ ...base, aimsAtTile: true })).toBe("Tap a lit tile");
-    expect(pickInstruction({ ...base, aimsAtDeployTile: true })).toBe("Tap a lit tile");
   });
 });
 
