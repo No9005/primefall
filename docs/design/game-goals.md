@@ -53,8 +53,26 @@ At most 4 Victory Points a Resolution can be scored (2 + 1 + 1) from Round 4, 2 
 | **Variety** | At least 5 different move plans in Round 1 over 300 seeds. |
 | **Pace** | At most 15 Rounds; Exhaustion in at least 30 % of the matches; no stalls above 2 %. |
 | **Fairness** | Left and right Squad win within 5 % of each other. |
+| **Roles: distance duels** | One against one, 100 seeds, both seats, same start: at Range 1 to 2 the Bruiser beats the Assassin in at least 70 %; at Range 3 to 4 about even; from Range 5 the Assassin wins in at least 70 %. |
+| **Roles: damage and support share** | The Assassin deals at least 45 % of a Squad's damage, the Bruiser at most 30 %, the Controller at most 15 %; the Controller gives at least 40 % of the Shield, Cover and revealed tiles. |
+| **Roles: composition** | A mixed Squad (Bruiser, Controller, Assassin) beats Squads of three of the same class in at least 60 % of the matches. |
 
 Existing tools: `npm run balance` (the harness), the Exposed Hero measurement (#343) and the ladder of three AI play styles used for the first measurement (Rusher, Waiter, Holder; the Waiter and Holder use the Attack and Defend branches of the AI).
+
+## Roles (ADR 0025)
+
+Three classes with different jobs; every one of them has a weakness the others cover.
+
+| | Bruiser | Controller | Assassin |
+|---|---|---|---|
+| Job | Tank and enabler: closes in, moves enemies, wins up close | Builds Cover, gives Shield, builds vision | Glass cannon: damage at range |
+| Deck (toughness) | 12 | 10 | 9 |
+| Attacks | Range 1 to 2, 2 damage, 3 at Range 1; Charge adds 1 more | One attack: Tag Round (1 damage, Marked, Range 2) | Range 2 to 7, 2 to 3 damage; cannot hit Range 1 (some only from Range 3) |
+| Shield | Bulwark (self, 3); Charge (self, 1 for the Round) | Aegis Protocol, Reinforce (allies) | None |
+| Tools | Charge, Pull, Knockback, Wrecking Blow, Breach Charge | Barricade (Full Cover) and other Placed Cover, Scout Drone anywhere, Slow, Overwatch Uplink | Vanish (Hidden), Reposition, Shield Breaker (Piercing Damage), Cover Breaker, Execution Round (ignores Half Cover) |
+| Weak at | Range, being kited | Damage, close fights | Close fights, no Shield |
+
+Distance decides a duel: close the Bruiser, far the Assassin. The Controller is strongest with an ally.
 
 ## How other games do it (from memory, not verified)
 
@@ -67,7 +85,7 @@ Existing tools: `npm run balance` (the harness), the Exposed Hero measurement (#
 ## Open: the next stages
 
 1. **Map** (#349): where the Outposts and the Prime Zone are, sight blockers, no Overwatch Nest, equal lanes for both Squads.
-2. **Roles** (#348): what the Heroes do with two Outposts (deck sizes, Charge, the Scout Drone that shows a Hidden Assassin).
+2. **Roles** (#348, ADR 0025): decided; the tickets build the cards. What the Heroes do with two Outposts is tested by the role gauges.
 3. **AI**: plans for splitting between zones and for holding vision; a Squad plan from the seed.
 4. **Mission types** (three per game) as a possible later layer; not part of this decision.
 5. **Wording:** "Victory Points" uses the word "Point", which `docs/design/decisions.md` keeps out of the UI as a name for the Zone; the owner confirms the UI word.

@@ -102,6 +102,18 @@ _Avoid_: Hinder, debuff
 A forced movement effect that moves the target directly away from the attacker. The target stops at a wall, Full Cover, or another Hero.
 _Avoid_: Push, displacement
 
+**Pull**:
+A forced movement effect that moves the target directly toward the caster. The target stops at a wall, Full Cover, or another Hero. The counterpart of Knockback.
+_Avoid_: Hook, drag, grab
+
+**Minimum Range**:
+The shortest distance at which an Attack can hit; closer targets cannot be hit by it. Some Assassin Attacks have a Minimum Range of 2 or 3.
+_Avoid_: Dead zone, blind range
+
+**Placed Cover**:
+Cover that a Hero put on a tile with a card. It stays until it is destroyed; a Squad has at most three Placed Cover tiles at once and the oldest disappears when a fourth is placed.
+_Avoid_: Temporary Cover, wall, barricade (a card name)
+
 **Long Shot**:
 An Assassin Attack with Range 7. Its Overdrive deals bonus damage when the target is at Range 6 or 7.
 _Avoid_: Sniper shot, ranged finisher
