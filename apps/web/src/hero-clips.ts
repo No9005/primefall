@@ -273,7 +273,7 @@ const LONG_SHOT = (): Track[] => [
   track("cape", "scaleY", "ease-in-out", [[1, [0, 8, 88, 100]], [0.7, [22, 46, 72]]]),
 ];
 
-/** Controller Pulse Bolt, Tag Round and Slow pulse: the arm comes up steadily and the emitter fires. */
+/** Controller attack, Tag Round and Slow pulse: the arm comes up steadily and the emitter fires. */
 const PULSE_BOLT = (): Track[] => [
   track("torso", "x", "ease-out", [[0, [0, 10, 22, 56, 100]], [-2, [26]], [-1, [38]]]),
   track("torso", "rotation", "ease-out", [[0, [0, 10, 56, 100]], [-2, [22]], [-6, [26]], [-3, [38]]]),

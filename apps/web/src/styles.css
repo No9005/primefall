@@ -247,7 +247,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .card-name { font-family: Rajdhani, sans-serif; font-weight: 600; font-size: 14px; }
 .card-cost { align-self: flex-end; font-family: "IBM Plex Mono", monospace; font-size: 14px; color: var(--orange); }
 
-/* Bottom-right corner (issue 206): the Queue column (4 rows of 28 px, a 5th with Forward Deploy) directly above a pill-shaped Commit,
+/* Bottom-right corner (issue 206): the Queue column (4 rows of 28 px) directly above a pill-shaped Commit,
    124 px wide. The target hint sits left of it, below the board controls. Mirrored by commitRect in hud-layout.ts. */
 .commit-panel { position: absolute; bottom: calc(6px + env(safe-area-inset-bottom)); right: calc(6px + env(safe-area-inset-right)); width: 124px; display: flex; flex-direction: column; gap: 4px; }
 .queue { display: flex; flex-direction: column; }

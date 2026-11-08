@@ -106,7 +106,7 @@ const QUEUE_GAP = 4;
 const QUEUE_ROW_GAP = 8;
 const COMMIT_HEIGHT = 46;
 
-/** The Queue column: `rows` Queue rows, 4 by default and 5 with Forward Deploy; it ends above the Commit pill. */
+/** The Queue column: 4 Queue rows; it ends above the Commit pill. */
 export function queueRect(view: ViewSize, rows = 4): Rect {
   const bottom = commitButtonRect(view).top - QUEUE_GAP;
   return { left: view.width - 6 - QUEUE_COLUMN_WIDTH, top: bottom - (rows * QUEUE_ROW_HEIGHT + (rows - 1) * QUEUE_ROW_GAP), right: view.width - 6, bottom };
@@ -116,7 +116,7 @@ export function commitButtonRect(view: ViewSize): Rect {
   return { left: view.width - 6 - QUEUE_COLUMN_WIDTH, top: view.height - 6 - COMMIT_HEIGHT, right: view.width - 6, bottom: view.height - 6 };
 }
 
-/** The Commit pill with the Queue column above it: `rows` Queue rows, 4 by default and 5 with Forward Deploy. */
+/** The Commit pill with the Queue column above it: `rows` Queue rows, 4 by default. */
 export function commitRect(view: ViewSize, rows = 4): Rect {
   const queue = queueRect(view, rows);
   return { left: queue.left, top: queue.top, right: queue.right, bottom: commitButtonRect(view).bottom };

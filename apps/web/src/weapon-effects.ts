@@ -4,7 +4,7 @@ import { AttackFailReason, EffectKind, EventKind, type GridPosition, HERO_DECKS,
 // ends. Pure data and functions, so the scheduling is tested without a browser; `effects-layer.ts` draws the cues.
 // All times are milliseconds from the start of the playback frame at normal clip speed.
 
-export type Weapon = "slam" | "precision" | "long" | "pulse" | "tag";
+export type Weapon = "slam" | "precision" | "long" | "tag";
 
 const WEAPON_OF_CARD: Readonly<Record<string, Weapon>> = {
   "Slam Shot": "slam",
@@ -26,7 +26,7 @@ export function weaponOf(card: string | undefined): Weapon | undefined {
 /** One tile of Range in px at design size (a tile step of the Shockwave slides 24 px). */
 export const TILE_PX = 24;
 /** Flight speed in design px per millisecond; the Long Shot has none, its line is there at once. */
-export const PROJECTILE_SPEED: Readonly<Record<Weapon, number>> = { slam: 0.1, precision: 0.3, long: Infinity, pulse: 0.1, tag: 0.3 };
+export const PROJECTILE_SPEED: Readonly<Record<Weapon, number>> = { slam: 0.1, precision: 0.3, long: Infinity, tag: 0.3 };
 /** A card without a weapon of its own: the target reacts this long after the shot. */
 export const UNARMED_FLIGHT_MS = 480;
 

@@ -134,7 +134,7 @@ describe("Shield", () => {
   });
 
   it("ripples over the bubble and bursts one ruby for every absorbed hit, at the impact", () => {
-    const cues = effectCuesOf([{ kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Pulse Bolt", absorbed: 1, damage: 0, distance: 2 }], fireOf);
+    const cues = effectCuesOf([{ kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Slam Shot", absorbed: 1, damage: 0, distance: 2 }], fireOf);
     expect(cues).toContainEqual({ kind: "shieldHit", toId: "t", startMs: 620 + 480, absorbed: 1 });
     expect(rippleAt(100)).toBeUndefined();
     expect(rippleAt(110 + 104)?.scale).toBeCloseTo(1 + 0.7 * (104 / 990));

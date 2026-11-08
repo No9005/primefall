@@ -28,7 +28,7 @@ describe("the attack clips, sampled at the beats of the reference", () => {
     expect(sampleClip(long, 3400).torso.y).toBe(0);
   });
 
-  it("Controller Pulse Bolt (2400 ms), Tag Round (2800 ms) and Slow pulse (2600 ms) raise the arm and fire at 26 %", () => {
+  it("Controller attack (2400 ms), Tag Round (2800 ms) and Slow pulse (2600 ms) raise the arm and fire at 26 %", () => {
     const bolt = clipOf(HeroClass.Controller, "attack");
     expect([bolt.durationMs, bolt.fireMs, bolt.activeEndMs]).toEqual([2400, 620, 1630]);
     expect(sampleClip(bolt, 624).armF.rotation).toBeCloseTo(-100);
