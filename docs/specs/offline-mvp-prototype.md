@@ -45,7 +45,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 27. As a player, I want to play a card’s primary effect, so that I can use its intended tactical purpose.
 28. As a player, I want to Pitch a card for 1 Energy, so that I can fund Attack and Utility effects.
 29. As a player, I want to use any card as Move 2, so that I can reposition even when I do not want to use its primary effect.
-30. As a player, I want to use any card as Block 2, so that I can create Shield instead of using its primary effect.
+30. As a player in Attack and Defend (not the classic mode, #358), I want to use any card as Block 2, so that I can create Shield instead of using its primary effect.
 31. As a player, I want a card to fulfill only one role during a round, so that card use remains a meaningful commitment.
 32. As a player, I want Energy to expire at the end of the round, so that resource planning stays round-scoped.
 33. As a player, I want the Discard to be shuffled into the Deck as soon as the Deck is empty and a card must be taken from it (Deck Damage, Draw) or a Resolution ends, so that a Hero can continue fighting after spending cards.
@@ -57,7 +57,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 39. As a player, I want actions to be validated when they execute, so that illegal actions fail without disrupting later planned actions. An Attack names a Declared Target in planning and is checked in the Tick it fires (see the Implementation Decisions).
 40. As a player, I want simultaneous attacks to both resolve, so that aggression remains risky and consequential.
 41. As a player, I want Heroes that move not to hinder each other (they can follow, cross and swap), while a Hero cannot walk through a Hero that stays where it is and two Heroes never step onto the same tile: a step onto a tile that a Hero keeps, or that another Hero steps onto too, fails and the Hero stops there, so that movement conflicts have a clear rule (ADR 0013).
-42. As a player, I want a Block to take effect immediately in its Tick, so that I can protect against an attack resolved in that same Tick.
+42. As a player in Attack and Defend, I want a Block to take effect immediately in its Tick, so that I can protect against an attack resolved in that same Tick.
 43. As a player, I want a Hero that becomes Exhausted during Resolution to complete its already committed action, so that planning remains meaningful.
 44. As a player, I want Exhaustion to take effect after Resolution, so that a Hero’s final committed action is not silently cancelled.
 45. As a player, I want Full Cover to block attacks and sight from the firing direction, so that positioning can create real protection.
@@ -90,7 +90,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 72. As a player, I want optional localStorage support, so that I can retain progress between sessions without an account or server.
 73. As a player, I want the game to run in a mobile-friendly web browser, so that I can play without installing an application.
 74. As a player, I want the presentation to use stylized 2.5D with an orthographic camera, so that the battlefield remains readable from a tactical perspective.
-75. As a player, I want allied AI to move toward the objective, attack visible enemies, and block when appropriate, so that teammates contribute meaningfully.
+75. As a player, I want allied AI to move toward the objective, attack visible enemies, and (in Attack and Defend) block when appropriate, so that teammates contribute meaningfully.
 76. As a player, I want enemy AI to use simple legal-action heuristics, so that matches remain challenging without complex behaviour.
 77. As a player, I want the match to end immediately when one Squad controls the Prime Zone during three consecutive Resolutions, so that victory is clear.
 78. As a player, I want Core Rush to be unavailable in the first prototype, so that the Prime Zone remains the only victory path.
@@ -115,10 +115,10 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Implement three Hero classes: Bruiser/Vanguard, Controller/Tactician, and Assassin/Striker.
 - Give each Hero a fixed 12-card Deck with no Flex cards.
 - Implement Deck-as-Life: unblocked damage removes cards from the top of the target’s Deck; a Hero whose Deck and Discard are both empty at the end of a Resolution is Exhausted. An Exhausted Hero is out of the match and its tile becomes Half Cover (it does not obstruct Moves; Cover-destroying effects such as Breach Charge destroy it; a Prime Zone tile stays a Prime Zone tile).
-- Implement Shield as a round-scoped defensive value created through Block 2.
+- Implement Shield as a round-scoped defensive value created through Shield cards, and through Block 2 in Attack and Defend only (the classic mode has no Block action, #358).
 - A **Wait** button next to the Queue slots of the selected Hero adds a Wait (an hourglass slot that needs no card and no Energy and can be removed like any other slot) to the first free slot.
 - Distances use Chebyshev distance and movement is 8-directional; Cover is occupiable and ignored by attackers at Range 1; Pitch is a planning step; a Hero's queue has at most 4 actions (ADR 0020).
-- Implement four standard uses for every card: primary effect, Pitch 1, Move 2, or Block 2.
+- Implement the standard uses for every card: primary effect, Pitch 1, Move 2, and Block 2 in Attack and Defend only.
 - Implement Energy as a round-scoped resource produced by Pitching and required for Attack and Utility effects.
 - Implement simultaneous planning with a fixed timer and early commit.
 - Implement deterministic priority-interleaved Resolution using per-Hero action queues and Ticks.
@@ -128,7 +128,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Implement Hidden only for the Assassin through selected Utility cards.
 - Implement Marked as a Squad-wide visibility effect until the end of the next round.
 - Implement Ghost Shot as the Assassin’s Attack Overdrive that targets a Ghost’s last known position.
-- Use simple legal-action heuristics for allied and enemy AI: move toward the objective, attack visible enemies, and block when appropriate.
+- Use simple legal-action heuristics for allied and enemy AI: move toward the objective, attack visible enemies, and block when appropriate (Attack and Defend only).
 - Keep match state in browser memory, with optional localStorage support.
 - Use PixiJS for stylized 2.5D presentation with an orthographic camera.
 - Do not use Matter.js in the MVP; movement, Line of Sight, Cover, and combat are tile-based simulation rules.

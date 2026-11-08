@@ -1,6 +1,6 @@
 # MVP Card Set Spec
 
-This is the complete fixed card set for the offline 3v3 prototype. Every card can alternatively be used as Pitch 1, Move 2, or Block 2. A card fulfills only one of these roles during a round.
+This is the complete fixed card set for the offline 3v3 prototype. Every card can alternatively be used as Pitch 1, Move 2, or (in Attack and Defend only; the classic mode has no Block) Block 2. A card fulfills only one of these roles during a round.
 
 Cards with the same name are identical in every respect, including their Overdrive: if one copy has an Overdrive, every copy of that card has exactly the same one. Cards that differ have different names.
 

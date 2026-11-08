@@ -67,7 +67,7 @@ A temporary defensive value that absorbs damage during the current round and dis
 _Avoid_: Armor, barrier, HP
 
 **Block**:
-Using any card to create Shield 2 instead of playing its primary effect.
+Using any card to create Shield 2 instead of playing its primary effect. Only in Attack and Defend; the classic mode has no Block, its Shield comes from Shield cards.
 _Avoid_: Defend, guard, parry
 
 **Crossfire**:

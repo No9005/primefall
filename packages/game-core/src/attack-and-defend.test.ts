@@ -163,11 +163,11 @@ describe("Attack and Defend: Squad View and host", () => {
 });
 
 describe("the classic mode", () => {
-  // Recorded from the classic path (AI against AI, 60 Rounds at most); re-recorded when the AI began to score its Moves (#329) for seed 3 when Crossfire was added (#342), when the AI began to focus fire (#347), and for seed 11 when Shield Breaker joined the Assassin Deck (#344).
+  // Recorded from the classic path (AI against AI, 60 Rounds at most); re-recorded when the AI began to score its Moves (#329) for seed 3 when Crossfire was added (#342), when the AI began to focus fire (#347),, for seed 11 when Shield Breaker joined the Assassin Deck (#344), and all three when the classic mode lost the Block action (#358).
   const recorded = [
-    { seed: 3, round: 5, winner: SquadId.Left, deckTotals: { left: 12, right: 11 }, positions: "14,7:4 15,7:4 14,8:4 16,7:4 16,8:3 16,9:4", rng: 3775861423 },
-    { seed: 11, round: 6, winner: SquadId.Right, deckTotals: { left: 10, right: 18 }, positions: "14,7:5 15,7:0 14,8:5 16,7:2 16,8:4 16,9:12", rng: 1688530830 },
-    { seed: 42, round: 6, winner: SquadId.Right, deckTotals: { left: 17, right: 9 }, positions: "14,7:1 15,7:4 13,10:12 16,7:4 16,8:4 16,9:1", rng: 1816413255 },
+    { seed: 3, round: 7, winner: SquadId.Left, deckTotals: { left: 14, right: 16 }, positions: "14,7:4 15,7:2 14,8:8 16,7:4 16,8:4 16,9:8", rng: 4151932305 },
+    { seed: 11, round: 6, winner: SquadId.Right, deckTotals: { left: 9, right: 11 }, positions: "14,7:4 15,7:4 14,8:1 16,7:6 16,8:4 16,9:1", rng: 1880354421 },
+    { seed: 42, round: 5, winner: SquadId.Left, deckTotals: { left: 10, right: 14 }, positions: "14,7:4 15,7:2 14,8:4 16,7:6 16,8:4 16,9:4", rng: 3207966989 },
   ];
 
   it.each(recorded)("plays seed $seed exactly as recorded", ({ seed, round, winner, deckTotals, positions, rng }) => {
