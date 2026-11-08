@@ -13,14 +13,15 @@ describe("the card list", () => {
   });
 
   it("writes duplicates as x2 and takes the text from the card data", () => {
-    const [pulseBolt] = cardRows(HeroClass.Controller);
-    expect(cardRowName(pulseBolt!)).toBe("Pulse Bolt x2");
-    expect(pulseBolt).toMatchObject({ type: "Attack", cost: 1, effect: "2 damage" });
+    const scoutDrone = cardRows(HeroClass.Controller).find((row) => row.name === "Scout Drone");
+    expect(cardRowName(scoutDrone!)).toBe("Scout Drone x2");
+    expect(scoutDrone).toMatchObject({ type: "Utility", cost: 1 });
+    expect(scoutDrone!.effect).not.toContain("Range");
     expect(cardRows(HeroClass.Controller).map((row) => row.effect).join(" ")).not.toContain("undefined");
   });
 
   it("titles the list with the Hero and the size of its Deck", () => {
-    expect(cardListTitle(HeroClass.Controller)).toBe("CONTROLLER: 12 CARDS");
+    expect(cardListTitle(HeroClass.Controller)).toBe("CONTROLLER: 10 CARDS");
   });
 });
 

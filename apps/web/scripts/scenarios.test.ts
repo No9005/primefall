@@ -126,11 +126,6 @@ describe("Assassin scenarios stage what their names say", () => {
     expect((await assassinEvents("vanish")).map((event) => event.kind)).toEqual(["step", "step", "hiddenGained"]);
   });
 
-  it("mark-target marks, and in Overdrive also hits for 1", async () => {
-    expect((await assassinEvents("mark-target")).map((event) => event.kind)).toEqual(["markedApplied"]);
-    expect((await assassinEvents("mark-target-overdrive")).map((event) => event.kind)).toEqual(["markedApplied", "attackHit"]);
-  });
-
   it("reposition moves three tiles with one Move", async () => {
     expect((await assassinEvents("reposition")).filter((event) => event.kind === EventKind.Step)).toHaveLength(3);
   });

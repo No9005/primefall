@@ -50,8 +50,8 @@ test("View cards lists the Deck of the selected Hero and closes", async ({ page 
   await page.getByTestId("hero-controller").click();
   await page.getByRole("button", { name: "VIEW CARDS" }).click();
   const list = page.getByTestId("card-list");
-  await expect(list).toContainText("CONTROLLER: 12 CARDS");
-  await expect(list).toContainText("Pulse Bolt x2");
+  await expect(list).toContainText("CONTROLLER: 10 CARDS");
+  await expect(list).toContainText("Scout Drone x2");
   await page.getByRole("button", { name: "Close" }).click();
   await expect(list).toBeHidden();
 });

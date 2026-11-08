@@ -3,7 +3,7 @@
 // real rules API and plain edits; the tool resumes it in the browser through the Resume button, and the real local
 // host plays the Resolution. Nothing here forges a rule. To add a scenario: see "Screenshots of UI changes" in
 // docs/agents/software-factory.md.
-import { ActionKind, type CardIndex, type GridPosition, HeroClass, type HeroPlan, type QueuedAction, type SquadPlan, SquadId, TileKind, withTile } from "game-core";
+import { ActionKind, type CardIndex, cardIndex, type GridPosition, HeroClass, type HeroPlan, type QueuedAction, type SquadPlan, SquadId, TileKind, withTile } from "game-core";
 import { createMatch, type HeroState, type MatchState, recordSightings, startRound } from "game-core/server";
 
 /** How a Hand card is used in a planning step. `overdrive` is the primary effect in its Overdrive face. */
@@ -86,20 +86,18 @@ function stage(seed: number, edit: (hero: (id: string) => HeroState, match: Matc
 }
 
 // Card indices in the Deck lists of packages/game-core/src/cards.ts.
-const BRUISER_SLAM_SHOT = 0;
-const BRUISER_SLAM_SHOT_2 = 1;
-const BRUISER_BREACH_CHARGE = 4;
-const BRUISER_SHOCKWAVE = 5;
-const BRUISER_BULWARK = 6;
+const BRUISER_SLAM_SHOT = cardIndex(HeroClass.Bruiser, "Slam Shot");
+const BRUISER_SLAM_SHOT_2 = cardIndex(HeroClass.Bruiser, "Slam Shot", 1);
+const BRUISER_BREACH_CHARGE = cardIndex(HeroClass.Bruiser, "Breach Charge");
+const BRUISER_SHOCKWAVE = cardIndex(HeroClass.Bruiser, "Shockwave");
+const BRUISER_BULWARK = cardIndex(HeroClass.Bruiser, "Bulwark");
 
 // Controller cards. These scenarios keep the Bruiser as the Player Hero, so the Controller's card is played by the allied
 // AI, which plays only simple Attacks (isSimpleAttack in cards.ts). A scenario with `playerHero` set can play the other
 // cards itself.
-const CONTROLLER_PULSE_BOLT = 0;
-const CONTROLLER_TAG_ROUND = 2;
-const CONTROLLER_SHOCK_PULSE = 3;
+const CONTROLLER_TAG_ROUND = cardIndex(HeroClass.Controller, "Tag Round");
 /** The rest of the Controller's Hand: Utility cards only, so the AI plays the Attack under test (it plays the first Attack in the Hand that is in Range). */
-const CONTROLLER_FILLER_CARDS: readonly CardIndex[] = [11, 9, 5];
+const CONTROLLER_FILLER_CARDS: readonly CardIndex[] = [cardIndex(HeroClass.Controller, "Overwatch Uplink"), cardIndex(HeroClass.Controller, "Gravity Snare"), cardIndex(HeroClass.Controller, "Fortify")];
 
 /**
  * The allied Controller stands on open floor two tiles from an enemy Bruiser (Controller Range is 2): the AI plans an
@@ -122,12 +120,11 @@ function controllerAttack(name: string, description: string, seed: number, card:
 }
 
 // The rest of the Bruiser's Deck list (packages/game-core/src/cards.ts).
-const BRUISER_CONCUSSION_ROUND = 2;
-const BRUISER_CONCUSSION_ROUND_2 = 3;
-const BRUISER_FORWARD_DEPLOY = 8;
-const BRUISER_SUPPRESS = 9;
-const BRUISER_REINFORCE = 10;
-const BRUISER_ADRENAL_SURGE = 11;
+const BRUISER_CONCUSSION_ROUND = cardIndex(HeroClass.Bruiser, "Concussion Round");
+const BRUISER_ADRENAL_SURGE = cardIndex(HeroClass.Bruiser, "Adrenal Surge");
+const BRUISER_CHARGE = cardIndex(HeroClass.Bruiser, "Charge");
+const BRUISER_PULL = cardIndex(HeroClass.Bruiser, "Pull");
+const BRUISER_WRECKING_BLOW = cardIndex(HeroClass.Bruiser, "Wrecking Blow");
 
 const ALLY_CONTROLLER = `${SquadId.Left}-controller`;
 const ENEMY_BRUISER = `${SquadId.Right}-bruiser`;
@@ -147,7 +144,7 @@ function bruiserCard(
   edit: (hero: (id: string) => HeroState, match: MatchState) => void,
   resolutionShotsMs: readonly number[] = [600, 1300, 2000, 3000, 4500],
 ): Scenario {
-  const fillers = [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, BRUISER_CONCUSSION_ROUND, BRUISER_CONCUSSION_ROUND_2].filter((index) => index !== card);
+  const fillers = [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, BRUISER_CONCUSSION_ROUND, BRUISER_BREACH_CHARGE].filter((index) => index !== card);
   return {
     name,
     description,
@@ -168,16 +165,15 @@ const ENEMIES_WITH_ATTACKS = { hand: [0, 1, 2, 3] };
 const PLAYER_ASSASSIN = `${SquadId.Left}-assassin`;
 // Assassin Deck list indices (the first copy of each card).
 const PRECISION_SHOT = 0;
-const COVER_BREAKER = 2;
-const SHIELD_BREAKER = 3;
-const LONG_SHOT = 4;
-const GHOST_SHOT = 6;
-const EXECUTION_ROUND = 7;
-const VANISH = 8;
-const MARK_TARGET = 10;
-const REPOSITION = 11;
-/** Cards that fill the rest of an Assassin's Hand; the ones in slots 1 and 2 are the Pitch for Energy. */
-const ASSASSIN_FILLERS: CardIndex[] = [9, 1, 5];
+const COVER_BREAKER = cardIndex(HeroClass.Assassin, "Cover Breaker");
+const SHIELD_BREAKER = cardIndex(HeroClass.Assassin, "Shield Breaker");
+const LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot");
+const GHOST_SHOT = cardIndex(HeroClass.Assassin, "Ghost Shot");
+const EXECUTION_ROUND = cardIndex(HeroClass.Assassin, "Execution Round");
+const VANISH = cardIndex(HeroClass.Assassin, "Vanish");
+const REPOSITION = cardIndex(HeroClass.Assassin, "Reposition");
+/** Cards that fill the rest of an Assassin's Hand (the card under test is left out); the ones in slots 1 and 2 are the Pitch for Energy. */
+const ASSASSIN_FILLERS: readonly CardIndex[] = [REPOSITION, cardIndex(HeroClass.Assassin, "Long Shot", 1), VANISH, COVER_BREAKER];
 
 /** The Squad remembers an enemy Hero at a tile it can no longer see (a Ghost). */
 function remember(match: MatchState, enemyId: string, position: GridPosition): void {
@@ -218,7 +214,7 @@ function assassinScenario(setup: AssassinSetup): Scenario {
     description: setup.description,
     buildMatch: () =>
       stage(setup.seed, (hero, match) => {
-        arrange(hero(PLAYER_ASSASSIN), setup.at, { hand: [setup.card, ...ASSASSIN_FILLERS] });
+        arrange(hero(PLAYER_ASSASSIN), setup.at, { hand: [setup.card, ...ASSASSIN_FILLERS.filter((index) => index !== setup.card).slice(0, 3)] });
         // An enemy placed for the shot has an empty Hand, so the AI leaves it where it stands (it would walk out of Range or sight).
         for (const [id, position] of Object.entries(setup.enemies ?? {})) arrange(hero(id), position, { hand: [] });
         for (const id of setup.hidden ?? []) hero(id).hidden = 2;
@@ -300,18 +296,6 @@ const ASSASSIN_SCENARIOS: readonly Scenario[] = [
     shots: [500, 1200, 2000, 3000],
   }),
   assassinScenario({
-    name: "mark-target",
-    description: "An Assassin plays Mark Target (normal face) on an enemy Bruiser in sight.",
-    seed: 30, at: { col: 10, row: 3 }, card: MARK_TARGET, enemies: { [RIGHT_BRUISER]: { col: 14, row: 3 } },
-    use: [SHOOT_AT_BRUISER],
-  }),
-  assassinScenario({
-    name: "mark-target-overdrive",
-    description: "An Assassin plays Mark Target in Overdrive on an enemy Bruiser within Range 5: Marked plus 1 damage.",
-    seed: 31, at: { col: 10, row: 3 }, card: MARK_TARGET, enemies: { [RIGHT_BRUISER]: { col: 14, row: 3 } },
-    use: [{ ...SHOOT_AT_BRUISER, use: "overdrive" }],
-  }),
-  assassinScenario({
     name: "reposition",
     description: "An Assassin plays Reposition and then moves three tiles with one Move.",
     seed: 32, at: { col: 6, row: 3 }, card: REPOSITION,
@@ -321,7 +305,7 @@ const ASSASSIN_SCENARIOS: readonly Scenario[] = [
 ];
 
 export const SCENARIOS: readonly Scenario[] = [
-  bruiserCard("slam-shot", "A Bruiser fires Slam Shot (2 damage, Range 3) at an enemy Bruiser two tiles away.", 31, BRUISER_SLAM_SHOT, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+  bruiserCard("slam-shot", "A Bruiser fires Slam Shot (2 damage, Range 1 to 2) at an enemy Bruiser two tiles away.", 31, BRUISER_SLAM_SHOT, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
   bruiserCard("concussion-round", "A Bruiser fires Concussion Round (2 damage and Slow) at an enemy Bruiser two tiles away.", 32, BRUISER_CONCUSSION_ROUND, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
@@ -351,23 +335,15 @@ export const SCENARIOS: readonly Scenario[] = [
   bruiserCard("bulwark", "A Bruiser plays Bulwark: the Shield (3) bubble appears and soaks the enemy Slam Shots of the Resolution.", 36, BRUISER_BULWARK, 1, { use: "primary" }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
-  bruiserCard(
-    "forward-deploy",
-    "A Bruiser plays Forward Deploy on the allied Controller: it gets an extra Move of 2 tiles.",
-    37,
-    BRUISER_FORWARD_DEPLOY,
-    1,
-    { use: "primary", target: ALLY_CONTROLLER, tile: { col: 11, row: 5 } },
-    (hero) => {
-      arrange(hero(ALLY_CONTROLLER), { col: 10, row: 3 }, { hand: [0, 1, 2, 3] });
-    },
-  ),
-  bruiserCard("suppress", "A Bruiser plays Suppress on an enemy Bruiser: Slow, and it cannot go Hidden.", 38, BRUISER_SUPPRESS, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
-    arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+  bruiserCard("charge", "A Bruiser plays Charge on an enemy Bruiser three tiles away: it closes in, ends next to it and gains Shield 1.", 42, BRUISER_CHARGE, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+    arrange(hero(ENEMY_BRUISER), { col: 15, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
-  bruiserCard("reinforce", "A Bruiser plays Reinforce on the allied Controller: Shield (2) on the ally while the enemy shoots.", 39, BRUISER_REINFORCE, 1, { use: "primary", target: ALLY_CONTROLLER }, (hero) => {
-    arrange(hero(ALLY_CONTROLLER), { col: 11, row: 3 }, { hand: [0, 1, 2, 3] });
+  bruiserCard("pull", "A Bruiser plays Pull on an enemy Bruiser four tiles away: it is dragged two tiles toward the Bruiser.", 43, BRUISER_PULL, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+    arrange(hero(ENEMY_BRUISER), { col: 16, row: 3 }, ENEMIES_WITH_ATTACKS);
+  }),
+  bruiserCard("wrecking-blow", "A Bruiser plays Wrecking Blow on an enemy Bruiser behind Half Cover two tiles away: 2 damage, and the Cover is destroyed.", 44, BRUISER_WRECKING_BLOW, 1, { use: "primary", target: ENEMY_BRUISER }, (hero, match) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+    placeHalfCover(match, { col: 14, row: 3 });
   }),
   bruiserCard("adrenal-surge", "A Bruiser plays Adrenal Surge: a permanent +1 Attack for itself.", 40, BRUISER_ADRENAL_SURGE, 2, { use: "primary" }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
@@ -425,9 +401,7 @@ export const SCENARIOS: readonly Scenario[] = [
     steps: [{ slot: 0, use: "move", tile: { col: 6, row: 1 } }],
     resolutionShotsMs: [800, 2500],
   },
-  controllerAttack("pulse-bolt", "The allied Controller fires Pulse Bolt (2 damage, Range 2) at an enemy Bruiser two tiles away; the player's Bruiser waits.", 21, CONTROLLER_PULSE_BOLT),
   controllerAttack("tag-round", "The allied Controller fires Tag Round at an enemy Bruiser two tiles away: 1 damage and Marked; the player's Bruiser waits.", 22, CONTROLLER_TAG_ROUND),
-  controllerAttack("shock-pulse", "The allied Controller fires Shock Pulse at an enemy Bruiser two tiles away: 1 damage and Slow; the player's Bruiser waits.", 23, CONTROLLER_SHOCK_PULSE),
   {
     name: "cover-placed-stays",
     description: "Half Cover placed by Deploy Cover stands through Resolution 1 and is still there after Resolution 2.",
@@ -446,7 +420,7 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "The Controller plays Deploy Cover: the crate drops onto the tile, lands and unfolds into the striped bars, which stay.",
     buildMatch: () =>
       stage(25, (hero) => {
-        arrange(hero(`${SquadId.Left}-controller`), { col: 11, row: 3 }, { hand: [8, 0, 1, 2] });
+        arrange(hero(`${SquadId.Left}-controller`), { col: 11, row: 3 }, { hand: [cardIndex(HeroClass.Controller, "Deploy Cover"), 0, 1, 2] });
       }),
     playerHero: HeroClass.Controller,
     heroId: `${SquadId.Left}-controller`,

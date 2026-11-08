@@ -8,10 +8,9 @@ const fireOf = (_heroId: string, card: string | undefined) => (card === "Long Sh
 
 describe("the flight of a projectile", () => {
   it("flies at the speed of its weapon over the tiles of the Range", () => {
-    // 4 tiles of 24 px: the slug at 0.10 px/ms, the tracer at 0.30, the orb at 0.10.
+    // 4 tiles of 24 px: the slug at 0.10 px/ms, the tracer at 0.30.
     expect(flightMs("Slam Shot", 4)).toBe(960);
     expect(flightMs("Precision Shot", 4)).toBe(320);
-    expect(flightMs("Pulse Bolt", 4)).toBe(960);
   });
 
   it("has no flight for the Long Shot: the line is there at once", () => {
@@ -24,7 +23,7 @@ describe("the flight of a projectile", () => {
   });
 
   it("maps the cards of a class to its weapon", () => {
-    expect(["Concussion Round", "Ghost Shot", "Shock Pulse", "Tag Round", "Breach Charge"].map(weaponOf)).toEqual(["slam", "precision", "pulse", "tag", undefined]);
+    expect(["Concussion Round", "Ghost Shot", "Tag Round", "Breach Charge"].map(weaponOf)).toEqual(["slam", "precision", "tag", undefined]);
   });
 
   it("moves the projectile in proportion to the time since the fire beat", () => {

@@ -93,9 +93,9 @@ describe("plannedTargetLines", () => {
   });
 
   it("draws an ally effect as an Ally line to the allied Hero", () => {
-    const reinforce: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Bruiser, "Reinforce"), target: "c" };
-    expect(plannedTargetLines(grid, heroes, [], [plan("b", [reinforce])])).toMatchObject([
-      { kind: LineKind.Ally, tone: LineTone.Clear, tick: 1, from: bruiser.position, to: controller.position },
+    const reinforce: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Controller, "Reinforce"), target: "b" };
+    expect(plannedTargetLines(grid, heroes, [], [plan("c", [reinforce])])).toMatchObject([
+      { kind: LineKind.Ally, tone: LineTone.Clear, tick: 1, from: controller.position, to: bruiser.position },
     ]);
   });
 

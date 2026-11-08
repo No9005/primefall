@@ -35,7 +35,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 17. As a player, I want enemies that leave sight to appear as Ghosts at their last known position, so that I can make informed predictions without perfect information.
 18. As a player, I want enemies without a known position to remain Unknown, so that scouting has a clear purpose.
 19. As a player, I want my Squad to share vision, so that information gathered by one Hero benefits the entire team.
-20. As a player, I want my Hero to have a fixed 12-card Deck, so that my long-term survival is tied to my card resources.
+20. As a player, I want my Hero to have a fixed Deck (Bruiser 12, Controller 10, Assassin 9 cards; ADR 0025), so that my long-term survival is tied to my card resources.
 21. As a player, I want unblocked damage to remove cards from the top of my Deck, so that every point of damage has a lasting cost.
 22. As a player, I want my Hero to become Exhausted when its Deck and Discard are empty at the end of a Resolution, so that Deck-as-Life creates a clear defeat condition.
 23. As a player, I want my Squad to lose when all three Heroes are Exhausted, so that matches have a decisive end.
@@ -114,7 +114,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - ~~Provide exactly one Overwatch Nest at column 15, row 1, with Full Cover and a limited sightline into the Prime Zone.~~ Removed for now (ADR 0024): the Reactor Deck has no Overwatch Nest.
 - Spawn one Squad on the left edge (column 1, rows 7–9) and the other on the right edge (column 29, rows 7–9), without direct Line of Sight into the Prime Zone.
 - Implement three Hero classes: Bruiser/Vanguard, Controller/Tactician, and Assassin/Striker.
-- Give each Hero a fixed 12-card Deck with no Flex cards.
+- Give each Hero a fixed Deck with no Flex cards: Bruiser 12, Controller 10, Assassin 9 cards (ADR 0025).
 - Implement Deck-as-Life: unblocked damage removes cards from the top of the target’s Deck; a Hero whose Deck and Discard are both empty at the end of a Resolution is Exhausted. An Exhausted Hero is out of the match and its tile becomes Half Cover (it does not obstruct Moves; Cover-destroying effects such as Breach Charge destroy it; a Prime Zone tile stays a Prime Zone tile).
 - Implement Shield as a round-scoped defensive value created through Shield cards, and through Block 2 in Attack and Defend only (the classic mode has no Block action, #358).
 - A **Wait** button next to the Queue slots of the selected Hero adds a Wait (an hourglass slot that needs no card and no Energy and can be removed like any other slot) to the first free slot.
