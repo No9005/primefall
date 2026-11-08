@@ -156,6 +156,22 @@ _Avoid_: Turn, phase
 The central 3 by 3 objective area. A squad wins by controlling it during three consecutive Resolutions.
 _Avoid_: Point, base, capture zone
 
+**Outpost**:
+One of two side zones of the classic mode, worth 1 Victory Point per Resolution to the Squad that controls it (ADR 0024). Active from Round 1.
+_Avoid_: Capture point, flag, side zone
+
+**Control**:
+A Squad controls a zone when it has more non-exhausted Heroes in it than the other Squad (classic mode, ADR 0024).
+_Avoid_: Capture, own, claim
+
+**Contested**:
+A zone with the same number of non-exhausted Heroes of both Squads in it, and at least one each. Nobody controls it and it scores for nobody (classic mode, ADR 0024).
+_Avoid_: Neutral, locked, disputed
+
+**Victory Points**:
+The score of the classic mode (ADR 0024): each Resolution a Squad earns the value of every zone it controls. The first Squad to reach the threshold wins; after the Round Limit the higher score wins.
+_Avoid_: Score points, kills, health
+
 **Round Limit**:
 The maximum of 30 Rounds per match. If no Squad has won by then, the Squad with more cards in its Heroes' Decks wins; equal totals are a draw.
 _Avoid_: Timeout, turn cap
