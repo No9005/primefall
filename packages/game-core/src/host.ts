@@ -281,7 +281,11 @@ export enum EventKind {
   MarkedApplied = "markedApplied",
   /** Knockback pushed `heroId` one tile, from `from` to `to`; a push of two tiles gives two events. */
   Knockback = "knockback",
-  /** `heroId` destroyed the Cover on the tile `to` (Breach Charge). */
+  /** Pull moved `heroId` one tile toward the caster, from `from` to `to`; a pull of two tiles gives two events. */
+  Pull = "pull",
+  /** `heroId` charged at `targetId`: its steps are `Step` events, this one follows them (also when it could not move). */
+  Charged = "charged",
+  /** `heroId` destroyed the Cover on the tile `to` (Breach Charge, Wrecking Blow). */
   CoverDestroyed = "coverDestroyed",
   /** `heroId` placed temporary Half Cover on the tile `to`. */
   CoverPlaced = "coverPlaced",

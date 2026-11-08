@@ -52,7 +52,17 @@ export enum EffectKind {
   BecomeHidden = "becomeHidden",
   TargetGhost = "targetGhost",
   RemoveHalfCoverReduction = "removeHalfCoverReduction",
+  /** Pull: the named enemy moves up to `amount` tiles directly toward the caster (stops like Knockback). */
+  Pull = "pull",
+  /** Charge: the caster moves up to `amount` tiles toward the named enemy and ends next to it, gains Shield and a Range 1 damage bonus. */
+  Charge = "charge",
+  /** The Attack deals `amount` more damage at Range 1 (the Bruiser's Slam Shot). */
+  CloseRangeBonus = "closeRangeBonus",
 }
+
+/** Charge: Shield until the end of the Round, and extra damage of the next Attack at Range 1 in that Round. */
+export const CHARGE_SHIELD = 1;
+export const CHARGE_DAMAGE_BONUS = 1;
 
 /** Who receives an effect that can apply either to the casting Hero or to the card's target. */
 export enum EffectRecipient {
@@ -134,6 +144,8 @@ export function isSimpleAttack(card: CardDefinition): boolean {
         effect.kind === EffectKind.ApplySlow ||
         effect.kind === EffectKind.IgnoreHalfCover ||
         effect.kind === EffectKind.PiercingDamage ||
+        effect.kind === EffectKind.CloseRangeBonus ||
+        effect.kind === EffectKind.DestroyAnyCover ||
         effect.kind === EffectKind.ApplyMarked,
     )
   );
@@ -165,6 +177,8 @@ export const PLAYABLE_UTILITY_EFFECTS = [
   EffectKind.RevealArea,
   EffectKind.PlaceCover,
   EffectKind.RemoveHalfCoverReduction,
+  EffectKind.Pull,
+  EffectKind.Charge,
 ] as const;
 
 /**
@@ -260,9 +274,10 @@ const BRUISER_RANGE = 3;
 const CONTROLLER_RANGE = 2;
 const ASSASSIN_RANGE = 5;
 
+// Range 1 to 2 (ADR 0025): 2 damage, 3 at Range 1.
 const slamShot: CardDefinition = {
-  name: "Slam Shot", type: CardType.Attack, energyCost: 1, range: BRUISER_RANGE,
-  target: CardTarget.VisibleEnemy, effects: [damage(2)],
+  name: "Slam Shot", type: CardType.Attack, energyCost: 1, range: 2,
+  target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.CloseRangeBonus, amount: 1 }],
 };
 const concussionRound: CardDefinition = {
   name: "Concussion Round", type: CardType.Attack, energyCost: 1, range: BRUISER_RANGE,
@@ -274,6 +289,19 @@ const breachCharge: CardDefinition = {
   effects: [damage(2), { kind: EffectKind.DestroyHalfCover }],
   // Destroys any Cover and hurts every Hero on the target tile and around it, allies and the caster included.
   overdrive: [{ kind: EffectKind.DestroyAnyCover }, { kind: EffectKind.DamageHeroesAtAndAroundTarget, amount: 2 }],
+};
+// Not in a Deck yet (the deck ticket adds them): the Bruiser's tools to close in, to move enemies and to wreck Cover.
+export const charge: CardDefinition = {
+  name: "Charge", type: CardType.Utility, energyCost: 1,
+  target: CardTarget.VisibleEnemy, effects: [{ kind: EffectKind.Charge, amount: 3 }],
+};
+export const pull: CardDefinition = {
+  name: "Pull", type: CardType.Utility, energyCost: 1, range: 4,
+  target: CardTarget.VisibleEnemy, effects: [{ kind: EffectKind.Pull, amount: 2 }],
+};
+export const wreckingBlow: CardDefinition = {
+  name: "Wrecking Blow", type: CardType.Attack, energyCost: 1, range: 2,
+  target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.DestroyAnyCover }],
 };
 const shockwave: CardDefinition = {
   name: "Shockwave", type: CardType.Attack, energyCost: 2, range: 1,
