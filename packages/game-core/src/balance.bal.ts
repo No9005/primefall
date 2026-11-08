@@ -11,9 +11,9 @@
 // comparisons between variants.
 
 import { it, vi } from "vitest";
-import { AiStyle, aiStyleFor, planSquad } from "./ai";
+import { AI_WEIGHTS, AiStyle, aiStyleFor, planSquad } from "./ai";
 import { CardTarget, CardType, EffectKind, HERO_DECKS, HeroClass } from "./cards";
-import { type AttackAndDefendRules, EventKind, MatchEndReason, MatchMode, type MatchModeSetting, ROUND_LIMIT, SquadId, ZoneTie } from "./host";
+import { type AttackAndDefendRules, EventKind, MatchEndReason, MatchMode, type MatchModeSetting, ROUND_LIMIT, SquadId, type SquadView, ZoneTie } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type HeroPlan, type SquadPlan } from "./plan";
 import { resolveRound } from "./resolution";
@@ -434,5 +434,252 @@ it("prints one table for all variants", async () => {
   console.log(`\nExposed Hero: a Left Hero on a Prime Zone tile, a Bruiser and an Assassin two tiles away attack it every Round. Mean Rounds until Exhausted (no Block action in the classic mode; cap ${EXPOSED_ROUND_CAP})`);
   console.log(exposedLine(exposedHeader));
   exposedRows.forEach((row) => console.log(exposedLine(row)));
+});
+
+// The five gauges of docs/design/game-goals.md, for the classic mode (Victory Points), AI against AI. Nothing here changes
+// a rule or the shipped AI: strategies are built from the existing seams (`planSquad`, AI Styles, the `focus` weight).
+
+const GAUGES = {
+  // Tug of war
+  leadChangesMin: 2,
+  leadChangeMatchesMinPercent: 50,
+  marginMaxShare: 1 / 3,
+  marginMatchesMinPercent: 50,
+  shieldAttackMaxPercent: 50,
+  // Strategy balance
+  strategyWinMin: 40,
+  strategyWinMax: 60,
+  strategyBeatsOver: 60,
+  strategyPairSeedsMin: 100,
+  // Variety
+  varietySeeds: 300,
+  varietyMinPlans: 5,
+  // Pace
+  roundsMax: 15,
+  exhaustionMinPercent: 30,
+  stallsMaxPercent: 2,
+  // Fairness
+  sideSpreadMaxPercent: 5,
+};
+
+/** The `focus` weight of the Focus fire strategy (the shipped value is `AI_WEIGHTS.focus`). */
+const FOCUS_FIRE_WEIGHT = 40;
+
+interface Strategy {
+  name: string;
+  /** How the strategy plans a Squad; absent while it cannot be measured. */
+  plan?: (view: SquadView) => SquadPlan;
+  /** Why the strategy cannot be measured yet. */
+  missing?: string;
+}
+
+const STRATEGIES: Strategy[] = [
+  { name: "Rusher", plan: (view) => planSquad(view) },
+  {
+    name: "Focus fire",
+    plan: (view) => {
+      const shipped = AI_WEIGHTS.focus;
+      AI_WEIGHTS.focus = FOCUS_FIRE_WEIGHT;
+      try {
+        return planSquad(view);
+      } finally {
+        AI_WEIGHTS.focus = shipped;
+      }
+    },
+  },
+  { name: "Waiter", missing: "the Attacker branch of the AI waits for the Prime Zone only and does not know the three zones (#363)" },
+  { name: "Holder", missing: "the Defender branch of the AI holds the Prime Zone only and does not know the three zones (#363)" },
+  { name: "Flanker", missing: "flanking over lanes needs the new map (#361)" },
+];
+
+/** What one gauge match records. */
+interface GoalMatch {
+  rounds: number;
+  winner?: SquadId;
+  reason?: MatchEndReason;
+  exhausted: boolean;
+  leadChanges: number;
+  points: number;
+  margin: number;
+  /** Card advantage (cards not in the Exile) of the winner over the loser; absent for a draw. */
+  cardAdvantage?: number;
+  /** Hero-rounds with a Shield-giving action and an Attack in the same Queue, and all Hero-rounds. */
+  shieldAttack: number;
+  heroRounds: number;
+}
+
+const hasEffect = (match: MatchState, heroId: string, card: number, kind: EffectKind): boolean => {
+  const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
+  return HERO_DECKS[hero.heroClass][card]!.effects.some((effect) => effect.kind === kind);
+};
+
+/** A Shield-giving action (Block or a card with a Shield effect) and an Attack (a card with a Damage effect) in one Queue. */
+function isShieldAttack(match: MatchState, plan: HeroPlan): boolean {
+  const shields = plan.queue.some(
+    (action) => action.kind === ActionKind.Block || (action.kind === ActionKind.Primary && hasEffect(match, plan.heroId, action.card, EffectKind.GainShield)),
+  );
+  const attacks = plan.queue.some((action) => action.kind === ActionKind.Primary && hasEffect(match, plan.heroId, action.card, EffectKind.Damage));
+  return shields && attacks;
+}
+
+const movePlanOf = (plan: SquadPlan): string =>
+  JSON.stringify(
+    plan.heroes.map((hero) => [hero.heroId, hero.queue.map((action) => (action.kind === ActionKind.Move ? [action.destination.col, action.destination.row] : action.kind))]),
+  );
+
+/** The Squad ahead on points, or undefined at a tie. */
+function leaderOf(scores: Record<SquadId, number>): SquadId | undefined {
+  if (scores[SquadId.Left] === scores[SquadId.Right]) return undefined;
+  return scores[SquadId.Left] > scores[SquadId.Right] ? SquadId.Left : SquadId.Right;
+}
+
+/** The figures of a finished match that do not need the Rounds. */
+function finalFigures(match: MatchState): Pick<GoalMatch, "rounds" | "winner" | "reason" | "points" | "margin" | "cardAdvantage"> {
+  const { result, scores } = match;
+  const winner = result?.winner;
+  const loser = winner === SquadId.Left ? SquadId.Right : SquadId.Left;
+  return {
+    rounds: match.round,
+    winner,
+    reason: result?.reason,
+    points: scores[SquadId.Left] + scores[SquadId.Right],
+    margin: Math.abs(scores[SquadId.Left] - scores[SquadId.Right]),
+    cardAdvantage: winner && result.cardTotals ? result.cardTotals[winner] - result.cardTotals[loser] : undefined,
+  };
+}
+
+function playGoalMatch(seed: number, strategies: readonly [Strategy, Strategy]): GoalMatch {
+  let match = prepareMatch(seed, {});
+  const tally = { exhausted: false, leadChanges: 0, shieldAttack: 0, heroRounds: 0 };
+  let leader: SquadId | undefined;
+  for (let round = 1; round <= ROUND_LIMIT * 2 && !match.result; round++) {
+    const plans = [SquadId.Left, SquadId.Right].map((squad, side) => strategies[side]!.plan!(buildSquadView(match, squad)));
+    for (const plan of plans.flatMap((squadPlan) => squadPlan.heroes)) {
+      tally.heroRounds++;
+      if (isShieldAttack(match, plan)) tally.shieldAttack++;
+    }
+    const resolution = resolveRound(match, plans);
+    if (resolution.events.some((event) => event.kind === EventKind.Exhausted)) tally.exhausted = true;
+    const ahead = leaderOf(resolution.match.scores);
+    if (ahead !== undefined && leader !== undefined && ahead !== leader) tally.leadChanges++;
+    leader = ahead ?? leader;
+    match = resolution.match.result ? resolution.match : startRound(resolution.match);
+  }
+  return { ...tally, ...finalFigures(match) };
+}
+
+const share = (count: number, of: number) => (of === 0 ? 0 : (count / of) * 100);
+const miss = (ok: boolean) => (ok ? "" : " !");
+
+function printTable(title: string, rows: string[][]): void {
+  const widths = rows[0]!.map((_, column) => Math.max(...rows.map((row) => row[column]!.length)));
+  console.log(`\n${title}`);
+  rows.forEach((row) => console.log(row.map((cell, column) => pad(cell, widths[column]!)).join("  ")));
+}
+
+/** Plays `seeds` matches of one pairing; the first strategy sits on the Left Squad in even seeds and on the Right in odd ones. */
+function playPairing(first: Strategy, second: Strategy, seeds: number, offset: number): { matches: GoalMatch[]; firstWins: number } {
+  const matches: GoalMatch[] = [];
+  let firstWins = 0;
+  for (let seed = offset + 1; seed <= offset + seeds; seed++) {
+    const firstIsLeft = seed % 2 === 0;
+    const played = playGoalMatch(seed, firstIsLeft ? [first, second] : [second, first]);
+    matches.push(played);
+    if (played.winner === undefined) firstWins += 0.5;
+    else if ((played.winner === SquadId.Left) === firstIsLeft) firstWins++;
+  }
+  return { matches, firstWins };
+}
+
+const countOf = (matches: GoalMatch[], predicate: (match: GoalMatch) => boolean) => matches.filter(predicate).length;
+
+function printTugOfWar(mirror: GoalMatch[]): void {
+  const seeds = mirror.length;
+  const changed = share(countOf(mirror, (m) => m.leadChanges >= GAUGES.leadChangesMin), seeds);
+  const closeMargin = share(countOf(mirror, (m) => m.points > 0 && m.margin <= m.points * GAUGES.marginMaxShare), seeds);
+  const shieldAttack = share(mirror.reduce((sum, m) => sum + m.shieldAttack, 0), mirror.reduce((sum, m) => sum + m.heroRounds, 0));
+  printTable(`Gauge 1, tug of war (Rusher vs Rusher, ${seeds} matches). "!" = misses its target`, [
+    ["measure", "value", "target"],
+    [`matches with >= ${GAUGES.leadChangesMin} lead changes`, `${changed.toFixed(0)}%${miss(changed >= GAUGES.leadChangeMatchesMinPercent)}`, `>= ${GAUGES.leadChangeMatchesMinPercent}%`],
+    ["matches with margin <= 1/3 of the points", `${closeMargin.toFixed(0)}%${miss(closeMargin >= GAUGES.marginMatchesMinPercent)}`, `most (>= ${GAUGES.marginMatchesMinPercent}%)`],
+    ["Hero-rounds with Shield action + Attack", `${shieldAttack.toFixed(0)}%${miss(shieldAttack <= GAUGES.shieldAttackMaxPercent)}`, `<= ${GAUGES.shieldAttackMaxPercent}%`],
+  ]);
+}
+
+async function printStrategyBalance(seeds: number, offset: number): Promise<void> {
+  const measurable = STRATEGIES.filter((strategy) => strategy.plan);
+  const pairSeeds = Math.max(seeds, GAUGES.strategyPairSeedsMin);
+  const rates = new Map<string, number>();
+  for (const a of measurable) {
+    for (const b of measurable) {
+      // A pairing takes seconds of synchronous work: yield so that the test runner can keep talking to its worker.
+      // eslint-disable-next-line no-restricted-globals -- the harness runs in Node, only the shipped code must avoid browser APIs
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      rates.set(`${a.name}|${b.name}`, a === b ? 50 : share(playPairing(a, b, pairSeeds, offset).firstWins, pairSeeds));
+    }
+  }
+  const matrix: string[][] = [["win rate of row vs column", ...measurable.map((s) => s.name), "average", "beats one > 60%", "beaten by one > 60%"]];
+  for (const a of measurable) {
+    const opponents = measurable.filter((b) => b !== a).map((b) => rates.get(`${a.name}|${b.name}`)!);
+    const average = opponents.length === 0 ? 50 : opponents.reduce((sum, rate) => sum + rate, 0) / opponents.length;
+    const beats = opponents.some((rate) => rate > GAUGES.strategyBeatsOver);
+    const beaten = opponents.some((rate) => rate < 100 - GAUGES.strategyBeatsOver);
+    matrix.push([
+      a.name,
+      ...measurable.map((b) => (a === b ? "-" : `${rates.get(`${a.name}|${b.name}`)!.toFixed(0)}%`)),
+      `${average.toFixed(0)}%${miss(average >= GAUGES.strategyWinMin && average <= GAUGES.strategyWinMax)}`,
+      beats ? "yes" : "no !",
+      beaten ? "yes" : "no !",
+    ]);
+  }
+  printTable(`Gauge 2, strategy balance (${pairSeeds} matches per pair, both seats, draws count half). Target: average ${GAUGES.strategyWinMin}-${GAUGES.strategyWinMax}%`, matrix);
+  for (const strategy of STRATEGIES.filter((s) => s.missing)) console.log(`  ${strategy.name}: not measurable yet, ${strategy.missing}`);
+  console.log("  The gauge is complete only after #363 and #361.");
+}
+
+function printVariety(offset: number): void {
+  const plans = new Set<string>();
+  for (let seed = offset + 1; seed <= offset + GAUGES.varietySeeds; seed++) {
+    plans.add(movePlanOf(STRATEGIES[0]!.plan!(buildSquadView(prepareMatch(seed, {}), SquadId.Left))));
+  }
+  printTable(`Gauge 3, variety (Rusher, Left Squad, ${GAUGES.varietySeeds} seeds)`, [
+    ["measure", "value", "target"],
+    ["different Round 1 move plans", `${plans.size}${miss(plans.size >= GAUGES.varietyMinPlans)}`, `>= ${GAUGES.varietyMinPlans}`],
+  ]);
+}
+
+function printPaceAndFairness(mirror: GoalMatch[]): void {
+  const seeds = mirror.length;
+  const mean = mirror.reduce((sum, m) => sum + m.rounds, 0) / seeds;
+  const longest = Math.max(...mirror.map((m) => m.rounds));
+  const exhaustion = share(countOf(mirror, (m) => m.exhausted), seeds);
+  // In the classic mode the Round limit is a normal end decided by the points; a stall is a match nobody scored in (or without result).
+  const stalls = share(countOf(mirror, (m) => !m.reason || (m.reason === MatchEndReason.RoundLimit && m.points === 0)), seeds);
+  const left = share(countOf(mirror, (m) => m.winner === SquadId.Left), seeds);
+  const right = share(countOf(mirror, (m) => m.winner === SquadId.Right), seeds);
+  const spread = Math.abs(left - right);
+  const decided = mirror.filter((m) => m.cardAdvantage !== undefined);
+  const advantage = decided.length === 0 ? 0 : decided.reduce((sum, m) => sum + m.cardAdvantage!, 0) / decided.length;
+  printTable("Gauges 4 and 5, pace and fairness (Rusher vs Rusher)", [
+    ["measure", "value", "target"],
+    ["longest match (Rounds), mean", `${longest}${miss(longest <= GAUGES.roundsMax)}, ${mean.toFixed(1)}`, `<= ${GAUGES.roundsMax}`],
+    ["matches with Exhaustion", `${exhaustion.toFixed(0)}%${miss(exhaustion >= GAUGES.exhaustionMinPercent)}`, `>= ${GAUGES.exhaustionMinPercent}%`],
+    ["stalls (no points scored, or no result)", `${stalls.toFixed(1)}%${miss(stalls <= GAUGES.stallsMaxPercent)}`, `<= ${GAUGES.stallsMaxPercent}%`],
+    ["Left / Right wins, spread", `${left.toFixed(0)}% / ${right.toFixed(0)}%, ${spread.toFixed(1)}%${miss(spread <= GAUGES.sideSpreadMaxPercent)}`, `<= ${GAUGES.sideSpreadMaxPercent}%`],
+    ["card advantage of the winner, mean", advantage.toFixed(1), "report only"],
+  ]);
+}
+
+it("prints the five gauges of the game goals", async () => {
+  const only = setting("only");
+  if (only && !only.includes("gauge")) return;
+  const seeds = Number(setting("seeds") ?? 300);
+  const offset = Number(setting("seed_offset") ?? 0);
+  const rusher = STRATEGIES[0]!;
+  const mirror = playPairing(rusher, rusher, seeds, offset).matches;
+  printTugOfWar(mirror);
+  await printStrategyBalance(seeds, offset);
+  printVariety(offset);
+  printPaceAndFairness(mirror);
 });
 
