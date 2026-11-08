@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { playAiMatch } from "./ai-match";
-import { type AttackAndDefendRules, DEFENDER_ROUND_LIMIT, MatchEndReason, MatchMode, type MatchModeSetting, SquadId, ZoneTie } from "./host";
+import { type AttackAndDefendRules, DEFENDER_ROUND_LIMIT, MatchEndReason, MatchMode, type MatchModeSetting, ROUND_LIMIT, SquadId, ZoneTie } from "./host";
 import { createLocalHost, restoreLocalHost, SNAPSHOT_VERSION } from "./local-host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { findTiles, TileKind, tileAt } from "./reactor-deck";
@@ -117,7 +117,7 @@ describe("Attack and Defend: match end", () => {
     expect(resolveEmpty(match).result).toMatchObject({ winner: SquadId.Right, reason: MatchEndReason.PrimeZoneHeld });
   });
 
-  it("does not apply the 30 Round limit", () => {
+  it("does not apply the classic Round limit", () => {
     const match = matchWith(0, 3);
     match.round = 29;
     expect(resolveEmpty(match).result?.reason).toBe(MatchEndReason.DefenceHeld);
@@ -149,7 +149,7 @@ describe("Attack and Defend: Squad View and host", () => {
     const resumed = restoreLocalHost(JSON.stringify({ ...saved, version: 1 }))!;
     expect(SNAPSHOT_VERSION).toBeGreaterThan(1);
     expect((await resumed.getSquadView(SquadId.Left)).attackAndDefend).toBeUndefined();
-    expect((await resumed.getSquadView(SquadId.Left)).roundLimit).toBe(30);
+    expect((await resumed.getSquadView(SquadId.Left)).roundLimit).toBe(ROUND_LIMIT);
   });
 
   it("is deterministic, whatever the order of the plans", () => {
@@ -163,16 +163,17 @@ describe("Attack and Defend: Squad View and host", () => {
 });
 
 describe("the classic mode", () => {
-  // Recorded from the classic path (AI against AI, 60 Rounds at most); re-recorded when the AI began to score its Moves (#329) for seed 3 when Crossfire was added (#342), when the AI began to focus fire (#347), and for seed 11 when Shield Breaker joined the Assassin Deck (#344).
+  // Recorded from the classic path (AI against AI, 60 Rounds at most). Re-recorded when the classic mode became Victory Points
+  // from three zones (#357): the matches now end at the Round limit of 15 or by points, not by three Resolutions in the Prime Zone.
   const recorded = [
-    { seed: 3, round: 5, winner: SquadId.Left, deckTotals: { left: 12, right: 11 }, positions: "14,7:4 15,7:4 14,8:4 16,7:4 16,8:3 16,9:4", rng: 3775861423 },
-    { seed: 11, round: 6, winner: SquadId.Right, deckTotals: { left: 10, right: 18 }, positions: "14,7:5 15,7:0 14,8:5 16,7:2 16,8:4 16,9:12", rng: 1688530830 },
-    { seed: 42, round: 6, winner: SquadId.Right, deckTotals: { left: 17, right: 9 }, positions: "14,7:1 15,7:4 13,10:12 16,7:4 16,8:4 16,9:1", rng: 1816413255 },
+    { seed: 3, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 0 }, deckTotals: { left: 18, right: 13 }, positions: "14,7:2 15,7:4 14,8:12 16,7:8 16,8:4 16,9:1", rng: 3441002838 },
+    { seed: 11, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 24 }, deckTotals: { left: 5, right: 6 }, positions: "14,7:4 15,7:0 14,8:1 16,7:2 16,8:3 16,9:1", rng: 1297307348 },
+    { seed: 42, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 22 }, deckTotals: { left: 18, right: 20 }, positions: "14,7:2 15,7:4 14,8:12 16,7:5 16,8:3 16,9:12", rng: 1417613473 },
   ];
 
-  it.each(recorded)("plays seed $seed exactly as recorded", ({ seed, round, winner, deckTotals, positions, rng }) => {
+  it.each(recorded)("plays seed $seed exactly as recorded", ({ seed, round, winner, reason, scores, deckTotals, positions, rng }) => {
     const { match } = playAiMatch(seed, 60);
-    expect(match.result).toEqual({ winner, reason: MatchEndReason.PrimeZoneHeld, round, deckTotals });
+    expect(match.result).toMatchObject({ winner, reason, round, scores, deckTotals });
     expect(match.heroes.map((hero) => `${hero.position.col},${hero.position.row}:${hero.deck.length}`).join(" ")).toBe(positions);
     expect(match.rngState).toBe(rng);
   });

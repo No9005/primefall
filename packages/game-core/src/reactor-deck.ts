@@ -7,6 +7,7 @@ export enum TileKind {
   FullCover = "fullCover",
   HalfCover = "halfCover",
   PrimeZone = "primeZone",
+  Outpost = "outpost",
   OverwatchNest = "overwatchNest",
   Spawn = "spawn",
 }
@@ -36,6 +37,7 @@ const LEGEND: Record<string, TileKind> = {
   H: TileKind.HalfCover,
   P: TileKind.PrimeZone,
   O: TileKind.OverwatchNest,
+  X: TileKind.Outpost,
   S: TileKind.Spawn,
 };
 
@@ -219,14 +221,15 @@ export function shotLine(grid: Grid, from: GridPosition, to: GridPosition, range
 
 /**
  * The Reactor Deck: 31 by 17 tiles, mirror-symmetric around the centre column (ADR 0016).
- * `#` Wall, `H` Half Cover, `P` Prime Zone, `O` Overwatch Nest, `S` Spawn, `.` open floor.
+ * The two Outposts (3 by 2 tiles, rows 3-4 and 12-13) are an interim placement; the real map comes later.
+ * `#` Wall, `H` Half Cover, `P` Prime Zone, `X` Outpost, `O` Overwatch Nest, `S` Spawn, `.` open floor.
  */
 export const REACTOR_DECK: Grid = parseGrid([
   "###############################",
   "#..............O..............#",
   "#...H...HH...HH.HH...HH...H...#",
-  "#.............................#",
-  "#.....HH..##.H...H.##..HH.....#",
+  "#.............XXX.............#",
+  "#.....HH..##.HXXXH.##..HH.....#",
   "#.............H.H.............#",
   "#....#######HH...HH#######....#",
   "#S............PPP............S#",
@@ -234,8 +237,8 @@ export const REACTOR_DECK: Grid = parseGrid([
   "#S............PPP............S#",
   "#....#######HH...HH#######....#",
   "#.............H.H.............#",
-  "#.....HH..##.H...H.##..HH.....#",
-  "#.............................#",
+  "#.....HH..##.HXXXH.##..HH.....#",
+  "#.............XXX.............#",
   "#...H...HH...HH.HH...HH...H...#",
   "#.............................#",
   "###############################",

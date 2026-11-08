@@ -3,7 +3,7 @@
 
 import { aiStyleFor, planSquad } from "./ai";
 import { type MatchHost, MatchMode, type MatchModeSetting, SquadId, type SquadView, type SubmitResult } from "./host";
-import { buildSquadView, createMatch, type MatchState, recordSightings, startRound } from "./match";
+import { buildSquadView, createMatch, type MatchState, recordSightings, startRound, ZONES } from "./match";
 import { type SquadPlan, validatePlan } from "./plan";
 import { withWreck } from "./reactor-deck";
 import { getSquadEvents, resolveRound } from "./resolution";
@@ -49,6 +49,8 @@ export function restoreLocalHost(snapshot: string): LocalMatchHost | undefined {
  */
 function upgradeSavedMatch(match: MatchState): MatchState {
   if (match.mode === undefined) match = { ...match, mode: { kind: MatchMode.Classic } };
+  // Matches saved before the Victory Points start with none.
+  if (match.scores === undefined) match = { ...match, scores: { [SquadId.Left]: 0, [SquadId.Right]: 0 }, zoneControl: ZONES.map(() => ({ contested: false })) };
   if (match.knownWrecks !== undefined) return match;
   const grid = match.heroes.filter((hero) => hero.exhausted).reduce((current, hero) => withWreck(current, hero.position), match.grid);
   const upgraded: MatchState = { ...match, grid, knownWrecks: { [SquadId.Left]: [], [SquadId.Right]: [] } };

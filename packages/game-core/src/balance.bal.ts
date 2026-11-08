@@ -292,10 +292,13 @@ function playRound(match: MatchState, tweaks: Tweaks, totals: Totals): { match: 
   return { match: next.result ? next : startRound(next), exhausted };
 }
 
+/** The matches decided by the zones: the Attacker's three Resolutions in Attack and Defend, the Victory Points in the classic mode. */
+const ZONE_END_REASONS: readonly (MatchEndReason | undefined)[] = [MatchEndReason.PrimeZoneHeld, MatchEndReason.VictoryPoints];
+
 function recordTotals(match: MatchState, exhausted: number, totals: Totals): void {
   totals.rounds.push(match.round);
   const reason = match.result?.reason;
-  if (reason === MatchEndReason.PrimeZoneHeld) totals.zoneEnds++;
+  if (ZONE_END_REASONS.includes(reason)) totals.zoneEnds++;
   if (reason === MatchEndReason.RoundLimit || !reason) totals.stalls++;
   if (exhausted > 0) totals.exhaustedMatches++;
   totals.exhaustedHeroes += exhausted;
@@ -406,7 +409,7 @@ it("prints one table for all variants", async () => {
     ]);
   }
   const header = [
-    "variant", "rounds", "stalls", "zone win", "w/ exhaustion", "exh. heroes", "hits", "damage", "L/R spread", "L wins", "R wins",
+    "variant", "rounds", "stalls", "zone/points win", "w/ exhaustion", "exh. heroes", "hits", "damage", "L/R spread", "L wins", "R wins",
     "attacker win", "defence held", "exh. on Defender", "Defender side spread",
   ];
   const widths = header.map((title, column) => Math.max(title.length, ...rows.map((row) => row[column]!.length)));

@@ -8,15 +8,59 @@ import {
   type RevealedArea,
   DEFENDER_ROUND_LIMIT,
   MatchMode,
+  OUTPOST_UNLOCK_ROUND,
+  OUTPOST_VALUE,
+  PRIME_ZONE_UNLOCK_ROUND,
+  PRIME_ZONE_VALUE,
   type MatchModeSetting,
   ROUND_LIMIT,
   SquadId,
   type HeroView,
   type SquadView,
   Visibility,
+  type ZoneControl,
+  ZoneKind,
+  type ZoneView,
 } from "./host";
 import { chebyshevDistance } from "./plan";
-import { destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, REACTOR_DECK, TileKind } from "./reactor-deck";
+import { destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
+
+/** A scoring zone of the classic mode, read from the Reactor Deck. */
+export interface ZoneDefinition {
+  kind: ZoneKind;
+  tiles: readonly GridPosition[];
+  value: number;
+  unlockRound: number;
+}
+
+/** The tile groups of one kind: 4-connected tiles form one zone, in reading order. */
+function tileGroups(grid: Grid, kind: TileKind): GridPosition[][] {
+  const groups: GridPosition[][] = [];
+  const seen = new Set<string>();
+  for (const start of findTiles(grid, kind)) {
+    if (seen.has(`${start.col},${start.row}`)) continue;
+    const group: GridPosition[] = [];
+    const open = [start];
+    seen.add(`${start.col},${start.row}`);
+    while (open.length > 0) {
+      const tile = open.pop()!;
+      group.push(tile);
+      for (const next of [{ col: tile.col + 1, row: tile.row }, { col: tile.col - 1, row: tile.row }, { col: tile.col, row: tile.row + 1 }, { col: tile.col, row: tile.row - 1 }]) {
+        if (tileAt(grid, next) !== kind || seen.has(`${next.col},${next.row}`)) continue;
+        seen.add(`${next.col},${next.row}`);
+        open.push(next);
+      }
+    }
+    groups.push(group.sort((a, b) => a.row - b.row || a.col - b.col));
+  }
+  return groups;
+}
+
+/** The zones of the classic mode: the Prime Zone first, then the Outposts. Values and unlock Rounds are the constants in host.ts. */
+export const ZONES: readonly ZoneDefinition[] = [
+  ...tileGroups(REACTOR_DECK, TileKind.PrimeZone).map((tiles) => ({ kind: ZoneKind.PrimeZone, tiles, value: PRIME_ZONE_VALUE, unlockRound: PRIME_ZONE_UNLOCK_ROUND })),
+  ...tileGroups(REACTOR_DECK, TileKind.Outpost).map((tiles) => ({ kind: ZoneKind.Outpost, tiles, value: OUTPOST_VALUE, unlockRound: OUTPOST_UNLOCK_ROUND })),
+];
 
 const samePosition = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
 
@@ -106,8 +150,12 @@ export interface MatchState {
   knownWrecks: Record<SquadId, GridPosition[]>;
   placedCover: PlacedCover[];
   revealedAreas: ActiveReveal[];
-  /** The Squad that controls the Prime Zone and for how many consecutive Resolutions (ADR 0010). */
+  /** Attack and Defend only: the Squad that controls the Prime Zone and for how many consecutive Resolutions (ADR 0010, ADR 0022). Unused in the classic mode. */
   primeZone: { controller?: SquadId; progress: number };
+  /** Classic: Victory Points of each Squad. */
+  scores: Record<SquadId, number>;
+  /** Classic: control of each zone of `ZONES` after the last Resolution. */
+  zoneControl: ZoneControl[];
   /** Classic by default; in Attack and Defend one Squad is the Defender and the other the Attacker (ADR 0022). */
   mode: MatchModeSetting;
   /** Set when a victory condition is met; the match accepts no further Rounds. */
@@ -163,6 +211,8 @@ export function createMatch(seed: number, mode: MatchModeSetting = { kind: Match
     placedCover: [],
     revealedAreas: [],
     primeZone: { progress: 0 },
+    scores: { [SquadId.Left]: 0, [SquadId.Right]: 0 },
+    zoneControl: ZONES.map(() => ({ contested: false })),
     mode,
   };
   for (const squad of [SquadId.Left, SquadId.Right]) {
@@ -336,6 +386,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
       return { ...identity, visibility: Visibility.Unknown };
     });
   const { controller, progress } = match.primeZone;
+  const classic = match.mode.kind === MatchMode.Classic;
   const primeProgress = {
     [SquadId.Left]: controller === SquadId.Left ? progress : 0,
     [SquadId.Right]: controller === SquadId.Right ? progress : 0,
@@ -365,7 +416,16 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
           return { roundLimit, attackAndDefend: { defender: mode.defender, roundsLeft: match.result ? 0 : Math.max(0, roundLimit - match.round + 1) } };
         })()
       : { roundLimit: ROUND_LIMIT };
+  const zones: ZoneView[] = ZONES.map((zone, i) => ({
+    kind: zone.kind,
+    tiles: zone.tiles.map((tile) => ({ ...tile })),
+    value: zone.value,
+    unlockRound: zone.unlockRound,
+    active: match.round >= zone.unlockRound,
+    ...match.zoneControl[i]!,
+  }));
+  const points = classic ? { scores: { ...match.scores }, zones } : {};
   return {
-    squad, round: match.round, ...modeView, primeProgress, ...result, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, enemies,
+    squad, round: match.round, ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, enemies,
   };
 }

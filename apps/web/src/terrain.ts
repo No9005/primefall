@@ -161,6 +161,7 @@ const tileKey = ({ col, row }: GridPosition) => `${col},${row}`;
 
 /** `lit` undefined means no sight is applied: plain colours. */
 function floorStyle(kind: TileKind, { col, row }: GridPosition, nextToZone: boolean, lit: boolean | undefined): { fill: number; edge: number } {
+  if (kind === TileKind.Outpost) return lit === false ? TERRAIN_STYLE.outpostDark : TERRAIN_STYLE.outpost;
   if (lit !== undefined) {
     if (!lit) return kind === TileKind.PrimeZone ? TERRAIN_STYLE.primeZoneDark : TERRAIN_STYLE.floorDark;
     return kind === TileKind.PrimeZone ? TERRAIN_STYLE.primeZone : TERRAIN_STYLE.floorLit;

@@ -11,8 +11,44 @@ export enum SquadId {
   Right = "right",
 }
 
-/** Rounds per match (Round Limit, ADR 0019). */
-export const ROUND_LIMIT = 30;
+/** Rounds per match in the classic mode (Round Limit; docs/design/game-goals.md). */
+export const ROUND_LIMIT = 15;
+
+/** Victory Points a Squad needs to win the classic mode at once. */
+export const VICTORY_POINTS_TO_WIN = 30;
+
+/** Victory Points per Resolution for controlling the Prime Zone. */
+export const PRIME_ZONE_VALUE = 2;
+/** Victory Points per Resolution for controlling one Outpost. */
+export const OUTPOST_VALUE = 1;
+/** The Round from which the Prime Zone scores (it is inactive before). */
+export const PRIME_ZONE_UNLOCK_ROUND = 4;
+/** The Round from which an Outpost scores. */
+export const OUTPOST_UNLOCK_ROUND = 1;
+
+export enum ZoneKind {
+  PrimeZone = "primeZone",
+  Outpost = "outpost",
+}
+
+/** Who controls a zone after the last Resolution (classic mode). Nobody when it is empty or inactive. */
+export interface ZoneControl {
+  controller?: SquadId;
+  /** Both Squads have equally many non-Exhausted Heroes in it, at least one each: nobody scores. */
+  contested: boolean;
+}
+
+/** One zone of the classic mode as a Squad sees it: public information, like the scores. */
+export interface ZoneView extends ZoneControl {
+  kind: ZoneKind;
+  tiles: readonly GridPosition[];
+  /** Victory Points per Resolution for the controlling Squad. */
+  value: number;
+  /** The Round from which the zone scores. */
+  unlockRound: number;
+  /** An inactive zone scores nothing yet. */
+  active: boolean;
+}
 
 /** Rounds the Defender must survive in Attack and Defend (ADR 0022); replaces `ROUND_LIMIT` in that mode. */
 export const DEFENDER_ROUND_LIMIT = 12;
@@ -51,11 +87,13 @@ export const PLANNING_TIMER_SECONDS = 60;
 
 /** Why a match ended (ADR 0010, ADR 0011, ADR 0019). */
 export enum MatchEndReason {
-  /** A Squad controlled the Prime Zone for three consecutive Resolutions. */
+  /** Attack and Defend: the Attacker controlled the Prime Zone for three consecutive Resolutions. */
   PrimeZoneHeld = "primeZoneHeld",
+  /** Classic: a Squad reached the Victory Points needed to win. */
+  VictoryPoints = "victoryPoints",
   /** All three Heroes of a Squad are Exhausted. */
   AllHeroesExhausted = "allHeroesExhausted",
-  /** The Round Limit passed; decided by the cards in all Decks. */
+  /** Classic: the Round Limit passed; decided by Victory Points, then by the cards not in the Exile. */
   RoundLimit = "roundLimit",
   /** Attack and Defend: the Defender survived the Round limit of the mode (ADR 0022). */
   DefenceHeld = "defenceHeld",
@@ -70,9 +108,13 @@ export interface MatchResult {
   round: number;
   /** Cards in all Decks of each Squad's Heroes at the end. */
   deckTotals: Record<SquadId, number>;
+  /** Classic only: the Victory Points at the end. */
+  scores?: Record<SquadId, number>;
+  /** Classic only: cards not in the Exile (Deck, Discard and Hand of all Heroes), the tiebreak of equal scores. */
+  cardTotals?: Record<SquadId, number>;
 }
 
-/** Consecutive Resolutions a Squad must control the Prime Zone to win (ADR 0010). */
+/** Consecutive Resolutions the Attacker must control the Prime Zone to win Attack and Defend (ADR 0010, ADR 0022). */
 export const PRIME_ZONE_WIN_RESOLUTIONS = 3;
 
 export interface HeroView {
@@ -169,8 +211,12 @@ export interface SquadView {
   roundLimit: number;
   /** Only in Attack and Defend (public information): the Defender, and the Rounds left until Defence Held. */
   attackAndDefend?: { defender: SquadId; roundsLeft: number };
-  /** Consecutive Resolutions each Squad has controlled the Prime Zone (0 for the Squad that does not). */
+  /** Attack and Defend: consecutive Resolutions each Squad has controlled the Prime Zone (0 for the Squad that does not). Always 0 in the classic mode. */
   primeProgress: Record<SquadId, number>;
+  /** Classic only: the Victory Points of both Squads. */
+  scores?: Record<SquadId, number>;
+  /** Classic only: the Prime Zone and the Outposts. Control is the result of the last Resolution; enemy Hero positions stay in the Fog. */
+  zones?: readonly ZoneView[];
   /** Set once the match is over; no further plans are accepted. */
   result?: MatchResult;
   /**

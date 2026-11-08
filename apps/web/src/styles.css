@@ -286,6 +286,11 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .prime-pip-filled { background: var(--teal); border-color: var(--teal); animation: prime-pip-pop 0.5s ease-out; }
 .prime-enemy .prime-label { color: var(--red); }
 .prime-enemy .prime-pip-filled { background: var(--red); border-color: var(--red); }
+/* Classic mode: the two Victory Point scores in the Zone pill (own : enemy). */
+.prime-vp-score { font: 600 16px var(--font-number); min-width: 1.4em; text-align: center; }
+.prime-vp-own { color: var(--teal); }
+.prime-vp-enemy { color: var(--red); }
+.prime-vp-divider { font: 600 14px var(--font-number); color: var(--muted); margin: 0 -4px; }
 .prime-contested { border-color: var(--amber); }
 .prime-contested .prime-label { color: var(--amber); }
 @keyframes prime-pip-pop { from { transform: scale(2.2); } to { transform: scale(1); } }

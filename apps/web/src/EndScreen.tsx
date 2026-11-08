@@ -1,4 +1,4 @@
-import { MatchEndReason, type MatchResult, SquadId } from "game-core";
+import { MatchEndReason, type MatchResult, PRIME_ZONE_WIN_RESOLUTIONS, SquadId, VICTORY_POINTS_TO_WIN } from "game-core";
 import { endTexts, type Role } from "./attack-defend";
 
 interface EndScreenProps {
@@ -22,7 +22,9 @@ function reasonText(result: MatchResult, squad: SquadId): string {
   const own = result.winner === squad;
   switch (result.reason) {
     case MatchEndReason.PrimeZoneHeld:
-      return `${own ? "Your Squad" : "The enemy Squad"} controlled the Prime Zone for 3 consecutive Resolutions.`;
+      return `${own ? "Your Squad" : "The enemy Squad"} controlled the Prime Zone for ${PRIME_ZONE_WIN_RESOLUTIONS} consecutive Resolutions.`;
+    case MatchEndReason.VictoryPoints:
+      return `${own ? "Your Squad" : "The enemy Squad"} reached ${VICTORY_POINTS_TO_WIN} Victory Points. ${scoreText(result, squad)}`;
     case MatchEndReason.AllHeroesExhausted:
       if (result.winner === undefined) return "All Heroes of both Squads are Exhausted.";
       return `All Heroes of ${own ? "the enemy Squad" : "your Squad"} are Exhausted.`;
@@ -30,9 +32,16 @@ function reasonText(result: MatchResult, squad: SquadId): string {
       return `${own ? "Your Squad" : "The enemy Squad"} held the defence until the Round limit.`;
     case MatchEndReason.RoundLimit: {
       const enemy = squad === SquadId.Left ? SquadId.Right : SquadId.Left;
-      return `Round Limit reached. Cards in all Decks: you ${result.deckTotals[squad]}, enemy ${result.deckTotals[enemy]}.`;
+      const tiebreak = result.scores && result.scores[squad] === result.scores[enemy] && result.cardTotals;
+      const cards = tiebreak ? ` Equal scores: cards not in the Exile, you ${result.cardTotals![squad]}, enemy ${result.cardTotals![enemy]}.` : "";
+      return `Round Limit reached. ${scoreText(result, squad)}${cards}`;
     }
   }
+}
+
+function scoreText(result: MatchResult, squad: SquadId): string {
+  const enemy = squad === SquadId.Left ? SquadId.Right : SquadId.Left;
+  return result.scores ? `Victory Points: you ${result.scores[squad]}, enemy ${result.scores[enemy]}.` : "";
 }
 
 export function EndScreen({ result, squad, seed, role, roundLimit, onPlayAgain }: EndScreenProps) {

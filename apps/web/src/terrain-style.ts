@@ -21,6 +21,9 @@ export const TERRAIN_STYLE = {
   /** Landmarks in the fog: known, but dark. */
   primeZoneDark: { fill: 0x0f1f22, edge: 0x1d6b66 },
   spawnMarkerDark: 0x1d6b66,
+  /** Outpost tiles (an interim look until the HUD and map ticket): amber, so they differ from the teal Prime Zone. */
+  outpost: { fill: 0x45391f, edge: 0xffb347 },
+  outpostDark: { fill: 0x1f1b10, edge: 0x7a5a24 },
   /** How much of a standing piece shows in the fog (0 to 1). */
   fogPieceAlpha: 0.45,
   /** Soft light around an own Hero: `rings` stacked ellipses that add up to about `alpha` at the centre. */
