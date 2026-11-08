@@ -79,6 +79,13 @@ describe("Charge", () => {
     expect(events.some(({ kind }) => kind === EventKind.ShieldGained)).toBe(true);
   });
 
+  it("does not cut a corner of the wall at (10, 4)", () => {
+    const cards = withTestCards();
+    const match = setup({ col: 9, row: 4 }, { col: 12, row: 1 });
+    const { match: after } = resolveRound(match, [bruiserPlan(match, [cards.charge], [use(cards.charge)])]);
+    expect(hero(after, BRUISER).position).toEqual({ col: 9, row: 4 });
+  });
+
   it("gives Shield 1 that is gone at the end of the Round", () => {
     const cards = withTestCards();
     const match = setup({ col: 2, row: 1 }, { col: 5, row: 1 });
@@ -153,6 +160,13 @@ describe("Pull", () => {
     const match = withFullCover(setup({ col: 2, row: 1 }, { col: 6, row: 2 }), { col: 5, row: 1 });
     const { match: after } = resolveRound(match, [bruiserPlan(match, [cards.pull], [use(cards.pull)])]);
     expect(hero(after, ENEMY).position).toEqual({ col: 6, row: 2 });
+  });
+
+  it("does not slide the enemy around a corner of the wall at (10, 4)", () => {
+    const cards = withTestCards();
+    const match = setup({ col: 12, row: 1 }, { col: 9, row: 4 });
+    const { match: after } = resolveRound(match, [bruiserPlan(match, [cards.pull], [use(cards.pull)])]);
+    expect(hero(after, ENEMY).position).toEqual({ col: 9, row: 4 });
   });
 
   it("can pull an enemy out of the Prime Zone", () => {
