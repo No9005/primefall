@@ -345,7 +345,7 @@ const shockPulse: CardDefinition = {
   target: CardTarget.VisibleEnemy, effects: [damage(1), slow],
 };
 const scoutDrone: CardDefinition = {
-  name: "Scout Drone", type: CardType.Utility, energyCost: 1, range: 4, target: CardTarget.Area,
+  name: "Scout Drone", type: CardType.Utility, energyCost: 1, target: CardTarget.Area, // no Range: any tile of the map
   effects: [{ kind: EffectKind.RevealArea, size: 3, duration: 2 }],
   overdrive: [{ kind: EffectKind.RevealArea, size: 5, duration: 2 }],
 };

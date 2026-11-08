@@ -304,12 +304,14 @@ export function canSquadSee(match: MatchState, squad: SquadId, tile: GridPositio
 
 /**
  * Whether the Squad sees a Hero right now. A Marked enemy is always seen; a Hidden enemy is not seen even
- * on a tile in sight; otherwise the Hero is seen when its tile is.
+ * on a tile in sight, except inside a Scout Drone area of the Squad (it stays Hidden, it is only shown);
+ * otherwise the Hero is seen when its tile is.
  */
 export function canSquadSeeHero(match: MatchState, squad: SquadId, target: HeroState): boolean {
   if (target.squad === squad) return true;
   if (target.marked > 0) return true;
-  return target.hidden === 0 && canSquadSee(match, squad, target.position);
+  if (target.hidden > 0) return isRevealed(match, squad, target.position);
+  return canSquadSee(match, squad, target.position);
 }
 
 /**
@@ -406,6 +408,10 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   const revealedAreas = match.revealedAreas
     .filter((area) => area.squad === squad)
     .map(({ center, size, remaining }) => ({ center: { ...center }, size, remaining }));
+  // The enemy only learns which area was scanned: no contents, no Hero, no remaining time.
+  const scannedAreas = match.revealedAreas
+    .filter((area) => area.squad !== squad)
+    .map(({ center, size }) => ({ center: { ...center }, size }));
   const visibleTiles: GridPosition[] = [];
   for (let row = 0; row < match.grid.height; row++) {
     for (let col = 0; col < match.grid.width; col++) {
@@ -430,6 +436,6 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   }));
   const points = classic ? { scores: { ...match.scores }, zones } : {};
   return {
-    squad, round: match.round, ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, wreckCover, revealedAreas, visibleTiles, heroes, enemies,
+    squad, round: match.round, ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, enemies,
   };
 }
