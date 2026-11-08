@@ -161,8 +161,8 @@ function crossfireRingGraphics(ring: CrossfireRing, angle: number): { ground: Co
   // Under the Hero's feet, not under the middle of the tile.
   const x = centre.x;
   const y = centre.y + footOffset(angle);
-  const rx = TILE_WIDTH * 1.1;
-  const ry = TILE_HEIGHT * 1.1;
+  const rx = TILE_WIDTH * 0.62;
+  const ry = TILE_HEIGHT * 0.62;
   const at = (theta: number, scale = 1) => ({ x: x + Math.cos(theta) * rx * scale, y: y + Math.sin(theta) * ry * scale });
   const arcs = new Graphics();
   const labels: Container[] = [];
@@ -177,14 +177,14 @@ function crossfireRingGraphics(ring: CrossfireRing, angle: number): { ground: Co
       const point = at(start + ((end - start) * step) / 8);
       arcs.lineTo(point.x, point.y);
     }
-    arcs.stroke({ width: active ? 9 : 5, color, alpha: active ? 1 : 0.7, cap: "round" });
+    arcs.stroke({ width: active ? 7 : 4, color, alpha: active ? 1 : 0.7, cap: "round" });
     if (!active) return;
     const label = at((start + end) / 2, 1.3);
     labels.push(enlarged(slotBadge(String(index + 1), label.x, label.y, color)));
   });
   ground.addChild(arcs);
   top.addChild(...labels);
-  if (ring.segments.includes(RingSegment.Crossfire)) top.addChild(enlarged(slotBadge("+1 ?", x, y - TILE_HEIGHT * 2.4, PLAN_STYLE.crossfire)));
+  if (ring.segments.includes(RingSegment.Crossfire)) top.addChild(enlarged(slotBadge("+1 ?", x, y - TILE_HEIGHT * 2.1, PLAN_STYLE.crossfire)));
   return { ground, top };
 }
 
