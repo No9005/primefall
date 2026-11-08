@@ -51,6 +51,7 @@ function upgradeSavedMatch(match: MatchState): MatchState {
   if (match.mode === undefined) match = { ...match, mode: { kind: MatchMode.Classic } };
   // Matches saved before the Victory Points start with none.
   if (match.scores === undefined) match = { ...match, scores: { [SquadId.Left]: 0, [SquadId.Right]: 0 }, zoneControl: ZONES.map(() => ({ contested: false })) };
+  if (match.takeoverCooldown === undefined) match = { ...match, takeoverCooldown: ZONES.map(() => 0) };
   if (match.knownWrecks !== undefined) return match;
   const grid = match.heroes.filter((hero) => hero.exhausted).reduce((current, hero) => withWreck(current, hero.position), match.grid);
   const upgraded: MatchState = { ...match, grid, knownWrecks: { [SquadId.Left]: [], [SquadId.Right]: [] } };
