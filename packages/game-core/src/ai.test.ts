@@ -216,6 +216,17 @@ describe("AI symmetry", () => {
   });
 });
 
+describe("AI in the classic mode", () => {
+  it("never plans a Block, over many seeds", () => {
+    for (const seed of SEEDS) {
+      const { plans, issues } = playAiMatch(seed, MAX_ROUNDS);
+      expect(issues).toEqual([]);
+      const blocks = plans.flatMap((plan) => plan.heroes.flatMap((hero) => hero.queue)).filter((action) => action.kind === ActionKind.Block);
+      expect(blocks).toEqual([]);
+    }
+  });
+});
+
 describe("AI does not freeze", () => {
   it("keeps moving or acting while the Prime Zone is not held", () => {
     let match = startRound(createMatch(3));
@@ -325,7 +336,7 @@ describe("AI focus fire", () => {
       "right-assassin": { col: 10, row: 5 },
     });
 
-  it("names the same enemy for both Heroes and puts the Attacks in consecutive Ticks", () => {
+  it("names the same enemy for both Heroes and puts the Attacks in the same or consecutive Ticks", () => {
     const view = duel();
     const plan = planSquad(view);
     const first = attacks(plan, "left-bruiser")[0];
@@ -333,7 +344,7 @@ describe("AI focus fire", () => {
     expect(first).toBeDefined();
     expect(second).toBeDefined();
     expect(second!.target).toBe(first!.target);
-    expect(Math.abs(second!.slot - first!.slot)).toBe(1);
+    expect(Math.abs(second!.slot - first!.slot)).toBeLessThanOrEqual(1);
     expect(validatePlan(view, plan)).toEqual([]);
   });
 

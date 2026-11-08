@@ -18,7 +18,11 @@ Almost every Hero attacks for 2 damage and that is all; the classes differ littl
 
 A new miss reason (`TooClose`) joins the Declared Target checks. The cards Suppress, Forward Deploy, one Concussion Round, both Pulse Bolt, Shock Pulse, one Precision Shot, one Vanish and Mark Target leave the decks.
 
+<<<<<<< HEAD
 Block in Attack and Defend is unchanged (ADR 0024). The classic mode has Shield cards only. The new decks apply to both modes; the balance of Attack and Defend (#302) is measured again after them.
+=======
+Block in Attack and Defend is unchanged (ADR 0024). The classic mode has Shield cards only.
+>>>>>>> origin/main
 
 ## Consequences
 

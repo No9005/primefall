@@ -107,6 +107,8 @@ export enum PlanIssueKind {
   HeroExhausted = "heroExhausted",
   /** Overdrive was requested for a card that has none. */
   NoOverdrive = "noOverdrive",
+  /** A Block in the classic mode, which has none: Shield comes from Shield cards. */
+  BlockNotAllowed = "blockNotAllowed",
 }
 
 export interface PlanIssue {
@@ -171,6 +173,11 @@ function firstUnaffordableSlot(heroClass: HeroClass, queue: readonly QueuedActio
   return undefined;
 }
 
+/** Block is a rule of the match mode: only Attack and Defend has it (ADR 0022); the classic mode takes Shield from Shield cards. */
+export function blockAllowed(view: Pick<SquadView, "attackAndDefend">): boolean {
+  return view.attackAndDefend !== undefined;
+}
+
 /** Returns every rule the plan breaks against the Squad View; an empty list means it can be committed. */
 export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
   const issues: PlanIssue[] = [];
@@ -217,6 +224,9 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
       const report = (issue: PlanIssue) => issues.push({ ...issue, slot });
       if (action.kind === ActionKind.Wait) continue;
       useCard(action.card);
+      if (action.kind === ActionKind.Block && !blockAllowed(view)) {
+        report({ kind: PlanIssueKind.BlockNotAllowed, heroId, message: "This mode has no Block: Shield comes from Shield cards." });
+      }
       if (action.kind === ActionKind.Primary) {
         const extend = cardInMode(HERO_DECKS[hero.heroClass][action.card]!, action.overdrive).effects.find(
           ({ kind }) => kind === EffectKind.ExtendMove,

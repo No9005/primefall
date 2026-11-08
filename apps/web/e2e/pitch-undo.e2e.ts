@@ -35,10 +35,10 @@ test("a Pitch can be undone: the Energy goes back and the card can be used again
   await expect(card).not.toHaveClass(/used/);
   await expect(card).not.toContainText("Pitch 1");
 
-  // The freed card can be pulled and used again, for example as Block 2.
+  // The freed card can be pulled and used again, for example as a Pitch again (the classic mode has no Block).
   await card.click();
-  await page.getByRole("group", { name: "Use card as" }).getByRole("button", { name: /^Block/ }).click();
-  await expect(removeButtons(page)).toHaveCount(1);
+  await page.getByRole("group", { name: "Use card as" }).getByRole("button", { name: /^Pitch/ }).click();
+  await expect(energy(page)).toHaveAttribute("aria-label", "Energy: 1 available");
 });
 
 test("taking back a Pitch the Queue needs flags the action and disables Commit until it is pitched again", async ({ page }) => {

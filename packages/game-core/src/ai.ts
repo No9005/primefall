@@ -440,12 +440,6 @@ function planHero(
     }
   }
 
-  // Equal Squads in the Zone shielding every Round never hurt each other (a stalemate); only the outnumbered one turtles.
-  const inZone = (heroes: readonly { position: GridPosition; exhausted: boolean }[]) =>
-    heroes.filter((candidate) => !candidate.exhausted && isPrimeZoneTile(candidate.position)).length;
-  const deckTotal = (heroes: readonly { deckCount: number; exhausted: boolean }[]) =>
-    heroes.reduce((sum, candidate) => sum + (candidate.exhausted ? 0 : candidate.deckCount), 0);
-  const outnumberedInZone = inZone(targets) > inZone(view.heroes) || deckTotal(view.heroes) < deckTotal(targets);
   const weapon = Math.max(0, ...deck.filter(isSimpleAttack).map((card) => card.range ?? 0));
   const ghosts = ghostThreats(view);
   const queue: QueuedAction[] = [];
@@ -464,19 +458,6 @@ function planHero(
       const cost = deck[card]!.energyCost;
       return inRangeTargets(position, card).length > 0 && cardsLeft - 1 - cost >= 0;
     });
-    // Under fire, raise the Shield before shooting, so it is up when the enemy shoots. Not while holding the Zone level:
-    // Squads that shield every Round never hurt each other.
-    const underFire = targets.some((enemy) => canShoot(enemy.position, position, WEAPON_RANGE[enemy.heroClass] ?? 0));
-    if (
-      role === Role.Classic && attackCard !== undefined && underFire && otherCards.length > 0 &&
-      (!isPrimeZoneTile(position) || outnumberedInZone) &&
-      !queue.some((action) => action.kind === ActionKind.Block) && cardsLeft - 2 - deck[attackCard]!.energyCost >= 0
-    ) {
-      const card = otherCards.shift()!;
-      claimSteps(claimed, queue.length, [position, position]);
-      queue.push({ kind: ActionKind.Block, card });
-      continue;
-    }
     if (attackCard !== undefined) {
       const cost = deck[attackCard]!.energyCost;
       const slot = queue.length;
@@ -488,7 +469,7 @@ function planHero(
       )[0]!;
       // A mate hits this target in this very Tick and none in the Tick before or after: shield first, so the hits are consecutive.
       if (
-        matesAim(target.id, slot) && !matesAim(target.id, slot - 1) && !matesAim(target.id, slot + 1) &&
+        role !== Role.Classic && matesAim(target.id, slot) && !matesAim(target.id, slot - 1) && !matesAim(target.id, slot + 1) &&
         otherCards.length > 0 && cardsLeft - 2 - cost >= 0 && slot + 1 < Math.min(queueLength, MAX_QUEUE_LENGTH)
       ) {
         const card = otherCards.shift()!;
@@ -515,9 +496,11 @@ function planHero(
       claimSteps(claimed, slot, tilesAfterSteps(position, destination));
       position = moveEnd(position, destination);
     } else if (
-      role === Role.Defender
+      // The classic mode has no Block action: Shield comes from Shield cards only, so the Hero just waits.
+      role !== Role.Classic &&
+      (role === Role.Defender
         ? enemyClose() && !queue.some((action) => action.kind === ActionKind.Block)
-        : targets.length > 0 && (role !== Role.Classic || !isPrimeZoneTile(position) || outnumberedInZone)
+        : targets.length > 0)
     ) {
       queue.push({ kind: ActionKind.Block, card });
       claimSteps(claimed, slot, [position, position]);

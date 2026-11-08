@@ -25,6 +25,5 @@
 @keyframes tutorial-glow { to { background: #1f8f85; } }
 @keyframes tutorial-drag { 0% { transform: translate(0, 0); } 100% { transform: translate(var(--drag-x, -150px), var(--drag-y, -80px)) scale(0.6); } }
 .tutorial-card.drop-tile { --drag-x: -260px; --drag-y: -60px; }
-.tutorial-card.drop-blockChip { --drag-x: 180px; --drag-y: -120px; }
 .tutorial-card.drop-energyOrb { --drag-x: 180px; --drag-y: -50px; }
 .tutorial-card.drop-enemyHero { --drag-x: -60px; --drag-y: -80px; }
