@@ -3,7 +3,7 @@ import { EffectKind, HERO_DECKS, HeroClass } from "./cards";
 import { EventKind, SquadId } from "./host";
 import { createMatch, MAX_PLACED_COVER_PER_SQUAD, type MatchState, startRound } from "./match";
 import { ActionKind, type SquadPlan } from "./plan";
-import { CoverKind, coverAgainst, coverAt, type GridPosition } from "./reactor-deck";
+import { CoverKind, coverAgainst, coverAt, type GridPosition, tileAt, TileKind } from "./reactor-deck";
 import { resolveRound } from "./resolution";
 
 const LEFT_CONTROLLER = "left-controller";
@@ -136,5 +136,35 @@ describe("Placed Cover", () => {
     expect(events.some(({ kind }) => kind === EventKind.CoverDestroyed)).toBe(true);
     expect(coverAt(match.grid, tileOf(0))).toBe(CoverKind.None);
     expect(match.placedCover).toEqual([]);
+  });
+
+  describe("on a Prime Zone tile", () => {
+    const primeTile: GridPosition = { col: 15, row: 7 };
+
+    it("gives the Prime Zone tile back when a Breach Charge destroys the Cover", () => {
+      const placed = place(startRound(createMatch(5)), SquadId.Left, DEPLOY_COVER, primeTile).match;
+      expect(tileAt(placed.grid, primeTile)).toBe(TileKind.HalfCover);
+      const next = startRound(placed);
+      hero(next, LEFT_BRUISER).position = { col: 12, row: 7 };
+      hero(next, LEFT_BRUISER).hand = [BRUISER_BREACH_CHARGE, BRUISER_SLAM_SHOT, 1, 2];
+      const plan: SquadPlan = {
+        squad: SquadId.Left,
+        heroes: [{
+          heroId: LEFT_BRUISER,
+          queue: [{ kind: ActionKind.Primary, card: BRUISER_BREACH_CHARGE, target: LEFT_BRUISER, tile: primeTile }],
+          pitched: [BRUISER_SLAM_SHOT, 1],
+        }],
+      };
+      const { match } = resolveRound(next, [plan]);
+      expect(tileAt(match.grid, primeTile)).toBe(TileKind.PrimeZone);
+    });
+
+    it("gives the Prime Zone tile back when a fourth placement removes the oldest Cover", () => {
+      let match = place(startRound(createMatch(5)), SquadId.Left, DEPLOY_COVER, primeTile).match;
+      for (let index = 0; index < MAX_PLACED_COVER_PER_SQUAD; index += 1) {
+        match = place(match, SquadId.Left, DEPLOY_COVER, tileOf(index)).match;
+      }
+      expect(tileAt(match.grid, primeTile)).toBe(TileKind.PrimeZone);
+    });
   });
 });

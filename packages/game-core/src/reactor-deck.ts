@@ -122,7 +122,11 @@ export function destroyCover(grid: Grid, position: GridPosition): Grid {
   const wrecks = grid.wrecks?.filter((wreck) => wreck.col !== position.col || wreck.row !== position.row);
   const cleared: Grid = wrecks ? { ...grid, wrecks } : grid;
   // A wreck on a Prime Zone (or any tile without Cover of its own) only loses the wreck; the tile keeps its kind.
-  return tileCoverAt(cleared, position) === CoverKind.None ? cleared : withTile(cleared, position, TileKind.Floor);
+  if (tileCoverAt(cleared, position) === CoverKind.None) return cleared;
+  // Placed Cover gives the tile back as the map has it (for example the Prime Zone); map Cover becomes open floor.
+  const base = tileAt(REACTOR_DECK, position);
+  const restored = base !== undefined && tileCoverAt(REACTOR_DECK, position) === CoverKind.None ? base : TileKind.Floor;
+  return withTile(cleared, position, restored);
 }
 
 export const isWall = (position: GridPosition) => tileAt(REACTOR_DECK, position) === TileKind.Wall;
