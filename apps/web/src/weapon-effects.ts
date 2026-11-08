@@ -408,6 +408,7 @@ function hitNumbers(event: MatchEvent, startMs: number): EffectCue[] {
 /** Why a failed Attack failed, as the number shows it: beyond the Range of its card, not visible, or stopped on the way. */
 export function failureText(event: MatchEvent): string {
   if (event.reason === AttackFailReason.OutOfRange) return "Out of range";
+  if (event.reason === AttackFailReason.TooClose) return "Too close";
   if (event.reason === AttackFailReason.NotVisible) return "Not visible";
   return "Blocked";
 }

@@ -20,7 +20,7 @@ function setup(): MatchState {
   const match = startRound(createMatch(5));
   hero(match, BRUISER).position = { col: 8, row: 5 };
   hero(match, CONTROLLER).position = { col: 8, row: 4 };
-  hero(match, ASSASSIN).position = { col: 9, row: 5 };
+  hero(match, ASSASSIN).position = { col: 8, row: 3 }; // two tiles from the target (Precision Shot has a Minimum Range of 2), clear line
   hero(match, TARGET).position = { col: 10, row: 5 };
   for (const id of [BRUISER, CONTROLLER, ASSASSIN, TARGET]) hero(match, id).hand = [0, 1, 2, 3];
   return match;

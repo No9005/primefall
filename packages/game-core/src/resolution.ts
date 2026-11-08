@@ -279,7 +279,9 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     if (target.squad === hero.squad) return AttackFailReason.NotVisible;
     if (needsSight && !canSquadSeeHero(match, hero.squad, target)) return AttackFailReason.NotVisible;
     if (target.exhausted) return AttackFailReason.TargetExhausted;
-    if (chebyshevDistance(hero.position, target.position) > (card.range ?? 0)) return AttackFailReason.OutOfRange;
+    const distance = chebyshevDistance(hero.position, target.position);
+    if (distance > (card.range ?? 0)) return AttackFailReason.OutOfRange;
+    if (distance < (card.minRange ?? 0)) return AttackFailReason.TooClose;
     if (!hasLineOfSight(match.grid, hero.position, target.position)) return AttackFailReason.NoLineOfSight;
     if (coverAgainst(match.grid, hero.position, target.position) === CoverKind.Full) return AttackFailReason.FullCover;
     return undefined;

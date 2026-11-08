@@ -166,8 +166,8 @@ describe("the classic mode", () => {
   // Recorded from the classic path (AI against AI, 60 Rounds at most). Re-recorded when the classic mode became Victory Points
   // from three zones (#357) and after the merge of the new decks and the Block change (#352, #358); seed 42 is a draw (0 to 0, equal card totals): the matches now end at the Round limit of 15 or by points, not by three Resolutions in the Prime Zone.
   const recorded = [
-    { seed: 3, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 2, right: 0 }, deckTotals: { left: 7, right: 12 }, positions: "14,7:4 15,7:2 14,8:1 16,7:4 16,8:4 16,9:4", rng: 1049118852 },
-    { seed: 11, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 20 }, deckTotals: { left: 7, right: 11 }, positions: "14,7:0 15,7:4 14,8:3 16,7:6 16,8:4 16,9:1", rng: 3256755555 },
+    { seed: 3, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 2, right: 0 }, deckTotals: { left: 4, right: 18 }, positions: "14,7:1 15,7:2 14,8:1 16,7:2 16,8:4 15,8:12", rng: 289400788 },
+    { seed: 11, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 2 }, deckTotals: { left: 8, right: 9 }, positions: "14,7:5 15,7:2 14,8:1 16,7:4 16,8:4 16,9:1", rng: 353341993 },
     { seed: 42, round: 15, winner: undefined, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 0 }, deckTotals: { left: 7, right: 9 }, positions: "14,7:4 15,7:2 14,8:1 16,7:4 16,8:4 16,9:1", rng: 1113060088 },
   ];
 

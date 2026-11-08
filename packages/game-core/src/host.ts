@@ -307,6 +307,7 @@ export enum AttackFailReason {
   NotVisible = "notVisible",
   TargetExhausted = "targetExhausted",
   OutOfRange = "outOfRange",
+  TooClose = "tooClose",
   NoLineOfSight = "noLineOfSight",
   FullCover = "fullCover",
   /** A Ghost Shot found nobody on the remembered tile. */

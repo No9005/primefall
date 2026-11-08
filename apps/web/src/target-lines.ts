@@ -77,10 +77,11 @@ function knownEnemy(enemies: readonly EnemyView[], id: string): { id: string; po
  * The note for a shot that cannot hit from the planned position (a Declared Target is only checked in the Tick it
  * fires, so this is a hint, not an error). It judges the target's last known position.
  */
-export function mayMissHint(from: GridPosition, target: GridPosition, range: number): string {
-  return chebyshevDistance(from, target) > range
-    ? "may miss: out of Range from the planned position"
-    : "may miss: no clear shot from the planned position";
+export function mayMissHint(from: GridPosition, target: GridPosition, range: number, minRange = 0): string {
+  const distance = chebyshevDistance(from, target);
+  if (distance > range) return "may miss: out of Range from the planned position";
+  if (distance < minRange) return "may miss: too close from the planned position";
+  return "may miss: no clear shot from the planned position";
 }
 
 /** Where a Hero stands when action `index` resolves: at its last queued Move destination before it (up to the Move's reach). */
@@ -103,19 +104,22 @@ function linesOfAction({ grid, heroes, enemies }: LineContext, hero: HeroView, f
   if (action.kind !== ActionKind.Primary) return [];
   const card: CardDefinition = cardInMode(HERO_DECKS[hero.heroClass][action.card]!, action.overdrive);
   const base = { heroId: hero.id, own: true, tick };
-  if (ENEMY_TARGETS.includes(card.target)) return attackLines(grid, enemies, { base, from, action, range: card.range ?? NO_RANGE_LIMIT });
+  if (ENEMY_TARGETS.includes(card.target)) {
+    return attackLines(grid, enemies, { base, from, action, range: card.range ?? NO_RANGE_LIMIT, minRange: card.minRange ?? 0 });
+  }
   if (ALLY_TARGETS.includes(card.target)) return allyLines(heroes, hero, base, from, action);
   if (TILE_TARGETS.includes(card.target) && action.tile) return [tileLine(base, from, action.tile)];
   return [];
 }
 
-function attackLines(grid: Grid, enemies: readonly EnemyView[], shotAt: { base: LineBase; from: GridPosition; action: PrimaryAction; range: number }): TargetLine[] {
-  const { base, from, action, range } = shotAt;
+function attackLines(grid: Grid, enemies: readonly EnemyView[], shotAt: { base: LineBase; from: GridPosition; action: PrimaryAction; range: number; minRange: number }): TargetLine[] {
+  const { base, from, action, range, minRange } = shotAt;
   const target = knownEnemy(enemies, action.target);
   if (!target) return [];
   const shot = drawShot(grid, from, target, range);
-  const clear = shot.segments.every((segment) => segment.style === SegmentStyle.Clear) && shot.ringed;
-  const missHint = clear ? undefined : mayMissHint(from, target.position, range);
+  const tooClose = chebyshevDistance(from, target.position) < minRange;
+  const clear = !tooClose && shot.segments.every((segment) => segment.style === SegmentStyle.Clear) && shot.ringed;
+  const missHint = clear ? undefined : mayMissHint(from, target.position, range, minRange);
   return [{ ...base, kind: LineKind.Attack, tone: clear ? LineTone.Clear : LineTone.Red, from, to: target.position, shot, unreachable: !clear, missHint }];
 }
 

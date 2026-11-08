@@ -31,6 +31,7 @@ const MISS_REASONS: Record<AttackFailReason, string> = {
   [AttackFailReason.NotVisible]: "target not visible",
   [AttackFailReason.TargetExhausted]: "target is already Exhausted",
   [AttackFailReason.OutOfRange]: "target is out of Range",
+  [AttackFailReason.TooClose]: "target is closer than the Minimum Range",
   [AttackFailReason.NoLineOfSight]: "no Line of Sight to the target",
   [AttackFailReason.FullCover]: "target is behind Full Cover",
   [AttackFailReason.EmptyTile]: "nobody stands on the tile",

@@ -308,14 +308,15 @@ export interface RangeTile {
  * distance (ADR 0020), so the area is a square. Empty for a card without a Range. The shape lives here so a card with
  * another shape can be added without the clients changing.
  */
-export function cardRangeArea(grid: Grid, origin: GridPosition, card: Pick<CardDefinition, "range">): RangeTile[] {
-  const { range } = card;
+export function cardRangeArea(grid: Grid, origin: GridPosition, card: Pick<CardDefinition, "range" | "minRange">): RangeTile[] {
+  const { range, minRange = 0 } = card;
   if (range === undefined) return [];
   const tiles: RangeTile[] = [];
   for (let row = Math.max(0, origin.row - range); row <= Math.min(grid.height - 1, origin.row + range); row++) {
     for (let col = Math.max(0, origin.col - range); col <= Math.min(grid.width - 1, origin.col + range); col++) {
       if (col === origin.col && row === origin.row) continue;
       const position = { col, row };
+      if (chebyshevDistance(origin, position) < minRange) continue;
       tiles.push({ position, blocked: tileAt(grid, position) === TileKind.Wall || coverAt(grid, position) === CoverKind.Full });
     }
   }
@@ -323,7 +324,8 @@ export function cardRangeArea(grid: Grid, origin: GridPosition, card: Pick<CardD
 }
 
 /**
- * Whether `position` is inside the Range area of the card around `origin`; the same shape as `cardRangeArea`.
+ * Whether `position` is inside the Range of the card around `origin`. The Minimum Range is not checked: a target that
+ * is too close can still be named, the planner only hints that the shot may miss (`TooClose`).
  * A card without a Range reaches every position.
  */
 export function isInCardRange(origin: GridPosition, card: Pick<CardDefinition, "range">, position: GridPosition): boolean {
