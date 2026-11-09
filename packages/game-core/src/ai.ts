@@ -21,10 +21,13 @@ import {
 import {
   CoverKind,
   coverAt,
+  findTiles,
   type Grid,
   type GridPosition,
   hasLineOfSight,
   isStepAllowed,
+  tileAt,
+  TileKind,
 } from "./reactor-deck";
 
 /** Actions the AI queues per Hero and Round; fewer than the Queue limit keeps Decks from draining fast. */
@@ -602,6 +605,58 @@ const MIN_CANDIDATES = 8;
 const MAX_CANDIDATES = 24;
 /** Candidates within this much of the best value count as equally good; the match seed picks among them. */
 const EQUAL_VALUE_MARGIN = 1;
+/**
+ * Worlds the AI imagines for the enemies it cannot see (Fog of War): world 0 is the view as it is (a Ghost where it was
+ * seen, an Unknown enemy left out), the others put each hidden enemy on a tile it could have reached. A candidate meets
+ * every reply in one world each (replies and worlds are paired, not crossed), so the number of simulations stays
+ * `SIMULATIONS_PER_ROUND` however many enemies are hidden.
+ */
+export const WORLDS = 3;
+/** Tiles a Hero can cover in a Round (game-goals: about 6 to 8); the reach of a hidden enemy grows by this per Round. */
+const REACH_PER_ROUND = 6;
+
+const tileKeyOf = ({ col, row }: GridPosition) => `${col},${row}`;
+const textHash = (text: string) => [...text].reduce((sum, char) => (Math.imul(sum, 31) + char.charCodeAt(0)) | 0, 7);
+
+/**
+ * The imagined worlds for one planning call: the position of each hidden enemy (Ghost or Unknown) by Hero id, one map per
+ * world, world 0 empty. Only the Squad View and the seed are read, so the hidden state of the match cannot leak. A hidden
+ * enemy stands on a tile the Squad does not see, is no Wall and no Hero of the Squad, and is within reach of where it
+ * was last seen (a Ghost) or of a Spawn (never seen: the further the match, the more of the map it could have reached).
+ */
+export function sampleWorlds(view: SquadView, seed: number, worldCount = WORLDS): ReadonlyMap<string, GridPosition>[] {
+  const hidden = view.enemies.filter((enemy) => enemy.visibility !== Visibility.Visible);
+  const worlds: Map<string, GridPosition>[] = [new Map()];
+  if (hidden.length === 0) return worlds;
+  const seen = new Set(view.visibleTiles.map(tileKeyOf));
+  const ownTiles = new Set(view.heroes.map((hero) => tileKeyOf(hero.position)));
+  const open: GridPosition[] = [];
+  view.grid.tiles.forEach((line, row) =>
+    line.forEach((_, col) => {
+      const tile = { col, row };
+      if (tileAt(view.grid, tile) !== TileKind.Wall && !seen.has(tileKeyOf(tile)) && !ownTiles.has(tileKeyOf(tile))) open.push(tile);
+    }),
+  );
+  const spawns = findTiles(view.grid, TileKind.Spawn).filter((tile) => !seen.has(tileKeyOf(tile)) && !ownTiles.has(tileKeyOf(tile)));
+  const salt = view.round * 2 + (view.squad === SquadId.Left ? 0 : 1);
+  for (let world = 1; world < worldCount; world++) {
+    const placed = new Map<string, GridPosition>();
+    const taken = new Set<string>();
+    for (const enemy of hidden) {
+      const ghost = enemy.visibility === Visibility.Ghost ? enemy : undefined;
+      const origins = ghost ? [ghost.position] : spawns;
+      const radius = ghost ? Math.max(1, view.round - ghost.lastSeenRound) * REACH_PER_ROUND : (view.round - 1) * REACH_PER_ROUND;
+      const reachable = open.filter((tile) => !taken.has(tileKeyOf(tile)) && origins.some((origin) => chebyshevDistance(origin, tile) <= radius));
+      if (reachable.length === 0) continue;
+      const pick = reachable[seededHash(seed, salt * 104729 + world * 8387 + textHash(enemy.id)) % reachable.length]!;
+      placed.set(enemy.id, pick);
+      taken.add(tileKeyOf(pick));
+    }
+    worlds.push(placed);
+  }
+  return worlds;
+}
+
 /** Weight of the worst reply in a candidate's value; the rest goes to the mean. */
 const WORST_CASE_SHARE = 0.5;
 
@@ -674,21 +729,22 @@ export function planSquad(
   const greedy = planSquadGreedy(view, heroIds, style);
   if (planned === 0 || view.result) return greedy;
 
-  const sim = matchFromSquadView(view, seed);
+  const worlds = sampleWorlds(view, seed).map((imagined) => matchFromSquadView(view, seed, imagined));
   const enemySquad = view.squad === SquadId.Left ? SquadId.Right : SquadId.Left;
-  const enemyView = buildSquadView(sim, enemySquad);
-  const enemyPlans = [
+  // Each enemy reply is the AI from the enemy's side in one of the worlds, in turn; a candidate meets each reply there.
+  const replies = [
     ...new Map(
-      REPLY_VARIANTS.map((variant) => {
-        const plan = planSquadGreedy(enemyView, undefined, variant.style, variant);
-        return [planSignature(plan), plan] as const;
+      REPLY_VARIANTS.map((variant, i) => {
+        const world = worlds[i % worlds.length]!;
+        const plan = planSquadGreedy(buildSquadView(world, enemySquad), undefined, variant.style, variant);
+        return [planSignature(plan), { plan, world }] as const;
       }),
     ).values(),
   ];
   // Own Heroes the caller does not plan (the player's) are assumed to play the plain greedy plan.
   const unplanned = planSquadGreedy(view, view.heroes.filter((hero) => !heroIds.includes(hero.id)).map((hero) => hero.id), style);
 
-  const candidateLimit = Math.min(MAX_CANDIDATES, Math.max(MIN_CANDIDATES, Math.floor(SIMULATIONS_PER_ROUND / enemyPlans.length)));
+  const candidateLimit = Math.min(MAX_CANDIDATES, Math.max(MIN_CANDIDATES, Math.floor(SIMULATIONS_PER_ROUND / replies.length)));
   const candidates = new Map<string, SquadPlan>();
   const variants = candidateVariants(view, planned, style, seed);
   for (const variant of variants.slice(0, candidateLimit * 2)) {
@@ -697,10 +753,10 @@ export function planSquad(
     candidates.set(planSignature(plan), plan);
   }
 
-  const budgetCandidates = Math.max(1, Math.floor(SIMULATIONS_PER_ROUND / enemyPlans.length));
+  const budgetCandidates = Math.max(1, Math.floor(SIMULATIONS_PER_ROUND / replies.length));
   const valued = [...candidates.values()].slice(0, budgetCandidates).map((plan) => {
     const full: SquadPlan = { squad: view.squad, heroes: [...plan.heroes, ...unplanned.heroes] };
-    const values = enemyPlans.map((reply) => evaluateRound(resolveRound(sim, [full, reply]).match, view.squad));
+    const values = replies.map(({ plan: reply, world }) => evaluateRound(resolveRound(world, [full, reply]).match, view.squad));
     const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
     return { plan, value: WORST_CASE_SHARE * Math.min(...values) + (1 - WORST_CASE_SHARE) * mean };
   });
