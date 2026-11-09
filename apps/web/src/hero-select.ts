@@ -12,11 +12,11 @@ export const HERO_NAMES: Record<HeroClass, string> = {
   [HeroClass.Assassin]: "Assassin",
 };
 
-/** The main task of each Hero, a first draft the owner corrects (written from the spec stories). */
+/** The main task of each Hero, the owner's texts (two lines at 560 px wide, Barlow 500 14 px). */
 export const HERO_TASKS: Record<HeroClass, string> = {
-  [HeroClass.Bruiser]: "Frontline. Controls close space and the Prime Zone, soaks damage with Shield and breaks Cover with its Zone Overdrive.",
-  [HeroClass.Controller]: "Support. Enables the Squad with Shield, Vision, Cover deployment, Slow and Marked effects.",
-  [HeroClass.Assassin]: "Scout and striker. Scouts from Hidden, marks targets and punishes exposed enemies from long range.",
+  [HeroClass.Bruiser]: "Tank and enabler. +1 damage at Range 1.",
+  [HeroClass.Controller]: "Support. Builds lasting Cover, shields allies and sends the Scout Drone anywhere on the map. One weak attack.",
+  [HeroClass.Assassin]: "Glass cannon. Deals damage from range and hides with Vanish. Cannot hit what stands next to it.",
 };
 
 /** The three ways into the Hero Select; the chip at the top right names it. */
