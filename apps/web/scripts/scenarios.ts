@@ -475,7 +475,7 @@ export const SCENARIOS: readonly Scenario[] = [
     name: "ghost-enemy",
     description: "An enemy Assassin seen earlier is out of sight and shown as a Ghost with the last seen tag; the Bruiser then moves close enough to see it again.",
     buildMatch: () =>
-      stage(24, (hero, match) => {
+      stage(25, (hero, match) => {
         arrange(hero(PLAYER_BRUISER), { col: 7, row: 8 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
         // Seen 6 tiles away, then 8 tiles away on the Prime Zone, beyond the sight range of 7: the Squad remembers the first tile.
         hero("right-assassin").position = { col: 13, row: 8 };

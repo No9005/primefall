@@ -280,7 +280,7 @@ function applyFatigue(next: MatchState, cards: number): void {
 
 /** Plays one Round, adds its attack hits to the totals and returns the next Match State and the Exhaustion events. */
 function playRound(match: MatchState, tweaks: Tweaks, totals: Totals): { match: MatchState; exhausted: number } {
-  const plans = [SquadId.Left, SquadId.Right].map((squad) => planSquad(buildSquadView(match, squad), undefined, squadStyle(tweaks, match, squad)));
+  const plans = [SquadId.Left, SquadId.Right].map((squad) => planSquad(buildSquadView(match, squad), undefined, squadStyle(tweaks, match, squad), match.seed));
   const resolution = resolveRound(match, plans);
   const defender = match.mode.kind === MatchMode.AttackAndDefend ? match.mode.defender : undefined;
   let exhausted = 0;
@@ -469,20 +469,20 @@ const FOCUS_FIRE_WEIGHT = 40;
 interface Strategy {
   name: string;
   /** How the strategy plans a Squad; absent while it cannot be measured. */
-  plan?: (view: SquadView) => SquadPlan;
+  plan?: (view: SquadView, seed: number) => SquadPlan;
   /** Why the strategy cannot be measured yet. */
   missing?: string;
 }
 
 const STRATEGIES: Strategy[] = [
-  { name: "Rusher", plan: (view) => planSquad(view) },
+  { name: "Rusher", plan: (view, seed) => planSquad(view, undefined, AiStyle.Balanced, seed) },
   {
     name: "Focus fire",
-    plan: (view) => {
+    plan: (view, seed) => {
       const shipped = AI_WEIGHTS.focus;
       AI_WEIGHTS.focus = FOCUS_FIRE_WEIGHT;
       try {
-        return planSquad(view);
+        return planSquad(view, undefined, AiStyle.Balanced, seed);
       } finally {
         AI_WEIGHTS.focus = shipped;
       }
@@ -554,7 +554,7 @@ function playGoalMatch(seed: number, strategies: readonly [Strategy, Strategy]):
   const tally = { exhausted: false, leadChanges: 0, shieldAttack: 0, heroRounds: 0 };
   let leader: SquadId | undefined;
   for (let round = 1; round <= ROUND_LIMIT * 2 && !match.result; round++) {
-    const plans = [SquadId.Left, SquadId.Right].map((squad, side) => strategies[side]!.plan!(buildSquadView(match, squad)));
+    const plans = [SquadId.Left, SquadId.Right].map((squad, side) => strategies[side]!.plan!(buildSquadView(match, squad), match.seed));
     for (const plan of plans.flatMap((squadPlan) => squadPlan.heroes)) {
       tally.heroRounds++;
       if (isShieldAttack(match, plan)) tally.shieldAttack++;
@@ -641,7 +641,7 @@ async function printStrategyBalance(seeds: number, offset: number): Promise<void
 function printVariety(offset: number): void {
   const plans = new Set<string>();
   for (let seed = offset + 1; seed <= offset + GAUGES.varietySeeds; seed++) {
-    plans.add(movePlanOf(STRATEGIES[0]!.plan!(buildSquadView(prepareMatch(seed, {}), SquadId.Left))));
+    plans.add(movePlanOf(STRATEGIES[0]!.plan!(buildSquadView(prepareMatch(seed, {}), SquadId.Left), seed)));
   }
   printTable(`Gauge 3, variety (Rusher, Left Squad, ${GAUGES.varietySeeds} seeds)`, [
     ["measure", "value", "target"],
@@ -892,7 +892,7 @@ function tallyRoles(before: MatchState, events: readonly MatchEvent[], tally: Ro
 function playComposed(seed: number, squads: Record<SquadId, readonly HeroClass[]>, tally?: RoleTally): SquadId | undefined {
   let match = composedMatch(seed, squads);
   for (let round = 1; round <= ROUND_LIMIT * 2 && !match.result; round++) {
-    const plans = [SquadId.Left, SquadId.Right].map((squad) => planSquad(buildSquadView(match, squad)));
+    const plans = [SquadId.Left, SquadId.Right].map((squad) => planSquad(buildSquadView(match, squad), undefined, AiStyle.Balanced, seed));
     const resolution = resolveRound(match, plans);
     if (tally) tallyRoles(match, resolution.events, tally);
     match = resolution.match.result ? resolution.match : startRound(resolution.match);
