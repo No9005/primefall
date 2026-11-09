@@ -1,8 +1,8 @@
 import { SquadId } from "game-core";
 import { aiStyleFor, planSquad } from "game-core/ai";
 import { createLocalHost } from "game-core/local-host";
-import { describe, expect, it } from "vitest";
-import { aiPlanner, answerPlanRequest } from "./ai-planner";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { aiPlanner, answerPlanRequest, createWorkerPlanner, WORKER_TIMEOUT_MS } from "./ai-planner";
 
 describe("AI planner", () => {
   it("the Worker's answer is the plan planSquad gives for the same Squad View and seed", async () => {
@@ -71,5 +71,44 @@ describe("AI planner", () => {
     const a = await direct.submitPlan(plan);
     const b = await viaPlanner.submitPlan(plan);
     expect(b).toEqual(a);
+  });
+});
+
+describe("the Worker planner when the Worker fails", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  /** A Worker whose behaviour a test chooses: it breaks on start, or never answers. */
+  const stubWorker = (behaviour: "error" | "silent") => {
+    class FakeWorker {
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      onerror: (() => void) | null = null;
+      onmessageerror: (() => void) | null = null;
+      constructor() {
+        if (behaviour === "error") queueMicrotask(() => this.onerror?.());
+      }
+      postMessage() {}
+      terminate() {}
+    }
+    vi.stubGlobal("Worker", FakeWorker);
+  };
+
+  it("plans on the main thread when the Worker errors, with the plan planSquad gives", async () => {
+    stubWorker("error");
+    const view = await createLocalHost(5).getSquadView(SquadId.Left);
+    const style = aiStyleFor(5, SquadId.Left);
+    expect(await createWorkerPlanner()(view, undefined, style, 5)).toEqual(planSquad(view, undefined, style, 5));
+  });
+
+  it("plans on the main thread when the Worker does not answer, so Commit never waits for ever", async () => {
+    stubWorker("silent");
+    vi.useFakeTimers();
+    const view = await createLocalHost(6).getSquadView(SquadId.Left);
+    const style = aiStyleFor(6, SquadId.Left);
+    const planned = createWorkerPlanner()(view, undefined, style, 6);
+    await vi.advanceTimersByTimeAsync(WORKER_TIMEOUT_MS + 1);
+    expect(await planned).toEqual(planSquad(view, undefined, style, 6));
   });
 });
