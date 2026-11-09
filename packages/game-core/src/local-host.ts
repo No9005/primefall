@@ -1,7 +1,7 @@
 // Local host entry point: runs the server-side simulation inside the browser for the offline
 // prototype behind the same interface a network host will use later (ADR 0017).
 
-import { aiStyleFor, planSquad } from "./ai";
+import { type AiStyle, aiStyleFor, planSquad } from "./ai";
 import { type MatchHost, MatchMode, type MatchModeSetting, SquadId, type SquadView, type SubmitResult } from "./host";
 import { buildSquadView, createMatch, type MatchState, recordSightings, startRound, ZONES } from "./match";
 import { type SquadPlan, validatePlan } from "./plan";
@@ -15,6 +15,11 @@ export const LOCAL_HOST_BACKEND = SERVER_ENTRY;
 /** Schema version of a saved match; bump it whenever the Match State changes shape. */
 export const SNAPSHOT_VERSION = 2;
 
+/** Plans a Squad from its view; the browser passes one that runs the search in a Web Worker. */
+export type SquadPlanner = (view: SquadView, heroIds: readonly string[] | undefined, style: AiStyle, seed: number) => Promise<SquadPlan>;
+
+const planOnThisThread: SquadPlanner = async (view, heroIds, style, seed) => planSquad(view, heroIds, style, seed);
+
 /** A local host can save the running match as text, to resume it later. */
 export interface LocalMatchHost extends MatchHost {
   /** The match seed, shown for bug reports. */
@@ -24,12 +29,12 @@ export interface LocalMatchHost extends MatchHost {
 }
 
 /** Starts a match at Round 1 with all Hands drawn. The AI plans the enemy Squad and the allied Heroes the player leaves out of a plan. */
-export function createLocalHost(seed: number, mode?: MatchModeSetting): LocalMatchHost {
-  return hostFor(startRound(createMatch(seed, mode)));
+export function createLocalHost(seed: number, mode?: MatchModeSetting, planner: SquadPlanner = planOnThisThread): LocalMatchHost {
+  return hostFor(startRound(createMatch(seed, mode)), planner);
 }
 
 /** Resumes a saved match. Returns undefined if the text is unreadable or has another schema version. */
-export function restoreLocalHost(snapshot: string): LocalMatchHost | undefined {
+export function restoreLocalHost(snapshot: string, planner: SquadPlanner = planOnThisThread): LocalMatchHost | undefined {
   try {
     const saved: unknown = JSON.parse(snapshot);
     if (typeof saved !== "object" || saved === null) return undefined;
@@ -37,7 +42,7 @@ export function restoreLocalHost(snapshot: string): LocalMatchHost | undefined {
     // Version 1 is the same shape without a mode: it is a classic match.
     if ((version !== SNAPSHOT_VERSION && version !== 1) || typeof match !== "object" || match === null) return undefined;
     if (!Array.isArray(match.heroes) || typeof match.round !== "number" || typeof match.rngState !== "number") return undefined;
-    return hostFor(upgradeSavedMatch(match as MatchState));
+    return hostFor(upgradeSavedMatch(match as MatchState), planner);
   } catch {
     return undefined;
   }
@@ -59,7 +64,7 @@ function upgradeSavedMatch(match: MatchState): MatchState {
   return upgraded;
 }
 
-function hostFor(initial: MatchState): LocalMatchHost {
+function hostFor(initial: MatchState, planner: SquadPlanner): LocalMatchHost {
   let match = initial;
   return {
     seed: initial.seed,
@@ -68,18 +73,24 @@ function hostFor(initial: MatchState): LocalMatchHost {
       return buildSquadView(match, squad);
     },
     async getAllyPlan(squad: SquadId, heroIds: readonly string[]): Promise<SquadPlan> {
-      return planSquad(buildSquadView(match, squad), heroIds, aiStyleFor(match.seed, squad), match.seed);
+      return planner(buildSquadView(match, squad), heroIds, aiStyleFor(match.seed, squad), match.seed);
     },
     async submitPlan(plan: SquadPlan): Promise<SubmitResult> {
       if (match.result) throw new Error("The match is over.");
-      const issues =validatePlan(buildSquadView(match, plan.squad), plan);
+      const issues = validatePlan(buildSquadView(match, plan.squad), plan);
       if (issues.length > 0) throw new Error(`Invalid plan: ${issues.map((issue) => issue.message).join(" ")}`);
       // The AI plans from Squad Views only: every enemy Hero, and the allied Heroes the player did not plan.
       const planned = new Set(plan.heroes.map((hero) => hero.heroId));
       const allyView = buildSquadView(match, plan.squad);
-      const allyAi = planSquad(allyView, allyView.heroes.filter((hero) => !planned.has(hero.id)).map((hero) => hero.id), aiStyleFor(match.seed, plan.squad), match.seed);
+      const allyIds = allyView.heroes.filter((hero) => !planned.has(hero.id)).map((hero) => hero.id);
       const enemySquad = plan.squad === SquadId.Left ? SquadId.Right : SquadId.Left;
-      const enemyAi = planSquad(buildSquadView(match, enemySquad), undefined, aiStyleFor(match.seed, enemySquad), match.seed);
+      const round = match;
+      // The search may run in a Worker; Resolution waits for both plans.
+      const [allyAi, enemyAi] = await Promise.all([
+        planner(allyView, allyIds, aiStyleFor(round.seed, plan.squad), round.seed),
+        planner(buildSquadView(round, enemySquad), undefined, aiStyleFor(round.seed, enemySquad), round.seed),
+      ]);
+      if (match !== round) throw new Error("The Round changed while the AI was planning.");
       const resolution = resolveRound(match, [{ ...plan, heroes: [...plan.heroes, ...allyAi.heroes] }, enemyAi]);
       // A finished match stays at the Round it ended in.
       match = resolution.match.result ? resolution.match : startRound(resolution.match);

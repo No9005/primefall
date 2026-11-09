@@ -865,6 +865,8 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   commitRef.current = commit;
   const committingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  /** Counts failed Commits: the timer starts again, so a Round whose planning failed is not left without one. */
+  const [commitFailures, setCommitFailures] = useState(0);
   useEffect(() => {
     committingRef.current = false;
     setSecondsLeft(PLANNING_TIMER_SECONDS);
@@ -884,7 +886,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     }, 250);
     timerRef.current = interval;
     return () => clearInterval(interval);
-  }, [view]);
+  }, [view, commitFailures]);
 
   async function commit(toSubmit: SquadPlan) {
     // Set synchronously so a timeout during a manual Commit's submitPlan cannot submit a second plan.
@@ -896,9 +898,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     try {
       result = await submitPlan(toSubmit);
     } catch (error) {
+      // The Round stays open: Commit works again and the timer restarts. The error is only logged, nothing awaits `commit`.
+      console.error(error);
       committingRef.current = false;
       setResolutionStage(undefined);
-      throw error;
+      setCommitFailures((count) => count + 1);
+      return;
     }
     setResolutionStage("callout");
     await new Promise((resolve) => setTimeout(resolve, RESOLUTION_CALLOUT_MS));
