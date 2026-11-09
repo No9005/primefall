@@ -12,10 +12,11 @@
 
 import { it, vi } from "vitest";
 import { AI_WEIGHTS, AiStyle, aiStyleFor, planSquad } from "./ai";
-import { CardTarget, CardType, EffectKind, HERO_DECKS, HeroClass } from "./cards";
-import { type AttackAndDefendRules, EventKind, MatchEndReason, MatchMode, type MatchModeSetting, ROUND_LIMIT, SquadId, type SquadView, ZoneTie } from "./host";
-import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
-import { ActionKind, type HeroPlan, type SquadPlan } from "./plan";
+import { type CardDefinition, type CardIndex, CardTarget, CardType, EffectKind, HERO_DECKS, HeroClass } from "./cards";
+import { type AttackAndDefendRules, EventKind, MatchEndReason, type MatchEvent, MatchMode, type MatchModeSetting, ROUND_LIMIT, SquadId, type SquadView, ZoneTie } from "./host";
+import { buildSquadView, createMatch, type HeroState, type MatchState, startRound } from "./match";
+import { ActionKind, chebyshevDistance, type HeroPlan, moveDestinations, type QueuedAction, queueEnergyCost, type SquadPlan } from "./plan";
+import type { GridPosition } from "./reactor-deck";
 import { resolveRound } from "./resolution";
 
 // `BLOCK_SHIELD` is a constant of plan.ts that the rules read, so the harness cannot assign it. The mock below makes the
@@ -681,5 +682,276 @@ it("prints the five gauges of the game goals", async () => {
   await printStrategyBalance(seeds, offset);
   printVariety(offset);
   printPaceAndFairness(mirror);
+});
+
+// The role gauges of issue #372 (docs/design/game-goals.md, ADR 0025): do the three classes play differently? The distance
+// duels use scripted plans per class, because the AI does not play the new cards (#363); the damage share and the
+// composition gauges use the AI as it is. Nothing here changes a rule, a number or the shipped AI.
+
+const ROLE_TARGETS = {
+  duelSeedsMin: 100,
+  /** Bruiser win rate at Range 1 to 2 (at least), at Range 3 to 4 (between), and Assassin win rate from Range 5 (at least). */
+  closeBruiserMinPercent: 70,
+  midMinPercent: 40,
+  midMaxPercent: 60,
+  farAssassinMinPercent: 70,
+  assassinDamageMinPercent: 45,
+  bruiserDamageMaxPercent: 30,
+  controllerDamageMaxPercent: 15,
+  controllerSupportMinPercent: 40,
+  mixedWinMinPercent: 60,
+};
+
+// Distance duels: a Bruiser of one Squad against an Assassin of the other on the open row 8, nobody else on the map.
+const DUEL_ROW = 8;
+const DUEL_LEFT_COL = 4;
+const DUEL_ROUNDS = 12;
+const DUEL_DISTANCES = [1, 2, 3, 4, 5, 6, 7];
+
+function duelMatch(seed: number, bruiserSquad: SquadId, distance: number): MatchState {
+  const created = createMatch(seed);
+  const place = (heroClass: HeroClass, squad: SquadId): HeroState => {
+    const source = created.heroes.find((hero) => hero.id === `${SquadId.Left}-${heroClass}`)!;
+    const col = squad === SquadId.Left ? DUEL_LEFT_COL : DUEL_LEFT_COL + distance;
+    return { ...source, id: `${squad}-${heroClass}`, squad, position: { col, row: DUEL_ROW } };
+  };
+  const assassinSquad = bruiserSquad === SquadId.Left ? SquadId.Right : SquadId.Left;
+  created.heroes = [place(HeroClass.Bruiser, bruiserSquad), place(HeroClass.Assassin, assassinSquad)];
+  created.ghosts = { [SquadId.Left]: {}, [SquadId.Right]: {} };
+  return startRound(created);
+}
+
+/** The tile within one Move 2 that is nearest to (`closer`) or farthest from the enemy, staying on the duel row where it can. */
+function duelStep(hero: HeroState, enemy: HeroState, closer: boolean): GridPosition {
+  const sign = closer ? -1 : 1;
+  const score = (tile: GridPosition) => sign * chebyshevDistance(tile, enemy.position) * 10 - Math.abs(tile.row - DUEL_ROW);
+  return moveDestinations(hero.position).reduce((best, tile) => (score(tile) > score(best) ? tile : best));
+}
+
+const reaches = (card: CardDefinition, distance: number) => (card.minRange ?? 0) <= distance && distance <= (card.range ?? 0);
+
+/**
+ * The scripted plan of a duelist. The Bruiser Charges when the enemy is not next to it (or walks closer), then attacks;
+ * the Assassin stays where it is and shoots, and steps away only when the enemy is too close for any of its Attacks.
+ * Both attack with as many Attack cards in Range as their Hand and Pitch pay for.
+ */
+function duelPlan(hero: HeroState, enemy: HeroState): HeroPlan {
+  const cards = HERO_DECKS[hero.heroClass];
+  const distance = chebyshevDistance(hero.position, enemy.position);
+  const queue: QueuedAction[] = [];
+  const used: CardIndex[] = [];
+  let reach = distance;
+  const isAttack = (card: CardIndex) => cards[card]!.type === CardType.Attack && cards[card]!.target === CardTarget.VisibleEnemy;
+  const charge = hero.heroClass === HeroClass.Bruiser && distance > 1 ? hero.hand.find((card) => cards[card]!.name === "Charge") : undefined;
+  if (charge !== undefined) {
+    queue.push({ kind: ActionKind.Primary, card: charge, target: enemy.id });
+    used.push(charge);
+    reach = Math.max(1, distance - 3);
+  }
+  const walkCloser = hero.heroClass === HeroClass.Bruiser && charge === undefined && distance > 2;
+  const stepAway = hero.heroClass === HeroClass.Assassin && distance < 2;
+  if (walkCloser || stepAway) {
+    const shots = hero.hand.filter((card) => isAttack(card) && reaches(cards[card]!, walkCloser ? distance - 2 : distance + 2));
+    const moveCard = hero.hand.find((card) => !shots.includes(card)) ?? hero.hand.at(-1)!;
+    queue.push({ kind: ActionKind.Move, card: moveCard, destination: duelStep(hero, enemy, walkCloser) });
+    used.push(moveCard);
+    reach = walkCloser ? distance - 2 : distance + 2;
+  }
+  const inReach = hero.hand.filter((card) => !used.includes(card) && isAttack(card) && reaches(cards[card]!, reach));
+  inReach.sort((a, b) => cards[a]!.energyCost - cards[b]!.energyCost);
+  const preludeCost = queueEnergyCost(hero.heroClass, queue);
+  for (let count = inReach.length; count >= 0; count--) {
+    const chosen = inReach.slice(0, count);
+    const cost = preludeCost + chosen.reduce((sum, card) => sum + cards[card]!.energyCost, 0);
+    const rest = hero.hand.filter((card) => !used.includes(card) && !chosen.includes(card));
+    if (rest.length >= cost) {
+      const attacks = chosen.map((card) => ({ kind: ActionKind.Primary as const, card, target: enemy.id }));
+      return { heroId: hero.id, queue: [...queue, ...attacks], pitched: rest.slice(0, cost) };
+    }
+  }
+  return { heroId: hero.id, queue: [] };
+}
+
+/** 1 when the Bruiser wins the duel, 0 when the Assassin does, 0.5 for a draw; the cap is decided by the cards left. */
+function duelBruiserScore(seed: number, bruiserSquad: SquadId, distance: number): number {
+  let match = duelMatch(seed, bruiserSquad, distance);
+  const bruiserId = `${bruiserSquad}-${HeroClass.Bruiser}`;
+  const assassinId = `${bruiserSquad === SquadId.Left ? SquadId.Right : SquadId.Left}-${HeroClass.Assassin}`;
+  for (let round = 1; round <= DUEL_ROUNDS; round++) {
+    const plans = [SquadId.Left, SquadId.Right].map((squad) => ({
+      squad,
+      heroes: match.heroes.filter((hero) => hero.squad === squad).map((hero) => duelPlan(hero, match.heroes.find((other) => other.squad !== squad)!)),
+    }));
+    const resolution = resolveRound(match, plans);
+    const out = (id: string) => resolution.events.some((event) => event.kind === EventKind.Exhausted && event.heroId === id);
+    // Bruiser Exhausted counts 0, Assassin Exhausted counts 1, both 0.5.
+    if (out(bruiserId) || out(assassinId)) return ((out(assassinId) ? 1 : 0) + (out(bruiserId) ? 0 : 1)) / 2;
+    match = startRound({ ...resolution.match, result: undefined });
+  }
+  const cardsLeft = (id: string) => {
+    const hero = match.heroes.find((candidate) => candidate.id === id)!;
+    return hero.deck.length + hero.hand.length + hero.discard.length;
+  };
+  return Math.sign(cardsLeft(bruiserId) - cardsLeft(assassinId)) / 2 + 0.5;
+}
+
+function printDistanceDuels(seeds: number, offset: number): void {
+  const count = Math.max(seeds, ROLE_TARGETS.duelSeedsMin);
+  const rate = new Map<number, number>();
+  for (const distance of DUEL_DISTANCES) {
+    let score = 0;
+    for (let seed = offset + 1; seed <= offset + count; seed++) {
+      score += duelBruiserScore(seed, SquadId.Left, distance) + duelBruiserScore(seed, SquadId.Right, distance);
+    }
+    rate.set(distance, share(score, count * 2));
+  }
+  const band = (distances: number[]) => distances.reduce((sum, distance) => sum + rate.get(distance)!, 0) / distances.length;
+  const close = band([1, 2]);
+  const mid = band([3, 4]);
+  const far = 100 - band([5, 6, 7]);
+  printTable(`Role gauge 1, distance duels (scripted plans, Bruiser vs Assassin, ${count} seeds on both seats per distance, draws count half)`, [
+    ["Range at the start", ...DUEL_DISTANCES.map(String)],
+    ["Bruiser wins", ...DUEL_DISTANCES.map((distance) => `${rate.get(distance)!.toFixed(0)}%`)],
+  ]);
+  printTable('Role gauge 1, bands ("!" = misses its target)', [
+    ["band", "value", "target"],
+    ["Range 1 to 2: Bruiser wins", `${close.toFixed(0)}%${miss(close >= ROLE_TARGETS.closeBruiserMinPercent)}`, `>= ${ROLE_TARGETS.closeBruiserMinPercent}%`],
+    ["Range 3 to 4: Bruiser wins", `${mid.toFixed(0)}%${miss(mid >= ROLE_TARGETS.midMinPercent && mid <= ROLE_TARGETS.midMaxPercent)}`, `${ROLE_TARGETS.midMinPercent}-${ROLE_TARGETS.midMaxPercent}%`],
+    ["Range 5 to 7: Assassin wins", `${far.toFixed(0)}%${miss(far >= ROLE_TARGETS.farAssassinMinPercent)}`, `>= ${ROLE_TARGETS.farAssassinMinPercent}%`],
+  ]);
+}
+
+// Gauges 2 and 3: AI against AI with Squads of chosen classes.
+
+/** A Deck in a shuffled order from a number (the Match State's own shuffle is not exported). */
+function shuffledDeck(heroClass: HeroClass, state: number): CardIndex[] {
+  const deck = HERO_DECKS[heroClass].map((_, index) => index);
+  let rng = state >>> 0;
+  for (let i = deck.length - 1; i > 0; i--) {
+    rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0;
+    const j = rng % (i + 1);
+    [deck[i], deck[j]] = [deck[j]!, deck[i]!];
+  }
+  return deck;
+}
+
+const MIXED_SQUAD: readonly HeroClass[] = [HeroClass.Bruiser, HeroClass.Controller, HeroClass.Assassin];
+
+function composedMatch(seed: number, squads: Record<SquadId, readonly HeroClass[]>): MatchState {
+  const created = createMatch(seed);
+  created.round = seed % 2 === 0 ? 0 : 1;
+  for (const squad of [SquadId.Left, SquadId.Right]) {
+    created.heroes
+      .filter((hero) => hero.squad === squad)
+      .forEach((hero, i) => {
+        const heroClass = squads[squad][i]!;
+        Object.assign(hero, { id: `${squad}-${heroClass}-${i + 1}`, heroClass, deck: shuffledDeck(heroClass, seed * 7919 + i * 104729 + (squad === SquadId.Left ? 0 : 1)) });
+      });
+  }
+  return startRound(created);
+}
+
+type ByClass = Record<HeroClass, number>;
+const emptyByClass = (): ByClass => ({ [HeroClass.Bruiser]: 0, [HeroClass.Controller]: 0, [HeroClass.Assassin]: 0 });
+
+interface RoleTally {
+  damage: ByClass;
+  /** Shield absorbed, credited to the class that gave the Shield. */
+  absorbed: ByClass;
+  coverPlaced: ByClass;
+  tilesRevealed: ByClass;
+}
+
+/** Adds one Resolution to the tally; `before` is the Match State the Resolution started from. */
+function tallyRoles(before: MatchState, events: readonly MatchEvent[], tally: RoleTally): void {
+  const classOf = (id: string) => before.heroes.find((hero) => hero.id === id)!.heroClass;
+  const pools = new Map<string, { source: HeroClass; left: number }[]>();
+  for (const event of events) {
+    if (event.kind === EventKind.ShieldGained) {
+      const pool = pools.get(event.heroId) ?? [];
+      pool.push({ source: classOf(event.casterId ?? event.heroId), left: event.amount ?? 0 });
+      pools.set(event.heroId, pool);
+    } else if (event.kind === EventKind.AttackHit) {
+      tally.damage[classOf(event.heroId)] += event.damage ?? 0;
+      let absorbed = event.absorbed ?? 0;
+      for (const entry of pools.get(event.targetId!) ?? []) {
+        const taken = Math.min(entry.left, absorbed);
+        entry.left -= taken;
+        absorbed -= taken;
+        tally.absorbed[entry.source] += taken;
+      }
+    } else if (event.kind === EventKind.CoverPlaced) {
+      tally.coverPlaced[classOf(event.heroId)]++;
+    } else if (event.kind === EventKind.AreaRevealed) {
+      tally.tilesRevealed[classOf(event.heroId)] += (event.amount ?? 0) ** 2;
+    }
+  }
+}
+
+/** Plays an AI-against-AI match of the given Squads; returns the winner (undefined for a draw). */
+function playComposed(seed: number, squads: Record<SquadId, readonly HeroClass[]>, tally?: RoleTally): SquadId | undefined {
+  let match = composedMatch(seed, squads);
+  for (let round = 1; round <= ROUND_LIMIT * 2 && !match.result; round++) {
+    const plans = [SquadId.Left, SquadId.Right].map((squad) => planSquad(buildSquadView(match, squad)));
+    const resolution = resolveRound(match, plans);
+    if (tally) tallyRoles(match, resolution.events, tally);
+    match = resolution.match.result ? resolution.match : startRound(resolution.match);
+  }
+  return match.result?.winner;
+}
+
+const sumOf = (byClass: ByClass) => Object.values(byClass).reduce((sum, value) => sum + value, 0);
+
+function printDamageShare(seeds: number, offset: number): void {
+  const tally: RoleTally = { damage: emptyByClass(), absorbed: emptyByClass(), coverPlaced: emptyByClass(), tilesRevealed: emptyByClass() };
+  for (let seed = offset + 1; seed <= offset + seeds; seed++) playComposed(seed, { [SquadId.Left]: MIXED_SQUAD, [SquadId.Right]: MIXED_SQUAD }, tally);
+  const of = (byClass: ByClass, heroClass: HeroClass) => share(byClass[heroClass], sumOf(byClass));
+  const bruiser = of(tally.damage, HeroClass.Bruiser);
+  const controller = of(tally.damage, HeroClass.Controller);
+  const assassin = of(tally.damage, HeroClass.Assassin);
+  const support = [
+    ["Shield absorbed", tally.absorbed],
+    ["Cover placed", tally.coverPlaced],
+    ["tiles revealed", tally.tilesRevealed],
+  ] as const;
+  printTable(`Role gauge 2, damage and support share (mixed Squads, AI vs AI, ${seeds} matches; "!" = misses its target)`, [
+    ["measure", "value", "target"],
+    ["damage dealt by the Assassin", `${assassin.toFixed(0)}%${miss(assassin >= ROLE_TARGETS.assassinDamageMinPercent)}`, `>= ${ROLE_TARGETS.assassinDamageMinPercent}%`],
+    ["damage dealt by the Bruiser", `${bruiser.toFixed(0)}%${miss(bruiser <= ROLE_TARGETS.bruiserDamageMaxPercent)}`, `<= ${ROLE_TARGETS.bruiserDamageMaxPercent}%`],
+    ["damage dealt by the Controller", `${controller.toFixed(0)}%${miss(controller <= ROLE_TARGETS.controllerDamageMaxPercent)}`, `<= ${ROLE_TARGETS.controllerDamageMaxPercent}%`],
+    ...support.map(([name, byClass]) => {
+      const value = of(byClass, HeroClass.Controller);
+      return [`${name} from the Controller (total ${sumOf(byClass)})`, sumOf(byClass) === 0 ? "no data !" : `${value.toFixed(0)}%${miss(value >= ROLE_TARGETS.controllerSupportMinPercent)}`, `>= ${ROLE_TARGETS.controllerSupportMinPercent}%`];
+    }),
+  ]);
+  console.log("  The AI plays only simple Attacks and moves (#363): it plays no Shield, Cover, Scout Drone, Charge, Pull, Breach Charge or Shockwave card, so the support rows read 0 or no data.");
+}
+
+function printComposition(seeds: number, offset: number): void {
+  const rows: string[][] = [["Squad of three, against the mixed Squad", "mixed Squad wins", "target"]];
+  for (const heroClass of Object.values(HeroClass)) {
+    const monotype = [heroClass, heroClass, heroClass];
+    let wins = 0;
+    for (let seed = offset + 1; seed <= offset + seeds; seed++) {
+      for (const mixedSquad of [SquadId.Left, SquadId.Right]) {
+        const squads = mixedSquad === SquadId.Left ? { [SquadId.Left]: MIXED_SQUAD, [SquadId.Right]: monotype } : { [SquadId.Left]: monotype, [SquadId.Right]: MIXED_SQUAD };
+        const winner = playComposed(seed, squads);
+        wins += winner === undefined ? 0.5 : Number(winner === mixedSquad);
+      }
+    }
+    const rate = share(wins, seeds * 2);
+    rows.push([`three ${heroClass}s`, `${rate.toFixed(0)}%${miss(rate >= ROLE_TARGETS.mixedWinMinPercent)}`, `>= ${ROLE_TARGETS.mixedWinMinPercent}%`]);
+  }
+  printTable(`Role gauge 3, composition (AI vs AI, ${seeds} seeds on both seats, draws count half; "!" = misses its target)`, rows);
+}
+
+it("prints the role gauges", () => {
+  const only = setting("only");
+  if (only && !only.includes("role")) return;
+  const seeds = Number(setting("seeds") ?? 300);
+  const offset = Number(setting("seed_offset") ?? 0);
+  printDistanceDuels(seeds, offset);
+  printDamageShare(seeds, offset);
+  printComposition(seeds, offset);
 });
 
