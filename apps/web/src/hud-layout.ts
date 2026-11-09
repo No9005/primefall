@@ -35,7 +35,7 @@ export function freeBoardArea(view: ViewSize, state: HudState): Rect {
   return inside(view, IDLE_INSETS);
 }
 
-// The HUD elements as the layout in styles.css puts them (without the safe-area insets). Elements that bleed off the
+// The HUD elements as the layout in styles.css puts them (flush with the screen edges, no safe-area insets). Elements that bleed off the
 // bottom edge are cut at the view.
 
 /** Planning, or the Resolution with its bar across the top. */

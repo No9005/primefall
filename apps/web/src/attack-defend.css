@@ -16,7 +16,7 @@
 .start-more .seed { margin: 0 0 0 8px; font: 500 12px var(--font-number); color: var(--muted); }
 
 /* HUD: role label (left), centre pill, Round pill */
-.role-label { position: absolute; z-index: var(--z-pill); left: calc(8px + env(safe-area-inset-left)); top: calc(4px + env(safe-area-inset-top)); height: 34px; box-sizing: border-box; padding: 0 14px; display: flex; align-items: center; gap: 8px; border: 1.5px solid; border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); font: 700 16px Rajdhani, sans-serif; letter-spacing: 0.14em; pointer-events: none; }
+.role-label { position: absolute; z-index: var(--z-pill); left: 8px; top: 4px; height: 34px; box-sizing: border-box; padding: 0 14px; display: flex; align-items: center; gap: 8px; border: 1.5px solid; border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); font: 700 16px Rajdhani, sans-serif; letter-spacing: 0.14em; pointer-events: none; }
 .role-label i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 .role-label.attack { color: var(--orange); border-color: var(--orange); }
 .role-label.defend { color: var(--blue); border-color: var(--blue); }
@@ -34,7 +34,7 @@
 .pill-zone.contested { color: var(--amber); }
 .pill-zone.enemy { color: var(--red-text); }
 /* With the Resolution bar the centre pill moves down to top 34. */
-.role-pill.resolving { top: calc(34px + env(safe-area-inset-top)); }
+.role-pill.resolving { top: 34px; }
 .bar-role { margin-left: auto; font: 700 14px var(--font-label); letter-spacing: 0.2em; }
 .bar-role.attack { color: var(--orange); }
 .bar-role.defend { color: var(--blue); }

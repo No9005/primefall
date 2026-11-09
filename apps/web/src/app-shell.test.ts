@@ -35,8 +35,10 @@ describe("installable app shell", () => {
     expect(indexHtml).toContain('name="theme-color" content="#12161c"');
   });
 
-  it("uses the dynamic viewport height and blocks overscroll", () => {
-    expect(styles).toMatch(/\.app \{[^}]*height: 100dvh/);
+  it("pins the page to the four screen edges (no vh/dvh strip below it) and blocks overscroll", () => {
+    expect(styles).toMatch(/body \{[^}]*position: fixed; inset: 0/);
+    expect(styles).toMatch(/\.app \{[^}]*height: 100%/);
+    expect(styles).not.toMatch(/safe-area-inset/);
     expect(styles).toMatch(/overscroll-behavior: none/);
   });
 });

@@ -41,12 +41,13 @@
 }
 
 html, body, #root { height: 100%; margin: 0; }
-/* The page never scrolls, bounces or pull-to-refreshes during play; dvh follows the browser bars on phones. */
+/* The page never scrolls, bounces or pull-to-refreshes during play. It is pinned to all four edges of the screen (viewport-fit=cover),
+   not sized with vh/dvh, which on an iPhone web app leave a strip at the bottom; the HUD sits flush with the screen edges. */
 html, body { overscroll-behavior: none; }
-body { background: var(--graphite); color: var(--text); font-family: Barlow, system-ui, sans-serif; overflow: hidden; position: fixed; width: 100%; }
+body { background: var(--graphite); color: var(--text); font-family: Barlow, system-ui, sans-serif; overflow: hidden; position: fixed; inset: 0; width: 100%; }
 button { font: inherit; color: inherit; touch-action: manipulation; }
 
-.app { height: 100dvh; position: relative; }
+.app { height: 100%; position: relative; }
 .loading { padding: 16px; }
 
 /* The board fills the screen; HUD panels overlay it at the edges (UI spec). */
@@ -65,7 +66,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 @keyframes slide-down { from { transform: translateY(-30px); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .resolution-bar { animation: none; } }
 /* Resolution commentary: a column at the top left, below the bar and the pills (which sit at y 32 to 66 during the Resolution); entries slide in per Tick. */
-.commentary { position: absolute; z-index: var(--z-hud); left: calc(8px + env(safe-area-inset-left)); top: calc(70px + env(safe-area-inset-top)); width: 236px; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+.commentary { position: absolute; z-index: var(--z-hud); left: 8px; top: 70px; width: 236px; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
 .commentary-entry { height: 36px; box-sizing: border-box; padding: 3px 8px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; background: color-mix(in srgb, var(--panel) 94%, transparent); border-left: 4px solid var(--steel); border-radius: var(--radius-s); white-space: nowrap; }
 .commentary-entry.own { border-left-color: var(--teal); }
 .commentary-entry.ally { border-left-color: var(--yellow); }
@@ -118,7 +119,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .hand.collapsed { position: absolute; left: 0; bottom: 0; pointer-events: none; visibility: hidden; transition: visibility 0s 150ms; }
 .hand.collapsed li { transform: translateX(-160px); opacity: 0; transition: transform 150ms, opacity 150ms; }
 /* The used card while its target is picked (issue 208): lower middle of the free board area, pulled down to cancel. */
-.floating-card { position: absolute; left: calc(50% + 48px); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: var(--z-hand); width: 104px; height: 98px; box-sizing: border-box; padding: 6px 8px; display: flex; flex-direction: column; align-items: center; text-align: center; background: color-mix(in srgb, var(--ink) 93%, transparent); border: 1.5px solid var(--teal); border-radius: var(--radius-m); touch-action: none; cursor: grab; transition: transform 200ms ease-out; }
+.floating-card { position: absolute; left: calc(50% + 48px); bottom: 10px; z-index: var(--z-hand); width: 104px; height: 98px; box-sizing: border-box; padding: 6px 8px; display: flex; flex-direction: column; align-items: center; text-align: center; background: color-mix(in srgb, var(--ink) 93%, transparent); border: 1.5px solid var(--teal); border-radius: var(--radius-m); touch-action: none; cursor: grab; transition: transform 200ms ease-out; }
 .floating-name { font: 700 15px/1 var(--font-label); }
 .floating-type { margin-top: 2px; font: 700 12px/1 var(--font-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-light); }
 .floating-instruction { margin: auto 0; font: 700 14px/1.1 var(--font-label); color: var(--teal); }
@@ -139,7 +140,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .mode-note { display: block; font-size: 12px; color: var(--overdrive); }
 .od-marker { margin-left: 3px; padding: 0 2px; border-radius: 2px; background: var(--overdrive); color: var(--graphite); font-size: 12px; }
 /* The Hand is a fan of 108 x 134 px cards in the bottom left corner that bleed off the bottom edge (only the top 62 px show: name, cost, type); the piles sit left of it, the Energy pill right above it. */
-.hand-bar { z-index: var(--z-hand); background: none; border: 0; bottom: 0; left: calc(6px + env(safe-area-inset-left)); display: flex; align-items: flex-end; gap: 6px; }
+.hand-bar { z-index: var(--z-hand); background: none; border: 0; bottom: 0; left: 6px; display: flex; align-items: flex-end; gap: 6px; }
 .piles { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .pile-minor { display: flex; flex-direction: column; font: 600 12px/1 var(--font-label); letter-spacing: 0.04em; color: var(--muted); }
 .deck-pile { position: relative; width: 60px; height: 84px; box-sizing: border-box; background: var(--panel); border: 2px solid var(--teal); border-radius: var(--radius-s); box-shadow: 3px 3px 0 0 var(--graphite), 3px 3px 0 2px var(--teal); margin-right: 3px; margin-bottom: 3px; display: flex; align-items: center; justify-content: center; }
@@ -249,7 +250,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 
 /* Bottom-right corner (issue 206): the Queue column (4 rows of 28 px) directly above a pill-shaped Commit,
    124 px wide. The target hint sits left of it, below the board controls. Mirrored by commitRect in hud-layout.ts. */
-.commit-panel { position: absolute; bottom: calc(6px + env(safe-area-inset-bottom)); right: calc(6px + env(safe-area-inset-right)); width: 124px; display: flex; flex-direction: column; gap: 4px; }
+.commit-panel { position: absolute; bottom: 6px; right: 6px; width: 124px; display: flex; flex-direction: column; gap: 4px; }
 .queue { display: flex; flex-direction: column; }
 .queue-rows { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .queue-row { display: flex; align-items: center; gap: 4px; min-height: 32px; box-sizing: border-box; padding: 2px 4px; background: color-mix(in srgb, var(--ink) 93%, transparent); border: 1.5px solid var(--steel); border-radius: var(--radius-s); }
@@ -279,7 +280,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .wait-card .card-name { display: block; font-weight: 700; font-size: 14px; line-height: 1; }
 
 /* Prime Zone score at the top centre: label and three pips; appears once a Hero stands in the zone. */
-.prime-pill { position: absolute; z-index: var(--z-pill); top: calc(4px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: 200px; height: 34px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px solid var(--steel); border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
+.prime-pill { position: absolute; z-index: var(--z-pill); top: 4px; left: 50%; transform: translateX(-50%); width: 200px; height: 34px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px solid var(--steel); border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
 .prime-label { font: 700 12px var(--font-label); letter-spacing: 0.14em; color: var(--muted); }
 .prime-pips { display: flex; gap: 6px; }
 .prime-pip { width: 14px; height: 14px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--steel); }
@@ -299,10 +300,10 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 }
 
 /* During the Resolution the pills step below the 28 px Resolution bar so that neither covers the other or the bar text. */
-.prime-pill.resolving, .timer-pill.resolving { top: calc(32px + env(safe-area-inset-top)); }
+.prime-pill.resolving, .timer-pill.resolving { top: 32px; }
 
 /* Timer pill: top right. */
-.timer-pill { position: absolute; z-index: var(--z-pill); top: calc(4px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); height: 34px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--steel); border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
+.timer-pill { position: absolute; z-index: var(--z-pill); top: 4px; right: 8px; height: 34px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--steel); border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
 .timer-round { font: 600 12px var(--font-label); letter-spacing: 0.08em; color: var(--muted); }
 .timer-time { font: 500 20px var(--font-number); color: var(--text); }
 .timer-amber { border-color: var(--amber); }
