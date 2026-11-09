@@ -11,7 +11,7 @@ import {
   tileAt,
 } from "game-core";
 import { Application, Assets, Container, Graphics, Text } from "pixi.js";
-import { COVER_BLUE, drawCoverLook } from "./cover-look";
+import { COVER_BLUE, drawCoverLook, drawCoverPanels } from "./cover-look";
 import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPick, Point } from "./card-drag";
 import {
@@ -1015,7 +1015,17 @@ export function Board({
       const piece = new Graphics();
       if (hasCoverLook(tile.kind)) {
         const built = placedCover.some((p) => p.col === tile.position.col && p.row === tile.position.row);
-        drawCoverLook(piece, coverLook(tile.position, tile.kind === TileKind.FullCover ? "full" : "half", built, angle), strokeScale);
+        const look = coverLook(tile.position, tile.kind === TileKind.FullCover ? "full" : "half", built, angle);
+        drawCoverLook(piece, look, strokeScale);
+        if (look.panels.length > 0) {
+          // The panel stands in front of the Heroes on the tile (they sit at depth + 0.5) and behind the next tile.
+          const front = new Graphics();
+          drawCoverPanels(front, look, strokeScale);
+          front.zIndex = tile.depth + 0.75;
+          if (!tile.lit) front.alpha = TERRAIN_STYLE.fogPieceAlpha;
+          objects.addChild(front);
+          created.push(front);
+        }
       } else for (const face of tile.piece) fillFace(piece, face, strokeScale);
       piece.zIndex = tile.depth;
       if (!tile.lit) piece.alpha = TERRAIN_STYLE.fogPieceAlpha;

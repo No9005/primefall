@@ -346,7 +346,7 @@ const COVER_LOOK = {
   stripe: { band: 4, angle: 35 },
 } as const;
 
-/** A shield panel on a back edge of a tile: a translucent quad that fades towards its top, with a foot line. */
+/** The shield panel across the front of a tile: a translucent quad that fades towards its top, with a foot line. */
 export interface CoverPanel {
   points: number[];
   /** The foot line as x1, y1, x2, y2. */
@@ -368,7 +368,7 @@ export interface CoverLook {
   built: boolean;
   /** Natural Cover: the flat dark plinth. */
   plinth: Face[];
-  /** Natural Cover: the two panels on the back edges. */
+  /** Natural Cover: the one panel across the front, drawn above the Heroes on the tile. */
   panels: CoverPanel[];
   /** Built Cover: faces of the bars (sides first, then tops). */
   bars: BarFace[];
@@ -449,9 +449,16 @@ export function coverLook(position: GridPosition, kind: "full" | "half", built: 
     look.plinth = boxFaces(proj, whole, COVER_LOOK.plinth * GAME_PX, plinthStyle, 1);
     const lift = COVER_LOOK.plinth * GAME_PX;
     const height = COVER_LOOK.natural[kind] * GAME_PX;
-    for (const edge of back) {
-      const a = proj.point(col + edge.from[0], row + edge.from[1], lift);
-      const b = proj.point(col + edge.to[0], row + edge.to[1], lift);
+    // One panel across the front of the tile, level on the screen at every view angle, drawn above the Heroes on the tile:
+    // a Hero standing on Cover is hidden behind it.
+    const front = edges.filter((edge) => {
+      const middle = proj.point(col + (edge.from[0] + edge.to[0]) / 2, row + (edge.from[1] + edge.to[1]) / 2);
+      return middle.y > centreY + EPSILON;
+    });
+    const middleOf = (edge: (typeof edges)[number]) => [(edge.from[0] + edge.to[0]) / 2, (edge.from[1] + edge.to[1]) / 2] as const;
+    const ends = front.length === 2 ? [middleOf(front[0]!), middleOf(front[1]!)] : front.length === 1 ? [front[0]!.from, front[0]!.to] : [];
+    if (ends.length === 2) {
+      const [a, b] = ends.map(([dc, dr]) => proj.point(col + dc, row + dr, lift)).sort((p, q) => p.x - q.x) as [{ x: number; y: number }, { x: number; y: number }];
       look.panels.push({
         points: [a.x, a.y, b.x, b.y, b.x, b.y - height, a.x, a.y - height],
         foot: [a.x, a.y, b.x, b.y],

@@ -252,13 +252,18 @@ describe("the look of the terrain (artboard J)", () => {
     expect(coverMarks(grid, VIEW_ANGLE, new Set(["1,0"])).map((mark) => mark.kind).sort()).toEqual(["full", "full"]);
   });
 
-  it("draws natural Cover as two panels on the back edges, 16 and 34 game px high", () => {
+  it("draws natural Cover as one panel across the front, 16 and 34 game px high, level on the screen", () => {
     const gamePx = TILE_WIDTH / 46;
     const height = (kind: "half" | "full") => {
       const [first] = coverLook({ col: 1, row: 1 }, kind, false).panels;
       return first!.foot[1]! - first!.top[1]!;
     };
-    expect(coverLook({ col: 1, row: 1 }, "half", false).panels).toHaveLength(2);
+    expect(coverLook({ col: 1, row: 1 }, "half", false).panels).toHaveLength(1);
+    for (const angle of [0, 45, 90, 135, 180, 225, 270, 315]) {
+      const [panel] = coverLook({ col: 1, row: 1 }, "half", false, angle).panels;
+      expect(panel!.foot[1]).toBeCloseTo(panel!.foot[3]!);
+      expect(panel!.foot[2]! - panel!.foot[0]!).toBeGreaterThan(0);
+    }
     expect(height("half")).toBeCloseTo(16 * gamePx);
     expect(height("full")).toBeCloseTo(34 * gamePx);
   });
