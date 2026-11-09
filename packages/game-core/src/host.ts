@@ -59,7 +59,7 @@ export interface ZoneView extends ZoneControl {
 }
 
 /** Rounds the Defender must survive in Attack and Defend (ADR 0022); replaces `ROUND_LIMIT` in that mode. */
-export const DEFENDER_ROUND_LIMIT = 12;
+export const DEFENDER_ROUND_LIMIT = 9;
 
 export enum MatchMode {
   Classic = "classic",

@@ -88,7 +88,7 @@ const DATA_TWEAKS: Record<string, Tweaks> = {
 function attackAndDefendVariants(): Record<string, Tweaks> {
   const variants: Record<string, Tweaks> = {};
   for (const [suffix, data] of Object.entries(DATA_TWEAKS)) {
-    for (const roundLimit of [10, 12, 14]) {
+    for (const roundLimit of [8, 9, 10, 12, 14]) {
       for (const zoneTie of [ZoneTie.Attacker, ZoneTie.Defender]) {
         for (const zoneDecay of [0, 1, 2]) {
           variants[`A&D limit ${roundLimit}, tie ${zoneTie}, decay ${zoneDecay}${suffix}`] = {
