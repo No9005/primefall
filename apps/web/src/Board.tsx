@@ -38,7 +38,7 @@ import {
 } from "./board-layout";
 import { freeBoardArea } from "./hud-layout";
 import { FogClouds, fogShape } from "./fog-clouds";
-import { buildTerrain, coverLook, coverMarks, depthOf, hasCoverLook, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, worldLineWidth } from "./terrain";
+import { buildTerrain, coverLook, coverMarks, depthOf, hasCoverLook, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, withoutCover, worldLineWidth } from "./terrain";
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
@@ -522,7 +522,11 @@ export function Board({
   overview = false,
 }: BoardProps) {
   const host = useRef<HTMLDivElement>(null);
-  const coverGrid = useMemo(() => coverGridOf(destroyedCover, placedCover, wreckCover), [destroyedCover, placedCover, wreckCover]);
+  // The overview (side screen preview) shows the zones but not the Cover: where the goal is, not what the cover looks like.
+  const coverGrid = useMemo(() => {
+    const grid = coverGridOf(destroyedCover, placedCover, wreckCover);
+    return overview ? withoutCover(grid) : grid;
+  }, [destroyedCover, placedCover, wreckCover, overview]);
   const [tokens, setTokens] = useState<Container>();
   // The layer of the attack effects (above the Heroes) and the world it shakes.
   const [effectsHost, setEffectsHost] = useState<{ layer: Container; world: Container }>();
@@ -1057,7 +1061,10 @@ export function Board({
     for (const mark of coverMarks(grid, angle, builtTiles)) {
       const glyph = shieldGlyph(mark.kind, strokeScale);
       glyph.position.set(mark.x, mark.y);
-      planning.addChild(glyph);
+      // Above its own piece and the Heroes on it (depth + 0.9), under the pieces in front; not under the props, which lie on
+      // the objects layer and would cut it off.
+      glyph.zIndex = depthOf(mark.position, angle) + 0.9;
+      objects.addChild(glyph);
       created.push(glyph);
     }
 

@@ -1,4 +1,4 @@
-import { destroyCover, type Grid, type GridPosition, isWreck, REACTOR_DECK, TileKind, withTile, withWreck } from "game-core";
+import { coverAt, CoverKind, destroyCover, type Grid, type GridPosition, isWreck, REACTOR_DECK, TileKind, withTile, withWreck } from "game-core";
 import { PIECE_OUTLINE_WIDTH, PIECE_SHAPE, type PieceStyle, TERRAIN_STYLE } from "./terrain-style";
 
 // The terrain as shapes: the grid and a view angle in, drawing primitives out (floor polygons, and for each
@@ -530,6 +530,17 @@ export function coverMarks(grid: Grid, angle: number = VIEW_ANGLE, built: Readon
 export const hasCoverLook = (kind: TileKind): kind is TileKind.FullCover | TileKind.HalfCover => kind === TileKind.FullCover || kind === TileKind.HalfCover;
 
 export { tileKey };
+
+/** The grid with every Cover tile (Half and Full) turned into plain floor; Walls, zones and Spawns stay. */
+export function withoutCover(grid: Grid): Grid {
+  let result = grid;
+  grid.tiles.forEach((line, row) =>
+    line.forEach((_, col) => {
+      if (coverAt(result, { col, row }) !== CoverKind.None) result = destroyCover(result, { col, row });
+    }),
+  );
+  return result;
+}
 
 /** The Reactor Deck as the Squad knows it: destroyed Cover gone, Cover placed in the match standing, wrecks of Exhausted Heroes as Half Cover. */
 export function coverGridOf(destroyed: readonly GridPosition[], placed: readonly GridPosition[], wrecks: readonly GridPosition[]): Grid {
