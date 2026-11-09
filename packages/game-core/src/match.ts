@@ -452,9 +452,10 @@ const hashOfText = (text: string) => [...text].reduce((sum, char) => Math.imul(s
  * A Match State built from what one Squad knows, so the AI can play a Round through the real Resolution without reading
  * hidden state. Own Heroes are exact except the order of Deck and Discard. An enemy Hand is a guess: as many cards as the
  * counts leave, picked by the seed. A Visible enemy or a Ghost stands where it was seen; an Unknown enemy is left out
- * (Exhausted, no cards). The same view and seed always give the same state.
+ * (Exhausted, no cards). `imagined` (optional) puts a Ghost or an Unknown enemy on a tile the caller imagined: the AI plays
+ * several such worlds to plan under Fog of War. The same view, seed and `imagined` always give the same state.
  */
-export function matchFromSquadView(view: SquadView, seed: number): MatchState {
+export function matchFromSquadView(view: SquadView, seed: number, imagined: ReadonlyMap<string, GridPosition> = new Map()): MatchState {
   const salt = view.round * 2 + (view.squad === SquadId.Left ? 0 : 1);
   const enemySquad = view.squad === SquadId.Left ? SquadId.Right : SquadId.Left;
   let grid: Grid = view.grid;
@@ -496,12 +497,16 @@ export function matchFromSquadView(view: SquadView, seed: number): MatchState {
   }));
   const ghosts: MatchState["ghosts"] = { [SquadId.Left]: {}, [SquadId.Right]: {} };
   for (const enemy of view.enemies) {
+    const guess = imagined.get(enemy.id);
     if (enemy.visibility === Visibility.Unknown) {
-      heroes.push(heroState(enemy.id, enemySquad, enemy.heroClass, { col: 0, row: 0 }, { deck: 0, discard: 0, exile: 0 }, undefined, true));
+      // Never seen: left out, or, in an imagined world, standing on the imagined tile with a fresh Deck.
+      const fresh = { deck: HERO_DECKS[enemy.heroClass].length - HAND_SIZE, discard: 0, exile: 0 };
+      heroes.push(guess ? heroState(enemy.id, enemySquad, enemy.heroClass, guess, fresh, undefined, false) : heroState(enemy.id, enemySquad, enemy.heroClass, { col: 0, row: 0 }, { deck: 0, discard: 0, exile: 0 }, undefined, true));
       continue;
     }
     const counts = { deck: enemy.deckCount, discard: enemy.discardCount, exile: enemy.exileCount };
-    const state = heroState(enemy.id, enemySquad, enemy.heroClass, enemy.position, counts, undefined, enemy.visibility === Visibility.Visible && enemy.exhausted);
+    const where = enemy.visibility === Visibility.Ghost && guess ? guess : enemy.position;
+    const state = heroState(enemy.id, enemySquad, enemy.heroClass, where, counts, undefined, enemy.visibility === Visibility.Visible && enemy.exhausted);
     if (enemy.visibility === Visibility.Visible) {
       Object.assign(state, { shield: enemy.shield, slow: enemy.slowed ? 1 : 0, marked: enemy.marked ? 1 : 0, attackBonus: enemy.attackBonus });
     } else {
