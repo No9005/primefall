@@ -420,7 +420,8 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
     mode.kind === MatchMode.AttackAndDefend
       ? (() => {
           const roundLimit = mode.roundLimit ?? DEFENDER_ROUND_LIMIT;
-          return { roundLimit, attackAndDefend: { defender: mode.defender, roundsLeft: match.result ? 0 : Math.max(0, roundLimit - match.round + 1) } };
+          const zone = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+          return { roundLimit, attackAndDefend: { defender: mode.defender, roundsLeft: match.result ? 0 : Math.max(0, roundLimit - match.round + 1), zone } };
         })()
       : { roundLimit: ROUND_LIMIT };
   const zones: ZoneView[] = ZONES.map((zone, i) => ({
@@ -433,6 +434,6 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   }));
   const points = classic ? { scores: { ...match.scores }, zones } : {};
   return {
-    squad, round: match.round, ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, enemies,
+    squad, round: match.round, grid: REACTOR_DECK, ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, enemies,
   };
 }

@@ -138,17 +138,17 @@ export function moveDestinations(from: GridPosition, grid: Grid = REACTOR_DECK, 
 }
 
 /** Where a Move 2 towards `destination` really ends: it stops before a Wall or Wall corner (ADR 0020). */
-export function moveEnd(from: GridPosition, destination: GridPosition): GridPosition {
-  return movePath(from, destination).at(-1) ?? from;
+export function moveEnd(from: GridPosition, destination: GridPosition, grid: Grid = REACTOR_DECK): GridPosition {
+  return movePath(from, destination, grid).at(-1) ?? from;
 }
 
 /** The tiles a Move 2 towards `destination` stands on after step 1 and step 2, without other Heroes in the way. */
-export function movePath(from: GridPosition, destination: GridPosition): GridPosition[] {
+export function movePath(from: GridPosition, destination: GridPosition, grid: Grid = REACTOR_DECK): GridPosition[] {
   const path: GridPosition[] = [];
   let position = from;
   for (let step = 0; step < MOVE_DISTANCE; step++) {
     const next = stepTowards(position, destination);
-    if (!isStepAllowed(position, next) || (next.col === position.col && next.row === position.row)) break;
+    if (!isStepAllowed(position, next, grid) || (next.col === position.col && next.row === position.row)) break;
     position = next;
     path.push(position);
   }
@@ -245,7 +245,7 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
           }
         } else if (card.target === CardTarget.Tile || card.target === CardTarget.EmptyTile || card.target === CardTarget.Area) {
           // Range, Line of Sight and whether the tile is empty are checked when the card resolves.
-          const kind = action.tile && tileAt(REACTOR_DECK, action.tile);
+          const kind = action.tile && tileAt(view.grid, action.tile);
           if (action.target !== heroId || kind === undefined || kind === TileKind.Wall) {
             report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a tile that is not a Wall as its target.` });
           }
@@ -275,7 +275,7 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
         }
       }
       if (action.kind !== ActionKind.Move) continue;
-      const reachable = moveDestinations(position, REACTOR_DECK, moveDistance).some(
+      const reachable = moveDestinations(position, view.grid, moveDistance).some(
         (tile) => tile.col === action.destination.col && tile.row === action.destination.row,
       );
       if (!reachable) {

@@ -4,7 +4,7 @@
 
 import type { HeroClass } from "./cards";
 import type { SquadPlan } from "./plan";
-import type { GridPosition } from "./reactor-deck";
+import type { Grid, GridPosition } from "./reactor-deck";
 
 export enum SquadId {
   Left = "left",
@@ -223,8 +223,16 @@ export interface SquadView {
   squad: SquadId;
   round: number;
   roundLimit: number;
-  /** Only in Attack and Defend (public information): the Defender, and the Rounds left until Defence Held. */
-  attackAndDefend?: { defender: SquadId; roundsLeft: number };
+  /**
+   * The map (public information): terrain only. Destroyed, wreck and placed Cover are not in it; they stay in
+   * `destroyedCover`, `wreckCover` and `placedCover`.
+   */
+  grid: Grid;
+  /**
+   * Only in Attack and Defend (public information): the Defender, the Rounds left until Defence Held, and the tiles
+   * of the Zone to take or hold (the same shape as the tiles of a `ZoneView`).
+   */
+  attackAndDefend?: { defender: SquadId; roundsLeft: number; zone: readonly GridPosition[] };
   /** Attack and Defend: consecutive Resolutions each Squad has controlled the Prime Zone (0 for the Squad that does not). Always 0 in the classic mode. */
   primeProgress: Record<SquadId, number>;
   /** Classic only: the Victory Points of both Squads. */

@@ -130,7 +130,8 @@ describe("Attack and Defend: Squad View and host", () => {
     for (const squad of [SquadId.Left, SquadId.Right]) {
       const view = buildSquadView(match, squad);
       expect(view.roundLimit).toBe(DEFENDER_ROUND_LIMIT);
-      expect(view.attackAndDefend).toEqual({ defender: SquadId.Right, roundsLeft: DEFENDER_ROUND_LIMIT });
+      expect(view.attackAndDefend).toMatchObject({ defender: SquadId.Right, roundsLeft: DEFENDER_ROUND_LIMIT });
+      expect(view.attackAndDefend?.zone).toHaveLength(9);
     }
     expect(buildSquadView(createMatch(3), SquadId.Left).attackAndDefend).toBeUndefined();
   });
