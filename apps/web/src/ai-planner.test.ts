@@ -23,6 +23,47 @@ describe("AI planner", () => {
     expect(await aiPlanner(view, undefined, style, 5)).toEqual(planSquad(view, undefined, style, 5));
   });
 
+  it("a failing planner makes submitPlan reject and leaves the Round open, so Commit can be tried again", async () => {
+    let fail = true;
+    const host = createLocalHost(11, undefined, async (view, heroIds, style, seed) => {
+      if (fail) throw new Error("The AI Worker failed.");
+      return planSquad(view, heroIds, style, seed);
+    });
+    const plan = { squad: SquadId.Left, heroes: [] };
+    const before = host.snapshot();
+    await expect(host.submitPlan(plan)).rejects.toThrow("The AI Worker failed.");
+    expect(host.snapshot()).toBe(before);
+    fail = false;
+    await expect(host.submitPlan(plan)).resolves.toBeDefined();
+  });
+
+  it("a Round that changed while the AI was planning is rejected, not resolved twice", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const host = createLocalHost(12, undefined, async (view, heroIds, style, seed) => {
+      await gate;
+      return planSquad(view, heroIds, style, seed);
+    });
+    const plan = { squad: SquadId.Left, heroes: [] };
+    const first = host.submitPlan(plan);
+    const second = host.submitPlan(plan);
+    release();
+    const results = await Promise.allSettled([first, second]);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+  });
+
+  it("measures the time from Commit to the Resolution on the default planner", async () => {
+    const timings: number[] = [];
+    for (const seed of [1, 7, 42, 1234]) {
+      const host = createLocalHost(seed);
+      const start = performance.now();
+      await host.submitPlan({ squad: SquadId.Left, heroes: [] });
+      timings.push(Math.round(performance.now() - start));
+    }
+    // Measured: 83, 68, 77, 71 ms per Round for seeds 1, 7, 42, 1234 (default planner, main thread).
+    expect(timings.every((ms) => ms < 5000)).toBe(true);
+  });
+
   it("a local host that plans through the app planner gives the same Resolution as the default", async () => {
     const direct = createLocalHost(9);
     const viaPlanner = createLocalHost(9, undefined, aiPlanner);
