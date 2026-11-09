@@ -765,7 +765,7 @@ function scoreZones(match: MatchState, events: MatchEvent[], tick: number): void
 }
 
 /** Cards of the Squad's Heroes that are not in the Exile: Deck, Discard and Hand. */
-const cardsNotExiled = (match: MatchState, squad: SquadId): number =>
+export const cardsNotExiled =(match: MatchState, squad: SquadId): number =>
   match.heroes.filter((hero) => hero.squad === squad).reduce((sum, hero) => sum + hero.deck.length + hero.discard.length + hero.hand.length, 0);
 
 interface HeroQueue {

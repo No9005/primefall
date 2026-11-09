@@ -2,6 +2,8 @@
 // It only ever sees the Squad View, so it cannot read enemy Hands or unseen Heroes: no cheating.
 
 import { type CardIndex, HeroClass, HERO_DECKS, isSimpleAttack } from "./cards";
+import { buildSquadView, type HeroState, matchFromSquadView, type MatchState, seededHash, ZONES } from "./match";
+import { resolveRound, cardsNotExiled } from "./resolution";
 import { type GhostEnemyView, type HeroView, SquadId, type SquadView, Visibility, type VisibleEnemyView } from "./host";
 import {
   ActionKind,
@@ -38,6 +40,8 @@ interface Navigation {
   distances: ReadonlyMap<number, number>;
   key: (tile: GridPosition) => number;
   isObjective: (tile: GridPosition) => boolean;
+  /** Tries equally good destinations in the other order: a different tie-break gives a different candidate plan. */
+  reverseTies: boolean;
 }
 
 /**
@@ -81,10 +85,13 @@ function distancesToObjective(
 }
 
 /** The navigation of a Squad View, and the tiles no Move should end on: enemies and Squad mates that stand on the objective. */
-function buildNavigation(view: SquadView): { nav: Navigation; blocked: Set<number> } {
+function buildNavigation(
+  view: SquadView,
+  objective: readonly GridPosition[] = objectiveTiles(view),
+  reverseTies = false,
+): { nav: Navigation; blocked: Set<number> } {
   const { grid } = view;
   const key = ({ col, row }: GridPosition) => row * grid.width + col;
-  const objective = objectiveTiles(view);
   const objectiveKeys = new Set(objective.map(key));
   const isObjective = (tile: GridPosition) => objectiveKeys.has(key(tile));
   const blocked = new Set<number>();
@@ -94,7 +101,7 @@ function buildNavigation(view: SquadView): { nav: Navigation; blocked: Set<numbe
   for (const enemy of view.enemies) {
     if (enemy.visibility === Visibility.Visible && !enemy.exhausted) blocked.add(key(enemy.position));
   }
-  return { nav: { grid, distances: distancesToObjective(grid, key, objective, blocked), key, isObjective }, blocked };
+  return { nav: { grid, distances: distancesToObjective(grid, key, objective, blocked), key, isObjective, reverseTies }, blocked };
 }
 
 /**
@@ -103,8 +110,8 @@ function buildNavigation(view: SquadView): { nav: Navigation; blocked: Set<numbe
  * between equally good destinations always went to the one with the lowest column, which is a longer advance for the
  * Right Squad and made it win nearly every match (issue 87).
  */
-const destinationsInOrder = (from: GridPosition, squad: SquadId, grid: Grid): GridPosition[] =>
-  squad === SquadId.Left
+const destinationsInOrder = (from: GridPosition, squad: SquadId, { grid, reverseTies }: Navigation): GridPosition[] =>
+  (squad === SquadId.Left) !== reverseTies
     ? moveDestinations(from, grid)
     : moveDestinations(from, grid).sort((a, b) => a.row - b.row || b.col - a.col);
 
@@ -178,7 +185,7 @@ function stepTowardObjective(
   let best: GridPosition | undefined;
   let bestEnd: GridPosition | undefined;
   let bestDistance = nav.isObjective(from) ? 0 : distanceTo(from);
-  for (const destination of destinationsInOrder(from, squad, nav.grid)) {
+  for (const destination of destinationsInOrder(from, squad, nav)) {
     const end = moveEnd(from, destination, nav.grid);
     const steps = tilesAfterSteps(from, destination, nav.grid);
     if (blocked.has(key(end)) || steps.some((tile) => blocked.has(key(tile)))) continue;
@@ -219,6 +226,17 @@ export const AI_WEIGHTS = {
   ghostDanger: 4,
   /** Aiming at an enemy a Squad mate attacks in the same Tick or the Tick before or after (Crossfire needs consecutive Ticks). */
   focus: 5,
+  /**
+   * The lookahead's value of a simulated Round (`evaluateRound`), own minus enemy: per Victory Point (or Prime Zone
+   * progress), per point of zone value controlled, per card not in the Exile, per Hero in Cover; minus per enemy that
+   * can hit a Hero; plus for winning the match.
+   */
+  evalPoints: 10,
+  evalZones: 4,
+  evalCards: 1.5,
+  evalCover: 1,
+  evalDanger: 2,
+  evalWin: 1000,
 };
 
 export type AiWeights = typeof AI_WEIGHTS;
@@ -395,7 +413,7 @@ function chooseDestination(
   const distanceTo = (tile: GridPosition) => (nav.isObjective(tile) ? 0 : nav.distances.get(key(tile)) ?? Infinity);
   let best: GridPosition | undefined;
   let bestScore = scoreTile(nav, from, distanceTo(from), targets, mates, weapon, ghosts, weights);
-  for (const destination of destinationsInOrder(from, squad, nav.grid)) {
+  for (const destination of destinationsInOrder(from, squad, nav)) {
     const end = moveEnd(from, destination, nav.grid);
     const steps = tilesAfterSteps(from, destination, nav.grid);
     if (blocked.has(key(end)) || steps.some((tile) => blocked.has(key(tile)))) continue;
@@ -534,28 +552,160 @@ function planHero(
   return { heroId: hero.id, queue, pitched };
 }
 
+/** One way to make a greedy plan: the candidates and the enemy replies differ in these. */
+interface PlanVariant {
+  style: AiStyle;
+  reverseTies: boolean;
+  /** The zone (index into `view.zones`) each planned Hero heads for; absent: all Heroes head for the best zones. */
+  zones?: readonly number[];
+}
+
 /**
- * Plans the given Heroes of the viewing Squad: move toward the objective the view names, attack Visible enemies in
- * Range, Block while holding it or facing enemies. Any Hero whose plan fails `validatePlan` plans
- * nothing, so the result is always committable.
+ * The greedy plan of the given Heroes of the viewing Squad: move toward the objective the view names, attack Visible
+ * enemies in Range, Block while holding it or facing enemies. Any Hero whose plan fails `validatePlan` plans nothing,
+ * so the result is always committable.
+ */
+export function planSquadGreedy(
+  view: SquadView,
+  heroIds: readonly string[] = view.heroes.map((hero) => hero.id),
+  style: AiStyle = AiStyle.Balanced,
+  variant: Partial<Omit<PlanVariant, "style">> = {},
+): SquadPlan {
+  const claimed: ClaimedTiles = new Map();
+  const reverseTies = variant.reverseTies ?? false;
+  const base = buildNavigation(view, undefined, reverseTies);
+  const role = roleOf(view);
+  const attackerReady = role === Role.Attacker && attackerIsReady(view, base.nav);
+  const roles = assignRoles(view, heroIds);
+  const plannedAttacks: PlannedAttacks = new Map();
+  const heroes = view.heroes
+    .filter((hero) => heroIds.includes(hero.id) && !hero.exhausted)
+    .map((hero, i) => {
+      const zone = variant.zones === undefined ? undefined : view.zones?.[variant.zones[i]!];
+      const { nav, blocked } = zone ? buildNavigation(view, zone.tiles, reverseTies) : base;
+      const weights = weightsFor(style, roles.get(hero.id) ?? SquadRole.None);
+      return planHero(view, hero, claimed, blocked, nav, role, attackerReady, weights, plannedAttacks);
+    });
+  const plan: SquadPlan = { squad: view.squad, heroes };
+  const broken = new Set(validatePlan(view, plan).flatMap((issue) => (issue.heroId ? [issue.heroId] : [])));
+  return broken.size === 0 ? plan : { squad: view.squad, heroes: heroes.filter((hero) => !broken.has(hero.heroId)) };
+}
+
+/** Simulations of the Resolution the AI may run to plan one Round: candidates times enemy replies. A count, not a time, so every device plans the same. */
+export const SIMULATIONS_PER_ROUND = 40;
+/** The enemy replies: the same AI from the enemy's side with each Style, and once with the other tie-break. */
+const REPLY_VARIANTS: readonly PlanVariant[] = [
+  ...AI_STYLES.map((style) => ({ style, reverseTies: false })),
+  { style: AiStyle.Balanced, reverseTies: true },
+];
+const MIN_CANDIDATES = 8;
+const MAX_CANDIDATES = 24;
+/** Candidates within this much of the best value count as equally good; the match seed picks among them. */
+const EQUAL_VALUE_MARGIN = 1;
+/** Weight of the worst reply in a candidate's value; the rest goes to the mean. */
+const WORST_CASE_SHARE = 0.5;
+
+/** What the plan does, ignoring which cards pay for it: two candidates must differ in this. */
+const planSignature = (plan: SquadPlan): string =>
+  JSON.stringify(
+    plan.heroes.map(({ heroId, queue }) => [
+      heroId,
+      queue.map((action) => [action.kind, "destination" in action ? action.destination : null, "target" in action ? action.target : null]),
+    ]),
+  );
+
+/**
+ * Candidate variants in a seeded order: the plain Style of the Squad first, then every other combination of Style,
+ * tie-break and (when the view lists several zones) which zone each Hero heads for. All Heroes in one zone is a 3-0,
+ * two and one a 2-1, each in its own a 1-1-1.
+ */
+function candidateVariants(view: SquadView, planned: number, preferred: AiStyle, seed: number): PlanVariant[] {
+  const zoneCount = view.zones?.length ?? 0;
+  const allocations: (readonly number[] | undefined)[] = [undefined];
+  if (zoneCount > 1) {
+    let tuples: number[][] = [[]];
+    for (let hero = 0; hero < planned; hero++) tuples = tuples.flatMap((tuple) => Array.from({ length: zoneCount }, (_, zone) => [...tuple, zone]));
+    allocations.push(...tuples);
+  }
+  const first: PlanVariant = { style: preferred, reverseTies: false };
+  const others = AI_STYLES.flatMap((style) => [false, true].flatMap((reverseTies) => allocations.map((zones) => ({ style, reverseTies, zones }))))
+    .filter((variant) => variant.zones !== undefined || variant.reverseTies || variant.style !== preferred);
+  const salt = view.round * 2 + (view.squad === SquadId.Left ? 0 : 1);
+  return [first, ...others.map((variant, i) => ({ variant, order: seededHash(seed, salt * 4093 + i) })).sort((a, b) => a.order - b.order).map(({ variant }) => variant)];
+}
+
+/** Whether a Hero of `heroes` ends in Cover, for the evaluation. */
+const inCover = (match: MatchState, hero: HeroState) => coverAt(match.grid, hero.position) !== CoverKind.None;
+
+/**
+ * How good the Match State after a simulated Round is for a Squad, own minus enemy: Victory Points (or the progress on
+ * the Prime Zone), zone control, cards not in the Exile (Deck-as-Life), Heroes in Cover, and danger (enemies that can
+ * still hit a Hero, less what Cover takes). It names no tile or zone; the weights are in `AI_WEIGHTS`.
+ */
+export function evaluateRound(match: MatchState, squad: SquadId, W: AiWeights = AI_WEIGHTS): number {
+  const enemySquad = squad === SquadId.Left ? SquadId.Right : SquadId.Left;
+  const sign = (who: SquadId | undefined) => (who === squad ? 1 : who === enemySquad ? -1 : 0);
+  const points = match.scores[squad] - match.scores[enemySquad] + sign(match.primeZone.controller) * match.primeZone.progress;
+  const zones = ZONES.reduce((sum, zone, i) => sum + sign(match.zoneControl[i]?.controller) * zone.value, 0);
+  const cards = cardsNotExiled(match, squad) - cardsNotExiled(match, enemySquad);
+  const own = match.heroes.filter((hero) => hero.squad === squad && !hero.exhausted);
+  const enemies = match.heroes.filter((hero) => hero.squad === enemySquad && !hero.exhausted);
+  const covered = own.filter((hero) => inCover(match, hero)).length - enemies.filter((hero) => inCover(match, hero)).length;
+  const danger = own.reduce((sum, hero) => {
+    const hitters = enemies.filter((enemy) => canShoot(match.grid, enemy.position, hero.position, WEAPON_RANGE[enemy.heroClass] ?? 0));
+    return sum + hitters.length * (1 - coverShare(match.grid, hero.position, hitters));
+  }, 0);
+  const outcome = match.result ? sign(match.result.winner) : 0;
+  return W.evalWin * outcome + W.evalPoints * points + W.evalZones * zones + W.evalCards * cards + W.evalCover * covered - W.evalDanger * danger;
+}
+
+/**
+ * Plans the given Heroes of the viewing Squad by looking one Round ahead: several greedy candidate plans are played
+ * through the real Resolution against several likely enemy plans, and the plan with the best worst-case-weighted value
+ * wins. `seed` (the match seed) picks among plans that are about equally good. Allies of the player use it unchanged.
  */
 export function planSquad(
   view: SquadView,
   heroIds: readonly string[] = view.heroes.map((hero) => hero.id),
   style: AiStyle = AiStyle.Balanced,
+  seed = 0,
 ): SquadPlan {
-  const claimed: ClaimedTiles = new Map();
-  const { nav, blocked } = buildNavigation(view);
-  const role = roleOf(view);
-  const attackerReady = role === Role.Attacker && attackerIsReady(view, nav);
-  const roles = assignRoles(view, heroIds);
-  const plannedAttacks: PlannedAttacks = new Map();
-  const heroes = view.heroes
-    .filter((hero) => heroIds.includes(hero.id) && !hero.exhausted)
-    .map((hero) =>
-      planHero(view, hero, claimed, blocked, nav, role, attackerReady, weightsFor(style, roles.get(hero.id) ?? SquadRole.None), plannedAttacks),
-    );
-  const plan: SquadPlan = { squad: view.squad, heroes };
-  const broken = new Set(validatePlan(view, plan).flatMap((issue) => (issue.heroId ? [issue.heroId] : [])));
-  return broken.size === 0 ? plan : { squad: view.squad, heroes: heroes.filter((hero) => !broken.has(hero.heroId)) };
+  const planned = view.heroes.filter((hero) => heroIds.includes(hero.id) && !hero.exhausted).length;
+  const greedy = planSquadGreedy(view, heroIds, style);
+  if (planned === 0 || view.result) return greedy;
+
+  const sim = matchFromSquadView(view, seed);
+  const enemySquad = view.squad === SquadId.Left ? SquadId.Right : SquadId.Left;
+  const enemyView = buildSquadView(sim, enemySquad);
+  const enemyPlans = [
+    ...new Map(
+      REPLY_VARIANTS.map((variant) => {
+        const plan = planSquadGreedy(enemyView, undefined, variant.style, variant);
+        return [planSignature(plan), plan] as const;
+      }),
+    ).values(),
+  ];
+  // Own Heroes the caller does not plan (the player's) are assumed to play the plain greedy plan.
+  const unplanned = planSquadGreedy(view, view.heroes.filter((hero) => !heroIds.includes(hero.id)).map((hero) => hero.id), style);
+
+  const candidateLimit = Math.min(MAX_CANDIDATES, Math.max(MIN_CANDIDATES, Math.floor(SIMULATIONS_PER_ROUND / enemyPlans.length)));
+  const candidates = new Map<string, SquadPlan>();
+  const variants = candidateVariants(view, planned, style, seed);
+  for (const variant of variants.slice(0, candidateLimit * 2)) {
+    if (candidates.size >= candidateLimit) break;
+    const plan = variant === variants[0] ? greedy : planSquadGreedy(view, heroIds, variant.style, variant);
+    candidates.set(planSignature(plan), plan);
+  }
+
+  const budgetCandidates = Math.max(1, Math.floor(SIMULATIONS_PER_ROUND / enemyPlans.length));
+  const valued = [...candidates.values()].slice(0, budgetCandidates).map((plan) => {
+    const full: SquadPlan = { squad: view.squad, heroes: [...plan.heroes, ...unplanned.heroes] };
+    const values = enemyPlans.map((reply) => evaluateRound(resolveRound(sim, [full, reply]).match, view.squad));
+    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+    return { plan, value: WORST_CASE_SHARE * Math.min(...values) + (1 - WORST_CASE_SHARE) * mean };
+  });
+  const best = Math.max(...valued.map(({ value }) => value));
+  const close = valued.filter(({ value }) => value >= best - EQUAL_VALUE_MARGIN);
+  const salt = view.round * 2 + (view.squad === SquadId.Left ? 0 : 1);
+  return close[seededHash(seed, salt * 8191 + 1) % close.length]!.plan;
 }

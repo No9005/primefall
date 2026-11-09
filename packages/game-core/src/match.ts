@@ -23,7 +23,7 @@ import {
   type ZoneView,
 } from "./host";
 import { chebyshevDistance } from "./plan";
-import { destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
+import { CoverKind, coverAt, destroyCover, destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, REACTOR_DECK, TileKind, tileAt, withTile, withWreck } from "./reactor-deck";
 
 /** A scoring zone of the classic mode, read from the Reactor Deck. */
 export interface ZoneDefinition {
@@ -436,4 +436,101 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   return {
     squad, round: match.round, grid: REACTOR_DECK, ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, enemies,
   };
+}
+
+/** A number in [0, 2^32) that only depends on the seed and the salt: the AI's source of variety (never `Math.random()`). */
+export function seededHash(seed: number, salt: number): number {
+  let h = Math.imul((seed >>> 0) ^ Math.imul(salt >>> 0, 0x9e3779b9), 0x45d9f3b);
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
+  h ^= h >>> 13;
+  return h >>> 0;
+}
+
+const hashOfText = (text: string) => [...text].reduce((sum, char) => Math.imul(sum, 31) + char.charCodeAt(0), 7);
+
+/**
+ * A Match State built from what one Squad knows, so the AI can play a Round through the real Resolution without reading
+ * hidden state. Own Heroes are exact except the order of Deck and Discard. An enemy Hand is a guess: as many cards as the
+ * counts leave, picked by the seed. A Visible enemy or a Ghost stands where it was seen; an Unknown enemy is left out
+ * (Exhausted, no cards). The same view and seed always give the same state.
+ */
+export function matchFromSquadView(view: SquadView, seed: number): MatchState {
+  const salt = view.round * 2 + (view.squad === SquadId.Left ? 0 : 1);
+  const enemySquad = view.squad === SquadId.Left ? SquadId.Right : SquadId.Left;
+  let grid: Grid = view.grid;
+  for (const tile of view.destroyedCover) grid = destroyCover(grid, tile);
+  for (const tile of view.wreckCover) grid = withWreck(grid, tile);
+  for (const tile of view.placedCover) if (coverAt(grid, tile) === CoverKind.None) grid = withTile(grid, tile, TileKind.HalfCover);
+
+  const heroState = (
+    id: string,
+    squad: SquadId,
+    heroClass: HeroClass,
+    position: GridPosition,
+    counts: { deck: number; discard: number; exile: number },
+    knownHand: readonly CardIndex[] | undefined,
+    exhausted: boolean,
+  ): HeroState => {
+    const all = HERO_DECKS[heroClass].map((_, index) => index);
+    const others = all
+      .filter((card) => !knownHand?.includes(card))
+      .sort((a, b) => seededHash(seed, salt * 7919 + hashOfText(id) + a) - seededHash(seed, salt * 7919 + hashOfText(id) + b));
+    const hand = knownHand ? [...knownHand] : others.splice(0, Math.max(0, all.length - counts.deck - counts.discard - counts.exile));
+    // The cards that are not in the Hand fill Deck, Discard and Exile by the counts.
+    const deck = others.splice(0, counts.deck);
+    const discard = others.splice(0, counts.discard);
+    const exile = others.splice(0, counts.exile);
+    return {
+      id, squad, heroClass, position: { ...position },
+      deck: exhausted ? [] : deck, hand: exhausted ? [] : hand, discard: exhausted ? [] : discard, exile: exhausted ? [] : exile,
+      shield: 0, slow: 0, hidden: 0, marked: 0, attackBonus: 0, ignoresHalfCover: false, exhausted,
+    };
+  };
+
+  const heroes: HeroState[] = view.heroes.map((own) => ({
+    ...heroState(own.id, view.squad, own.heroClass, own.position, { deck: own.deckCount, discard: own.discardCount, exile: own.exileCount }, own.hand, own.exhausted),
+    slow: own.slowed ? 1 : 0,
+    hidden: own.hidden ? 1 : 0,
+    marked: own.marked ? 1 : 0,
+    attackBonus: own.attackBonus,
+  }));
+  const ghosts: MatchState["ghosts"] = { [SquadId.Left]: {}, [SquadId.Right]: {} };
+  for (const enemy of view.enemies) {
+    if (enemy.visibility === Visibility.Unknown) {
+      heroes.push(heroState(enemy.id, enemySquad, enemy.heroClass, { col: 0, row: 0 }, { deck: 0, discard: 0, exile: 0 }, undefined, true));
+      continue;
+    }
+    const counts = { deck: enemy.deckCount, discard: enemy.discardCount, exile: enemy.exileCount };
+    const state = heroState(enemy.id, enemySquad, enemy.heroClass, enemy.position, counts, undefined, enemy.visibility === Visibility.Visible && enemy.exhausted);
+    if (enemy.visibility === Visibility.Visible) {
+      Object.assign(state, { shield: enemy.shield, slow: enemy.slowed ? 1 : 0, marked: enemy.marked ? 1 : 0, attackBonus: enemy.attackBonus });
+    } else {
+      ghosts[view.squad][enemy.id] = { deckCount: enemy.deckCount, discardCount: enemy.discardCount, exileCount: enemy.exileCount, position: { ...enemy.position }, lastSeenRound: enemy.lastSeenRound };
+    }
+    heroes.push(state);
+  }
+
+  const { primeProgress } = view;
+  const primeController = primeProgress[SquadId.Left] > 0 ? SquadId.Left : primeProgress[SquadId.Right] > 0 ? SquadId.Right : undefined;
+  const match: MatchState = {
+    seed,
+    rngState: seededHash(seed, salt),
+    round: view.round,
+    heroes,
+    ghosts,
+    grid,
+    knownDestroyedCover: { [SquadId.Left]: view.destroyedCover.map((t) => ({ ...t })), [SquadId.Right]: view.destroyedCover.map((t) => ({ ...t })) },
+    knownWrecks: { [SquadId.Left]: view.wreckCover.map((t) => ({ ...t })), [SquadId.Right]: view.wreckCover.map((t) => ({ ...t })) },
+    placedCover: view.placedCover.map((position) => ({ squad: view.squad, position: { ...position } })),
+    revealedAreas: view.revealedAreas.map((area) => ({ ...structuredClone(area), squad: view.squad })),
+    primeZone: primeController === undefined ? { progress: 0 } : { controller: primeController, progress: primeProgress[primeController] },
+    scores: view.scores ? { ...view.scores } : { [SquadId.Left]: 0, [SquadId.Right]: 0 },
+    zoneControl: ZONES.map((_, i) => ({ controller: view.zones?.[i]?.controller, contested: view.zones?.[i]?.contested ?? false })),
+    takeoverCooldown: ZONES.map(() => 0),
+    mode: view.attackAndDefend
+      ? { kind: MatchMode.AttackAndDefend, defender: view.attackAndDefend.defender, roundLimit: view.roundLimit }
+      : { kind: MatchMode.Classic },
+  };
+  recordSightings(match);
+  return match;
 }

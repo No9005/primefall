@@ -165,11 +165,12 @@ describe("Attack and Defend: Squad View and host", () => {
 
 describe("the classic mode", () => {
   // Recorded from the classic path (AI against AI, 60 Rounds at most). Re-recorded when the classic mode became Victory Points
-  // from three zones (#357) and after the Block change (#352, #358); re-recorded for the new decks (#371: Bruiser 12, Controller 10, Assassin 9 cards, ADR 0025), because every Deck and the plans of the AI changed.
+  // from three zones (#357) and after the Block change (#352, #358); re-recorded for the new decks (#371: Bruiser 12, Controller 10, Assassin 9 cards, ADR 0025), because every Deck and the plans of the AI changed;
+  // re-recorded for the one-Round lookahead (#395), which changes every plan of the AI.
   const recorded = [
-    { seed: 3, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 2 }, deckTotals: { left: 11, right: 5 }, positions: "14,7:4 15,7:2 14,8:5 16,7:1 16,8:2 16,9:2", rng: 3072508256 },
-    { seed: 11, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 0, right: 12 }, deckTotals: { left: 5, right: 15 }, positions: "14,7:1 15,7:0 14,8:4 16,7:8 16,8:2 15,8:5", rng: 609106781 },
-    { seed: 42, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 18, right: 0 }, deckTotals: { left: 10, right: 7 }, positions: "14,7:4 15,7:1 14,8:5 16,7:0 16,8:2 16,9:5", rng: 353342024 },
+    { seed: 3, round: 15, winner: SquadId.Left, reason: MatchEndReason.VictoryPoints, scores: { left: 30, right: 10 }, deckTotals: { left: 10, right: 11 }, positions: "15,3:4 14,12:2 16,9:4 16,3:4 16,4:2 19,3:5", rng: 4264662099 },
+    { seed: 11, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 11, right: 24 }, deckTotals: { left: 5, right: 6 }, positions: "15,8:1 15,8:0 14,11:4 15,12:2 15,10:0 15,4:4", rng: 4144356013 },
+    { seed: 42, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 2, right: 24 }, deckTotals: { left: 5, right: 13 }, positions: "15,3:0 14,8:2 14,7:3 15,7:7 14,9:2 16,7:4", rng: 3512520374 },
   ];
 
   it.each(recorded)("plays seed $seed exactly as recorded", ({ seed, round, winner, reason, scores, deckTotals, positions, rng }) => {
