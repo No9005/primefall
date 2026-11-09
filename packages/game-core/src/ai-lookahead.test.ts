@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { aiStyleFor, evaluateRound, planSquad, planSquadGreedy, SIMULATIONS_PER_ROUND } from "./ai";
+import { aiStyleFor, planSquad, planSquadGreedy, SIMULATIONS_PER_ROUND } from "./ai";
 import { MatchMode, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, matchFromSquadView, startRound } from "./match";
-import { validatePlan } from "./plan";
+import { ActionKind, validatePlan } from "./plan";
 import { resolveRound } from "./resolution";
 
 const resolutions = vi.hoisted(() => ({ count: 0 }));
@@ -90,20 +90,31 @@ describe("AI lookahead", () => {
     }
   });
 
-  it("plays a Round better than the greedy plan where the greedy plan walks into the enemy's fire", () => {
-    // Recorded positions (found by playing matches): in Round 3 both Squads' greedy plans lose cards or the zone that the lookahead keeps.
-    for (const seed of [1, 2, 5]) {
-      let match = startRound(createMatch(seed));
-      for (let round = 1; round < 3; round++) {
-        const plans = SIDES.map((squad) => planSquad(buildSquadView(match, squad), undefined, aiStyleFor(seed, squad), seed));
-        match = startRound(resolveRound(match, plans).match);
-      }
-      const styleOf = (squad: SquadId) => aiStyleFor(seed, squad);
-      const greedy = SIDES.map((squad) => planSquadGreedy(buildSquadView(match, squad), undefined, styleOf(squad)));
-      const looked = SIDES.map((squad) => planSquad(buildSquadView(match, squad), undefined, styleOf(squad), seed));
-      const left = (plans: typeof greedy) => evaluateRound(resolveRound(match, plans).match, SquadId.Left);
-      expect(left([looked[0]!, greedy[1]!]), `seed ${seed}`).toBeGreaterThan(left(greedy));
-    }
+  it("avoids the move that walks a Hero into the enemy's fire, where the greedy plan takes it", () => {
+    // Hand-made position: the Left Heroes face the Right Heroes across the map, six tiles apart in a column.
+    const seed = 2;
+    const match = startRound(createMatch(seed));
+    const place = (squad: SquadId, col: number) =>
+      match.heroes.filter((hero) => hero.squad === squad).forEach((hero, i) => (hero.position = { col, row: 4 + i }));
+    place(SquadId.Left, 7);
+    place(SquadId.Right, 12);
+    const leftView = buildSquadView(match, SquadId.Left);
+    const greedy = planSquadGreedy(leftView, undefined, aiStyleFor(seed, SquadId.Left));
+    const looked = planSquad(leftView, undefined, aiStyleFor(seed, SquadId.Left), seed);
+    const enemy = planSquadGreedy(buildSquadView(match, SquadId.Right), undefined, aiStyleFor(seed, SquadId.Right));
+
+    // The Right Assassin shoots the Left Controller. The greedy plan ends the Controller on (12, 4), in its line; the lookahead ends it on (13, 3).
+    const lastMove = (plan: typeof greedy) => {
+      const moves = plan.heroes.find((hero) => hero.heroId === "left-controller")!.queue.filter((action) => action.kind === ActionKind.Move);
+      return (moves[moves.length - 1] as { destination: { col: number; row: number } }).destination;
+    };
+    expect(lastMove(greedy)).toEqual({ col: 12, row: 4 });
+    expect(lastMove(looked)).toEqual({ col: 13, row: 3 });
+
+    const exiled = (plan: typeof greedy) =>
+      resolveRound(match, [plan, enemy]).match.heroes.find((hero) => hero.id === "left-controller")!.exile.length;
+    expect(exiled(greedy)).toBe(2);
+    expect(exiled(looked)).toBe(0);
   });
 
   it("works in Attack and Defend", () => {
