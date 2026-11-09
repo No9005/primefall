@@ -1019,6 +1019,9 @@ export function Board({
       const piece = new Graphics();
       if (hasCoverLook(tile.kind)) {
         const built = placedCover.some((p) => p.col === tile.position.col && p.row === tile.position.row);
+        // Fog of War: the map's own Cover is not drawn where the Squad does not see; it shows when the tile is revealed.
+        // Cover a Hero placed is remembered and stays.
+        if (!built && !tile.lit) continue;
         const look = coverLook(tile.position, tile.kind === TileKind.FullCover ? "full" : "half", built, angle);
         drawCoverLook(piece, look, strokeScale);
         if (look.panels.length > 0) {
@@ -1059,6 +1062,7 @@ export function Board({
     // A shield glyph sits above each piece of the map's own Cover.
     const builtTiles = new Set(placedCover.map((p) => `${p.col},${p.row}`));
     for (const mark of coverMarks(grid, angle, builtTiles)) {
+      if (!lit.has(`${mark.position.col},${mark.position.row}`)) continue;
       const glyph = shieldGlyph(mark.kind, strokeScale);
       glyph.position.set(mark.x, mark.y);
       // Above its own piece and the Heroes on it (depth + 0.9), under the pieces in front; not under the props, which lie on
