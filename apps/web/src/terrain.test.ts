@@ -1,8 +1,8 @@
-import { parseGrid, REACTOR_DECK, TileKind } from "game-core";
+import { coverAt, CoverKind, parseGrid, REACTOR_DECK, tileAt, TileKind } from "game-core";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildTerrain, choosePiece, coverLook, coverMarks, FaceRole, gridToWorld, Join, lineScale, litTiles, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE, worldLineWidth } from "./terrain";
+import { buildTerrain, choosePiece, coverLook, coverMarks, FaceRole, gridToWorld, Join, lineScale, litTiles, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE, withoutCover, worldLineWidth } from "./terrain";
 import { HERO_REFERENCE_LUMINANCE, OUTLINE, PIECE_SHAPE, TERRAIN_STYLE } from "./terrain-style";
 
 /** WCAG relative luminance of a 0xRRGGBB colour. */
@@ -302,5 +302,21 @@ describe("the look of the terrain (artboard J)", () => {
     for (const file of ["terrain.ts", "hero-figure.ts"]) {
       expect(readFileSync(path.join(__dirname, file), "utf8"), file).not.toMatch(/0x[0-9a-fA-F]{6}|#[0-9a-fA-F]{6}\b/);
     }
+  });
+});
+
+describe("the grid without Cover", () => {
+  it("turns every Half and Full Cover tile into floor and keeps Walls and zones", () => {
+    const grid = withoutCover(REACTOR_DECK);
+    let covers = 0;
+    let zones = 0;
+    grid.tiles.forEach((line, row) => line.forEach((_, col) => {
+      if (coverAt(grid, { col, row }) !== CoverKind.None) covers += 1;
+      if (tileAt(grid, { col, row }) === TileKind.PrimeZone || tileAt(grid, { col, row }) === TileKind.Outpost) zones += 1;
+    }));
+    expect(covers).toBe(0);
+    const before = (kind: TileKind) => REACTOR_DECK.tiles.flat().filter((tile) => tile === kind).length;
+    expect(zones).toBe(before(TileKind.PrimeZone) + before(TileKind.Outpost));
+    expect(grid.tiles.flat().filter((tile) => tile === TileKind.Wall).length).toBe(before(TileKind.Wall));
   });
 });
