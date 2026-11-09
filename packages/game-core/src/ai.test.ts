@@ -10,6 +10,10 @@ import { CoverKind, coverAt, type GridPosition, parseGrid, REACTOR_DECK } from "
 import { resolveRound } from "./resolution";
 
 const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
+// Playing a whole match with the lookahead AI takes seconds (every planned Round plays the candidates through the Resolution),
+// so the tests that play matches use fewer seeds than the tests of the greedy scoring. A long synchronous run starves the
+// Vitest worker and CI fails with "Timeout calling onTaskUpdate".
+const MATCH_SEEDS = SEEDS.slice(0, 8);
 const MAX_ROUNDS = 60;
 
 describe("AI planning", () => {
@@ -249,19 +253,19 @@ describe("AI symmetry", () => {
 
   it("does not let one side win nearly every match", () => {
     const wins = { [SquadId.Left]: 0, [SquadId.Right]: 0 };
-    for (const seed of SEEDS) {
+    for (const seed of MATCH_SEEDS) {
       // The Squads take turns at yielding by Round parity, and every match follows the same early timeline, so the parity
       // of the Round of the first contest decides who wins it. Half of the seeds start one Round later to cancel that out.
       const winner = playAiMatch(seed, MAX_ROUNDS, seed % 2 === 0 ? 1 : 2).match.result?.winner;
       if (winner) wins[winner] += 1;
     }
-    expect(Math.max(wins[SquadId.Left], wins[SquadId.Right])).toBeLessThanOrEqual(SEEDS.length - 3);
+    expect(Math.max(wins[SquadId.Left], wins[SquadId.Right])).toBeLessThanOrEqual(MATCH_SEEDS.length - 3);
   }, 120_000);
 });
 
 describe("AI in the classic mode", () => {
   it("never plans a Block, over many seeds", () => {
-    for (const seed of SEEDS) {
+    for (const seed of MATCH_SEEDS) {
       const { plans, issues } = playAiMatch(seed, MAX_ROUNDS);
       expect(issues).toEqual([]);
       const blocks = plans.flatMap((plan) => plan.heroes.flatMap((hero) => hero.queue)).filter((action) => action.kind === ActionKind.Block);
@@ -287,7 +291,7 @@ describe("AI does not freeze", () => {
 
   // The AI only walks to the Prime Zone and does not split (a later ticket), so most classic matches end at the Round limit.
   it("ends every classic match within the Round limit with legal plans", () => {
-    for (const seed of SEEDS) {
+    for (const seed of MATCH_SEEDS) {
       const { match, issues } = playAiMatch(seed, MAX_ROUNDS);
       expect(issues).toEqual([]);
       expect(match.result).toBeDefined();
@@ -331,8 +335,8 @@ describe("AI in Attack and Defend", () => {
     expect(near.queue.some((action) => action.kind === ActionKind.Move)).toBe(false);
   });
 
-  it("plays only legal plans for 200 seeds, either Squad defending", () => {
-    for (let seed = 1; seed <= 200; seed++) {
+  it("plays only legal plans for 40 seeds, either Squad defending", () => {
+    for (let seed = 1; seed <= 40; seed++) {
       const { issues } = playAiMatch(seed, 60, 1, mode(seed % 2 === 0 ? SquadId.Left : SquadId.Right));
       expect({ seed, issues }).toEqual({ seed, issues: [] });
     }
@@ -340,21 +344,23 @@ describe("AI in Attack and Defend", () => {
 });
 
 describe("AI-versus-AI smoke test", () => {
-  const outcomes = SEEDS.map((seed) => ({ seed, ...playAiMatch(seed, MAX_ROUNDS) }));
-  // (Playing the matches takes a few seconds: every planned Round plays the candidates through the Resolution.)
+  // Played on first use inside a test, not while Vitest collects the tests (a long run there blocks the worker).
+  let played: ReturnType<typeof playOutcomes> | undefined;
+  const playOutcomes = () => MATCH_SEEDS.map((seed) => ({ seed, ...playAiMatch(seed, MAX_ROUNDS) }));
+  const outcomes = () => (played ??= playOutcomes());
 
   it("plays only legal plans", () => {
-    for (const { seed, issues } of outcomes) expect({ seed, issues }).toEqual({ seed, issues: [] });
-  });
+    for (const { seed, issues } of outcomes()) expect({ seed, issues }).toEqual({ seed, issues: [] });
+  }, 120_000);
 
   it("ends every match within the Round limit", () => {
-    for (const { seed, match } of outcomes) {
+    for (const { seed, match } of outcomes()) {
       expect({ seed, ended: match.result !== undefined }).toEqual({ seed, ended: true });
     }
   });
 
   it("produces plans that stay valid when re-checked against the view", () => {
-    const { plans } = outcomes[0]!;
+    const { plans } = outcomes()[0]!;
     expect(plans.length).toBeGreaterThan(0);
     const view = buildSquadView(startRound(createMatch(1)), SquadId.Left);
     expect(validatePlan(view, planSquad(view))).toEqual([]);
