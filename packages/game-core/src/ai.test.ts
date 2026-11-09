@@ -5,7 +5,7 @@ import { AI_WEIGHTS, AiStyle, aiStyleFor, assignRoles, GHOST_MEMORY_ROUNDS, plan
 import { MatchMode, ROUND_LIMIT, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { ActionKind, moveEnd, validatePlan } from "./plan";
-import { CoverKind, coverAt, type GridPosition, REACTOR_DECK } from "./reactor-deck";
+import { CoverKind, coverAt, type GridPosition, parseGrid, REACTOR_DECK } from "./reactor-deck";
 import { resolveRound } from "./resolution";
 
 const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
@@ -49,6 +49,58 @@ describe("AI planning", () => {
     const source = readFileSync(new URL("./ai.ts", import.meta.url), "utf8");
     expect(source).not.toMatch(/from "\.\/(match|resolution|server)"/);
     expect(planSquad.length).toBeLessThanOrEqual(2);
+  });
+
+  it("names no map: ai.ts does not use the Reactor Deck", () => {
+    const source = readFileSync(new URL("./ai.ts", import.meta.url), "utf8");
+    expect(source).not.toMatch(/REACTOR_DECK|PRIME_ZONE_TILES|isPrimeZoneTile/);
+    expect(source).not.toMatch(/from "\.\/reactor-deck"[\s\S]*REACTOR_DECK/);
+  });
+});
+
+describe("AI objective and navigation from the Squad View", () => {
+  /** A Squad View on a small custom map; the Left Squad's Heroes stand at `positions` (by class order), no enemy is known. */
+  const customView = (rows: readonly string[], zones: readonly { tiles: GridPosition[]; value: number }[], positions: GridPosition[]) => {
+    const base = buildSquadView(startRound(createMatch(5)), SquadId.Left);
+    return {
+      ...base,
+      grid: parseGrid(rows),
+      zones: zones.map((zone) => ({ ...base.zones![0]!, ...zone, active: true })),
+      heroes: base.heroes.map((hero, i) => ({ ...hero, position: positions[i]! })),
+      enemies: base.enemies.map((enemy) => ({ id: enemy.id, heroClass: enemy.heroClass, visibility: Visibility.Unknown as const })),
+    };
+  };
+  const endOf = (view: ReturnType<typeof customView>, heroId: string): GridPosition => {
+    const queue = planSquad(view).heroes.find((hero) => hero.heroId === heroId)!.queue;
+    return queue.reduce(
+      (position, action) => (action.kind === ActionKind.Move ? moveEnd(position, action.destination, view.grid) : position),
+      view.heroes.find((hero) => hero.id === heroId)!.position,
+    );
+  };
+  const away = [{ col: 0, row: 0 }, { col: 0, row: 6 }];
+
+  it("walks toward a zone in a different place and around a Wall in the way", () => {
+    // The Wall at column 5 leaves a gap in row 0 only; the zone is in the top right corner.
+    const rows = ["...........", ".....#.....", ".....#.....", ".....#.....", ".....#.....", ".....#.....", ".....#....."];
+    const zone = [{ tiles: [{ col: 9, row: 0 }, { col: 10, row: 0 }], value: 2 }];
+    const view = customView(rows, zone, [{ col: 4, row: 3 }, ...away]);
+    const plan = planSquad(view);
+    expect(validatePlan(view, plan)).toEqual([]);
+    const end = endOf(view, view.heroes[0]!.id);
+    // Straight toward the zone is blocked by the Wall; the Hero climbs to the gap in row 0 (and may be through it already).
+    expect(end.row).toBeLessThanOrEqual(1);
+    expect(end.col).toBeGreaterThanOrEqual(4);
+  });
+
+  it("goes for the zone with the higher value over a nearer zone with a lower value", () => {
+    const open = Array.from({ length: 7 }, () => "...........");
+    const west = { col: 2, row: 3 };
+    const east = { col: 10, row: 3 };
+    const start = [{ col: 5, row: 3 }, ...away];
+    const highEast = customView(open, [{ tiles: [west], value: 1 }, { tiles: [east], value: 2 }], start);
+    expect(endOf(highEast, highEast.heroes[0]!.id).col).toBeGreaterThan(5);
+    const highWest = customView(open, [{ tiles: [west], value: 2 }, { tiles: [east], value: 1 }], start);
+    expect(endOf(highWest, highWest.heroes[0]!.id).col).toBeLessThan(5);
   });
 });
 

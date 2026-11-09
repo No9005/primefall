@@ -132,10 +132,11 @@ export function destroyCover(grid: Grid, position: GridPosition): Grid {
 export const isWall = (position: GridPosition) => tileAt(REACTOR_DECK, position) === TileKind.Wall;
 
 /** A step is legal into the Grid, not into a Wall, and a diagonal step may not cut a Wall corner. */
-export function isStepAllowed(from: GridPosition, to: GridPosition): boolean {
-  if (tileAt(REACTOR_DECK, to) === undefined || isWall(to)) return false;
+export function isStepAllowed(from: GridPosition, to: GridPosition, grid: Grid = REACTOR_DECK): boolean {
+  const wall = (position: GridPosition) => tileAt(grid, position) === TileKind.Wall;
+  if (tileAt(grid, to) === undefined || wall(to)) return false;
   const diagonal = from.col !== to.col && from.row !== to.row;
-  return !(diagonal && (isWall({ col: to.col, row: from.row }) || isWall({ col: from.col, row: to.row })));
+  return !(diagonal && (wall({ col: to.col, row: from.row }) || wall({ col: from.col, row: to.row })));
 }
 
 /** The tile one step from `from` straight towards `destination` (diagonal when both axes differ). */
