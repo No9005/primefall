@@ -2,6 +2,7 @@ import { type HeroClass, SquadId, type SquadView } from "game-core";
 import { createLocalHost, type LocalMatchHost } from "game-core/local-host";
 import { useEffect, useState } from "react";
 import { modeForRole, parseRole, type Role, roleOf } from "./attack-defend";
+import { aiPlanner } from "./ai-planner";
 import { EndScreen } from "./EndScreen";
 import { SideScreen } from "./SideScreen";
 import { clearSavedMatch, loadSavedMatch, loadSavedPlayerHero, parsePlayerHero, saveMatch } from "./match-storage";
@@ -87,7 +88,7 @@ function useMatchView(host: LocalMatchHost, started: boolean, playerHero: HeroCl
 
 export function App() {
   // A fresh seed per match; the start and end screens show it for bug reports.
-  const [host, setHost] = useState(() => createLocalHost(newSeed()));
+  const [host, setHost] = useState(() => createLocalHost(newSeed(), undefined, aiPlanner));
   const seed = host.seed;
   const [started, setStarted] = useState(false);
   // Before the match: the start screen, the Hero Select (Play) or the Tutorial, which runs from static data and never touches the host or the saved match.
@@ -102,7 +103,7 @@ export function App() {
 
   /** Starts a match of the mode: the host of the start screen is replaced by one with the same seed in the mode of the role. */
   function beginMatch(side: Role | undefined) {
-    setHost(createLocalHost(seed, side && modeForRole(side)));
+    setHost(createLocalHost(seed, side && modeForRole(side), aiPlanner));
     setStarted(true);
   }
 
@@ -154,7 +155,7 @@ export function App() {
     if (!view) return <p className="loading">Loading…</p>;
     if (view.result) {
       const side = roleOf(view);
-      return <EndScreen result={view.result} squad={PLAYER_SQUAD} seed={seed} role={side} roundLimit={view.roundLimit} onPlayAgain={() => setHost(createLocalHost(newSeed(), side && modeForRole(side)))} />;
+      return <EndScreen result={view.result} squad={PLAYER_SQUAD} seed={seed} role={side} roundLimit={view.roundLimit} onPlayAgain={() => setHost(createLocalHost(newSeed(), side && modeForRole(side), aiPlanner))} />;
     }
     return (
       <PlanningScreen

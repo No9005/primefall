@@ -3,6 +3,7 @@
 
 import { HeroClass } from "game-core";
 import { type LocalMatchHost, restoreLocalHost } from "game-core/local-host";
+import { aiPlanner } from "./ai-planner";
 
 export const STORAGE_KEY = "primefall.match";
 /** The Player Hero of the saved match, stored next to the snapshot. A save without it is a Bruiser save. */
@@ -58,7 +59,7 @@ export function loadSavedMatch(storage: MatchStorage | undefined = defaultStorag
   try {
     const text = storage?.getItem(STORAGE_KEY);
     if (!text) return undefined;
-    const host = restoreLocalHost(text);
+    const host = restoreLocalHost(text, aiPlanner);
     if (!host) clearSavedMatch(storage);
     return host;
   } catch {

@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./server": "./src/server.ts",
-    "./local-host": "./src/local-host.ts"
+    "./local-host": "./src/local-host.ts",
+    "./ai": "./src/ai.ts"
   },
   "scripts": {
     "test": "vitest run",
