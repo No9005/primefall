@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cloudPattern, driftOffset, driftUv, fogAlphas, fogShape } from "./fog-clouds";
+import { cloudPattern, driftOffset, driftUv, fogAlphas, fogDuringWalk, fogShape } from "./fog-clouds";
 
 const seen = (...tiles: [number, number][]) => new Set(tiles.map(([col, row]) => `${col},${row}`));
 
@@ -73,5 +73,50 @@ describe("cloudPattern", () => {
     expect(pattern).toEqual(cloudPattern(32));
     expect(Math.min(...pattern)).toBe(0);
     expect(Math.max(...pattern)).toBe(255);
+  });
+});
+
+describe("fogDuringWalk", () => {
+  const width = 12;
+  const grid = { width, height: 3 };
+  const tile = (col: number, row: number) => ({ col, row });
+  // One Hero walks from column 1 to column 5 on row 1 and sees 2 tiles each way (a stand-in for the real sight).
+  const sightAt = (col: number) => [-2, -1, 0, 1, 2].map((d) => tile(col + d, 1));
+  const startFog = fogShape(grid, sightAt(1), [tile(1, 1)]);
+  const endFog = fogShape(grid, sightAt(5), [tile(5, 1)]);
+  const fogAt = (fog: Float32Array, col: number) => fog[width + col]!;
+  const walk = (at: number) => fogDuringWalk(new Float32Array(startFog.length), startFog, endFog, width, [{ from: tile(1, 1), to: tile(5, 1), at: tile(at, 1) }]);
+
+  it("equals the start fog when nobody has walked", () => expect([...walk(1)]).toEqual([...startFog]));
+  it("equals the end fog when the Hero is at the end of its walk", () => expect([...walk(5)]).toEqual([...endFog]));
+  it("lifts a tile that is clear at the end only, gradually as the Hero comes closer", () => {
+    expect(fogAt(startFog, 7)).toBe(1);
+    expect(fogAt(endFog, 7)).toBe(0);
+    expect(fogAt(walk(3), 7)).toBeLessThan(fogAt(walk(2), 7));
+    expect(fogAt(walk(2), 7)).toBeLessThan(1);
+    expect(fogAt(walk(3), 7)).toBeGreaterThan(0);
+  });
+  it("fogs over a tile that is clear at the start only, as the Hero walks away", () => {
+    expect(fogAt(startFog, 0)).toBe(0);
+    expect(fogAt(endFog, 0)).toBe(1);
+    expect(fogAt(walk(3), 0)).toBeGreaterThan(fogAt(walk(2), 0));
+    expect(fogAt(walk(2), 0)).toBeGreaterThan(0);
+    expect(fogAt(walk(3), 0)).toBeLessThan(1);
+  });
+  it("keeps a tile clear that a second Hero still sees", () => {
+    const both = fogShape(grid, [...sightAt(5), ...sightAt(1)], [tile(5, 1), tile(1, 1)]);
+    const out = fogDuringWalk(new Float32Array(both.length), startFog, both, width, [
+      { from: tile(1, 1), to: tile(5, 1), at: tile(3, 1) },
+      { from: tile(1, 1), to: tile(1, 1), at: tile(1, 1) },
+    ]);
+    expect(fogAt(out, 0)).toBe(0);
+  });
+  it("never leaves the range between the two fogs", () => {
+    for (const at of [1, 2, 3, 4, 5]) {
+      walk(at).forEach((alpha, index) => {
+        expect(alpha).toBeGreaterThanOrEqual(Math.min(startFog[index]!, endFog[index]!) - 1e-6);
+        expect(alpha).toBeLessThanOrEqual(Math.max(startFog[index]!, endFog[index]!) + 1e-6);
+      });
+    }
   });
 });
