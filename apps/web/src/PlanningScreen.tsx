@@ -30,6 +30,8 @@ import {
   type SubmitResult,
   validatePlan,
   Visibility,
+  ZoneKind,
+  type ZoneView,
 } from "game-core";
 import { type ComponentProps, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
@@ -52,7 +54,7 @@ import { Callout } from "./Callout";
 import { defenderZone, ROLE_LABELS, roleOf, roundPillText } from "./attack-defend";
 import { AttackerPill, DefenderPill, RoleBanner, RoleLabel } from "./RoleHud";
 import { COUNTDOWN_CALLOUT_MS, countdownCallout, formatTimer, timerTone } from "./callout";
-import { type PrimeCallout, primeCallouts, type PrimeProgress, pointsZoneScore, primeScore, zoneOccupancy, zoneTint } from "./prime-zone";
+import { matchEndCallouts, type PrimeCallout, primeCallouts, primeCountdown, type PrimeProgress, pointsZoneScore, primeScore, zoneCallouts, zoneDots, zoneOccupancy, zoneTint } from "./prime-zone";
 import { targetsInReach } from "./target-pick";
 import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionBarText, resolutionCommitLabel } from "./resolution-hud";
 import { buildCommentary, type CommentaryEntry, type CommentarySide, MAX_COMMENTARY_ENTRIES } from "./commentary";
@@ -455,6 +457,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const [primeAfter, setPrimeAfter] = useState<PrimeProgress>();
   /** Classic: the Victory Points after the Resolution, shown once its playback is done. */
   const [scoresAfter, setScoresAfter] = useState<PrimeProgress>();
+  const [zonesAfter, setZonesAfter] = useState<readonly ZoneView[]>();
   const [primeCallout, setPrimeCallout] = useState<PrimeCallout>();
   const playing = resolutionStage !== undefined;
 
@@ -645,6 +648,9 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const contestedNow = zone.contested || FORCE_CONTESTED_PILL;
   const score = view.zones ? pointsZoneScore(view.zones, view.squad, contestedNow) : primeScore(primeAfter ?? view.primeProgress, view.squad, contestedNow);
   const points = scoresAfter ?? view.scores;
+  const zoneList = zonesAfter ?? view.zones;
+  // The zones after the Resolution belong to the next Round.
+  const countdown = zoneList && primeCountdown(zoneList, zonesAfter ? view.round + 1 : view.round);
   const enemySquad = view.squad === SquadId.Left ? SquadId.Right : SquadId.Left;
   const role = roleOf(view);
   const aimsAtAlly =
@@ -1019,8 +1025,16 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     setResolutionStage("done");
     if (result.view.scores) setScoresAfter(result.view.scores);
     // The Prime Zone counts after the Resolution: pips fill and the callouts play one after the other.
-    for (const callout of primeCallouts(view.primeProgress, result.view.primeProgress, view.squad)) {
+    const zoneResult = view.zones && result.view.zones;
+    if (zoneResult) setZonesAfter(zoneResult);
+    const callouts = zoneResult
+      ? [...zoneCallouts(view.zones!, zoneResult, view.squad), ...matchEndCallouts(result.view.result, view.squad)]
+      : primeCallouts(view.primeProgress, result.view.primeProgress, view.squad);
+    for (const callout of callouts) {
       setPrimeAfter(result.view.primeProgress);
+      // Unmount between two callouts so that two with the same text both play.
+      setPrimeCallout(undefined);
+      await new Promise((resolve) => setTimeout(resolve, 0));
       setPrimeCallout(callout);
       await new Promise((resolve) => setTimeout(resolve, callout.durationMs));
       if (unmounted.current) return;
@@ -1039,6 +1053,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     setResolutionStage(undefined);
     setPrimeAfter(undefined);
     setScoresAfter(undefined);
+    setZonesAfter(undefined);
     setPrimeCallout(undefined);
     setQueue([]);
     setPitched([]);
@@ -1098,7 +1113,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         />
       ) : (
         <div
-          className={`prime-pill prime-${score.state}${playing ? " resolving" : ""}`}
+          className={`prime-pill prime-${score.state}${zoneList ? " with-zones" : ""}${playing ? " resolving" : ""}`}
           data-testid="prime-progress"
           aria-label={`Victory Points, you ${points?.[view.squad] ?? 0}, enemy ${points?.[enemySquad] ?? 0}`}
         >
@@ -1106,6 +1121,20 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
           <span className="prime-vp-score prime-vp-own">{points?.[view.squad] ?? 0}</span>
           <span className="prime-vp-divider">:</span>
           <span className="prime-vp-score prime-vp-enemy">{points?.[enemySquad] ?? 0}</span>
+          {zoneList && (
+            <span className="zone-dots" data-testid="zone-dots">
+              {zoneDots(zoneList, view.squad).map((dot, i) => (
+                <span key={i} className={`zone-dot zone-dot-${dot.state}${dot.kind === ZoneKind.PrimeZone ? " zone-dot-prime" : ""}`} data-state={dot.state}>
+                  {dot.state === "inactive" && dot.kind === ZoneKind.PrimeZone ? `R${dot.unlockRound}` : ""}
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
+      {!role && zoneList && countdown !== undefined && (
+        <div className={`zone-note${playing ? " resolving" : ""}`} data-testid="zone-note">
+          PRIME ZONE ACTIVE IN {countdown}
         </div>
       )}
       <div
@@ -1131,7 +1160,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
           {role && <span className={`bar-role ${role}`}>{ROLE_LABELS[role]}</span>}
         </div>
       )}
-      {primeCallout !== undefined && <Callout kind="word" text={primeCallout.text} tone={primeCallout.tone} durationMs={primeCallout.durationMs} />}
+      {primeCallout !== undefined && <Callout kind="word" text={primeCallout.text} detail={primeCallout.detail} tone={primeCallout.tone} durationMs={primeCallout.durationMs} />}
       {playback !== undefined && playback.commentary.length > 0 && (
         // A new key per Tick: the entries of the previous Tick are replaced and slide in again.
         <ol className="commentary" aria-label="Resolution commentary" data-testid="commentary" key={playback.tick}>

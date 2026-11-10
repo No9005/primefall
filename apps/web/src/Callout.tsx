@@ -4,6 +4,8 @@ import { calloutClassName, calloutStyleVars, type CalloutKind, type CalloutTone 
 interface CalloutProps {
   kind: CalloutKind;
   text: string;
+  /** A smaller second line under the text. */
+  detail?: string;
   tone: CalloutTone;
   durationMs: number;
   onDone?: () => void;
@@ -18,7 +20,7 @@ export function Callout(props: CalloutProps) {
   );
 }
 
-function CalloutBody({ kind, text, tone, durationMs, onDone }: CalloutProps) {
+function CalloutBody({ kind, text, detail, tone, durationMs, onDone }: CalloutProps) {
   const [done, setDone] = useState(false);
   if (done) return null;
   return (
@@ -31,6 +33,7 @@ function CalloutBody({ kind, text, tone, durationMs, onDone }: CalloutProps) {
       }}
     >
       {text}
+      {detail !== undefined && <span className="callout-detail">{detail}</span>}
     </div>
   );
 }

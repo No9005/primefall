@@ -292,6 +292,18 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .prime-vp-own { color: var(--teal); }
 .prime-vp-enemy { color: var(--red); }
 .prime-vp-divider { font: 600 14px var(--font-number); color: var(--muted); margin: 0 -4px; }
+/* The three zone dots after the scores: Outpost, Prime Zone (larger), Outpost. */
+.prime-pill.with-zones { width: 224px; }
+.zone-dots { display: flex; align-items: center; gap: 6px; }
+.zone-dot { width: 12px; height: 12px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--steel); display: flex; align-items: center; justify-content: center; font: 700 12px var(--font-label); color: var(--muted); }
+.zone-dot-prime { width: 18px; height: 18px; }
+.zone-dot-own { background: var(--teal); border-color: var(--teal); }
+.zone-dot-enemy { background: var(--red); border-color: var(--red); }
+.zone-dot-contested { background: var(--amber); border-color: var(--amber); }
+.zone-dot-inactive { border-style: dashed; }
+.zone-dot-inactive.zone-dot-prime { width: 34px; height: 22px; border-radius: 11px; }
+.zone-note { position: absolute; z-index: var(--z-pill); top: 42px; left: 50%; transform: translateX(-50%); padding: 2px 10px; border-radius: 9px; background: color-mix(in srgb, var(--ink) 93%, transparent); font: 700 12px var(--font-label); letter-spacing: 0.14em; color: var(--gold); white-space: nowrap; pointer-events: none; }
+.zone-note.resolving { top: 70px; }
 .prime-contested { border-color: var(--amber); }
 .prime-contested .prime-label { color: var(--amber); }
 @keyframes prime-pip-pop { from { transform: scale(2.2); } to { transform: scale(1); } }
@@ -345,6 +357,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .callout { position: fixed; inset: 0; z-index: var(--z-callout); pointer-events: none; }
 .callout-word, .callout-number { position: absolute; left: 0; right: 0; text-align: center; white-space: nowrap; opacity: 0; animation-duration: var(--callout-ms); animation-timing-function: ease-out; animation-fill-mode: both; }
 .callout-word { top: 50%; height: 80px; margin-top: -40px; font: 700 58px/80px var(--font-label); letter-spacing: 0.2em; background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--ink) 93%, transparent) 20%, color-mix(in srgb, var(--ink) 93%, transparent) 80%, transparent 100%); animation-name: callout-word; }
+.callout-detail { position: absolute; left: 0; right: 0; top: 76px; font: 700 18px/1 var(--font-label); letter-spacing: 0.2em; }
 .callout-number { top: 14%; font: 500 130px/1 var(--font-number); text-shadow: 0 0 24px var(--ink), 0 0 8px var(--ink); animation-name: callout-number; }
 .callout-tone-teal { color: var(--teal); }
 .callout-tone-amber { color: var(--amber); }
