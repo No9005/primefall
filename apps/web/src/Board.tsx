@@ -42,6 +42,7 @@ import { buildTerrain, coverLook, coverMarks, depthOf, hasCoverLook, type Face, 
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
+import { baseFacing, type Facing, facingAfterStep } from "./facing";
 import { walkProgress } from "./playback";
 import { AREA_COLOR, AREA_PIPS, areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, TRANSITION_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
 import { type ClipName, restClipName } from "./hero-clips";
@@ -575,6 +576,20 @@ export function Board({
   // The angle the board is drawn at right now; it changes every frame of a turn.
   const [angle, setAngle] = useState(VIEW_ANGLE);
   const angleRef = useRef(VIEW_ANGLE);
+  // The way each Hero that has walked faces (presentation only). A Step turns it at once; it lasts until the next Step and
+  // is dropped when the playback ends, so the next planning phase shows the base facing. Figures are rebuilt every frame,
+  // so it is kept here.
+  const facings = useRef(new Map<string, Facing>());
+  const walksOfFrame = useRef(walks);
+  if (walksOfFrame.current !== walks) {
+    walksOfFrame.current = walks;
+    if (walks === NO_WALKS) facings.current.clear();
+    for (const [id, from] of Object.entries(walks)) {
+      const enemy = enemies.some((hero) => hero.id === id);
+      const to = (enemy ? enemies : heroes).find((hero) => hero.id === id)?.position;
+      if (to) facings.current.set(id, facingAfterStep(from, to, facings.current.get(id) ?? baseFacing(enemy), angle));
+    }
+  }
   const cameraControl = useRef<{ toggle: () => void; frame: (hero: GridPosition) => void; release: () => void; turn: (steps: 1 | -1) => void } | undefined>(
     undefined,
   );
@@ -743,7 +758,7 @@ export function Board({
       const falling = hero.exhausted && clips[hero.id] === "exhausted" && !reduced;
       const pose = hero.exhausted && !falling ? "exhausted" : reduced && hitIds.includes(hero.id) ? "hit" : "idle";
       // The enemy Squad is told apart by the red ring under the figure.
-      const figure = heroFigure(hero.heroClass, enemy, pose, strokeScale);
+      const figure = heroFigure(hero.heroClass, enemy, pose, strokeScale, facings.current.get(hero.id) ?? baseFacing(enemy));
       if (hero.ghost) figure.alpha = GHOST_ALPHA;
       // The Hidden clip fades the figure itself; reduced motion and every other moment show the ghost at once.
       if (hero.hidden && (clips[hero.id] !== "hidden" || reduced)) figure.alpha = 0.55;
