@@ -500,6 +500,17 @@ export const SCENARIOS: readonly Scenario[] = [
     resolutionShotsMs: [150, 300, 450, 600, 850, 1100],
   },
   {
+    name: "walk-glide-left",
+    description: "The mirror of walk-glide: the Bruiser walks two tiles the other way and faces the way it walks, during and after the step.",
+    buildMatch: () =>
+      stage(14, (hero) => {
+        arrange(hero(PLAYER_BRUISER), { col: 6, row: 1 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [{ slot: 0, use: "move", tile: { col: 4, row: 1 } }],
+    resolutionShotsMs: [150, 300, 450, 600, 850, 1100],
+  },
+  {
     name: "crossfire",
     description: "Two enemies with Attacks shoot the waiting Bruiser in consecutive Ticks: the second hit shows CROSSFIRE +1 above the damage numbers.",
     buildMatch: () =>

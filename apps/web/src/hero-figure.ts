@@ -1,5 +1,6 @@
 import { HeroClass } from "game-core";
 import { Container, Graphics, Text } from "pixi.js";
+import { baseFacing, type Facing } from "./facing";
 import { HERO_STYLE, type HeroLook, heroLook } from "./hero-style";
 import { type HeroMarks, IconKind } from "./shield-marks";
 import { worldLineWidth } from "./terrain";
@@ -216,7 +217,7 @@ function flatColor(pose: HeroPose): number | undefined {
  * clips can move it. A hit Hero is flat white, an Exhausted one grey and slumped. `scale` is the camera scale, so the
  * outline keeps its width on screen. The Controller's beacon carries the label `BEACON_LABEL`.
  */
-export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose, scale: number): Container {
+export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose, scale: number, facing: Facing = baseFacing(enemy)): Container {
   const { outline, ring, shadow, exhaustedSquash, line, rim } = HERO_STYLE;
   const team = heroLook(heroClass, enemy);
   const flat = flatColor(pose);
@@ -231,7 +232,7 @@ export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose,
   const rig = new Container();
   rig.label = "rig";
   rig.addChild(legs(heroClass, look, strokes), hips);
-  if (enemy) rig.scale.x = -1;
+  if (facing === "left") rig.scale.x = -1;
   // The Squad ring flashes red when the Hero is hit.
   const ringFlash = new Graphics()
     .ellipse(0, 0, ring.radiusX, ring.radiusY)
@@ -249,17 +250,17 @@ export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose,
   const figure = new Container();
   figure.scale.set(HERO_STYLE.figureScale);
   figure.addChild(new Graphics().ellipse(0, 0, shadow.radiusX, shadow.radiusY).fill(shadow), teamRing, ringFlash, rig);
-  if (heroClass === HeroClass.Assassin) figure.addChild(flungRifle(enemy, strokes.limb));
-  if (heroClass === HeroClass.Controller) figure.addChild(scoutDrone(enemy, strokes.limb));
+  if (heroClass === HeroClass.Assassin) figure.addChild(flungRifle(facing, strokes.limb));
+  if (heroClass === HeroClass.Controller) figure.addChild(scoutDrone(facing, strokes.limb));
   figure.addChild(pauseMark());
   return figure;
 }
 
 /** The Scout Drone: a flat blue disc with a flickering rotor, hidden until the clip flies it; mirrored with the Hero like the rig. */
-function scoutDrone(enemy: boolean, line: Stroke): Container {
+function scoutDrone(facing: Facing, line: Stroke): Container {
   const { x, y, width, height, color, rotor } = HERO_STYLE.rig.drone;
   const side = new Container();
-  if (enemy) side.scale.x = -1;
+  if (facing === "left") side.scale.x = -1;
   const blade = pivoted(
     "rotor",
     x + rotor.dx + rotor.width / 2,
@@ -273,10 +274,10 @@ function scoutDrone(enemy: boolean, line: Stroke): Container {
 }
 
 /** The rifle an Exhausted Assassin flings away: hidden until the clip throws it, and mirrored with the Hero like the rig. */
-function flungRifle(enemy: boolean, line: Stroke): Container {
+function flungRifle(facing: Facing, line: Stroke): Container {
   const { x, y, width, height, color, scope } = HERO_STYLE.rig.flungRifle;
   const side = new Container();
-  if (enemy) side.scale.x = -1;
+  if (facing === "left") side.scale.x = -1;
   side.addChild(
     pivoted(
       "dropGun",
