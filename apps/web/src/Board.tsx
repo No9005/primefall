@@ -992,30 +992,6 @@ export function Board({
       return tiles;
     };
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (sightAfter) {
-      // Resolution: the fog follows the walking Heroes between the sight at the start and at the end of the Round.
-      const ids = heroes.map((hero) => hero.id).filter((id) => sightAfter.startPositions[id] && sightAfter.endPositions[id]);
-      const startFog = fogShape(coverGrid, visibleTiles, Object.values(sightAfter.startPositions));
-      const endFog = fogShape(coverGrid, sightAfter.visibleTiles, Object.values(sightAfter.endPositions));
-      const walkers: FogWalker[] = ids.map((id) => ({ from: sightAfter.startPositions[id]!, to: sightAfter.endPositions[id]!, at: { col: 0, row: 0 } }));
-      const frame = new Float32Array(startFog.length);
-      let handle = 0;
-      const step = (now: number) => {
-        const progress = reduced ? 1 : walkProgress(now - frameClock.current);
-        ids.forEach((id, index) => {
-          const to = heroes.find((hero) => hero.id === id)!.position;
-          const from = walks[id] ?? to;
-          walkers[index]!.at.col = from.col + (to.col - from.col) * progress;
-          walkers[index]!.at.row = from.row + (to.row - from.row) * progress;
-        });
-        fogClouds.setFog(fogDuringWalk(frame, startFog, endFog, coverGrid.width, walkers));
-        handle = requestAnimationFrame(step);
-      };
-      step(performance.now());
-      return () => cancelAnimationFrame(handle);
-    }
-    const finalFog = fogShape(coverGrid, visibleTiles, own);
-    fogClouds.setFog(finalFog);
     const seenNow = new Map<string, { center: GridPosition; size: number }>();
     /** Tiles whose fog changes over time: the fog they have without the area, and how far the area has lifted. */
     const fading: { index: number; fog: number; lift: (ms: number) => number }[] = [];
@@ -1040,6 +1016,35 @@ export function Board({
       }
     }
     fogAreaSeen.current = seenNow;
+    if (sightAfter) {
+      // Resolution: the fog follows the walking Heroes between the sight at the start and at the end of the Round.
+      const ids = heroes.map((hero) => hero.id).filter((id) => sightAfter.startPositions[id] && sightAfter.endPositions[id]);
+      const startFog = fogShape(coverGrid, visibleTiles, Object.values(sightAfter.startPositions));
+      const endFog = fogShape(coverGrid, sightAfter.visibleTiles, Object.values(sightAfter.endPositions));
+      const walkers: FogWalker[] = ids.map((id) => ({ from: sightAfter.startPositions[id]!, to: sightAfter.endPositions[id]!, at: { col: 0, row: 0 } }));
+      const frame = new Float32Array(startFog.length);
+      const startedAt = performance.now();
+      let handle = 0;
+      const step = (now: number) => {
+        const progress = reduced ? 1 : walkProgress(now - frameClock.current);
+        ids.forEach((id, index) => {
+          const to = heroes.find((hero) => hero.id === id)!.position;
+          const from = walks[id] ?? to;
+          walkers[index]!.at.col = from.col + (to.col - from.col) * progress;
+          walkers[index]!.at.row = from.row + (to.row - from.row) * progress;
+        });
+        fogDuringWalk(frame, startFog, endFog, coverGrid.width, walkers);
+        // A Scout Drone area still lifts or closes over its own timing, on top of the walk.
+        const ms = now - startedAt;
+        for (const { index, fog, lift } of fading) frame[index] = (fog - frame[index]!) * lift(ms) + frame[index]!;
+        fogClouds.setFog(frame);
+        handle = requestAnimationFrame(step);
+      };
+      step(performance.now());
+      return () => cancelAnimationFrame(handle);
+    }
+    const finalFog = fogShape(coverGrid, visibleTiles, own);
+    fogClouds.setFog(finalFog);
     if (fading.length === 0) return;
     const frame = new Float32Array(finalFog);
     const startedAt = performance.now();
