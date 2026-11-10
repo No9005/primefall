@@ -42,7 +42,7 @@ import { buildTerrain, coverLook, coverMarks, depthOf, hasCoverLook, type Face, 
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
-import { baseFacing, type Facing, facingAfterStep } from "./facing";
+import { baseFacing, type Facing, turnHeroes } from "./facing";
 import { walkProgress } from "./playback";
 import { AREA_COLOR, AREA_PIPS, areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, TRANSITION_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
 import { type ClipName, restClipName } from "./hero-clips";
@@ -354,6 +354,8 @@ interface BoardProps {
   clipDelays?: Readonly<Record<string, number>>;
   /** The tile each walking Hero comes from in the playback frame being shown: its figure glides from there to its tile. */
   walks?: Readonly<Record<string, GridPosition>>;
+  /** The target of each attacker with one aimed target in the playback frame being shown: the attacker turns towards it. */
+  aims?: Readonly<Record<string, string>>;
   /** The effects of the attacks of the playback frame being shown (flash, projectile, impact, numbers, Marked and Slow). */
   effects?: readonly EffectCue[];
   /** Tiles the player may tap right now. */
@@ -396,6 +398,7 @@ const NO_RANGE: readonly RangeTile[] = [];
 const NO_CLIPS: Readonly<Record<string, ClipName>> = {};
 const NO_DELAYS: Readonly<Record<string, number>> = {};
 const NO_WALKS: Readonly<Record<string, GridPosition>> = {};
+const NO_AIMS: Readonly<Record<string, string>> = {};
 const NO_EFFECTS: readonly EffectCue[] = [];
 const RANGE_COLOR = 0xe5484d;
 const RANGE_BLOCKED_COLOR = 0x8a99a8;
@@ -502,6 +505,7 @@ export function Board({
   clips = NO_CLIPS,
   clipDelays = NO_DELAYS,
   walks = NO_WALKS,
+  aims = NO_AIMS,
   effects = NO_EFFECTS,
   highlights,
   markers,
@@ -580,15 +584,20 @@ export function Board({
   // is dropped when the playback ends, so the next planning phase shows the base facing. Figures are rebuilt every frame,
   // so it is kept here.
   const facings = useRef(new Map<string, Facing>());
-  const walksOfFrame = useRef(walks);
-  if (walksOfFrame.current !== walks) {
-    walksOfFrame.current = walks;
+  const turnsOfFrame = useRef({ walks, aims });
+  if (turnsOfFrame.current.walks !== walks || turnsOfFrame.current.aims !== aims) {
+    turnsOfFrame.current = { walks, aims };
     if (walks === NO_WALKS) facings.current.clear();
-    for (const [id, from] of Object.entries(walks)) {
-      const enemy = enemies.some((hero) => hero.id === id);
-      const to = (enemy ? enemies : heroes).find((hero) => hero.id === id)?.position;
-      if (to) facings.current.set(id, facingAfterStep(from, to, facings.current.get(id) ?? baseFacing(enemy), angle));
-    }
+    turnHeroes(
+      facings.current,
+      { walks, aims },
+      (id) => {
+        const enemy = enemies.some((hero) => hero.id === id);
+        const position = (enemy ? enemies : heroes).find((hero) => hero.id === id)?.position;
+        return position && { position, enemy };
+      },
+      angle,
+    );
   }
   const cameraControl = useRef<{ toggle: () => void; frame: (hero: GridPosition) => void; release: () => void; turn: (steps: 1 | -1) => void } | undefined>(
     undefined,
@@ -898,7 +907,7 @@ export function Board({
       cancels.forEach((cancel) => cancel());
       created.forEach((token) => token.destroy({ children: true }));
     };
-  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, walks, effects, shotLines, marks, coverGrid]);
+  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, walks, aims, effects, shotLines, marks, coverGrid]);
 
   // The effects of the attacks of the frame being shown. They read the latest Heroes and angle from refs, so a redraw of
   // the tokens does not restart them; a new frame (a new `effects` array) does.

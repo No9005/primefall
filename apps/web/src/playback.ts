@@ -1,4 +1,4 @@
-import { CoverKind, type EnemyView, EventKind, type GridPosition, type HeroClass, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
+import { cardInMode, CoverKind, type EnemyView, EventKind, type GridPosition, HERO_DECKS, type HeroClass, isAreaAttack, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
 import type { TokenHero } from "./Board";
 import { attackClipName, type ClipName, clipOf, takeCoverClipName } from "./hero-clips";
 import { type CoverEdit, coverEditsOf, cueEndMs, type EffectCue, effectCuesOf, impactMs } from "./weapon-effects";
@@ -51,6 +51,8 @@ export interface PlaybackFrame {
   moves: Record<string, GridPosition>;
   /** The tile each Hero walks from in this frame (a Step only, not a Knockback): the board glides the figure from there to its new tile. */
   walks: Record<string, GridPosition>;
+  /** The target of each attacker that aims at one Hero (not at a tile, not an area): the attacker turns towards it. */
+  aims: Record<string, string>;
   /** Shield gained per Hero id in this frame. */
   shields: Record<string, number>;
   /** Attacks that hit in this frame. */
@@ -131,7 +133,7 @@ function takeCoverAtMoveEnd(lastStep: ReadonlyMap<string, { frame: PlaybackFrame
 }
 
 function emptyFrame(tick: number): PlaybackFrame {
-  return { tick, moves: {}, walks: {}, shields: {}, hits: [], exhausted: [], clips: {}, delays: {}, effects: [], coverEdits: [], holdMs: STEP_MS, events: [] };
+  return { tick, moves: {}, walks: {}, aims: {}, shields: {}, hits: [], exhausted: [], clips: {}, delays: {}, effects: [], coverEdits: [], holdMs: STEP_MS, events: [] };
 }
 
 /** Records what one event changes in its frame: moves, Shield, hits, Exhaustion and the clip of the Hero. */
@@ -182,6 +184,9 @@ function clipOfEvent(event: MatchEvent): { heroId: string; clip: ClipName } | un
 /** The targets react at the impact beat of the attacker's clip, unless they do something of their own in the frame; then the effects. */
 function addEffects(frame: PlaybackFrame, classOf: ClassOf): void {
   for (const event of frame.events) {
+    if (isAimedAtOneHero(event, classOf)) frame.aims[event.heroId] = event.targetId!;
+  }
+  for (const event of frame.events) {
     if (event.kind === EventKind.AttackHit && event.targetId !== undefined) reactToHit(frame, event, event.targetId, classOf);
   }
   const fireOf = (heroId: string, card: string | undefined) => {
@@ -190,6 +195,15 @@ function addEffects(frame: PlaybackFrame, classOf: ClassOf): void {
   };
   frame.effects = effectCuesOf(frame.events, fireOf);
   frame.coverEdits = coverEditsOf(frame.effects);
+}
+
+/** An Attack at one chosen Hero: the attacker turns to it. An area Attack (Shockwave) and a tile Attack have no one target. */
+function isAimedAtOneHero(event: MatchEvent, classOf: ClassOf): boolean {
+  if (event.kind !== EventKind.AttackHit && event.kind !== EventKind.AttackFailed) return false;
+  if (event.targetId === undefined || event.tile !== undefined) return false;
+  const heroClass = classOf?.(event.heroId);
+  const card = heroClass === undefined ? undefined : HERO_DECKS[heroClass].find((candidate) => candidate.name === event.card);
+  return card === undefined || !isAreaAttack(cardInMode(card, event.overdrive));
 }
 
 function reactToHit(frame: PlaybackFrame, event: MatchEvent, targetId: string, classOf: ClassOf): void {

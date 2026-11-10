@@ -41,6 +41,28 @@ describe("buildPlaybackFrames", () => {
     expect(frames.map((frame) => frame.moves.b)).toEqual([{ col: 5, row: 0 }, { col: 6, row: 0 }]);
   });
 
+  describe("aims", () => {
+    const classes = (id: string) => (id === "a" ? HeroClass.Bruiser : HeroClass.Assassin);
+    const attack = (kind: EventKind, card: string, targetId = "b"): MatchEvent => ({ kind, tick: 1, heroId: "a", targetId, card, damage: 1, absorbed: 0 });
+
+    it("names the target of an aimed Attack, hit or failed", () => {
+      expect(buildPlaybackFrames([attack(EventKind.AttackHit, "Slam Shot")], classes)[0]!.aims).toEqual({ a: "b" });
+      expect(buildPlaybackFrames([attack(EventKind.AttackFailed, "Slam Shot")], classes)[0]!.aims).toEqual({ a: "b" });
+    });
+
+    it("has no aim for Shockwave, Block, Wait, Vanish or Reposition", () => {
+      const shockwave = buildPlaybackFrames([attack(EventKind.AttackHit, "Shockwave")], classes)[0]!;
+      expect(shockwave.aims).toEqual({});
+      const others: MatchEvent[] = [
+        { kind: EventKind.ShieldGained, tick: 1, heroId: "a", amount: 1 },
+        { kind: EventKind.Wait, tick: 1, heroId: "a" },
+        { kind: EventKind.HiddenGained, tick: 1, heroId: "a", card: "Vanish" },
+        { kind: EventKind.Step, tick: 1, heroId: "a", from: { col: 0, row: 0 }, to: { col: 1, row: 0 }, card: "Reposition" },
+      ];
+      for (const event of others) expect(buildPlaybackFrames([event], classes)[0]!.aims).toEqual({});
+    });
+  });
+
   it("keeps a frame for a Tick in which every move was blocked", () => {
     const blocked: MatchEvent = { kind: EventKind.MoveBlocked, tick: 1, heroId: "a", from: { col: 1, row: 0 } };
     expect(buildPlaybackFrames([blocked])).toMatchObject([{ tick: 1, moves: {}, shields: {}, hits: [], exhausted: [] }]);

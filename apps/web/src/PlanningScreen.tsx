@@ -97,6 +97,7 @@ interface PlaybackState {
   clipDelays: Record<string, number>;
   /** The tile each walking Hero comes from in the frame being shown (its figure glides to its new tile). */
   walks: Record<string, GridPosition>;
+  aims: Record<string, string>;
   /** The effects of the attacks of the frame being shown. */
   effects: EffectCue[];
   /** Heroes Slowed or Marked so far in the playback: they carry it until the end of the next Resolution. */
@@ -921,7 +922,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     const tickCount = tickCountOf(result.events);
     let commentary: CommentaryEntry[] = [];
     let commentaryTick = 0;
-    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, walks: {}, effects: [], slowed: [], marked: [], bonus: [], commentary, lines: [], coverDestroyed: [], coverPlaced: [] });
+    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, walks: {}, aims: {}, effects: [], slowed: [], marked: [], bonus: [], commentary, lines: [], coverDestroyed: [], coverPlaced: [] });
     let coverDestroyed: GridPosition[] = [];
     let coverPlaced: GridPosition[] = [];
     const slowed: string[] = [];
@@ -981,6 +982,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         clips: frame.clips,
         clipDelays: frame.delays,
         walks: frame.walks,
+        aims: frame.aims,
         effects: frame.effects,
         slowed: [...slowed],
         marked: [...marked],
@@ -1058,6 +1060,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         hitIds={playback?.hit ?? []}
         clips={playback?.clips}
         walks={playback?.walks}
+        aims={playback?.aims}
         clipDelays={playback?.clipDelays}
         effects={playback?.effects}
         highlights={highlights}
