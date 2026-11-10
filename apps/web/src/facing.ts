@@ -19,3 +19,31 @@ export function facingAfterStep(from: GridPosition, to: GridPosition, current: F
   if (Math.abs(dx) < 1e-6) return current;
   return dx < 0 ? "left" : "right";
 }
+
+/** A Hero that is on the board: where it stands and which Squad it is in. */
+export interface FacingHero {
+  position: GridPosition;
+  enemy: boolean;
+}
+
+/**
+ * Updates the remembered facings for one playback frame. A Step turns the Hero the way it walks; an aimed Attack turns the
+ * attacker towards its target (from the tile it stands on to the tile of the target). Either one lasts until the next.
+ * `walks` holds the tile each walking Hero came from, `aims` the target of each attacker that has exactly one.
+ */
+export function turnHeroes(
+  facings: Map<string, Facing>,
+  frame: { walks: Readonly<Record<string, GridPosition>>; aims: Readonly<Record<string, string>> },
+  heroOf: (heroId: string) => FacingHero | undefined,
+  angle: number = VIEW_ANGLE,
+): void {
+  for (const [id, from] of Object.entries(frame.walks)) {
+    const hero = heroOf(id);
+    if (hero) facings.set(id, facingAfterStep(from, hero.position, facings.get(id) ?? baseFacing(hero.enemy), angle));
+  }
+  for (const [id, targetId] of Object.entries(frame.aims)) {
+    const hero = heroOf(id);
+    const target = heroOf(targetId);
+    if (hero && target) facings.set(id, facingAfterStep(hero.position, target.position, facings.get(id) ?? baseFacing(hero.enemy), angle));
+  }
+}

@@ -308,6 +308,9 @@ export const SCENARIOS: readonly Scenario[] = [
   bruiserCard("slam-shot", "A Bruiser fires Slam Shot (2 damage, Range 1 to 2) at an enemy Bruiser two tiles away.", 31, BRUISER_SLAM_SHOT, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
+  bruiserCard("slam-shot-left", "The mirror of slam-shot: the Bruiser fires at an enemy Bruiser two tiles to its left, turns to it and keeps facing it.", 31, BRUISER_SLAM_SHOT, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+    arrange(hero(ENEMY_BRUISER), { col: 10, row: 3 }, ENEMIES_WITH_ATTACKS);
+  }),
   bruiserCard("concussion-round", "A Bruiser fires Concussion Round (2 damage and Slow) at an enemy Bruiser two tiles away.", 32, BRUISER_CONCUSSION_ROUND, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
