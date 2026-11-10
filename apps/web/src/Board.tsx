@@ -573,6 +573,8 @@ export function Board({
   /** Enemy Heroes shown as a Ghost in the last redraw, to fade a change between Ghost and real figure. */
   const ghostSeen = useRef(new Set<string>());
   const enemiesSeen = useRef(new Set<string>());
+  /** The enemies were drawn at least once, so an enemy that is new in the view came into sight and did not just load with the board. */
+  const enemiesDrawn = useRef(false);
   // When the playback frame being shown started. The Shield and the Knockback slide of the Heroes follow it, so a redraw of
   // the figures in the middle of a frame (Cover that changes) does not start them again.
   const frameClock = useRef(performance.now());
@@ -788,8 +790,8 @@ export function Board({
         const was = ghostSeen.current.has(hero.id) ? "ghost" : enemiesSeen.current.has(hero.id) ? "seen" : undefined;
         if (hero.ghost && was === "seen") cancels.push(animateFade(figure, "toGhost"));
         else if (!hero.ghost && was === "ghost") cancels.push(animateFade(figure, "toSeen"));
-        else if (!hero.ghost && was === undefined && revealedAreas.some((area) => areaContains(area.center, area.size, hero.position))) {
-          // The Scout Drone lifted the fog over it: it fades in.
+        else if (!hero.ghost && was === undefined && (enemiesDrawn.current || revealedAreas.some((area) => areaContains(area.center, area.size, hero.position)))) {
+          // A Scout Drone lifted the fog over it, or a walking Hero came into sight of it (it shows with the next Round's view): it fades in.
           cancels.push(animateFade(figure, "appear"));
         }
       }
@@ -869,6 +871,7 @@ export function Board({
     enemies.forEach((hero) => addToken(hero, true));
     ghostSeen.current = new Set(enemies.filter((hero) => hero.ghost).map((hero) => hero.id));
     enemiesSeen.current = new Set(enemies.filter((hero) => !hero.ghost).map((hero) => hero.id));
+    enemiesDrawn.current = true;
     // A bubble appears with an animation only when it was not there before this redraw.
     bubbleSeen.current = new Set(Object.entries(marks).flatMap(([id, heroMarks]) => (heroMarks.bubble ? [id] : [])));
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
