@@ -37,7 +37,7 @@ import {
   zoomOnPoint,
 } from "./board-layout";
 import { freeBoardArea } from "./hud-layout";
-import { FogClouds, fogShape } from "./fog-clouds";
+import { FogClouds, type FogWalker, fogDuringWalk, fogShape } from "./fog-clouds";
 import { buildTerrain, coverLook, coverMarks, depthOf, hasCoverLook, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, withoutCover, worldLineWidth } from "./terrain";
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
@@ -354,6 +354,16 @@ interface BoardProps {
   clipDelays?: Readonly<Record<string, number>>;
   /** The tile each walking Hero comes from in the playback frame being shown: its figure glides from there to its tile. */
   walks?: Readonly<Record<string, GridPosition>>;
+  /**
+   * During a Resolution: where the Heroes of the Squad stand at the start and at the end of the Round and what the Squad sees at
+   * the end (`visibleTiles` is the start). The fog lifts and closes as the Heroes walk between the two (`fogDuringWalk`); it ends
+   * as the Squad View of the next Round.
+   */
+  sightAfter?: {
+    visibleTiles: readonly GridPosition[];
+    startPositions: Readonly<Record<string, GridPosition>>;
+    endPositions: Readonly<Record<string, GridPosition>>;
+  };
   /** The target of each attacker with one aimed target in the playback frame being shown: the attacker turns towards it. */
   aims?: Readonly<Record<string, string>>;
   /** The effects of the attacks of the playback frame being shown (flash, projectile, impact, numbers, Marked and Slow). */
@@ -505,6 +515,7 @@ export function Board({
   clips = NO_CLIPS,
   clipDelays = NO_DELAYS,
   walks = NO_WALKS,
+  sightAfter,
   aims = NO_AIMS,
   effects = NO_EFFECTS,
   highlights,
@@ -980,9 +991,31 @@ export function Board({
       }
       return tiles;
     };
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (sightAfter) {
+      // Resolution: the fog follows the walking Heroes between the sight at the start and at the end of the Round.
+      const ids = heroes.map((hero) => hero.id).filter((id) => sightAfter.startPositions[id] && sightAfter.endPositions[id]);
+      const startFog = fogShape(coverGrid, visibleTiles, Object.values(sightAfter.startPositions));
+      const endFog = fogShape(coverGrid, sightAfter.visibleTiles, Object.values(sightAfter.endPositions));
+      const walkers: FogWalker[] = ids.map((id) => ({ from: sightAfter.startPositions[id]!, to: sightAfter.endPositions[id]!, at: { col: 0, row: 0 } }));
+      const frame = new Float32Array(startFog.length);
+      let handle = 0;
+      const step = (now: number) => {
+        const progress = reduced ? 1 : walkProgress(now - frameClock.current);
+        ids.forEach((id, index) => {
+          const to = heroes.find((hero) => hero.id === id)!.position;
+          const from = walks[id] ?? to;
+          walkers[index]!.at.col = from.col + (to.col - from.col) * progress;
+          walkers[index]!.at.row = from.row + (to.row - from.row) * progress;
+        });
+        fogClouds.setFog(fogDuringWalk(frame, startFog, endFog, coverGrid.width, walkers));
+        handle = requestAnimationFrame(step);
+      };
+      step(performance.now());
+      return () => cancelAnimationFrame(handle);
+    }
     const finalFog = fogShape(coverGrid, visibleTiles, own);
     fogClouds.setFog(finalFog);
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const seenNow = new Map<string, { center: GridPosition; size: number }>();
     /** Tiles whose fog changes over time: the fog they have without the area, and how far the area has lifted. */
     const fading: { index: number; fog: number; lift: (ms: number) => number }[] = [];
@@ -1020,7 +1053,7 @@ export function Board({
     };
     step(startedAt);
     return () => cancelAnimationFrame(handle);
-  }, [fogClouds, coverGrid, visibleTiles, heroes, revealedAreas]);
+  }, [fogClouds, coverGrid, visibleTiles, heroes, revealedAreas, sightAfter, walks]);
 
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
   useEffect(() => {

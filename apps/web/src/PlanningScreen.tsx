@@ -31,7 +31,7 @@ import {
   validatePlan,
   Visibility,
 } from "game-core";
-import { type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentProps, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
 import { Board } from "./Board";
 import { CardFace, EnergyPill, FloatingCard, PulledCard } from "./game-parts";
@@ -97,6 +97,8 @@ interface PlaybackState {
   clipDelays: Record<string, number>;
   /** The tile each walking Hero comes from in the frame being shown (its figure glides to its new tile). */
   walks: Record<string, GridPosition>;
+  /** The sight at the end of the Round and the positions of the Squad's Heroes at both ends: the fog follows the walk between them. */
+  sightAfter: NonNullable<ComponentProps<typeof Board>["sightAfter"]>;
   aims: Record<string, string>;
   /** The effects of the attacks of the frame being shown. */
   effects: EffectCue[];
@@ -922,7 +924,9 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     const tickCount = tickCountOf(result.events);
     let commentary: CommentaryEntry[] = [];
     let commentaryTick = 0;
-    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, walks: {}, aims: {}, effects: [], slowed: [], marked: [], bonus: [], commentary, lines: [], coverDestroyed: [], coverPlaced: [] });
+    const heroPositions = (heroes: typeof view.heroes) => Object.fromEntries(heroes.map((hero) => [hero.id, hero.position]));
+    const sightAfter = { visibleTiles: result.view.visibleTiles, startPositions: heroPositions(view.heroes), endPositions: heroPositions(result.view.heroes) };
+    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, walks: {}, sightAfter, aims: {}, effects: [], slowed: [], marked: [], bonus: [], commentary, lines: [], coverDestroyed: [], coverPlaced: [] });
     let coverDestroyed: GridPosition[] = [];
     let coverPlaced: GridPosition[] = [];
     const slowed: string[] = [];
@@ -982,6 +986,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         clips: frame.clips,
         clipDelays: frame.delays,
         walks: frame.walks,
+        sightAfter,
         aims: frame.aims,
         effects: frame.effects,
         slowed: [...slowed],
@@ -1060,6 +1065,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         hitIds={playback?.hit ?? []}
         clips={playback?.clips}
         walks={playback?.walks}
+        sightAfter={playback?.sightAfter}
         aims={playback?.aims}
         clipDelays={playback?.clipDelays}
         effects={playback?.effects}

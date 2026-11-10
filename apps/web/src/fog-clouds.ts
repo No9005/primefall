@@ -39,6 +39,55 @@ export function fogShape(grid: Pick<Grid, "width" | "height">, visibleTiles: rea
   return fogAlphas(grid.width, grid.height, litTiles(visibleTiles, ownHeroPositions));
 }
 
+/** One Hero of the Squad during a Resolution: where it stood at the start of the Round, where it ends, and where it glides now (tiles, fractional). */
+export interface FogWalker {
+  from: GridPosition;
+  to: GridPosition;
+  at: { col: number; row: number };
+}
+
+const smooth = (t: number) => t * t * (3 - 2 * t);
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+const distance = (a: { col: number; row: number }, b: { col: number; row: number }) => Math.hypot(a.col - b.col, a.row - b.row);
+
+/**
+ * The fog while the Heroes of the Squad walk during a Resolution, written into `out` (no allocation). Only the sight at the
+ * start of the Round (`startFog`) and at its end (`endFog`, both from `fogShape`) are known, so no Line of Sight is computed:
+ * a tile that is clear only at the end lifts as the nearest Hero glides closer to it (by the share of the way it will come
+ * closer in the whole Round), a tile that is clear only at the start fogs over as the Heroes glide away. A tile that any Hero
+ * still sees at the end stays clear because `endFog` is clear there. Without a walk the result is `startFog`; with every
+ * Hero at its end tile it is `endFog`. Eased, and the feathered edges of both fogs make the edge soft.
+ */
+export function fogDuringWalk(out: Float32Array, startFog: Float32Array, endFog: Float32Array, width: number, walkers: readonly FogWalker[]): Float32Array {
+  for (let index = 0; index < out.length; index++) {
+    const start = startFog[index]!;
+    const end = endFog[index]!;
+    if (start === end) {
+      out[index] = end;
+      continue;
+    }
+    const col = index % width;
+    const row = Math.floor(index / width);
+    const revealing = end < start;
+    // Revealing: the best-placed Hero decides. Fogging: the Hero that stays closest decides.
+    let progress = revealing || walkers.length === 0 ? 0 : 1;
+    for (const walker of walkers) {
+      const fromTile = Math.hypot(walker.from.col - col, walker.from.row - row);
+      const nowTile = Math.hypot(walker.at.col - col, walker.at.row - row);
+      const toTile = Math.hypot(walker.to.col - col, walker.to.row - row);
+      const gain = revealing ? fromTile - toTile : toTile - fromTile;
+      const moved = revealing ? fromTile - nowTile : nowTile - fromTile;
+      // A Hero that does not come closer to (or leave) this tile gives no hint: it counts by how far along its walk it is.
+      const whole = distance(walker.from, walker.to);
+      const alongWalk = whole === 0 ? 0 : clamp01(distance(walker.from, walker.at) / whole);
+      const share = gain > 0.01 ? clamp01(moved / gain) : alongWalk;
+      progress = revealing ? Math.max(progress, share) : Math.min(progress, share);
+    }
+    out[index] = start + (end - start) * smooth(progress);
+  }
+  return out;
+}
+
 export type CloudLayer = "a" | "b";
 
 /** Where a layer has drifted to `ms` after the start, in world pixels (a layer's texture is shifted by this). Zero with reduced motion. */
