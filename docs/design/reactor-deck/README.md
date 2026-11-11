@@ -15,7 +15,7 @@ The tileset is **modular**: it holds single tiles, not a picture of the map. Any
 | `overview/atlas.png` | The atlas, twice its size |
 | `overview/reactor-deck.png`, `overview/other-layout.png` | Two maps built from the atlas by `tools/assemble.js`, twice their size |
 | `reference/looks.html` | The page on which the look was chosen (five looks of the same map; "Notstrom" is look D). German, as written for the product owner |
-| `tools/` | `tileset.js` draws and packs the tiles, `assemble.js` builds a map from the atlas, `export.mjs` runs both |
+| `tools/` | `tileset.js` draws and packs the tiles, `assemble.js` builds a map from the atlas, `export.mjs` runs both. The sprite, the packer and the light stage are shared with the snow map (`docs/design/ice-field/`): `docs/design/tools/pixel-atlas.js` |
 
 ## Geometry
 
@@ -81,7 +81,7 @@ const lightMap = new Sprite(RenderTexture.create({ width: 1024, height: 768 }));
 lightMap.blendMode = "multiply";
 ```
 
-`tools/assemble.js` does the same on a 2D canvas and is the reference for the rules (which floor where, when a wall is cut low, where the warning band goes).
+`tools/assemble.js` does the same on a 2D canvas (with `stage()` of `docs/design/tools/pixel-atlas.js`) and is the reference for the rules (which floor where, when a wall is cut low, where the warning band goes).
 
 ## Regenerating
 

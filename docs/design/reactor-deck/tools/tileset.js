@@ -1,17 +1,8 @@
 // Draws the tiles of the Reactor Deck look "Notstrom" pixel by pixel and packs them into one atlas.
-// Runs in a browser page (export.mjs opens it). Every sprite is drawn around its own origin:
-// the centre of the tile it stands on. Nothing here knows the map; assemble.js builds maps from the atlas.
+// Runs in a browser page after docs/design/tools/pixel-atlas.js (export.mjs loads both). Every sprite is drawn
+// around its own origin: the centre of the tile it stands on. Nothing here knows the map; assemble.js builds maps.
 
-const HW = 16, HH = 8, WALL = 24, FULL_COVER = 22, HALF_COVER = 10;
-// The tiles are stored brighter than they are seen: the light map is multiplied over them and may go up to
-// LIGHT_SCALE times "full" light. LIGHT_RADIUS is the radius of the one light sprite; lights are scaled from it.
-const LIGHT_SCALE = 1.5, LIGHT_RADIUS = 96;
-
-const rgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
-const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-const frac = x => x - Math.floor(x);
-const hash = (a, b, c = 0) => { let n = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263) + Math.imul(c | 0, 1274126177)) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
-const WHITE = [255, 255, 255], BLACK = [0, 0, 0];
+const WALL = 24, FULL_COVER = 22, HALF_COVER = 10;
 
 const LOOK = {
   floor: '#34373e', floor2: '#3e424a', seam: '#1e2026', grime: '#1a1b20', rustC: '#5a2e24', rust: .12, wear: .2,
@@ -30,34 +21,7 @@ const LIGHTING = {
   cover: { color: '#ff4a3a', intensity: .22, radius: 18 }
 };
 
-/* ---------- a sprite: base pixels and glowing pixels around an origin ---------- */
-class Sprite {
-  constructor(name, layer, half = 64) {
-    this.name = name; this.layer = layer; this.size = half * 2; this.o = half;
-    this.base = new Uint8ClampedArray(this.size * this.size * 4); this.glow = new Uint8ClampedArray(this.size * this.size * 4);
-  }
-  static blend(d, i, c, a) {
-    if (d[i + 3] === 0) { d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = a * 255; }
-    else { d[i] += (c[0] - d[i]) * a; d[i + 1] += (c[1] - d[i + 1]) * a; d[i + 2] += (c[2] - d[i + 2]) * a; d[i + 3] = Math.max(d[i + 3], a * 255); }
-  }
-  // glow 0: a normal pixel. 1: a light of its own (drawn again, unlit, on the glow layer; the base keeps a dark copy).
-  // 2: a haze that only exists on the glow layer.
-  px(x, y, c, a = 1, glow = 0) {
-    const xi = Math.round(x) + this.o, yi = Math.round(y) + this.o; if (xi < 0 || yi < 0 || xi >= this.size || yi >= this.size) return;
-    const i = (yi * this.size + xi) * 4;
-    if (glow) { Sprite.blend(this.glow, i, c, a); if (glow === 1 && !this.glowOnly) Sprite.blend(this.base, i, mix(c, BLACK, .5), a); return; }
-    Sprite.blend(this.base, i, c, a);
-    if (a > .6) this.glow[i + 3] = 0;
-  }
-}
-
 /* ---------- floors and floor decals, drawn in tile space (u along columns, v along rows) ---------- */
-function eachTilePixel(fn) {
-  for (let j = 0; j < 16; j++) {
-    const w = 2 * (j < 8 ? j + 1 : 16 - j);
-    for (let x = -w; x < w; x++) { const a = (x + .5) / HW, b = (j + .5) / HH; fn(x, j - HH, (a + b) / 2, (b - a) / 2); }
-  }
-}
 function floorColor(kind, n, u, v, x, y) {
   if (kind === 'ground') return hash(x >> 1, y + n * 17, 13) < .35 ? mix(T.plant2, T.out, .4) : mix(T.out, BLACK, hash(x, y + n * 23, 14) * .25);
   let col = mix(T.floor, T.floor2, hash(n, 3, 1));
@@ -247,16 +211,6 @@ function coreSprites() {
   return [back, front, orb, beam].concat(pulse);
 }
 
-/* ---------- one light pool: white, stepped, wider than tall like the floor; tinted and added in the light map ---------- */
-function lightSprite() {
-  const s = new Sprite('light', 'light', 128); s.glowOnly = true; s.plain = true;
-  for (let y = -Math.ceil(LIGHT_RADIUS / 1.1); y <= LIGHT_RADIUS / 2; y++) for (let x = -LIGHT_RADIUS; x <= LIGHT_RADIUS; x++) {
-    const d = Math.hypot(x, y < 0 ? y * 1.1 : y * 2) / LIGHT_RADIUS; if (d >= 1) continue;
-    s.px(x, y, WHITE, Math.ceil(Math.pow(1 - d, 1.5) * 6) / 6, 2);
-  }
-  return s;
-}
-
 /* ---------- the list of sprites ---------- */
 const TEXTS = { reactor_right: 'REACTOR >', reactor_left: '< REACTOR', hangar_06: 'HANGAR 06', deck_c: 'DECK C', cargo_02: 'CARGO 02', coolant_2: 'COOLANT 2', caution_plasma: 'CAUTION PLASMA', airlock: 'AIRLOCK', bay_03: 'BAY 03' };
 function buildSprites() {
@@ -287,52 +241,17 @@ function buildSprites() {
   return { list, groups };
 }
 
-/* ---------- trim, pack, write the PixiJS sheet ---------- */
-function trimmed(data, size, o, scale) {
-  let x0 = size, y0 = size, x1 = -1, y1 = -1;
-  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (data[(y * size + x) * 4 + 3]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-  if (x1 < 0) return null;
-  const w = x1 - x0 + 1, h = y1 - y0 + 1, c = document.createElement('canvas'); c.width = w; c.height = h;
-  const img = new ImageData(w, h);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const i = ((y + y0) * size + x + x0) * 4, j = (y * w + x) * 4;
-    for (let k = 0; k < 3; k++) img.data[j + k] = Math.min(255, data[i + k] * scale); img.data[j + 3] = data[i + 3];
-  }
-  c.getContext('2d').putImageData(img, 0, 0);
-  return { canvas: c, w, h, ax: o - x0, ay: o - y0 };
-}
 function buildAtlas() {
-  const { list, groups } = buildSprites(), frames = [], info = {};
-  for (const s of list) {
-    const base = s.glowOnly ? null : trimmed(s.base, s.size, s.o, LIGHT_SCALE), glow = trimmed(s.glow, s.size, s.o, 1);
-    if (base) frames.push({ name: s.name, ...base });
-    if (glow) frames.push({ name: s.glowOnly ? s.name : s.name + '_glow', ...glow });
-    info[s.name] = { layer: s.layer, glow: !s.glowOnly && glow ? s.name + '_glow' : undefined, tiles: s.tiles };
-  }
-  const order = frames.slice().sort((p, q) => q.h - p.h), width = 512;
-  let x = 0, y = 0, shelf = 0;
-  for (const f of order) { if (x + f.w > width) { x = 0; y += shelf + 1; shelf = 0; } f.x = x; f.y = y; x += f.w + 1; shelf = Math.max(shelf, f.h); }
-  const sheet = document.createElement('canvas'); sheet.width = width; sheet.height = y + shelf;
-  const ctx = sheet.getContext('2d'), out = {};
-  for (const f of frames) {
-    ctx.drawImage(f.canvas, f.x, f.y);
-    out['deck.' + f.name] = { frame: { x: f.x, y: f.y, w: f.w, h: f.h }, rotated: false, trimmed: false, spriteSourceSize: { x: 0, y: 0, w: f.w, h: f.h }, sourceSize: { w: f.w, h: f.h }, anchor: { x: f.ax / f.w, y: f.ay / f.h } };
-  }
-  const animations = {}; for (const g in groups) animations['deck.' + g] = groups[g].map(n => 'deck.' + n);
-  const json = { frames: out, animations, meta: { app: 'primefall reactor-deck tileset', version: '1', image: 'notstrom.png', format: 'RGBA8888', size: { w: sheet.width, h: sheet.height }, scale: '1' } };
-  const amb = LIGHTING.ambient.map(v => Math.round(v / LIGHT_SCALE * 255));
+  const { list, groups } = buildSprites();
+  const { png, json, info } = packAtlas(list, groups, { prefix: 'deck.', image: 'notstrom.png', app: 'primefall reactor-deck tileset' });
   const tileset = {
     name: 'notstrom', prefix: 'deck.', tile: { w: HW * 2, h: HH * 2 }, wallHeight: WALL, halfCoverHeight: HALF_COVER, fullCoverHeight: FULL_COVER,
     origin: 'every sprite has its anchor on the centre of the tile it stands on',
     projection: { x: '(col - row) * 16', y: '(col + row) * 8' },
-    lighting: {
-      lightScale: LIGHT_SCALE, lightSpriteRadius: LIGHT_RADIUS,
-      ambient: '#' + amb.map(v => v.toString(16).padStart(2, '0')).join(''),
-      lights: Object.fromEntries(['core', 'breach', 'lamp', 'cover'].map(k => [k, { color: LIGHTING[k].color, alpha: Number((LIGHTING[k].intensity / LIGHT_SCALE).toFixed(3)), scale: Number((LIGHTING[k].radius / LIGHT_RADIUS).toFixed(3)) }]))
-    },
+    lighting: lightingManifest(LIGHTING),
     groups: Object.fromEntries(Object.entries(groups).map(([g, names]) => [g, names])),
     texts: Object.fromEntries(Object.entries(TEXTS).map(([id, text]) => [id, { text, tiles: info['text_south_' + id].tiles }])),
     sprites: info
   };
-  return { png: sheet.toDataURL('image/png'), json, tileset };
+  return { png, json, tileset };
 }

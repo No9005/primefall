@@ -60,6 +60,7 @@ try {
   const page = await browser.newPage();
   page.on('pageerror', error => { throw error; });
   await page.setContent('<!doctype html><html><body></body></html>');
+  await page.addScriptTag({ content: await readFile(join(here, '..', '..', 'tools', 'pixel-atlas.js'), 'utf8') });
   await page.addScriptTag({ content: await readFile(join(here, 'tileset.js'), 'utf8') });
   await page.addScriptTag({ content: await readFile(join(here, 'assemble.js'), 'utf8') });
 
