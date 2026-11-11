@@ -1,0 +1,596 @@
+// Rig, clips and effects of the pixel-art Controller. This file is the body of a function: export.mjs wraps it
+// together with export-tail.js and calls it once in a browser page. It needs a DOM (canvas).
+const SW = 136, SH = 104, OX = 58, OY = 86, FRAME = 50;
+const P = { cloth: '#c8642c', clothHi: '#e88a4a', clothLo: '#8a3f1c', pants: '#6a5a4a', pantsLo: '#463a30', plate: '#aeb8c0', plateHi: '#e6edf2', plateLo: '#5d6872', metal: '#8f9aa3', metalHi: '#c9d2d9', metalLo: '#4b545c', glow: '#6ff0d0', violet: '#c58bff', hair: '#5a3423', hairLo: '#3a2016', boot: '#2f2a26', outline: [23, 17, 13] };
+const SK = { skin: '#d9a47a', skinLo: '#a8704e', eye: '#1b1c22', lip: '#9c4a48' };
+const G1 = -42, G2 = 27, G3 = 98, SEG = [13.5, 15.7, 14.1];
+
+/* ---------- part sprites (local coordinates, pivot at 0,0) ---------- */
+function part(x0, y0, x1, y1, draw) {
+  const c = document.createElement('canvas'); c.width = x1 - x0 + 1; c.height = y1 - y0 + 1;
+  const g = c.getContext('2d');
+  const R = (x, y, w, h, col) => { if (col) { g.fillStyle = col; g.fillRect(x - x0, y - y0, w, h); } else g.clearRect(x - x0, y - y0, w, h); };
+  draw(R); return { c, x: x0, y: y0 };
+}
+const LEG_L = part(-3, 0, 3, 12, R => {
+  R(-2, 0, 5, 10, P.pants); R(2, 0, 1, 10, P.pantsLo); R(-1, 4, 2, 2, SK.skin); R(0, 5, 1, 1, SK.skinLo);
+  R(-3, 10, 7, 3, P.boot); R(-3, 10, 7, 1, P.pantsLo);
+});
+const LEG_R = part(-3, 0, 3, 12, R => {
+  R(-2, 0, 5, 10, P.pants); R(2, 0, 1, 10, P.pantsLo); R(-2, 6, 5, 4, SK.skin); R(2, 6, 1, 4, SK.skinLo);
+  R(-1, 6, 1, 1, P.pants); R(1, 6, 1, 2, P.pants); R(-2, 8, 5, 1, '#d9d2c0');
+  R(-3, 10, 7, 3, P.boot); R(-3, 10, 7, 1, P.pantsLo);
+});
+function torsoPart(core) {
+  const t = -15;
+  return part(-8, -16, 7, 4, R => {
+    R(-8, t + 1, 3, 7, P.metalLo); R(-8, t + 1, 3, 1, P.metal); R(5, t + 2, 3, 5, P.metalLo);
+    R(-6, -3, 12, 3, P.pants); R(-6, -3, 12, 1, '#2a2622'); R(-1, -3, 2, 1, P.metal); R(3, -3, 3, 3, P.pantsLo); R(3, -3, 3, 1, P.metalLo);
+    R(-8, -3, 3, 2, P.cloth); R(-8, -1, 2, 5, P.cloth); R(-8, 3, 1, 2, P.clothLo); R(4, -2, 3, 2, P.clothLo);
+    R(-5, t + 8, 10, 4, SK.skin); R(3, t + 8, 2, 4, SK.skinLo);
+    R(-6, t, 12, 8, P.cloth); R(-5, t + 8, 10, 2, P.cloth); R(-6, t, 12, 1, P.clothHi); R(4, t + 1, 2, 7, P.clothLo); R(-7, t, 1, 2, P.cloth);
+    [-5, -3, -2, 0, 2, 3].forEach(x => R(x, t + 10, 1, 1 + ((x + 6) % 2), P.cloth));
+    R(3, t + 8, 2, 1, SK.skinLo); R(-5, t + 9, 1, 1, SK.skin);
+    R(-5, t + 1, 10, 7, P.plate); R(-5, t + 1, 10, 1, P.plateHi); R(-5, t + 1, 1, 6, P.plateHi); R(4, t + 2, 1, 6, P.plateLo); R(-5, t + 7, 10, 1, P.plateLo);
+    R(-4, t + 8, 2, 1, P.plateLo); R(2, t + 8, 2, 1, P.plateLo);
+    R(-3, t + 2, 6, 5, P.plateLo);
+    if (core) { R(-2, t + 2, 4, 5, core); R(-3, t + 3, 6, 3, core); R(-1, t + 3, 2, 3, '#ffffff'); R(-2, t + 4, 4, 1, '#ffffff'); }
+    else { R(-2, t + 3, 4, 3, '#2a3036'); }
+    R(-5, t - 1, 2, 2, P.plateLo); R(3, t - 1, 2, 2, P.plateLo); R(-1, t - 1, 3, 1, SK.skinLo);
+  });
+}
+const TORSO = torsoPart(P.glow), TORSO_V = torsoPart(P.violet), TORSO_OFF = torsoPart(null);
+const ARM_B = part(-3, -2, 2, 15, R => {   // her right arm: robotic
+  R(-2, -2, 4, 4, P.metal); R(-2, -2, 4, 1, P.metalHi); R(-1, -1, 2, 2, P.metalLo);
+  R(-1, 2, 2, 3, P.metalLo); R(-2, 5, 4, 2, P.metal); R(-2, 5, 4, 1, P.metalHi);
+  R(-3, 7, 5, 5, P.metal); R(-3, 7, 1, 5, P.metalHi); R(1, 7, 1, 5, P.metalLo); R(-1, 8, 1, 3, P.glow);
+  R(-3, 12, 2, 3, P.metalLo); R(0, 12, 2, 3, P.metalLo); R(-3, 12, 5, 1, P.metal);
+});
+const ARM_F = part(-1, -1, 1, 20, R => {   // her left arm: skin, frayed sleeve, pulse emitter
+  R(-1, 0, 3, 12, SK.skin); R(1, 0, 1, 12, SK.skinLo); R(-1, -1, 3, 6, P.cloth); R(1, 0, 1, 5, P.clothLo); R(-1, 5, 1, 2, P.cloth);
+  R(-1, 13, 3, 6, P.metalLo); R(1, 13, 1, 6, P.metal); R(-1, 19, 3, 1, P.glow);
+  R(-1, 11, 3, 3, SK.skin); R(1, 11, 1, 3, SK.skinLo);
+});
+const HEAD = part(-5, -12, 5, 0, R => {
+  R(-4, -9, 9, 8, SK.skin); R(4, -9, 1, 7, SK.skinLo); R(-4, -2, 1, 1, null); R(4, -2, 1, 1, null); R(-2, -1, 5, 1, SK.skinLo);
+  R(-2, -6, 1, 2, SK.eye); R(2, -6, 1, 2, SK.eye); R(-2, -7, 2, 1, P.hairLo); R(2, -7, 2, 1, P.hairLo);
+  R(1, -4, 1, 1, SK.skinLo); R(0, -3, 2, 1, SK.lip);
+  R(-5, -12, 11, 4, P.hair); R(-5, -12, 1, 1, null); R(5, -12, 1, 1, null); R(-5, -8, 2, 4, P.hair); R(4, -8, 2, 2, P.hairLo); R(-3, -9, 4, 1, P.hairLo);
+  R(-5, -10, 11, 2, '#2a2420'); R(-3, -10, 3, 2, P.glow); R(1, -10, 3, 2, P.glow); R(-3, -10, 1, 1, '#ffffff'); R(1, -10, 1, 1, '#ffffff');
+});
+const PONY = part(-5, -1, 0, 8, R => { R(-3, -1, 4, 3, P.hair); R(-5, 1, 3, 6, P.hair); R(-5, 6, 2, 3, P.hairLo); });
+
+/* ---------- pose and tracks ---------- */
+const REST = { dx: 0, dy: 0, rot: 0, sx: 1, sy: 1, crouch: 0, bob: 0, lean: 0, stretch: 1, legL: 0, legR: 0, armF: -30, armB: 4, padL: 0, padR: 0, padDy: 0, head: 0, headDx: 0, headDy: 0, flip: 1, cigar: 0, cigarOff: 0, armFront: 0, flash: 0, grey: 0, alpha: 1, ringRed: 0 };
+const EASE = {
+  lin: x => x, io: x => x * x * (3 - 2 * x), out: x => 1 - Math.pow(1 - x, 3), in: x => x * x * x,
+  back: x => { const c = 2.4, y = x - 1; return 1 + (c + 1) * y * y * y + c * y * y; },
+  step: x => x < 1 ? 0 : 1
+};
+function tr(t, keys) {
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) if (t < keys[i][0]) {
+    const a = keys[i - 1], b = keys[i], u = (t - a[0]) / (b[0] - a[0]);
+    return a[1] + (b[1] - a[1]) * EASE[b[2] || 'io'](u);
+  }
+  return keys[keys.length - 1][1];
+}
+function poseAt(clip, t) {
+  const p = Object.assign({}, REST);
+  for (const k in clip.tracks) p[k] = tr(t, clip.tracks[k]);
+  if (clip.pose) clip.pose(t, p);
+  return p;
+}
+
+
+Object.assign(REST, { armB: 6, pony: 0, g1: G1, g2: G2, g3: G3, claw: .5, gripFront: 0, core: 1, violet: 0, cigarOff: 1 });
+
+/* ---------- figure renderer ---------- */
+const fig = document.createElement('canvas'); fig.width = SW; fig.height = SH;
+const fctx = fig.getContext('2d', { willReadFrequently: true });
+const rad = d => d * Math.PI / 180;
+function put(s) { fctx.drawImage(s.c, s.x, s.y); }
+function world(x, y) { const q = fctx.getTransform().transformPoint(new DOMPoint(x, y)); return { x: Math.round(q.x - OX), y: Math.round(q.y - OY) }; }
+function block(x, y, w, h, c) { fctx.fillStyle = c; fctx.fillRect(OX + Math.round(x), OY + Math.round(y), w, h); }
+function stroke(a, b, th, c, hi) {
+  const n = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y), 1);
+  for (let k = 0; k <= n; k++) { const x = a.x + (b.x - a.x) * k / n, y = a.y + (b.y - a.y) * k / n; block(x, y, th, th, c); if (hi) block(x, y, 1, 1, hi); }
+}
+const polar = (o, ang, len) => ({ x: o.x + Math.sin(rad(ang)) * len, y: o.y - Math.cos(rad(ang)) * len });
+
+/* the third arm: three segments from the spine, drawn in screen pixels so it stays crisp */
+function drawGrip(base, tilt, p, info) {
+  const pts = [base]; [p.g1, p.g2, p.g3].forEach((g, i) => pts.push(polar(pts[i], tilt + g, SEG[i])));
+  for (let i = 0; i < 3; i++) stroke(pts[i], pts[i + 1], 2, P.metalLo, P.metal);
+  const e = pts[3], dir = tilt + p.g3, open = 14 + 42 * p.claw;
+  for (const s of [-1, 1]) { const k = polar(e, dir + s * open, 5), tip = polar(k, dir - s * 20, 4); stroke(e, k, 2, P.metalLo); stroke(k, tip, 1, P.metalHi); }
+  [pts[1], pts[2], e].forEach(q => { block(q.x - 1, q.y - 1, 4, 4, P.metal); block(q.x - 1, q.y - 1, 4, 1, P.metalHi); block(q.x, q.y, 2, 2, p.core > .2 ? P.glow : P.metalLo); });
+  const h = polar(e, dir, 6);
+  info.claw = { x: Math.round(e.x), y: Math.round(e.y) }; info.hold = { x: Math.round(h.x), y: Math.round(h.y) }; info.elbow = { x: Math.round(pts[2].x), y: Math.round(pts[2].y) };
+}
+function halo(q, r, col, a) {
+  const n = parseInt(col.slice(1), 16), rgb = (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+  for (let dy = -r - 1; dy <= r + 1; dy++) for (let dx = -r - 1; dx <= r + 1; dx++) {
+    const d = Math.sqrt(dx * dx + dy * dy); if (d > r + 1.2) continue;
+    block(q.x + dx, q.y + dy, 1, 1, 'rgba(' + rgb + ',' + Math.min(.8, a * (1 - d / (r + 1.6))).toFixed(2) + ')');
+  }
+}
+
+function drawFigure(p) {
+  const info = {};
+  fctx.setTransform(1, 0, 0, 1, 0, 0); fctx.clearRect(0, 0, SW, SH); fctx.imageSmoothingEnabled = false;
+  const crouch = Math.round(p.crouch), hipY = -12 + crouch;
+  const root = () => { fctx.setTransform(1, 0, 0, 1, 0, 0); fctx.translate(OX + Math.round(p.dx), OY + Math.round(p.dy)); fctx.rotate(rad(p.rot)); fctx.scale(p.sx, p.sy); };
+  const torso = () => { root(); fctx.translate(0, hipY + Math.round(p.bob)); fctx.rotate(rad(p.lean)); fctx.scale(1, p.stretch); };
+  torso(); const base = world(-4, -12), tilt = p.rot + p.lean;
+  const grip = () => { fctx.setTransform(1, 0, 0, 1, 0, 0); drawGrip(base, tilt, p, info); };
+  if (!p.gripFront) grip();
+  root();
+  for (const [s, x, a] of [[LEG_L, -4, p.legL], [LEG_R, 3, p.legR]]) {
+    fctx.save(); fctx.translate(x, hipY); fctx.rotate(rad(a)); fctx.scale(1, (12 - crouch) / 12); put(s); fctx.restore();
+  }
+  torso();
+  put(p.core <= .2 ? TORSO_OFF : p.violet > .5 ? TORSO_V : TORSO);
+  info.core = world(0, -10);
+  fctx.save(); fctx.translate(-8, -13); fctx.rotate(rad(p.armB)); put(ARM_B); info.wrist = world(-1, 9); fctx.restore();
+  const armF = () => { fctx.save(); fctx.translate(7, -14); fctx.rotate(rad(p.armF)); put(ARM_F); info.muzzle = world(0, 22); fctx.restore(); };
+  if (!p.armFront) armF();
+  fctx.save(); fctx.translate(Math.round(p.headDx), -15 + Math.round(p.headDy)); fctx.rotate(rad(p.head)); fctx.scale(p.flip, 1);
+  fctx.save(); fctx.translate(-5, -9); fctx.rotate(rad(p.pony)); put(PONY); fctx.restore();
+  put(HEAD); info.top = world(0, -13);
+  fctx.restore();
+  if (p.armFront) armF();
+  if (p.gripFront) grip();
+
+  fctx.setTransform(1, 0, 0, 1, 0, 0);
+  const img = fctx.getImageData(0, 0, SW, SH), d = img.data, solid = new Uint8Array(SW * SH);
+  for (let i = 0; i < SW * SH; i++) solid[i] = d[i * 4 + 3] > 0 ? 1 : 0;
+  const [or, og, ob] = P.outline;
+  for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) {
+    const i = y * SW + x, j = i * 4;
+    if (solid[i]) {
+      d[j + 3] = 255;
+      if (p.grey > 0) { const l = d[j] * .3 + d[j + 1] * .5 + d[j + 2] * .2, g = p.grey; d[j] += (l * .75 + 30 - d[j]) * g; d[j + 1] += (l * .8 + 36 - d[j + 1]) * g; d[j + 2] += (l * .85 + 44 - d[j + 2]) * g; }
+      if (p.flash > 0) { d[j] += (255 - d[j]) * p.flash; d[j + 1] += (255 - d[j + 1]) * p.flash; d[j + 2] += (255 - d[j + 2]) * p.flash; }
+    } else if ((x > 0 && solid[i - 1]) || (x < SW - 1 && solid[i + 1]) || (y > 0 && solid[i - SW]) || (y < SH - 1 && solid[i + SW])) { d[j] = or; d[j + 1] = og; d[j + 2] = ob; d[j + 3] = 255; }
+  }
+  fctx.putImageData(img, 0, 0);
+  if (p.core > .2 && p.grey < .5) halo(info.core, Math.round(3 + p.core), p.violet > .5 ? P.violet : P.glow, .22 * p.core);
+  return info;
+}
+
+/* ---------- pixel drawing helpers for effects (origin = centre of the feet) ---------- */
+function fxKit(ctx) {
+  const S = {
+    rect(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(OX + Math.round(x), OY + Math.round(y), Math.round(w), Math.round(h)); },
+    disc(cx, cy, r, c) { r = Math.round(r); for (let dy = -r; dy <= r; dy++) { const w = Math.floor(Math.sqrt(r * r - dy * dy) + .5); S.rect(cx - w, cy + dy, 2 * w + 1, 1, c); } },
+    line(x0, y0, x1, y1, c) { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (let i = 0; i <= n; i++) S.rect(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, 1, 1, c); },
+    ellFill(cx, cy, rx, ry, c) { for (let dy = -Math.floor(ry); dy <= ry; dy++) { const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - dy * dy / (ry * ry)))); S.rect(cx - w, cy + dy, 2 * w + 1, 1, c); } },
+    ell(cx, cy, rx, ry, c) { const n = Math.ceil((rx + ry) * 4); for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; S.rect(cx + Math.cos(a) * rx, cy + Math.sin(a) * ry, 1, 1, c); } },
+    puff(x, y, age, life, r) { if (age < 0 || age > life) return; const u = age / life; S.disc(x, y, 1 + r * u, 'rgba(196,204,210,' + (.7 * (1 - u)).toFixed(2) + ')'); },
+    ruby(x, y, s) { if (s <= 0) return; const r = Math.round(2 * s); for (let dy = -r - 1; dy <= r + 1; dy++) { const w = Math.max(0, r - Math.abs(dy) + (Math.abs(dy) > r ? -1 : 0)); if (Math.abs(dy) <= r) S.rect(x - w, y + dy, 2 * w + 1, 1, dy < 0 ? '#9cd0ff' : '#4da3ff'); } S.rect(x - 1, y - 1, 1, 1, '#ffffff'); },
+    glyphs(text, x, y, s, c) {
+      const G = { '-': ['000', '000', '111', '000', '000'], '2': ['111', '001', '111', '100', '111'] };
+      let cx = x;
+      for (const ch of text) { G[ch].forEach((row, j) => [...row].forEach((b, i) => { if (b === '1') { S.rect(cx + i * s + 1, y + j * s + 1, s, s, '#1a0508'); } })); cx += 4 * s; }
+      cx = x;
+      for (const ch of text) { G[ch].forEach((row, j) => [...row].forEach((b, i) => { if (b === '1') S.rect(cx + i * s, y + j * s, s, s, c); })); cx += 4 * s; }
+    },
+    slab(x, y, w, h) { S.rect(x - 1, y - 1, w + 2, h + 2, '#0b0f15'); S.rect(x, y, w, h, '#77838e'); S.rect(x, y, w, 3, '#b3bdc6'); S.rect(x, y + h - 2, w, 2, '#566069'); S.rect(x + 3, y + 5, 2, 2, '#566069'); S.rect(x + w - 6, y + 6, 2, 2, '#566069'); },
+    bubble(k, a) { if (k <= 0) return; S.ellFill(0, -22, 27 * k, 31 * k, 'rgba(77,163,255,' + (.16 * a).toFixed(2) + ')'); S.ell(0, -22, 27 * k, 31 * k, 'rgba(140,200,255,' + (.95 * a).toFixed(2) + ')'); S.ell(0, -22, 26 * k, 30 * k, 'rgba(77,163,255,' + (.6 * a).toFixed(2) + ')'); S.rect(-14 * k, -22 - 20 * k, 3, 2, 'rgba(255,255,255,' + (.8 * a).toFixed(2) + ')'); }
+  };
+  return S;
+}
+function cigarSmoke(S, t, info) {
+  for (let k = 0; k < 3; k++) {
+    const age = (t + k * 500) % 1500, u = age / 1500;
+    const x = info.cigar.x + 1 + Math.round(Math.sin(age / 220 + k) * 1.5 + age * .003), y = info.cigar.y - 2 - Math.round(age * .011);
+    S.rect(x, y, u > .4 ? 2 : 1, u > .4 ? 2 : 1, 'rgba(220,226,230,' + (.6 * (1 - u)).toFixed(2) + ')');
+  }
+}
+const shakeAt = (t, t0, len, amp) => { const a = t - t0; if (a < 0 || a > len) return [0, 0]; const k = amp * (1 - a / len), f = Math.floor(a / FRAME); return [Math.round(f % 2 ? -k : k), Math.round(f % 3 === 0 ? k * .6 : -k * .4)]; };
+
+
+
+/* ---------- shared effect pieces ---------- */
+const GLOW = 'rgba(111,240,208,';
+function drone(S, x, y, t) { const f = Math.floor(t / FRAME) % 2; S.rect(x - 4, y - 2, 9, 5, '#17110d'); S.rect(x - 3, y - 1, 7, 3, '#8f9aa3'); S.rect(x - 3, y - 1, 7, 1, '#c9d2d9'); S.rect(x - 1, y, 2, 1, P.glow); S.rect(x, y - 3, 1, 2, '#4b545c'); S.rect(x - 5 + f * 2, y - 4, 11 - f * 4, 1, '#e6edf2'); }
+function sparks(S, x, y, a, col, n) { if (a < 0 || a > 420) return; for (let i = 0; i < n; i++) { const ang = i * 2.4 + 1, v = .035 + (i % 3) * .015; S.rect(x + Math.cos(ang) * a * v, y + Math.sin(ang) * a * v + a * a * .00012, i % 2 ? 2 : 1, 1, col); } }
+function stripedWall(S, x, y, w, h) {
+  S.rect(x - 1, y - 1, w + 2, h + 2, '#14181e'); S.rect(x, y, w, h, '#ffd24a');
+  for (let i = -h; i < w; i += 8) for (let j = 0; j < h; j++) { const sx = Math.max(x, x + i + j), ex = Math.min(x + w, x + i + j + 4); if (ex > sx) S.rect(sx, y + h - 1 - j, ex - sx, 1, '#14181e'); }
+  S.rect(x, y, w, 2, '#d9dee4');
+}
+const brace = { g1: -85, g2: -150, g3: 165 };
+const wave = (t, dur) => Math.sin(t / dur * Math.PI * 2);
+const K = (...keys) => keys;
+
+/* ---------- clips: timing and beats follow docs/design/animation, amplitudes are pushed ---------- */
+const CLIPS = [
+  {
+    id: 'idle', name: 'Idle', meta: 'Loop 2,0 s', dur: 2000, loop: true, still: 1600,
+    text: 'Wippt auf den Füßen, der Reaktorkern pulsiert im Atemtakt. Der Greifarm führt ein Eigenleben: Er pendelt über ihrem Kopf und schnappt zweimal ungeduldig mit der Zange.',
+    tracks: {
+      stretch: K([0, 1], [1000, 1.07], [2000, 1]), crouch: K([0, 1.4], [1000, 0], [2000, 1.4]), head: K([0, 3], [1000, -4], [2000, 3]),
+      pony: K([0, 4], [600, -8], [1500, 10], [2000, 4]), armF: K([0, -28], [1000, -40], [2000, -28]), armB: K([0, 4], [1000, 14], [2000, 4]),
+      g1: K([0, G1], [1000, G1 + 10], [2000, G1]), g2: K([0, G2], [700, G2 - 8], [1400, G2 + 16], [2000, G2]), g3: K([0, G3], [1000, G3 - 26], [1500, G3 + 12], [2000, G3]),
+      claw: K([0, .5], [1400, .5], [1480, 0, 'in'], [1560, .9, 'out'], [1640, 0, 'in'], [1740, .9, 'out'], [2000, .5]),
+      core: K([0, .8], [1000, 1.6], [2000, .8])
+    },
+    front(S, t, info) { for (const t0 of [1480, 1640]) sparks(S, info.hold.x, info.hold.y, (t - t0) * 2, GLOW + '.9)', 3); }
+  },
+  {
+    id: 'walk', name: 'Walk', meta: 'Loop 0,58 s · 2 Schritte', dur: 580, loop: true, still: 140,
+    text: 'Federnder, eiliger Gang: Der Pferdeschwanz peitscht bei jedem Schritt, der Greifarm wippt wie eine Antenne hinterher und der Emitter schwingt weit mit.',
+    tracks: {},
+    pose(t, p) {
+      const s = wave(t, 580), s2 = wave(t - 70, 290), lag = wave(t - 130, 290);
+      p.legL = 36 * s; p.legR = -36 * s; p.dy = 1.6 * Math.abs(s); p.lean = 9 + 3 * s2; p.stretch = 1 - .04 * Math.abs(s);
+      p.armF = -30 + 34 * s; p.armB = 6 - 30 * s; p.head = -3 + 4 * s2; p.pony = 12 + 26 * lag;
+      p.g1 = G1 + 4 + 9 * s2; p.g2 = G2 + 14 * lag; p.g3 = G3 + 18 * wave(t - 200, 290); p.core = 1 + .3 * s2;
+    },
+    back(S, t) { for (const t0 of [145, 435]) { const a = (t - t0 + 580) % 580; S.puff(-8 - a * .02, -1, a, 260, 2); } }
+  },
+  {
+    id: 'wait', name: 'Wait', meta: 'Loop 3,2 s', dur: 3200, loop: true, still: 2500,
+    text: 'Schaut sich um und tippt auf ihrem Roboterarm herum. Dem Greifarm wird es zu lang: Er klopft ihr dreimal von oben auf den Kopf, sie duckt sich jedes Mal weg.',
+    tracks: {
+      armB: K([0, 6], [900, 6], [1050, -78, 'back'], [1900, -78], [2100, 6], [3200, 6]),
+      armF: K([0, -30], [900, -30], [1050, -8], [1900, -8], [2100, -30], [3200, -30]),
+      head: K([0, 0], [700, 0], [830, -9, 'back'], [1000, 8], [1900, 8], [2050, 0], [3200, 0]),
+      g1: K([0, G1], [2100, G1], [2300, -30, 'out'], [3000, -30], [3200, G1]), g2: K([0, G2], [2100, G2], [2300, 0, 'out'], [3000, 0], [3200, G2]),
+      g3: K([0, G3], [2100, G3], [2300, 62, 'out'], [2400, 102, 'in'], [2520, 62, 'out'], [2620, 102, 'in'], [2740, 62, 'out'], [2840, 102, 'in'], [3000, 70], [3200, G3]),
+      claw: K([0, .5], [2100, .5], [2300, 0], [3000, 0], [3200, .5]),
+      headDy: K([0, 0], [2390, 0], [2410, 2, 'out'], [2520, 0], [2610, 0], [2630, 2, 'out'], [2740, 0], [2830, 0], [2850, 2, 'out'], [3000, 0]),
+      stretch: K([0, 1], [2390, 1], [2410, .9, 'out'], [2520, 1.03], [2610, 1], [2630, .9, 'out'], [2740, 1.03], [2830, 1], [2850, .9, 'out'], [3000, 1])
+    },
+    pose(t, p) { p.flip = t > 760 && t < 950 ? -1 : 1; if (t > 1100 && t < 1850) p.armB += Math.floor(t / 100) % 2 ? 6 : 0; },
+    front(S, t, info) {
+      const by = -66 + Math.round(wave(t, 1600));
+      S.rect(-7, by - 1, 15, 11, '#0b0f15'); S.rect(-6, by, 13, 9, '#8f9aa3'); S.rect(-3, by + 2, 2, 5, '#1e252b'); S.rect(2, by + 2, 2, 5, '#1e252b');
+      if (t > 1100 && t < 1850 && Math.floor(t / 100) % 2) S.rect(info.wrist.x + 2, info.wrist.y - 3, 2, 2, GLOW + '.9)');
+      for (const t0 of [2400, 2620, 2840]) if (t >= t0 && t < t0 + 150) { S.rect(info.top.x - 6, info.top.y - 3, 2, 1, '#fff3c0'); S.rect(info.top.x + 6, info.top.y - 4, 2, 1, '#fff3c0'); S.rect(info.top.x + 2, info.top.y - 6, 1, 2, '#fff3c0'); }
+    }
+  },
+  {
+    id: 'pulse', name: 'Attack: Pulse Bolt', meta: 'Einmal 2,4 s · Schuss bei 620 ms', dur: 2400, still: 700,
+    text: 'Der Greifarm krallt sich hinter ihr in den Boden und stemmt sie ab. Sie reißt den Emitter hoch, die Kugel lädt sich an der Mündung auf, der Rückstoß biegt den Arm wie eine Feder durch. Die Kugel rollt langsam los und wächst.',
+    tracks: {
+      g1: K([0, G1], [240, -85, 'out'], [620, -85], [700, -62, 'out'], [900, -92], [1100, -85], [1630, G1, 'back']),
+      g2: K([0, G2], [240, -150, 'out'], [620, -150], [700, -138, 'out'], [1100, -150], [1630, G2, 'back']),
+      g3: K([0, G3], [240, 165, 'out'], [1100, 165], [1630, G3, 'back']), claw: K([0, .5], [240, 1], [1100, 1], [1630, .5]),
+      lean: K([0, 0], [240, 12, 'out'], [530, -6], [620, -6], [700, -22, 'out'], [950, 8], [1630, 0]),
+      dx: K([0, 0], [530, 2], [620, 2], [710, -5, 'out'], [1100, -4], [1630, 0]),
+      crouch: K([0, 0], [240, 3, 'out'], [620, 2], [700, 4, 'out'], [1630, 0]),
+      armF: K([0, -30], [240, 6, 'out'], [500, -106, 'back'], [600, -90], [620, -90], [690, -140, 'out'], [950, -80], [1150, -92], [1630, -30]),
+      armB: K([0, 6], [240, 26], [530, -24], [620, -24], [700, 58, 'out'], [1630, 6]),
+      head: K([0, 0], [530, 5], [620, 5], [700, -20, 'out'], [950, 8], [1630, 0]),
+      pony: K([0, 0], [240, 20], [530, -10], [620, -10], [720, -85, 'out'], [1000, 30], [1300, -8], [1630, 0]),
+      stretch: K([0, 1], [240, .92, 'out'], [530, 1.04], [620, 1.04], [700, 1.12, 'out'], [950, .95], [1630, 1]),
+      core: K([0, 1], [530, 1.4], [620, 3, 'in'], [900, 1.2], [1630, 1])
+    },
+    shake: t => shakeAt(t, 620, 200, 2),
+    back(S, t, info) { if (t > 240 && t < 1200) S.puff(info.claw.x - 2, -1, t - 240, 300, 3); },
+    front(S, t, info, clip) {
+      const m = clip.fire.muzzle, a = t - 620;
+      if (a < 0 && t > 330) { const r = (t - 330) / 290 * 3; S.disc(info.muzzle.x + 1, info.muzzle.y, r + 1, 'rgba(120,200,255,.5)'); S.disc(info.muzzle.x + 1, info.muzzle.y, r, '#dff6ff'); }
+      if (a >= 0 && a < 150) { const r = a < 60 ? 8 : 5; S.disc(m.x + 4, m.y, r, 'rgba(90,170,255,.8)'); S.disc(m.x + 4, m.y, r - 3, '#ffffff'); S.line(m.x + 4, m.y, m.x + 4, m.y - r - 4, '#9cd0ff'); S.line(m.x + 4, m.y, m.x + 4, m.y + r + 4, '#9cd0ff'); S.line(m.x, m.y, m.x + r + 9, m.y, '#dff6ff'); }
+      if (a >= 40 && a < 1500) { const x = m.x + 6 + (a - 40) * .05, r = 3 + (a - 40) * .0035, w = Math.floor(a / 100) % 2; S.disc(x, m.y, r + 2, 'rgba(77,163,255,.35)'); S.ellFill(x, m.y, r + w, r + 1 - w, '#4da3ff'); S.disc(x - 1, m.y - 1, Math.max(1, r - 2), '#bfe4ff'); S.rect(x - 2, m.y - 2, 1, 1, '#ffffff'); }
+    }
+  },
+  {
+    id: 'tag', name: 'Attack: Tag Round', meta: 'Einmal 2,8 s · Schuss bei 730 ms', dur: 2800, still: 780,
+    text: 'Der Greifarm schnellt vor und zeigt wie ein Finger aufs Ziel. Sie schießt lässig aus der Hüfte, der pinke Pfeil zischt los, drüben rastet das rote Fadenkreuz ein.',
+    tracks: {
+      g1: K([0, G1], [300, -60, 'out'], [520, 24, 'back'], [1500, 24], [1900, G1, 'back']), g2: K([0, G2], [300, 0], [520, 64, 'back'], [1500, 64], [1900, G2, 'back']),
+      g3: K([0, G3], [300, 40], [520, 90, 'back'], [730, 90], [800, 76, 'out'], [950, 90], [1500, 90], [1900, G3, 'back']), claw: K([0, .5], [300, .9], [520, 0], [1500, 0], [1900, .5]),
+      armF: K([0, -30], [450, -20], [650, -78, 'back'], [730, -74], [790, -112, 'out'], [1000, -70], [1500, -74], [1900, -30]),
+      lean: K([0, 0], [520, 8, 'back'], [730, 6], [800, -8, 'out'], [1000, 4], [1900, 0]), head: K([0, 0], [520, 6], [730, 6], [800, -8, 'out'], [1900, 0]),
+      pony: K([0, 0], [520, 22, 'out'], [730, 6], [820, -40, 'out'], [1100, 12], [1900, 0]), core: K([0, 1], [730, 1], [760, 2.2], [1000, 1])
+    },
+    front(S, t, info, clip) {
+      const m = clip.fire.muzzle, a = t - 730;
+      if (a >= 0 && a < 110) { S.disc(m.x + 3, m.y, 4, '#ff8ac8'); S.disc(m.x + 3, m.y, 2, '#ffffff'); }
+      if (a >= 0 && a < 190) { const x = m.x + 4 + a * .3; S.rect(x - 10, m.y, 10, 1, 'rgba(255,138,200,.5)'); S.rect(x, m.y - 1, 12, 3, '#ff5fb0'); S.rect(x + 9, m.y, 4, 1, '#ffffff'); }
+      const k = tr(t, K([0, 0], [1280, 0], [1290, 2.4, 'step'], [1400, 1, 'out'])), fade = t > 2400 ? Math.max(0, 1 - (t - 2400) / 300) : 1;
+      if (k > 0 && fade > 0) { const c = 'rgba(255,90,90,' + fade.toFixed(2) + ')', x = 62, y = -24; S.ell(x, y, 9 * k, 9 * k, c); S.ell(x, y, 9 * k - 1, 9 * k - 1, c); S.rect(x - 9 * k - 3, y, 5, 1, c); S.rect(x + 9 * k - 1, y, 5, 1, c); S.rect(x, y - 9 * k - 3, 1, 5, c); S.rect(x, y + 9 * k - 1, 1, 5, c); S.rect(x - 1, y - 1, 3, 3, c); }
+    }
+  },
+  {
+    id: 'slow', name: 'Shock Pulse / Gravity Snare', meta: 'Einmal 2,6 s · Schuss bei 680 ms', dur: 2600, still: 720,
+    text: 'Der Kern schlägt auf Violett um. Sie holt mit dem ganzen Körper aus und stößt den Emitter nach vorn, der Greifarm spreizt die Zange weit. Ein violetter Ring fliegt hinaus, drüben pulsiert das Feld dreimal.',
+    tracks: {
+      armF: K([0, -30], [300, -170, 'back'], [600, -176], [680, -86, 'in'], [760, -98, 'out'], [1200, -90], [1700, -30]),
+      armB: K([0, 6], [300, -40], [600, -50], [690, 50, 'out'], [1700, 6]),
+      lean: K([0, 0], [300, -16, 'out'], [600, -18], [690, 22, 'in'], [900, 10], [1700, 0]), crouch: K([0, 0], [300, 0], [690, 4, 'in'], [1700, 0]),
+      stretch: K([0, 1], [300, 1.12, 'out'], [600, 1.12], [690, .9, 'in'], [900, 1], [1700, 1]), head: K([0, 0], [300, -10], [690, 12, 'in'], [1700, 0]),
+      pony: K([0, 0], [300, 30, 'out'], [600, 10], [700, 70, 'in'], [1000, -20], [1300, 6], [1700, 0]),
+      g1: K([0, G1], [300, -10, 'out'], [600, -6], [690, 40, 'in'], [1200, 36], [1700, G1, 'back']), g2: K([0, G2], [300, 10], [690, 70, 'in'], [1200, 66], [1700, G2, 'back']),
+      g3: K([0, G3], [300, 20], [690, 96, 'in'], [1200, 92], [1700, G3, 'back']), claw: K([0, .5], [300, .2], [690, 1, 'in'], [1200, 1], [1700, .5]),
+      violet: K([0, 0], [150, 1, 'step'], [2200, 1], [2210, 0, 'step']), core: K([0, 1], [600, 2.4], [680, 3.2], [1000, 1.4], [2200, 1])
+    },
+    pose(t, p) { p.armFront = t > 200 && t < 660 ? 1 : 0; },
+    shake: t => shakeAt(t, 680, 160, 2),
+    front(S, t, info, clip) {
+      const m = clip.fire.muzzle, a = t - 680, V = 'rgba(197,139,255,';
+      if (a < 0 && t > 300) for (let i = 0; i < 5; i++) { const u = ((t - 300 + i * 70) % 300) / 300, ang = i * 1.3; S.rect(info.muzzle.x + Math.cos(ang) * 10 * (1 - u), info.muzzle.y + Math.sin(ang) * 10 * (1 - u), 1, 1, V + '.9)'); }
+      if (a >= 0 && a < 520) { const x = m.x + 4 + a * .12, r = 4 + a * .012, al = (1 - a / 520).toFixed(2); S.ell(x, m.y, r * .5, r, V + al + ')'); S.ell(x - 1, m.y, r * .5, r, V + al + ')'); S.ell(x - 4, m.y, r * .35, r * .7, V + (al * .5).toFixed(2) + ')'); }
+      for (const t0 of [1200, 1560, 1870, 2180]) { const b = t - t0; if (b >= 0 && b < 320) { const u = b / 320; S.ellFill(60, -1, 17 * (.6 + u * .6), 8 * (.6 + u * .6), V + (.45 * (1 - u)).toFixed(2) + ')'); S.ell(60, -1, 17 * (.6 + u * .6), 8 * (.6 + u * .6), V + (.9 * (1 - u)).toFixed(2) + ')'); } }
+      if (t > 1200 && t < 2500) for (let i = 0; i < 3; i++) { const y = -34 + i * 4 + Math.round(wave(t, 800)); S.line(56, y, 60, y + 3, P.violet); S.line(60, y + 3, 64, y, P.violet); }
+    }
+  },
+  {
+    id: 'drone', name: 'Scout Drone', meta: 'Einmal 3,6 s · Abflug bei 800 ms', dur: 3600, still: 1900,
+    text: 'Sie tippt auf den Roboterarm, der Greifarm holt weit nach hinten aus und schleudert die Drohne wie einen Baseball. Die Drohne schwebt und scannt, kommt zurück und wird im Flug aus der Luft geschnappt.',
+    tracks: {
+      armB: K([0, 6], [200, -76, 'back'], [700, -76], [900, 30, 'out'], [1400, 6], [3600, 6]),
+      g1: K([0, G1], [500, -112, 'out'], [700, -118], [800, 30, 'in'], [900, 44, 'out'], [1300, G1 + 10], [3200, G1], [3330, -20, 'out'], [3400, -52, 'out'], [3600, G1]),
+      g2: K([0, G2], [500, -70, 'out'], [700, -76], [800, 52, 'in'], [900, 70, 'out'], [1300, G2], [3200, G2], [3330, 40, 'out'], [3400, 14], [3600, G2]),
+      g3: K([0, G3], [500, -30, 'out'], [700, -36], [800, 70, 'in'], [900, 100, 'out'], [1300, G3], [3200, G3], [3330, 70, 'out'], [3400, 110], [3600, G3]),
+      claw: K([0, 0], [790, 0], [800, 1, 'step'], [1300, .6], [3320, 1], [3330, 0, 'step'], [3600, 0]),
+      lean: K([0, 0], [500, -16, 'out'], [700, -18], [810, 24, 'in'], [1100, 4], [1650, -6], [2520, -6], [3330, 0], [3400, -10, 'out'], [3600, 0]),
+      head: K([0, 0], [200, 10], [700, 6], [900, -14], [2520, -16], [3330, -6], [3600, 0]),
+      pony: K([0, 0], [500, 26, 'out'], [700, 20], [830, -70, 'in'], [1100, 30], [1400, 0], [3330, 0], [3420, 34, 'out'], [3600, 0]),
+      stretch: K([0, 1], [500, .93], [700, .92], [810, 1.14, 'in'], [1100, 1], [3600, 1]), crouch: K([0, 0], [500, 3], [700, 3], [810, 0], [3600, 0]),
+      armF: K([0, -30], [500, -10], [810, -70, 'in'], [1300, -30], [3600, -30])
+    },
+    dronePos(t, info, clip) {
+      if (t < 800 || t >= 3330) return info.hold;
+      const r = clip.release, hover = { x: 46, y: -58 + 2 * wave(t, 700) };
+      if (t < 1650) { const u = EASE.out((t - 800) / 850); return { x: r.x + (hover.x - r.x) * u, y: r.y + (hover.y - r.y) * u - 10 * Math.sin(u * Math.PI) }; }
+      if (t < 2520) return hover;
+      const u = EASE.in((t - 2520) / 810), c = clip.catch; return { x: hover.x + (c.x - hover.x) * u, y: hover.y + (c.y - hover.y) * u };
+    },
+    front(S, t, info, clip) {
+      const q = clip.dronePos(t, info, clip);
+      if (t >= 1650 && t < 2520) { const w = Math.floor(t / 100) % 2; for (let j = 0; j < 44; j += 2) { const hw = 2 + j * .34; S.rect(q.x - hw, q.y + 4 + j, hw * 2, 1, GLOW + (w ? '.10)' : '.16)')); } S.ell(q.x, q.y + 50, 17, 7, GLOW + '.7)'); }
+      if (t >= 800 && t < 1100) for (let i = 1; i < 4; i++) S.rect(q.x - i * 4, q.y + i * 2, 3, 1, 'rgba(230,237,242,' + (.5 - i * .12).toFixed(2) + ')');
+      drone(S, q.x, q.y, t);
+      if (t > 200 && t < 700 && Math.floor(t / 100) % 2) S.rect(info.wrist.x + 2, info.wrist.y - 3, 2, 2, GLOW + '.9)');
+      sparks(S, info.hold.x, info.hold.y, t - 3330, '#fff3c0', 5);
+    }
+  },
+  {
+    id: 'aegis', name: 'Aegis Protocol', meta: 'Einmal 3,2 s · Strahl bei 900 ms', dur: 3200, still: 1500,
+    text: 'Arme nach hinten, Brust raus: Der Reaktorkern lädt sich auf und feuert den blauen Strahl direkt aus der Brustplatte. Der Greifarm stemmt sie gegen den Rückstoß, das Haar weht waagerecht. Beim Verbündeten ploppen drei Shield-Rubine auf.',
+    tracks: {
+      g1: K([0, G1], [380, -85, 'out'], [2560, -85], [3000, G1, 'back']), g2: K([0, G2], [380, -150, 'out'], [900, -150], [960, -140], [2560, -144], [3000, G2, 'back']),
+      g3: K([0, G3], [380, 165, 'out'], [2560, 165], [3000, G3, 'back']), claw: K([0, .5], [380, 1], [2560, 1], [3000, .5]),
+      armF: K([0, -30], [380, -10], [700, 70, 'back'], [2560, 76], [3000, -30, 'back']), armB: K([0, 6], [380, -10], [700, 84, 'back'], [2560, 90], [3000, 6, 'back']),
+      lean: K([0, 0], [380, 12, 'out'], [700, -14, 'back'], [900, -14], [960, -22, 'out'], [2560, -18], [2800, 8], [3000, 0]),
+      stretch: K([0, 1], [380, .92], [700, 1.12, 'back'], [2560, 1.1], [2800, .95], [3000, 1]), head: K([0, 0], [380, 10], [700, -12, 'back'], [2560, -10], [3000, 0]),
+      dx: K([0, 0], [900, 0], [980, -4, 'out'], [2560, -3], [3000, 0]),
+      core: K([0, 1], [380, 1], [900, 3.4, 'in'], [2560, 3.2], [2700, .5], [3000, 1])
+    },
+    pose(t, p) { if (t > 900 && t < 2560) { p.pony = 70 + 8 * wave(t, 200); p.lean += Math.floor(t / FRAME) % 2 ? .8 : -.8; } else p.pony = tr(t, K([0, 0], [700, -20], [900, 0], [2560, 70], [2800, -20], [3000, 0])); },
+    shake: t => (t > 900 && t < 2560 ? [Math.floor(t / FRAME) % 2 ? 1 : 0, 0] : [0, 0]),
+    front(S, t, info) {
+      const c = info.core, a = t - 900;
+      if (t > 380 && a < 0) for (let i = 0; i < 7; i++) { const u = ((t - 380 + i * 75) % 520) / 520, ang = i * .9; S.rect(c.x + Math.cos(ang) * 16 * (1 - u), c.y + Math.sin(ang) * 16 * (1 - u), 1, 1, 'rgba(140,220,255,.9)'); }
+      if (a >= 0 && t < 2560) {
+        const w = Math.floor(t / FRAME) % 2, h = a < 120 ? 7 : 4 + w;
+        S.rect(c.x + 3, c.y - h / 2 - 1, 80, h + 2, 'rgba(77,163,255,.35)'); S.rect(c.x + 3, c.y - h / 2, 80, h, '#4da3ff'); S.rect(c.x + 3, c.y - 1, 80, 2, '#ffffff');
+        S.disc(c.x + 3, c.y, 4 + w, 'rgba(140,220,255,.8)'); S.disc(c.x + 3, c.y, 2, '#ffffff');
+      }
+      const rs = t0 => t > 2560 ? tr(t, K([2560, 1], [2800, 0, 'in'])) : tr(t, K([t0, 0], [t0 + 120, 1.7, 'out'], [t0 + 260, 1]));
+      S.ruby(58, -56, rs(1340)); S.ruby(66, -59, rs(1440)); S.ruby(74, -56, rs(1540));
+    }
+  },
+  {
+    id: 'deploy', name: 'Deploy Cover / Fortify', meta: 'Einmal 3,4 s · Einschlag bei 850 ms', dur: 3400, still: 1500,
+    text: 'Der Greifarm holt über Kopf aus wie ein Vorschlaghammer und rammt den Werfer vor ihr in den Boden, sie wirft sich mit hinein. Die Kachel blitzt gelb, die gestreifte Deckung schießt aus dem Boden und federt nach.',
+    tracks: {
+      g1: K([0, G1], [450, -76, 'out'], [750, -82], [850, 80, 'in'], [1050, 70], [1500, G1, 'back']), g2: K([0, G2], [450, -30, 'out'], [750, -36], [850, 125, 'in'], [1050, 112], [1500, G2, 'back']),
+      g3: K([0, G3], [450, 10, 'out'], [750, 4], [850, 165, 'in'], [1050, 150], [1500, G3, 'back']), claw: K([0, 0], [850, 0], [900, 1, 'out'], [1500, .5]),
+      lean: K([0, 0], [450, -18, 'out'], [750, -20], [850, 26, 'in'], [1050, 16], [1500, 0, 'back']), crouch: K([0, 0], [450, 0], [850, 5, 'in'], [1050, 3], [1500, 0]),
+      stretch: K([0, 1], [450, 1.12, 'out'], [750, 1.12], [850, .88, 'in'], [1050, .96], [1500, 1]),
+      armF: K([0, -30], [450, -150, 'out'], [750, -156], [850, -20, 'in'], [1500, -30]), armB: K([0, 6], [450, -120, 'out'], [750, -126], [850, 30, 'in'], [1500, 6]),
+      head: K([0, 0], [450, -14], [850, 16, 'in'], [1500, 0]), pony: K([0, 0], [450, 34, 'out'], [750, 20], [860, -80, 'in'], [1100, 26], [1500, 0]),
+      core: K([0, 1], [850, 1], [880, 2.6], [1300, 1])
+    },
+    shake: t => shakeAt(t, 850, 260, 3),
+    wall: t => tr(t, K([0, 0], [1020, 0], [1300, 1.2, 'out'], [1430, .94], [1560, 1], [2720, 1], [2950, 0, 'in'])),
+    back(S, t) { const a = t - 850; if (a >= 0 && a < 260) S.ellFill(30, -1, 20, 9, 'rgba(255,210,74,' + (.7 * (1 - a / 260)).toFixed(2) + ')'); },
+    front(S, t, info, clip) {
+      if (t < 850) { S.rect(info.hold.x - 3, info.hold.y - 3, 6, 6, '#14181e'); S.rect(info.hold.x - 2, info.hold.y - 2, 4, 4, '#ffd24a'); S.rect(info.hold.x - 2, info.hold.y, 4, 1, '#14181e'); }
+      const k = clip.wall(t);
+      if (k > 0) { const h = Math.round(13 * k); stripedWall(S, 14, -h + 2, 34, h); if (k > .9 && t < 2720) { S.rect(27, -h - 4, 2, 2, '#ffd24a'); S.rect(32, -h - 4, 2, 2, '#ffd24a'); } }
+      for (let i = 0; i < 4; i++) S.puff(30 + (i - 1.5) * 9 + (i - 1.5) * (t - 850) * .02, -2 - (t - 850) * .008, t - 850 - i * 30, 520, 5);
+      sparks(S, 30, -4, t - 850, '#ffd24a', 6);
+    }
+  },
+  {
+    id: 'block', name: 'Block', meta: 'Einmal 3,2 s · Blase bei 900 ms', dur: 3200, still: 1400,
+    text: 'Geht in die Hocke und kreuzt die Arme, der Greifarm rollt sich wie ein Schirm über ihren Kopf. Die Shield-Blase springt auf und federt nach, zwei Rubine ploppen darüber.',
+    tracks: {
+      crouch: K([0, 0], [320, 1], [700, 5, 'back'], [2500, 5], [2900, 0, 'back']), lean: K([0, 0], [320, -8, 'out'], [700, 12, 'back'], [2500, 12], [2900, 0, 'back']),
+      armF: K([0, -30], [320, 6, 'out'], [700, -150, 'back'], [2500, -150], [2900, -30, 'back']), armB: K([0, 6], [320, 30, 'out'], [700, -122, 'back'], [2500, -122], [2900, 6, 'back']),
+      head: K([0, 0], [320, -8], [700, 12, 'back'], [2500, 12], [2900, 0]), stretch: K([0, 1], [320, 1.08, 'out'], [700, .9, 'back'], [2500, .94], [2900, 1, 'back']),
+      pony: K([0, 0], [320, 20], [700, -40, 'out'], [1000, 14], [2500, 6], [2900, 0]),
+      g1: K([0, G1], [320, -60, 'out'], [700, -8, 'back'], [2500, -8], [2900, G1, 'back']), g2: K([0, G2], [700, 62, 'back'], [2500, 62], [2900, G2, 'back']),
+      g3: K([0, G3], [700, 136, 'back'], [2500, 136], [2900, G3, 'back']), claw: K([0, .5], [700, 1, 'back'], [2500, 1], [2900, .5]), core: K([0, 1], [900, 1], [1000, 2.4], [1400, 1.4], [2500, 1.4], [2900, 1])
+    },
+    pose(t, p) { p.armFront = t > 380 && t < 2800 ? 1 : 0; },
+    bubbleK: t => tr(t, K([0, 0], [850, 0], [1000, 1.22, 'out'], [1150, .93], [1300, 1.04], [1450, 1], [2500, 1], [2760, 0, 'in'])),
+    back(S, t, info, clip) { S.bubble(clip.bubbleK(t), .6); S.puff(-12 - (t - 700) * .03, -1, t - 700, 340, 3); S.puff(12 + (t - 700) * .03, -1, t - 700, 340, 3); },
+    front(S, t, info, clip) {
+      const k = clip.bubbleK(t); if (k > 0) S.ell(0, -22, 27 * k, 31 * k, 'rgba(140,200,255,.9)');
+      const rs = t0 => t > 2500 ? tr(t, K([2500, 1], [2700, 0, 'in'])) : tr(t, K([t0, 0], [t0 + 120, 1.7, 'out'], [t0 + 260, 1]));
+      S.ruby(-5, -64, rs(1000)); S.ruby(6, -64, rs(1150));
+    }
+  },
+  {
+    id: 'hit', name: 'Hit, kein Shield', meta: 'Einmal 2,6 s · Einschlag bei 310 ms', dur: 2600, still: 420,
+    text: 'Weißer Blitz, sie wird nach hinten gerissen: Der Kopf schnappt zurück, der Pferdeschwanz fliegt nach vorn, der Greifarm schlägt wild aus. Der Kern flackert, die rote -2 steigt auf, der Arm pendelt als Letzter aus.',
+    tracks: {
+      flash: K([0, 0], [300, 0], [310, 1, 'step'], [400, 1], [540, 0]), dx: K([0, 0], [310, 0], [410, -9, 'out'], [900, -5], [1350, 0]),
+      lean: K([0, 0], [310, 0], [410, -32, 'out'], [700, 14], [950, -7], [1150, 3], [1350, 0]), head: K([0, 0], [310, 0], [390, -30, 'out'], [700, 18], [950, -8], [1350, 0]),
+      stretch: K([0, 1], [310, 1], [390, 1.18, 'out'], [700, .9], [950, 1.03], [1350, 1]),
+      armF: K([0, -30], [310, -30], [410, -130, 'out'], [800, 10], [1350, -30]), armB: K([0, 6], [310, 6], [410, 112, 'out'], [800, -12], [1350, 6]),
+      legL: K([0, 0], [310, 0], [410, 20, 'out'], [900, 0]), legR: K([0, 0], [310, 0], [410, -26, 'out'], [900, 0]),
+      pony: K([0, 0], [310, 0], [420, -95, 'out'], [750, 40], [1000, -16], [1350, 0]),
+      g1: K([0, G1], [310, G1], [430, -92, 'out'], [750, -10], [1000, -58], [1250, -34], [1500, -46], [1700, G1]),
+      g2: K([0, G2], [310, G2], [450, -40, 'out'], [780, 70], [1050, 4], [1300, 40], [1550, 20], [1700, G2]),
+      g3: K([0, G3], [310, G3], [470, 20, 'out'], [800, 150], [1080, 70], [1330, 116], [1580, 90], [1700, G3]), claw: K([0, .5], [310, .5], [400, 1], [1500, 1], [1700, .5]),
+      core: K([0, 1], [310, 1], [320, .3, 'step'], [420, 1.4, 'step'], [520, .3, 'step'], [640, 1.2, 'step'], [760, .4, 'step'], [900, 1, 'step']),
+      ringRed: K([0, 0], [300, 0], [310, 1, 'step'], [800, 1], [1100, 0])
+    },
+    shake: t => shakeAt(t, 310, 240, 3),
+    front(S, t) {
+      const a = t - 310;
+      if (a >= 0 && a < 330) { const r = 3 + a * .03; S.disc(9, -26, r, 'rgba(255,140,60,' + (1 - a / 330).toFixed(2) + ')'); S.disc(9, -26, Math.max(1, r - 3), 'rgba(255,255,255,' + (1 - a / 330).toFixed(2) + ')'); }
+      sparks(S, 9, -26, a, '#ffd24a', 5);
+      if (a >= 20 && a < 900) S.glyphs('-2', 14, -52 - (a - 20) * .022, a < 140 ? 3 : 2, a > 700 ? 'rgba(255,90,90,.5)' : '#ff5a5a');
+    }
+  },
+  {
+    id: 'half', name: 'Half Cover', meta: 'Loop 4,4 s · duckt bei 440 bis 1050 ms', dur: 4400, loop: true, still: 2000,
+    text: 'Sie taucht hinter die niedrige Wand und bleibt unten. Spähen lässt sie den Greifarm: Er fährt wie ein Periskop hoch, dreht die Zange nach links und rechts und klappt sie dabei auf und zu.',
+    tracks: {
+      crouch: K([0, 0], [440, 0], [700, -1, 'out'], [1050, 7, 'back'], [3950, 7], [4400, 0, 'back']), lean: K([0, 0], [440, -8], [1050, 10, 'back'], [3950, 10], [4400, 0]),
+      armF: K([0, -30], [440, -30], [1050, -100, 'back'], [3950, -100], [4400, -30]), armB: K([0, 6], [440, 20], [1050, -50, 'back'], [3950, -50], [4400, 6]),
+      headDy: K([0, 0], [1050, 2], [3950, 2], [4400, 0]), head: K([0, 0], [1050, 8], [3950, 8], [4400, 0]),
+      stretch: K([0, 1], [700, 1.06], [1050, .9, 'back'], [1400, .95], [3950, .95], [4400, 1]), pony: K([0, 0], [700, -30], [1050, 40, 'out'], [1400, 0], [4400, 0]),
+      g1: K([0, G1], [1050, -70, 'out'], [1500, -70], [1750, -14, 'back'], [3500, -14], [3800, -60], [4400, G1]),
+      g2: K([0, G2], [1050, -20, 'out'], [1500, -20], [1750, 6, 'back'], [3500, 6], [3800, 20], [4400, G2]),
+      g3: K([0, G3], [1050, 60], [1500, 60], [1750, 20, 'back'], [1950, -70, 'back'], [2500, -70], [2700, 80, 'back'], [3300, 80], [3500, 10], [3800, 70], [4400, G3]),
+      claw: K([0, .5], [1750, .5], [1950, 1], [2150, 0, 'in'], [2250, 1, 'out'], [2700, 1], [2900, 0, 'in'], [3000, 1, 'out'], [3500, .5], [4400, .5])
+    },
+    front(S, t) { S.slab(-16, -12, 42, 14); S.puff(-20 - (t - 1050) * .02, -1, t - 1050, 360, 4); S.puff(28 + (t - 1050) * .02, -1, t - 1050, 360, 4); }
+  },
+  {
+    id: 'full', name: 'Full Cover', meta: 'Loop 4,8 s · rutscht bei 0 bis 1050 ms an', dur: 4800, loop: true, still: 2900,
+    text: 'Rutscht mit dem Rücken an die hohe Wand, Emitter senkrecht nach oben. Der Greifarm schiebt sich weit nach vorn, schaut hoch und runter, und schnappt zurück, während sie auf den Roboterarm tippt.',
+    tracks: {
+      dx: K([0, 0], [1050, -5, 'back'], [4300, -5], [4800, 0]), lean: K([0, 0], [500, -14, 'out'], [1050, -5, 'back'], [4300, -5], [4800, 0]),
+      armF: K([0, -30], [500, -60], [1050, -176, 'back'], [4300, -176], [4800, -30]), armB: K([0, 6], [1050, 14], [1400, -76, 'back'], [2200, -76], [2400, 10], [4800, 6]),
+      head: K([0, 0], [1400, 10], [2200, 10], [2500, -4], [3400, -4], [4800, 0]), pony: K([0, 0], [500, 30], [1050, -30, 'out'], [1300, 0], [4800, 0]),
+      stretch: K([0, 1], [1050, .95, 'back'], [1300, 1], [4800, 1]),
+      g1: K([0, G1], [1050, -20, 'out'], [2300, -20], [2600, 62, 'back'], [3400, 62], [3600, -30, 'back'], [4300, G1], [4800, G1]),
+      g2: K([0, G2], [1050, 40], [2300, 40], [2600, 92, 'back'], [3400, 92], [3600, 20, 'back'], [4300, G2], [4800, G2]),
+      g3: K([0, G3], [2300, G3], [2600, 90, 'back'], [2800, 40, 'back'], [3050, 140, 'back'], [3300, 90], [3600, G3, 'back'], [4800, G3]),
+      claw: K([0, .5], [2600, .5], [2800, 1], [3000, .1, 'in'], [3100, 1, 'out'], [3600, .5], [4800, .5])
+    },
+    pose(t, p) { p.armFront = t > 420 && t < 4500 ? 1 : 0; if (t > 1500 && t < 2150) p.armB += Math.floor(t / 100) % 2 ? 6 : 0; },
+    shake: t => shakeAt(t, 1000, 120, 1),
+    back(S, t) { S.slab(-34, -50, 11, 52); S.puff(8 - (t - 300) * .01, -1, t - 300, 500, 3); },
+    front(S, t, info) { if (t > 1500 && t < 2150 && Math.floor(t / 100) % 2) S.rect(info.wrist.x + 2, info.wrist.y - 3, 2, 2, GLOW + '.9)'); }
+  },
+  {
+    id: 'exhausted', name: 'Exhausted', meta: 'Einmal 5,4 s · Treffer bei 650 ms', dur: 5400, still: 2700,
+    text: 'Treffer: Funken sprühen aus dem Rucksack, der Kern flackert und erlischt. Der Greifarm zuckt noch einmal und fällt schlaff herunter, dann kippt sie nach vorn aufs Gesicht, federt einmal und wird grau. Zurück bleibt der Half-Cover-Block.',
+    tracks: {
+      flash: K([0, 0], [640, 0], [650, 1, 'step'], [740, 1], [900, 0]),
+      crouch: K([0, 0], [650, 0], [970, 2], [1300, 5, 'out'], [1500, 2], [1840, 5], [2100, 0]),
+      lean: K([0, 0], [650, 0], [740, -18, 'out'], [970, 10], [1250, -10], [1550, 12], [1840, 8], [2600, 4]),
+      head: K([0, 0], [650, 0], [740, -24, 'out'], [970, 18], [1840, 24], [2600, 10], [2800, -10], [3000, 0]),
+      armF: K([0, -30], [650, -30], [740, -110, 'out'], [1100, 0], [1840, -6], [2600, -80, 'in'], [2800, -120], [3000, -96]),
+      armB: K([0, 6], [650, 6], [740, 90, 'out'], [1100, 0], [1840, 6], [2600, -60, 'in'], [2800, -100], [3000, -70]),
+      rot: K([0, 0], [1840, 0], [2100, 8], [2600, 90, 'in'], [2780, 76, 'out'], [2960, 90, 'in'], [5400, 90]),
+      dx: K([0, 0], [650, 0], [740, -3, 'out'], [1840, 0], [2600, 3]),
+      legL: K([0, 0], [1840, 0], [2600, 10], [2780, 50, 'out'], [2960, 8]), legR: K([0, 0], [1840, 0], [2600, 18], [2780, 66, 'out'], [2960, 12]),
+      pony: K([0, 0], [650, 0], [760, -80, 'out'], [1100, 30], [1840, 10], [2600, -60, 'in'], [2800, -110], [3000, -90]),
+      g1: K([0, G1], [650, G1], [760, -90, 'out'], [1000, 10], [1200, -70], [1400, -20], [1840, -104, 'in'], [2100, -104], [2600, -6], [2780, -30, 'out'], [2960, 2, 'in'], [5400, 2]),
+      g2: K([0, G2], [650, G2], [780, -30, 'out'], [1020, 80], [1220, 0], [1420, 50], [1840, -166, 'in'], [2000, -150], [2200, -166], [2600, 6], [2780, -40, 'out'], [2960, 10, 'in'], [5400, 10]),
+      g3: K([0, G3], [650, G3], [800, 20, 'out'], [1040, 160], [1240, 60], [1440, 120], [1900, -170, 'in'], [2100, -150], [2300, -176], [2600, -4], [2780, -60, 'out'], [2960, 4, 'in'], [5400, 4]),
+      claw: K([0, .5], [650, 1], [1440, 1], [1900, .2], [5400, .2]),
+      core: K([0, 1], [650, 1], [660, .1, 'step'], [760, 1.6, 'step'], [880, .1, 'step'], [1000, 1.3, 'step'], [1150, .1, 'step'], [1300, .9, 'step'], [1500, .1, 'step'], [1650, .6, 'step'], [1840, 0, 'step']),
+      grey: K([0, 0], [1840, 0], [3350, 1]), alpha: K([0, 1], [4000, 1], [4400, 0])
+    },
+    shake: t => { const a = shakeAt(t, 650, 160, 2), b = shakeAt(t, 2600, 300, 4); return [a[0] + b[0], a[1] + b[1]]; },
+    back(S, t) { for (let k = 0; k < 5; k++) S.puff(8 + k * 8 + (t - 2600) * .012 * (k - 2), -2 - (t - 2600) * .01, t - 2600 - k * 30, 620, 6); },
+    front(S, t, info) {
+      for (const t0 of [660, 880, 1150, 1500]) sparks(S, info.elbow.x * 0 - 7, info.core.y - 2, t - t0, '#ffd24a', 5);
+      for (const t0 of [760, 1300]) sparks(S, info.core.x, info.core.y, t - t0, GLOW + '.9)', 4);
+      const k = tr(t, K([0, 0], [4000, 0], [4300, 1.18, 'out'], [4500, .94], [4700, 1]));
+      if (k > 0) { const w = Math.round(40 * k), h = Math.round(14 * k); S.slab(6 - (w - 40) / 2, -h + 2, w, h); S.puff(0 - (t - 4250) * .02, -1, t - 4250, 400, 4); S.puff(50 + (t - 4250) * .02, -1, t - 4250, 400, 4); }
+    }
+  }
+];
+
+
+// Points that a clip's effects start from, taken from the pose at the moment of the shot or the throw.
+const clipById = id => CLIPS.find(c => c.id === id);
+clipById('pulse').fire = drawFigure(poseAt(clipById('pulse'), 620));
+clipById('tag').fire = drawFigure(poseAt(clipById('tag'), 730));
+clipById('slow').fire = drawFigure(poseAt(clipById('slow'), 700));
+clipById('drone').release = drawFigure(poseAt(clipById('drone'), 800)).hold;
+clipById('drone').catch = drawFigure(poseAt(clipById('drone'), 3330)).hold;
+
+/* ---------- Hero Select: shared renderer for one Hero stage ---------- */
+const selTile = document.createElement('canvas'); selTile.width = SW; selTile.height = SH;
+(() => {
+  const g = selTile.getContext('2d'), half = 36;
+  for (let dy = -half / 2; dy < half / 2; dy++) {
+    const hw = half - 2 * Math.abs(dy + .5) + 1;
+    for (let dx = -hw; dx < hw; dx++) { g.fillStyle = Math.abs(dx) >= hw - 2 ? '#2a3440' : '#1b222b'; g.fillRect(Math.round(OX + dx), Math.round(OY + dy), 1, 1); }
+  }
+})();
+const selKits = new WeakMap();
+function selRender(ctx, clip, t) {
+  const p = poseAt(clip, t);
+  if ('cape' in p) { p.cape += 3 * Math.sin(t / 260); p.sash += 4 * Math.sin(t / 330); }
+  const info = drawFigure(p);
+  if (!selKits.has(ctx)) selKits.set(ctx, fxKit(ctx));
+  const S = selKits.get(ctx), sh = clip.shake ? clip.shake(t) : [0, 0];
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, SW, SH); ctx.imageSmoothingEnabled = false;
+  ctx.setTransform(1, 0, 0, 1, sh[0], sh[1]);
+  ctx.drawImage(selTile, 0, 0);
+  ctx.globalAlpha = p.ringA === undefined ? 1 : p.ringA; S.ell(0, 0, 19, 9, '#2ec4b6'); S.ell(0, 0, 18, 8.4, '#2ec4b6'); ctx.globalAlpha = 1;
+  if (clip.back) clip.back(S, t, info, clip);
+  ctx.globalAlpha = p.alpha; ctx.drawImage(fig, 0, 0); ctx.globalAlpha = 1;
+  if (clip.useCtx) clip.useCtx(ctx);
+  if (info.cigar && !p.cigarOff) cigarSmoke(S, t, info);
+  if (clip.front) clip.front(S, t, info, clip);
+}
+const breathe = (t, per) => .5 - .5 * Math.cos(t / per * Math.PI * 2);
+
+/* Controller on the Hero Select screen: the third arm juggles the Scout Drone, ready = it throws the drone up to hover */
+const UP = { g1: 55, g2: 95, g3: 30 };
+const SEL_IDLE = {
+  dur: 2400,
+  tracks: {
+    g1: [[0, UP.g1], [500, UP.g1 + 8], [640, UP.g1 - 10, 'out'], [1000, UP.g1], [1560, UP.g1], [1640, UP.g1 + 12, 'out'], [1900, UP.g1 - 3], [2400, UP.g1]],
+    g2: [[0, UP.g2], [500, UP.g2 + 12], [640, UP.g2 - 14, 'out'], [1000, UP.g2], [1560, UP.g2], [1640, UP.g2 + 16, 'out'], [1900, UP.g2 - 4], [2400, UP.g2]],
+    g3: [[0, UP.g3], [500, UP.g3 + 16], [640, UP.g3 - 12, 'out'], [1000, UP.g3], [1560, UP.g3], [1640, UP.g3 + 18, 'out'], [1900, UP.g3], [2400, UP.g3]],
+    claw: [[0, .1], [600, .1], [640, 1, 'step'], [1560, 1], [1600, 0, 'step'], [1700, .3], [2400, .1]],
+    head: [[0, -6], [640, -6], [1100, -20, 'out'], [1600, -8], [2400, -6]], armF: [[0, -12], [1200, -18], [2400, -12]], armB: [[0, 6], [1200, 14], [2400, 6]],
+    stretch: [[0, 1], [500, .96], [640, 1.06, 'out'], [1100, 1], [1600, .97], [1800, 1.02], [2400, 1]], pony: [[0, 4], [640, -14, 'out'], [1100, 12], [1700, -6], [2400, 4]],
+    core: [[0, .9], [1200, 1.5], [2400, .9]]
+  },
+  front(S, t, info) {
+    const u = t >= 640 && t < 1600 ? (t - 640) / 960 : 0, lift = 10 * Math.sin(u * Math.PI);
+    drone(S, info.hold.x, info.hold.y - 1 - lift, t);
+    sparks(S, info.hold.x, info.hold.y, (t - 1600) * 2, 'rgba(111,240,208,.9)', 3);
+  }
+};
+const HOVER = { x: 20, y: -62 };
+const SEL_READY = {
+  tracks: {
+    g1: [[0, UP.g1], [450, -112, 'out'], [800, -118], [1080, 30, 'in'], [1200, 42, 'out'], [1700, 6], [2400, -30]],
+    g2: [[0, UP.g2], [450, -70, 'out'], [800, -76], [1080, 50, 'in'], [1200, 64, 'out'], [1700, 40], [2400, 34]],
+    g3: [[0, UP.g3], [450, -30, 'out'], [800, -36], [1080, 40, 'in'], [1200, 58, 'out'], [1700, 50], [2400, 62]],
+    claw: [[0, .1], [1070, .1], [1080, 1, 'step'], [2400, .8]],
+    lean: [[0, 0], [450, -16, 'out'], [800, -18], [1090, 14, 'in'], [1400, 2], [2400, -4]],
+    stretch: [[0, 1], [450, .93], [800, .92], [1090, 1.14, 'in'], [1400, 1], [2400, 1]], crouch: [[0, 0], [450, 3], [800, 3], [1090, 0]],
+    head: [[0, -6], [450, 8], [800, 6], [1200, -18, 'out'], [2400, -16]], pony: [[0, 0], [450, 26, 'out'], [800, 20], [1110, -70, 'in'], [1400, 30], [1800, 0]],
+    armF: [[0, -12], [450, 6], [1090, -30, 'in'], [1500, -30], [2000, -84, 'back'], [2400, -78]], armB: [[0, 6], [450, 20], [1090, -30, 'in'], [1500, 6]],
+    core: [[0, 1], [1080, 1], [1120, 2.6], [1600, 1.2]]
+  },
+  pose(t, p) { if (t > 2400) { const b = breathe(t - 2400, 2200); p.stretch = 1 + .05 * b; p.g3 += 10 * b; p.g2 -= 6 * b; p.core = 1 + .5 * b; p.pony = 6 * Math.sin((t - 2400) / 2200 * Math.PI * 2); } },
+  dronePos(t, info) {
+    if (t < 1080) return { x: info.hold.x, y: info.hold.y - 1 };
+    const bob = { x: HOVER.x + 2 * Math.sin(t / 4400 * Math.PI * 2), y: HOVER.y + 2.5 * Math.sin(t / 1100 * Math.PI * 2) };
+    if (t < 1750) { const u = EASE.out((t - 1080) / 670), r = SEL_REL; return { x: r.x + (bob.x - r.x) * u, y: r.y + (bob.y - r.y) * u }; }
+    return bob;
+  },
+  front(S, t, info, clip) {
+    const q = clip.dronePos(t, info);
+    if (t >= 1080 && t < 1400) for (let i = 1; i < 4; i++) S.rect(q.x - 1, q.y + 3 + i * 4, 2, 3, 'rgba(230,237,242,' + (.5 - i * .12).toFixed(2) + ')');
+    if (t > 1900) { const w = Math.floor(t / 100) % 2; for (let j = 0; j < 14; j += 2) S.rect(q.x - 1 - j * .3, q.y + 4 + j, 3 + j * .6, 1, 'rgba(111,240,208,' + (w ? '.10)' : '.18)')); }
+    drone(S, q.x, q.y, t);
+    sparks(S, info.hold.x, info.hold.y, t - 1080, '#fff3c0', 5);
+  }
+};
+const SEL_REL = (() => { const h = drawFigure(poseAt(SEL_READY, 1080)).hold; return { x: h.x, y: h.y - 1 }; })();
+const SEL_EXPORT = { readyEnd: 2400, holdDur: 4400, still: 2000 };

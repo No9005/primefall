@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Controller Pixel Concepts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: a concept sheet pinned to a ship bulkhead. One dark world, four plates in a grid, shared notes below. */
+  :root {
+    color-scheme: dark;
+    --hull: #14181c;
+    --plate: #1e252b;
+    --plate-edge: #33404a;
+    --ink: #dfe6e4;
+    --ink-dim: #93a19f;
+    --screen: #6fd6b4;
+    --hazard: #f2b632;
+    --display: "Pixelify Sans", "Courier New", monospace;
+    --body: "IBM Plex Sans", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  body {
+    background: var(--hull);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.55;
+    padding-block: 28px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .sheet { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+  header { display: flex; flex-direction: column; gap: 8px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--screen); }
+  h1 { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 6vw, 46px); line-height: 1.05; margin: 0; text-wrap: balance; }
+  h2 { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0; line-height: 1.1; }
+  h3 { font-family: var(--display); font-weight: 500; font-size: 19px; margin: 0; }
+  p { margin: 0; max-width: 65ch; }
+  .lede { color: var(--ink-dim); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+  .plate { background: var(--plate); border: 1px solid var(--plate-edge); display: flex; flex-direction: column; min-width: 0; }
+  .stage { background: #0e1114; border-bottom: 1px solid var(--plate-edge); display: flex; justify-content: center; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  .stage canvas { width: 100%; max-width: 384px; height: auto; }
+  .info { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .tag { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--hazard); }
+  .info p { color: var(--ink-dim); font-size: 14px; }
+  .row { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .mini { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .mini span, .label { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); letter-spacing: .06em; text-transform: uppercase; }
+  .swatches { display: flex; gap: 0; }
+  .swatches i { width: 22px; height: 22px; display: block; }
+  .block { display: flex; flex-direction: column; gap: 6px; }
+  .pairs { display: flex; flex-direction: column; gap: 10px; }
+  .pair { background: #0e1114; border: 1px solid var(--plate-edge); display: flex; flex-direction: column; min-width: 0; }
+  .pair canvas { width: 100%; height: auto; }
+  .pair span { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-dim); padding: 8px 12px 10px; border-top: 1px solid var(--plate-edge); }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 32px; border-top: 1px solid var(--plate-edge); padding-top: 24px; }
+  .notes div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .notes p { color: var(--ink-dim); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <header>
+    <span class="eyebrow">Primefall · Hero-Konzept · Pixel Art</span>
+    <h1>Controller: vier Designvorschläge</h1>
+    <p class="lede">Jeder Vorschlag zeigt dieselbe Frau: nur eine Brustplatte als Panzerung, in ihrer Mitte ein leuchtender Reaktorkern. Der rechte Arm ist ein Roboterarm, die Kleidung ist zerrissen und geflickt. Aus dem Rücken ragt ein dritter, augmentierter Greifarm an der Stelle, wo bisher der Stab saß. Unterschiedlich sind Farbwelt, Frisur, Kleidung und die Form des Greifarms.</p>
+  </header>
+
+  <section class="pairs">
+    <h3>Neben dem Bulkhead</h3>
+    <p class="lede">Jede Version auf der Nachbarkachel des Bulkhead, im selben Maßstab.</p>
+    <div class="grid" id="pairs"></div>
+  </section>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="notes">
+    <div>
+      <h3>Was alle gemeinsam haben</h3>
+      <p>Der Greifarm über dem Kopf und der helle Reaktorkern machen sie auch in 1× erkennbar und klar anders als den breiten Bruiser. Sie ist schmaler gebaut; die Schultern sind nicht gepanzert.</p>
+    </div>
+    <div>
+      <h3>Zerrissene Kleidung</h3>
+      <p>Ausgefranste Säume, ein abgerissener Ärmel am Roboterarm, Löcher an Knie und Seite, ein kürzeres Hosenbein. In 1× bleibt davon vor allem der unruhige Umriss; die Einzelheiten zeigt das Porträt.</p>
+    </div>
+    <div>
+      <h3>Neben dem Bulkhead</h3>
+      <p>Der Bulkhead ist dunkelblau mit hellblauem Licht. Vorschlag B liegt farblich am nächsten bei ihm, A und D setzen sich am stärksten ab. Die Squad-Farbe bleibt der Ring unter dem Hero.</p>
+    </div>
+  </div>
+</div>
+<script>
+const BULKHEAD = (() => {
+
+const W = 64, H = 64, C = 28, FOOT = 54;
+
+const BASE = {
+  skin: '#c98f62', skinLo: '#99623f', hair: '#f1f4f5', hairLo: '#b4bfc7',
+  scar: '#8e2f2f', blind: '#e6ddd0', eye: '#15171c', mouth: '#5b332c',
+  cigar: '#6e4526', cigarBand: '#c9a14a', ember: '#ff8a2a',
+  wood: '#8a5630', woodLo: '#5c3820', steel: '#59636e', steelHi: '#9aa6b2', steelLo: '#2e353d',
+  glove: '#2b2f36'
+};
+
+const VARIANTS = [
+  {
+    id: 'A', name: 'Dockhand', tag: 'Industrie-Exo',
+    text: 'Ein umgebauter Lade-Exo aus dem Frachtdeck: kastige Schulterplatten mit Warnstreifen, gelber Lack mit Kratzern. Die Flinte hält er einhändig an der Hüfte. Passt am besten zur Raumschiff-Werkstatt aus deinem Referenzbild.',
+    shoulder: 'box', pose: 'hip', leg: 8, stacks: false, hazard: true,
+    pal: { suit: '#d9a521', hi: '#f6d35b', lo: '#9a6d14', under: '#3a4047', underLo: '#262b31', metal: '#8f9aa3', metalLo: '#4b545c', boot: '#2f343a', bootHi: '#565f68', accent: '#1b1e22', glow: '#6fd6b4', outline: '#15130f' }
+  },
+  {
+    id: 'B', name: 'Veteran', tag: 'Militär-Exo',
+    text: 'Serien-Kampfsuit in Oliv und Stahl. Die Schulterblätter steigen nach außen an wie Klingen und machen die Silhouette zum V. Flinte lässig über der Schulter. Etwas längere Beine, wirkt erwachsener und härter.',
+    shoulder: 'blade', pose: 'shoulder', leg: 11, stacks: false, hazard: false,
+    pal: { suit: '#5f6f45', hi: '#8c9c62', lo: '#3c4a2e', under: '#30353a', underLo: '#1f2327', metal: '#9aa6b2', metalLo: '#4d5761', boot: '#262a2e', bootHi: '#4a525a', accent: '#c9a14a', glow: '#ffb347', outline: '#11150f' }
+  },
+  {
+    id: 'C', name: 'Schrotthändler', tag: 'Eigenbau-Exo',
+    text: 'Zusammengeschweißt aus Schiffsteilen: runde Schulterschalen in Rostrot, offene Kolben, zwei Abgasrohre am Rücken. Flinte gesenkt neben dem Bein. Der schmutzigste und eigenwilligste der vier.',
+    shoulder: 'round', pose: 'down', leg: 8, stacks: true, hazard: false,
+    pal: { suit: '#a4502f', hi: '#d07a4a', lo: '#6b2f1d', under: '#4a4038', underLo: '#2e2823', metal: '#b0a391', metalLo: '#6a6156', boot: '#33291f', bootHi: '#5d4c3b', accent: '#d9c9a8', glow: '#ffd24a', outline: '#170f0c' }
+  },
+  {
+    id: 'D', name: 'Bulkhead', tag: 'Schwerer Sturm-Exo',
+    text: 'Dunkelblauer Sturm-Exo mit geschichteten Schulterplatten und hellen Kanten, Reaktorlicht in der Brust. Flinte beidhändig vor dem Körper, bereit zum Schuss. Der massivste Umriss, liest sich klar als Frontkämpfer.',
+    shoulder: 'layer', pose: 'ready', leg: 8, stacks: true, hazard: false,
+    pal: { suit: '#34506e', hi: '#6f93b8', lo: '#1f3247', under: '#2a2e36', underLo: '#1a1d23', metal: '#c3ccd4', metalLo: '#59636e', boot: '#1e232b', bootHi: '#3e4855', accent: '#c3ccd4', glow: '#7fe3ff', outline: '#0b0f15' }
+  }
+];
+
+function makeGrid(w, h) {
+  const d = new Array(w * h).fill(null);
+  return {
+    w, h, d,
+    set(x, y, c) { if (x >= 0 && y >= 0 && x < w && y < h) d[y * w + x] = c; },
+    get(x, y) { return (x < 0 || y < 0 || x >= w || y >= h) ? null : d[y * w + x]; }
+  };
+}
+
+function outline(g, color) {
+  const add = [];
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    if (g.get(x, y)) continue;
+    if (g.get(x - 1, y) || g.get(x + 1, y) || g.get(x, y - 1) || g.get(x, y + 1)) add.push([x, y]);
+  }
+  add.forEach(([x, y]) => g.set(x, y, color));
+}
+
+function drawGun(R, P, kind, x, y) {
+  const B = BASE;
+  if (kind === 'right') {            // pointing to the viewer's right, x/y = top-left of receiver
+    R(x - 3, y + 2, 4, 3, B.wood); R(x - 3, y + 4, 2, 1, B.woodLo);
+    R(x, y, 5, 4, B.steel); R(x, y, 5, 1, B.steelHi); R(x + 1, y + 3, 4, 1, B.wood);
+    R(x + 5, y, 6, 3, B.steel); R(x + 5, y, 6, 1, B.steelHi); R(x + 5, y + 2, 6, 1, B.steelLo);
+    R(x + 10, y, 1, 3, B.steelLo);
+  } else if (kind === 'up') {        // resting on the shoulder, diagonal up-right
+    R(x - 2, y + 2, 3, 4, B.wood); R(x - 2, y + 5, 2, 1, B.woodLo);
+    for (let i = 0; i < 9; i++) { R(x + i, y - i, 3, 3, i < 3 ? B.steel : B.steelLo); R(x + i, y - i, 2, 1, B.steelHi); }
+    R(x + 9, y - 9, 2, 2, B.steelLo);
+  } else {                           // hanging down, diagonal down-right
+    R(x - 2, y - 3, 3, 3, B.wood);
+    for (let i = 0; i < 8; i++) { R(x + i, y + i, 3, 3, i < 3 ? B.steel : B.steelLo); R(x + i + 1, y + i, 2, 1, B.steelHi); }
+    R(x + 8, y + 8, 2, 2, B.steelLo);
+  }
+}
+
+function drawShoulder(R, P, style, side, sy, hazard) {
+  // side: -1 = viewer's left (lit), 1 = viewer's right (shaded)
+  const main = side < 0 ? P.suit : P.suit, top = P.hi, low = P.lo;
+  const X = (x, w) => side < 0 ? -x - w + 1 : x;   // mirror helper: x measured outward from the body edge 8
+  if (style === 'box') {
+    R(X(8, 11), sy, 11, 9, main); R(X(8, 11), sy, 11, 1, top); R(X(8, 11), sy + 7, 11, 2, low);
+    if (side < 0) R(X(18, 1), sy, 1, 7, top);
+    if (hazard) for (let i = 0; i < 11; i++) if ((i >> 1) % 2 === 0) R(X(8 + i, 1), sy + 5, 1, 2, P.accent);
+    R(X(10, 2), sy + 2, 2, 2, P.metalLo);
+  } else if (style === 'blade') {
+    for (let i = 0; i < 7; i++) {
+      const up = i, x = 8 + i * 2;
+      R(X(x, 2), sy + 3 - up, 2, 6 + Math.min(up, 2), main);
+      R(X(x, 2), sy + 3 - up, 2, 1, top);
+      R(X(x, 2), sy + 8 - up + Math.min(up, 2), 2, 1, low);
+    }
+    R(X(20, 2), sy - 4, 2, 2, P.metal);
+    R(X(9, 5), sy + 6, 5, 1, P.accent);
+  } else if (style === 'round') {
+    R(X(8, 10), sy + 2, 10, 6, main); R(X(9, 8), sy + 1, 8, 8, main); R(X(10, 6), sy, 6, 10, main);
+    R(X(10, 6), sy, 6, 1, top); R(X(9, 1), sy + 1, 1, 1, top); R(X(16, 1), sy + 1, 1, 1, top);
+    R(X(9, 8), sy + 8, 8, 1, low); R(X(10, 6), sy + 9, 6, 1, low);
+    R(X(12, 2), sy + 3, 2, 2, P.accent); R(X(11, 1), sy + 6, 1, 1, P.metalLo); R(X(15, 1), sy + 6, 1, 1, P.metalLo);
+  } else {
+    R(X(7, 13), sy - 1, 13, 4, main); R(X(7, 13), sy - 1, 13, 1, P.metal); R(X(7, 13), sy + 2, 13, 1, low);
+    R(X(8, 11), sy + 3, 11, 3, main); R(X(8, 11), sy + 3, 11, 1, top); R(X(8, 11), sy + 5, 11, 1, low);
+    R(X(8, 9), sy + 6, 9, 3, main); R(X(8, 9), sy + 6, 9, 1, top); R(X(8, 9), sy + 8, 9, 1, low);
+  }
+}
+
+function buildSprite(v) {
+  const g = makeGrid(W, H), P = v.pal, B = BASE, L = v.leg;
+  const R = (x, y, w, h, c) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) g.set(C + x + i, y + j, c); };
+  const legTop = FOOT - 3 - L, hipTop = legTop - 3, torsoTop = hipTop - 15;
+  const sy = torsoTop - 2, headTop = torsoTop - 13;
+
+  // power pack and exhaust stacks behind the head
+  R(-8, torsoTop - 5, 16, 6, P.metalLo); R(-8, torsoTop - 5, 16, 1, P.metal);
+  if (v.stacks) {
+    R(-11, torsoTop - 10, 3, 8, P.metalLo); R(-11, torsoTop - 10, 3, 1, P.glow);
+    R(8, torsoTop - 9, 3, 7, P.metalLo); R(8, torsoTop - 9, 3, 1, P.glow);
+  }
+
+  // legs, knee plates, struts, boots
+  R(-8, legTop, 7, L, P.under); R(1, legTop, 7, L, P.under);
+  R(-5, legTop, 1, L, P.underLo); R(4, legTop, 1, L, P.underLo);
+  R(-9, legTop, 1, L, P.metal); R(8, legTop, 1, L, P.metalLo);
+  const k = legTop + Math.floor(L / 2) - 2;
+  R(-9, k, 8, 4, P.suit); R(-9, k, 8, 1, P.hi); R(-9, k + 3, 8, 1, P.lo);
+  R(1, k, 8, 4, P.suit); R(1, k, 8, 1, P.hi); R(1, k + 3, 8, 1, P.lo); R(6, k, 3, 4, P.lo);
+  R(-11, FOOT - 3, 10, 4, P.boot); R(-11, FOOT - 3, 10, 1, P.bootHi); R(-11, FOOT - 1, 3, 1, P.bootHi);
+  R(1, FOOT - 3, 11, 4, P.boot); R(1, FOOT - 3, 11, 1, P.bootHi);
+
+  // hips and belt
+  R(-8, hipTop, 16, 3, P.under); R(-8, hipTop, 16, 1, P.metalLo); R(-2, hipTop, 4, 2, P.accent);
+
+  // abdomen and chest plate
+  R(-7, torsoTop + 10, 14, 5, P.under); R(-7, torsoTop + 12, 14, 1, P.underLo);
+  R(-8, torsoTop + 10, 1, 5, P.metal); R(7, torsoTop + 10, 1, 5, P.metalLo);
+  R(-9, torsoTop, 18, 10, P.suit); R(-9, torsoTop, 18, 1, P.hi); R(-9, torsoTop, 1, 9, P.hi);
+  R(6, torsoTop + 1, 3, 9, P.lo); R(-9, torsoTop + 9, 18, 1, P.lo);
+  R(-1, torsoTop + 2, 1, 6, P.lo);
+  R(2, torsoTop + 3, 3, 3, P.glow); R(2, torsoTop + 5, 3, 1, P.metalLo);
+  R(-6, torsoTop + 3, 3, 1, P.lo); R(-6, torsoTop + 5, 3, 1, P.lo);
+  R(-4, torsoTop - 1, 9, 2, P.metalLo);
+
+  // left arm (viewer's left) hangs, except in the two-handed pose
+  if (v.pose === 'ready') {
+    R(-15, sy + 8, 6, 6, P.under); R(-15, sy + 13, 12, 5, P.suit); R(-15, sy + 13, 12, 1, P.hi); R(-15, sy + 17, 12, 1, P.lo);
+    R(-4, sy + 14, 4, 4, B.glove);
+  } else {
+    R(-15, sy + 8, 6, 7, P.under); R(-16, sy + 8, 1, 7, P.metal);
+    R(-17, sy + 14, 8, 7, P.suit); R(-17, sy + 14, 8, 1, P.hi); R(-17, sy + 20, 8, 1, P.lo); R(-17, sy + 15, 1, 5, P.hi);
+    R(-16, sy + 21, 6, 3, B.glove);
+  }
+
+  // right arm (viewer's right) carries the shotgun
+  if (v.pose === 'hip') {
+    R(10, sy + 8, 6, 6, P.under);
+    R(10, sy + 13, 9, 5, P.suit); R(10, sy + 13, 9, 1, P.hi); R(10, sy + 17, 9, 1, P.lo);
+    drawGun(R, P, 'right', 21, sy + 13);
+    R(18, sy + 14, 4, 4, B.glove);
+  } else if (v.pose === 'shoulder') {
+    R(10, sy + 9, 6, 6, P.under);
+    R(11, sy + 4, 6, 9, P.suit); R(11, sy + 4, 1, 9, P.hi); R(15, sy + 4, 2, 9, P.lo);
+  } else if (v.pose === 'down') {
+    R(10, sy + 8, 6, 7, P.under); R(16, sy + 8, 1, 7, P.metalLo);
+    R(10, sy + 14, 8, 7, P.suit); R(10, sy + 14, 8, 1, P.hi); R(10, sy + 20, 8, 1, P.lo); R(15, sy + 15, 3, 5, P.lo);
+    drawGun(R, P, 'down', 15, sy + 23);
+    R(11, sy + 21, 6, 3, B.glove);
+  } else {
+    R(10, sy + 8, 6, 6, P.under);
+    R(6, sy + 13, 10, 5, P.suit); R(6, sy + 13, 10, 1, P.hi); R(6, sy + 17, 10, 1, P.lo);
+    drawGun(R, P, 'right', 11, sy + 12);
+    R(8, sy + 14, 4, 4, B.glove);
+    R(-4, sy + 14, 4, 4, B.glove);
+  }
+
+  drawShoulder(R, P, v.shoulder, -1, sy, v.hazard);
+  drawShoulder(R, P, v.shoulder, 1, sy, v.hazard);
+
+  if (v.pose === 'shoulder') { drawGun(R, P, 'up', 13, sy + 1); R(12, sy + 1, 5, 4, B.glove); }
+
+  // head: turned slightly towards the viewer's right (south-east)
+  const hy = headTop;
+  R(-5, hy + 3, 11, 9, B.skin); R(5, hy + 3, 1, 8, B.skinLo);
+  R(-5, hy + 11, 1, 1, null); R(5, hy + 11, 1, 1, null); R(-4, hy + 12, 9, 1, B.skinLo);
+  R(-2, hy + 13, 5, 1, B.skinLo);
+  R(-6, hy, 13, 4, B.hair); R(-6, hy, 1, 1, null); R(6, hy, 1, 1, null);
+  R(-6, hy + 3, 13, 1, B.hairLo); R(-6, hy + 4, 2, 3, B.hairLo); R(5, hy + 4, 2, 2, B.hairLo); R(6, hy + 1, 1, 2, B.hairLo);
+  R(-6, hy + 7, 1, 2, B.skinLo);
+  R(-3, hy + 5, 4, 1, B.hairLo); R(2, hy + 5, 3, 1, B.hairLo);
+  R(-2, hy + 6, 2, 1, B.blind); R(2, hy + 6, 2, 1, B.eye); R(2, hy + 6, 1, 1, '#f3efe6');
+  R(-2, hy + 4, 1, 2, B.scar); R(-2, hy + 7, 1, 1, B.scar); R(-1, hy + 8, 1, 1, B.scar); R(-2, hy + 6, 1, 1, B.scar);
+  R(1, hy + 7, 1, 2, B.skinLo);
+  R(-4, hy + 10, 9, 2, '#a9785a'); R(-1, hy + 10, 4, 1, B.mouth);
+  R(2, hy + 10, 5, 1, B.cigar); R(4, hy + 10, 1, 1, B.cigarBand); R(7, hy + 10, 1, 1, B.ember);
+
+  outline(g, P.outline);
+
+  // smoke and ember glow sit outside the outline
+  const sx = C + 8, smoke = 'rgba(220,226,230,';
+  g.set(sx, hy + 8, smoke + '.75)'); g.set(sx + 1, hy + 6, smoke + '.6)'); g.set(sx, hy + 4, smoke + '.45)');
+  g.set(sx + 1, hy + 2, smoke + '.3)'); g.set(sx + 2, hy, smoke + '.2)');
+  return g;
+}
+
+
+  return { g: buildSprite(VARIANTS[3]), glows: [], glow: "#ffffff", cx: C, foot: FOOT };
+})();
+const W = 64, H = 66, C = 30, FOOT = 60;
+const SK = { skin: '#d9a47a', skinLo: '#a8704e', eye: '#1b1c22', lip: '#9c4a48' };
+
+const VARIANTS = [
+  {
+    id: 'A', name: 'Tinker', tag: 'Werkstatt-Bastlerin',
+    text: 'Schrauberin vom Maschinendeck: orangefarbener Overall, Oberteil zerrissen, ein Ärmel um die Hüfte geknotet. Pferdeschwanz, Schweißerbrille auf der Stirn. Der Greifarm krümmt sich wie ein Skorpionschwanz über den Kopf.',
+    hair: 'pony', arm: [[-4, 3], [-13, -7], [-6, -21], [8, -19]], claw: 'down', thick: 2, tails: false, wrap: true, goggles: true,
+    pal: { cloth: '#c8642c', clothHi: '#e88a4a', clothLo: '#8a3f1c', pants: '#6a5a4a', pantsLo: '#463a30', plate: '#aeb8c0', plateHi: '#e6edf2', plateLo: '#5d6872', metal: '#8f9aa3', metalHi: '#c9d2d9', metalLo: '#4b545c', glow: '#6ff0d0', hair: '#5a3423', hairLo: '#3a2016', boot: '#2f2a26', outline: '#17110d' }
+  },
+  {
+    id: 'B', name: 'Splice', tag: 'Feld-Technikerin',
+    text: 'Früher Labor, jetzt Front: ein heller Kittel in Fetzen, die Schöße ausgefranst bis zu den Knien. Kurzer heller Bob. Der Greifarm ist dünn und präzise und steht aufrecht neben dem Kopf, die Zange offen.',
+    hair: 'bob', arm: [[4, 3], [14, -5], [13, -19]], claw: 'up', thick: 2, tails: true, wrap: false, goggles: false,
+    pal: { cloth: '#cfd6d8', clothHi: '#f2f5f5', clothLo: '#8b979c', pants: '#3f4c5c', pantsLo: '#2a3340', plate: '#56687c', plateHi: '#8ea4ba', plateLo: '#2c3846', metal: '#9aa6b2', metalHi: '#d5dde4', metalLo: '#4d5761', glow: '#7fe3ff', hair: '#e8dcc0', hairLo: '#b0a07c', boot: '#232830', outline: '#0e1218' }
+  },
+  {
+    id: 'C', name: 'Relay', tag: 'Funk-Streunerin',
+    text: 'Signaltechnikerin unter einer zerschlissenen violetten Kapuze, der Umhang hängt in Streifen. Der Greifarm hält das gelbe Funkfeuer hoch, das bisher an der Spitze des Stabs saß.',
+    hair: 'hood', arm: [[-4, 3], [-14, -4], [-14, -17], [-7, -24]], claw: 'beacon', thick: 2, tails: true, wrap: false, goggles: false,
+    pal: { cloth: '#6c4a8c', clothHi: '#9670b8', clothLo: '#432c5c', pants: '#3a3a44', pantsLo: '#25252d', plate: '#b9a98c', plateHi: '#e9dcc0', plateLo: '#6e6250', metal: '#a59a8a', metalHi: '#d9cfbe', metalLo: '#5a5248', glow: '#ffb347', hair: '#1f1a24', hairLo: '#120f16', boot: '#26222a', outline: '#120d17' }
+  },
+  {
+    id: 'D', name: 'Wrench', tag: 'Pionierin',
+    text: 'Kampfpionierin: zerrissenes olivgrünes Trägerhemd, Bandagen am Unterarm, rasierte Schläfen mit rotem Kamm und Zopf. Der Greifarm ist schweres Baugerät mit großer Klaue und reicht weit nach vorn.',
+    hair: 'hawk', arm: [[-4, 2], [-14, -6], [-10, -20], [4, -24], [13, -17]], claw: 'down', thick: 3, tails: false, wrap: true, goggles: false, bare: true,
+    pal: { cloth: '#5f6f45', clothHi: '#8c9c62', clothLo: '#3c4a2e', pants: '#4a4438', pantsLo: '#302c24', plate: '#7a8088', plateHi: '#b6bcc4', plateLo: '#3e4248', metal: '#c9a14a', metalHi: '#f0d27a', metalLo: '#7a5e24', glow: '#ffe066', hair: '#c23a2e', hairLo: '#7e221c', boot: '#2a2620', outline: '#12140e' }
+  }
+];
+
+function makeGrid(w, h) {
+  const d = new Array(w * h).fill(null);
+  return { w, h, d, set(x, y, c) { if (x >= 0 && y >= 0 && x < w && y < h) d[y * w + x] = c; }, get(x, y) { return (x < 0 || y < 0 || x >= w || y >= h) ? null : d[y * w + x]; } };
+}
+function outline(g, color) {
+  const add = [];
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    if (g.get(x, y)) continue;
+    if (g.get(x - 1, y) || g.get(x + 1, y) || g.get(x, y - 1) || g.get(x, y + 1)) add.push([x, y]);
+  }
+  add.forEach(([x, y]) => g.set(x, y, color));
+}
+
+/* the third arm: segments from the spine, a joint at every bend, a claw at the end */
+function drawThirdArm(R, P, v, tT, glows) {
+  const pts = v.arm.map(([x, y]) => [x, tT + y]), th = v.thick;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+    for (let k = 0; k <= n; k++) {
+      const x = Math.round(x0 + (x1 - x0) * k / n), y = Math.round(y0 + (y1 - y0) * k / n);
+      R(x, y, th, th, P.metalLo); R(x, y, 1, 1, P.metal);
+    }
+  }
+  pts.slice(1, -1).forEach(([x, y]) => { R(x - 1, y - 1, th + 2, th + 2, P.metal); R(x - 1, y - 1, th + 2, 1, P.metalHi); glows.push([x + (th > 2 ? 1 : 0), y + (th > 2 ? 1 : 0), 1]); });
+  const [ex, ey] = pts[pts.length - 1], s = th > 2 ? 1 : 0;
+  R(ex - 1, ey - 1, th + 2, th + 2, P.metal); R(ex - 1, ey - 1, th + 2, 1, P.metalHi);
+  if (v.claw === 'down') {
+    R(ex - 2 - s, ey + th + 1, 2, 3 + s, P.metalLo); R(ex + th + s, ey + th + 1, 2, 3 + s, P.metalLo);
+    R(ex - 1 - s, ey + th + 4 + s, 1, 2, P.metalHi); R(ex + th + s, ey + th + 4 + s, 1, 2, P.metalHi);
+    glows.push([ex + (th >> 1), ey + th + 1, 1]);
+  } else if (v.claw === 'up') {
+    R(ex - 2, ey - 5, 2, 4, P.metalLo); R(ex + th, ey - 5, 2, 4, P.metalLo);
+    R(ex - 3, ey - 7, 1, 3, P.metalHi); R(ex + th + 1, ey - 7, 1, 3, P.metalHi);
+    glows.push([ex, ey - 3, 1]);
+  } else {
+    R(ex - 2, ey - 4, 1, 3, P.metalLo); R(ex + th + 1, ey - 4, 1, 3, P.metalLo);
+    R(ex - 1, ey - 7, 4, 4, '#ffd24a'); R(ex - 1, ey - 7, 4, 1, '#fff3c0'); R(ex, ey - 6, 1, 1, '#ffffff');
+    glows.push([ex, ey - 6, 3]);
+  }
+}
+
+function drawHair(R, P, v, hy, back) {
+  if (back) {
+    if (v.hair === 'pony') { R(-8, hy + 2, 4, 3, P.hair); R(-10, hy + 4, 3, 6, P.hair); R(-10, hy + 9, 2, 3, P.hairLo); R(-7, hy + 2, 1, 2, P.hairLo); }
+    if (v.hair === 'hawk') { R(-6, hy + 3, 2, 9, P.hair); R(-7, hy + 11, 2, 4, P.hairLo); R(-6, hy + 6, 2, 1, P.hairLo); R(-6, hy + 9, 2, 1, P.hairLo); }
+    if (v.hair === 'hood') { R(-6, hy - 1, 13, 14, P.clothLo); }
+    return;
+  }
+  if (v.hair === 'pony') {
+    R(-5, hy, 11, 4, P.hair); R(-5, hy, 1, 1, null); R(5, hy, 1, 1, null); R(-5, hy + 4, 2, 4, P.hair); R(4, hy + 4, 2, 2, P.hairLo); R(-3, hy + 3, 4, 1, P.hairLo);
+  } else if (v.hair === 'bob') {
+    R(-5, hy, 11, 4, P.hair); R(-5, hy, 1, 1, null); R(5, hy, 1, 1, null); R(-5, hy + 4, 2, 7, P.hair); R(4, hy + 4, 2, 6, P.hairLo);
+    R(-3, hy + 4, 3, 1, P.hair); R(-5, hy + 10, 1, 1, P.hairLo); R(-4, hy + 1, 6, 1, '#ffffff');
+  } else if (v.hair === 'hood') {
+    R(-6, hy - 1, 13, 4, P.cloth); R(-6, hy - 1, 1, 1, null); R(6, hy - 1, 1, 1, null); R(-5, hy - 1, 11, 1, P.clothHi);
+    R(-6, hy + 3, 2, 9, P.cloth); R(5, hy + 3, 2, 8, P.clothLo); R(-6, hy + 12, 1, 2, P.cloth); R(5, hy + 11, 1, 2, P.clothLo);
+    R(-4, hy + 3, 9, 1, P.hair); R(-4, hy + 4, 3, 2, P.hair); R(3, hy + 4, 1, 2, P.hair);
+  } else {
+    R(-4, hy + 1, 9, 2, P.hairLo); R(-5, hy + 3, 1, 3, P.hairLo); R(4, hy + 3, 1, 2, P.hairLo);
+    R(-2, hy - 3, 5, 5, P.hair); R(-1, hy - 4, 3, 1, P.hair); R(-2, hy - 3, 5, 1, '#e8685a'); R(2, hy - 2, 1, 4, P.hairLo);
+  }
+  if (v.goggles) { R(-5, hy + 2, 11, 2, '#2a2420'); R(-3, hy + 2, 3, 2, P.glow); R(1, hy + 2, 3, 2, P.glow); R(-3, hy + 2, 1, 1, '#ffffff'); R(1, hy + 2, 1, 1, '#ffffff'); }
+}
+
+function buildSprite(v) {
+  const g = makeGrid(W, H), P = v.pal, L = 10, glows = [];
+  const R = (x, y, w, h, c) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) g.set(C + x + i, y + j, c); };
+  const legTop = FOOT - 2 - L, hipTop = legTop - 3, tT = hipTop - 12, hy = tT - 12;
+
+  drawThirdArm(R, P, v, tT, glows);
+  R(-8, tT + 1, 3, 7, P.metalLo); R(-8, tT + 1, 3, 1, P.metal); R(5, tT + 2, 3, 5, P.metalLo);
+  drawHair(R, P, v, hy, true);
+
+  // legs: torn trousers, one leg ripped short, a hole at the knee
+  R(-6, legTop, 5, L, P.pants); R(1, legTop, 5, L, P.pants); R(-2, legTop, 1, L, P.pantsLo); R(5, legTop, 1, L, P.pantsLo);
+  R(1, legTop + L - 4, 5, 4, SK.skin); R(5, legTop + L - 4, 1, 4, SK.skinLo); R(2, legTop + L - 4, 1, 1, P.pants); R(4, legTop + L - 4, 1, 2, P.pants);
+  R(-5, legTop + 4, 2, 2, SK.skin); R(-4, legTop + 5, 1, 1, SK.skinLo); R(-6, legTop + 7, 1, 1, P.pantsLo);
+  if (v.wrap) { R(1, legTop + L - 2, 5, 1, '#d9d2c0'); }
+  R(-7, FOOT - 2, 7, 3, P.boot); R(1, FOOT - 2, 7, 3, P.boot); R(-7, FOOT - 2, 7, 1, P.pantsLo); R(1, FOOT - 2, 7, 1, P.pantsLo);
+  if (v.tails) {   // ragged coat or cloak strips hanging past the hips
+    R(-8, hipTop, 2, 9, P.cloth); R(-8, hipTop + 9, 1, 2, P.clothLo); R(-7, hipTop + 6, 1, 4, P.clothLo);
+    R(6, hipTop, 2, 7, P.clothLo); R(7, hipTop + 7, 1, 3, P.clothLo); R(6, hipTop + 5, 1, 1, null);
+  }
+
+  // hips and belt
+  R(-6, hipTop, 12, 3, P.pants); R(-6, hipTop, 12, 1, '#2a2622'); R(-1, hipTop, 2, 1, P.metal); R(3, hipTop, 3, 3, P.pantsLo); R(3, hipTop, 3, 1, P.metalLo);
+  if (v.id === 'A') { R(-8, hipTop, 3, 2, P.cloth); R(-8, hipTop + 2, 2, 5, P.cloth); R(-8, hipTop + 6, 1, 2, P.clothLo); R(4, hipTop + 1, 3, 2, P.clothLo); }
+
+  // torso cloth, ragged hem over bare skin, a rip at the side
+  R(-5, tT + 8, 10, 4, SK.skin); R(3, tT + 8, 2, 4, SK.skinLo);
+  R(-6, tT, 12, 8, P.cloth); R(-5, tT + 8, 10, 2, P.cloth); R(-6, tT, 12, 1, P.clothHi); R(4, tT + 1, 2, 7, P.clothLo);
+  [-5, -3, -2, 0, 2, 3].forEach(x => R(x, tT + 10, 1, 1 + ((x + 6) % 2), P.cloth));
+  R(3, tT + 8, 2, 1, SK.skinLo); R(-5, tT + 9, 1, 1, SK.skin);
+  // chest plate with the reactor core
+  R(-5, tT + 1, 10, 7, P.plate); R(-5, tT + 1, 10, 1, P.plateHi); R(-5, tT + 1, 1, 6, P.plateHi); R(4, tT + 2, 1, 6, P.plateLo); R(-5, tT + 7, 10, 1, P.plateLo);
+  R(-4, tT + 8, 2, 1, P.plateLo); R(2, tT + 8, 2, 1, P.plateLo);
+  R(-3, tT + 2, 6, 5, P.plateLo); R(-2, tT + 2, 4, 5, P.glow); R(-3, tT + 3, 6, 3, P.glow); R(-1, tT + 3, 2, 3, '#ffffff'); R(-2, tT + 4, 4, 1, '#ffffff');
+  glows.push([-0.5, tT + 4, 4]);
+  R(-5, tT - 1, 2, 2, P.plateLo); R(3, tT - 1, 2, 2, P.plateLo);
+
+  // her right arm (viewer's left): robotic, the sleeve torn off at the shoulder
+  R(-10, tT, 4, 4, P.metal); R(-10, tT, 4, 1, P.metalHi); R(-9, tT + 1, 2, 2, P.metalLo);
+  R(-7, tT, 1, 2, P.cloth); R(-7, tT + 2, 1, 1, P.clothLo);
+  R(-9, tT + 4, 2, 3, P.metalLo); R(-10, tT + 7, 4, 2, P.metal); R(-10, tT + 7, 4, 1, P.metalHi);
+  R(-11, tT + 9, 5, 5, P.metal); R(-11, tT + 9, 1, 5, P.metalHi); R(-7, tT + 9, 1, 5, P.metalLo); R(-9, tT + 10, 1, 3, P.glow);
+  R(-11, tT + 14, 2, 3, P.metalLo); R(-8, tT + 14, 2, 3, P.metalLo); R(-11, tT + 14, 5, 1, P.metal);
+  glows.push([-9, tT + 11, 1]);
+
+  // her left arm (viewer's right): skin, a frayed sleeve, the pulse emitter in the hand
+  R(6, tT + 1, 3, 12, SK.skin); R(8, tT + 1, 1, 12, SK.skinLo);
+  if (!v.bare) { R(6, tT, 3, 6, P.cloth); R(8, tT + 1, 1, 5, P.clothLo); R(6, tT + 6, 1, 2, P.cloth); R(8, tT + 6, 1, 1, P.clothLo); }
+  else { R(6, tT, 3, 1, P.cloth); R(6, tT + 7, 3, 1, '#d9d2c0'); R(6, tT + 9, 3, 1, '#d9d2c0'); R(6, tT + 11, 3, 1, '#b8b09c'); }
+  R(7, tT + 13, 7, 2, P.metalLo); R(7, tT + 13, 7, 1, P.metal); R(13, tT + 13, 1, 2, P.glow); R(8, tT + 15, 2, 2, P.metalLo);
+  R(6, tT + 12, 3, 3, SK.skin); R(8, tT + 12, 1, 3, SK.skinLo);
+  glows.push([14, tT + 13, 1]);
+
+  // head
+  R(-1, tT - 1, 3, 1, SK.skinLo);
+  R(-4, hy + 3, 9, 8, SK.skin); R(4, hy + 3, 1, 7, SK.skinLo); R(-4, hy + 10, 1, 1, null); R(4, hy + 10, 1, 1, null);
+  R(-2, hy + 11, 5, 1, SK.skinLo);
+  R(-2, hy + 6, 1, 2, SK.eye); R(2, hy + 6, 1, 2, SK.eye); R(-2, hy + 5, 2, 1, P.hairLo); R(2, hy + 5, 2, 1, P.hairLo);
+  R(1, hy + 8, 1, 1, SK.skinLo); R(0, hy + 9, 2, 1, SK.lip);
+  if (v.id === 'D') { R(-3, hy + 8, 2, 1, '#d9d2c0'); }
+  drawHair(R, P, v, hy, false);
+
+  outline(g, P.outline);
+  return { g, glows, glow: P.glow };
+}
+
+function buildPortrait(v) {
+  const g = makeGrid(36, 36), P = v.pal;
+  const R = (x, y, w, h, c) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) g.set(x + i, y + j, c); };
+  // third arm peeking over her left shoulder
+  for (let k = 0; k < 14; k++) { R(29 + Math.round(k * .15), 26 - k, 3, 2, P.metalLo); }
+  R(29, 10, 5, 4, P.metal); R(29, 10, 5, 1, P.metalHi); R(28, 4, 2, 6, P.metalLo); R(33, 4, 2, 6, P.metalLo); R(27, 2, 2, 3, P.metalHi); R(34, 2, 2, 3, P.metalHi); R(31, 11, 1, 2, P.glow);
+  if (v.claw === 'beacon') { R(29, 4, 4, 4, '#ffd24a'); R(29, 4, 4, 1, '#fff3c0'); }
+  // hair behind
+  if (v.hair === 'pony') { R(3, 9, 6, 6, P.hair); R(1, 13, 5, 12, P.hair); R(1, 22, 3, 4, P.hairLo); }
+  if (v.hair === 'hawk') { R(6, 12, 3, 16, P.hair); R(6, 16, 3, 1, P.hairLo); R(6, 21, 3, 1, P.hairLo); }
+  if (v.hair === 'hood') { R(6, 3, 24, 26, P.clothLo); }
+  // shoulders: robot shoulder on the viewer's left, torn cloth on the right
+  R(2, 28, 32, 8, P.cloth); R(24, 29, 10, 7, P.clothLo); R(2, 28, 32, 1, P.clothHi);
+  R(1, 27, 10, 9, P.metal); R(1, 27, 10, 1, P.metalHi); R(3, 30, 5, 4, P.metalLo); R(5, 31, 1, 2, P.glow); R(11, 28, 1, 3, P.cloth); R(12, 31, 1, 2, P.clothLo);
+  R(27, 31, 2, 2, SK.skin); R(30, 33, 2, 3, SK.skin); R(25, 34, 1, 2, SK.skinLo);
+  R(11, 29, 14, 7, P.plate); R(11, 29, 14, 1, P.plateHi); R(24, 30, 1, 6, P.plateLo);
+  R(14, 31, 8, 5, P.plateLo); R(15, 31, 6, 5, P.glow); R(16, 32, 4, 4, '#ffffff');
+  R(14, 25, 8, 4, SK.skinLo);
+  // head
+  R(9, 9, 17, 15, SK.skin); R(24, 9, 2, 13, SK.skinLo); R(9, 22, 2, 2, null); R(24, 22, 2, 2, null); R(12, 24, 11, 1, SK.skinLo);
+  R(11, 13, 5, 1, P.hairLo); R(18, 13, 5, 1, P.hairLo);
+  R(12, 15, 3, 3, '#f3efe6'); R(19, 15, 3, 3, '#f3efe6'); R(13, 15, 2, 3, SK.eye); R(20, 15, 2, 3, SK.eye); R(13, 15, 1, 1, '#ffffff'); R(20, 15, 1, 1, '#ffffff');
+  R(11, 14, 5, 1, SK.eye); R(18, 14, 5, 1, SK.eye);
+  R(17, 17, 1, 3, SK.skinLo); R(15, 21, 5, 1, SK.lip); R(16, 22, 3, 1, '#c26a62');
+  R(10, 19, 2, 1, '#e8a890'); R(22, 19, 2, 1, '#e8a890');
+  if (v.id === 'D') { R(10, 18, 4, 2, '#d9d2c0'); }
+  if (v.id === 'A') { R(21, 20, 2, 1, '#3a2a22'); R(11, 11, 2, 1, '#3a2a22'); }
+  // hair in front
+  if (v.hair === 'pony') { R(8, 5, 19, 6, P.hair); R(8, 5, 1, 1, null); R(26, 5, 1, 1, null); R(8, 11, 3, 6, P.hair); R(24, 11, 3, 3, P.hairLo); R(11, 10, 6, 1, P.hairLo); }
+  if (v.hair === 'bob') { R(8, 4, 19, 7, P.hair); R(8, 4, 1, 1, null); R(26, 4, 1, 1, null); R(7, 10, 4, 13, P.hair); R(24, 10, 4, 11, P.hairLo); R(11, 10, 5, 2, P.hair); R(10, 6, 12, 1, '#ffffff'); R(7, 22, 2, 2, P.hairLo); }
+  if (v.hair === 'hood') { R(6, 3, 24, 7, P.cloth); R(6, 3, 1, 1, null); R(29, 3, 1, 1, null); R(7, 3, 22, 1, P.clothHi); R(6, 10, 4, 18, P.cloth); R(26, 10, 4, 17, P.clothLo); R(6, 27, 2, 3, P.cloth); R(27, 26, 2, 3, P.clothLo); R(10, 9, 16, 2, P.hair); R(10, 11, 5, 3, P.hair); R(23, 11, 2, 3, P.hair); }
+  if (v.hair === 'hawk') { R(10, 7, 16, 3, P.hairLo); R(9, 10, 1, 5, P.hairLo); R(25, 10, 1, 4, P.hairLo); R(13, 1, 9, 8, P.hair); R(15, 0, 5, 1, P.hair); R(13, 1, 9, 1, '#e8685a'); R(20, 2, 2, 7, P.hairLo); }
+  if (v.goggles) { R(8, 8, 19, 4, '#2a2420'); R(10, 8, 6, 4, P.glow); R(18, 8, 6, 4, P.glow); R(10, 8, 2, 1, '#ffffff'); R(18, 8, 2, 1, '#ffffff'); }
+  outline(g, P.outline);
+  return { g, glows: [], glow: P.glow };
+}
+
+function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
+function paint(ctx, s, ox, oy) {
+  const g = s.g;
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) { const c = g.get(x, y); if (!c) continue; ctx.fillStyle = c; ctx.fillRect(ox + x, oy + y, 1, 1); }
+  s.glows.forEach(([x, y, r]) => {   // soft light around the reactor, the joints and the claw
+    for (let dy = -r - 1; dy <= r + 1; dy++) for (let dx = -r - 1; dx <= r + 1; dx++) {
+      const d = Math.sqrt(dx * dx + dy * dy); if (d > r + 1.2) continue;
+      ctx.fillStyle = hexA(s.glow, (r > 2 ? .26 : .3) * (1 - d / (r + 1.6))); ctx.fillRect(ox + C + Math.round(x) + dx, oy + Math.round(y) + dy, 1, 1);
+    }
+  });
+}
+function paintTile(ctx, cx, cy, half) {
+  for (let dy = -half / 2; dy < half / 2; dy++) {
+    const hw = half - 2 * Math.abs(dy + .5) + 1;
+    for (let dx = -hw; dx < hw; dx++) {
+      const edge = Math.abs(dx) >= hw - 2, seam = !edge && ((dx + 2 * dy + 400) % 16 === 0 || (dx - 2 * dy + 400) % 16 === 0);
+      ctx.fillStyle = edge ? '#56646e' : seam ? '#2c353c' : '#39444c'; ctx.fillRect(Math.round(cx + dx), Math.round(cy + dy), 1, 1);
+    }
+  }
+  ctx.fillStyle = 'rgba(0,0,0,.35)';
+  for (let dy = -2; dy <= 2; dy++) { const hw = 10 - Math.abs(dy) * 3; ctx.fillRect(cx - hw, cy + dy, hw * 2, 1); }
+}
+function canvas(w, h, cssW) { const c = document.createElement('canvas'); c.width = w; c.height = h; if (cssW) { c.style.width = cssW + 'px'; c.style.height = (cssW * h / w) + 'px'; } return c; }
+
+const pairs = document.getElementById('pairs');
+VARIANTS.forEach(v => {
+  const box = document.createElement('div'); box.className = 'pair';
+  const c = canvas(112, 92), x = c.getContext('2d');
+  paintTile(x, 40, 62, 30); paintTile(x, 71, 77.5, 30);
+  paint(x, BULKHEAD, 40 - BULKHEAD.cx, 62 - BULKHEAD.foot);
+  paint(x, buildSprite(v), 71 - C, 77 - FOOT);
+  c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'Bulkhead neben Controller ' + v.name);
+  const t = document.createElement('span'); t.textContent = 'Bulkhead + ' + v.id + ' · ' + v.name;
+  box.appendChild(c); box.appendChild(t); pairs.appendChild(box);
+});
+
+const grid = document.getElementById('grid');
+VARIANTS.forEach(v => {
+  const sprite = buildSprite(v), portrait = buildPortrait(v);
+  const plate = document.createElement('article'); plate.className = 'plate';
+  const stage = document.createElement('div'); stage.className = 'stage';
+  const big = canvas(72, 80), bctx = big.getContext('2d');
+  paintTile(bctx, 36, 65, 30); paint(bctx, sprite, 6, 6);
+  big.setAttribute('role', 'img'); big.setAttribute('aria-label', 'Controller, Vorschlag ' + v.id + ': ' + v.name);
+  stage.appendChild(big); plate.appendChild(stage);
+  const info = document.createElement('div'); info.className = 'info';
+  info.innerHTML = '<span class="tag">Vorschlag ' + v.id + ' · ' + v.tag + '</span><h2>' + v.name + '</h2><p>' + v.text + '</p>';
+  const row = document.createElement('div'); row.className = 'row';
+  [[1, '1×'], [2, '2×']].forEach(([s, label]) => {
+    const m = document.createElement('div'); m.className = 'mini';
+    const c = canvas(W, H, W * s); paint(c.getContext('2d'), sprite, 0, 0);
+    const t = document.createElement('span'); t.textContent = label; m.appendChild(c); m.appendChild(t); row.appendChild(m);
+  });
+  const pm = document.createElement('div'); pm.className = 'mini';
+  const pc = canvas(36, 36, 108); paint(pc.getContext('2d'), portrait, 0, 0);
+  const pt = document.createElement('span'); pt.textContent = 'Porträt'; pm.appendChild(pc); pm.appendChild(pt); row.appendChild(pm);
+  info.appendChild(row);
+  const block = document.createElement('div'); block.className = 'block';
+  const lab = document.createElement('span'); lab.className = 'label'; lab.textContent = 'Palette';
+  const sw = document.createElement('div'); sw.className = 'swatches';
+  [v.pal.clothHi, v.pal.cloth, v.pal.clothLo, v.pal.pants, v.pal.plate, v.pal.metal, v.pal.glow, v.pal.hair, SK.skin].forEach(col => { const i = document.createElement('i'); i.style.background = col; i.title = col; sw.appendChild(i); });
+  block.appendChild(lab); block.appendChild(sw); info.appendChild(block);
+  plate.appendChild(info); grid.appendChild(plate);
+});
+</script>
+</body>
+</html>

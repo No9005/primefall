@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revenant Animation Sheet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: an animation sheet on a ship bulkhead. One dark world, one looping pixel stage per clip, a speed switch on top. */
+  :root {
+    color-scheme: dark;
+    --hull: #14181c;
+    --plate: #1e252b;
+    --plate-edge: #33404a;
+    --ink: #dfe6e4;
+    --ink-dim: #93a19f;
+    --screen: #6fd6b4;
+    --hazard: #f2b632;
+    --display: "Pixelify Sans", "Courier New", monospace;
+    --body: "IBM Plex Sans", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  body {
+    background: var(--hull); color: var(--ink);
+    font-family: var(--body); font-size: 15px; line-height: 1.55;
+    padding-block: 28px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .sheet { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+  header { display: flex; flex-direction: column; gap: 8px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--screen); }
+  h1 { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 6vw, 46px); line-height: 1.05; margin: 0; text-wrap: balance; }
+  h2 { font-family: var(--display); font-weight: 700; font-size: 22px; margin: 0; line-height: 1.1; }
+  h3 { font-family: var(--display); font-weight: 500; font-size: 19px; margin: 0; }
+  p { margin: 0; max-width: 65ch; }
+  .lede { color: var(--ink-dim); }
+  .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .bar span { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-dim); }
+  .seg { display: flex; border: 1px solid var(--plate-edge); }
+  .seg button {
+    font-family: var(--mono); font-size: 13px; color: var(--ink-dim); background: var(--plate);
+    border: 0; border-right: 1px solid var(--plate-edge); padding: 8px 14px; cursor: pointer;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed="true"] { background: var(--hazard); color: #14181c; }
+  .seg button:focus-visible { outline: 2px solid var(--screen); outline-offset: 2px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; }
+  .plate { background: var(--plate); border: 1px solid var(--plate-edge); display: flex; flex-direction: column; min-width: 0; }
+  .stage { background: #0e1114; border-bottom: 1px solid var(--plate-edge); }
+  .stage canvas { width: 100%; height: auto; display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+  .info { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--hazard); }
+  .info p { color: var(--ink-dim); font-size: 14px; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 32px; border-top: 1px solid var(--plate-edge); padding-top: 24px; }
+  .notes div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .notes p { color: var(--ink-dim); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <header>
+    <span class="eyebrow">Primefall · Assassin · Vorschlag E</span>
+    <h1>Revenant in Bewegung</h1>
+    <p class="lede">Die Assassin-Clips aus der bisherigen Animations-Referenz, neu gespielt mit dem Revenant-Sprite. Timing und Beats folgen der Referenz. Er selbst bewegt sich knapp und schnell; überzogen sind der Stoff, der jeder Bewegung weit nachschlägt, und die violetten Nachbilder bei schnellen Wechseln.</p>
+  </header>
+
+  <div class="bar">
+    <span id="speedLabel">Tempo</span>
+    <div class="seg" role="group" aria-labelledby="speedLabel">
+      <button type="button" id="speed-100" data-speed="1" aria-pressed="true">1×</button>
+      <button type="button" id="speed-50" data-speed="0.5" aria-pressed="false">0,5×</button>
+      <button type="button" id="speed-25" data-speed="0.25" aria-pressed="false">0,25×</button>
+      <button type="button" id="speed-0" data-speed="0" aria-pressed="false">Pause</button>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="notes">
+    <div>
+      <h3>Die Kapuze</h3>
+      <p>Im Ruhezustand liegt sie im Nacken. Aufgesetzt wird sie in zwei Clips: bei Hidden, bevor er sich tarnt, und bei Long Shot, bevor er ins Knie geht. Danach schlägt er sie wieder ab.</p>
+    </div>
+    <div>
+      <h3>Anders als die beiden anderen</h3>
+      <p>Der Bulkhead ist schwer und stampft, die Tinker federt und überlässt dem Greifarm die Show. Der Revenant ist leicht: kurze, harte Posen, wenig Bildwackeln, dafür Umhang, Schärpe und Nachbilder als Bewegungsspur.</p>
+    </div>
+    <div>
+      <h3>Was noch Skizze ist</h3>
+      <p>Gleicher Aufbau wie bei den anderen: Pixel-Teile, die pro Bild gedreht werden, mit 20 Bildern pro Sekunde. Der Umhang ist ein starres Teil, das schwingt; für fertige Assets würde man ihn als flatternden Stoff von Hand zeichnen.</p>
+    </div>
+  </div>
+</div>
+<script>
+const SW = 136, SH = 104, OX = 58, OY = 86, FRAME = 50, LEG = 17;
+const P = { plate: '#d9d4c6', plateHi: '#f6f3ea', plateLo: '#958f80', under: '#2a2a32', underLo: '#1a1a20', cloth: '#39424c', clothHi: '#56626e', clothLo: '#20262c', glow: '#c58bff', mark: '#8a4fd0', sash: '#5a3f7a', sashHi: '#7c5aa6', sashLo: '#38264e', steel: '#59636e', steelHi: '#9aa6b2', steelLo: '#2e353d', outline: [16, 16, 22] };
+
+/* ---------- part sprites (local coordinates, pivot at 0,0) ---------- */
+function part(x0, y0, x1, y1, draw) {
+  const c = document.createElement('canvas'); c.width = x1 - x0 + 1; c.height = y1 - y0 + 1;
+  const g = c.getContext('2d');
+  const R = (x, y, w, h, col) => { if (col) { g.fillStyle = col; g.fillRect(x - x0, y - y0, w, h); } else g.clearRect(x - x0, y - y0, w, h); };
+  draw(R); return { c, x: x0, y: y0 };
+}
+const LEGP = part(-3, 0, 3, 16, R => {   // digitigrade: plated thigh, knee, thin shin with a spur, two-toed foot
+  R(-2, 0, 4, 6, P.plate); R(-2, 0, 4, 1, P.plateHi); R(-2, 0, 1, 6, P.plateHi); R(1, 1, 1, 5, P.plateLo);
+  R(-1, 6, 3, 2, P.plate); R(-1, 6, 3, 1, P.plateHi);
+  R(0, 8, 2, 5, P.under); R(0, 8, 1, 5, P.underLo); R(-2, 9, 2, 1, P.plate); R(-3, 8, 1, 1, P.plateHi);
+  R(-1, 12, 3, 2, P.plate); R(-1, 12, 3, 1, P.plateHi);
+  R(-2, 15, 5, 2, P.plateLo); R(-2, 15, 2, 1, P.plate); R(1, 15, 2, 1, P.plate);
+});
+const T0 = -14;
+const TORSO = part(-8, -18, 7, 0, R => {
+  const t = T0;
+  R(-5, -2, 11, 2, P.under); R(-6, -2, 3, 3, P.plate); R(4, -2, 3, 3, P.plateLo); R(-6, -2, 3, 1, P.plateHi); R(-1, -2, 3, 2, P.plateLo);
+  R(-3, t + 8, 7, 4, P.under); R(-3, t + 9, 7, 1, P.underLo); R(-4, t + 10, 9, 2, P.under); R(-3, t + 11, 7, 1, P.plateLo);
+  R(-6, t, 13, 5, P.plate); R(-5, t + 5, 11, 2, P.plate); R(-4, t + 7, 9, 1, P.plateLo);
+  R(-6, t, 13, 1, P.plateHi); R(-6, t, 1, 5, P.plateHi); R(5, t + 1, 2, 4, P.plateLo); R(4, t + 5, 2, 2, P.plateLo);
+  R(0, t + 1, 1, 6, P.plateLo); R(-4, t + 3, 3, 1, P.plateLo); R(2, t + 3, 2, 1, P.plateLo); R(-3, t + 2, 2, 1, P.mark);
+  R(-7, t - 3, 3, 4, P.plate); R(-7, t - 3, 1, 4, P.plateHi); R(-8, t - 4, 2, 2, P.plateHi); R(5, t - 3, 3, 4, P.plateLo); R(6, t - 4, 2, 2, P.plate);
+  R(-2, t - 1, 5, 1, P.under);
+});
+const SASH = part(-2, 0, 1, 8, R => { R(-2, 0, 4, 7, P.sash); R(-2, 0, 1, 7, P.sashHi); R(1, 2, 1, 5, P.sashLo); R(-2, 7, 1, 2, P.sash); R(1, 7, 1, 1, P.sashLo); });
+const ARM = part(-2, -1, 1, 12, R => {
+  R(-1, -1, 3, 3, P.plate); R(-1, -1, 3, 1, P.plateHi); R(0, 2, 2, 4, P.under);
+  R(-1, 6, 3, 5, P.plate); R(-1, 6, 3, 1, P.plateHi); R(-2, 7, 1, 3, P.plateLo); R(-1, 11, 3, 2, P.under);
+});
+const RIFLE = part(-2, 7, 3, 32, R => {   // carried along the front arm, muzzle 33 px from the shoulder
+  R(-2, 7, 3, 5, P.steelLo); R(-1, 12, 3, 8, P.steel); R(1, 12, 1, 8, P.steelHi); R(-1, 12, 1, 8, P.steelLo);
+  R(2, 13, 2, 4, P.steelLo); R(3, 13, 1, 1, P.glow);
+  R(0, 20, 1, 12, P.steelLo); R(0, 31, 1, 2, P.steelHi);
+});
+const HEAD = part(-5, -15, 5, 0, R => {
+  R(-4, -10, 9, 8, P.plate); R(-3, -11, 7, 1, P.plateHi); R(-4, -10, 1, 7, P.plateHi); R(4, -9, 1, 6, P.plateLo);
+  R(-3, -2, 7, 1, P.plateLo); R(-1, -1, 4, 1, P.plateLo); R(-4, -4, 2, 3, P.plateLo); R(3, -4, 2, 3, P.plateLo); R(-4, -4, 1, 1, P.plate);
+  R(-2, -7, 7, 2, P.underLo); R(-1, -7, 5, 1, P.glow); R(1, -6, 4, 1, P.glow); R(3, -7, 1, 1, '#ffffff');
+  R(-3, -9, 1, 2, P.mark); R(1, -4, 1, 2, P.mark);
+  R(1, -10, 1, 3, P.plateLo); R(0, -12, 3, 2, P.plate); R(0, -12, 3, 1, P.plateHi); R(2, -11, 1, 1, P.plateLo);
+  R(-2, -14, 3, 3, P.plate); R(-2, -14, 3, 1, P.plateHi); R(0, -13, 1, 1, P.plateLo);
+  R(-4, -15, 3, 2, P.plate); R(-4, -15, 3, 1, P.plateHi); R(-4, -13, 2, 1, P.plateLo); R(-5, -15, 1, 1, P.plateLo);
+});
+const HOOD_DOWN = part(-9, T0 - 4, 8, T0, R => { const t = T0; R(-8, t - 4, 4, 5, P.cloth); R(-8, t - 4, 4, 1, P.clothHi); R(-9, t - 2, 1, 3, P.cloth); R(5, t - 4, 4, 5, P.clothLo); R(5, t - 4, 4, 1, P.cloth); });
+const HOOD_MID = part(-8, -13, 7, 1, R => { R(-8, -13, 6, 14, P.cloth); R(-8, -13, 6, 1, P.clothHi); R(3, -11, 5, 12, P.clothLo); R(3, -11, 5, 1, P.cloth); });
+const HOOD_UP = part(-7, -17, 6, 1, R => {
+  R(-6, -13, 12, 4, P.cloth); R(-6, -16, 9, 3, P.cloth); R(-6, -16, 9, 1, P.clothHi); R(-7, -14, 1, 4, P.cloth); R(3, -14, 3, 1, P.cloth); R(3, -14, 3, 1, P.clothHi);
+  R(5, -12, 2, 3, P.clothLo); R(-6, -9, 2, 9, P.cloth); R(-6, -1, 1, 2, P.clothLo); R(5, -9, 2, 8, P.clothLo);
+  R(-4, -9, 9, 1, P.clothLo); R(-4, -8, 1, 1, P.clothLo); R(-6, 0, 1, 2, P.cloth); R(5, -1, 1, 2, P.clothLo); R(-2, -9, 1, 2, P.clothLo); R(2, -9, 1, 2, P.clothLo);
+});
+const MANTLE = part(-10, T0 - 1, 9, T0 + 5, R => {
+  const t = T0; R(-10, t - 1, 20, 4, P.cloth); R(-10, t - 1, 20, 1, P.clothHi); R(6, t, 4, 3, P.clothLo);
+  [-10, -8, -7, -5, -2, 0, 3, 4, 7, 9].forEach((x, i) => R(x, t + 3, 1, 1 + (i % 3), i % 2 ? P.clothLo : P.cloth));
+});
+const CAPE = part(-6, 0, 7, 30, R => {   // pivot at the left shoulder, hangs down
+  for (let j = 0; j < 27; j++) { const w = 5 + Math.min(4, j >> 2), x = -2 - Math.min(3, j >> 3); R(x, j, w, 1, j > 18 ? P.clothLo : P.cloth); R(x, j, 1, 1, P.clothHi); }
+  [[-5, 26, 2], [-2, 26, 3], [1, 26, 1], [-4, 28, 1]].forEach(([x, j, h]) => R(x, j, 1, h, P.clothLo));
+  [[-6, 20, 3], [-6, 25, 2], [-3, 27, 3], [0, 26, 3], [2, 22, 2], [2, 26, 2]].forEach(([x, j, h]) => R(x, j, 1, h, P.cloth));
+});
+
+/* ---------- pose and tracks ---------- */
+const REST = { dx: 0, dy: 0, rot: 0, sx: 1, sy: 1, crouch: 0, bob: 0, lean: 0, stretch: 1, legL: 0, legR: 0, armF: -30, armB: 4, padL: 0, padR: 0, padDy: 0, head: 0, headDx: 0, headDy: 0, flip: 1, cigar: 0, cigarOff: 0, armFront: 0, flash: 0, grey: 0, alpha: 1, ringRed: 0 };
+const EASE = {
+  lin: x => x, io: x => x * x * (3 - 2 * x), out: x => 1 - Math.pow(1 - x, 3), in: x => x * x * x,
+  back: x => { const c = 2.4, y = x - 1; return 1 + (c + 1) * y * y * y + c * y * y; },
+  step: x => x < 1 ? 0 : 1
+};
+function tr(t, keys) {
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) if (t < keys[i][0]) {
+    const a = keys[i - 1], b = keys[i], u = (t - a[0]) / (b[0] - a[0]);
+    return a[1] + (b[1] - a[1]) * EASE[b[2] || 'io'](u);
+  }
+  return keys[keys.length - 1][1];
+}
+function poseAt(clip, t) {
+  const p = Object.assign({}, REST);
+  for (const k in clip.tracks) p[k] = tr(t, clip.tracks[k]);
+  if (clip.pose) clip.pose(t, p);
+  return p;
+}
+
+
+Object.assign(REST, { armB: 6, cape: 8, capeLen: 1, capeX: 0, capeW: 1, sash: 0, hood: 0, capeFront: 0, ghost: 0, rifleOff: 0, cigarOff: 1 });
+
+/* ---------- figure renderer ---------- */
+const fig = document.createElement('canvas'); fig.width = SW; fig.height = SH;
+const fctx = fig.getContext('2d', { willReadFrequently: true });
+const rad = d => d * Math.PI / 180;
+function put(s) { fctx.drawImage(s.c, s.x, s.y); }
+function world(x, y) { const q = fctx.getTransform().transformPoint(new DOMPoint(x, y)); return { x: Math.round(q.x - OX), y: Math.round(q.y - OY) }; }
+
+function drawFigure(p) {
+  const info = {};
+  fctx.setTransform(1, 0, 0, 1, 0, 0); fctx.clearRect(0, 0, SW, SH); fctx.imageSmoothingEnabled = false;
+  const crouch = Math.round(p.crouch), hipY = -16 + crouch;
+  const root = () => { fctx.setTransform(1, 0, 0, 1, 0, 0); fctx.translate(OX + Math.round(p.dx), OY + Math.round(p.dy)); fctx.rotate(rad(p.rot)); fctx.scale(p.sx, p.sy); };
+  const torso = () => { root(); fctx.translate(0, hipY + Math.round(p.bob)); fctx.rotate(rad(p.lean)); fctx.scale(1, p.stretch); };
+  const cape = () => { fctx.save(); fctx.translate(-7 + Math.round(p.capeX), T0 - 1); fctx.rotate(rad(p.cape)); fctx.scale(p.capeW, p.capeLen); put(CAPE); fctx.restore(); };
+  torso(); if (!p.capeFront) cape();
+  root();
+  for (const [x, a] of [[-4, p.legL], [3, p.legR]]) { fctx.save(); fctx.translate(x, hipY); fctx.rotate(rad(a)); fctx.scale(1, (LEG - crouch) / LEG); put(LEGP); fctx.restore(); }
+  torso();
+  put(TORSO);
+  fctx.save(); fctx.rotate(rad(p.sash)); put(SASH); fctx.restore();
+  if (p.hood < .25) put(HOOD_DOWN);
+  fctx.save(); fctx.translate(-8, T0 + 1); fctx.rotate(rad(p.armB)); put(ARM); fctx.restore();
+  const armF = () => {
+    fctx.save(); fctx.translate(8, T0 + 1); fctx.rotate(rad(p.armF));
+    if (!p.rifleOff) put(RIFLE); put(ARM);
+    info.muzzle = world(0, 34); info.scope = world(3, 14); info.hand = world(0, 12);
+    fctx.restore();
+  };
+  if (!p.armFront) armF();
+  put(MANTLE);
+  fctx.save(); fctx.translate(Math.round(p.headDx), T0 + Math.round(p.headDy)); fctx.rotate(rad(p.head)); fctx.scale(p.flip, 1);
+  if (p.hood >= .25 && p.hood < .75) put(HOOD_MID);
+  put(HEAD); info.top = world(0, -12); info.visor = world(2, -7);
+  if (p.hood >= .75) put(HOOD_UP);
+  fctx.restore();
+  if (p.armFront) armF();
+  if (p.capeFront) cape();
+
+  fctx.setTransform(1, 0, 0, 1, 0, 0);
+  const img = fctx.getImageData(0, 0, SW, SH), d = img.data, solid = new Uint8Array(SW * SH);
+  for (let i = 0; i < SW * SH; i++) solid[i] = d[i * 4 + 3] > 0 ? 1 : 0;
+  const [or, og, ob] = P.outline;
+  for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) {
+    const i = y * SW + x, j = i * 4;
+    if (solid[i]) {
+      d[j + 3] = 255;
+      if (p.grey > 0) { const l = d[j] * .3 + d[j + 1] * .5 + d[j + 2] * .2, g = p.grey; d[j] += (l * .75 + 30 - d[j]) * g; d[j + 1] += (l * .8 + 36 - d[j + 1]) * g; d[j + 2] += (l * .85 + 44 - d[j + 2]) * g; }
+      if (p.ghost > 0) { const g = p.ghost * .65; d[j] += (150 - d[j]) * g; d[j + 1] += (110 - d[j + 1]) * g; d[j + 2] += (230 - d[j + 2]) * g; }
+      if (p.flash > 0) { d[j] += (255 - d[j]) * p.flash; d[j + 1] += (255 - d[j + 1]) * p.flash; d[j + 2] += (255 - d[j + 2]) * p.flash; }
+    } else if ((x > 0 && solid[i - 1]) || (x < SW - 1 && solid[i + 1]) || (y > 0 && solid[i - SW]) || (y < SH - 1 && solid[i + SW])) {
+      d[j] = or; d[j + 1] = og; d[j + 2] = ob; d[j + 3] = p.ghost > .5 ? 120 : 255;
+    }
+  }
+  fctx.putImageData(img, 0, 0);
+  return info;
+}
+
+/* ---------- pixel drawing helpers for effects (origin = centre of the feet) ---------- */
+function fxKit(ctx) {
+  const S = {
+    rect(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(OX + Math.round(x), OY + Math.round(y), Math.round(w), Math.round(h)); },
+    disc(cx, cy, r, c) { r = Math.round(r); for (let dy = -r; dy <= r; dy++) { const w = Math.floor(Math.sqrt(r * r - dy * dy) + .5); S.rect(cx - w, cy + dy, 2 * w + 1, 1, c); } },
+    line(x0, y0, x1, y1, c) { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (let i = 0; i <= n; i++) S.rect(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, 1, 1, c); },
+    ellFill(cx, cy, rx, ry, c) { for (let dy = -Math.floor(ry); dy <= ry; dy++) { const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - dy * dy / (ry * ry)))); S.rect(cx - w, cy + dy, 2 * w + 1, 1, c); } },
+    ell(cx, cy, rx, ry, c) { const n = Math.ceil((rx + ry) * 4); for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; S.rect(cx + Math.cos(a) * rx, cy + Math.sin(a) * ry, 1, 1, c); } },
+    puff(x, y, age, life, r) { if (age < 0 || age > life) return; const u = age / life; S.disc(x, y, 1 + r * u, 'rgba(196,204,210,' + (.7 * (1 - u)).toFixed(2) + ')'); },
+    ruby(x, y, s) { if (s <= 0) return; const r = Math.round(2 * s); for (let dy = -r - 1; dy <= r + 1; dy++) { const w = Math.max(0, r - Math.abs(dy) + (Math.abs(dy) > r ? -1 : 0)); if (Math.abs(dy) <= r) S.rect(x - w, y + dy, 2 * w + 1, 1, dy < 0 ? '#9cd0ff' : '#4da3ff'); } S.rect(x - 1, y - 1, 1, 1, '#ffffff'); },
+    glyphs(text, x, y, s, c) {
+      const G = { '-': ['000', '000', '111', '000', '000'], '2': ['111', '001', '111', '100', '111'] };
+      let cx = x;
+      for (const ch of text) { G[ch].forEach((row, j) => [...row].forEach((b, i) => { if (b === '1') { S.rect(cx + i * s + 1, y + j * s + 1, s, s, '#1a0508'); } })); cx += 4 * s; }
+      cx = x;
+      for (const ch of text) { G[ch].forEach((row, j) => [...row].forEach((b, i) => { if (b === '1') S.rect(cx + i * s, y + j * s, s, s, c); })); cx += 4 * s; }
+    },
+    slab(x, y, w, h) { S.rect(x - 1, y - 1, w + 2, h + 2, '#0b0f15'); S.rect(x, y, w, h, '#77838e'); S.rect(x, y, w, 3, '#b3bdc6'); S.rect(x, y + h - 2, w, 2, '#566069'); S.rect(x + 3, y + 5, 2, 2, '#566069'); S.rect(x + w - 6, y + 6, 2, 2, '#566069'); },
+    bubble(k, a) { if (k <= 0) return; S.ellFill(0, -22, 27 * k, 31 * k, 'rgba(77,163,255,' + (.16 * a).toFixed(2) + ')'); S.ell(0, -22, 27 * k, 31 * k, 'rgba(140,200,255,' + (.95 * a).toFixed(2) + ')'); S.ell(0, -22, 26 * k, 30 * k, 'rgba(77,163,255,' + (.6 * a).toFixed(2) + ')'); S.rect(-14 * k, -22 - 20 * k, 3, 2, 'rgba(255,255,255,' + (.8 * a).toFixed(2) + ')'); }
+  };
+  return S;
+}
+function cigarSmoke(S, t, info) {
+  for (let k = 0; k < 3; k++) {
+    const age = (t + k * 500) % 1500, u = age / 1500;
+    const x = info.cigar.x + 1 + Math.round(Math.sin(age / 220 + k) * 1.5 + age * .003), y = info.cigar.y - 2 - Math.round(age * .011);
+    S.rect(x, y, u > .4 ? 2 : 1, u > .4 ? 2 : 1, 'rgba(220,226,230,' + (.6 * (1 - u)).toFixed(2) + ')');
+  }
+}
+const shakeAt = (t, t0, len, amp) => { const a = t - t0; if (a < 0 || a > len) return [0, 0]; const k = amp * (1 - a / len), f = Math.floor(a / FRAME); return [Math.round(f % 2 ? -k : k), Math.round(f % 3 === 0 ? k * .6 : -k * .4)]; };
+
+
+
+/* ---------- shared effect pieces ---------- */
+const V = 'rgba(197,139,255,';
+let CUR = null;   // the scene context of the clip being drawn, for rotated loose sprites
+function loose(s, x, y, ang) { CUR.save(); CUR.translate(OX + Math.round(x), OY + Math.round(y)); CUR.rotate(rad(ang)); CUR.drawImage(s.c, s.x, s.y - 20); CUR.restore(); }
+function sparks(S, x, y, a, col, n) { if (a < 0 || a > 420) return; for (let i = 0; i < n; i++) { const ang = i * 2.4 + 1, v = .035 + (i % 3) * .015; S.rect(x + Math.cos(ang) * a * v, y + Math.sin(ang) * a * v + a * a * .00012, i % 2 ? 2 : 1, 1, col); } }
+function glint(S, q, a) { if (a < 0 || a > 260) return; const r = Math.round(6 * Math.sin(a / 260 * Math.PI)); S.line(q.x - r, q.y, q.x + r, q.y, '#ffffff'); S.line(q.x, q.y - r, q.x, q.y + r, '#ffffff'); S.disc(q.x, q.y, Math.max(0, r >> 2), '#e9d6ff'); }
+function pauseMark(S, t) { const by = -64 + Math.round(wave(t, 1600)); S.rect(-7, by - 1, 15, 11, '#0b0f15'); S.rect(-6, by, 13, 9, '#8f9aa3'); S.rect(-3, by + 2, 2, 5, '#1e252b'); S.rect(2, by + 2, 2, 5, '#1e252b'); }
+const wave = (t, dur) => Math.sin(t / dur * Math.PI * 2);
+const K = (...keys) => keys;
+
+/* ---------- clips: timing and beats follow docs/design/animation, amplitudes are pushed ---------- */
+const CLIPS = [
+  {
+    id: 'idle', name: 'Idle', meta: 'Loop 2,0 s', dur: 2000, loop: true, still: 1000,
+    text: 'Steht lauernd und fast still, nur der Kopf sucht langsam die Umgebung ab. Dafür bewegt sich der Stoff ständig: Umhang und Schärpe wehen, als stünde er im Luftzug.',
+    tracks: {
+      stretch: K([0, 1], [1000, 1.05], [2000, 1]), crouch: K([0, 1.6], [1000, 0], [2000, 1.6]), lean: K([0, 3], [1000, -2], [2000, 3]),
+      head: K([0, 6], [900, -6], [1100, -6], [2000, 6]), armF: K([0, -28], [1000, -36], [2000, -28]), armB: K([0, 4], [1000, 12], [2000, 4]),
+      cape: K([0, 6], [700, 20], [1400, 2], [2000, 6]), sash: K([0, -6], [800, 8], [2000, -6])
+    }
+  },
+  {
+    id: 'walk', name: 'Walk', meta: 'Loop 0,5 s · 2 Schritte', dur: 500, loop: true, still: 120, trail: () => true,
+    text: 'Kein Gehen, ein geducktes Huschen: Oberkörper weit vorgebeugt, das Gewehr tief vor dem Körper, der Umhang steht waagerecht nach hinten. Zwei Nachbilder ziehen hinterher.',
+    tracks: {},
+    pose(t, p) {
+      const s = wave(t, 500), s2 = wave(t - 60, 250), lag = wave(t - 120, 250);
+      p.legL = 46 * s; p.legR = -46 * s; p.dy = 2 * Math.abs(s); p.lean = 20 + 3 * s2; p.crouch = 2; p.head = -12;
+      p.armF = -62 + 10 * s; p.armB = 24 - 36 * s; p.cape = 66 + 9 * lag; p.capeLen = 1.12; p.sash = 44 + 10 * lag;
+    },
+    back(S, t) { for (const t0 of [125, 375]) { const a = (t - t0 + 500) % 500; S.puff(-10 - a * .03, -1, a, 220, 2); } }
+  },
+  {
+    id: 'wait', name: 'Wait', meta: 'Loop 3,2 s', dur: 3200, loop: true, still: 1450,
+    text: 'Schaut sich um, wirbelt dann gelangweilt das lange Gewehr einmal um die Hand, hebt es ans Visier und prüft das Zielfernrohr. Das graue II zeigt, dass Warten gewählt ist.',
+    tracks: {
+      armF: K([0, -30], [1000, -30], [1900, -390, 'io'], [2200, -390], [2400, -464, 'back'], [2900, -464], [3200, -390]),
+      armB: K([0, 6], [2200, 6], [2400, -70, 'back'], [2900, -70], [3200, 6]), head: K([0, 0], [700, 0], [830, -8, 'back'], [1000, 0], [2200, 0], [2400, 10], [2900, 10], [3200, 0]),
+      cape: K([0, 8], [1000, 8], [1450, 30], [1900, -6], [2200, 10], [3200, 8]), lean: K([0, 0], [1000, 0], [1450, -6], [1900, 4], [2200, 0], [3200, 0])
+    },
+    pose(t, p) { p.flip = t > 760 && t < 960 ? -1 : 1; p.armFront = t > 1000 && t < 1900 ? 1 : 0; },
+    front(S, t, info) { pauseMark(S, t); glint(S, info.scope, t - 2500); }
+  },
+  {
+    id: 'precision', name: 'Attack: Precision Shot', meta: 'Einmal 2,2 s · Schuss bei 570 ms', dur: 2200, still: 600, trail: t => t > 560 && t < 800,
+    text: 'Schnappt das Gewehr in den Anschlag und schießt fast im selben Moment: ein dünner hellblauer Strich, kaum Feuer. Der Rückstoß reißt den Lauf hoch und den Umhang nach hinten, danach wirbelt das Gewehr zurück in die Ruhehaltung.',
+    tracks: {
+      armF: K([0, -30], [260, -8, 'out'], [420, -102, 'back'], [480, -90], [570, -90], [630, -130, 'out'], [800, -86], [900, -90], [1350, -450, 'io'], [1450, -390, 'out']),
+      armB: K([0, 6], [260, 22], [420, -64, 'back'], [570, -64], [640, 34, 'out'], [1450, 6]),
+      lean: K([0, 0], [260, -8], [420, 12, 'back'], [570, 10], [640, -12, 'out'], [900, 4], [1450, 0]), dx: K([0, 0], [570, 0], [650, -5, 'out'], [1000, -3], [1450, 0]),
+      crouch: K([0, 0], [260, 2], [570, 3], [1450, 0]), head: K([0, 0], [420, 8], [570, 8], [640, -10, 'out'], [1450, 0]),
+      cape: K([0, 8], [260, -12], [420, 42, 'out'], [570, 18], [660, 92, 'out'], [1000, -12], [1300, 16], [1450, 8]), capeLen: K([0, 1], [570, 1], [660, 1.2, 'out'], [1000, 1]),
+      sash: K([0, 0], [570, 0], [660, 50, 'out'], [1000, -14], [1450, 0])
+    },
+    pose(t, p) { p.armFront = t > 900 && t < 1400 ? 1 : 0; },
+    shake: t => shakeAt(t, 570, 120, 1),
+    front(S, t, info, clip) {
+      const m = clip.fire.muzzle, a = t - 570;
+      if (a >= 0 && a < 110) { S.disc(m.x + 2, m.y, 3, '#9cd0ff'); S.disc(m.x + 2, m.y, 1, '#ffffff'); S.line(m.x + 2, m.y - 5, m.x + 2, m.y + 5, '#9cd0ff'); }
+      if (a >= 0 && a < 200) { const x = m.x + 3 + a * .3; S.rect(m.x + 3, m.y, x - m.x, 1, 'rgba(156,208,255,' + (.5 * (1 - a / 200)).toFixed(2) + ')'); S.rect(x, m.y - 1, 24, 2, '#9cd0ff'); S.rect(x + 14, m.y - 1, 10, 1, '#ffffff'); }
+      S.puff(m.x + 3, m.y - 2 - (a - 100) * .012, a - 100, 500, 2);
+    }
+  },
+  {
+    id: 'long', name: 'Attack: Long Shot', meta: 'Einmal 3,6 s · Schuss bei 1650 ms', dur: 3600, still: 1700, trail: t => t > 1640 && t < 1900,
+    text: 'Zieht die Kapuze über den Helm und geht tief ins Knie. Der rote Laser tastet, das Zielfernrohr blitzt auf, dann der Schuss: eine weiße Linie über das ganze Bild. Der Rückstoß schiebt ihn zurück und lässt den Umhang waagerecht stehen.',
+    tracks: {
+      hood: K([0, 0], [200, 0], [210, .5, 'step'], [330, 1, 'step'], [2800, 1], [2810, .5, 'step'], [2930, 0, 'step']),
+      crouch: K([0, 0], [290, 0], [790, 9, 'back'], [1650, 9], [1720, 10], [2590, 9], [3170, 0, 'back']),
+      legL: K([0, 0], [290, 0], [790, 44, 'back'], [2590, 44], [3170, 0]), legR: K([0, 0], [290, 0], [790, -52, 'back'], [2590, -52], [3170, 0]),
+      lean: K([0, 0], [290, -6], [790, 18, 'back'], [1650, 18], [1720, -8, 'out'], [2000, 16], [2590, 16], [3170, 0]),
+      armF: K([0, -30], [290, -30], [790, -93, 'back'], [1650, -90], [1720, -116, 'out'], [2000, -90], [2590, -90], [3170, -30]),
+      armB: K([0, 6], [200, -150, 'back'], [330, -150], [790, -66, 'back'], [1650, -66], [1720, -20, 'out'], [2000, -66], [2590, -66], [2800, -150, 'back'], [2930, -150], [3170, 6]),
+      dx: K([0, 0], [1650, 0], [1750, -9, 'out'], [2590, -9], [3170, 0]), head: K([0, 0], [200, 10], [790, 12], [1650, 12], [1720, -8, 'out'], [2000, 12], [2590, 12], [3170, 0]),
+      cape: K([0, 8], [790, 34, 'out'], [1050, 4], [1650, 4], [1750, 104, 'out'], [2150, -16], [2450, 12], [3170, 8]), capeLen: K([0, 1], [1650, 1], [1750, 1.28, 'out'], [2150, 1]),
+      sash: K([0, 0], [1650, 0], [1750, 60, 'out'], [2150, -16], [2450, 0])
+    },
+    shake: t => shakeAt(t, 1650, 320, 4),
+    back(S, t) { for (let k = 0; k < 4; k++) S.puff(-6 - k * 6 - (t - 1650) * .02, -1, t - 1650 - k * 40, 520, 5); },
+    front(S, t, info, clip) {
+      const m = clip.fire.muzzle, a = t - 1650;
+      if (t > 1170 && a < 0) for (let x = m.x + 2; x < 80; x += 3) if (((x + Math.floor(t / 100)) % 2) === 0) S.rect(x, m.y, 1, 1, '#ff5a5a');
+      glint(S, info.scope, t - 1370);
+      if (a >= 0 && a < 450) { const u = a / 450, h = a < 100 ? 5 : a < 220 ? 3 : 1; S.rect(m.x, m.y - h / 2 - 1, 90, h + 2, 'rgba(120,220,255,' + (.4 * (1 - u)).toFixed(2) + ')'); S.rect(m.x, m.y - h / 2, 90, h, 'rgba(255,255,255,' + (1 - u).toFixed(2) + ')'); }
+      if (a >= 0 && a < 160) { const r = a < 60 ? 9 : 6; S.disc(m.x + 3, m.y, r, 'rgba(120,220,255,.8)'); S.disc(m.x + 3, m.y, r - 3, '#ffffff'); S.line(m.x + 3, m.y - r - 5, m.x + 3, m.y + r + 5, '#bfeeff'); S.line(m.x + 3, m.y, m.x + r + 14, m.y, '#ffffff'); }
+      for (let k = 0; k < 3; k++) S.puff(m.x + 2 + k * 3, m.y - 2 - (a - 160 - k * 60) * .014, a - 160 - k * 60, 700, 4);
+      if (a > 60 && a < 900) { const s = a - 60, y0 = info.hand.y - 4 - .09 * s + .00017 * s * s, y = Math.min(y0, -1); S.rect(info.hand.x - 4 - s * .03, y, y0 >= -1 || Math.floor(s / 100) % 2 ? 3 : 1, y0 >= -1 || Math.floor(s / 100) % 2 ? 1 : 3, '#f2c14a'); }
+    }
+  },
+  {
+    id: 'block', name: 'Block', meta: 'Einmal 3,2 s · Blase bei 900 ms', dur: 3200, still: 1400,
+    text: 'Duckt sich und reißt den Umhang wie einen Vorhang vor den Körper, das Gewehr quer dahinter. Die Shield-Blase springt auf und federt nach, zwei Rubine ploppen darüber.',
+    tracks: {
+      crouch: K([0, 0], [320, 1], [700, 6, 'back'], [2500, 6], [2900, 0, 'back']), lean: K([0, 0], [320, -8, 'out'], [700, 12, 'back'], [2500, 12], [2900, 0, 'back']),
+      armF: K([0, -30], [320, 6, 'out'], [700, -150, 'back'], [2500, -150], [2900, -30, 'back']), armB: K([0, 6], [320, 30, 'out'], [700, -110, 'back'], [2500, -110], [2900, 6, 'back']),
+      head: K([0, 0], [320, -8], [700, 12, 'back'], [2500, 12], [2900, 0]), stretch: K([0, 1], [320, 1.06, 'out'], [700, .9, 'back'], [2500, .94], [2900, 1, 'back']),
+      cape: K([0, 8], [320, 46, 'out'], [700, -74, 'back'], [1000, -62], [2500, -64], [2900, 8, 'back']), capeLen: K([0, 1], [700, 1.15, 'back'], [2500, 1.1], [2900, 1])
+    },
+    pose(t, p) { p.capeFront = t > 480 && t < 2760 ? 1 : 0; },
+    bubbleK: t => tr(t, K([0, 0], [850, 0], [1000, 1.22, 'out'], [1150, .93], [1300, 1.04], [1450, 1], [2500, 1], [2760, 0, 'in'])),
+    back(S, t, info, clip) { S.bubble(clip.bubbleK(t), .6); S.puff(-12 - (t - 700) * .03, -1, t - 700, 340, 3); S.puff(12 + (t - 700) * .03, -1, t - 700, 340, 3); },
+    front(S, t, info, clip) {
+      const k = clip.bubbleK(t); if (k > 0) S.ell(0, -22, 27 * k, 31 * k, 'rgba(140,200,255,.9)');
+      const rs = t0 => t > 2500 ? tr(t, K([2500, 1], [2700, 0, 'in'])) : tr(t, K([t0, 0], [t0 + 120, 1.7, 'out'], [t0 + 260, 1]));
+      S.ruby(-5, -64, rs(1000)); S.ruby(6, -64, rs(1150));
+    }
+  },
+  {
+    id: 'hit', name: 'Hit, kein Shield', meta: 'Einmal 2,6 s · Einschlag bei 310 ms', dur: 2600, still: 420, trail: t => t > 300 && t < 620,
+    text: 'Weißer Blitz, der leichte Körper fliegt weit nach hinten: Kopf schnappt zurück, Arme und Beine spreizen sich, der Umhang wird waagerecht nach hinten gerissen. Die rote -2 steigt auf, der Stoff pendelt am längsten aus.',
+    tracks: {
+      flash: K([0, 0], [300, 0], [310, 1, 'step'], [400, 1], [540, 0]), dx: K([0, 0], [310, 0], [410, -12, 'out'], [900, -6], [1350, 0]), dy: K([0, 0], [310, 0], [410, -4, 'out'], [600, 0, 'in']),
+      lean: K([0, 0], [310, 0], [410, -36, 'out'], [700, 16], [950, -8], [1150, 3], [1350, 0]), head: K([0, 0], [310, 0], [390, -30, 'out'], [700, 18], [950, -8], [1350, 0]),
+      stretch: K([0, 1], [310, 1], [390, 1.18, 'out'], [700, .9], [950, 1.03], [1350, 1]),
+      armF: K([0, -30], [310, -30], [410, -134, 'out'], [800, 10], [1350, -30]), armB: K([0, 6], [310, 6], [410, 116, 'out'], [800, -12], [1350, 6]),
+      legL: K([0, 0], [310, 0], [410, 26, 'out'], [900, 0]), legR: K([0, 0], [310, 0], [410, -34, 'out'], [900, 0]),
+      cape: K([0, 8], [310, 8], [430, 98, 'out'], [760, -8], [1020, 34], [1300, 2], [1600, 8]), capeLen: K([0, 1], [430, 1.2, 'out'], [760, 1]),
+      sash: K([0, 0], [310, 0], [430, -80, 'out'], [760, 40], [1020, -16], [1350, 0]), ringRed: K([0, 0], [300, 0], [310, 1, 'step'], [800, 1], [1100, 0])
+    },
+    shake: t => shakeAt(t, 310, 240, 3),
+    front(S, t) {
+      const a = t - 310;
+      if (a >= 0 && a < 330) { const r = 3 + a * .03; S.disc(9, -28, r, 'rgba(255,140,60,' + (1 - a / 330).toFixed(2) + ')'); S.disc(9, -28, Math.max(1, r - 3), 'rgba(255,255,255,' + (1 - a / 330).toFixed(2) + ')'); }
+      sparks(S, 9, -28, a, '#ffd24a', 5);
+      if (a >= 20 && a < 900) S.glyphs('-2', 14, -54 - (a - 20) * .022, a < 140 ? 3 : 2, a > 700 ? 'rgba(255,90,90,.5)' : '#ff5a5a');
+    }
+  },
+  {
+    id: 'hidden', name: 'Hidden', meta: 'Einmal 4,2 s · Tarnung ab 1260 ms', dur: 4200, still: 900, trail: t => t > 660 && t < 1300,
+    text: 'Greift nach hinten und zieht die Kapuze über den Helm. Dann greift er den Umhang und zieht ihn vorn um den Körper zusammen, bis nur noch der Kopf herausschaut. Eingehüllt löst er sich in ein flimmerndes violettes Nachbild auf. Beim Enttarnen wirft er den Umhang zurück und schlägt die Kapuze wieder ab.',
+    tracks: {
+      hood: K([0, 0], [240, 0], [250, .5, 'step'], [380, 1, 'step'], [3950, 1], [3960, .5, 'step'], [4080, 0, 'step']),
+      armB: K([0, 6], [240, -152, 'back'], [400, -150], [670, 30, 'out'], [1010, -58, 'back'], [3600, -58], [3860, 40, 'out'], [3960, -150, 'back'], [4080, -150], [4200, 6]),
+      head: K([0, 0], [240, 14], [400, 0], [1010, 10], [3600, 10], [3860, -6, 'out'], [4200, 0]),
+      cape: K([0, 8], [500, 20], [670, 44, 'out'], [800, 14], [1010, -5, 'back'], [3600, -5], [3860, 64, 'back'], [4100, -4], [4200, 8]),
+      capeX: K([0, 0], [790, 0], [800, 2, 'step'], [1010, 7, 'back'], [3600, 7], [3860, 0, 'out']),
+      capeW: K([0, 1], [800, 1], [1010, 1.5, 'back'], [1150, 1.4], [3600, 1.4], [3860, 1, 'out']),
+      capeLen: K([0, 1], [800, 1], [1010, 1.08, 'back'], [3600, 1.06], [3860, 1.1], [4200, 1]),
+      crouch: K([0, 0], [670, 0], [1010, 6, 'back'], [3600, 6], [3860, 0, 'back']), lean: K([0, 0], [670, -8], [1010, 16, 'back'], [3600, 16], [3860, -8, 'out'], [4100, 0]),
+      armF: K([0, -30], [670, -30], [1010, -12, 'back'], [3600, -12], [3860, -30]), ghost: K([0, 0], [1010, 0], [1260, 1], [3600, 1], [3860, 0]),
+      alpha: K([0, 1], [1010, 1], [1260, .3], [3600, .3], [3860, 1]), flash: K([0, 0], [3850, 0], [3860, .9, 'step'], [4000, 0])
+    },
+    pose(t, p) { p.capeFront = t >= 800 && t < 3870 ? 1 : 0; if (t > 1260 && t < 3600) p.alpha = Math.floor(t / FRAME) % 4 === 0 ? .42 : .24; },
+    front(S, t, info) {
+      if (t > 1010 && t < 3700) { const y = -52 + ((t - 1010) % 900) / 900 * 52; S.rect(-14, y, 28, 1, V + '.5)'); S.rect(-10, y + 2, 20, 1, V + '.25)'); }
+      if (t > 1010 && t < 1500) for (let i = 0; i < 8; i++) { const u = (t - 1010) / 490, ang = i * .8; S.rect(Math.cos(ang) * (8 + 16 * u), -26 + Math.sin(ang) * (12 + 20 * u), 1, 1, V + (1 - u).toFixed(2) + ')'); }
+      const a = t - 3860; if (a >= 0 && a < 300) { const u = a / 300; S.ell(0, -24, 14 + 22 * u, 18 + 22 * u, V + (1 - u).toFixed(2) + ')'); } sparks(S, 0, -26, a, '#e9d6ff', 7);
+    }
+  },
+  {
+    id: 'half', name: 'Half Cover', meta: 'Loop 4,4 s · duckt bei 440 bis 1050 ms', dur: 4400, loop: true, still: 2300,
+    text: 'Gleitet hinter die niedrige Wand ins Knie und legt das Gewehr auf die Kante. Dann sucht er durch das Zielfernrohr langsam nach links und rechts, das Glas blitzt bei jedem Halt.',
+    tracks: {
+      crouch: K([0, 0], [440, 0], [700, -1, 'out'], [1050, 9, 'back'], [3950, 9], [4400, 0, 'back']), lean: K([0, 0], [440, -8], [1050, 14, 'back'], [3950, 14], [4400, 0]),
+      legL: K([0, 0], [440, 0], [1050, 44, 'back'], [3950, 44], [4400, 0]), legR: K([0, 0], [440, 0], [1050, -52, 'back'], [3950, -52], [4400, 0]),
+      armF: K([0, -30], [440, -30], [1050, -96, 'back'], [1600, -90], [2200, -78], [2800, -78], [3400, -100], [3950, -100], [4400, -30]),
+      armB: K([0, 6], [440, 20], [1050, -66, 'back'], [3950, -66], [4400, 6]), head: K([0, 0], [1050, 12], [2200, 16], [3400, 6], [3950, 10], [4400, 0]),
+      cape: K([0, 8], [700, -20], [1050, 50, 'out'], [1400, 4], [4400, 8])
+    },
+    front(S, t, info) { S.slab(-16, -12, 42, 14); S.puff(-20 - (t - 1050) * .02, -1, t - 1050, 360, 4); S.puff(28 + (t - 1050) * .02, -1, t - 1050, 360, 4); glint(S, info.scope, t - 2300); glint(S, info.scope, t - 3500); }
+  },
+  {
+    id: 'full', name: 'Full Cover', meta: 'Loop 4,8 s · rutscht bei 0 bis 1050 ms an', dur: 4800, loop: true, still: 2900,
+    text: 'Rutscht mit dem Rücken an die hohe Wand, das Gewehr senkrecht an der Schulter. Kippt dann blitzschnell um die Kante, das Gewehr schwenkt in den Anschlag, das Glas blitzt, und er schnappt zurück.',
+    tracks: {
+      dx: K([0, 0], [1050, -5, 'back'], [4300, -5], [4800, 0]), lean: K([0, 0], [500, -14, 'out'], [1050, -5, 'back'], [2300, -5], [2450, -12], [2600, 24, 'back'], [3300, 22], [3500, -8, 'back'], [3800, -5], [4300, -5], [4800, 0]),
+      armF: K([0, -30], [500, -60], [1050, -178, 'back'], [2450, -178], [2600, -92, 'back'], [3300, -90], [3500, -178, 'back'], [4300, -178], [4800, -30]),
+      armB: K([0, 6], [1050, 14], [2600, -60, 'back'], [3300, -60], [3500, 14], [4800, 6]), head: K([0, 0], [2450, -6], [2600, 12, 'back'], [3300, 10], [3500, -4], [4800, 0]),
+      cape: K([0, 8], [500, 40], [1050, -16, 'out'], [1400, 6], [2600, 40, 'out'], [3000, 10], [3500, -20, 'out'], [3900, 8], [4800, 8])
+    },
+    pose(t, p) { p.armFront = t > 420 && t < 4500 ? 1 : 0; },
+    shake: t => shakeAt(t, 1000, 120, 1),
+    back(S, t) { S.slab(-34, -52, 11, 54); S.puff(8 - (t - 300) * .01, -1, t - 300, 500, 3); },
+    front(S, t, info) { glint(S, info.scope, t - 2850); }
+  },
+  {
+    id: 'exhausted', name: 'Exhausted', meta: 'Einmal 5,4 s · Treffer bei 650 ms', dur: 5400, still: 2300,
+    text: 'Treffer, er taumelt und schleudert im Fallen das Gewehr weit nach vorn, wo es sich überschlägt und liegen bleibt. Dann kippt er nach hinten auf den Umhang, der flach unter ihm auf den Boden gedrückt wird, federt einmal und wird grau. Zurück bleibt der Half-Cover-Block.',
+    tracks: {
+      flash: K([0, 0], [640, 0], [650, 1, 'step'], [740, 1], [900, 0]),
+      crouch: K([0, 0], [650, 0], [970, 2], [1300, 6, 'out'], [1500, 3], [1840, 6], [2100, 0]),
+      lean: K([0, 0], [650, 0], [740, -18, 'out'], [970, 10], [1250, -12], [1400, 14, 'out'], [1840, -8], [2600, -4]),
+      head: K([0, 0], [650, 0], [740, -24, 'out'], [970, 18], [1840, 22], [2600, -10], [2800, 8], [3000, 0]),
+      armF: K([0, -30], [650, -30], [740, -100, 'out'], [1150, 40, 'in'], [1400, -150, 'out'], [1840, -40], [2600, -70, 'in'], [2800, -110], [3000, -80]),
+      armB: K([0, 6], [650, 6], [740, 90, 'out'], [1100, 0], [1840, -6], [2600, 80, 'in'], [2800, 120], [3000, 96]),
+      rot: K([0, 0], [1840, 0], [2100, -8], [2600, -90, 'in'], [2780, -74, 'out'], [2960, -90, 'in'], [5400, -90]),
+      dx: K([0, 0], [650, 0], [740, -3, 'out'], [1840, -1], [2600, -4]),
+      legL: K([0, 0], [1840, 0], [2600, -10], [2780, -46, 'out'], [2960, -6]), legR: K([0, 0], [1840, 0], [2600, -18], [2780, -64, 'out'], [2960, -12]),
+      cape: K([0, 8], [650, 8], [760, 52, 'out'], [1100, -6], [1400, 22], [1840, 10], [2600, 3, 'in'], [5400, 3]),
+      capeLen: K([0, 1], [2600, 1], [2700, 1.12, 'out'], [5400, 1.12]),
+      sash: K([0, 0], [650, 0], [760, -60, 'out'], [1100, 20], [1840, 0], [2600, -50, 'in'], [2800, -20], [3000, -40]),
+      rifleOff: K([0, 0], [1390, 0], [1400, 1, 'step']), grey: K([0, 0], [650, 0], [1840, .25], [3350, 1]), alpha: K([0, 1], [4000, 1], [4400, 0])
+    },
+    shake: t => { const a = shakeAt(t, 650, 160, 2), b = shakeAt(t, 2600, 300, 4); return [a[0] + b[0], a[1] + b[1]]; },
+    back(S, t) { for (let k = 0; k < 5; k++) S.puff(-8 - k * 8 - (t - 2600) * .012 * (k - 2), -2 - (t - 2600) * .01, t - 2600 - k * 30, 620, 6); },
+    front(S, t) {
+      const a = t - 1400;
+      if (a >= 0) {
+        const u = Math.min(1, a / 1400), x = 12 + 36 * u, y = -40 - 30 * Math.sin(u * Math.PI) + 39 * u, ang = u < 1 ? -150 - 720 * u : -90;
+        loose(RIFLE, x, y, ang);
+        S.puff(48, -2, a - 1400, 300, 3); sparks(S, 52, -2, a - 1400, '#fff3c0', 4);
+      }
+      const k = tr(t, K([0, 0], [4000, 0], [4300, 1.18, 'out'], [4500, .94], [4700, 1]));
+      if (k > 0) { const w = Math.round(40 * k), h = Math.round(14 * k); S.slab(-30 - (w - 40) / 2, -h + 2, w, h); S.puff(-38 - (t - 4250) * .02, -1, t - 4250, 400, 4); S.puff(14 + (t - 4250) * .02, -1, t - 4250, 400, 4); }
+    }
+  }
+];
+
+const trailC = document.createElement('canvas'); trailC.width = SW; trailC.height = SH; const tctx = trailC.getContext('2d');
+/* ---------- scene ---------- */
+const tile = document.createElement('canvas'); tile.width = SW; tile.height = SH;
+(() => {
+  const g = tile.getContext('2d'), half = 44;
+  for (let dy = -half / 2; dy < half / 2; dy++) {
+    const hw = half - 2 * Math.abs(dy + .5) + 1;
+    for (let dx = -hw; dx < hw; dx++) {
+      const edge = Math.abs(dx) >= hw - 2, seam = !edge && ((dx + 2 * dy + 400) % 22 === 0 || (dx - 2 * dy + 400) % 22 === 0);
+      g.fillStyle = edge ? '#56646e' : seam ? '#2c353c' : '#39444c'; g.fillRect(Math.round(OX + dx), Math.round(OY + dy), 1, 1);
+    }
+  }
+})();
+
+function renderClip(view, t) {
+  const { ctx, clip, S } = view;
+  const flutter = (q, tt) => { q.cape += 3 * Math.sin(tt / 260); q.sash += 4 * Math.sin(tt / 330); return q; };
+  tctx.clearRect(0, 0, SW, SH);
+  if (clip.trail && clip.trail(t)) for (const dt of [160, 80]) { const q = flutter(poseAt(clip, Math.max(0, t - dt)), t - dt); q.ghost = 1; drawFigure(q); tctx.globalAlpha = dt > 100 ? .22 : .38; tctx.drawImage(fig, 0, 0); }
+  const p = flutter(poseAt(clip, t), t), info = drawFigure(p);
+  CUR = ctx;
+  const sh = clip.shake ? clip.shake(t) : [0, 0];
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, SW, SH);
+  ctx.setTransform(1, 0, 0, 1, sh[0], sh[1]);
+  ctx.drawImage(tile, 0, 0);
+  const ring = p.ringRed > 0 ? '#ff5a5a' : '#2ec4b6';
+  if (p.alpha > .05) { S.ell(0, 0, 19, 9, ring); S.ell(0, 0, 18, 8.4, ring); }
+  if (clip.back) clip.back(S, t, info, clip);
+  ctx.drawImage(trailC, 0, 0); ctx.globalAlpha = p.alpha; ctx.drawImage(fig, 0, 0); ctx.globalAlpha = 1;
+  if (!p.cigarOff) cigarSmoke(S, t, info);
+  if (clip.front) clip.front(S, t, info, clip);
+}
+
+const views = [], grid = document.getElementById('grid');
+CLIPS.forEach(clip => {
+  if (clip.id === 'precision') clip.fire = drawFigure(poseAt(clip, 570));
+  if (clip.id === 'long') clip.fire = drawFigure(poseAt(clip, 1650));
+  const plate = document.createElement('article'); plate.className = 'plate';
+  const stage = document.createElement('div'); stage.className = 'stage';
+  const c = document.createElement('canvas'); c.width = SW; c.height = SH;
+  c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'Animation ' + clip.name);
+  stage.appendChild(c); plate.appendChild(stage);
+  const info = document.createElement('div'); info.className = 'info';
+  info.innerHTML = '<span class="tag">' + clip.meta + '</span><h2>' + clip.name + '</h2><p>' + clip.text + '</p>';
+  plate.appendChild(info); grid.appendChild(plate);
+  const ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
+  views.push({ clip, ctx, S: fxKit(ctx), last: -1 });
+});
+
+let speed = 1, clock = 0, prev = null;
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function setSpeed(v) {
+  speed = v;
+  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.speed) === v)));
+}
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setSpeed(Number(b.dataset.speed))));
+function tick(now) {
+  if (prev !== null) clock += Math.min(100, now - prev) * speed;
+  prev = now;
+  views.forEach(v => {
+    const cycle = v.clip.dur + (v.clip.loop ? 0 : 900);
+    let t = Math.floor((clock % cycle) / FRAME) * FRAME;
+    if (t > v.clip.dur) t = v.clip.loop ? t : 0;
+    if (t !== v.last) { renderClip(v, t); v.last = t; }
+  });
+  requestAnimationFrame(tick);
+}
+if (reduced) { setSpeed(0); views.forEach(v => renderClip(v, v.clip.still)); views.forEach(v => { v.last = -2; }); clock = 0; }
+window.__still = () => { setSpeed(0); views.forEach(v => { renderClip(v, v.clip.still); v.last = v.clip.still; }); };
+window.__at = (id, t) => { setSpeed(0); const v = views.find(x => x.clip.id === id); renderClip(v, t); };
+if (!reduced) requestAnimationFrame(tick);
+
+</script>
+</body>
+</html>

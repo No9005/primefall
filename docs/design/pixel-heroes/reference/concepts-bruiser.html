@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bruiser Pixel Concepts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: a concept sheet pinned to a ship bulkhead. One dark world, four plates in a grid, shared notes below. */
+  :root {
+    color-scheme: dark;
+    --hull: #14181c;
+    --plate: #1e252b;
+    --plate-edge: #33404a;
+    --ink: #dfe6e4;
+    --ink-dim: #93a19f;
+    --screen: #6fd6b4;
+    --hazard: #f2b632;
+    --display: "Pixelify Sans", "Courier New", monospace;
+    --body: "IBM Plex Sans", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  body {
+    background: var(--hull);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.55;
+    padding-block: 28px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .sheet { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+  header { display: flex; flex-direction: column; gap: 8px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--screen); }
+  h1 { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 6vw, 46px); line-height: 1.05; margin: 0; text-wrap: balance; }
+  h2 { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0; line-height: 1.1; }
+  h3 { font-family: var(--display); font-weight: 500; font-size: 19px; margin: 0; }
+  p { margin: 0; max-width: 65ch; }
+  .lede { color: var(--ink-dim); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+  .plate { background: var(--plate); border: 1px solid var(--plate-edge); display: flex; flex-direction: column; min-width: 0; }
+  .stage { background: #0e1114; border-bottom: 1px solid var(--plate-edge); display: flex; justify-content: center; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  .stage canvas { width: 100%; max-width: 384px; height: auto; }
+  .info { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .tag { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--hazard); }
+  .info p { color: var(--ink-dim); font-size: 14px; }
+  .row { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .mini { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .mini span, .label { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); letter-spacing: .06em; text-transform: uppercase; }
+  .swatches { display: flex; gap: 0; }
+  .swatches i { width: 22px; height: 22px; display: block; }
+  .block { display: flex; flex-direction: column; gap: 6px; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 32px; border-top: 1px solid var(--plate-edge); padding-top: 24px; }
+  .notes div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .notes p { color: var(--ink-dim); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <header>
+    <span class="eyebrow">Primefall · Hero-Konzept · Pixel Art</span>
+    <h1>Bruiser: vier Designvorschläge</h1>
+    <p class="lede">Jeder Vorschlag zeigt denselben Mann: Exo-Suit mit breiten Schulterplatten, abgesägte Schrotflinte, kein Helm, weißer Militärschnitt, Narbe von oben nach unten über das rechte Auge, Zigarre. Unterschiedlich sind Silhouette, Farbwelt und Haltung. Blick nach Südost wie im Asset Contract, Licht von oben links.</p>
+  </header>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="notes">
+    <div>
+      <h3>Was alle gemeinsam haben</h3>
+      <p>Die Schultern sind bei jedem Vorschlag der breiteste Punkt, damit der Bruiser auf dem Brett auch in 1× sofort von Controller und Assassin zu unterscheiden ist. Das weiße Haar und die Glut der Zigarre sind die zwei hellsten Punkte am Kopf.</p>
+    </div>
+    <div>
+      <h3>Lesbarkeit im Spiel</h3>
+      <p>Unter jedem Sprite steht er in 1× und 2×. In 1× bleibt von der Narbe ein einzelner roter Strich. Das Porträt daneben zeigt, wie Narbe, blindes Auge und Zigarre in Hero Select oder im HUD aussehen können.</p>
+    </div>
+    <div>
+      <h3>Squad-Farbe</h3>
+      <p>Die Squad-Farbe bleibt wie bisher ein Ring unter dem Hero und ist nicht in den Sprite gemalt. Deshalb meidet keine der Paletten Teal oder Rot als Hauptfarbe; Vorschlag C nutzt Rost und sollte gegen den roten Gegner-Ring geprüft werden.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const W = 64, H = 64, C = 28, FOOT = 54;
+
+const BASE = {
+  skin: '#c98f62', skinLo: '#99623f', hair: '#f1f4f5', hairLo: '#b4bfc7',
+  scar: '#8e2f2f', blind: '#e6ddd0', eye: '#15171c', mouth: '#5b332c',
+  cigar: '#6e4526', cigarBand: '#c9a14a', ember: '#ff8a2a',
+  wood: '#8a5630', woodLo: '#5c3820', steel: '#59636e', steelHi: '#9aa6b2', steelLo: '#2e353d',
+  glove: '#2b2f36'
+};
+
+const VARIANTS = [
+  {
+    id: 'A', name: 'Dockhand', tag: 'Industrie-Exo',
+    text: 'Ein umgebauter Lade-Exo aus dem Frachtdeck: kastige Schulterplatten mit Warnstreifen, gelber Lack mit Kratzern. Die Flinte hält er einhändig an der Hüfte. Passt am besten zur Raumschiff-Werkstatt aus deinem Referenzbild.',
+    shoulder: 'box', pose: 'hip', leg: 8, stacks: false, hazard: true,
+    pal: { suit: '#d9a521', hi: '#f6d35b', lo: '#9a6d14', under: '#3a4047', underLo: '#262b31', metal: '#8f9aa3', metalLo: '#4b545c', boot: '#2f343a', bootHi: '#565f68', accent: '#1b1e22', glow: '#6fd6b4', outline: '#15130f' }
+  },
+  {
+    id: 'B', name: 'Veteran', tag: 'Militär-Exo',
+    text: 'Serien-Kampfsuit in Oliv und Stahl. Die Schulterblätter steigen nach außen an wie Klingen und machen die Silhouette zum V. Flinte lässig über der Schulter. Etwas längere Beine, wirkt erwachsener und härter.',
+    shoulder: 'blade', pose: 'shoulder', leg: 11, stacks: false, hazard: false,
+    pal: { suit: '#5f6f45', hi: '#8c9c62', lo: '#3c4a2e', under: '#30353a', underLo: '#1f2327', metal: '#9aa6b2', metalLo: '#4d5761', boot: '#262a2e', bootHi: '#4a525a', accent: '#c9a14a', glow: '#ffb347', outline: '#11150f' }
+  },
+  {
+    id: 'C', name: 'Schrotthändler', tag: 'Eigenbau-Exo',
+    text: 'Zusammengeschweißt aus Schiffsteilen: runde Schulterschalen in Rostrot, offene Kolben, zwei Abgasrohre am Rücken. Flinte gesenkt neben dem Bein. Der schmutzigste und eigenwilligste der vier.',
+    shoulder: 'round', pose: 'down', leg: 8, stacks: true, hazard: false,
+    pal: { suit: '#a4502f', hi: '#d07a4a', lo: '#6b2f1d', under: '#4a4038', underLo: '#2e2823', metal: '#b0a391', metalLo: '#6a6156', boot: '#33291f', bootHi: '#5d4c3b', accent: '#d9c9a8', glow: '#ffd24a', outline: '#170f0c' }
+  },
+  {
+    id: 'D', name: 'Bulkhead', tag: 'Schwerer Sturm-Exo',
+    text: 'Dunkelblauer Sturm-Exo mit geschichteten Schulterplatten und hellen Kanten, Reaktorlicht in der Brust. Flinte beidhändig vor dem Körper, bereit zum Schuss. Der massivste Umriss, liest sich klar als Frontkämpfer.',
+    shoulder: 'layer', pose: 'ready', leg: 8, stacks: true, hazard: false,
+    pal: { suit: '#34506e', hi: '#6f93b8', lo: '#1f3247', under: '#2a2e36', underLo: '#1a1d23', metal: '#c3ccd4', metalLo: '#59636e', boot: '#1e232b', bootHi: '#3e4855', accent: '#c3ccd4', glow: '#7fe3ff', outline: '#0b0f15' }
+  }
+];
+
+function makeGrid(w, h) {
+  const d = new Array(w * h).fill(null);
+  return {
+    w, h, d,
+    set(x, y, c) { if (x >= 0 && y >= 0 && x < w && y < h) d[y * w + x] = c; },
+    get(x, y) { return (x < 0 || y < 0 || x >= w || y >= h) ? null : d[y * w + x]; }
+  };
+}
+
+function outline(g, color) {
+  const add = [];
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    if (g.get(x, y)) continue;
+    if (g.get(x - 1, y) || g.get(x + 1, y) || g.get(x, y - 1) || g.get(x, y + 1)) add.push([x, y]);
+  }
+  add.forEach(([x, y]) => g.set(x, y, color));
+}
+
+function drawGun(R, P, kind, x, y) {
+  const B = BASE;
+  if (kind === 'right') {            // pointing to the viewer's right, x/y = top-left of receiver
+    R(x - 3, y + 2, 4, 3, B.wood); R(x - 3, y + 4, 2, 1, B.woodLo);
+    R(x, y, 5, 4, B.steel); R(x, y, 5, 1, B.steelHi); R(x + 1, y + 3, 4, 1, B.wood);
+    R(x + 5, y, 6, 3, B.steel); R(x + 5, y, 6, 1, B.steelHi); R(x + 5, y + 2, 6, 1, B.steelLo);
+    R(x + 10, y, 1, 3, B.steelLo);
+  } else if (kind === 'up') {        // resting on the shoulder, diagonal up-right
+    R(x - 2, y + 2, 3, 4, B.wood); R(x - 2, y + 5, 2, 1, B.woodLo);
+    for (let i = 0; i < 9; i++) { R(x + i, y - i, 3, 3, i < 3 ? B.steel : B.steelLo); R(x + i, y - i, 2, 1, B.steelHi); }
+    R(x + 9, y - 9, 2, 2, B.steelLo);
+  } else {                           // hanging down, diagonal down-right
+    R(x - 2, y - 3, 3, 3, B.wood);
+    for (let i = 0; i < 8; i++) { R(x + i, y + i, 3, 3, i < 3 ? B.steel : B.steelLo); R(x + i + 1, y + i, 2, 1, B.steelHi); }
+    R(x + 8, y + 8, 2, 2, B.steelLo);
+  }
+}
+
+function drawShoulder(R, P, style, side, sy, hazard) {
+  // side: -1 = viewer's left (lit), 1 = viewer's right (shaded)
+  const main = side < 0 ? P.suit : P.suit, top = P.hi, low = P.lo;
+  const X = (x, w) => side < 0 ? -x - w + 1 : x;   // mirror helper: x measured outward from the body edge 8
+  if (style === 'box') {
+    R(X(8, 11), sy, 11, 9, main); R(X(8, 11), sy, 11, 1, top); R(X(8, 11), sy + 7, 11, 2, low);
+    if (side < 0) R(X(18, 1), sy, 1, 7, top);
+    if (hazard) for (let i = 0; i < 11; i++) if ((i >> 1) % 2 === 0) R(X(8 + i, 1), sy + 5, 1, 2, P.accent);
+    R(X(10, 2), sy + 2, 2, 2, P.metalLo);
+  } else if (style === 'blade') {
+    for (let i = 0; i < 7; i++) {
+      const up = i, x = 8 + i * 2;
+      R(X(x, 2), sy + 3 - up, 2, 6 + Math.min(up, 2), main);
+      R(X(x, 2), sy + 3 - up, 2, 1, top);
+      R(X(x, 2), sy + 8 - up + Math.min(up, 2), 2, 1, low);
+    }
+    R(X(20, 2), sy - 4, 2, 2, P.metal);
+    R(X(9, 5), sy + 6, 5, 1, P.accent);
+  } else if (style === 'round') {
+    R(X(8, 10), sy + 2, 10, 6, main); R(X(9, 8), sy + 1, 8, 8, main); R(X(10, 6), sy, 6, 10, main);
+    R(X(10, 6), sy, 6, 1, top); R(X(9, 1), sy + 1, 1, 1, top); R(X(16, 1), sy + 1, 1, 1, top);
+    R(X(9, 8), sy + 8, 8, 1, low); R(X(10, 6), sy + 9, 6, 1, low);
+    R(X(12, 2), sy + 3, 2, 2, P.accent); R(X(11, 1), sy + 6, 1, 1, P.metalLo); R(X(15, 1), sy + 6, 1, 1, P.metalLo);
+  } else {
+    R(X(7, 13), sy - 1, 13, 4, main); R(X(7, 13), sy - 1, 13, 1, P.metal); R(X(7, 13), sy + 2, 13, 1, low);
+    R(X(8, 11), sy + 3, 11, 3, main); R(X(8, 11), sy + 3, 11, 1, top); R(X(8, 11), sy + 5, 11, 1, low);
+    R(X(8, 9), sy + 6, 9, 3, main); R(X(8, 9), sy + 6, 9, 1, top); R(X(8, 9), sy + 8, 9, 1, low);
+  }
+}
+
+function buildSprite(v) {
+  const g = makeGrid(W, H), P = v.pal, B = BASE, L = v.leg;
+  const R = (x, y, w, h, c) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) g.set(C + x + i, y + j, c); };
+  const legTop = FOOT - 3 - L, hipTop = legTop - 3, torsoTop = hipTop - 15;
+  const sy = torsoTop - 2, headTop = torsoTop - 13;
+
+  // power pack and exhaust stacks behind the head
+  R(-8, torsoTop - 5, 16, 6, P.metalLo); R(-8, torsoTop - 5, 16, 1, P.metal);
+  if (v.stacks) {
+    R(-11, torsoTop - 10, 3, 8, P.metalLo); R(-11, torsoTop - 10, 3, 1, P.glow);
+    R(8, torsoTop - 9, 3, 7, P.metalLo); R(8, torsoTop - 9, 3, 1, P.glow);
+  }
+
+  // legs, knee plates, struts, boots
+  R(-8, legTop, 7, L, P.under); R(1, legTop, 7, L, P.under);
+  R(-5, legTop, 1, L, P.underLo); R(4, legTop, 1, L, P.underLo);
+  R(-9, legTop, 1, L, P.metal); R(8, legTop, 1, L, P.metalLo);
+  const k = legTop + Math.floor(L / 2) - 2;
+  R(-9, k, 8, 4, P.suit); R(-9, k, 8, 1, P.hi); R(-9, k + 3, 8, 1, P.lo);
+  R(1, k, 8, 4, P.suit); R(1, k, 8, 1, P.hi); R(1, k + 3, 8, 1, P.lo); R(6, k, 3, 4, P.lo);
+  R(-11, FOOT - 3, 10, 4, P.boot); R(-11, FOOT - 3, 10, 1, P.bootHi); R(-11, FOOT - 1, 3, 1, P.bootHi);
+  R(1, FOOT - 3, 11, 4, P.boot); R(1, FOOT - 3, 11, 1, P.bootHi);
+
+  // hips and belt
+  R(-8, hipTop, 16, 3, P.under); R(-8, hipTop, 16, 1, P.metalLo); R(-2, hipTop, 4, 2, P.accent);
+
+  // abdomen and chest plate
+  R(-7, torsoTop + 10, 14, 5, P.under); R(-7, torsoTop + 12, 14, 1, P.underLo);
+  R(-8, torsoTop + 10, 1, 5, P.metal); R(7, torsoTop + 10, 1, 5, P.metalLo);
+  R(-9, torsoTop, 18, 10, P.suit); R(-9, torsoTop, 18, 1, P.hi); R(-9, torsoTop, 1, 9, P.hi);
+  R(6, torsoTop + 1, 3, 9, P.lo); R(-9, torsoTop + 9, 18, 1, P.lo);
+  R(-1, torsoTop + 2, 1, 6, P.lo);
+  R(2, torsoTop + 3, 3, 3, P.glow); R(2, torsoTop + 5, 3, 1, P.metalLo);
+  R(-6, torsoTop + 3, 3, 1, P.lo); R(-6, torsoTop + 5, 3, 1, P.lo);
+  R(-4, torsoTop - 1, 9, 2, P.metalLo);
+
+  // left arm (viewer's left) hangs, except in the two-handed pose
+  if (v.pose === 'ready') {
+    R(-15, sy + 8, 6, 6, P.under); R(-15, sy + 13, 12, 5, P.suit); R(-15, sy + 13, 12, 1, P.hi); R(-15, sy + 17, 12, 1, P.lo);
+    R(-4, sy + 14, 4, 4, B.glove);
+  } else {
+    R(-15, sy + 8, 6, 7, P.under); R(-16, sy + 8, 1, 7, P.metal);
+    R(-17, sy + 14, 8, 7, P.suit); R(-17, sy + 14, 8, 1, P.hi); R(-17, sy + 20, 8, 1, P.lo); R(-17, sy + 15, 1, 5, P.hi);
+    R(-16, sy + 21, 6, 3, B.glove);
+  }
+
+  // right arm (viewer's right) carries the shotgun
+  if (v.pose === 'hip') {
+    R(10, sy + 8, 6, 6, P.under);
+    R(10, sy + 13, 9, 5, P.suit); R(10, sy + 13, 9, 1, P.hi); R(10, sy + 17, 9, 1, P.lo);
+    drawGun(R, P, 'right', 21, sy + 13);
+    R(18, sy + 14, 4, 4, B.glove);
+  } else if (v.pose === 'shoulder') {
+    R(10, sy + 9, 6, 6, P.under);
+    R(11, sy + 4, 6, 9, P.suit); R(11, sy + 4, 1, 9, P.hi); R(15, sy + 4, 2, 9, P.lo);
+  } else if (v.pose === 'down') {
+    R(10, sy + 8, 6, 7, P.under); R(16, sy + 8, 1, 7, P.metalLo);
+    R(10, sy + 14, 8, 7, P.suit); R(10, sy + 14, 8, 1, P.hi); R(10, sy + 20, 8, 1, P.lo); R(15, sy + 15, 3, 5, P.lo);
+    drawGun(R, P, 'down', 15, sy + 23);
+    R(11, sy + 21, 6, 3, B.glove);
+  } else {
+    R(10, sy + 8, 6, 6, P.under);
+    R(6, sy + 13, 10, 5, P.suit); R(6, sy + 13, 10, 1, P.hi); R(6, sy + 17, 10, 1, P.lo);
+    drawGun(R, P, 'right', 11, sy + 12);
+    R(8, sy + 14, 4, 4, B.glove);
+    R(-4, sy + 14, 4, 4, B.glove);
+  }
+
+  drawShoulder(R, P, v.shoulder, -1, sy, v.hazard);
+  drawShoulder(R, P, v.shoulder, 1, sy, v.hazard);
+
+  if (v.pose === 'shoulder') { drawGun(R, P, 'up', 13, sy + 1); R(12, sy + 1, 5, 4, B.glove); }
+
+  // head: turned slightly towards the viewer's right (south-east)
+  const hy = headTop;
+  R(-5, hy + 3, 11, 9, B.skin); R(5, hy + 3, 1, 8, B.skinLo);
+  R(-5, hy + 11, 1, 1, null); R(5, hy + 11, 1, 1, null); R(-4, hy + 12, 9, 1, B.skinLo);
+  R(-2, hy + 13, 5, 1, B.skinLo);
+  R(-6, hy, 13, 4, B.hair); R(-6, hy, 1, 1, null); R(6, hy, 1, 1, null);
+  R(-6, hy + 3, 13, 1, B.hairLo); R(-6, hy + 4, 2, 3, B.hairLo); R(5, hy + 4, 2, 2, B.hairLo); R(6, hy + 1, 1, 2, B.hairLo);
+  R(-6, hy + 7, 1, 2, B.skinLo);
+  R(-3, hy + 5, 4, 1, B.hairLo); R(2, hy + 5, 3, 1, B.hairLo);
+  R(-2, hy + 6, 2, 1, B.blind); R(2, hy + 6, 2, 1, B.eye); R(2, hy + 6, 1, 1, '#f3efe6');
+  R(-2, hy + 4, 1, 2, B.scar); R(-2, hy + 7, 1, 1, B.scar); R(-1, hy + 8, 1, 1, B.scar); R(-2, hy + 6, 1, 1, B.scar);
+  R(1, hy + 7, 1, 2, B.skinLo);
+  R(-4, hy + 10, 9, 2, '#a9785a'); R(-1, hy + 10, 4, 1, B.mouth);
+  R(2, hy + 10, 5, 1, B.cigar); R(4, hy + 10, 1, 1, B.cigarBand); R(7, hy + 10, 1, 1, B.ember);
+
+  outline(g, P.outline);
+
+  // smoke and ember glow sit outside the outline
+  const sx = C + 8, smoke = 'rgba(220,226,230,';
+  g.set(sx, hy + 8, smoke + '.75)'); g.set(sx + 1, hy + 6, smoke + '.6)'); g.set(sx, hy + 4, smoke + '.45)');
+  g.set(sx + 1, hy + 2, smoke + '.3)'); g.set(sx + 2, hy, smoke + '.2)');
+  return g;
+}
+
+function buildPortrait(v) {
+  const g = makeGrid(36, 36), P = v.pal, B = BASE;
+  const R = (x, y, w, h, c) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) g.set(x + i, y + j, c); };
+  // collar and shoulder plates
+  R(1, 28, 34, 8, P.suit); R(1, 28, 34, 1, P.hi); R(1, 31, 10, 1, P.lo); R(25, 31, 10, 1, P.lo); R(26, 29, 9, 7, P.lo);
+  R(11, 27, 14, 9, P.under); R(11, 27, 14, 1, P.metalLo); R(16, 31, 4, 3, P.glow);
+  R(13, 24, 9, 4, B.skinLo);
+  // head
+  R(8, 8, 18, 16, B.skin); R(24, 8, 2, 14, B.skinLo); R(8, 22, 2, 2, null); R(24, 22, 2, 2, null);
+  R(10, 24, 14, 1, B.skinLo);
+  R(7, 4, 20, 5, B.hair); R(7, 4, 1, 1, null); R(26, 4, 1, 1, null); R(7, 8, 20, 1, B.hairLo);
+  R(7, 9, 3, 5, B.hairLo); R(24, 9, 3, 4, B.hairLo); R(26, 5, 1, 3, B.hairLo);
+  for (let x = 9; x < 26; x += 3) R(x, 5, 1, 2, B.hairLo);
+  R(7, 14, 1, 4, B.skinLo);
+  R(10, 12, 6, 1, B.hairLo); R(18, 12, 6, 1, B.hairLo); R(10, 13, 6, 1, B.skinLo); R(18, 13, 6, 1, B.skinLo);
+  R(11, 14, 4, 2, B.blind); R(19, 14, 4, 2, '#f3efe6'); R(20, 14, 2, 2, B.eye);
+  // scar: top to bottom across his right eye (viewer's left)
+  R(12, 9, 1, 3, B.scar); R(13, 11, 1, 8, B.scar); R(14, 18, 1, 3, B.scar); R(12, 10, 1, 1, '#c96a5a'); R(14, 16, 1, 1, '#c96a5a');
+  R(16, 15, 2, 5, B.skinLo); R(15, 19, 4, 1, '#8a5638');
+  R(9, 20, 16, 4, '#a9785a'); R(13, 21, 8, 1, B.mouth);
+  R(19, 21, 10, 2, B.cigar); R(19, 21, 10, 1, '#86573a'); R(23, 21, 1, 2, B.cigarBand); R(29, 21, 2, 2, B.ember); R(31, 21, 1, 2, '#9a9a9a');
+  outline(g, P.outline);
+  const s = 'rgba(220,226,230,';
+  R(31, 18, 2, 2, s + '.7)'); R(32, 15, 2, 2, s + '.55)'); R(31, 12, 2, 2, s + '.4)'); R(32, 9, 2, 2, s + '.28)'); R(33, 6, 2, 2, s + '.18)');
+  return g;
+}
+
+function paint(ctx, g, ox, oy) {
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    const c = g.get(x, y); if (!c) continue;
+    ctx.fillStyle = c; ctx.fillRect(ox + x, oy + y, 1, 1);
+  }
+}
+
+function paintTile(ctx, cx, cy, half) {
+  // 2:1 diamond deck plate with a darker rim and a soft contact shadow
+  for (let dy = -half / 2; dy < half / 2; dy++) {
+    const hw = half - 2 * Math.abs(dy + .5) + 1;
+    for (let dx = -hw; dx < hw; dx++) {
+      const edge = Math.abs(dx) >= hw - 2;
+      const seam = !edge && ((dx + 2 * dy + 400) % 16 === 0 || (dx - 2 * dy + 400) % 16 === 0);
+      ctx.fillStyle = edge ? '#56646e' : seam ? '#2c353c' : '#39444c';
+      ctx.fillRect(Math.round(cx + dx), Math.round(cy + dy), 1, 1);
+    }
+  }
+  ctx.fillStyle = 'rgba(0,0,0,.35)';
+  for (let dy = -3; dy <= 3; dy++) { const hw = 14 - Math.abs(dy) * 3; ctx.fillRect(cx - hw, cy + dy, hw * 2, 1); }
+}
+
+function canvas(w, h, cssW) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  if (cssW) { c.style.width = cssW + 'px'; c.style.height = (cssW * h / w) + 'px'; }
+  return c;
+}
+
+const grid = document.getElementById('grid');
+VARIANTS.forEach(v => {
+  const sprite = buildSprite(v), portrait = buildPortrait(v);
+  const plate = document.createElement('article'); plate.className = 'plate';
+
+  const stage = document.createElement('div'); stage.className = 'stage';
+  const big = canvas(72, 76);
+  const bctx = big.getContext('2d');
+  paintTile(bctx, 32, 59, 30); paint(bctx, sprite, 4, 6);
+  big.setAttribute('role', 'img'); big.setAttribute('aria-label', 'Bruiser, Vorschlag ' + v.id + ': ' + v.name);
+  stage.appendChild(big); plate.appendChild(stage);
+
+  const info = document.createElement('div'); info.className = 'info';
+  info.innerHTML = '<span class="tag">Vorschlag ' + v.id + ' · ' + v.tag + '</span><h2>' + v.name + '</h2><p>' + v.text + '</p>';
+
+  const row = document.createElement('div'); row.className = 'row';
+  [[1, '1×'], [2, '2×']].forEach(([s, label]) => {
+    const m = document.createElement('div'); m.className = 'mini';
+    const c = canvas(W, H, W * s); paint(c.getContext('2d'), sprite, 0, 0);
+    const t = document.createElement('span'); t.textContent = label;
+    m.appendChild(c); m.appendChild(t); row.appendChild(m);
+  });
+  const pm = document.createElement('div'); pm.className = 'mini';
+  const pc = canvas(36, 36, 108); paint(pc.getContext('2d'), portrait, 0, 0);
+  const pt = document.createElement('span'); pt.textContent = 'Porträt';
+  pm.appendChild(pc); pm.appendChild(pt); row.appendChild(pm);
+  info.appendChild(row);
+
+  const block = document.createElement('div'); block.className = 'block';
+  const lab = document.createElement('span'); lab.className = 'label'; lab.textContent = 'Palette';
+  const sw = document.createElement('div'); sw.className = 'swatches';
+  [v.pal.hi, v.pal.suit, v.pal.lo, v.pal.metal, v.pal.under, v.pal.glow, BASE.hair, BASE.skin, BASE.ember].forEach(col => {
+    const i = document.createElement('i'); i.style.background = col; i.title = col; sw.appendChild(i);
+  });
+  block.appendChild(lab); block.appendChild(sw); info.appendChild(block);
+
+  plate.appendChild(info); grid.appendChild(plate);
+});
+</script>
+</body>
+</html>
