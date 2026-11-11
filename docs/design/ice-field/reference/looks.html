@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eisfeld Looks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: four looks of the same outdoor map, one below the other; each is the whole field plus three close-ups. */
+  :root {
+    color-scheme: dark;
+    --hull: #0b1016;
+    --plate: #141b24;
+    --plate-edge: #2a3846;
+    --ink: #e2ebf0;
+    --ink-dim: #93a4b0;
+    --screen: #7fe3ff;
+    --hazard: #f2b632;
+    --display: "Pixelify Sans", "Courier New", monospace;
+    --body: "IBM Plex Sans", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  body {
+    background: var(--hull); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55;
+    padding-block: 28px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .sheet { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+  header { display: flex; flex-direction: column; gap: 8px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--screen); }
+  h1 { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 6vw, 46px); line-height: 1.05; margin: 0; text-wrap: balance; }
+  h2 { font-family: var(--display); font-weight: 700; font-size: 26px; margin: 0; line-height: 1.1; }
+  h3 { font-family: var(--display); font-weight: 500; font-size: 19px; margin: 0; }
+  p { margin: 0; max-width: 68ch; }
+  .lede { color: var(--ink-dim); }
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px 24px; border: 1px solid var(--plate-edge); background: var(--plate); padding: 14px 18px; }
+  .legend div { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14px; color: var(--ink-dim); }
+  .legend b { color: var(--ink); font-weight: 500; }
+  .look { background: var(--plate); border: 1px solid var(--plate-edge); display: flex; flex-direction: column; min-width: 0; }
+  .look .head { padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--hazard); }
+  .look .head p { color: var(--ink-dim); font-size: 14px; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  .deck { border-block: 1px solid var(--plate-edge); position: relative; }
+  .deck canvas { width: 100%; height: auto; }
+  .deck canvas.snow { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+  .crops { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; padding: 14px 18px 6px; }
+  .crop { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .crop canvas { width: 100%; height: auto; border: 1px solid var(--plate-edge); }
+  .crop span { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); }
+  .foot { padding: 10px 18px 16px; display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: center; }
+  .swatches { display: flex; }
+  .swatches i { width: 20px; height: 20px; display: block; }
+  .facts { display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 13px; color: var(--ink-dim); }
+  .facts b { color: var(--ink); font-weight: 500; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 32px; border-top: 1px solid var(--plate-edge); padding-top: 24px; }
+  .notes div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .notes p { color: var(--ink-dim); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <header>
+    <span class="eyebrow">Primefall · zweite Karte · Pixel Art</span>
+    <h1>Schnee und Eis: vier Looks zur Auswahl</h1>
+    <p class="lede">Eine Außenkarte in Schnee und Eis, durchsetzt mit leuchtenden Alien-Artefakten und der Technik einer menschlichen Expedition. Neben der Prime Zone in der Mitte gibt es zwei Nebenziele. Viermal derselbe Aufbau; unterschiedlich sind Tageszeit, Gestein, Artefakte und das, was in der Prime Zone steht.</p>
+  </header>
+
+  <div class="legend">
+    <div><b>Prime Zone</b>3 × 3 Kacheln in der Mitte, um das große Artefakt.</div>
+    <div><b>Hol und Bring</b>Zwei schwebende Relikte oben und unten in der Mitte; abgegeben wird auf dem Landefeld mit Leuchtmast oben links und rechts.</div>
+    <div><b>Escort</b>Ein Frachtschlitten auf der markierten Route, die unten quer über die Karte läuft.</div>
+    <div><b>Spawn</b>Die Lager der beiden Squads am linken und rechten Rand.</div>
+  </div>
+
+  <div id="looks" style="display:flex;flex-direction:column;gap:20px"></div>
+
+  <div class="notes">
+    <div>
+      <h3>Der Aufbau ist erfunden</h3>
+      <p>Für diese Karte gibt es noch keine Spieldaten. Ich habe einen Platzhalter in der Größe des Reactor Deck (31 × 17) gebaut, damit man Prime Zone, Relikte, Landefelder und Escort-Route im Bild sieht. Wo die Ziele wirklich liegen und wie sie funktionieren, ist eine Regelfrage und hier nicht entschieden.</p>
+    </div>
+    <div>
+      <h3>Gleiche Bausteine wie beim Reactor Deck</h3>
+      <p>Kachelgröße, Wandblöcke und das dünne Half Cover an den zwei hinteren Kanten sind dieselben. Ein späterer Atlas würde also genauso modular aufgebaut wie der für Notstrom. Neu sind Eisflächen, die nicht an Kacheln gebunden sind, Schneekappen und Eiszapfen.</p>
+    </div>
+    <div>
+      <h3>Zwei Lichtfarben als Regel</h3>
+      <p>In allen vier Looks leuchtet Alien-Technik kalt (Cyan, Weißblau, Türkis oder Grün) und Menschentechnik warm (Orange). So erkennt man Relikte und Prime Zone auf der einen, Landefelder und Schlitten auf der anderen Seite. Türkis liegt nah an der Squad-Farbe; das müsste im gewählten Look geprüft werden.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// A placeholder layout: # cliff, . snow, H Half Cover, F Full Cover, P Prime Zone, S Spawn,
+// R relic to fetch, D landing pad to bring it to, E escort route.
+const MAP = [
+  "###############################", "#......##...........##........#", "#..H........H..R..H........H..#", "#.....F...........F.....F.....#",
+  "#D...........HH.HH...........D#", "#......###...........###......#", "#..H.....#..H.....H..#.....H..#", "#S............PPP............S#",
+  "#S.....F......PPP......F.....S#", "#S............PPP............S#", "#..H.....#..H.....H..#.....H..#", "#......###...........###......#",
+  "#EEEEEEEEEEEEEEEEEEEEEEEEEEEEE#", "#.....F......HH.HH......F.....#", "#..H........H..R..H........H..#", "#......##...........##........#", "###############################"
+];
+const COLS = 31, ROWS = 17, HW = 16, HH = 8, WALL = 22, W = 816, H = 486, X0 = 296, Y0 = 82;
+const K = (c, r) => (r < 0 || r >= ROWS || c < 0 || c >= COLS) ? ' ' : MAP[r][c];
+const hash = (a, b, c = 0) => { let n = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263) + Math.imul(c | 0, 1274126177)) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+const frac = x => x - Math.floor(x);
+const rgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const WHITE = [255, 255, 255], BLACK = [0, 0, 0];
+
+const LOOKS = [
+  {
+    id: 'A', name: 'Gletschernacht', tag: 'blaue Nacht, leuchtende Flora',
+    text: 'Nach deinem ersten Referenzbild: alles in Blau, eine klare Nacht über dem Gletscher. Dunkle Felswände mit Schneekappen und langen Eiszapfen, zugefrorene Tümpel, dazwischen Frostpflanzen mit leuchtenden Blüten und kleine Alien-Stelen. In der Prime Zone schwebt ein Kristallsplitter über einer gravierten Platte, umkreist von kleinen Scherben.',
+    centre: 'schwebender Kristallsplitter', light: 'Nacht, cyanfarbenes Leuchten', cover: 'Eisplatten',
+    ground: 'snow', snow: '#8fb2d2', snow2: '#a9c8e2', seam: '#3c5876', ice: '#5f93c4', ice2: '#7fb2dc', iceAt: .42, snowAt: 9,
+    wallTop: '#c4dcf0', wallL: '#3a5676', wallR: '#2a405c', mortar: '#1e3048', icicle: .34, icicleC: '#cfe6f8', wallVar: 10, strip: .16,
+    alien: '#2c4460', alien2: '#36506e', glow: '#6fe0ff', glowHi: '#e0f8ff', human: '#ffa040', metal: '#56687c', metal2: '#3e4c5e',
+    coverStyle: 'ice', coverL: '#9cc8ea', coverR: '#78a8d0', coverTop: '#e6f4ff',
+    plant1: '#4a7aa4', plant2: '#2e547c', flower: '#8ff0ff', glowFlower: true, plants: .1, artifacts: .035,
+    piece: 'monolith', amb: [.50, .60, .82], centreI: .9, lightK: .8, sky: '#0d1a2c', wind: [.012, .03], flakes: 120
+  },
+  {
+    id: 'B', name: 'Tempelruine', tag: 'graublaues Gemäuer, weißblaue Flammen',
+    text: 'Nach deinem zweiten Referenzbild: Die Karte liegt in den Resten eines Alien-Tempels. Statt Felsen stehen Mauern aus behauenem Stein mit Glyphenbändern, der Boden ist ein Plattenbelag mit eingemeißelten Rosetten, auf dem der Schnee nur stellenweise liegt. In der Prime Zone steht ein Obelisk mit einer weißblauen Flamme. Half Cover sind eingestürzte Mauerreste.',
+    centre: 'Obelisk mit Flamme', light: 'bedeckter Tag, weißblaue Flammen', cover: 'Mauerreste',
+    ground: 'stone', floor: '#667a90', floor2: '#72869c', snow: '#b6cce0', snow2: '#cadcec', seam: '#44566c', ice: '#86a8c8', ice2: '#9cbcd8', iceAt: .75, snowAt: .62,
+    wallTop: '#aebfd0', wallL: '#56687e', wallR: '#415266', mortar: '#2e3c4e', icicle: .14, icicleC: '#d6e6f4', wallVar: 2, strip: .3,
+    alien: '#3a4a60', alien2: '#44566c', glow: '#bfe8ff', glowHi: '#ffffff', human: '#ff9a3a', metal: '#5c6a7a', metal2: '#465260',
+    coverStyle: 'ruin', coverL: '#6a7c92', coverR: '#526276', coverTop: '#c6d6e6',
+    plant1: '#7a9ab8', plant2: '#56789a', flower: '#a8f0ff', glowFlower: true, plants: .05, artifacts: .05,
+    piece: 'altar', amb: [.72, .78, .92], centreI: .7, lightK: .45, sky: '#141e2a', wind: [.006, .018], flakes: 70
+  },
+  {
+    id: 'C', name: 'Kristallfeld', tag: 'heller Tag, violette Schatten, Eiskristalle',
+    text: 'Nach deinem dritten Referenzbild: ein heller, kalter Tag. Weißer Schnee auf großen Eisplatten, Mauern aus blauviolettem Stein, überall wachsen Eiskristalle aus dem Boden. Die Artefakte brennen in Türkis. In der Prime Zone steht ein mannshoher Kristallhaufen mit türkisem Kern; Half Cover sind Reihen aus Kristallspitzen.',
+    centre: 'Kristallhaufen mit türkisem Kern', light: 'heller Tag, türkise Flammen', cover: 'Kristallspitzen',
+    ground: 'slab', floor: '#8ea4dc', floor2: '#9cb2e6', snow: '#eef4ff', snow2: '#ffffff', seam: '#6a74c0', ice: '#a8c4f0', ice2: '#bcd4f8', iceAt: .6, snowAt: .1,
+    wallTop: '#f4f8ff', wallL: '#6f66c8', wallR: '#5346a8', mortar: '#3c3288', icicle: .2, icicleC: '#ffffff', wallVar: 4, strip: .18,
+    alien: '#5a52b0', alien2: '#665ec0', glow: '#5ff0d8', glowHi: '#e8fffa', human: '#ff9040', metal: '#7480a8', metal2: '#5c6690',
+    coverStyle: 'crystal', coverL: '#c8e0ff', coverR: '#a0c0f0', coverTop: '#ffffff',
+    plant1: '#b8d4f8', plant2: '#8cb0e8', flower: '#ffffff', glowFlower: false, plants: .12, artifacts: .03,
+    piece: 'cluster', amb: [.94, .94, 1.04], centreI: .6, lightK: .35, sky: '#1a2440', wind: [.004, .014], flakes: 50
+  },
+  {
+    id: 'D', name: 'Polarnacht', tag: 'dunkel, Polarlicht, Expeditionslager',
+    text: 'Der Look mit dem stärksten Science-Fiction-Anteil: tiefe Nacht mit grünem Polarlicht, es schneit quer im Wind. Die Expedition hat Barrikaden mit orangefarbenen Warnleuchten aufgestellt; die Alien-Artefakte antworten in Grün. In der Prime Zone steckt ein halb ausgegrabenes Ringtor im Eis, in dem eine grüne Membran flimmert, per Kabel an einen Generator der Expedition angeschlossen.',
+    centre: 'Ringtor mit Generator', light: 'tiefe Nacht, grünes Polarlicht, orange Warnleuchten', cover: 'Barrikaden der Expedition',
+    ground: 'snow', snow: '#56708c', snow2: '#6c88a4', seam: '#263a50', ice: '#3e6688', ice2: '#52809e', iceAt: .5, snowAt: 9,
+    wallTop: '#8eaac4', wallL: '#2a3c52', wallR: '#1e2c3e', mortar: '#131e2c', icicle: .26, icicleC: '#a8c4dc', wallVar: 12, strip: .12,
+    alien: '#1e3038', alien2: '#263c44', glow: '#5cffa0', glowHi: '#e0ffe8', human: '#ff8a2a', metal: '#4a5868', metal2: '#34404e',
+    coverStyle: 'barricade', coverL: '#4e5c6c', coverR: '#3a4654', coverTop: '#9ab0c4',
+    plant1: '#3a5a70', plant2: '#263e52', flower: '#7cffb0', glowFlower: true, plants: .05, artifacts: .05,
+    piece: 'gate', amb: [.32, .42, .52], centreI: 1.2, lightK: 1, sky: '#070c14', aurora: true, wind: [.05, .04], flakes: 220
+  }
+];
+LOOKS.forEach(T => { for (const k in T) if (typeof T[k] === 'string' && T[k][0] === '#') T[k] = rgb(T[k]); });
+
+function makeBuf() {
+  const d = new Uint8ClampedArray(W * H * 4), e = new Uint8Array(W * H);
+  return {
+    d, e,
+    px(x, y, c, a = 1, em = 0) {
+      x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= W || y >= H) return;
+      const i = (y * W + x) * 4;
+      if (d[i + 3] === 0) { d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = a * 255; }
+      else { d[i] += (c[0] - d[i]) * a; d[i + 1] += (c[1] - d[i + 1]) * a; d[i + 2] += (c[2] - d[i + 2]) * a; d[i + 3] = Math.max(d[i + 3], a * 255); }
+      if (em) e[y * W + x] = em; else if (a > .6) e[y * W + x] = 0;
+    }
+  };
+}
+const tileTop = (c, r) => ({ x: X0 + (c - r) * HW, y: Y0 + (c + r) * HH });
+const mid = (c, r) => { const o = tileTop(c, r); return { x: o.x, y: o.y + HH }; };
+
+/* ---------- ground ---------- */
+function groundColor(T, c, r, u, v, sx, sy) {
+  const k = K(c, r), gx = c + u, gy = r + v, d = Math.hypot(u - .5, v - .5);
+  const n = Math.sin(gx * .9 + 1.3) * Math.sin(gy * 1.1 + .7) + .5 * Math.sin((gx + gy) * .6 + 2);
+  const snowy = Math.sin(gx * 1.3) * Math.sin(gy * .8 + 1) + hash(sx >> 1, sy >> 1, 2) * .5;
+  const snow = () => { let s = mix(T.snow, T.snow2, hash(sx >> 1, sy >> 1, 1) * .6 + .2 * (n * .5 + .5)); if (hash(sx >> 2, sy >> 1, 5) < .08) s = mix(s, WHITE, .3); return s; };
+  let col, em = 0;
+  if (T.ground === 'snow') { col = snow(); if (u < .05 || v < .05) col = mix(col, T.seam, .2); }
+  else {
+    col = mix(T.floor, T.floor2, hash(c, r, 1));
+    if (u < .06 || v < .06) col = T.seam; else if (u > .94 || v > .94) col = mix(col, WHITE, .1);
+    if (T.ground === 'stone' && hash(c, r, 6) < .2 && (Math.abs(d - .28) < .04 || d < .07)) col = mix(col, T.seam, .55);
+    if (T.ground === 'slab' && hash(sx >> 2, sy >> 1, 7) < .1) col = mix(col, WHITE, .18);
+    if (snowy > T.snowAt) col = snow();
+  }
+  if (k === '.' && n > T.iceAt) {
+    col = mix(T.ice, T.ice2, hash(sx >> 2, sy >> 2, 3) * .6);
+    if (n < T.iceAt + .06) col = mix(col, WHITE, .45);
+    if (hash(sx, sy >> 1, 4) < .025 || Math.abs(frac(gx * 1.7 + gy * .6) - .5) < .014) col = mix(col, WHITE, .5);
+  }
+  const dx = Math.max(14 - gx, 0, gx - 17), dy = Math.max(7 - gy, 0, gy - 10), near = Math.max(dx, dy);
+  if (near > 0 && near < .26) { col = T.alien; if (frac((gx + gy) * 2) < .22) { col = T.glow; em = 1; } }
+  if (k === 'P') {
+    col = mix(T.alien, T.alien2, hash(c, r, 1));
+    const ring = Math.hypot(gx - 15.5, gy - 8.5);
+    if (frac(u * 3) < .1 || frac(v * 3) < .1) col = mix(col, T.glow, .45);
+    if (Math.abs(ring - 1.25) < .07 || Math.abs(ring - .7) < .04) { col = T.glow; em = 1; }
+  }
+  if (k === 'R') { col = mix(T.alien, T.alien2, hash(sx >> 1, sy >> 1, 8)); if (Math.abs(d - .4) < .045 || (d < .3 && frac(Math.atan2(v - .5, u - .5) / Math.PI * 3) < .12)) { col = T.glow; em = 1; } }
+  if (k === 'D') { col = hash(sx, sy, 9) < .08 ? T.snow : T.metal2; if (u < .08 || v < .08) col = mix(T.metal2, BLACK, .3); if (Math.abs(d - .36) < .05 || (Math.abs(u - .5) < .04 && d < .2) || (Math.abs(v - .5) < .04 && d < .2)) { col = T.human; em = 1; } }
+  if (k === 'E') {
+    col = mix(col, T.seam, .3);
+    if (Math.abs(v - .28) < .045 || Math.abs(v - .72) < .045) col = T.metal;
+    if (frac(u * 2 + .1) < .2 && Math.abs(v - .5) < .07) { col = T.human; em = 1; }
+  }
+  if (k === 'S') { col = mix(col, T.seam, .22); if (frac(v * 3) < .2 && u > .15 && u < .85) col = T.metal2; if (hash(sx, sy, 10) < .1) col = T.snow2; }
+  return [col, em];
+}
+function drawGround(B, T, c, r, fade) {
+  const o = tileTop(c, r);
+  for (let j = 0; j < 16; j++) {
+    const w = 2 * (j < 8 ? j + 1 : 16 - j);
+    for (let x = -w; x < w; x++) { if (fade && hash((o.x + x) >> 1, (o.y + j) >> 1, 12) > fade) continue; const a = (x + .5) / HW, b = (j + .5) / HH, [col, em] = groundColor(T, c, r, (a + b) / 2, (b - a) / 2, o.x + x, o.y + j); B.px(o.x + x, o.y + j, fade ? mix(col, T.sky, .25) : col, 1, em); }
+  }
+}
+
+/* ---------- cliffs and walls with snow caps and icicles ---------- */
+function drawWall(B, T, c, r, lamps) {
+  const o = tileTop(c, r), cut = r === ROWS - 1 || c === COLS - 1;
+  const h = cut ? 5 : WALL + Math.floor(hash(c, r, 13) * T.wallVar) - (c > 0 && r > 0 && !cut ? 3 : 0), lit = !cut && hash(c, r, 14) < T.strip;
+  const face = (x, yBase, s, side) => {
+    const ice = hash(x, c * 7 + r, 15) < T.icicle ? .2 + hash(x, r, 16) * .45 : 0;
+    for (let k = 0; k <= h; k++) {
+      const t = k / h, row = Math.floor(t * 4); let col = side ? T.wallR : T.wallL, em = 0;
+      if (cut) col = mix(col, T.snow, .5);
+      if (frac(t * 4) < .14 || frac(s * 2 + (row % 2) * .5) < .1) col = T.mortar;
+      else if (hash(Math.floor(s * 2 + (row % 2) * .5) + c * 3, row + r * 5, 17) < .3) col = mix(col, WHITE, .08);
+      if (lit && t > .44 && t < .58 && frac(s * 3 + .15) < .45) { col = T.glow; em = 1; }
+      if (t < .1 + hash(x >> 1, r, 18) * .12) col = mix(T.snow, T.snow2, hash(x, k, 19));
+      if (!cut && t > 1 - ice) col = t > 1 - ice + .08 ? T.icicleC : mix(T.icicleC, col, .4);
+      B.px(x, yBase - k, col, 1, em);
+    }
+  };
+  for (let x = 0; x < HW; x++) { face(o.x - HW + x, o.y + HH + (x >> 1), x / HW, 0); face(o.x + x, o.y + 2 * HH - 1 - (x >> 1), x / HW, 1); }
+  for (let j = 0; j < 16; j++) {
+    const w = 2 * (j < 8 ? j + 1 : 16 - j);
+    for (let x = -w; x < w; x++) { let col = mix(T.wallTop, T.snow2, hash(o.x + x >> 1, o.y + j >> 1, 24) * .5); if (Math.abs(x) >= w - 2 && j >= 8) col = mix(col, T.wallL, .35); B.px(o.x + x, o.y + j - h, col); }
+  }
+  if (lit) { const q = K(c, r + 1) !== '#' && K(c, r + 1) !== ' ' ? mid(c, r + 1) : K(c + 1, r) !== '#' && K(c + 1, r) !== ' ' ? mid(c + 1, r) : null; if (q) lamps.push({ x: q.x, y: q.y, R: 46, I: .4, c: T.glow }); }
+}
+
+/* ---------- cover: thin plates on the two back edges of the tile ---------- */
+function drawCover(B, T, c, r, lights, full) {
+  const o = tileTop(c, r), h0 = full ? 22 : 10, st = T.coverStyle;
+  for (const side of [0, 1]) for (let i = 2; i < HW - 1; i++) {
+    const x = side ? o.x + i : o.x - HW + i, y = (side ? o.y + (i >> 1) : o.y + HH - (i >> 1)) + 2, s = (i - 2) / (HW - 4);
+    let h = h0;
+    if (st === 'ruin') h = Math.round(h0 * (.55 + .45 * hash(x >> 1, c * 3 + r, 30)));
+    if (st === 'crystal') h = Math.round(h0 * (.45 + .55 * Math.abs(Math.sin(s * 9.5 + side + c))));
+    B.px(x, y + 1, BLACK, .25);
+    for (let k = 0; k <= h; k++) {
+      const t = k / h0, base = side ? T.coverR : T.coverL; let col = base, a = 1, em = 0;
+      if (st === 'ice') { a = .8; col = mix(base, WHITE, .5 * (frac(s * 2 + t * .7) < .18)); if (t > .85) col = T.coverTop; }
+      else if (st === 'ruin') { if (frac(t * 3) < .16 || frac(s * 2.5 + (Math.floor(t * 3) % 2) * .5) < .12) col = T.mortar; if (k >= h - 1) col = T.coverTop; }
+      else if (st === 'crystal') { col = mix(base, WHITE, k / h * .7); if (frac(s * 4.75) < .12) col = mix(base, T.seam, .5); if (k === h) col = WHITE; }
+      else { if (s < .07 || s > .93 || t < .08) col = mix(base, WHITE, .12); if (t > .55 && t < .72 && frac(s * 3 + .1) < .22) { col = T.human; em = 1; } if (t > .88) col = T.coverTop; }
+      B.px(x, y - k, col, a, em);
+    }
+    if (st !== 'crystal') B.px(x, y - h - 1, T.coverTop);
+  }
+  if (st === 'barricade') lights.push({ x: o.x, y: o.y + HH, R: 20, I: .22, c: T.human });
+}
+
+/* ---------- small things: frost plants, stelae, relic, landing pad, sled ---------- */
+function shrub(B, T, x, y, seed, size) {
+  const n = 4 + Math.floor(hash(seed, 1, 30) * 4);
+  for (let i = 0; i < n; i++) {
+    const ang = (-80 + 160 * (i + hash(seed, i, 31) * .6) / n) * Math.PI / 180, len = size * (.6 + hash(seed, i, 32) * .7), col = i % 2 ? T.plant1 : T.plant2;
+    for (let k = 0; k <= len; k++) B.px(x + Math.sin(ang) * k, y - Math.cos(ang) * k * .9 + k * k * .03, col);
+    if (hash(seed, i, 33) < .3) B.px(x + Math.sin(ang) * len, y - Math.cos(ang) * len * .9, T.flower, 1, T.glowFlower ? 1 : 0);
+  }
+}
+function box(B, cx, cy, hw, h, top, L, R) {
+  const hh = hw / 2;
+  for (let x = 0; x < hw; x++) for (let k = 0; k <= h; k++) { B.px(cx - hw + x, cy + (x >> 1) - k, L); B.px(cx + x, cy + hh - 1 - (x >> 1) - k, R); }
+  for (let j = 0; j < hh * 2; j++) { const w = 2 * (j < hh ? j + 1 : hh * 2 - j); for (let x = -w; x < w; x++) B.px(cx + x, cy - hh + j - h, top); }
+}
+function stele(B, T, x, y, seed) {
+  const h = 6 + Math.floor(hash(seed, 2, 40) * 6);
+  for (let k = 0; k <= h; k++) for (let i = -1; i <= 1; i++) B.px(x + i, y - k, i < 0 ? T.alien2 : T.alien);
+  B.px(x, y - h - 1, T.snow2); B.px(x - 1, y - h - 1, T.snow2);
+  for (let k = 2; k < h; k += 2) B.px(x, y - k, T.glow, 1, 1);
+}
+function shard(B, T, x, y, hw, h, alpha) {   // a pointed crystal standing on (x, y)
+  for (let k = 0; k <= h; k++) {
+    const w = Math.max(0, Math.round(hw * Math.min(1, (h - k) / (h * .35), .55 + k / h)));
+    for (let i = -w; i <= w; i++) B.px(x + i, y - k, i < -w * .3 ? T.glowHi : i > w * .4 ? mix(T.glow, T.alien, .45) : T.glow, alpha, alpha < 1 ? 2 : 1);
+  }
+}
+function relic(B, T, c, r, lights) {
+  const p = mid(c, r);
+  box(B, p.x, p.y, 6, 4, T.alien2, T.alien, mix(T.alien, BLACK, .3));
+  for (let dy = -9; dy <= 9; dy++) for (let dx = -9; dx <= 9; dx++) { const d = Math.hypot(dx, dy); if (d < 9) B.px(p.x + dx, p.y - 17 + dy, T.glow, .22 * (1 - d / 9), 2); }
+  for (let k = -6; k <= 6; k++) { const w = 3 - Math.round(Math.abs(k) / 2); for (let i = -w; i <= w; i++) B.px(p.x + i, p.y - 17 + k, i < 0 ? T.glowHi : T.glow, 1, 1); }
+  lights.push({ x: p.x, y: p.y, R: 60, I: .8, c: T.glow });
+}
+function beacon(B, T, c, r, lights) {
+  const p = mid(c, r), x = p.x, y = p.y - 6;
+  for (let k = 0; k <= 16; k++) { B.px(x, y - k, T.metal); B.px(x + 1, y - k, T.metal2); }
+  for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const d = Math.hypot(dx, dy); if (d < 4) B.px(x + dx, y - 18 + dy, T.human, .3 * (1 - d / 4), 2); }
+  B.px(x, y - 18, WHITE, 1, 1); B.px(x + 1, y - 18, T.human, 1, 1); B.px(x, y - 17, T.human, 1, 1); B.px(x + 1, y - 17, T.human, 1, 1);
+  lights.push({ x: p.x, y: p.y, R: 54, I: .7, c: T.human });
+}
+function sled(B, T, c, r, lights) {
+  const p = mid(c, r);
+  for (let j = -3; j <= 4; j++) for (let x = -16 + Math.abs(j) * 2; x < 16 - Math.abs(j) * 2; x++) B.px(p.x + x, p.y + 4 + j, BLACK, .3);
+  box(B, p.x, p.y + 1, 13, 5, T.metal, T.metal2, mix(T.metal2, BLACK, .3));
+  box(B, p.x, p.y - 4, 8, 7, T.alien2, T.alien, mix(T.alien, BLACK, .3));
+  for (let k = 0; k < 6; k++) { B.px(p.x - 4 + (k >> 1), p.y - 6 - k + (k >> 1), T.glow, 1, 1); B.px(p.x + 3, p.y - 5 - k, T.glow, 1, 1); }
+  for (const dx of [-11, -7, 7, 11]) B.px(p.x + dx, p.y + 2 + (Math.abs(dx) > 8 ? -2 : 0) + (dx < 0 ? 2 : 0), T.human, 1, 1);
+  B.px(p.x - 12, p.y + 5, T.snow2); B.px(p.x + 11, p.y + 4, T.snow2);
+  lights.push({ x: p.x, y: p.y, R: 50, I: .6, c: T.human }, { x: p.x, y: p.y, R: 30, I: .4, c: T.glow });
+}
+
+/* ---------- what stands in the Prime Zone ---------- */
+const CENTRE = mid(15, 8);
+function drawPiece(B, T) {
+  const x = CENTRE.x, y = CENTRE.y, haze = (cx, cy, r, a) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const d = Math.hypot(dx, dy); if (d < r) B.px(cx + dx, cy + dy, T.glow, a * (1 - d / r), 2); } };
+  if (T.piece === 'monolith') {
+    for (let yy = y - 14; yy < y - 1; yy++) for (let i = -2; i <= 2; i++) if (hash(i, yy, 50) < .6) B.px(x + i, yy, T.glow, .25, 2);
+    haze(x, y - 44, 26, .2);
+    for (let k = 0; k <= 56; k++) { const w = Math.round(7 * Math.min(1, k / 14, (56 - k) / 22)); for (let i = -w; i <= w; i++) B.px(x + i, y - 14 - k, i < -w * .35 ? T.glowHi : i > w * .35 ? mix(T.glow, T.alien, .5) : T.glow, 1, 1); }
+    for (const [dx, dy, s] of [[-20, -30, 5], [18, -42, 4], [-13, -58, 3], [22, -20, 3]]) for (let k = -s; k <= s; k++) { const w = Math.round((s - Math.abs(k)) / 2); for (let i = -w; i <= w; i++) B.px(x + dx + i, y + dy + k, i < 0 ? T.glowHi : T.glow, 1, 1); }
+  } else if (T.piece === 'altar') {
+    box(B, x, y + 2, 14, 3, T.wallTop, T.wallL, T.wallR); box(B, x, y - 2, 9, 3, T.wallTop, T.wallL, T.wallR);
+    for (let k = 0; k <= 36; k++) { const w = k > 30 ? 3 - Math.round((k - 30) / 2) : 3; for (let i = -w; i <= w; i++) B.px(x + i, y - 6 - k, i < 0 ? T.wallL : T.wallR); if (k > 3 && k < 30 && k % 3) B.px(x - 1, y - 6 - k, T.glow, 1, 1); }
+    haze(x, y - 52, 18, .28);
+    for (let k = 0; k <= 13; k++) { const w = Math.round(3.4 * Math.sin(Math.min(1, k / 13) * Math.PI * .85 + .25)); for (let i = -w; i <= w; i++) B.px(x + i + (k > 8 ? 1 : 0), y - 44 - k, Math.abs(i) < w * .5 ? WHITE : T.glow, 1, 1); }
+  } else if (T.piece === 'cluster') {
+    haze(x, y - 20, 28, .22);
+    for (const [dx, dy, hw, h] of [[-12, 2, 3, 16], [11, 3, 3, 14], [-6, -1, 4, 30], [6, 0, 4, 24], [0, 3, 5, 40], [-16, 5, 2, 9], [16, 6, 2, 8]]) shard(B, T, x + dx, y + dy, hw, h, 1);
+    for (let k = 6; k < 30; k++) B.px(x, y + 3 - k, WHITE, .8, 1);
+  } else {
+    const cy = y - 26, M = T.metal, D = T.metal2;
+    for (let dy = -24; dy <= 24; dy++) for (let dx = -15; dx <= 15; dx++) { const d = Math.hypot(dx / 15, dy / 24); if (d < 1) B.px(x + dx, cy + dy, hash(dx + (dy >> 1), dy, 51) < .5 ? T.glow : T.glowHi, .28 + .3 * hash(dx >> 1, dy >> 2, 52), 2); }
+    for (let i = 0; i < 260; i++) { const a = i / 260 * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a); for (let t = 0; t < 4; t++) { const px = x + ca * (16 + t), py = cy + sa * (25 + t); if (py > y + 3) continue; B.px(px, py, sa < -.6 && t === 3 ? T.snow2 : ca < -.2 ? M : D); } if (i % 26 === 0) B.px(x + ca * 17, cy + sa * 26, T.glow, 1, 1); }
+    haze(x, cy, 30, .16);
+    box(B, x + 30, y + 6, 6, 6, M, D, mix(D, BLACK, .3)); B.px(x + 27, y + 2, T.human, 1, 1); B.px(x + 32, y + 3, T.human, 1, 1); B.px(x + 30, y - 4, T.snow2); B.px(x + 29, y - 4, T.snow2);
+    for (let k = 0; k <= 14; k++) B.px(x + 16 + k, y + 3 + Math.round(Math.sin(k / 14 * Math.PI) * 3), mix(D, BLACK, .4));
+  }
+}
+
+/* ---------- light, in steps ---------- */
+function lightScene(B, T, lights) {
+  const n = W * H, L = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { L[i * 3] = T.amb[0]; L[i * 3 + 1] = T.amb[1]; L[i * 3 + 2] = T.amb[2]; }
+  for (const l of lights) {
+    const x0 = Math.max(0, Math.floor(l.x - l.R)), x1 = Math.min(W - 1, Math.ceil(l.x + l.R)), y0 = Math.max(0, Math.floor(l.y - l.R / 2 - 40)), y1 = Math.min(H - 1, Math.ceil(l.y + l.R / 2));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const dy = y < l.y ? (y - l.y) * 1.1 : (y - l.y) * 2, d = Math.hypot(x - l.x, dy) / l.R; if (d >= 1) continue;
+      const f = Math.ceil(Math.pow(1 - d, 1.5) * 6) / 6 * l.I * T.lightK, i = (y * W + x) * 3;
+      L[i] += f * l.c[0] / 255; L[i + 1] += f * l.c[1] / 255; L[i + 2] += f * l.c[2] / 255;
+    }
+  }
+  for (let i = 0; i < n; i++) { if (B.e[i] === 1 || B.d[i * 4 + 3] === 0) continue; const k = B.e[i] === 2 ? .55 : 0; for (let ch = 0; ch < 3; ch++) B.d[i * 4 + ch] *= k + L[i * 3 + ch] * (1 - k); }
+}
+
+function renderLook(T) {
+  const B = makeBuf(), lights = [];
+  if (T.aurora) for (let x = 0; x < W; x++) {
+    const y0 = 34 + 26 * Math.sin(x / 95) + 12 * Math.sin(x / 31 + 1), len = 46 + 30 * Math.sin(x / 57 + 2), on = .5 + .5 * Math.sin(x / 13) * Math.sin(x / 41);
+    for (let k = 0; k < len; k++) B.px(x, y0 + k, k < len * .3 ? T.glowHi : T.glow, .34 * on * (1 - k / len), 2);
+  }
+  for (let r = -4; r < ROWS + 4; r++) for (let c = -4; c < COLS + 4; c++) {
+    const out = Math.max(-c, c - COLS + 1, -r, r - ROWS + 1);
+    if (out > 0) { drawGround(B, T, c, r, 1.25 - out * .28); if (hash(c, r, 60) < .1 && out < 3) { const p = mid(c, r); if (hash(c, r, 61) < .5) shrub(B, T, p.x, p.y, c * 71 + r, 6); else stele(B, T, p.x, p.y, c * 73 + r); } }
+    else if (K(c, r) !== '#') drawGround(B, T, c, r);
+  }
+  for (let s = 0; s <= COLS + ROWS - 2; s++) for (let r = 0; r < ROWS; r++) {
+    const c = s - r; if (c < 0 || c >= COLS) continue; const k = K(c, r), p = mid(c, r);
+    if (k === '#') drawWall(B, T, c, r, lights);
+    else if (k === 'H') drawCover(B, T, c, r, lights, false);
+    else if (k === 'F') drawCover(B, T, c, r, lights, true);
+    else if (k === 'R') relic(B, T, c, r, lights);
+    else if (k === 'D') beacon(B, T, c, r, lights);
+    else if (k === 'E' && c === 15) sled(B, T, c, r, lights);
+    else if (k === '.') {
+      const v = hash(c, r, 20);
+      if (v < T.artifacts) { stele(B, T, p.x + (hash(c, r, 25) - .5) * 12, p.y + 2, c * 37 + r); lights.push({ x: p.x, y: p.y, R: 26, I: .3, c: T.glow }); }
+      else if (v < T.artifacts + T.plants) shrub(B, T, p.x + (hash(c, r, 25) - .5) * 14, p.y + hash(r, c, 26) * 5, c * 41 + r, 4 + hash(c, r, 27) * 5);
+      else if (T.coverStyle === 'crystal' && v > .93) shard(B, T, p.x + (hash(c, r, 28) - .5) * 12, p.y + 3, 2, 5 + hash(c, r, 29) * 6, 1);
+    }
+  }
+  drawPiece(B, T);
+  lights.push({ x: CENTRE.x, y: CENTRE.y, R: 190, I: T.centreI, c: T.glow });
+  for (const c of [1, COLS - 2]) { const p = mid(c, 8); lights.push({ x: p.x, y: p.y, R: 70, I: .35, c: T.human }); }
+  lightScene(B, T, lights);
+  return B;
+}
+
+/* ---------- page ---------- */
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches, snows = [];
+function crop(src, cx, cy, w, h, label, bg) {
+  const box = document.createElement('div'); box.className = 'crop';
+  const c = document.createElement('canvas'); c.width = w * 3; c.height = h * 3; c.style.background = bg;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(src, cx - w / 2, cy - h / 2, w, h, 0, 0, w * 3, h * 3);
+  c.setAttribute('role', 'img'); c.setAttribute('aria-label', label);
+  const s = document.createElement('span'); s.textContent = label; box.appendChild(c); box.appendChild(s); return box;
+}
+LOOKS.forEach(T => {
+  const B = renderLook(T), bg = 'rgb(' + T.sky.join(',') + ')';
+  const card = document.createElement('article'); card.className = 'look';
+  const head = document.createElement('div'); head.className = 'head';
+  head.innerHTML = '<span class="tag">Look ' + T.id + ' · ' + T.tag + '</span><h2>' + T.name + '</h2><p>' + T.text + '</p>';
+  card.appendChild(head);
+  const deck = document.createElement('div'); deck.className = 'deck'; deck.style.background = bg;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').putImageData(new ImageData(B.d, W, H), 0, 0);
+  cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'Schneekarte im Look ' + T.name);
+  const snow = document.createElement('canvas'); snow.width = W; snow.height = H; snow.className = 'snow';
+  deck.appendChild(cv); deck.appendChild(snow); card.appendChild(deck);
+  const crops = document.createElement('div'); crops.className = 'crops';
+  const r0 = mid(15, 2), e0 = mid(15, 12);
+  crops.appendChild(crop(cv, CENTRE.x, CENTRE.y - 24, 132, 100, 'Prime Zone', bg));
+  crops.appendChild(crop(cv, r0.x, r0.y - 12, 132, 100, 'Hol und Bring: Relikt', bg));
+  crops.appendChild(crop(cv, e0.x, e0.y - 8, 132, 100, 'Escort: Schlitten auf der Route', bg));
+  card.appendChild(crops);
+  const foot = document.createElement('div'); foot.className = 'foot';
+  const sw = document.createElement('div'); sw.className = 'swatches';
+  [T.snow, T.snow2, T.ice, T.wallTop, T.wallL, T.wallR, T.alien, T.glow, T.human, T.plant1].forEach(c => { const i = document.createElement('i'); i.style.background = 'rgb(' + c.join(',') + ')'; sw.appendChild(i); });
+  const facts = document.createElement('div'); facts.className = 'facts';
+  facts.innerHTML = '<span><b>Prime Zone:</b> ' + T.centre + '</span><span><b>Licht:</b> ' + T.light + '</span><span><b>Half Cover:</b> ' + T.cover + '</span>';
+  foot.appendChild(sw); foot.appendChild(facts); card.appendChild(foot);
+  document.getElementById('looks').appendChild(card);
+  snows.push({ ctx: snow.getContext('2d'), T });
+});
+function snowfall(now) {
+  for (const { ctx, T } of snows) {
+    ctx.clearRect(0, 0, W, H); ctx.fillStyle = 'rgba(255,255,255,.75)';
+    for (let i = 0; i < T.flakes; i++) {
+      const x = (hash(i, 1, 70) * W + now * T.wind[0] * (.6 + hash(i, 2, 71))) % W, y = (hash(i, 3, 72) * H + now * T.wind[1] * (.6 + hash(i, 4, 73))) % H;
+      ctx.fillRect(Math.round(x), Math.round(y), 1 + (i % 7 === 0), 1);
+    }
+  }
+  if (!reduced) requestAnimationFrame(snowfall);
+}
+snowfall(reduced ? 0 : performance.now());
+</script>
+</body>
+</html>
