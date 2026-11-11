@@ -1,0 +1,487 @@
+{
+  "name": "polarnacht",
+  "prefix": "ice.",
+  "tile": {
+    "w": 32,
+    "h": 16
+  },
+  "halfCoverHeight": 10,
+  "fullCoverHeight": 22,
+  "origin": "every sprite has its anchor on the centre of the tile it stands on",
+  "projection": {
+    "x": "(col - row) * 16",
+    "y": "(col + row) * 8"
+  },
+  "lighting": {
+    "lightScale": 1.5,
+    "lightSpriteRadius": 96,
+    "ambient": "#364758",
+    "lights": {
+      "centre": {
+        "color": "#5cffa0",
+        "alpha": 0.8,
+        "scale": 1.979
+      },
+      "relic": {
+        "color": "#5cffa0",
+        "alpha": 0.533,
+        "scale": 0.625
+      },
+      "glyph": {
+        "color": "#5cffa0",
+        "alpha": 0.267,
+        "scale": 0.479
+      },
+      "stele": {
+        "color": "#5cffa0",
+        "alpha": 0.2,
+        "scale": 0.271
+      },
+      "beacon": {
+        "color": "#ff8a2a",
+        "alpha": 0.467,
+        "scale": 0.563
+      },
+      "camp": {
+        "color": "#ff8a2a",
+        "alpha": 0.233,
+        "scale": 0.729
+      },
+      "cover": {
+        "color": "#ff8a2a",
+        "alpha": 0.147,
+        "scale": 0.208
+      },
+      "capsule": {
+        "color": "#ff8a2a",
+        "alpha": 0.5,
+        "scale": 0.833
+      }
+    }
+  },
+  "snow": {
+    "near": {
+      "image": "snow-near.png",
+      "size": 128,
+      "speed": [
+        50,
+        40
+      ],
+      "alpha": 0.8
+    },
+    "far": {
+      "image": "snow-far.png",
+      "size": 128,
+      "speed": [
+        30,
+        24
+      ],
+      "alpha": 0.5
+    }
+  },
+  "aurora": {
+    "image": "aurora.png",
+    "width": 256,
+    "height": 112
+  },
+  "sky": "#070c14",
+  "groups": {
+    "snow": [
+      "snow_0",
+      "snow_1",
+      "snow_2",
+      "snow_3",
+      "snow_4",
+      "snow_5"
+    ],
+    "camp_floor": [
+      "camp_floor_0",
+      "camp_floor_1"
+    ],
+    "outside": [
+      "outside_0",
+      "outside_1",
+      "outside_2",
+      "outside_3"
+    ],
+    "outside_fade": [
+      "outside_fade_0",
+      "outside_fade_1",
+      "outside_fade_2",
+      "outside_fade_3"
+    ],
+    "ice_patch": [
+      "ice_patch_0",
+      "ice_patch_1",
+      "ice_patch_2"
+    ],
+    "ice_pool": [
+      "ice_pool_0",
+      "ice_pool_1",
+      "ice_pool_2"
+    ],
+    "cliff": [
+      "cliff_0",
+      "cliff_1",
+      "cliff_2",
+      "cliff_3",
+      "cliff_4",
+      "cliff_5"
+    ],
+    "cliff_low": [
+      "cliff_low_0",
+      "cliff_low_1"
+    ],
+    "half_cover": [
+      "half_cover_0",
+      "half_cover_1"
+    ],
+    "shrub": [
+      "shrub_0",
+      "shrub_1",
+      "shrub_2",
+      "shrub_3",
+      "shrub_4",
+      "shrub_5"
+    ],
+    "stele": [
+      "stele_0",
+      "stele_1",
+      "stele_2"
+    ],
+    "gate_membrane": [
+      "gate_membrane_0",
+      "gate_membrane_1",
+      "gate_membrane_2",
+      "gate_membrane_3",
+      "gate_membrane_4",
+      "gate_membrane_5"
+    ],
+    "capsule_beacon": [
+      "capsule_beacon_0",
+      "capsule_beacon_1",
+      "capsule_beacon_2",
+      "capsule_beacon_3"
+    ],
+    "capsule_steam": [
+      "capsule_steam_0",
+      "capsule_steam_1",
+      "capsule_steam_2",
+      "capsule_steam_3",
+      "capsule_steam_4",
+      "capsule_steam_5"
+    ],
+    "debris": [
+      "debris_0",
+      "debris_1",
+      "debris_2"
+    ],
+    "flake": [
+      "flake_0",
+      "flake_1",
+      "flake_2",
+      "flake_3"
+    ]
+  },
+  "sprites": {
+    "snow_0": {
+      "layer": "floor"
+    },
+    "snow_1": {
+      "layer": "floor"
+    },
+    "snow_2": {
+      "layer": "floor"
+    },
+    "snow_3": {
+      "layer": "floor"
+    },
+    "snow_4": {
+      "layer": "floor"
+    },
+    "snow_5": {
+      "layer": "floor"
+    },
+    "camp_floor_0": {
+      "layer": "floor"
+    },
+    "camp_floor_1": {
+      "layer": "floor"
+    },
+    "outside_0": {
+      "layer": "floor"
+    },
+    "outside_1": {
+      "layer": "floor"
+    },
+    "outside_2": {
+      "layer": "floor"
+    },
+    "outside_3": {
+      "layer": "floor"
+    },
+    "outside_fade_0": {
+      "layer": "floor"
+    },
+    "outside_fade_1": {
+      "layer": "floor"
+    },
+    "outside_fade_2": {
+      "layer": "floor"
+    },
+    "outside_fade_3": {
+      "layer": "floor"
+    },
+    "prime_floor": {
+      "layer": "floor"
+    },
+    "ice_patch_0": {
+      "layer": "decal"
+    },
+    "ice_patch_1": {
+      "layer": "decal"
+    },
+    "ice_patch_2": {
+      "layer": "decal"
+    },
+    "ice_pool_0": {
+      "layer": "decal"
+    },
+    "ice_pool_1": {
+      "layer": "decal"
+    },
+    "ice_pool_2": {
+      "layer": "decal"
+    },
+    "prime_edge_n": {
+      "layer": "decal",
+      "glow": "prime_edge_n_glow"
+    },
+    "prime_edge_s": {
+      "layer": "decal",
+      "glow": "prime_edge_s_glow"
+    },
+    "prime_edge_w": {
+      "layer": "decal",
+      "glow": "prime_edge_w_glow"
+    },
+    "prime_edge_e": {
+      "layer": "decal",
+      "glow": "prime_edge_e_glow"
+    },
+    "prime_corner_nw": {
+      "layer": "decal",
+      "glow": "prime_corner_nw_glow"
+    },
+    "prime_corner_ne": {
+      "layer": "decal",
+      "glow": "prime_corner_ne_glow"
+    },
+    "prime_corner_se": {
+      "layer": "decal",
+      "glow": "prime_corner_se_glow"
+    },
+    "prime_corner_sw": {
+      "layer": "decal",
+      "glow": "prime_corner_sw_glow"
+    },
+    "prime_ring": {
+      "layer": "glow"
+    },
+    "relic_floor": {
+      "layer": "decal",
+      "glow": "relic_floor_glow"
+    },
+    "pad_floor": {
+      "layer": "decal",
+      "glow": "pad_floor_glow"
+    },
+    "track_col": {
+      "layer": "decal",
+      "glow": "track_col_glow"
+    },
+    "track_row": {
+      "layer": "decal",
+      "glow": "track_row_glow"
+    },
+    "cliff_0": {
+      "layer": "object"
+    },
+    "cliff_1": {
+      "layer": "object"
+    },
+    "cliff_2": {
+      "layer": "object"
+    },
+    "cliff_3": {
+      "layer": "object"
+    },
+    "cliff_4": {
+      "layer": "object"
+    },
+    "cliff_5": {
+      "layer": "object"
+    },
+    "cliff_glyph": {
+      "layer": "object",
+      "glow": "cliff_glyph_glow"
+    },
+    "cliff_low_0": {
+      "layer": "object"
+    },
+    "cliff_low_1": {
+      "layer": "object"
+    },
+    "half_cover_0": {
+      "layer": "object",
+      "glow": "half_cover_0_glow"
+    },
+    "half_cover_1": {
+      "layer": "object",
+      "glow": "half_cover_1_glow"
+    },
+    "full_cover": {
+      "layer": "object",
+      "glow": "full_cover_glow"
+    },
+    "shrub_0": {
+      "layer": "object",
+      "glow": "shrub_0_glow"
+    },
+    "shrub_1": {
+      "layer": "object",
+      "glow": "shrub_1_glow"
+    },
+    "shrub_2": {
+      "layer": "object",
+      "glow": "shrub_2_glow"
+    },
+    "shrub_3": {
+      "layer": "object",
+      "glow": "shrub_3_glow"
+    },
+    "shrub_4": {
+      "layer": "object",
+      "glow": "shrub_4_glow"
+    },
+    "shrub_5": {
+      "layer": "object",
+      "glow": "shrub_5_glow"
+    },
+    "stele_0": {
+      "layer": "object",
+      "glow": "stele_0_glow"
+    },
+    "stele_1": {
+      "layer": "object",
+      "glow": "stele_1_glow"
+    },
+    "stele_2": {
+      "layer": "object",
+      "glow": "stele_2_glow"
+    },
+    "relic": {
+      "layer": "object",
+      "glow": "relic_glow"
+    },
+    "beacon": {
+      "layer": "object",
+      "glow": "beacon_glow"
+    },
+    "sled": {
+      "layer": "object",
+      "glow": "sled_glow"
+    },
+    "gate": {
+      "layer": "object",
+      "glow": "gate_glow"
+    },
+    "gate_membrane_0": {
+      "layer": "glow"
+    },
+    "gate_membrane_1": {
+      "layer": "glow"
+    },
+    "gate_membrane_2": {
+      "layer": "glow"
+    },
+    "gate_membrane_3": {
+      "layer": "glow"
+    },
+    "gate_membrane_4": {
+      "layer": "glow"
+    },
+    "gate_membrane_5": {
+      "layer": "glow"
+    },
+    "generator": {
+      "layer": "object",
+      "glow": "generator_glow"
+    },
+    "capsule": {
+      "layer": "object",
+      "glow": "capsule_glow"
+    },
+    "capsule_beacon_0": {
+      "layer": "glow"
+    },
+    "capsule_beacon_1": {
+      "layer": "glow"
+    },
+    "capsule_beacon_2": {
+      "layer": "glow"
+    },
+    "capsule_beacon_3": {
+      "layer": "glow"
+    },
+    "capsule_steam_0": {
+      "layer": "object"
+    },
+    "capsule_steam_1": {
+      "layer": "object"
+    },
+    "capsule_steam_2": {
+      "layer": "object"
+    },
+    "capsule_steam_3": {
+      "layer": "object"
+    },
+    "capsule_steam_4": {
+      "layer": "object"
+    },
+    "capsule_steam_5": {
+      "layer": "object"
+    },
+    "capsule_trench": {
+      "layer": "decal"
+    },
+    "salvage_case": {
+      "layer": "object",
+      "glow": "salvage_case_glow"
+    },
+    "debris_0": {
+      "layer": "object"
+    },
+    "debris_1": {
+      "layer": "object"
+    },
+    "debris_2": {
+      "layer": "object"
+    },
+    "flake_0": {
+      "layer": "glow"
+    },
+    "flake_1": {
+      "layer": "glow"
+    },
+    "flake_2": {
+      "layer": "glow"
+    },
+    "flake_3": {
+      "layer": "glow"
+    },
+    "light": {
+      "layer": "light"
+    }
+  }
+}
