@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reactor Deck Looks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: four looks of the same map, one below the other; each is the whole deck plus three close-ups. */
+  :root {
+    color-scheme: dark;
+    --hull: #0c0f13;
+    --plate: #161b21;
+    --plate-edge: #2c3741;
+    --ink: #dfe6e4;
+    --ink-dim: #93a19f;
+    --screen: #6fd6b4;
+    --hazard: #f2b632;
+    --display: "Pixelify Sans", "Courier New", monospace;
+    --body: "IBM Plex Sans", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  body {
+    background: var(--hull); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55;
+    padding-block: 28px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .sheet { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+  header { display: flex; flex-direction: column; gap: 8px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--screen); }
+  h1 { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 6vw, 46px); line-height: 1.05; margin: 0; text-wrap: balance; }
+  h2 { font-family: var(--display); font-weight: 700; font-size: 26px; margin: 0; line-height: 1.1; }
+  h3 { font-family: var(--display); font-weight: 500; font-size: 19px; margin: 0; }
+  p { margin: 0; max-width: 68ch; }
+  .lede { color: var(--ink-dim); }
+  .look { background: var(--plate); border: 1px solid var(--plate-edge); display: flex; flex-direction: column; min-width: 0; }
+  .look .head { padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--hazard); }
+  .look .head p { color: var(--ink-dim); font-size: 14px; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  .deck { background: #07090c; border-block: 1px solid var(--plate-edge); position: relative; }
+  .deck canvas { width: 100%; height: auto; }
+  .deck canvas.glow { position: absolute; left: 0; top: 0; pointer-events: none; }
+  .crops { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; padding: 14px 18px 6px; }
+  .crop { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .crop canvas { width: 100%; height: auto; background: #07090c; border: 1px solid var(--plate-edge); }
+  .crop span, .label { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); }
+  .foot { padding: 10px 18px 16px; display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: center; }
+  .swatches { display: flex; }
+  .swatches i { width: 20px; height: 20px; display: block; }
+  .facts { display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 13px; color: var(--ink-dim); }
+  .facts b { color: var(--ink); font-weight: 500; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 32px; border-top: 1px solid var(--plate-edge); padding-top: 24px; }
+  .notes div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .notes p { color: var(--ink-dim); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <header>
+    <span class="eyebrow">Primefall · Reactor Deck · Pixel Art</span>
+    <h1>Reactor Deck: Looks zur Auswahl</h1>
+    <p class="lede">Fünfmal dieselbe Karte in ihrem heutigen Aufbau (31 × 17 Kacheln): ein abgestürzter Raumgleiter. Beide Squads steigen durch Risse in der Hülle links und rechts ein, Bodenmarkierungen führen durch den Mittelgang zum Kern in der Prime Zone, der als Plasmakern von der Decke hängt. An den Wänden stehen abgewetzte Schablonentexte, Pflanzen wachsen ins Schiff. Unterschiedlich sind Material, Licht, Bewuchs und die Art, wie der Kern gehalten wird.</p>
+  </header>
+
+  <div id="looks" style="display:flex;flex-direction:column;gap:20px"></div>
+
+  <div class="notes">
+    <div>
+      <h3>Was in allen gleich ist</h3>
+      <p>Der Kartenaufbau stammt aus den Spieldaten: Wände, Half Cover, die Outposts oben und unten, die Spawn-Kacheln an den Hüllenrissen und die 3 × 3 Kacheln der Prime Zone. Half Cover steht wie heute in der App als dünne Platte an den zwei hinteren Kanten der Kachel, die Kachel selbst bleibt frei. Die vorderen Außenwände sind abgeschnitten gezeichnet, damit sie den Blick aufs Deck nicht verdecken.</p>
+    </div>
+    <div>
+      <h3>Was das noch nicht ist</h3>
+      <p>Das ist eine Richtungsprobe, kein Texturatlas. Die Flächen sind per Code erzeugt und pro Bildpunkt beleuchtet. Für den Atlas zerlege ich den gewählten Look in einzelne Kacheln: Böden mit Varianten, Markierungen, Wandstücke mit und ohne Schrift, Cover, Hüllenriss, Prime Zone, Kern und Bewuchs.</p>
+    </div>
+    <div>
+      <h3>Offen für die Wahl</h3>
+      <p>Die Looks lassen sich weiter mischen; E ist bereits die Mischung aus C und D. Die Squad-Farben Türkis und Rot liegen später als Ringe auf dem Boden; A und B lassen dafür am meisten Luft, bei C konkurriert das Grün mit Türkis, bei D die Notbeleuchtung mit Rot.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const MAP = [
+  "###############################", "#.............................#", "#...H...HH...HH.HH...HH...H...#", "#.............XXX.............#",
+  "#.....HH..##.HXXXH.##..HH.....#", "#.............H.H.............#", "#....#######HH...HH#######....#", "#S............PPP............S#",
+  "#S............PPP............S#", "#S............PPP............S#", "#....#######HH...HH#######....#", "#.............H.H.............#",
+  "#.....HH..##.HXXXH.##..HH.....#", "#.............XXX.............#", "#...H...HH...HH.HH...HH...H...#", "#.............................#", "###############################"
+];
+const COLS = 31, ROWS = 17, HW = 16, HH = 8, WALL = 24, W = 816, H = 476, X0 = 296, Y0 = 72;
+const K = (c, r) => (r < 0 || r >= ROWS || c < 0 || c >= COLS) ? ' ' : MAP[r][c];
+const isBreach = (c, r) => (c === 0 || c === COLS - 1) && r >= 7 && r <= 9;
+const hash = (a, b, c = 0) => { let n = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263) + Math.imul(c | 0, 1274126177)) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+const frac = x => x - Math.floor(x);
+const rgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const WHITE = [255, 255, 255], BLACK = [0, 0, 0];
+
+const LOOKS = [
+  {
+    id: 'A', name: 'Rostgürtel', tag: 'Werft-Wrack, warm und schmutzig',
+    text: 'Am nächsten an deinem ersten Referenzbild: graubraune Bodenplatten mit Rost und Gittern, betonartige Wände, gelb-schwarze Warnmarkierung. Staubiges Tageslicht fällt durch die Hüllenrisse, ein paar Gräser wachsen dort herein. Der Kern glüht bernsteinfarben und hängt in einem Käfigring an vier Ketten.',
+    core: 'Käfigring an vier Ketten', light: 'warmes Tageslicht, Bernstein-Kern', growth: 'wenig, nur an den Rissen',
+    floor: '#5c5850', floor2: '#6a655a', seam: '#3a3833', grime: '#3d352c', rustC: '#8a4a26', rust: .22, grate: .09, floorStyle: 'plate', wear: .24,
+    mark: '#e2b23a', mark2: '#26221c', markGlow: false, wallTop: '#8a8474', wallL: '#6f6a5e', wallR: '#555148', wallCut: '#2c2a26', trim: '#3f3c36', strip: '#ffd98a', lampEvery: .22, stencil: '#e8dfc4',
+    cover: 'crate', coverTop: '#7f8f8c', coverL: '#5f706e', coverR: '#465553', coverDeco: '#d9b24a',
+    plant1: '#5f8a3a', plant2: '#3f6a2c', flower: '#f2d24a', moss: .05, plants: .05, out: '#6a5a40',
+    coreC: '#ff9a2a', coreHi: '#ffe2a0', mount: 'chains', mountC: '#8f8676', amb: [.66, .62, .58], coreI: .95, breachI: 1.2, breach: '#ffe2b0', lamp: '#ffc878'
+  },
+  {
+    id: 'B', name: 'Kryo-Deck', tag: 'kaltes Blau, sauberer Stahl',
+    text: 'Nach deinem dritten Referenzbild: schieferblaue Fliesen mit Kreuzfugen, dunkle Wände mit weißblauen Lichtleisten, Markierungen in Weiß und Cyan. Half Cover sind Glasscheiben mit hellem Rahmen. Der Kern ist cyan und schwebt zwischen zwei Magnetringen an einem Pylon; fahles Mondlicht fällt durch die Risse.',
+    core: 'Magnetringe an einem Pylon', light: 'kaltes Mondlicht, Cyan-Kern', growth: 'kaum, etwas Moos an den Rissen',
+    floor: '#495868', floor2: '#566779', seam: '#2c3744', grime: '#27303a', rustC: '#7a4a32', rust: .08, grate: .05, floorStyle: 'tile', wear: .24,
+    mark: '#cfe6f2', mark2: '#22303c', markGlow: false, wallTop: '#5f7084', wallL: '#3f4e60', wallR: '#2e3a48', wallCut: '#1a222b', trim: '#22303c', strip: '#9fe0ff', lampEvery: .45, stencil: '#d6e4ee',
+    cover: 'pod', coverTop: '#b9c6d2', coverL: '#7f8d9c', coverR: '#5c6876', coverDeco: '#4da3ff',
+    plant1: '#4f8a5a', plant2: '#356a48', flower: '#bfe4ff', moss: .03, plants: .03, out: '#3c4652',
+    coreC: '#3ad0ff', coreHi: '#d8f6ff', mount: 'rings', mountC: '#aab8c6', amb: [.46, .54, .66], coreI: 1.0, breachI: 1.2, breach: '#cfe0ff', lamp: '#9fe0ff'
+  },
+  {
+    id: 'C', name: 'Überwuchert', tag: 'die Natur holt sich das Schiff',
+    text: 'Das Schiff liegt schon lange hier: Moos kriecht über die Platten, Ranken hängen von den Wänden, Farne und Blüten stehen im Gang, die Markierungen sind fast weg. Warmes Sonnenlicht fällt durch die Risse. Der Kern leuchtet türkis und wird von Wurzeln und durchhängenden Kabeln gehalten, die ihn umschlingen.',
+    core: 'von Wurzeln und Kabeln umschlungen', light: 'warmes Sonnenlicht, türkiser Kern', growth: 'stark, überall',
+    floor: '#4a5246', floor2: '#586050', seam: '#2e342c', grime: '#2c3024', rustC: '#7a5a30', rust: .16, grate: .06, floorStyle: 'plate', wear: .46,
+    mark: '#d8cf8a', mark2: '#2a2e22', markGlow: false, wallTop: '#6f7a62', wallL: '#56604c', wallR: '#40483a', wallCut: '#22261e', trim: '#30362a', strip: '#d8f0a0', lampEvery: .1, stencil: '#dcd8b8',
+    cover: 'planter', coverTop: '#6a6a4a', coverL: '#55553a', coverR: '#3e3e2a', coverDeco: '#7fb04a',
+    plant1: '#6aa43c', plant2: '#3f7a2e', flower: '#f08ab0', moss: .36, plants: .3, out: '#5a6a3a',
+    coreC: '#38e0d8', coreHi: '#dcfffa', mount: 'roots', mountC: '#6a543a', amb: [.62, .64, .54], coreI: .8, breachI: 1.25, breach: '#fff0b0', lamp: '#f0e6a0'
+  },
+  {
+    id: 'D', name: 'Notstrom', tag: 'dunkel, rotes Notlicht, harte Lichtinseln',
+    text: 'Das Deck liegt fast im Dunkeln. Rote Notleuchten an den Wänden und leuchtende Leitpunkte im Boden weisen zum Kern, wie die Bodenlichter in deinem zweiten Referenzbild. Der violette Kern wirft die einzige große Lichtinsel; er steckt in einer Greifklaue an einem schweren Arm. Durch die Risse fällt kaltes Flutlicht.',
+    core: 'Greifklaue an einem schweren Arm', light: 'fast dunkel, violetter Kern, rote Notleuchten', growth: 'wenig, an den Rissen',
+    floor: '#34373e', floor2: '#3e424a', seam: '#1e2026', grime: '#1a1b20', rustC: '#5a2e24', rust: .12, grate: .12, floorStyle: 'plate', wear: .2,
+    mark: '#ff8a3a', mark2: '#1c1c20', markGlow: true, wallTop: '#4c505a', wallL: '#3a3d46', wallR: '#2a2c34', wallCut: '#15161a', trim: '#1e2026', strip: '#ff4a3a', lampEvery: .3, stencil: '#c9c4bc',
+    cover: 'barrier', coverTop: '#5a5e68', coverL: '#444852', coverR: '#30333c', coverDeco: '#ff4a3a',
+    plant1: '#4a7a4a', plant2: '#2f5a3a', flower: '#c58bff', moss: .04, plants: .04, out: '#2c3038',
+    coreC: '#b06aff', coreHi: '#f0dcff', mount: 'claw', mountC: '#7a7e8a', amb: [.30, .30, .38], coreI: 1.3, breachI: 1.5, breach: '#dfe8ff', lamp: '#ff5a48'
+  },
+  {
+    id: 'E', name: 'Verrottet', tag: 'Notstrom, nach Jahren im Dschungel',
+    text: 'Die Mischung aus C und D: die dunkle Stimmung des Notstroms mit violettem Kern und roten Notleuchten, aber das Schiff liegt hier seit Jahren. Bodenplatten sind durchgerostet und eingebrochen, ein Teil der Leitlichter und Wandleuchten ist ausgefallen, die Schrift blättert. Ranken, Moos und Farne in dunklem Blaugrün wachsen über Wände, Cover und die Greifklaue; ihre violetten Blüten leuchten schwach im Dunkeln.',
+    core: 'überwucherte Greifklaue, Wurzeln am Kern', light: 'dunkel, violetter Kern, wenige rote Notleuchten, leuchtende Blüten', growth: 'stark, in dunklem Blaugrün',
+    floor: '#353a3e', floor2: '#40464a', seam: '#1e2226', grime: '#1a1c1e', rustC: '#6a3a26', rust: .34, grate: .1, floorStyle: 'plate', wear: .5, decay: .16, dead: .45,
+    mark: '#ff8a3a', mark2: '#1c1c20', markGlow: true, wallTop: '#4a525a', wallL: '#394048', wallR: '#2a2f36', wallCut: '#15171a', trim: '#1e2226', strip: '#ff4a3a', lampEvery: .15, stencil: '#b9b4a8',
+    cover: 'barrier', coverTop: '#585e66', coverL: '#434950', coverR: '#30353c', coverDeco: '#ff4a3a',
+    plant1: '#4f8a72', plant2: '#2a5448', flower: '#d08aff', glowFlower: true, moss: .34, plants: .3, out: '#2e3a36',
+    coreC: '#b06aff', coreHi: '#f0dcff', mount: 'clawroots', mountC: '#7a7e8a', amb: [.34, .37, .42], coreI: 1.2, breachI: 1.45, breach: '#d6f0e6', lamp: '#ff5a48'
+  }
+];
+LOOKS.forEach(T => { for (const k in T) if (typeof T[k] === 'string' && T[k][0] === '#') T[k] = rgb(T[k]); });
+
+/* ---------- pixel buffer with an emissive mask ---------- */
+function makeBuf() {
+  const d = new Uint8ClampedArray(W * H * 4), e = new Uint8Array(W * H);
+  return {
+    d, e,
+    px(x, y, c, a = 1, em = 0) {
+      x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= W || y >= H) return;
+      const i = (y * W + x) * 4, k = d[i + 3] / 255;
+      if (k === 0) { d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = a * 255; }
+      else { d[i] += (c[0] - d[i]) * a; d[i + 1] += (c[1] - d[i + 1]) * a; d[i + 2] += (c[2] - d[i + 2]) * a; d[i + 3] = Math.max(d[i + 3], a * 255); }
+      if (em) e[y * W + x] = em; else if (a > .6) e[y * W + x] = 0;
+    }
+  };
+}
+const tileTop = (c, r) => ({ x: X0 + (c - r) * HW, y: Y0 + (c + r) * HH });   // top vertex of a tile
+
+/* ---------- floor: one shader in tile space ---------- */
+function nearWall(c, r) { let n = 0; for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (K(c + dc, r + dr) === '#') n++; return n; }
+function floorColor(T, c, r, u, v, sx, sy) {
+  const k = K(c, r), gx = c + u, gy = r + v;
+  let col = mix(T.floor, T.floor2, hash(c, r, 1)), em = 0;
+  if (u < .07 || v < .07) col = T.seam; else if (u > .93 || v > .93) col = mix(col, WHITE, .07);
+  if (T.floorStyle === 'tile' && (Math.abs(u - .5) < .04 || Math.abs(v - .5) < .04)) col = mix(col, T.seam, .55);
+  if (k === '.' && hash(c, r, 2) < T.grate && u > .14 && u < .86 && v > .14 && v < .86) col = frac(u * 5) < .45 ? T.seam : mix(col, BLACK, .15);
+  if (hash(sx, sy, 3) < .07) col = mix(col, T.grime, .5);
+  if (hash(c, r, 4) < T.rust) { const du = u - hash(c, r, 5), dv = v - hash(c, r, 6); if (du * du + dv * dv < .04 + .04 * hash(sx >> 1, sy >> 1, 7)) col = mix(col, T.rustC, .6); }
+  if (k === '.' && hash(c, r, 44) < T.decay) {
+    const du = u - .3 - hash(c, r, 45) * .4, dv = v - .3 - hash(c, r, 46) * .4, rr = du * du + dv * dv;
+    if (rr < .035 + .03 * hash(sx >> 1, sy >> 1, 47)) col = hash(sx, sy, 48) < .14 ? T.rustC : mix(T.seam, BLACK, .6); else if (rr < .075) col = mix(col, BLACK, .28);
+  }
+  const worn = hash(sx >> 1, sy, 8) < T.wear;
+  // guide line from each Spawn to the core
+  if (r === 8 && ((c >= 2 && c <= 12) || (c >= 18 && c <= 28))) {
+    const uu = c < 15 ? u : 1 - u, a = Math.abs(v - .5);
+    if (T.markGlow) { if (a < .09 && frac(uu * 2 + .25) < .5) { if (hash(c, Math.floor(uu * 2 + .25), 49) >= (T.dead || 0)) { col = T.mark; em = 1; } else col = mix(T.seam, T.mark, .18); } }
+    else if (!worn && ((a < .34 && frac(uu * 2 + a * 1.5) < .3) || Math.abs(a - .42) < .035)) col = T.mark;
+  }
+  // hazard band around the Prime Zone
+  const dx = Math.max(14 - gx, 0, gx - 17), dy = Math.max(7 - gy, 0, gy - 10), dist = Math.max(dx, dy);
+  if (dist > 0 && dist < .3 && !worn) col = frac((gx + gy) * 3) < .5 ? T.mark : T.mark2;
+  if (k === 'P') {
+    col = frac(u * 4) < .5 || frac(v * 4) < .12 ? mix(T.seam, BLACK, .3) : mix(T.seam, T.coreC, .4);
+    const ring = Math.hypot(gx - 15.5, gy - 8.5);
+    if (Math.abs(ring - 1.25) < .07 || ring < .18) { col = T.coreC; em = 1; }
+  }
+  if (k === 'X') {
+    const oy = r < 8 ? 3 : 12, ex = Math.min(gx - 14, 17 - gx), ey = Math.min(gy - oy, oy + 2 - gy);
+    col = mix(col, T.mark, .1);
+    if (!worn && ((ex < .14 && ey < .7) || (ey < .14 && ex < .7))) col = T.mark;
+  }
+  if (k === 'S') { if (hash(sx, sy, 9) < .16) col = mix(col, T.out, .7); if (hash(sx >> 1, sy >> 1, 19) < .1) col = mix(T.wallR, BLACK, .2); }
+  const m = T.moss * (.25 + .28 * nearWall(c, r) + (k === 'S' ? .6 : 0) + ((c < 4 || c > 26) && r > 5 && r < 11 ? .3 : 0));
+  if (hash(sx >> 1, sy >> 1, 10) < m) col = mix(hash(sx, sy, 11) < .5 ? T.plant1 : T.plant2, BLACK, .22);
+  return [col, em];
+}
+function drawFloor(B, T, c, r, outside) {
+  const o = tileTop(c, r);
+  for (let j = 0; j < 16; j++) {
+    const w = 2 * (j < 8 ? j + 1 : 16 - j);
+    for (let x = -w; x < w; x++) {
+      const sx = o.x + x, sy = o.y + j, a = (x + .5) / HW, b = (j + .5) / HH, u = (a + b) / 2, v = (b - a) / 2;
+      if (outside) {
+        const far = c < 0 ? -c : c - COLS + 1, edge = Math.abs(r + v - 8.5) / 2.6;
+        if (hash(sx >> 1, sy >> 1, 12) < 1.5 - far * .36 - edge * edge * 1.2) B.px(sx, sy, hash(sx >> 1, sy, 13) < .35 ? mix(T.plant2, T.out, .4) : mix(T.out, BLACK, hash(sx, sy, 14) * .25));
+      } else { const [col, em] = floorColor(T, c, r, u, v, sx, sy); B.px(sx, sy, col, 1, em); }
+    }
+  }
+}
+
+/* ---------- walls, cover, plants ---------- */
+function drawWall(B, T, c, r, lamps) {
+  const o = tileTop(c, r), cut = r === ROWS - 1 || c === COLS - 1, broken = (c === 0 || c === COLS - 1) && (r === 6 || r === 10);
+  const h0 = cut ? 5 : WALL, lit = !cut && hash(c, r, 14) < T.lampEvery;
+  const hAt = x => broken ? Math.max(3, Math.round(h0 * (.25 + .75 * hash(x >> 1, r, 13)))) : h0;
+  const face = (x, yBase, s, side) => {
+    const h = hAt(x);
+    for (let k = 0; k <= h; k++) {
+      const t = k / h0; let col = side ? T.wallR : T.wallL, em = 0;
+      if (cut) col = mix(T.wallCut, col, .35);
+      if (s < .07 && !broken) col = mix(col, BLACK, .3);
+      if (t > .88) col = mix(col, WHITE, .14); if (t < .12) col = mix(col, T.grime, .55);
+      if (!cut && t > .50 && t < .60) col = T.trim;
+      if (lit && t > .62 && t < .72 && s > .2 && s < .8) { col = T.strip; em = 1; }
+      if (hash(x, c + r, 15) < T.rust * .6 && t < hash(x, 3, 16)) col = mix(col, T.rustC, .45);
+      if (!cut && hash(x >> 1, c * 31 + r, 17) < T.moss * 1.1 + .02 && t > 1 - hash(x >> 1, r, 18) * .85) col = hash(x, k, 22) < .5 ? T.plant1 : T.plant2;
+      B.px(x, yBase - k, col, 1, em);
+    }
+    if (broken) B.px(x, yBase - h - 1, mix(T.wallTop, BLACK, .3));
+  };
+  for (let x = 0; x < HW; x++) { face(o.x - HW + x, o.y + HH + (x >> 1), x / HW, 0); face(o.x + x, o.y + 2 * HH - 1 - (x >> 1), x / HW, 1); }
+  if (!broken) for (let j = 0; j < 16; j++) {
+    const w = 2 * (j < 8 ? j + 1 : 16 - j);
+    for (let x = -w; x < w; x++) {
+      let col = cut ? T.wallCut : mix(T.wallTop, BLACK, hash(c, r, 23) * .08);
+      if (Math.abs(x) >= w - 2) col = mix(col, cut ? WHITE : BLACK, cut ? .1 : .25);
+      if (!cut && hash(o.x + x >> 1, o.y + j >> 1, 24) < T.moss * .7) col = T.plant2;
+      B.px(o.x + x, o.y + j - h0, col);
+    }
+  }
+  if (lit) { if (K(c, r + 1) !== '#' && K(c, r + 1) !== ' ') lamps.push(tileTop(c, r + 1)); else if (K(c + 1, r) !== '#' && K(c + 1, r) !== ' ') lamps.push(tileTop(c + 1, r)); }
+}
+function fern(B, T, x, y, seed, size) {
+  const n = 4 + Math.floor(hash(seed, 1, 30) * 4);
+  for (let i = 0; i < n; i++) {
+    const ang = (-80 + 160 * (i + hash(seed, i, 31) * .6) / n) * Math.PI / 180, len = size * (.6 + hash(seed, i, 32) * .7), col = i % 2 ? T.plant1 : T.plant2;
+    for (let k = 0; k <= len; k++) B.px(x + Math.sin(ang) * k, y - Math.cos(ang) * k * .9 + k * k * .03, col);
+    if (hash(seed, i, 33) < .22) B.px(x + Math.sin(ang) * len, y - Math.cos(ang) * len * .9, T.flower, 1, T.glowFlower ? 1 : 0);
+  }
+}
+function coverPixel(T, side, s, t, c, r, x, k) {
+  const base = side ? T.coverR : T.coverL, frame = s < .07 || s > .93 || t > .9 || t < .08;
+  let col = base, a = 1, em = 0;
+  if (T.cover === 'crate') {
+    if (t > .5 && t < .78) col = frac(s * 3 + t * .8) < .5 ? T.coverDeco : T.mark2;
+    if (frame) col = mix(base, WHITE, .18);
+    if (hash(x, k + c, 40) < .1) col = mix(col, T.rustC, .6);
+  } else if (T.cover === 'pod') {
+    if (frame) col = T.coverTop; else { col = mix(T.coverDeco, WHITE, .25 + .3 * (frac(s * 2 + t) < .2)); a = .62; em = 2; }
+    if (!frame && Math.abs(t - .5) < .06) { col = WHITE; a = .9; em = 1; }
+  } else if (T.cover === 'planter') {
+    if (!frame && frac(s * 6) < .3) col = mix(base, BLACK, .35);
+    if (hash(x >> 1, (k >> 1) + c * 7 + r, 42) < .2 + t * .5) col = hash(x, k, 43) < .5 ? T.plant1 : T.plant2;
+  } else {
+    if (frame) col = mix(base, WHITE, .12);
+    if (t > .62 && t < .78 && frac(s * 3 + .1) < .22) { col = T.coverDeco; em = 1; }
+    if (hash(x, k + r, 40) < T.rust * .5) col = mix(col, T.rustC, .5);
+    if (hash(x >> 1, (k >> 1) + c * 7 + r, 42) < T.moss * (.5 + t)) col = hash(x, k, 43) < .5 ? T.plant1 : T.plant2;
+  }
+  return [col, a, em];
+}
+function drawCover(B, T, c, r, glows) {
+  const o = tileTop(c, r), h = 10, post = mix(T.coverTop, BLACK, .15);
+  for (const side of [0, 1]) for (let i = 2; i < HW - 1; i++) {
+    const x = side ? o.x + i : o.x - HW + i, y = (side ? o.y + (i >> 1) : o.y + HH - (i >> 1)) + 2, s = (i - 2) / (HW - 4);
+    B.px(x, y + 1, BLACK, .3);
+    for (let k = 0; k <= h; k++) { const [col, a, em] = coverPixel(T, side, s, k / h, c, r, x, k); B.px(x, y - k, col, a, em); }
+    B.px(x, y - h - 1, mix(T.coverTop, WHITE, .2));
+  }
+  for (const [px, py] of [[o.x - HW + 2, o.y + HH + 2], [o.x - 1, o.y + 2], [o.x, o.y + 2], [o.x + HW - 2, o.y + HH + 1]]) for (let k = 0; k <= h + 2; k++) B.px(px, py - k, k > h ? mix(post, WHITE, .3) : post);
+  if (T.cover === 'pod') glows.push({ x: o.x, y: o.y + HH, R: 22, I: .16, c: T.coverDeco });
+  if (T.cover === 'barrier') glows.push({ x: o.x, y: o.y + HH, R: 18, I: .22, c: T.coverDeco });
+  if (T.cover === 'planter' || T.moss > .2) { fern(B, T, o.x - 9, o.y + 1, c * 53 + r, 5); fern(B, T, o.x + 8, o.y, c * 59 + r, 4); }
+}
+
+/* ---------- stencil texts on the walls ---------- */
+const textCanvas = document.createElement('canvas'); textCanvas.width = 160; textCanvas.height = 16;
+const tctx = textCanvas.getContext('2d', { willReadFrequently: true });
+function stencil(text) {
+  tctx.clearRect(0, 0, 160, 16); tctx.fillStyle = '#fff'; tctx.font = 'bold 11px Arial, Helvetica, sans-serif'; tctx.textBaseline = 'top';
+  let x = 0; const arrows = [];
+  for (const ch of text) {
+    if (ch === '>' || ch === '<') { arrows.push([x, ch]); x += 13; continue; }
+    tctx.fillText(ch, x, 2); x += Math.ceil(tctx.measureText(ch).width) + 1;
+  }
+  const img = tctx.getImageData(0, 0, 160, 16).data, bits = [];
+  for (let j = 0; j < 16; j++) for (let i = 0; i < x; i++) if (img[(j * 160 + i) * 4 + 3] > 105) bits.push([i, j]);
+  for (const [ax, ch] of arrows) for (let i = 0; i < 11; i++) for (let j = -3; j <= 3; j++) { const k = ch === '>' ? i : 10 - i; if (Math.abs(j) <= 1 ? k < 8 : (k >= 5 && k - 5 <= 3 - Math.abs(j) + 1 && k < 9)) bits.push([ax + i, 6 + j]); if (k >= 7 && Math.abs(j) <= 10 - k) bits.push([ax + i, 6 + j]); }
+  return bits;
+}
+function wallText(B, T, side, c, r, text) {
+  const o = tileTop(c, r), bits = stencil(text);
+  for (const [i, j] of bits) {
+    const x = side ? o.x + 3 + i : o.x - HW + 3 + i, y = side ? o.y + 2 * HH - ((3 + i) >> 1) : o.y + HH + ((3 + i) >> 1);
+    if (hash(x, y + j, 21) < T.wear * .3 + .05) continue;
+    B.px(x, y - WALL + 3 + j, T.stencil, .95);
+  }
+}
+
+/* ---------- the hanging plasma core and what holds it ---------- */
+const CORE = (() => { const o = tileTop(15, 8); return { x: o.x, fy: o.y + HH, y: o.y + HH - 58 }; })();
+function stroke(B, x0, y0, x1, y1, th, col, fade, dotted) {
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+  for (let k = 0; k <= n; k++) {
+    if (dotted && (k % 3) === 2) continue;
+    const x = x0 + (x1 - x0) * k / n, y = y0 + (y1 - y0) * k / n, a = fade ? Math.min(1, Math.max(0, (y - 6) / 70)) : 1;
+    for (let i = 0; i < th; i++) for (let j = 0; j < th; j++) B.px(x + i - (th >> 1), y + j - (th >> 1), i === 0 && th > 1 ? mix(col, WHITE, .25) : col, a);
+  }
+}
+function curve(B, x0, y0, cx, cy, x1, y1, th, col, fade) { let px = x0, py = y0; for (let k = 1; k <= 24; k++) { const t = k / 24, x = (1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * cx + t * t * x1, y = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * cy + t * t * y1; stroke(B, px, py, x, y, th, col, fade); px = x; py = y; } }
+function ellipse(B, cx, cy, rx, ry, col, em, half) { const n = Math.ceil((rx + ry) * 4); for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; if (half === 1 && Math.sin(a) > 0) continue; if (half === 2 && Math.sin(a) <= 0) continue; B.px(cx + Math.cos(a) * rx, cy + Math.sin(a) * ry, col, 1, em); } }
+function orb(B, T, r) {
+  for (let y = CORE.y + r; y < CORE.fy - 2; y++) for (let x = -3; x <= 3; x++) if (hash(x, y, 50) < .7) B.px(CORE.x + x, y, T.coreC, .3 * (1 - Math.abs(x) / 4), 2);
+  for (let dy = -r - 4; dy <= r + 4; dy++) for (let dx = -r - 4; dx <= r + 4; dx++) {
+    const d = Math.hypot(dx, dy);
+    if (d <= r - 5) B.px(CORE.x + dx, CORE.y + dy, WHITE, 1, 1); else if (d <= r - 2) B.px(CORE.x + dx, CORE.y + dy, T.coreHi, 1, 1);
+    else if (d <= r) B.px(CORE.x + dx, CORE.y + dy, T.coreC, 1, 1); else if (d <= r + 4) B.px(CORE.x + dx, CORE.y + dy, T.coreC, .35 * (1 - (d - r) / 4), 2);
+  }
+}
+function drawCore(B, T) {
+  const x = CORE.x, y = CORE.y, M = T.mountC, D = mix(M, BLACK, .4);
+  if (T.mount === 'chains') {
+    ellipse(B, x, y, 14, 5, D, 0, 1);
+    for (const [dx, tx] of [[-14, -86], [-6, -30], [6, 34], [14, 92]]) stroke(B, x + dx, y - (Math.abs(dx) > 8 ? 0 : 4), x + tx, 0, 2, M, true, true);
+    orb(B, T, 11);
+    ellipse(B, x, y, 14, 5, M, 0, 2); ellipse(B, x, y + 1, 14, 5, D, 0, 2);
+    for (const dx of [-11, 0, 11]) stroke(B, x + dx, y - 9 + Math.abs(dx) / 3, x + dx, y + 9 - Math.abs(dx) / 3, 1, D);
+  } else if (T.mount === 'rings') {
+    for (let yy = 0; yy < y - 20; yy++) for (let i = -3; i <= 3; i++) B.px(x + i, yy, i < -1 ? mix(M, WHITE, .2) : i > 1 ? D : M, Math.min(1, yy / 50));
+    for (let j = 0; j < 7; j++) for (let i = -4 - j; i <= 4 + j; i++) B.px(x + i, y - 20 + j, j === 0 ? mix(M, WHITE, .3) : Math.abs(i) > 2 + j ? D : M);
+    ellipse(B, x, y - 4, 17, 6, D, 0, 1); ellipse(B, x, y + 5, 15, 5, D, 0, 1);
+    orb(B, T, 11);
+    ellipse(B, x, y - 4, 17, 6, M, 0, 2); ellipse(B, x, y - 3, 17, 6, mix(M, WHITE, .35), 0, 2); ellipse(B, x, y + 5, 15, 5, M, 0, 2);
+    for (const a of [.3, 1.2, 2.2]) { B.px(x + Math.cos(a) * 17, y - 3 + Math.sin(a) * 6, T.coreHi, 1, 1); B.px(x + Math.cos(a + .1) * 15, y + 5 + Math.sin(a) * 5, T.coreHi, 1, 1); }
+  } else if (T.mount === 'claw' || T.mount === 'clawroots') {
+    stroke(B, x + 96, 0, x + 34, y - 44, 6, M, true); stroke(B, x + 34, y - 44, x, y - 20, 6, M);
+    for (const [px, py] of [[x + 34, y - 44], [x, y - 20]]) for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) if (dx * dx + dy * dy <= 18) B.px(px + dx, py + dy, dx < 0 ? mix(M, WHITE, .2) : D);
+    B.px(x, y - 20, T.coverDeco, 1, 1);
+    curve(B, x, y - 18, x - 4, y - 16, x - 2, y + 2, 2, D);
+    orb(B, T, 11);
+    curve(B, x - 2, y - 18, x - 20, y - 14, x - 12, y + 6, 3, M); curve(B, x + 2, y - 18, x + 20, y - 14, x + 12, y + 6, 3, M);
+    stroke(B, x - 12, y + 6, x - 8, y + 10, 2, D); stroke(B, x + 12, y + 6, x + 8, y + 10, 2, D);
+    if (T.mount === 'clawroots') {
+      const R = mix(T.mountC, T.plant2, .65);
+      curve(B, x + 60, y - 96, x + 44, y - 40, x + 30, y - 18, 1, R); curve(B, x + 40, y - 52, x + 30, y - 20, x + 36, y + 4, 1, R); curve(B, x + 20, y - 36, x + 8, y - 2, x + 16, y + 14, 1, R);
+      curve(B, x - 4, y - 22, x - 26, y - 20, x - 22, y + 16, 1, R); curve(B, x - 10, y - 3, x, y + 5, x + 10, y - 1, 1, R);
+      for (let i = 0; i < 7; i++) fern(B, T, x + 6 + i * 11 + hash(i, 3, 64) * 5, y - 22 - i * 13, i + 900, 4);
+      fern(B, T, x - 14, y + 4, 951, 5); fern(B, T, x + 14, y + 4, 952, 5);
+    }
+  } else {
+    curve(B, x - 4, y - 8, x - 60, y + 6, x - 150, y - 62, 2, D); curve(B, x + 5, y - 8, x + 70, y + 2, x + 156, y - 56, 2, D);
+    curve(B, x - 2, y - 9, x - 26, y - 40, x - 34, 0, 3, M, true); curve(B, x + 3, y - 9, x + 22, y - 46, x + 20, 0, 3, M, true); curve(B, x, y - 9, x - 4, y - 50, x + 2, 0, 2, mix(M, T.plant2, .5), true);
+    orb(B, T, 11);
+    curve(B, x - 9, y - 4, x - 2, y + 3, x + 9, y - 2, 2, M); curve(B, x - 8, y + 4, x, y - 4, x + 8, y + 5, 1, mix(M, T.plant2, .5));
+    for (let i = 0; i < 16; i++) { const t = hash(i, 5, 60), side = i % 2 ? 1 : -1; B.px(x + side * (10 + t * 120), y - 6 + Math.sin(t * 3) * 6 - t * 44 + hash(i, 6, 61) * 5, i % 3 ? T.plant1 : T.plant2); }
+    for (let i = 0; i < 6; i++) fern(B, T, x + (hash(i, 1, 62) - .5) * 44, y - 30 - hash(i, 2, 63) * 50, i + 700, 4);
+  }
+}
+
+/* ---------- light: ambient plus the core, the hull breaches and the wall lamps, in steps ---------- */
+function lightScene(B, T, lights) {
+  const n = W * H, L = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { L[i * 3] = T.amb[0]; L[i * 3 + 1] = T.amb[1]; L[i * 3 + 2] = T.amb[2]; }
+  for (const l of lights) {
+    const x0 = Math.max(0, Math.floor(l.x - l.R)), x1 = Math.min(W - 1, Math.ceil(l.x + l.R)), y0 = Math.max(0, Math.floor(l.y - l.R / 2 - 40)), y1 = Math.min(H - 1, Math.ceil(l.y + l.R / 2));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const dy = y < l.y ? (y - l.y) * 1.1 : (y - l.y) * 2, d = Math.hypot(x - l.x, dy) / l.R; if (d >= 1) continue;
+      const f = Math.ceil(Math.pow(1 - d, 1.5) * 6) / 6 * l.I, i = (y * W + x) * 3;
+      L[i] += f * l.c[0] / 255; L[i + 1] += f * l.c[1] / 255; L[i + 2] += f * l.c[2] / 255;
+    }
+  }
+  for (let i = 0; i < n; i++) { if (B.e[i] === 1 || B.d[i * 4 + 3] === 0) continue; const k = B.e[i] === 2 ? .5 : 0; for (let ch = 0; ch < 3; ch++) B.d[i * 4 + ch] *= Math.max(L[i * 3 + ch], k + L[i * 3 + ch] * (1 - k)); }
+}
+
+function renderLook(T) {
+  const B = makeBuf(), lamps = [], glows = [];
+  for (let r = 5; r <= 11; r++) for (const c of [-3, -2, -1, COLS, COLS + 1, COLS + 2]) drawFloor(B, T, c, r, true);
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (K(c, r) !== '#' || isBreach(c, r) || ((c === 0 || c === COLS - 1) && (r === 6 || r === 10))) drawFloor(B, T, c, r, K(c, r) === '#');
+  for (let s = 0; s <= COLS + ROWS - 2; s++) for (let r = 0; r < ROWS; r++) {
+    const c = s - r; if (c < 0 || c >= COLS) continue; const k = K(c, r), o = tileTop(c, r);
+    if (k === '#' && !isBreach(c, r)) drawWall(B, T, c, r, lamps);
+    else if (isBreach(c, r)) { for (let i = 0; i < 9; i++) { const bx = o.x + (hash(c, r, 70 + i) - .5) * 24, by = o.y + 4 + hash(r, c, 80 + i) * 9, w = 2 + Math.floor(hash(i, r, 90) * 3); for (let x = 0; x < w; x++) for (let y = 0; y < 2 + (i % 2); y++) B.px(bx + x, by - y, y ? T.wallL : T.wallR); } fern(B, T, o.x - 4, o.y + 9, c * 91 + r, 6); fern(B, T, o.x + 6, o.y + 12, c * 97 + r, 5); }
+    else if (k === 'H') drawCover(B, T, c, r, glows);
+    else if (k !== 'P' && hash(c, r, 20) < T.plants * (.5 + .5 * nearWall(c, r) + (k === 'S' ? 3 : 0))) fern(B, T, o.x + (hash(c, r, 25) - .5) * 14, o.y + 8 + hash(r, c, 26) * 5, c * 41 + r, 4 + hash(c, r, 27) * 5);
+  }
+  wallText(B, T, 0, 3, 0, 'HANGAR 06'); wallText(B, T, 0, 13, 0, 'DECK C'); wallText(B, T, 0, 21, 0, 'CARGO 02');
+  wallText(B, T, 0, 5, 6, 'REACTOR >'); wallText(B, T, 0, 19, 6, '< REACTOR'); wallText(B, T, 0, 5, 10, 'COOLANT 2'); wallText(B, T, 0, 19, 10, 'CAUTION PLASMA');
+  wallText(B, T, 1, 0, 5, 'AIRLOCK'); wallText(B, T, 1, 0, 15, 'BAY 03');
+  drawCore(B, T);
+  const sp = [tileTop(1, 8), tileTop(COLS - 2, 8)];
+  const lights = [{ x: CORE.x, y: CORE.fy, R: 190, I: T.coreI, c: T.coreC }, { x: sp[0].x - 10, y: sp[0].y + 8, R: 150, I: T.breachI, c: T.breach }, { x: sp[1].x + 10, y: sp[1].y + 8, R: 150, I: T.breachI, c: T.breach }]
+    .concat(lamps.map(o => ({ x: o.x, y: o.y + HH, R: 44, I: .38, c: T.lamp })), glows);
+  lightScene(B, T, lights);
+  return B;
+}
+
+/* ---------- page ---------- */
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches, pulses = [];
+function crop(src, cx, cy, w, h, label) {
+  const box = document.createElement('div'); box.className = 'crop';
+  const c = document.createElement('canvas'); c.width = w * 3; c.height = h * 3;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(src, cx - w / 2, cy - h / 2, w, h, 0, 0, w * 3, h * 3);
+  c.setAttribute('role', 'img'); c.setAttribute('aria-label', label);
+  const s = document.createElement('span'); s.textContent = label; box.appendChild(c); box.appendChild(s); return box;
+}
+LOOKS.forEach(T => {
+  const B = renderLook(T);
+  const card = document.createElement('article'); card.className = 'look';
+  const head = document.createElement('div'); head.className = 'head';
+  head.innerHTML = '<span class="tag">Look ' + T.id + ' · ' + T.tag + '</span><h2>' + T.name + '</h2><p>' + T.text + '</p>';
+  card.appendChild(head);
+  const deck = document.createElement('div'); deck.className = 'deck';
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').putImageData(new ImageData(B.d, W, H), 0, 0);
+  cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'Reactor Deck im Look ' + T.name);
+  const glow = document.createElement('canvas'); glow.width = W; glow.height = H; glow.className = 'glow'; glow.style.width = '100%'; glow.style.height = '100%';
+  deck.appendChild(cv); deck.appendChild(glow); card.appendChild(deck);
+  const crops = document.createElement('div'); crops.className = 'crops';
+  const s0 = tileTop(1, 8), w0 = tileTop(8, 6);
+  crops.appendChild(crop(cv, CORE.x, CORE.y + 30, 132, 100, 'Kern und Prime Zone'));
+  crops.appendChild(crop(cv, s0.x + 8, s0.y - 2, 132, 100, 'Hüllenriss mit Spawn'));
+  crops.appendChild(crop(cv, w0.x + 4, w0.y + 2, 132, 100, 'Wandschrift und Leitlinie'));
+  card.appendChild(crops);
+  const foot = document.createElement('div'); foot.className = 'foot';
+  const sw = document.createElement('div'); sw.className = 'swatches';
+  [T.floor, T.floor2, T.wallTop, T.wallL, T.wallR, T.mark, T.stencil, T.plant1, T.coreC, T.breach, T.lamp].forEach(c => { const i = document.createElement('i'); i.style.background = 'rgb(' + c.join(',') + ')'; sw.appendChild(i); });
+  const facts = document.createElement('div'); facts.className = 'facts';
+  facts.innerHTML = '<span><b>Kern:</b> ' + T.core + '</span><span><b>Licht:</b> ' + T.light + '</span><span><b>Bewuchs:</b> ' + T.growth + '</span>';
+  foot.appendChild(sw); foot.appendChild(facts); card.appendChild(foot);
+  document.getElementById('looks').appendChild(card);
+  pulses.push({ ctx: glow.getContext('2d'), T });
+});
+// the core breathes: a soft halo and a few sparks, drawn on a layer above the lit map
+function pulse(now) {
+  const f = Math.floor(now / 120);
+  for (const { ctx, T } of pulses) {
+    ctx.clearRect(CORE.x - 40, CORE.y - 40, 80, 80);
+    const k = .5 + .5 * Math.sin(now / 700), r = 12 + Math.round(k * 3);
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const d = Math.hypot(dx, dy); if (d > r || d < 8) continue; ctx.fillStyle = 'rgba(' + T.coreC.join(',') + ',' + (.22 * k * (1 - (d - 8) / (r - 8))).toFixed(2) + ')'; ctx.fillRect(CORE.x + dx, CORE.y + dy, 1, 1); }
+    for (let i = 0; i < 5; i++) { const a = hash(f, i, 99) * Math.PI * 2, d = 10 + hash(i, f, 98) * 9; ctx.fillStyle = 'rgba(' + T.coreHi.join(',') + ',.9)'; ctx.fillRect(Math.round(CORE.x + Math.cos(a) * d), Math.round(CORE.y + Math.sin(a) * d), 1, 1); }
+  }
+  requestAnimationFrame(pulse);
+}
+if (!reduced) requestAnimationFrame(pulse);
+</script>
+</body>
+</html>

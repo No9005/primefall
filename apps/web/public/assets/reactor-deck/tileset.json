@@ -1,0 +1,452 @@
+{
+  "name": "notstrom",
+  "prefix": "deck.",
+  "tile": {
+    "w": 32,
+    "h": 16
+  },
+  "wallHeight": 24,
+  "halfCoverHeight": 10,
+  "fullCoverHeight": 22,
+  "origin": "every sprite has its anchor on the centre of the tile it stands on",
+  "projection": {
+    "x": "(col - row) * 16",
+    "y": "(col + row) * 8"
+  },
+  "lighting": {
+    "lightScale": 1.5,
+    "lightSpriteRadius": 96,
+    "ambient": "#333341",
+    "lights": {
+      "core": {
+        "color": "#b06aff",
+        "alpha": 0.867,
+        "scale": 1.979
+      },
+      "breach": {
+        "color": "#dfe8ff",
+        "alpha": 1,
+        "scale": 1.563
+      },
+      "lamp": {
+        "color": "#ff5a48",
+        "alpha": 0.253,
+        "scale": 0.458
+      },
+      "cover": {
+        "color": "#ff4a3a",
+        "alpha": 0.147,
+        "scale": 0.188
+      }
+    }
+  },
+  "groups": {
+    "floor_plate": [
+      "floor_plate_0",
+      "floor_plate_1",
+      "floor_plate_2",
+      "floor_plate_3"
+    ],
+    "floor_rust": [
+      "floor_rust_0",
+      "floor_rust_1"
+    ],
+    "floor_grate": [
+      "floor_grate_0",
+      "floor_grate_1"
+    ],
+    "spawn_floor": [
+      "spawn_floor_0",
+      "spawn_floor_1",
+      "spawn_floor_2"
+    ],
+    "ground": [
+      "ground_0",
+      "ground_1",
+      "ground_2",
+      "ground_3"
+    ],
+    "ground_fade": [
+      "ground_fade_0",
+      "ground_fade_1",
+      "ground_fade_2",
+      "ground_fade_3"
+    ],
+    "rubble": [
+      "rubble_0",
+      "rubble_1",
+      "rubble_2"
+    ],
+    "wall": [
+      "wall_0",
+      "wall_1",
+      "wall_2",
+      "wall_3"
+    ],
+    "wall_cut": [
+      "wall_cut_0",
+      "wall_cut_1"
+    ],
+    "wall_broken": [
+      "wall_broken_0",
+      "wall_broken_1"
+    ],
+    "half_cover": [
+      "half_cover_0",
+      "half_cover_1"
+    ],
+    "fern": [
+      "fern_0",
+      "fern_1",
+      "fern_2",
+      "fern_3",
+      "fern_4",
+      "fern_5"
+    ],
+    "core_pulse": [
+      "core_pulse_0",
+      "core_pulse_1",
+      "core_pulse_2",
+      "core_pulse_3",
+      "core_pulse_4",
+      "core_pulse_5",
+      "core_pulse_6",
+      "core_pulse_7"
+    ]
+  },
+  "texts": {
+    "reactor_right": {
+      "text": "REACTOR >",
+      "tiles": 6
+    },
+    "reactor_left": {
+      "text": "< REACTOR",
+      "tiles": 6
+    },
+    "hangar_06": {
+      "text": "HANGAR 06",
+      "tiles": 5
+    },
+    "deck_c": {
+      "text": "DECK C",
+      "tiles": 4
+    },
+    "cargo_02": {
+      "text": "CARGO 02",
+      "tiles": 5
+    },
+    "coolant_2": {
+      "text": "COOLANT 2",
+      "tiles": 5
+    },
+    "caution_plasma": {
+      "text": "CAUTION PLASMA",
+      "tiles": 8
+    },
+    "airlock": {
+      "text": "AIRLOCK",
+      "tiles": 4
+    },
+    "bay_03": {
+      "text": "BAY 03",
+      "tiles": 4
+    }
+  },
+  "sprites": {
+    "floor_plate_0": {
+      "layer": "floor"
+    },
+    "floor_plate_1": {
+      "layer": "floor"
+    },
+    "floor_plate_2": {
+      "layer": "floor"
+    },
+    "floor_plate_3": {
+      "layer": "floor"
+    },
+    "floor_rust_0": {
+      "layer": "floor"
+    },
+    "floor_rust_1": {
+      "layer": "floor"
+    },
+    "floor_grate_0": {
+      "layer": "floor"
+    },
+    "floor_grate_1": {
+      "layer": "floor"
+    },
+    "prime_floor": {
+      "layer": "floor"
+    },
+    "outpost_floor": {
+      "layer": "floor"
+    },
+    "spawn_floor_0": {
+      "layer": "floor"
+    },
+    "spawn_floor_1": {
+      "layer": "floor"
+    },
+    "spawn_floor_2": {
+      "layer": "floor"
+    },
+    "ground_0": {
+      "layer": "floor"
+    },
+    "ground_1": {
+      "layer": "floor"
+    },
+    "ground_2": {
+      "layer": "floor"
+    },
+    "ground_3": {
+      "layer": "floor"
+    },
+    "ground_fade_0": {
+      "layer": "floor"
+    },
+    "ground_fade_1": {
+      "layer": "floor"
+    },
+    "ground_fade_2": {
+      "layer": "floor"
+    },
+    "ground_fade_3": {
+      "layer": "floor"
+    },
+    "guide_col": {
+      "layer": "decal",
+      "glow": "guide_col_glow"
+    },
+    "guide_col_dead": {
+      "layer": "decal"
+    },
+    "guide_row": {
+      "layer": "decal",
+      "glow": "guide_row_glow"
+    },
+    "guide_row_dead": {
+      "layer": "decal"
+    },
+    "hazard_edge_n": {
+      "layer": "decal"
+    },
+    "hazard_edge_s": {
+      "layer": "decal"
+    },
+    "hazard_edge_w": {
+      "layer": "decal"
+    },
+    "hazard_edge_e": {
+      "layer": "decal"
+    },
+    "hazard_corner_nw": {
+      "layer": "decal"
+    },
+    "outpost_corner_nw": {
+      "layer": "decal"
+    },
+    "hazard_corner_ne": {
+      "layer": "decal"
+    },
+    "outpost_corner_ne": {
+      "layer": "decal"
+    },
+    "hazard_corner_se": {
+      "layer": "decal"
+    },
+    "outpost_corner_se": {
+      "layer": "decal"
+    },
+    "hazard_corner_sw": {
+      "layer": "decal"
+    },
+    "outpost_corner_sw": {
+      "layer": "decal"
+    },
+    "prime_ring": {
+      "layer": "glow"
+    },
+    "rubble_0": {
+      "layer": "object"
+    },
+    "rubble_1": {
+      "layer": "object"
+    },
+    "rubble_2": {
+      "layer": "object"
+    },
+    "wall_0": {
+      "layer": "object"
+    },
+    "wall_1": {
+      "layer": "object"
+    },
+    "wall_2": {
+      "layer": "object"
+    },
+    "wall_3": {
+      "layer": "object"
+    },
+    "wall_lamp": {
+      "layer": "object",
+      "glow": "wall_lamp_glow"
+    },
+    "wall_cut_0": {
+      "layer": "object"
+    },
+    "wall_cut_1": {
+      "layer": "object"
+    },
+    "wall_broken_0": {
+      "layer": "object"
+    },
+    "wall_broken_1": {
+      "layer": "object"
+    },
+    "half_cover_0": {
+      "layer": "object",
+      "glow": "half_cover_0_glow"
+    },
+    "half_cover_1": {
+      "layer": "object",
+      "glow": "half_cover_1_glow"
+    },
+    "full_cover": {
+      "layer": "object",
+      "glow": "full_cover_glow"
+    },
+    "fern_0": {
+      "layer": "object"
+    },
+    "fern_1": {
+      "layer": "object"
+    },
+    "fern_2": {
+      "layer": "object"
+    },
+    "fern_3": {
+      "layer": "object"
+    },
+    "fern_4": {
+      "layer": "object"
+    },
+    "fern_5": {
+      "layer": "object"
+    },
+    "text_south_reactor_right": {
+      "layer": "text",
+      "tiles": 6
+    },
+    "text_east_reactor_right": {
+      "layer": "text",
+      "tiles": 6
+    },
+    "text_south_reactor_left": {
+      "layer": "text",
+      "tiles": 6
+    },
+    "text_east_reactor_left": {
+      "layer": "text",
+      "tiles": 6
+    },
+    "text_south_hangar_06": {
+      "layer": "text",
+      "tiles": 5
+    },
+    "text_east_hangar_06": {
+      "layer": "text",
+      "tiles": 5
+    },
+    "text_south_deck_c": {
+      "layer": "text",
+      "tiles": 4
+    },
+    "text_east_deck_c": {
+      "layer": "text",
+      "tiles": 4
+    },
+    "text_south_cargo_02": {
+      "layer": "text",
+      "tiles": 5
+    },
+    "text_east_cargo_02": {
+      "layer": "text",
+      "tiles": 5
+    },
+    "text_south_coolant_2": {
+      "layer": "text",
+      "tiles": 5
+    },
+    "text_east_coolant_2": {
+      "layer": "text",
+      "tiles": 5
+    },
+    "text_south_caution_plasma": {
+      "layer": "text",
+      "tiles": 8
+    },
+    "text_east_caution_plasma": {
+      "layer": "text",
+      "tiles": 8
+    },
+    "text_south_airlock": {
+      "layer": "text",
+      "tiles": 4
+    },
+    "text_east_airlock": {
+      "layer": "text",
+      "tiles": 4
+    },
+    "text_south_bay_03": {
+      "layer": "text",
+      "tiles": 4
+    },
+    "text_east_bay_03": {
+      "layer": "text",
+      "tiles": 4
+    },
+    "core_claw_back": {
+      "layer": "object",
+      "glow": "core_claw_back_glow"
+    },
+    "core_claw_front": {
+      "layer": "object"
+    },
+    "core_orb": {
+      "layer": "glow"
+    },
+    "core_beam": {
+      "layer": "glow"
+    },
+    "core_pulse_0": {
+      "layer": "glow"
+    },
+    "core_pulse_1": {
+      "layer": "glow"
+    },
+    "core_pulse_2": {
+      "layer": "glow"
+    },
+    "core_pulse_3": {
+      "layer": "glow"
+    },
+    "core_pulse_4": {
+      "layer": "glow"
+    },
+    "core_pulse_5": {
+      "layer": "glow"
+    },
+    "core_pulse_6": {
+      "layer": "glow"
+    },
+    "core_pulse_7": {
+      "layer": "glow"
+    },
+    "light": {
+      "layer": "light"
+    }
+  }
+}
