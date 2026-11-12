@@ -6,7 +6,11 @@ name, so re-running produces the same files. From the repository root:
     python3 tools/audio/generate_audio.py            # everything
     python3 tools/audio/generate_audio.py plan_      # only assets whose path contains "plan_"
 
-Output:
+Versioning: finished files are never overwritten. Each release lives in audio/<version>/ and the
+generator refuses to replace an existing file. v1 is the first draft (restored from git history),
+v2 is generated here, v3 (main themes) comes from main_themes.py.
+
+Output (inside audio/v2/):
     sfx/                      one-shot effects (mono)
     music/plan_{a..d}.ogg     planning loops, calm and dark
     music/resolution_{a..d}   Resolution loops, bass-driven, fuller spectrum than their plan twin
@@ -190,13 +194,13 @@ def loopify(x, n):
 
 
 # ------------------------------------------------------------------ instruments
-def kick(vol=1.0, dur=0.5, f0=160, f1=40, tau=0.14):
+def kick(vol=1.0, dur=0.5, f0=160, f1=40, tau=0.14, drv=2.4):
     n = n_of(dur)
     t = tt(n)
     f = f1 + (f0 - f1) * np.exp(-t / 0.035)
     x = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / tau)
     x += noise(n) * np.exp(-t / 0.004) * 0.35
-    return drive(x, 2.4) * vol
+    return drive(x, drv) * vol
 
 
 def snare(vol=1.0):
@@ -243,13 +247,13 @@ def clang(f, dur=1.6, vol=1.0):
     return x / np.max(np.abs(x)) * vol
 
 
-def boom(dur=1.2, f0=85, f1=27, tau=0.35, vol=1.0):
+def boom(dur=1.2, f0=85, f1=27, tau=0.35, vol=1.0, drv=1.8):
     n = n_of(dur)
     t = tt(n)
     f = f1 + (f0 - f1) * np.exp(-t / 0.12)
     x = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / tau)
     x += lp(noise(n), 180) * np.exp(-t / (tau * 0.8)) * 0.6
-    return drive(x, 1.8) * vol
+    return drive(x, drv) * vol
 
 
 def crack(dur=0.3, fc=1800, tau=0.03, vol=1.0):
@@ -828,8 +832,15 @@ AMBIENT = {
 
 
 # ------------------------------------------------------------------ output
-def save(folder, name, x, quality):
-    path = OUT / folder
+def exists(version, folder, name):
+    return (OUT / version / folder / f"{name}.ogg").exists()
+
+
+def save(version, folder, name, x, quality):
+    """Never overwrites: a finished file is a released version. New work gets a new version folder."""
+    path = OUT / version / folder
+    if (path / f"{name}.ogg").exists():
+        raise FileExistsError(path / f"{name}.ogg")
     path.mkdir(parents=True, exist_ok=True)
     pcm = np.atleast_2d(x.T if x.ndim == 2 else x).T if x.ndim == 1 else x
     wav = path / f"{name}.wav"
@@ -851,26 +862,29 @@ def stats(x):
     return len(m) / SR, rms, centroid
 
 
+V2 = "v2"
+
+
 def main(flt=""):
     report = {}
     for name, (fn, peak) in SFX.items():
-        if flt in f"sfx/{name}":
+        if flt in f"sfx/{name}" and not exists(V2, "sfx", name):
             reseed(name)
             x = fn()
-            save("sfx", name, x / np.max(np.abs(x)) * peak * 0.92, 3)
+            save(V2, "sfx", name, x / np.max(np.abs(x)) * peak * 0.92, 3)
             print("sfx", name)
     for (folder, name), fn in MUSIC.items():
-        if flt in f"{folder}/{name}":
+        if flt in f"{folder}/{name}" and not exists(V2, folder, name):
             reseed(name)
             x = fn()
-            save(folder, name, x, 4)
+            save(V2, folder, name, x, 4)
             report[name] = stats(x)
             print(folder, name, "%.1fs  rms %.1f dB  centroid %.0f Hz" % report[name])
     for name, fn in AMBIENT.items():
-        if flt in f"notstrom/ambient/{name}":
+        if flt in f"notstrom/ambient/{name}" and not exists(V2, "notstrom/ambient", name):
             reseed(name)
             x = fn()
-            save("notstrom/ambient", name, x, 3)
+            save(V2, "notstrom/ambient", name, x, 3)
             print("ambient", name, "%.1fs  rms %.1f dB  centroid %.0f Hz" % stats(x))
     for k in "abcd":
         p, r = report.get(f"plan_{k}"), report.get(f"resolution_{k}")
