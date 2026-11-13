@@ -41,37 +41,37 @@ const knockbacks = (events: readonly { kind: EventKind }[]) => events.filter(({ 
 describe("Shockwave: area damage and Knockback", () => {
   it("damages every enemy Hero in Range 1 and pushes each two tiles directly away", () => {
     const match = setup({
-      [LEFT_BRUISER]: { col: 3, row: 5 },
-      [RIGHT_BRUISER]: { col: 4, row: 5 },
-      [RIGHT_CONTROLLER]: { col: 4, row: 4 },
+      [LEFT_BRUISER]: { col: 3, row: 6 },
+      [RIGHT_BRUISER]: { col: 4, row: 6 },
+      [RIGHT_CONTROLLER]: { col: 4, row: 5 },
     });
     const decks = [RIGHT_BRUISER, RIGHT_CONTROLLER].map((id) => hero(match, id).deck.length);
     const { match: after, events } = resolveRound(match, [shockwavePlan()]);
     expect(hero(after, RIGHT_BRUISER).deck).toHaveLength(decks[0]! - 2);
     expect(hero(after, RIGHT_CONTROLLER).deck).toHaveLength(decks[1]! - 2);
-    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 6, row: 5 });
+    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 6, row: 6 });
     // A diagonal neighbour is pushed along the diagonal.
-    expect(hero(after, RIGHT_CONTROLLER).position).toEqual({ col: 6, row: 2 });
+    expect(hero(after, RIGHT_CONTROLLER).position).toEqual({ col: 6, row: 3 });
     expect(events.filter(({ kind }) => kind === EventKind.AttackHit)).toHaveLength(2);
     expect(knockbacks(events)).toHaveLength(4);
   });
 
   it("does not damage or push allied Heroes or enemies out of Range", () => {
     const match = setup({
-      [LEFT_BRUISER]: { col: 8, row: 5 },
-      [LEFT_CONTROLLER]: { col: 7, row: 5 },
-      [RIGHT_BRUISER]: { col: 10, row: 5 },
+      [LEFT_BRUISER]: { col: 8, row: 3 },
+      [LEFT_CONTROLLER]: { col: 7, row: 3 },
+      [RIGHT_BRUISER]: { col: 10, row: 3 },
     });
     const allyDeck = hero(match, LEFT_CONTROLLER).deck.length;
     const { match: after, events } = resolveRound(match, [shockwavePlan()]);
     expect(hero(after, LEFT_CONTROLLER).deck).toHaveLength(allyDeck);
-    expect(hero(after, LEFT_CONTROLLER).position).toEqual({ col: 7, row: 5 });
-    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 10, row: 5 });
+    expect(hero(after, LEFT_CONTROLLER).position).toEqual({ col: 7, row: 3 });
+    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 10, row: 3 });
     expect(events).toEqual([]);
   });
 
   it("applies Shield before Deck Damage", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 8, row: 5 }, [RIGHT_BRUISER]: { col: 9, row: 5 } });
+    const match = setup({ [LEFT_BRUISER]: { col: 8, row: 3 }, [RIGHT_BRUISER]: { col: 9, row: 3 } });
     hero(match, RIGHT_BRUISER).shield = 1;
     const deck = hero(match, RIGHT_BRUISER).deck.length;
     const { match: after } = resolveRound(match, [shockwavePlan()]);
@@ -79,17 +79,17 @@ describe("Shockwave: area damage and Knockback", () => {
   });
 
   it("stops at a Wall and ends early without error", () => {
-    // The Wall is at column 5, row 6: the target is pushed one tile, then stopped.
-    const match = setup({ [LEFT_BRUISER]: { col: 5, row: 3 }, [RIGHT_BRUISER]: { col: 5, row: 4 } });
+    // The Wall is at column 10, row 7: the target is pushed one tile, then stopped.
+    const match = setup({ [LEFT_BRUISER]: { col: 7, row: 7 }, [RIGHT_BRUISER]: { col: 8, row: 7 } });
     const { match: after, events } = resolveRound(match, [shockwavePlan()]);
-    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 5, row: 5 });
+    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 9, row: 7 });
     expect(knockbacks(events)).toHaveLength(1);
   });
 
   it("does not move a Hero that stands right in front of a Wall", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 5, row: 4 }, [RIGHT_BRUISER]: { col: 5, row: 5 } });
+    const match = setup({ [LEFT_BRUISER]: { col: 8, row: 7 }, [RIGHT_BRUISER]: { col: 9, row: 7 } });
     const { match: after, events } = resolveRound(match, [shockwavePlan()]);
-    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 5, row: 5 });
+    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 9, row: 7 });
     expect(knockbacks(events)).toHaveLength(0);
   });
 
@@ -102,29 +102,29 @@ describe("Shockwave: area damage and Knockback", () => {
 
   it("stops in front of another Hero", () => {
     const match = setup({
-      [LEFT_BRUISER]: { col: 8, row: 5 },
-      [RIGHT_BRUISER]: { col: 9, row: 5 },
-      [RIGHT_CONTROLLER]: { col: 11, row: 5 },
+      [LEFT_BRUISER]: { col: 8, row: 3 },
+      [RIGHT_BRUISER]: { col: 9, row: 3 },
+      [RIGHT_CONTROLLER]: { col: 11, row: 3 },
     });
     const { match: after, events } = resolveRound(match, [shockwavePlan()]);
-    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 10, row: 5 });
-    expect(hero(after, RIGHT_CONTROLLER).position).toEqual({ col: 11, row: 5 });
+    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 10, row: 3 });
+    expect(hero(after, RIGHT_CONTROLLER).position).toEqual({ col: 11, row: 3 });
     expect(knockbacks(events)).toHaveLength(1);
   });
 
   it("does nothing, without a failure, when no enemy Hero is in Range", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 8, row: 5 }, [RIGHT_BRUISER]: { col: 12, row: 5 } });
+    const match = setup({ [LEFT_BRUISER]: { col: 8, row: 3 }, [RIGHT_BRUISER]: { col: 12, row: 3 } });
     const { events } = resolveRound(match, [shockwavePlan()]);
     expect(events).toEqual([]);
   });
 
   it("shows the push in the events of both Squads", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 8, row: 5 }, [RIGHT_BRUISER]: { col: 9, row: 5 } });
+    const match = setup({ [LEFT_BRUISER]: { col: 8, row: 3 }, [RIGHT_BRUISER]: { col: 9, row: 3 } });
     const resolution = resolveRound(match, [shockwavePlan()]);
     for (const squad of [SquadId.Left, SquadId.Right]) {
       expect(knockbacks(getSquadEvents(squad, resolution))).toEqual([
-        { kind: EventKind.Knockback, tick: 1, heroId: RIGHT_BRUISER, from: { col: 9, row: 5 }, to: { col: 10, row: 5 }, card: "Shockwave" },
-        { kind: EventKind.Knockback, tick: 1, heroId: RIGHT_BRUISER, from: { col: 10, row: 5 }, to: { col: 11, row: 5 }, card: "Shockwave" },
+        { kind: EventKind.Knockback, tick: 1, heroId: RIGHT_BRUISER, from: { col: 9, row: 3 }, to: { col: 10, row: 3 }, card: "Shockwave" },
+        { kind: EventKind.Knockback, tick: 1, heroId: RIGHT_BRUISER, from: { col: 10, row: 3 }, to: { col: 11, row: 3 }, card: "Shockwave" },
       ]);
     }
   });

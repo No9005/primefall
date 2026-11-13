@@ -30,7 +30,7 @@ function movePlan(match: MatchState, squad: SquadId, moves: Record<string, GridP
 
 const at = (col: number, row = 3): GridPosition => ({ col, row });
 const positionOf = (match: MatchState, heroId: string) => match.heroes.find((hero) => hero.id === heroId)!.position;
-const mirror = ({ col, row }: GridPosition): GridPosition => ({ col: 30 - col, row });
+const mirror = ({ col, row }: GridPosition): GridPosition => ({ col: 44 - col, row });
 
 /** Plays the Left Squad's Moves and returns where the Heroes end. */
 function play(positions: Record<string, GridPosition>, moves: Record<string, GridPosition>) {
@@ -136,14 +136,14 @@ describe("Heroes that move do not hinder each other (ADR 0013)", () => {
   });
 
   it("still stops at a Wall", () => {
-    // (5,6) is the first Wall of the upper channel Wall.
-    const { match } = play({ [LEFT_BRUISER]: at(3, 6) }, { [LEFT_BRUISER]: at(5, 6) });
-    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(4, 6));
+    // (10,7) is the first Wall of the ruin wall at columns 10 and 11.
+    const { match } = play({ [LEFT_BRUISER]: at(8, 7) }, { [LEFT_BRUISER]: at(10, 7) });
+    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(9, 7));
   });
 
   it("still does not cut a Wall corner", () => {
-    const { match } = play({ [LEFT_BRUISER]: at(5, 5) }, { [LEFT_BRUISER]: at(4, 6) });
-    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(5, 5));
+    const { match } = play({ [LEFT_BRUISER]: at(9, 5) }, { [LEFT_BRUISER]: at(10, 4) });
+    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(9, 5));
   });
 });
 
@@ -182,11 +182,11 @@ describe("Moves may cross in the middle of a walk; only the tile where a Move en
   it("does not let a Hero walk through a Hero whose own Move ends where it started", () => {
     // A Move towards a Wall corner ends on the start tile, so that Hero stays.
     const { match } = play(
-      { [LEFT_BRUISER]: at(4, 5), [LEFT_CONTROLLER]: at(5, 5) },
-      { [LEFT_BRUISER]: at(6, 5), [LEFT_CONTROLLER]: at(4, 6) },
+      { [LEFT_BRUISER]: at(9, 6), [LEFT_CONTROLLER]: at(9, 5) },
+      { [LEFT_BRUISER]: at(9, 4), [LEFT_CONTROLLER]: at(10, 4) },
     );
-    expect(positionOf(match, LEFT_CONTROLLER)).toEqual(at(5, 5));
-    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(4, 5));
+    expect(positionOf(match, LEFT_CONTROLLER)).toEqual(at(9, 5));
+    expect(positionOf(match, LEFT_BRUISER)).toEqual(at(9, 6));
   });
 });
 
@@ -226,10 +226,10 @@ describe("the movement rule is symmetric and independent of the order of the Her
   });
 
   it("ends two Squads that aim at the same tile on mirrored tiles", () => {
-    const match = matchWith({ [LEFT_BRUISER]: at(14, 5), [RIGHT_BRUISER]: mirror(at(14, 5)) });
+    const match = matchWith({ [LEFT_BRUISER]: at(20, 7), [RIGHT_BRUISER]: mirror(at(20, 7)) });
     const plans = [
-      movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(15, 7) }),
-      movePlan(match, SquadId.Right, { [RIGHT_BRUISER]: at(15, 7) }),
+      movePlan(match, SquadId.Left, { [LEFT_BRUISER]: at(22, 7) }),
+      movePlan(match, SquadId.Right, { [RIGHT_BRUISER]: at(22, 7) }),
     ];
     const { match: after } = resolveRound(match, plans);
     expect(positionOf(after, RIGHT_BRUISER)).toEqual(mirror(positionOf(after, LEFT_BRUISER)));

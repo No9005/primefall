@@ -12,14 +12,14 @@ const allCards = (hero: HeroState) => [...hero.hand, ...hero.deck, ...hero.disca
 /** A Round-1 match where the Bruiser stands in open ground. */
 function openMatch(): MatchState {
   const match = startRound(createMatch(5));
-  heroOf(match).position = { col: 8, row: 5 };
+  heroOf(match).position = { col: 8, row: 3 };
   return match;
 }
 
 const resolve = (match: MatchState, queue: QueuedAction[], pitched: number[] = []) =>
   resolveRound(match, [{ squad: SquadId.Left, heroes: [{ heroId: HERO_ID, queue, pitched }] }]);
 
-const move = (card: number, col: number): QueuedAction => ({ kind: ActionKind.Move, card, destination: { col, row: 5 } });
+const move = (card: number, col: number): QueuedAction => ({ kind: ActionKind.Move, card, destination: { col, row: 3 } });
 
 describe("resolveRound with plans that were not validated", () => {
   it("fails an action whose card is not in the Hand and still resolves the rest of the Queue", () => {
@@ -29,7 +29,7 @@ describe("resolveRound with plans that were not validated", () => {
     const { match: after, events } = resolve(match, [move(foreign, 10), move(hero.hand[0]!, 10)]);
 
     expect(events.filter(({ kind }) => kind === EventKind.ActionFailed).map(({ tick }) => tick)).toEqual([1]);
-    expect(heroOf(after).position).toEqual({ col: 10, row: 5 });
+    expect(heroOf(after).position).toEqual({ col: 10, row: 3 });
     expect(heroOf(after).hand).toEqual(hero.hand.slice(1));
     expect(heroOf(after).discard).toEqual([...hero.discard, hero.hand[0]]);
     expect(allCards(heroOf(after))).toEqual(allCards(hero));
@@ -42,7 +42,7 @@ describe("resolveRound with plans that were not validated", () => {
     const { match: after, events } = resolve(match, [move(card, 10), move(card, 12)]);
 
     expect(events.filter(({ kind }) => kind === EventKind.ActionFailed).map(({ tick }) => tick)).toEqual([2]);
-    expect(heroOf(after).position).toEqual({ col: 10, row: 5 });
+    expect(heroOf(after).position).toEqual({ col: 10, row: 3 });
     expect(heroOf(after).discard.filter((discarded) => discarded === card)).toHaveLength(1);
     expect(allCards(heroOf(after))).toEqual(allCards(hero));
   });
@@ -54,7 +54,7 @@ describe("resolveRound with plans that were not validated", () => {
     const { match: after, events } = resolve(match, [move(card, 10)], [card]);
 
     expect(events.map(({ kind }) => kind)).toEqual([EventKind.ActionFailed]);
-    expect(heroOf(after).position).toEqual({ col: 8, row: 5 });
+    expect(heroOf(after).position).toEqual({ col: 8, row: 3 });
     expect(allCards(heroOf(after))).toEqual(allCards(hero));
   });
 

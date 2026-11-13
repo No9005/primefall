@@ -53,6 +53,9 @@ describe("Minimum Range", () => {
   it("checks TooClose before Line of Sight", () => {
     // Full Cover between the two, so the shot would also have no Line of Sight.
     const match = withFullCover(sceneAt(2), { col: 3, row: 1 });
+    // A Squad mate sees the enemy past the Full Cover, so the target stays Visible.
+    hero(match, "left-controller").position = { col: 4, row: 3 };
+    recordSightings(match);
     expect(fire(match, LONG_SHOT)).toMatchObject({ reason: AttackFailReason.TooClose });
   });
 

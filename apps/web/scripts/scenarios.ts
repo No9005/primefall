@@ -464,8 +464,8 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "A Scout Drone area (3 x 3, 2 Resolutions left) shows an enemy Hero behind a wall in Resolutions 1 and 2; then the fog closes.",
     buildMatch: () =>
       stage(23, (hero, match) => {
-        arrange(hero(PLAYER_BRUISER), { col: 8, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
-        // Behind the wall of row 6: out of sight for the Squad until the area covers it. The sighting makes it a Ghost later.
+        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        // Behind the wall of row 5: out of sight for the Squad until the area covers it. The sighting makes it a Ghost later.
         hero("right-assassin").position = { col: 12, row: 7 };
         match.revealedAreas.push({ squad: SquadId.Left, center: { col: 12, row: 6 }, size: 3, remaining: 2 });
       }),
@@ -479,15 +479,15 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "An enemy Assassin seen earlier is out of sight and shown as a Ghost with the last seen tag; the Bruiser then moves close enough to see it again.",
     buildMatch: () =>
       stage(25, (hero, match) => {
-        arrange(hero(PLAYER_BRUISER), { col: 7, row: 8 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
-        // Seen 6 tiles away, then 8 tiles away on the Prime Zone, beyond the sight range of 7: the Squad remembers the first tile.
-        hero("right-assassin").position = { col: 13, row: 8 };
+        arrange(hero(PLAYER_BRUISER), { col: 15, row: 2 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        // Seen 6 tiles away, then 8 tiles away on the Outpost, beyond the sight range of 7: the Squad remembers the first tile.
+        hero("right-assassin").position = { col: 21, row: 2 };
         recordSightings(match);
-        hero("right-assassin").position = { col: 15, row: 8 };
+        hero("right-assassin").position = { col: 23, row: 2 };
       }),
     heroId: PLAYER_BRUISER,
-    // The enemy holds the Prime Zone; the Move brings it to 6 tiles.
-    steps: [{ slot: 0, use: "move", tile: { col: 9, row: 8 } }],
+    // The enemy holds the Outpost; the Move brings it to 6 tiles.
+    steps: [{ slot: 0, use: "move", tile: { col: 17, row: 2 } }],
     resolutionShotsMs: [800, 2500],
   },
   {

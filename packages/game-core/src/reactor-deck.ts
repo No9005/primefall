@@ -225,26 +225,61 @@ export function shotLine(grid: Grid, from: GridPosition, to: GridPosition, range
 }
 
 /**
- * The Reactor Deck: 31 by 17 tiles, mirror-symmetric around the centre column (ADR 0016).
- * The two Outposts (3 by 2 tiles, rows 3-4 and 12-13) are an interim placement; the real map comes later.
- * `#` Wall, `H` Half Cover, `P` Prime Zone, `X` Outpost, `S` Spawn, `.` open floor.
+ * The Reactor Deck "Crossroads": 45 by 25 tiles, mirror-symmetric left to right and top to bottom (ADR 0016).
+ * Three zones: the Prime Zone (5 by 5) in the middle and two Outposts (3 by 3) on the centre column, top and bottom.
+ * On purpose not symmetric: the two slabs beside the Prime Zone are point-symmetric (offset by two rows), and the
+ * Overwatch Nests exist only in the top half (the bottom half has Full Cover in their place).
+ * `#` Wall, `H` Half Cover, `F` Full Cover, `O` Overwatch Nest, `P` Prime Zone, `X` Outpost, `S` Spawn, `.` open floor.
  */
 export const REACTOR_DECK: Grid = parseGrid([
-  "###############################",
-  "#.............................#",
-  "#...H...HH...HH.HH...HH...H...#",
-  "#.............XXX.............#",
-  "#.....HH..##.HXXXH.##..HH.....#",
-  "#.............H.H.............#",
-  "#....#######HH...HH#######....#",
-  "#S............PPP............S#",
-  "#S............PPP............S#",
-  "#S............PPP............S#",
-  "#....#######HH...HH#######....#",
-  "#.............H.H.............#",
-  "#.....HH..##.HXXXH.##..HH.....#",
-  "#.............XXX.............#",
-  "#...H...HH...HH.HH...HH...H...#",
-  "#.............................#",
-  "###############################",
+  "#############################################",
+  "#.........##.........###.........##.........#",
+  "#......HH.##..F......XXX......F..##.HH......#",
+  "#................F...XXX...F................#",
+  "#................F...XXX...F................#",
+  "#.........#####....#######....#####.........#",
+  "#.........##.....................##.........#",
+  "#.........##.O.................O.##.........#",
+  "#...#.....##......H.......H......##.....#...#",
+  "#...#.....##.....................##.....#...#",
+  "#SS.#...........##..PPPPP...............#.SS#",
+  "#SS.....H.......##..PPPPP...........H.....SS#",
+  "#SS.............##..PPPPP..##.............SS#",
+  "#SS.....H...........PPPPP..##.......H.....SS#",
+  "#SS.#...............PPPPP..##...........#.SS#",
+  "#...#.....##.....................##.....#...#",
+  "#...#.....##......H.......H......##.....#...#",
+  "#.........##.F.................F.##.........#",
+  "#.........##.....................##.........#",
+  "#.........#####....#######....#####.........#",
+  "#................F...XXX...F................#",
+  "#................F...XXX...F................#",
+  "#......HH.##..F......XXX......F..##.HH......#",
+  "#.........##.........###.........##.........#",
+  "#############################################",
 ]);
+
+/** The three Heroes of a Squad start on the middle rows of a column of five or more tiles. */
+function middleThree(column: readonly GridPosition[]): GridPosition[] {
+  const sorted = [...column].sort((a, b) => a.row - b.row);
+  const first = Math.floor((sorted.length - 3) / 2);
+  return sorted.slice(first, first + 3);
+}
+
+const isOnSide = (left: boolean, col: number) => (left ? col < REACTOR_DECK.width / 2 : col > REACTOR_DECK.width / 2);
+
+/** Where a Squad starts: the middle three rows of the inner column of its Spawn strip. */
+export function spawnStartTiles(left: boolean): GridPosition[] {
+  const spawns = findTiles(REACTOR_DECK, TileKind.Spawn).filter(({ col }) => isOnSide(left, col));
+  const cols = spawns.map(({ col }) => col);
+  const innerCol = left ? Math.max(...cols) : Math.min(...cols);
+  return middleThree(spawns.filter(({ col }) => col === innerCol));
+}
+
+/** Where a Defender starts (ADR 0022): the middle three rows of the Prime Zone column next to the Squad's side. */
+export function defenderStartTiles(left: boolean): GridPosition[] {
+  const zone = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+  const cols = zone.map(({ col }) => col);
+  const sideCol = left ? Math.min(...cols) : Math.max(...cols);
+  return middleThree(zone.filter(({ col }) => col === sideCol));
+}

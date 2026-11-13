@@ -61,10 +61,10 @@ describe("end texts", () => {
 describe("the side screen preview", () => {
   it("starts the Defenders in the Prime Zone and the Attackers on their Spawn", () => {
     const attack = previewLayout("attack");
-    expect(attack.heroes.map((hero) => hero.position.col)).toEqual([1, 1, 1]);
-    expect(attack.enemies.map((hero) => hero.position.col)).toEqual([16, 16, 16]);
+    expect(attack.heroes.map((hero) => hero.position.col)).toEqual([2, 2, 2]);
+    expect(attack.enemies.map((hero) => hero.position.col)).toEqual([24, 24, 24]);
     const defend = previewLayout("defend");
-    expect(defend.heroes.map((hero) => hero.position.col)).toEqual([14, 14, 14]);
-    expect(defend.enemies.map((hero) => hero.position.col)).toEqual([29, 29, 29]);
+    expect(defend.heroes.map((hero) => hero.position.col)).toEqual([20, 20, 20]);
+    expect(defend.enemies.map((hero) => hero.position.col)).toEqual([42, 42, 42]);
   });
 });

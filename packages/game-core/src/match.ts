@@ -23,7 +23,7 @@ import {
   type ZoneView,
 } from "./host";
 import { chebyshevDistance } from "./plan";
-import { CoverKind, coverAt, destroyCover, destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, REACTOR_DECK, TileKind, tileAt, withTile, withWreck } from "./reactor-deck";
+import { CoverKind, defenderStartTiles, spawnStartTiles, coverAt, destroyCover, destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, REACTOR_DECK, TileKind, tileAt, withTile, withWreck } from "./reactor-deck";
 
 /** A scoring zone of the classic mode, read from the Reactor Deck. */
 export interface ZoneDefinition {
@@ -182,22 +182,6 @@ function shuffle(state: MatchState, cards: CardIndex[]): void {
   }
 }
 
-const isLeftOfMiddle = (squad: SquadId, col: number) => (squad === SquadId.Left ? col < REACTOR_DECK.width / 2 : col > REACTOR_DECK.width / 2);
-
-function spawnTiles(squad: SquadId): GridPosition[] {
-  return findTiles(REACTOR_DECK, TileKind.Spawn)
-    .filter(({ col }) => isLeftOfMiddle(squad, col))
-    .sort((a, b) => a.row - b.row);
-}
-
-/** The Prime Zone tiles of the inner column next to the Squad's side, where a Defender starts (ADR 0022). */
-function innerZoneTiles(squad: SquadId): GridPosition[] {
-  const zone = findTiles(REACTOR_DECK, TileKind.PrimeZone);
-  const columns = zone.map(({ col }) => col);
-  const sideCol = squad === SquadId.Left ? Math.min(...columns) : Math.max(...columns);
-  return zone.filter(({ col }) => col === sideCol).sort((a, b) => a.row - b.row);
-}
-
 /** Creates two Squads of three Heroes on their start tiles, each with a freshly shuffled Deck. */
 export function createMatch(seed: number, mode: MatchModeSetting = { kind: MatchMode.Classic }): MatchState {
   const match: MatchState = {
@@ -218,7 +202,8 @@ export function createMatch(seed: number, mode: MatchModeSetting = { kind: Match
     mode,
   };
   for (const squad of [SquadId.Left, SquadId.Right]) {
-    const spawns = mode.kind === MatchMode.AttackAndDefend && mode.defender === squad ? innerZoneTiles(squad) : spawnTiles(squad);
+    const left = squad === SquadId.Left;
+    const spawns = mode.kind === MatchMode.AttackAndDefend && mode.defender === squad ? defenderStartTiles(left) : spawnStartTiles(left);
     SQUAD_ORDER.forEach((heroClass, i) => {
       const deck = HERO_DECKS[heroClass].map((_, index) => index);
       shuffle(match, deck);

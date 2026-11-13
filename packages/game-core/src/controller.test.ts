@@ -32,12 +32,12 @@ const planOf = (heroId: string, queue: QueuedAction[], pitched: number[], squad 
   heroes: [{ heroId, queue, pitched }],
 });
 
-/** Left Controller at (8,5) and the enemy Bruiser at (10,5), both seeing each other. */
+/** Left Controller at (8,3) and the enemy Bruiser at (10,3), both seeing each other. */
 function setup(hand: number[]): MatchState {
   const match = startRound(createMatch(5));
-  hero(match, CONTROLLER).position = { col: 8, row: 5 };
+  hero(match, CONTROLLER).position = { col: 8, row: 3 };
   hero(match, CONTROLLER).hand = hand;
-  hero(match, ENEMY).position = { col: 10, row: 5 };
+  hero(match, ENEMY).position = { col: 10, row: 3 };
   hero(match, ENEMY).hand = [0, 1, 2, 3];
   return match;
 }
@@ -89,35 +89,35 @@ describe("Gravity Snare", () => {
 });
 
 describe("Scout Drone", () => {
-  /** The Controller at (9,5), Full Cover on (11,5) between it and the enemy at (13,5). */
+  /** The Controller at (9,3), Full Cover on (11,3) between it and the enemy at (13,3). */
   function blockedSight(hand: number[]): MatchState {
     const match = startRound(createMatch(5));
-    match.grid = withTile(match.grid, { col: 11, row: 5 }, TileKind.FullCover);
-    hero(match, CONTROLLER).position = { col: 9, row: 5 };
+    match.grid = withTile(match.grid, { col: 11, row: 3 }, TileKind.FullCover);
+    hero(match, CONTROLLER).position = { col: 9, row: 3 };
     hero(match, CONTROLLER).hand = hand;
-    hero(match, ENEMY).position = { col: 13, row: 5 };
+    hero(match, ENEMY).position = { col: 13, row: 3 };
     return match;
   }
 
   it("reveals a 3 by 3 area through Full Cover, shows what is in it and updates Ghost memory", () => {
     const match = blockedSight([SCOUT_DRONE, PULSE_BOLT, 1, 5]);
     expect(enemyView(match).visibility).not.toBe(Visibility.Visible);
-    const plan = planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile: { col: 13, row: 5 } })], [PULSE_BOLT]);
+    const plan = planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile: { col: 13, row: 3 } })], [PULSE_BOLT]);
     expect(validatePlan(buildSquadView(match, SquadId.Left), plan)).toEqual([]);
     const { match: after, events } = resolveRound(match, [plan]);
-    expect(events).toContainEqual({ kind: EventKind.AreaRevealed, tick: 1, heroId: CONTROLLER, to: { col: 13, row: 5 }, amount: 3, card: "Scout Drone" });
+    expect(events).toContainEqual({ kind: EventKind.AreaRevealed, tick: 1, heroId: CONTROLLER, to: { col: 13, row: 3 }, amount: 3, card: "Scout Drone" });
 
     const view = buildSquadView(after, SquadId.Left);
-    expect(view.revealedAreas).toEqual([{ center: { col: 13, row: 5 }, size: 3, remaining: 1 }]);
-    expect(view.enemies.find((enemy) => enemy.id === ENEMY)).toMatchObject({ visibility: Visibility.Visible, position: { col: 13, row: 5 } });
-    expect(after.ghosts[SquadId.Left][ENEMY]!.position).toEqual({ col: 13, row: 5 });
+    expect(view.revealedAreas).toEqual([{ center: { col: 13, row: 3 }, size: 3, remaining: 1 }]);
+    expect(view.enemies.find((enemy) => enemy.id === ENEMY)).toMatchObject({ visibility: Visibility.Visible, position: { col: 13, row: 3 } });
+    expect(after.ghosts[SquadId.Left][ENEMY]!.position).toEqual({ col: 13, row: 3 });
     // The enemy Squad learns nothing about the area.
     expect(buildSquadView(after, SquadId.Right).revealedAreas).toEqual([]);
   });
 
   it("does not show an enemy just outside the 3 by 3 area, but the 5 by 5 Overdrive does", () => {
     const match = blockedSight([SCOUT_DRONE, PULSE_BOLT, 1, 5]);
-    const centre = { col: 11, row: 5 };
+    const centre = { col: 11, row: 3 };
     const standard = resolveRound(match, [planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile: centre })], [PULSE_BOLT])]);
     expect(enemyView(standard.match).visibility).not.toBe(Visibility.Visible);
     const overdrive = resolveRound(match, [
@@ -130,7 +130,7 @@ describe("Scout Drone", () => {
 
   it("lasts two Resolutions, the one it is played in included", () => {
     const match = blockedSight([SCOUT_DRONE, PULSE_BOLT, 1, 5]);
-    const tile = { col: 13, row: 5 };
+    const tile = { col: 13, row: 3 };
     const first = resolveRound(match, [planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile })], [PULSE_BOLT])]).match;
     expect(first.revealedAreas).toHaveLength(1);
     const second = resolveRound(startRound(first), []).match;
@@ -141,12 +141,12 @@ describe("Scout Drone", () => {
   it("shows a Hidden enemy inside the area, which stays Hidden", () => {
     const match = blockedSight([SCOUT_DRONE, PULSE_BOLT, 1, 5]);
     hero(match, ENEMY).hidden = 2;
-    const tile = { col: 13, row: 5 };
+    const tile = { col: 13, row: 3 };
     const { match: after } = resolveRound(match, [planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile })], [PULSE_BOLT])]);
     expect(enemyView(after).visibility).toBe(Visibility.Visible);
     expect(hero(after, ENEMY).hidden).toBeGreaterThan(0);
     // Outside the area a Hidden enemy is still not seen.
-    hero(after, ENEMY).position = { col: 15, row: 5 };
+    hero(after, ENEMY).position = { col: 15, row: 3 };
     expect(enemyView(after).visibility).not.toBe(Visibility.Visible);
   });
 
@@ -163,7 +163,7 @@ describe("Scout Drone", () => {
 
   it("tells the enemy only which area was scanned, not what is in it", () => {
     const match = blockedSight([SCOUT_DRONE, PULSE_BOLT, 1, 5]);
-    const tile = { col: 13, row: 5 };
+    const tile = { col: 13, row: 3 };
     const { match: after } = resolveRound(match, [planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile })], [PULSE_BOLT])]);
     const enemySide = buildSquadView(after, SquadId.Right);
     expect(enemySide.scannedAreas).toEqual([{ center: tile, size: 3 }]);
@@ -215,11 +215,11 @@ describe("Aegis Protocol", () => {
 });
 
 describe("Placed Cover", () => {
-  const PRIME_TILE = { col: 14, row: 7 };
+  const PRIME_TILE = { col: 22, row: 12 };
 
   it("Deploy Cover turns an empty tile into Half Cover that stays", () => {
     const match = setup([DEPLOY_COVER, PULSE_BOLT, 1, 5]);
-    hero(match, CONTROLLER).position = { col: 13, row: 5 };
+    hero(match, CONTROLLER).position = { col: 20, row: 12 };
     const tile = PRIME_TILE;
     const plan = planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile })], [PULSE_BOLT]);
     const { match: first, events } = resolveRound(match, [plan]);
@@ -235,25 +235,25 @@ describe("Placed Cover", () => {
 
   it("Deploy Cover fails on a Wall, on existing Cover and on a tile with a Hero", () => {
     const match = setup([DEPLOY_COVER, PULSE_BOLT, 1, 5]);
-    for (const tile of [{ col: 5, row: 6 }, { col: 6, row: 4 }, { col: 8, row: 2 }, { col: 10, row: 5 }]) {
+    for (const tile of [{ col: 10, row: 5 }, { col: 7, row: 2 }, { col: 8, row: 2 }, { col: 10, row: 3 }]) {
       const { match: after, events } = resolveRound(match, [planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile })], [PULSE_BOLT])]);
       expect(events.some(({ kind }) => kind === EventKind.CoverPlaced)).toBe(false);
       expect(after.placedCover).toEqual([]);
       expect(after.grid).toEqual(match.grid);
     }
-    const plan = planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile: { col: 5, row: 6 } })], [PULSE_BOLT]);
+    const plan = planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile: { col: 10, row: 5 } })], [PULSE_BOLT]);
     expect(validatePlan(buildSquadView(match, SquadId.Left), plan).map(({ kind }) => kind)).toEqual([PlanIssueKind.BadTarget]);
   });
 
   it("Barricade turns an empty tile within Range 3 into Full Cover that stays, and fails beyond Range 3", () => {
     const match = setup([BARRICADE, PULSE_BOLT, 1, 5]);
-    const near = { col: 8, row: 8 };
+    const near = { col: 8, row: 6 };
     const { match: after, events } = resolveRound(match, [planOf(CONTROLLER, [primary(BARRICADE, CONTROLLER, { tile: near })], [PULSE_BOLT])]);
     expect(events).toEqual([{ kind: EventKind.CoverPlaced, tick: 1, heroId: CONTROLLER, to: near, card: "Barricade" }]);
     expect(coverAt(after.grid, near)).toBe(CoverKind.Full);
     expect(buildSquadView(after, SquadId.Left).placedCover).toEqual([near]);
 
-    const far = { col: 8, row: 9 };
+    const far = { col: 8, row: 7 };
     const missed = resolveRound(match, [planOf(CONTROLLER, [primary(BARRICADE, CONTROLLER, { tile: far })], [PULSE_BOLT])]);
     expect(missed.events.some(({ kind }) => kind === EventKind.CoverPlaced)).toBe(false);
     expect(missed.match.placedCover).toEqual([]);
@@ -262,12 +262,12 @@ describe("Placed Cover", () => {
   it("Half Cover placed in a Tick reduces damage from then on", () => {
     // The enemy Bruiser (Range 3) shoots the Controller in Tick 2; Deploy Cover in Tick 1 covers the Controller's new tile.
     const match = setup([DEPLOY_COVER, PULSE_BOLT, 1, 5]);
-    hero(match, ENEMY).position = { col: 11, row: 5 };
+    hero(match, ENEMY).position = { col: 11, row: 3 };
     hero(match, ENEMY).hand = [0, 1, 2, 3];
-    const target = { col: 8, row: 5 };
+    const target = { col: 8, row: 3 };
     expect(coverAt(match.grid, target)).toBe(CoverKind.None);
     // Cover cannot be placed under a Hero, so the Controller steps off and the cover goes behind it.
-    const plan = planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile: { col: 7, row: 5 } }), move(PULSE_BOLT, { col: 7, row: 5 })], [1]);
+    const plan = planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile: { col: 7, row: 3 } }), move(PULSE_BOLT, { col: 7, row: 3 })], [1]);
     const { match: after, events } = resolveRound(match, [plan]);
     expect(events.some(({ kind }) => kind === EventKind.CoverPlaced)).toBe(true);
     // The Controller moved onto the new Cover in Tick 2 and stands on Half Cover.
@@ -287,7 +287,7 @@ describe("Placed Cover", () => {
     const match = setup([FORTIFY, PULSE_BOLT, 1, 5]);
     const far = resolveRound(match, [planOf(CONTROLLER, [primary(FORTIFY, BRUISER)], [PULSE_BOLT])]);
     expect(far.events).toEqual([{ kind: EventKind.ActionFailed, tick: 1, heroId: CONTROLLER }]);
-    hero(match, BRUISER).position = { col: 6, row: 4 };
+    hero(match, BRUISER).position = { col: 7, row: 2 };
     const covered = resolveRound(match, [planOf(CONTROLLER, [primary(FORTIFY, BRUISER)], [PULSE_BOLT])]);
     expect(covered.events).toEqual([{ kind: EventKind.ActionFailed, tick: 1, heroId: CONTROLLER }]);
     expect(covered.match.placedCover).toEqual([]);
@@ -295,10 +295,10 @@ describe("Placed Cover", () => {
 
   it("an enemy Squad sees placed Cover only on tiles it sees", () => {
     const match = setup([DEPLOY_COVER, PULSE_BOLT, 1, 5]);
-    const tile = { col: 8, row: 3 };
+    const tile = { col: 8, row: 4 };
     const { match: after } = resolveRound(match, [planOf(CONTROLLER, [primary(DEPLOY_COVER, CONTROLLER, { tile })], [PULSE_BOLT])]);
     expect(buildSquadView(after, SquadId.Left).placedCover).toEqual([tile]);
-    // The right Bruiser at (10,5) sees (8,3).
+    // The right Bruiser at (10,3) sees (8,4).
     expect(buildSquadView(after, SquadId.Right).placedCover).toEqual([tile]);
     hero(after, ENEMY).position = { col: 19, row: 1 };
     for (const other of after.heroes.filter((candidate) => candidate.squad === SquadId.Right)) other.position = { col: 19, row: 9 };
@@ -308,12 +308,12 @@ describe("Placed Cover", () => {
 });
 
 describe("Overwatch Uplink", () => {
-  // The enemy Bruiser stands on Half Cover at (6,4); the allied Bruiser attacks it from (8,4) with Slam Shot (card 0, 2 damage at Range 2).
+  // The enemy Bruiser stands on Half Cover at (7,2); the allied Bruiser attacks it from (9,2) with Slam Shot (card 0, 2 damage at Range 2).
   function coverFight(): MatchState {
     const match = setup([OVERWATCH_UPLINK, PULSE_BOLT, 1, 5]);
-    hero(match, BRUISER).position = { col: 8, row: 4 };
+    hero(match, BRUISER).position = { col: 9, row: 2 };
     hero(match, BRUISER).hand = [0, 1, 2, 3];
-    hero(match, ENEMY).position = { col: 6, row: 4 };
+    hero(match, ENEMY).position = { col: 7, row: 2 };
     return match;
   }
   const bruiserPlan = (queue: QueuedAction[], pitched: number[]): SquadPlan => ({
@@ -343,7 +343,7 @@ describe("Overwatch Uplink", () => {
       squad: SquadId.Left,
       heroes: [
         // The Uplink is the Controller's second action; the Bruiser attacks in Tick 1 and again in Tick 2.
-        { heroId: CONTROLLER, queue: [move(1, { col: 8, row: 3 }), primary(OVERWATCH_UPLINK, BRUISER)], pitched: [PULSE_BOLT] },
+        { heroId: CONTROLLER, queue: [move(1, { col: 8, row: 4 }), primary(OVERWATCH_UPLINK, BRUISER)], pitched: [PULSE_BOLT] },
         { heroId: BRUISER, queue: [primary(0, ENEMY), primary(1, ENEMY)], pitched: [2, 3] },
       ],
     };

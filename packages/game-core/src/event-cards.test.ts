@@ -60,7 +60,7 @@ describe("Events carry the card that caused them", () => {
   });
 
   it("puts the card on every target's event of an area card, Knockback included, and keeps it in the Squad's events", () => {
-    const match = scene({ [BRUISER]: { col: 8, row: 5 }, [ENEMY]: { col: 9, row: 5 }, [OTHER_ENEMY]: { col: 9, row: 6 } });
+    const match = scene({ [BRUISER]: { col: 8, row: 3 }, [ENEMY]: { col: 9, row: 3 }, [OTHER_ENEMY]: { col: 9, row: 4 } });
     const resolution = resolveRound(match, [plan(BRUISER, { kind: ActionKind.Primary, card: SHOCKWAVE, target: BRUISER }, [0, 1])]);
     const events = getSquadEvents(SquadId.Right, resolution).filter(({ kind }) => kind === EventKind.AttackHit || kind === EventKind.Knockback);
     expect(events.length).toBeGreaterThanOrEqual(4);
@@ -69,8 +69,8 @@ describe("Events carry the card that caused them", () => {
   });
 
   it("tags the blast and the destroyed Cover of Breach Charge", () => {
-    const match = scene({ [BRUISER]: { col: 8, row: 5 }, [ENEMY]: { col: 11, row: 5 } });
-    const tile = { col: 11, row: 5 };
+    const match = scene({ [BRUISER]: { col: 8, row: 3 }, [ENEMY]: { col: 11, row: 3 } });
+    const tile = { col: 11, row: 3 };
     const { events } = resolveRound(match, [
       plan(BRUISER, { kind: ActionKind.Primary, card: BREACH_CHARGE, target: ENEMY, tile, overdrive: true }, [1, 2]),
     ]);
@@ -80,7 +80,7 @@ describe("Events carry the card that caused them", () => {
   });
 
   it("tags the Shield of a Utility card but not the Shield of a Block", () => {
-    const match = scene({ [BRUISER]: { col: 8, row: 5 } });
+    const match = scene({ [BRUISER]: { col: 8, row: 3 } });
     const utility = resolveRound(match, [plan(BRUISER, { kind: ActionKind.Primary, card: BULWARK, target: BRUISER }, [1])]);
     expect(utility.events).toEqual([
       { kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Bulwark", casterId: BRUISER },

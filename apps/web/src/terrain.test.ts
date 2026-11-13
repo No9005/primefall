@@ -62,11 +62,11 @@ describe("buildTerrain at 45 degrees", () => {
   });
 
   it("gives Cover a standing piece and open floor none", () => {
-    for (const kind of [TileKind.HalfCover, TileKind.FullCover]) {
+    for (const kind of [TileKind.HalfCover, TileKind.FullCover, TileKind.OverwatchNest]) {
       const tile = tiles.find((t) => t.kind === kind);
-      if (tile) expect(tile.piece?.length, kind).toBeGreaterThanOrEqual(3);
+      expect(tile, kind).toBeDefined();
+      expect(tile!.piece?.length, kind).toBeGreaterThanOrEqual(3);
     }
-    expect(tiles.some((t) => t.kind === TileKind.OverwatchNest)).toBe(false);
     expect(tiles.find((t) => t.kind === TileKind.Floor)?.piece).toBeUndefined();
   });
 

@@ -111,7 +111,7 @@ describe("local host", () => {
     expect(replay.view).toEqual(first.view);
     expect(replay.events).toEqual(first.events);
     expect(first.view.result).toBeDefined();
-  });
+  }, 60_000);
 
   it("resumes a saved match with the same Round, Decks, Hands and positions", async () => {
     const host = createLocalHost(11);

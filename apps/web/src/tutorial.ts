@@ -72,9 +72,10 @@ const attackRange = attackCard.range ?? 0;
 const TUTORIAL_SIGHT_TILES = 7;
 
 export const SIGHT_SCENE = (() => {
-  const hero = { col: 10, row: 8 };
-  const seenEnemy = { id: "seen", position: { col: 13, row: 6 } };
-  const hiddenEnemy = { id: "hidden", position: { col: 10, row: 4 } };
+  const hero = { col: 12, row: 7 };
+  const seenEnemy = { id: "seen", position: { col: 15, row: 5 } };
+  // Behind the Wall at (12,5).
+  const hiddenEnemy = { id: "hidden", position: { col: 12, row: 3 } };
   const visibleTiles: GridPosition[] = [];
   REACTOR_DECK.tiles.forEach((line, row) =>
     line.forEach((_, col) => {
