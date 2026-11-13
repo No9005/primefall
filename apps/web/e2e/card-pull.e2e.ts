@@ -2,7 +2,8 @@ import { expect, test, type CDPSession, type Locator, type Page } from "@playwri
 import { startMatch } from "./start-match";
 
 // The card pull (issue 267): a real pointer drag from the Hand opens the faces, a release in the middle parks the card
-// with the faces open, a low release puts it back.
+// with the faces open, a low release puts it back. The parking release is over the Commit panel (780, 215), which is
+// no drop zone: a release over the board can land on a lit tile and use the card there (card-drop.e2e.ts).
 
 const faces = (page: Page) => page.getByRole("group", { name: "Use card as" });
 const removeButtons = (page: Page) => page.getByRole("region", { name: "Queue" }).getByRole("button", { name: /^Remove action/ });
@@ -43,7 +44,7 @@ test.use({ viewport: { width: 844, height: 390 } });
 
 test("a drag up from the first card opens the faces, a release in the middle parks the card, a tap on a face queues the use", async ({ page }) => {
   const hand = await startPlanning(page);
-  await mouseDrag(page, await fanPoint(hand, 0.08, 30), { x: 400, y: 215 });
+  await mouseDrag(page, await fanPoint(hand, 0.08, 30), { x: 780, y: 215 });
   await expect(faces(page)).toBeVisible();
   await expect(page.locator(".pull-card.parked")).toBeVisible();
   await expect(faces(page)).toHaveCSS("opacity", "1");
@@ -54,7 +55,7 @@ test("a drag up from the first card opens the faces, a release in the middle par
 
 test("the same from the last card", async ({ page }) => {
   const hand = await startPlanning(page);
-  await mouseDrag(page, await fanPoint(hand, 0.95, 30), { x: 400, y: 215 });
+  await mouseDrag(page, await fanPoint(hand, 0.95, 30), { x: 780, y: 215 });
   await expect(faces(page)).toBeVisible();
   await faces(page).getByRole("button", { name: /^Pitch/ }).click();
   await expect(faces(page)).toHaveCount(0);
@@ -64,7 +65,7 @@ test("a drag that starts in the top band at the left end of the fan grabs the ca
   const hand = await startPlanning(page);
   for (const [fraction, dy] of [[0.02, 2], [0.2, 4]] as const) {
     const start = await fanPoint(hand, fraction, dy);
-    await mouseDrag(page, start, { x: 400, y: 215 });
+    await mouseDrag(page, start, { x: 780, y: 215 });
     await expect(faces(page)).toBeVisible();
     await page.mouse.click(700, 60); // outside the faces: the card goes back
     await expect(faces(page)).toHaveCount(0);
@@ -74,7 +75,7 @@ test("a drag that starts in the top band at the left end of the fan grabs the ca
 test("a text selection started over the Hand does not break later drags (no pointercancel)", async ({ page }) => {
   const hand = await startPlanning(page);
   await mouseDrag(page, await fanPoint(hand, 0.5, 2), { x: await (async () => (await fanPoint(hand, 0.9, 2)).x)(), y: 340 });
-  await mouseDrag(page, await fanPoint(hand, 0.08, 30), { x: 400, y: 215 });
+  await mouseDrag(page, await fanPoint(hand, 0.08, 30), { x: 780, y: 215 });
   await expect(faces(page)).toBeVisible();
   expect(await dragStarts(page)).toBe(0);
 });
@@ -89,7 +90,7 @@ test("a release low in the Hand area puts the card back", async ({ page }) => {
 
 test("the parked card goes back when it is tapped", async ({ page }) => {
   const hand = await startPlanning(page);
-  await mouseDrag(page, await fanPoint(hand, 0.08, 30), { x: 400, y: 215 });
+  await mouseDrag(page, await fanPoint(hand, 0.08, 30), { x: 780, y: 215 });
   await expect(faces(page)).toBeVisible();
   await page.locator(".pull-card.parked").click();
   await expect(faces(page)).toHaveCount(0);
@@ -107,7 +108,7 @@ test.describe("with touch", () => {
     const cdp = await page.context().newCDPSession(page);
     const from = await fanPoint(hand, 0.08, 30);
     await touch(cdp, "touchStart", from);
-    for (let step = 1; step <= 8; step += 1) await touch(cdp, "touchMove", { x: from.x + step * 30, y: from.y - step * 18 });
+    for (let step = 1; step <= 8; step += 1) await touch(cdp, "touchMove", { x: from.x + step * 80, y: from.y - step * 18 });
     await touch(cdp, "touchEnd");
     await expect(faces(page)).toBeVisible();
     await faces(page).getByRole("button", { name: /^Pitch/ }).click();
