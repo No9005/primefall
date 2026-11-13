@@ -8,6 +8,7 @@ import { SideScreen } from "./SideScreen";
 import { clearSavedMatch, loadSavedMatch, loadSavedPlayerHero, parsePlayerHero, saveMatch } from "./match-storage";
 import { HeroSelectScreen } from "./HeroSelectScreen";
 import { PlanningScreen } from "./PlanningScreen";
+import { GlossaryScreen } from "./GlossaryScreen";
 import { TutorialScreen } from "./TutorialScreen";
 
 /** The player's Squad in the offline prototype. */
@@ -25,9 +26,10 @@ interface StartScreenProps {
   onPlayAttackAndDefend: () => void;
   onResume: () => void;
   onTutorial: () => void;
+  onGlossary: () => void;
 }
 
-function StartScreen({ seed, canResume, onPlay, onPlayAttackAndDefend, onResume, onTutorial }: StartScreenProps) {
+function StartScreen({ seed, canResume, onPlay, onPlayAttackAndDefend, onResume, onTutorial, onGlossary }: StartScreenProps) {
   return (
     <section className="start-screen" aria-label="Start" data-testid="start-screen">
       <h1>PRIMEFALL</h1>
@@ -52,6 +54,9 @@ function StartScreen({ seed, canResume, onPlay, onPlayAttackAndDefend, onResume,
         )}
         <button type="button" data-testid="tutorial-button" onClick={onTutorial}>
           Tutorial
+        </button>
+        <button type="button" data-testid="glossary-button" onClick={onGlossary}>
+          Glossary
         </button>
         <p className="seed" data-testid="start-seed">
           seed {seed}
@@ -91,8 +96,8 @@ export function App() {
   const [host, setHost] = useState(() => createLocalHost(newSeed(), undefined, aiPlanner));
   const seed = host.seed;
   const [started, setStarted] = useState(false);
-  // Before the match: the start screen, the Hero Select (Play) or the Tutorial, which runs from static data and never touches the host or the saved match.
-  const [entry, setEntry] = useState<"start" | "side" | "select" | "tutorial">("start");
+  // Before the match: the start screen, the Hero Select (Play) the Tutorial or the Glossary, which run from static data and never touch the host or the saved match.
+  const [entry, setEntry] = useState<"start" | "side" | "select" | "tutorial" | "glossary">("start");
   // The side chosen in Attack and Defend; none in the classic mode.
   const [role, setRole] = useState<Role>();
   // A match saved by an earlier visit, offered for Resume on the start screen.
@@ -109,6 +114,7 @@ export function App() {
 
   function renderStartOrTutorial() {
     if (entry === "tutorial") return <TutorialScreen onPlay={() => setStarted(true)} onClose={() => setEntry("start")} />;
+    if (entry === "glossary") return <GlossaryScreen onClose={() => setEntry("start")} />;
     if (entry === "side") return <SideScreen onBack={() => setEntry("start")} onNext={(side) => { setRole(side); setEntry("select"); }} />;
     if (entry === "select") {
       return (
@@ -145,7 +151,7 @@ export function App() {
           }
           setStarted(true);
         }}
-        onTutorial={() => setEntry("tutorial")}
+        onTutorial={() => setEntry("tutorial")} onGlossary={() => setEntry("glossary")}
       />
     );
   }

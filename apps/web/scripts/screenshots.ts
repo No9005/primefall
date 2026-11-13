@@ -87,6 +87,10 @@ export const SCREEN_SCENARIOS: Record<string, { description: string; shots: read
     description: "The Hero Select: nothing selected, each Hero ready (Bruiser mid-shots, Controller with the drone out, Assassin Hidden), the card list",
     shots: ["01-idle.png", "02-bruiser-ready.png", "03-controller-ready.png", "04-assassin-ready.png", "05-cards.png"],
   },
+  glossary: {
+    description: "The Glossary from the start screen: the Heroes group (two frames), the Numbers, Board and HUD groups, scrolled",
+    shots: ["01-heroes.png", "05-heroes-more.png", "06-heroes-end.png", "07-heroes-last.png", "02-numbers.png", "08-numbers-more.png", "03-board.png", "09-board-more.png", "10-board-end.png", "04-hud.png", "11-hud-more.png"],
+  },
   "attack-defend": {
     description: "Attack and Defend: the start screen, the side screen (both roles), the role banner and the planning HUD of both roles, the Resolution bar, the four end screens",
     shots: [
@@ -105,6 +109,45 @@ export const SCREEN_SCENARIOS: Record<string, { description: string; shots: read
     ],
   },
 };
+
+const MORE_FRAMES: Record<string, readonly string[]> = {
+  Heroes: ["05-heroes-more.png", "06-heroes-end.png", "07-heroes-last.png"],
+  Numbers: ["08-numbers-more.png"],
+  Board: ["09-board-more.png", "10-board-end.png"],
+  HUD: ["11-hud-more.png"],
+};
+
+/** The Glossary opened from the start screen: one frame per group, the screen scrolled to the top of the group. */
+async function playGlossary(browser: Browser): Promise<void> {
+  const directory = path.join(OUTPUT_DIR, "glossary");
+  rmSync(directory, { recursive: true, force: true });
+  mkdirSync(directory, { recursive: true });
+  const page = await browser.newPage({ viewport: VIEWPORT });
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto(URL);
+  await page.getByTestId("glossary-button").click();
+  // The pictures are rendered in one go; they are all there when the last image has loaded.
+  await page.locator(".glossary-picture img").last().waitFor();
+  await page.waitForTimeout(500);
+  const groups = ["Heroes", "Numbers", "Board", "HUD"];
+  for (const [index, group] of groups.entries()) {
+    await page.getByTestId(`glossary-group-${group}`).evaluate((element) => element.scrollIntoView({ block: "start" }));
+    await page.waitForTimeout(150);
+    await page.screenshot({ path: path.join(directory, `0${index + 1}-${group.toLowerCase()}.png`) });
+    // The Heroes and Board groups are long: further frames down, the rest of the group.
+    const more = MORE_FRAMES[group] ?? [];
+    for (const shot of more) {
+      await page.getByTestId("glossary-body").evaluate((element) => element.scrollBy(0, 340));
+      await page.waitForTimeout(150);
+      await page.screenshot({ path: path.join(directory, shot) });
+    }
+  }
+  await page.getByTestId("glossary-back").click();
+  await page.getByTestId("start-screen").waitFor();
+  if (errors.length > 0) throw new Error(`glossary: ${errors.join("; ")}`);
+  checkWritten(directory, SCREEN_SCENARIOS.glossary!.shots);
+}
 
 /** The four end screens: the match is built in Node, finished by an edit of its result, and resumed in the browser. */
 const END_SCREENS = [
@@ -528,6 +571,7 @@ async function main(): Promise<void> {
       for (const name of options.scenarios) {
         if (name in SCREEN_SCENARIOS) {
           if (name === "attack-defend") await playAttackDefend(browser);
+          else if (name === "glossary") await playGlossary(browser);
           else await playHeroSelect(browser);
           console.log(`Scenario ${name}: ${path.join(OUTPUT_DIR, name)}\n${SCREEN_SCENARIOS[name]!.shots.join("\n")}`);
           continue;
