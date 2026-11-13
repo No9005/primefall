@@ -91,17 +91,42 @@ function useMatchView(host: LocalMatchHost, started: boolean, playerHero: HeroCl
   return [view, setView] as const;
 }
 
+interface MatchScreenProps {
+  view: SquadView;
+  host: LocalMatchHost;
+  playerHero: HeroClass;
+  onResolved: (view: SquadView) => void;
+  onPlayAgain: (side: Role | undefined) => void;
+}
+
+/** The running match (planning and Resolution) or, once it has a result, the end screen. */
+function MatchScreen({ view, host, playerHero, onResolved, onPlayAgain }: MatchScreenProps) {
+  if (view.result) {
+    const side = roleOf(view);
+    return <EndScreen result={view.result} squad={PLAYER_SQUAD} seed={host.seed} role={side} roundLimit={view.roundLimit} onPlayAgain={() => onPlayAgain(side)} />;
+  }
+  return (
+    <PlanningScreen
+      view={view}
+      playerHeroClass={playerHero}
+      submitPlan={(plan) => host.submitPlan(plan)}
+      getAllyPlan={(heroIds) => host.getAllyPlan(PLAYER_SQUAD, heroIds)}
+      onResolved={onResolved}
+    />
+  );
+}
+
 export function App() {
   // A fresh seed per match; the start and end screens show it for bug reports.
   const [host, setHost] = useState(() => createLocalHost(newSeed(), undefined, aiPlanner));
   const seed = host.seed;
   const [started, setStarted] = useState(false);
   // Before the match: the start screen, the Hero Select (Play) the Tutorial or the Glossary, which run from static data and never touch the host or the saved match.
-  const [entry, setEntry] = useState<"start" | "side" | "select" | "tutorial" | "glossary">("start");
+  const [entry, setEntry] = useState<"start" | "side" | "select" | "replay" | "tutorial" | "glossary">("start");
   // The side chosen in Attack and Defend; none in the classic mode.
   const [role, setRole] = useState<Role>();
   // A match saved by an earlier visit, offered for Resume on the start screen.
-  const [saved] = useState(loadSavedMatch);
+  const [saved, setSaved] = useState(loadSavedMatch);
   // The Player Hero: set by the start parameter (?hero=controller); Resume restores the saved match's one.
   const [playerHero, setPlayerHero] = useState(() => parsePlayerHero(startParameters.get("hero")));
   const [view, setView] = useMatchView(host, started, playerHero);
@@ -112,15 +137,25 @@ export function App() {
     setStarted(true);
   }
 
+  /** Back to the Hero Select of the same mode ("replay": its Back leads to the start screen, the role stays chosen); the next match starts there with a new seed and the Hero picked then. */
+  function playAgain(side: Role | undefined) {
+    setHost(createLocalHost(newSeed(), side && modeForRole(side), aiPlanner));
+    setView(undefined);
+    setSaved(undefined);
+    setRole(side);
+    setEntry("replay");
+    setStarted(false);
+  }
+
   function renderStartOrTutorial() {
     if (entry === "tutorial") return <TutorialScreen onPlay={() => setStarted(true)} onClose={() => setEntry("start")} />;
     if (entry === "glossary") return <GlossaryScreen onClose={() => setEntry("start")} />;
     if (entry === "side") return <SideScreen onBack={() => setEntry("start")} onNext={(side) => { setRole(side); setEntry("select"); }} />;
-    if (entry === "select") {
+    if (entry === "select" || entry === "replay") {
       return (
         <HeroSelectScreen
           mode={role ?? "classic"}
-          onBack={() => setEntry(role ? "side" : "start")}
+          onBack={() => setEntry(role && entry === "select" ? "side" : "start")}
           onStart={(hero) => {
             setPlayerHero(hero);
             beginMatch(role);
@@ -159,19 +194,7 @@ export function App() {
   function renderScreen() {
     if (!started) return renderStartOrTutorial();
     if (!view) return <p className="loading">Loading…</p>;
-    if (view.result) {
-      const side = roleOf(view);
-      return <EndScreen result={view.result} squad={PLAYER_SQUAD} seed={seed} role={side} roundLimit={view.roundLimit} onPlayAgain={() => setHost(createLocalHost(newSeed(), side && modeForRole(side), aiPlanner))} />;
-    }
-    return (
-      <PlanningScreen
-        view={view}
-        playerHeroClass={playerHero}
-        submitPlan={(plan) => host.submitPlan(plan)}
-        getAllyPlan={(heroIds) => host.getAllyPlan(PLAYER_SQUAD, heroIds)}
-        onResolved={setView}
-      />
-    );
+    return <MatchScreen view={view} host={host} playerHero={playerHero} onResolved={setView} onPlayAgain={playAgain} />;
   }
 
   return (
