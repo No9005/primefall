@@ -76,7 +76,14 @@ export interface ResolutionResult {
   events: readonly MatchEvent[];
   /** Parallel to `events`: the Squads that perceive each event. */
   perceivedBy: readonly (readonly SquadId[])[];
+  /**
+   * The fields of an event a Squad that perceives it must not get, by index in `events`: a Pull the Squad sees only in
+   * part does not tell where the Hero stood, where it passed or who pulled it (`getSquadEvents` drops them).
+   */
+  withheld: Readonly<Record<number, Readonly<Partial<Record<SquadId, readonly WithheldField[]>>>>>;
 }
+
+type WithheldField = "from" | "to" | "casterId";
 
 const SQUADS = [SquadId.Left, SquadId.Right];
 const PRIME_ZONE_TILES = findTiles(REACTOR_DECK, TileKind.PrimeZone);
@@ -141,6 +148,14 @@ function dealDamage(match: MatchState, tick: number, source: HeroState, target: 
   reportHit();
 }
 
+/** Names the extra damage of the hit that starts at `first`: the close-range effect and a Charge, so the playback can label them. */
+function flagBonuses(events: MatchEvent[], first: number, close: number, charge: number): void {
+  const hit = events.slice(first).find((event) => event.kind === EventKind.AttackHit);
+  if (hit === undefined) return;
+  if (close > 0) hit.closeBonus = close;
+  if (charge > 0) hit.chargeBonus = charge;
+}
+
 /** Marks the hits from `first` on as reduced by Half Cover, so the playback can show the projectile hitting the wall. */
 function flagHalfCover(events: MatchEvent[], first: number): void {
   for (const event of events.slice(first)) if (event.kind === EventKind.AttackHit) event.halfCover = true;
@@ -192,6 +207,32 @@ function tagCardEvents(
     if (aimedAt) event.distance = chebyshevDistance(caster.position, aimedAt);
     if (tile) event.tile = { ...tile };
   }
+}
+
+/**
+ * What a Squad that perceives a Pull must not learn from it (judged at the end of the Tick, like `perceivers`): a tile it
+ * does not see (not for its own pulled Hero) and the Hero that pulled when it does not see that Hero. So a Squad that
+ * sees only where an enemy ended up learns that, and not where it stood or from which side it came, and a Squad whose
+ * Hero is pulled by an enemy it cannot see learns that it was pulled, not by whom.
+ */
+function withheldFields(match: MatchState, events: readonly MatchEvent[], perceivedBy: readonly (readonly SquadId[])[], first: number): Record<number, Partial<Record<SquadId, readonly WithheldField[]>>> {
+  const result: Record<number, Partial<Record<SquadId, readonly WithheldField[]>>> = {};
+  events.forEach((event, index) => {
+    if (index < first || event.kind !== EventKind.Pull) return;
+    const pulled = match.heroes.find((hero) => hero.id === event.heroId);
+    const caster = match.heroes.find((hero) => hero.id === event.casterId);
+    for (const squad of perceivedBy[index]!) {
+      const fields: WithheldField[] = [];
+      // A Squad always sees where its own Hero is pulled; it may still not see who pulls it.
+      if (pulled?.squad !== squad) {
+        if (event.from && !canSquadSee(match, squad, event.from)) fields.push("from");
+        if (event.to && !canSquadSee(match, squad, event.to)) fields.push("to");
+      }
+      if (caster && caster.squad !== squad && !canSquadSeeHero(match, squad, caster)) fields.push("casterId");
+      if (fields.length > 0) (result[index] ??= {})[squad] = fields;
+    }
+  });
+  return result;
 }
 
 /** Which Squads perceive the events from `first` on, judged by the current positions (see `getSquadEvents`). */
@@ -339,6 +380,7 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const piercing = card.effects.some(({ kind }) => kind === EffectKind.PiercingDamage);
     dealDamage(match, tick, hero, target, incoming, events, piercing);
     if (halfCover && damage > 0) flagHalfCover(events, first);
+    flagBonuses(events, first, distance === 1 ? (closeRange?.amount ?? 0) : 0, chargeBonus);
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplySlow)) {
       applySlow(tick, hero, target, effect, events);
     }
@@ -441,6 +483,7 @@ function slideHero(
   distance: number,
   kind: EventKind.Knockback | EventKind.Pull,
   events: MatchEvent[],
+  casterId?: string,
 ): void {
   for (let step = 0; step < distance; step++) {
     const to = { col: target.position.col + direction.col, row: target.position.row + direction.row };
@@ -449,7 +492,7 @@ function slideHero(
       coverAt(match.grid, to) === CoverKind.Full ||
       match.heroes.some((other) => !other.exhausted && samePosition(other.position, to));
     if (blocked) return;
-    events.push({ kind, tick, heroId: target.id, from: { ...target.position }, to });
+    events.push({ kind, tick, heroId: target.id, from: { ...target.position }, to, ...(casterId !== undefined && { casterId }) });
     target.position = to;
   }
 }
@@ -545,7 +588,7 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
       col: Math.sign(caster.position.col - target.position.col),
       row: Math.sign(caster.position.row - target.position.row),
     };
-    slideHero(match, tick, target, direction, effect.amount ?? 0, EventKind.Pull, events);
+    slideHero(match, tick, target, direction, effect.amount ?? 0, EventKind.Pull, events, caster.id);
   },
   [EffectKind.Charge]: ({ match, tick, effect, caster, target, events }) => {
     chargeAt(match, tick, caster, target, effect.amount ?? 0, events);
@@ -830,9 +873,12 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
   const queues = legalQueues(match, plans);
   const events: MatchEvent[] = [];
   const perceivedBy: SquadId[][] = [];
+  const withheld: Record<number, Partial<Record<SquadId, readonly WithheldField[]>>> = {};
   // Judged at the end of each Tick, when Heroes stand where the Tick left them; also feeds Ghost memory.
   const endTick = () => {
-    perceivedBy.push(...perceivers(match, events, perceivedBy.length));
+    const first = perceivedBy.length;
+    perceivedBy.push(...perceivers(match, events, first));
+    Object.assign(withheld, withheldFields(match, events, perceivedBy, first));
     recordSightings(match);
   };
 
@@ -924,7 +970,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
   }
   evaluateMatchEnd(match, events, Math.max(ticks, 1));
   endTick();
-  return { match, events, perceivedBy };
+  return { match, events, perceivedBy, withheld };
 }
 
 /**
@@ -935,5 +981,14 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
  * enemy out of sight therefore reveals which Hero attacked, but not where it stands.
  */
 export function getSquadEvents(squad: SquadId, resolution: ResolutionResult): MatchEvent[] {
-  return structuredClone(resolution.events.filter((_, i) => resolution.perceivedBy[i]!.includes(squad)));
+  return structuredClone(
+    resolution.events.flatMap((event, i) => {
+      if (!resolution.perceivedBy[i]!.includes(squad)) return [];
+      const withheld = resolution.withheld[i]?.[squad] ?? [];
+      if (withheld.length === 0) return [event];
+      const shown = { ...event };
+      for (const field of withheld) delete shown[field];
+      return [shown];
+    }),
+  );
 }

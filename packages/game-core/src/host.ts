@@ -190,6 +190,8 @@ export interface VisibleEnemyView extends EnemyIdentity {
   discardCount: number;
   exileCount: number;
   exhausted: boolean;
+  /** Hidden: a Hidden enemy is Visible only inside a Scout Drone area of the Squad, shown but not unmasked. */
+  hidden: boolean;
   /** Slowed: shown only while the enemy is Visible. */
   slowed: boolean;
   /** Marked: shown only while the enemy is Visible, which a Marked Hero always is. */
@@ -353,7 +355,14 @@ export interface MatchEvent {
   damage?: number;
   /** True when Half Cover on the target's tile reduced the damage, for `AttackHit`. */
   halfCover?: boolean;
-  /** The Hero that played the card, for a `ShieldGained` from a card (`heroId` is the receiver of the Shield). */
+  /** Damage a close-range effect added to this hit (the "CLOSE +1" of Slam Shot at Range 1), for `AttackHit`; absent when none. */
+  closeBonus?: number;
+  /** Damage a Charge added to this hit (its once-only bonus at Range 1), for `AttackHit`; absent when none. */
+  chargeBonus?: number;
+  /**
+   * The Hero that played the card, for a `ShieldGained` from a card and for a `Pull` (`heroId` is the receiver of the
+   * Shield, or the pulled Hero). A Squad that does not see the caster of a `Pull` does not get this field.
+   */
   casterId?: string;
   /** The card that caused the event (for example "Slam Shot"); absent for events no card causes, such as Block. */
   card?: string;
