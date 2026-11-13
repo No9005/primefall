@@ -41,7 +41,7 @@ import { cancel as cancelPull, type Face, faceReveal, faceViews, heldCard, IDLE,
 import { CardUseStage, hudFocus } from "./hud-focus";
 import { drawShots, SegmentStyle, type ShotDrawing } from "./shot-lines";
 import { heroMarks } from "./shield-marks";
-import { crossfireRings, plannedTargetLines, replayTargetLines, type TargetLine } from "./target-lines";
+import { crossfireRings, plannedEffectPaths, plannedTargetLines, replayTargetLines, type TargetLine } from "./target-lines";
 import { cardAtX, FAN_WIDTH, fanSpacing } from "./hand-fan";
 import { drawSchedule, newCards, shownDeckCount } from "./hand-draw";
 import { addBurn, type BurnBatch, NO_BURN_PENDING, settleBurn, shownBurnCounts } from "./deck-burn";
@@ -554,6 +554,8 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         : plannedTargetLines(knownGrid, view.heroes, view.enemies, squadPlans).map((line) => ({ ...line, faint: line.heroId !== playerHeroId })),
     [playing, playback, knownGrid, view.heroes, view.enemies, squadPlans, playerHeroId],
   );
+  // The paths of the queued Pulls and Charges of the own Squad; gone in the Resolution.
+  const effectPaths = useMemo(() => (playing ? [] : plannedEffectPaths(knownGrid, view.heroes, view.enemies, squadPlans)), [playing, knownGrid, view.heroes, view.enemies, squadPlans]);
   // The Tick rings of the plan preview; gone in the Resolution.
   const crossfireRingList = useMemo(() => (playing ? [] : crossfireRings(targetLines, view.enemies)), [playing, targetLines, view.enemies]);
   // The "may miss" note of each Queue slot of the selected Hero whose Attack cannot hit from the planned position.
@@ -1151,6 +1153,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         rangeArea={rangeArea}
         shotLines={shotLines}
         targetLines={targetLines}
+        effectPaths={effectPaths}
         crossfireRings={crossfireRingList}
         marks={marks}
         paths={paths}

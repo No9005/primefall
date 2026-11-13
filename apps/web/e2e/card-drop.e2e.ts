@@ -54,8 +54,8 @@ test("a drop on a highlighted tile queues Move 2 there; a drop on empty board pa
   await expect(removeButtons(page)).toHaveCount(0);
   await page.mouse.click(board.x + 12, board.y + 60); // the card goes back
 
-  // The tiles are drawn on a canvas; with the fixed viewport and start, a lit tile of Move 2 is at this point.
-  await pull(page, hand, { x: board.x + 240, y: board.y + 60 });
+  // The tiles are drawn on a canvas; with the fixed viewport and start (the Squad framed on the 45 by 25 map), a lit tile of Move 2 is at this point, left of the faces.
+  await pull(page, hand, { x: board.x + 125, y: board.y + 138 });
   await expect(removeButtons(page)).toHaveCount(1);
   await expect(page.getByRole("region", { name: "Queue" })).toContainText(/Move/);
   await expect(faces(page)).toHaveCount(0);

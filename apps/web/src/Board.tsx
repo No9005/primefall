@@ -40,7 +40,7 @@ import { freeBoardArea } from "./hud-layout";
 import { FogClouds, type FogWalker, fogDuringWalk, fogShape } from "./fog-clouds";
 import { coverLook, depthOf, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, withoutCover } from "./terrain";
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
-import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
+import { attackBadge, EffectsLayer, type EffectsWorld, hiddenSeenMark, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
 import { baseFacing, type Facing, turnHeroes } from "./facing";
 import { walkProgress } from "./playback";
@@ -52,7 +52,7 @@ import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
 import { chestOf, dashRuns, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
 import { finalTile, PathOwner, type PlannedPath } from "./ally-paths";
-import { type CrossfireRing, LineKind, LineTone, RingSegment, type TargetLine } from "./target-lines";
+import { type CrossfireRing, type EffectPath, LineKind, LineTone, RingSegment, type TargetLine } from "./target-lines";
 import { PLAN_STYLE, SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
 import { pulseAlpha } from "./target-pick";
 
@@ -129,6 +129,43 @@ function pathGraphics(path: PlannedPath, angle: number, scale: number): { ground
   return { ground: container, top };
 }
 
+const EFFECT_PATH_COLOR = 0x2ec4b6;
+const F = HERO_STYLE.figureScale;
+
+/**
+ * The path of a queued Pull or Charge (docs/design/role-visuals/380/pull.png and charge.png): every tile teal with a
+ * chevron that points the way it is travelled, and the tag over the Bruiser or the target. Pulls point to the Bruiser.
+ */
+function effectPathGraphics(path: EffectPath, angle: number, scale: number): { ground: Container; top: Container } {
+  const ground = new Container();
+  const top = new Container();
+  const diamond = floorOutline(angle);
+  for (const { tile, direction } of path.tiles) {
+    const { x, y } = gridToWorld(tile, angle);
+    const floor = new Graphics().poly(diamond).fill({ color: EFFECT_PATH_COLOR, alpha: 0.22 }).stroke({ width: 1.5 / scale, color: EFFECT_PATH_COLOR, alpha: 0.8 });
+    floor.position.set(x, y);
+    ground.addChild(floor);
+    // The chevron points along the screen direction of the step.
+    const next = gridToWorld({ col: tile.col + direction.col, row: tile.row + direction.row }, angle);
+    const dx = next.x - x;
+    const dy = next.y - y;
+    const length = Math.hypot(dx, dy) || 1;
+    const along = { x: dx / length, y: dy / length };
+    const across = { x: -along.y, y: along.x };
+    const at = (forward: number, side: number) => ({ x: x + along.x * forward + across.x * side, y: y + along.y * forward + across.y * side });
+    const chevron = new Graphics();
+    const [a, b, c] = [at(-5 * F, 5.5 * F), at(3 * F, 0), at(-5 * F, -5.5 * F)];
+    chevron.moveTo(a.x, a.y).lineTo(b.x, b.y).lineTo(c.x, c.y).stroke({ width: 2.5 / scale, color: EFFECT_PATH_COLOR, cap: "round", join: "round" });
+    ground.addChild(chevron);
+  }
+  const { x, y } = gridToWorld(path.tagTile, angle);
+  const tag = new Text({ text: path.tag, style: { fontFamily: "IBM Plex Mono", fontSize: 9 * F, fontWeight: "700", fill: EFFECT_PATH_COLOR, stroke: { color: 0x0b1016, width: 3 } } });
+  tag.anchor.set(0.5, 1);
+  tag.position.set(x, y - TILE_HEIGHT * 1.9);
+  top.addChild(tag);
+  return { ground, top };
+}
+
 /** The red cross on the destination of a Move that will fail through another Hero of the Squad. */
 function collisionCross(tile: GridPosition, angle: number): Graphics {
   const { x, y } = chestOf(tile, angle);
@@ -149,6 +186,7 @@ function enlarged(badge: Container): Container {
   return badge;
 }
 const NO_RINGS: readonly CrossfireRing[] = [];
+const NO_EFFECT_PATHS: readonly EffectPath[] = [];
 
 /**
  * The Tick ring under an enemy a plan attacks: four 90° arcs on the floor, Tick 1 at the top and clockwise. An attacked Tick
@@ -376,6 +414,8 @@ interface BoardProps {
   targetLines: readonly TargetLine[];
   /** Planning only: the Tick rings under the enemies the own plans attack. */
   crossfireRings?: readonly CrossfireRing[];
+  /** Planning only: the tiles a queued Pull or Charge would carry a Hero over, with chevrons and a tag. */
+  effectPaths?: readonly EffectPath[];
   /** Shield rubies, the shield bubble and planned-action icons per Hero id; Heroes without an entry have none. */
   marks: Readonly<Record<string, HeroMarks>>;
   /** Planning only: destinations of Moves that will fail through another Hero of the Squad. */
@@ -493,6 +533,7 @@ export function Board({
   shotLines,
   targetLines,
   crossfireRings = NO_RINGS,
+  effectPaths = NO_EFFECT_PATHS,
   marks,
   paths,
   collisionTiles,
@@ -660,6 +701,12 @@ export function Board({
       overlay.addChild(label);
       created.push(label);
     });
+    for (const effectPath of effectPaths) {
+      const drawn = effectPathGraphics(effectPath, angle, strokeScale);
+      overlay.addChild(drawn.ground);
+      overlayTop.addChild(drawn.top);
+      created.push(drawn.ground, drawn.top);
+    }
     for (const ring of crossfireRings) {
       const drawn = crossfireRingGraphics(ring, angle);
       overlay.addChild(drawn.ground);
@@ -691,7 +738,7 @@ export function Board({
       cancelAnimationFrame(pulseFrame);
       created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [overlay, overlayTop, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, crossfireRings, paths, collisionTiles, strokeScale]);
+  }, [overlay, overlayTop, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, crossfireRings, effectPaths, paths, collisionTiles, strokeScale]);
 
   useEffect(() => {
     if (!tokens) return;
@@ -719,8 +766,8 @@ export function Board({
       token.position.set(x, y + footOffset(angle));
       token.zIndex = depthOf(hero.position, angle) + 0.5;
       const targetable = targetableIds.includes(hero.id);
-      const slide = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? undefined : effects.find((cue) => cue.kind === "knockback" && cue.toId === hero.id);
-      if (slide?.kind === "knockback") {
+      const slide = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? undefined : effects.find((cue) => (cue.kind === "knockback" || cue.kind === "pull") && cue.toId === hero.id);
+      if ((slide?.kind === "knockback" || slide?.kind === "pull") && slide.from) {
         // The token starts on the tile it was pushed from and slides to the one the rules put it on.
         const from = gridToWorld(slide.from, angle);
         slides.push({ token, fromX: from.x - x, fromY: from.y - y, startMs: slide.startMs });
@@ -806,6 +853,8 @@ export function Board({
         token.addChild(mark.container);
         statusMarks.push(mark);
       }
+      // A Hidden enemy that a Scout Drone area shows: the figure at about 55 % (above), a cyan ring, an eye and the tag.
+      if (enemy && hero.hidden && !hero.exhausted && !hero.ghost) token.addChild(hiddenSeenMark());
       // The Attack bonus of Adrenal Surge is state too: the badge stays beside the ring until Exhaustion.
       if ((hero.attackBonus ?? 0) > 0 && !hero.exhausted && !hero.ghost) {
         const badge = attackBadge();

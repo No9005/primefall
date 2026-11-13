@@ -1,6 +1,6 @@
 # Role visuals: cover, buff badge and the drop animation
 
-What the owner has approved from the design canvas (page "New role visuals" and "Symbols and statuses"). **Build it the way the images show it; where text and images disagree, the images win.** Pull, Charge, the scanned-area outline and the Hidden-and-seen look are **not** approved yet (ticket #380); do not build them from here. Sizes below are game px (a tile is the 46 x 24 diamond); the images are drawn at 2 x game size.
+What the owner has approved from the design canvas (page "New role visuals" and "Symbols and statuses"). **Build it the way the images show it; where text and images disagree, the images win.** Pull, Charge and the Hidden-and-seen look are approved in `380/` (built in #432). The marks and the chip of built cover and the scanned-area outline are approved there too and are built in #433; until then do not build them from here. Sizes below are game px (a tile is the 46 x 24 diamond); the images are drawn at 2 x game size.
 
 ## Decisions
 
@@ -13,10 +13,9 @@ What the owner has approved from the design canvas (page "New role visuals" and 
 | Permanent buff (Adrenal Surge, +1 Attack) | A small badge **above the Hero's head** (about 50 px over the feet): a rounded frame 30 x 13 px, radius 4, dark fill `#0b1016`, 1.2 px gold `#ffd24a` line; **inside** the frame a double chevron pointing up, **centred vertically**, and the text +1 right next to it (gold, Rajdhani 700, about 10 px). It stays until Exhaustion. (It used to sit beside the Squad ring.) | `images/permanent-buff-badge.png` |
 | Shield | Unchanged: blue crystals above the Hero's head and the bubble in front of it. Shield 1 of a Charge is one crystal. | – |
 
-## Not decided yet (do not build)
-- Corner marks in the Squad colour on built cover, the chip "COVER 3 / 3", the dashed outline of the oldest cover (see the Placed Cover board of the canvas).
-- Enemy built cover (red stripes or red corner marks).
-- Pull, Charge, the scanned-area outline, Hidden-and-seen (ticket #380).
+## Approved in `380/`
+- **Built in #432:** Pull, Charge (path, streaks, the Shield tag, the tags CLOSE +1 and CHARGE +1) and Hidden, seen by a drone (`380/pull.png`, `pull-in-fog.png`, `charge.png`, `hidden-seen.png`).
+- **Built in #433, do not build them here:** the four corner marks of built cover in the Squad colour, the chip COVER 3 / 3, the dashed outline of the oldest cover, enemy built cover with red marks (`380/placed-cover.png`), and the scanned-area outline in both views (`380/scout-drone-*.png`).
 
 ## How a ticket uses this
 Take screenshots with the screenshot tool (844 x 390) of the states you touched and compare them with the images: shapes, colours, heights, the vertical centring of the chevrons in the badge, the yellow-black stripes. Fix every deviation yourself.

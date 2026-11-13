@@ -17,7 +17,7 @@ import { createLocalHost } from "game-core/local-host";
 import { describe, expect, it } from "vitest";
 import { buildPlaybackFrames } from "./playback";
 import { SegmentStyle } from "./shot-lines";
-import { crossfireRings, LineKind, LineTone, plannedTargetLines, replayTargetLines, RingSegment } from "./target-lines";
+import { crossfireRings, EffectPathKind, LineKind, LineTone, plannedEffectPaths, plannedTargetLines, replayTargetLines, RingSegment } from "./target-lines";
 
 const grid = parseGrid(["#########", "#.......#", "#...#...#", "#.......#", "#.......#", "#########"]);
 
@@ -244,5 +244,41 @@ describe("crossfireRings", () => {
 
   it("shows no ring for a Ghost or an Unknown enemy", () => {
     expect(ringsOf(plans([attack("e")], [attack("u")]), [ghost("e", { col: 3, row: 2 }), unknown("u")])).toEqual([]);
+  });
+});
+
+describe("plannedEffectPaths", () => {
+  const open = parseGrid(["###########", "#.........#", "#.........#", "#.........#", "###########"]);
+  const caster = hero("b", HeroClass.Bruiser, { col: 1, row: 2 });
+  const use = (name: string, target: string): QueuedAction => ({ kind: ActionKind.Primary, card: cardIndex(HeroClass.Bruiser, name), target });
+  const paths = (action: QueuedAction, enemies: EnemyView[], onGrid = open) => plannedEffectPaths(onGrid, [caster], enemies, [plan("b", [action])]);
+
+  it("shows the two tiles a Pull would carry the enemy over, toward the Bruiser, with the Range in the tag", () => {
+    const [path] = paths(use("Pull", "e"), [visible("e", { col: 5, row: 2 })]);
+    expect(path).toMatchObject({ kind: EffectPathKind.Pull, tag: "PULL · RANGE 4", tagTile: { col: 5, row: 2 } });
+    expect(path!.tiles.map(({ tile }) => tile)).toEqual([{ col: 4, row: 2 }, { col: 3, row: 2 }]);
+    expect(path!.tiles.every(({ direction }) => direction.col === -1 && direction.row === 0)).toBe(true);
+  });
+
+  it("stops the Pull path next to the Bruiser, before a Wall and before another Hero", () => {
+    expect(paths(use("Pull", "e"), [visible("e", { col: 3, row: 2 })])[0]!.tiles.map(({ tile }) => tile)).toEqual([{ col: 2, row: 2 }]);
+    const walled = parseGrid(["###########", "#.........#", "#...#.....#", "#.........#", "###########"]);
+    expect(paths(use("Pull", "e"), [visible("e", { col: 5, row: 2 })], walled)[0]!.tiles.map(({ tile }) => tile)).toEqual([]);
+    expect(paths(use("Pull", "e"), [visible("e", { col: 6, row: 2 }), visible("f", { col: 5, row: 2 })]).filter(({ tagTile }) => tagTile.col === 6)[0]!.tiles).toEqual([]);
+  });
+
+  it("shows the tiles a Charge carries the Bruiser over, up to 3 and ending next to the target, with chevrons toward it", () => {
+    const [far] = paths(use("Charge", "e"), [visible("e", { col: 8, row: 2 })]);
+    expect(far).toMatchObject({ kind: EffectPathKind.Charge, tag: "CHARGE · MOVE 3 TOWARD", tagTile: { col: 1, row: 2 } });
+    expect(far!.tiles.map(({ tile }) => tile)).toEqual([{ col: 2, row: 2 }, { col: 3, row: 2 }, { col: 4, row: 2 }]);
+    const [near] = paths(use("Charge", "e"), [visible("e", { col: 4, row: 2 })]);
+    expect(near!.tiles.map(({ tile }) => tile)).toEqual([{ col: 2, row: 2 }, { col: 3, row: 2 }]);
+  });
+
+  it("draws no path for a Ghost or an Unknown enemy, for an Attack, or for a Hero that is Exhausted", () => {
+    expect(paths(use("Pull", "e"), [ghost("e", { col: 5, row: 2 })])).toEqual([]);
+    expect(paths(use("Charge", "e"), [unknown("e")])).toEqual([]);
+    expect(paths(attack("e"), [visible("e", { col: 3, row: 2 })])).toEqual([]);
+    expect(plannedEffectPaths(open, [{ ...caster, exhausted: true }], [visible("e", { col: 5, row: 2 })], [plan("b", [use("Pull", "e")])])).toEqual([]);
   });
 });

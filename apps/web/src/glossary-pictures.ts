@@ -2,7 +2,7 @@ import { type Grid, type GridPosition, HeroClass, TileKind, withTile, withWreck 
 import { Application, Container, Graphics, Rectangle } from "pixi.js";
 import { drawScoutArea, drawTerrain, drawZone, ghostMark, scannedFrame } from "./board-drawing";
 import { baseFacing } from "./facing";
-import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, slowMark, STATUS_AT_REST_MS } from "./effects-layer";
+import { attackBadge, EffectsLayer, type EffectsWorld, hiddenSeenMark, markedMark, slowMark, STATUS_AT_REST_MS } from "./effects-layer";
 import { CLIP_SPEED } from "./clip-player";
 import type { SceneName } from "./glossary";
 import { heroFigure, type HeroPose, marksFigure, shieldBubble } from "./hero-figure";
@@ -128,6 +128,15 @@ function slideScene(tag: string, from: GridPosition, to: GridPosition): Containe
   return scene.finish();
 }
 
+/** A Pull a moment after the slide: the tether to the caster, the echoes behind the Hero and the first of the arrival ring. */
+function pullScene(from: GridPosition, to: GridPosition, caster: GridPosition): Container {
+  const scene = new Scene(FLOOR_GRID).terrain();
+  scene.hero(caster);
+  scene.hero(to, { enemy: true });
+  scene.cues([{ kind: "pull", toId: "target", from, to, startMs: 0, casterId: "caster", tag: "PULL 2" }], { target: to, caster }, 300, false);
+  return scene.finish();
+}
+
 const SCENES: Record<SceneName, () => Container> = {
   shield() {
     const scene = new Scene(FLOOR_GRID).terrain();
@@ -214,7 +223,39 @@ const SCENES: Record<SceneName, () => Container> = {
     return numberScene([number("-1", "damage"), number("Half Cover", "failed", 9)]);
   },
   knockback: () => slideScene("Knockback 2", { col: 0, row: 1 }, CENTRE),
-  pull: () => slideScene("Pull", { col: 2, row: 1 }, CENTRE),
+  pull: () => pullScene({ col: 2, row: 1 }, CENTRE, { col: 0, row: 1 }),
+  hiddenSeen() {
+    const scene = new Scene(FLOOR_GRID).terrain();
+    const token = scene.hero(HERO_AT, { enemy: true, heroClass: HeroClass.Assassin, alpha: 0.55 });
+    token.addChild(hiddenSeenMark());
+    return scene.finish();
+  },
+  charge() {
+    const scene = new Scene(FLOOR_GRID).terrain();
+    const enemy = { col: HERO_AT.col + 1, row: HERO_AT.row };
+    const token = scene.hero(HERO_AT);
+    addMarks(token, heldShield(1));
+    scene.hero(enemy, { enemy: true });
+    scene.cues(
+      [
+        { kind: "charge", heroId: "target", targetId: "foe", startMs: 0 },
+        { kind: "number", toId: "target", startMs: 0, text: "SHIELD 1 · THIS ROUND", style: "shield", drop: -8 },
+      ],
+      { target: HERO_AT, foe: enemy },
+      300,
+    );
+    return scene.finish();
+  },
+  closeAndCharge() {
+    return numberScene(
+      [
+        number("-4", "damage"),
+        { kind: "bonus", toId: "target", startMs: 0, text: "CLOSE +1", tone: "close", stack: 0 },
+        { kind: "bonus", toId: "target", startMs: 0, text: "CHARGE +1", tone: "charge", stack: 1 },
+      ],
+      200,
+    );
+  },
   cover() {
     const grid = withTile(withTile(FLOOR_GRID, { col: 0, row: 1 }, TileKind.HalfCover), { col: 2, row: 1 }, TileKind.FullCover);
     return new Scene(grid).terrain().finish();
