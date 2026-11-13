@@ -364,6 +364,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
           discardCount: hero.discard.length,
           exileCount: hero.exile.length,
           exhausted: hero.exhausted,
+          hidden: hero.hidden > 0,
           slowed: hero.slow > 0,
           marked: hero.marked > 0,
           attackBonus: hero.attackBonus,

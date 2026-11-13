@@ -128,6 +128,7 @@ describe("enemyTokens", () => {
     discardCount: 0,
     exileCount: 0,
     exhausted: false,
+    hidden: false,
     slowed: false,
     marked: false,
     attackBonus: 0,

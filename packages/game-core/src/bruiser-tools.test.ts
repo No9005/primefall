@@ -1,11 +1,11 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { type CardDefinition, charge, HERO_DECKS, HeroClass, pull, wreckingBlow } from "./cards";
 import { withFullCover } from "./full-cover-fixture";
-import { AttackFailReason, EventKind, SquadId } from "./host";
-import { createMatch, type MatchState, startRound } from "./match";
+import { AttackFailReason, EventKind, SquadId, Visibility } from "./host";
+import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type QueuedAction, type SquadPlan } from "./plan";
 import { CoverKind, coverAt, type GridPosition, TileKind, tileAt } from "./reactor-deck";
-import { resolveRound } from "./resolution";
+import { getSquadEvents, resolveRound } from "./resolution";
 
 // Charge, Pull and Wrecking Blow are not in a Deck yet (the deck ticket), so the tests append them to the Bruiser's list.
 const BRUISER_DECK = HERO_DECKS[HeroClass.Bruiser] as CardDefinition[];
@@ -225,5 +225,67 @@ describe("Wrecking Blow", () => {
     match.placedCover.push({ squad: SquadId.Right, position: { col: 4, row: 1 } });
     const { match: after } = resolveRound(match, [bruiserPlan(match, [cards.wreckingBlow], [use(cards.wreckingBlow)])]);
     expect(after.placedCover).toHaveLength(0);
+  });
+});
+
+describe("What the events of a Pull, a Charge and a hit tell a Squad", () => {
+  const pulls = (squad: SquadId, resolution: ReturnType<typeof resolveRound>) => getSquadEvents(squad, resolution).filter(({ kind }) => kind === EventKind.Pull);
+
+  it("names the Hero that pulled and both tiles of every slide to both Squads when the Bruiser is in sight", () => {
+    const cards = withTestCards();
+    const match = setup({ col: 2, row: 1 }, { col: 6, row: 1 });
+    const resolution = resolveRound(match, [bruiserPlan(match, [cards.pull], [use(cards.pull)])]);
+    for (const squad of [SquadId.Left, SquadId.Right]) {
+      expect(pulls(squad, resolution)).toEqual([
+        expect.objectContaining({ heroId: ENEMY, casterId: BRUISER, from: { col: 6, row: 1 }, to: { col: 5, row: 1 } }),
+        expect.objectContaining({ heroId: ENEMY, casterId: BRUISER, from: { col: 5, row: 1 }, to: { col: 4, row: 1 } }),
+      ]);
+    }
+  });
+
+  it("does not tell the Squad of the pulled Hero who pulled it when it cannot see that Hero, but still shows the slide", () => {
+    const cards = withTestCards();
+    const match = setup({ col: 2, row: 1 }, { col: 6, row: 1 });
+    // A Hidden Bruiser is not seen on a tile in sight (it is only shown inside a Scout Drone area).
+    hero(match, BRUISER).hidden = 2;
+    const resolution = resolveRound(match, [bruiserPlan(match, [cards.pull], [use(cards.pull)])]);
+    expect(hero(resolution.match, BRUISER).hidden).toBeGreaterThan(0);
+    const toVictim = pulls(SquadId.Right, resolution);
+    expect(toVictim).toHaveLength(2);
+    for (const event of toVictim) {
+      expect(event.casterId).toBeUndefined();
+      expect(event.from).toBeDefined();
+      expect(event.to).toBeDefined();
+    }
+    // The Squad of the Bruiser knows its own Hero.
+    expect(pulls(SquadId.Left, resolution).every(({ casterId }) => casterId === BRUISER)).toBe(true);
+  });
+
+  it("names the extra damage of a hit: CLOSE +1 of Slam Shot at Range 1, and CHARGE +1 once after a Charge", () => {
+    const cards = withTestCards();
+    const match = setup({ col: 2, row: 1 }, { col: 5, row: 1 });
+    // Charge first (Tick 1), then Slam Shot at Range 1 (Tick 2), then another Slam Shot (Tick 3).
+    const plan = bruiserPlan(match, [cards.charge, SLAM_SHOT, SECOND_SLAM_SHOT], [use(cards.charge), use(SLAM_SHOT), use(SECOND_SLAM_SHOT)]);
+    const [first, second] = hits(resolveRound(match, [plan]).events);
+    expect(first).toEqual(expect.objectContaining({ closeBonus: 1, chargeBonus: 1 }));
+    expect(second).toEqual(expect.objectContaining({ closeBonus: 1 }));
+    expect(second?.chargeBonus).toBeUndefined();
+  });
+
+  it("names no bonus on a hit from Range 2", () => {
+    const match = setup({ col: 2, row: 1 }, { col: 4, row: 1 });
+    const [hit] = hits(resolveRound(match, [bruiserPlan(match, [SLAM_SHOT], [use(SLAM_SHOT)])]).events);
+    expect(hit?.closeBonus).toBeUndefined();
+    expect(hit?.chargeBonus).toBeUndefined();
+  });
+
+  it("marks a Hidden enemy that a Scout Drone area shows as Hidden in the Squad View, and a normal one as not", () => {
+    const match = setup({ col: 16, row: 6 }, { col: 18, row: 6 });
+    const seen = () => buildSquadView(match, SquadId.Left).enemies.find(({ id }) => id === ENEMY);
+    expect(seen()).toEqual(expect.objectContaining({ visibility: Visibility.Visible, hidden: false }));
+    hero(match, ENEMY).hidden = 2;
+    expect(seen()?.visibility).not.toBe(Visibility.Visible);
+    match.revealedAreas.push({ squad: SquadId.Left, center: { col: 18, row: 6 }, size: 3, remaining: 2 });
+    expect(seen()).toEqual(expect.objectContaining({ visibility: Visibility.Visible, hidden: true }));
   });
 });
