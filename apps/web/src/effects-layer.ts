@@ -34,6 +34,12 @@ import {
   flightProgress,
   KNOCKBACK_TAG_MS,
   AEGIS_BEAM_MS,
+  type BonusTone,
+  CHARGE_STREAK_MS,
+  PULL_ECHO_LAGS,
+  PULL_MS,
+  slideProgress,
+  SLIDE_MS,
   OVERDRIVE_TAG_OUT_MS,
   SURGE_MS,
   sampleTrack,
@@ -90,6 +96,11 @@ const CROSSFIRE_ENEMY = 0xe5484d;
 const CROSSFIRE_OWN = 0x2ec4b6;
 const CROSSFIRE_FONT = 9;
 const SPARK_ANGLES = [0.6, 2.2, 3.7, 5.3];
+/** The Pull is teal when the player's Squad pulls, enemy red when the player's Hero is pulled (docs/design/role-visuals/380/pull.png). */
+/** CLOSE +1 is orange like the Slam Shot, CHARGE +1 gold (docs/design/role-visuals/380/charge.png). */
+const BONUS_COLOR: Readonly<Record<BonusTone, number>> = { close: 0xff8a3d, charge: 0xffd24a };
+const PULL_OWN = 0x2ec4b6;
+const PULL_ENEMY = 0xe5484d;
 
 export interface Point {
   x: number;
@@ -117,6 +128,35 @@ function line(g: Graphics, from: Point, to: Point, stroke: Stroke): void {
 export interface StatusMark {
   container: Container;
   update(ms: number): void;
+}
+
+const HIDDEN_SEEN_CYAN = 0x4fd1ff;
+
+/**
+ * The look of an enemy that is Hidden and shown by a Scout Drone (docs/design/role-visuals/380/hidden-seen.png): a cyan
+ * ring inside the red Squad ring, an eye mark over the head and the tag HIDDEN · SEEN. The figure itself is drawn at about
+ * 55 % by the board. It is shown, not unmasked: it stays Hidden and cannot be named as a target.
+ */
+export function hiddenSeenMark(): Container {
+  const container = new Container();
+  const ring = new Graphics().ellipse(0, -TILE_HEIGHT / 2 + 4 * F, 13 * F, 6.5 * F).stroke({ width: 2 * F, color: HIDDEN_SEEN_CYAN, alpha: 0.95 });
+  const eye = new Graphics();
+  eye.moveTo(-8 * F, 0).quadraticCurveTo(0, -7 * F, 8 * F, 0).quadraticCurveTo(0, 7 * F, -8 * F, 0).stroke({ width: 1.6 * F, color: HIDDEN_SEEN_CYAN });
+  eye.circle(0, 0, 2.8 * F).fill(HIDDEN_SEEN_CYAN);
+  eye.position.set(26 * F, -HEAD_LIFT - 18 * F);
+  const tag = new Text({ text: "HIDDEN · SEEN", style: { fontFamily: "IBM Plex Mono", fontSize: 6 * F, fontWeight: "700", fill: HIDDEN_SEEN_CYAN, stroke: { color: OUTLINE, width: 2 * F } } });
+  tag.anchor.set(0.5, 1);
+  tag.position.set(0, -HEAD_LIFT - 6 * F);
+  container.addChild(ring, eye, tag);
+  return container;
+}
+
+/** The two rings that spread on the floor where a Pulled Hero arrives; `t` is 0 at the arrival and 1 when they are gone. */
+function drawPullRing(g: Graphics, at: Point, color: number, t: number): void {
+  for (const ring of [0, 1]) {
+    const grow = Math.max(0, t - ring * 0.18);
+    g.ellipse(at.x, at.y, (16 + 20 * grow) * F, (8 + 10 * grow) * F).stroke({ width: (ring === 0 ? 2.5 : 1.5) * F, color, alpha: (1 - t) * (ring === 0 ? 0.9 : 0.5) });
+  }
 }
 
 /** The red reticle (22 px ring with a cross) that locks on from 2.4 x to 1 x, turning 45 degrees, with a small MARKED tag. */
@@ -481,8 +521,10 @@ export class EffectsLayer {
     for (const shape of this.shapes) shape.clear();
     cues.forEach((cue, i) => {
       if (cue.kind === "number") this.prepareLabel(i, cue.text, NUMBER_COLOR[cue.style]);
-      else if (cue.kind === "crossfire") this.prepareCrossfire(i, cue.amount, world.own(cue.toId));
+      else if (cue.kind === "crossfire") this.prepareCrossfire(i, `CROSSFIRE +${cue.amount}`, world.own(cue.toId) ? CROSSFIRE_ENEMY : CROSSFIRE_OWN);
+      else if (cue.kind === "bonus") this.prepareCrossfire(i, cue.text, BONUS_COLOR[cue.tone]);
       else if (cue.kind === "knockback") this.prepareLabel(i, cue.tag, SHOCK_ORANGE);
+      else if (cue.kind === "pull") this.prepareLabel(i, cue.tag, world.own(cue.toId) ? PULL_ENEMY : PULL_OWN);
       else if (cue.kind === "aura") this.prepareLabel(i, "OVERDRIVE", OVERDRIVE_GOLD);
       else if (cue.kind === "marked" || cue.kind === "slow") {
         const mark = cue.kind === "marked" ? markedMark(cue.overdrive ? GOLD : undefined) : slowMark();
@@ -492,7 +534,7 @@ export class EffectsLayer {
     });
     for (let i = 0; i < this.texts.length; i++) {
       const kind = cues[i]?.kind;
-      if (kind !== "number" && kind !== "crossfire" && kind !== "knockback" && kind !== "aura") this.texts[i]!.visible = false;
+      if (kind !== "number" && kind !== "crossfire" && kind !== "bonus" && kind !== "knockback" && kind !== "pull" && kind !== "aura") this.texts[i]!.visible = false;
     }
   }
 
@@ -527,8 +569,10 @@ export class EffectsLayer {
     let shake: Point = { x: 0, y: 0 };
     this.cues.forEach((cue, i) => {
       if (cue.kind === "number") this.drawNumber(this.texts[i]!, cue, ms);
-      else if (cue.kind === "crossfire") this.drawCrossfire(this.texts[i]!, cue, ms);
+      else if (cue.kind === "crossfire" || cue.kind === "bonus") this.drawCrossfire(this.texts[i]!, cue, ms);
       else if (cue.kind === "knockback") this.drawKnockback(this.shapeAt(i), this.texts[i]!, cue, ms);
+      else if (cue.kind === "pull") this.drawPull(this.shapeAt(i), this.texts[i]!, cue, ms);
+      else if (cue.kind === "charge") this.drawChargeStreaks(this.shapeAt(i), cue, ms);
       else if (cue.kind === "shot" || cue.kind === "shockwave") shake = this.drawShaking(i, cue, ms) ?? shake;
       else if (cue.kind === "aura") this.drawAura(this.shapeAt(i), this.texts[i]!, cue, ms);
       else if (cue.kind === "surge") this.drawSurge(this.shapeAt(i), cue, ms);
@@ -559,14 +603,14 @@ export class EffectsLayer {
   }
 
   /** "CROSSFIRE +1": the enemy red on a hit against the own Squad, teal on a hit by it; Rajdhani, with the dark outline of the numbers. */
-  private prepareCrossfire(i: number, amount: number, onOwnHero: boolean): void {
-    this.prepareLabel(i, `CROSSFIRE +${amount}`, onOwnHero ? CROSSFIRE_ENEMY : CROSSFIRE_OWN);
+  private prepareCrossfire(i: number, text: string, color: number): void {
+    this.prepareLabel(i, text, color);
     const style = this.texts[i]!.style;
     style.fontFamily = "Rajdhani";
     style.letterSpacing = 0.08 * CROSSFIRE_FONT * F;
   }
 
-  private drawCrossfire(label: Text, cue: Extract<EffectCue, { kind: "crossfire" }>, ms: number): void {
+  private drawCrossfire(label: Text, cue: Extract<EffectCue, { kind: "crossfire" | "bonus" }>, ms: number): void {
     const at = this.place(cue.toId);
     const { rise, alpha } = crossfireAt(ms - cue.startMs);
     label.visible = at !== undefined && ms >= cue.startMs && alpha > 0;
@@ -660,6 +704,71 @@ export class EffectsLayer {
       const angle = (puff / 6) * 2 * Math.PI + 0.4;
       g.ellipse(at.x + Math.cos(angle) * 24 * F, at.y + Math.sin(angle) * 12 * F - state.rise * F, 5 * F * state.scale, 3 * F * state.scale).fill({ color: DUST, alpha: state.alpha });
     }
+  }
+
+  /**
+   * The speed streaks of a Charge (docs/design/role-visuals/380/charge.png): three teal lines trail behind the Bruiser, away from
+   * its target, longest nearest the middle. Not with reduced motion.
+   */
+  private drawChargeStreaks(g: Graphics, cue: Extract<EffectCue, { kind: "charge" }>, ms: number): void {
+    g.clear();
+    const s = ms - cue.startMs;
+    const hero = this.place(cue.heroId);
+    const target = this.place(cue.targetId);
+    if (this.reduced || !hero || !target || s < 0 || s >= CHARGE_STREAK_MS) return;
+    const dx = hero.x - target.x;
+    const dy = hero.y - target.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const along = { x: dx / length, y: dy / length };
+    const across = { x: -along.y, y: along.x };
+    const grow = sampleTrack([[0, 0], [150, 1]], s);
+    const alpha = sampleTrack([[0, 0.9], [CHARGE_STREAK_MS * 0.5, 0.7], [CHARGE_STREAK_MS, 0]], s);
+    [[0, 34], [-9, 26], [9, 20]].forEach(([side, size], index) => {
+      const start = { x: hero.x + along.x * (12 + index * 2) * F + across.x * side! * F, y: hero.y - CHEST_LIFT * 0.55 + along.y * (12 + index * 2) * F + across.y * side! * F };
+      line(g, start, { x: start.x + along.x * size! * F * grow, y: start.y + along.y * size! * F * grow }, { width: 2 * F, color: 0x2ec4b6, alpha });
+    });
+  }
+
+  /**
+   * One tile of Pull (docs/design/role-visuals/380/pull.png): while the Hero slides, a solid tether from the caster (if the
+   * Squad sees it) and two fading echoes behind the figure with the tag PULLED; then a ground ring and the tag PULL 2.
+   * Teal when the player's Squad pulls, red when the player's Hero is pulled. The slide itself is the token's.
+   */
+  private drawPull(g: Graphics, label: Text, cue: Extract<EffectCue, { kind: "pull" }>, ms: number): void {
+    g.clear();
+    const s = ms - cue.startMs;
+    const to = this.world.tile(cue.to);
+    const color = this.world.own(cue.toId) ? PULL_ENEMY : PULL_OWN;
+    label.visible = s >= 0 && s < PULL_MS - 100;
+    label.text = s < SLIDE_MS ? "PULLED" : cue.tag;
+    label.style.fill = color;
+    const slide = cue.from === undefined || this.reduced ? 1 : slideProgress(s);
+    const from = cue.from === undefined ? to : this.world.tile(cue.from);
+    const now = { x: from.x + (to.x - from.x) * slide, y: from.y + (to.y - from.y) * slide };
+    label.position.set(now.x, now.y - HEAD_LIFT - 10 * F);
+    label.alpha = sampleTrack([[0, 0], [100, 1], [PULL_MS - 400, 1], [PULL_MS - 100, 0]], s);
+    if (this.reduced || s < 0 || s >= PULL_MS) return;
+    if (s < SLIDE_MS + 120) this.drawPullTrail(g, cue, { from, to, now, slide, color, fade: sampleTrack([[0, 1], [SLIDE_MS, 1], [SLIDE_MS + 120, 0]], s) });
+    if (s >= SLIDE_MS) drawPullRing(g, to, color, Math.min(1, (s - SLIDE_MS) / (PULL_MS - SLIDE_MS)));
+  }
+
+  /** The tether from the caster to the sliding Hero and the two echoes behind it. */
+  private drawPullTrail(g: Graphics, cue: Extract<EffectCue, { kind: "pull" }>, slid: { from: Point; to: Point; now: Point; slide: number; color: number; fade: number }): void {
+    const { from, to, now, slide, color, fade } = slid;
+    const caster = cue.casterId === undefined ? undefined : this.place(cue.casterId);
+    if (caster) {
+      line(g, { x: caster.x, y: caster.y - CHEST_LIFT }, { x: now.x, y: now.y - CHEST_LIFT }, { width: 3 * F, color, alpha: 0.9 * fade });
+      g.circle(now.x, now.y - CHEST_LIFT, 3.5 * F).fill({ color, alpha: fade });
+    }
+    if (cue.from === undefined) return;
+    PULL_ECHO_LAGS.forEach((lag, index) => {
+      const behind = Math.max(0, slide - lag);
+      const at = { x: from.x + (to.x - from.x) * behind, y: from.y + (to.y - from.y) * behind };
+      const alpha = (index === 0 ? 0.32 : 0.16) * fade;
+      g.ellipse(at.x, at.y + 2 * F, 14 * F, 7 * F).stroke({ width: 2 * F, color, alpha });
+      g.roundRect(at.x - 8 * F, at.y - 30 * F, 16 * F, 26 * F, 5 * F).fill({ color, alpha: alpha * 0.8 });
+      g.circle(at.x, at.y - 35 * F, 6 * F).fill({ color, alpha: alpha * 0.8 });
+    });
   }
 
   /** The skid line behind a Hero that slides one tile, and the `Knockback 2` tag over it. The slide itself is the token's. */

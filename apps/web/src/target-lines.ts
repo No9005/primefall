@@ -5,16 +5,21 @@ import {
   cardInMode,
   chebyshevDistance,
   CoverKind,
+  coverAt,
+  EffectKind,
   type EnemyView,
   EventKind,
   type Grid,
   type GridPosition,
   HERO_DECKS,
   type HeroView,
+  isStepAllowed,
   type MatchEvent,
   type QueuedAction,
   type SquadPlan,
+  stepTowards,
   Visibility,
+  type VisibleEnemyView,
 } from "game-core";
 import { drawShot, type ShotDrawing, SegmentStyle } from "./shot-lines";
 
@@ -256,4 +261,83 @@ export function crossfireRings(lines: readonly TargetLine[], enemies: readonly E
     });
     return [{ targetId, position: enemy.position, segments }];
   });
+}
+
+export enum EffectPathKind {
+  /** The tiles an enemy would be pulled over, toward the Bruiser. */
+  Pull = "pull",
+  /** The tiles a Charge would carry the Bruiser over, toward the enemy. */
+  Charge = "charge",
+}
+
+/** One tile of a path and the direction its chevron points. */
+export interface EffectPathTile {
+  tile: GridPosition;
+  direction: GridPosition;
+}
+
+/** The path a queued Pull or Charge would take (docs/design/role-visuals/380/pull.png and charge.png), with its tag. */
+export interface EffectPath {
+  kind: EffectPathKind;
+  heroId: string;
+  tiles: readonly EffectPathTile[];
+  tag: string;
+  /** The tile the tag sits over: the target of a Pull, the Bruiser for a Charge. */
+  tagTile: GridPosition;
+}
+
+const samePosition = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
+
+/**
+ * The paths of the queued Pulls and Charges of the own Squad's plans, drawn with the rules' own stopping: a path ends before a
+ * Wall, Full Cover, another Hero or the Bruiser, and a Charge next to its target. Only Visible enemies are named: a Pull and a
+ * Charge need a Visible target. A path is a preview of the plan; the Resolution may stop earlier.
+ */
+export function plannedEffectPaths(grid: Grid, heroes: readonly HeroView[], enemies: readonly EnemyView[], plans: readonly SquadPlan[]): EffectPath[] {
+  const standing = (except: string, ...also: GridPosition[]) => [
+    ...heroes.filter((hero) => hero.id !== except && !hero.exhausted).map((hero) => hero.position),
+    ...enemies.filter((enemy): enemy is VisibleEnemyView => enemy.visibility === Visibility.Visible && enemy.id !== except && !enemy.exhausted).map((enemy) => enemy.position),
+    ...also,
+  ];
+  const blocked = (from: GridPosition, to: GridPosition, occupied: readonly GridPosition[]) =>
+    !isStepAllowed(from, to, grid) || coverAt(grid, to) === CoverKind.Full || occupied.some((other) => samePosition(other, to));
+  return plans.flatMap((plan) =>
+    plan.heroes.flatMap(({ heroId, queue }) => {
+      const hero = heroes.find((candidate) => candidate.id === heroId);
+      if (!hero || hero.exhausted) return [];
+      return queue.flatMap((action, index): EffectPath[] => {
+        if (action.kind !== ActionKind.Primary) return [];
+        const card = cardInMode(HERO_DECKS[hero.heroClass][action.card]!, action.overdrive);
+        const target = enemies.find((enemy) => enemy.id === action.target);
+        if (target?.visibility !== Visibility.Visible) return [];
+        const caster = positionBefore(hero, queue, index);
+        const pull = card.effects.find((effect) => effect.kind === EffectKind.Pull);
+        if (pull) {
+          const direction = { col: Math.sign(caster.col - target.position.col), row: Math.sign(caster.row - target.position.row) };
+          const occupied = standing(target.id, caster);
+          const tiles: EffectPathTile[] = [];
+          for (let at = target.position; tiles.length < (pull.amount ?? 0); ) {
+            const next = { col: at.col + direction.col, row: at.row + direction.row };
+            if (blocked(at, next, occupied)) break;
+            tiles.push({ tile: next, direction });
+            at = next;
+          }
+          return [{ kind: EffectPathKind.Pull, heroId, tiles, tag: `PULL · RANGE ${card.range ?? 0}`, tagTile: target.position }];
+        }
+        const charge = card.effects.find((effect) => effect.kind === EffectKind.Charge);
+        if (charge) {
+          const occupied = standing(hero.id);
+          const tiles: EffectPathTile[] = [];
+          for (let at = caster; tiles.length < (charge.amount ?? 0) && chebyshevDistance(at, target.position) > 1; ) {
+            const next = stepTowards(at, target.position);
+            if (blocked(at, next, occupied)) break;
+            tiles.push({ tile: next, direction: { col: next.col - at.col, row: next.row - at.row } });
+            at = next;
+          }
+          return [{ kind: EffectPathKind.Charge, heroId, tiles, tag: `CHARGE · MOVE ${charge.amount ?? 0} TOWARD`, tagTile: caster }];
+        }
+        return [];
+      });
+    }),
+  );
 }

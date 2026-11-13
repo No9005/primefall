@@ -344,6 +344,37 @@ export const SCENARIOS: readonly Scenario[] = [
   bruiserCard("pull", "A Bruiser plays Pull on an enemy Bruiser four tiles away: it is dragged two tiles toward the Bruiser.", 43, BRUISER_PULL, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 16, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
+  {
+    name: "charge-and-hit",
+    description: "A Bruiser plays Charge on an enemy Bruiser two tiles away, then Slam Shot at Range 1: the hit carries the tags CLOSE +1 and CHARGE +1.",
+    buildMatch: () =>
+      stage(42, (hero) => {
+        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_CHARGE, BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, BRUISER_CONCUSSION_ROUND] });
+        arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [
+      { slot: 2, use: "pitch" },
+      { slot: 3, use: "pitch" },
+      { slot: 0, use: "primary", target: ENEMY_BRUISER },
+      { slot: 1, use: "primary", target: ENEMY_BRUISER },
+    ],
+    resolutionShotsMs: [600, 1300, 2000, 2700, 3400, 4500],
+  },
+  {
+    name: "hidden-seen",
+    description: "An enemy Assassin is Hidden inside a Scout Drone area of the Squad: shown translucent with a cyan ring, an eye and the tag HIDDEN · SEEN, not unmasked.",
+    buildMatch: () =>
+      stage(45, (hero, match) => {
+        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero("right-assassin"), { col: 14, row: 3 }, { hand: [0, 1, 2, 3] });
+        hero("right-assassin").hidden = 2;
+        match.revealedAreas.push({ squad: SquadId.Left, center: { col: 14, row: 3 }, size: 3, remaining: 2 });
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [{ wait: true }],
+    resolutionShotsMs: [400, 1500],
+  },
   bruiserCard("wrecking-blow", "A Bruiser plays Wrecking Blow on an enemy Bruiser behind Half Cover two tiles away: 2 damage, and the Cover is destroyed.", 44, BRUISER_WRECKING_BLOW, 1, { use: "primary", target: ENEMY_BRUISER }, (hero, match) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
     placeHalfCover(match, { col: 14, row: 3 });

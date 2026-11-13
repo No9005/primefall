@@ -18,12 +18,15 @@ export type SceneName =
   | "slow"
   | "marked"
   | "hidden"
+  | "hiddenSeen"
   | "ghost"
   | "exhaustion"
   | "overdrive"
   | "attackBonus"
   | "plannedIcons"
   | "crossfire"
+  | "charge"
+  | "closeAndCharge"
   | "deckDamage"
   | "longRangeBonus"
   | "shieldLoss"
@@ -93,6 +96,12 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
     picture: { scene: "hidden" },
   },
   {
+    name: "Hidden, seen by a drone",
+    group: GlossaryGroup.Heroes,
+    text: "A Scout Drone area shows a Hidden enemy: translucent, a cyan ring inside the red one, an eye and the tag HIDDEN · SEEN. It is shown, not unmasked.",
+    picture: { scene: "hiddenSeen" },
+  },
+  {
     name: "Ghost",
     group: GlossaryGroup.Heroes,
     text: "An enemy that left your sight: a faded red figure with a dashed ring and the tag last seen, at the tile where you saw it last.",
@@ -127,6 +136,18 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
     group: GlossaryGroup.Heroes,
     text: "The second hit on a Hero by another attacker within one Tick carries the tag CROSSFIRE +1 above the damage number.",
     picture: { scene: "crossfire" },
+  },
+  {
+    name: "Charge",
+    group: GlossaryGroup.Heroes,
+    text: "The Bruiser rushes at the enemy with speed streaks behind it, ends next to it and gains Shield 1 for the Round (tag SHIELD 1 · THIS ROUND).",
+    picture: { scene: "charge" },
+  },
+  {
+    name: "Close and Charge bonus",
+    group: GlossaryGroup.Numbers,
+    text: "Tags above the damage number say where extra damage comes from: CLOSE +1 for a close-range effect, CHARGE +1 for the first hit at Range 1 after a Charge.",
+    picture: { scene: "closeAndCharge" },
   },
   {
     name: "Deck Damage",
@@ -179,7 +200,7 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
   {
     name: "Pull",
     group: GlossaryGroup.Numbers,
-    text: "The Hero slides towards the caster, tagged Pull.",
+    text: "The Hero slides towards the caster with a tether and two echoes behind it (tag PULLED), then a ring and the tag PULL 2.",
     picture: { scene: "pull" },
   },
   {

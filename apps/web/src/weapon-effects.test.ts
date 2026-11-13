@@ -1,7 +1,7 @@
 import { AttackFailReason, EventKind, HeroClass, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
 import { buildPlaybackFrames } from "./playback";
-import { crossfireAt, cueEndMs, effectCuesOf, flightMs, flightProgress, impactMs, numberAt, reticleAt, shakeAt, weaponOf } from "./weapon-effects";
+import { CHARGE_SHIELD_TAG, crossfireAt, cueEndMs, effectCuesOf, flightMs, flightProgress, impactMs, numberAt, PULL_MS, reticleAt, shakeAt, weaponOf } from "./weapon-effects";
 
 const hit = (extra: Partial<MatchEvent>): MatchEvent => ({ kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", ...extra });
 const fireOf = (_heroId: string, card: string | undefined) => (card === "Long Shot" ? 1650 : 620);
@@ -91,6 +91,55 @@ describe("the cues of the events", () => {
     const classOf = (id: string) => (id === "a" ? HeroClass.Bruiser : HeroClass.Assassin);
     const [frame] = buildPlaybackFrames([hit({ card: "Slam Shot", damage: 2, distance: 3 })], classOf);
     expect(frame!.effects).toHaveLength(2);
+  });
+});
+
+describe("the cues of a Pull, a Charge and the extra damage of a hit", () => {
+  const pull = (extra: Partial<MatchEvent>): MatchEvent => ({ kind: EventKind.Pull, tick: 1, heroId: "enemy", card: "Pull", ...extra });
+  const tile = (col: number, row = 3) => ({ col, row });
+
+  it("slides a pulled Hero from the tile it stood on, with the tether to its caster and the tag of the card", () => {
+    const cues = effectCuesOf([pull({ from: tile(6), to: tile(5), casterId: "bruiser" })], fireOf);
+    expect(cues).toEqual([{ kind: "pull", toId: "enemy", from: tile(6), to: tile(5), startMs: 0, casterId: "bruiser", tag: "PULL 2" }]);
+    expect(cueEndMs(cues[0]!)).toBe(PULL_MS);
+  });
+
+  it("does not slide a Hero whose start tile the Squad was not told, and draws no tether without its caster", () => {
+    const [cue] = effectCuesOf([pull({ to: tile(5) })], fireOf);
+    expect(cue).toEqual({ kind: "pull", toId: "enemy", to: tile(5), startMs: 0, tag: "PULL 2" });
+    expect(cue).not.toHaveProperty("from");
+    expect(cue).not.toHaveProperty("casterId");
+  });
+
+  it("draws nothing for a Pull event that has no tile at all", () => {
+    expect(effectCuesOf([pull({})], fireOf)).toEqual([]);
+  });
+
+  it("stacks CLOSE +1, then CHARGE +1, then CROSSFIRE +1 above the damage number", () => {
+    const cues = effectCuesOf([hit({ card: "Slam Shot", distance: 1, damage: 4, closeBonus: 1, chargeBonus: 1, crossfire: 1 })], fireOf);
+    const labels = cues.flatMap((cue) => (cue.kind === "bonus" ? [[cue.text, cue.stack]] : cue.kind === "crossfire" ? [["CROSSFIRE", cue.stack]] : []));
+    expect(labels).toEqual([["CLOSE +1", 0], ["CHARGE +1", 1], ["CROSSFIRE", 2]]);
+  });
+
+  it("names no bonus on a hit without one", () => {
+    expect(effectCuesOf([hit({ card: "Slam Shot", distance: 2, damage: 2 })], fireOf).some((cue) => cue.kind === "bonus")).toBe(false);
+  });
+
+  it("puts speed streaks on the Hero that charged and the tag SHIELD 1 · THIS ROUND on its Shield", () => {
+    const cues = effectCuesOf(
+      [
+        { kind: EventKind.Charged, tick: 1, heroId: "bruiser", targetId: "enemy", card: "Charge" },
+        { kind: EventKind.ShieldGained, tick: 1, heroId: "bruiser", amount: 1, casterId: "bruiser", card: "Charge" },
+      ],
+      fireOf,
+    );
+    expect(cues).toContainEqual({ kind: "charge", heroId: "bruiser", targetId: "enemy", startMs: 0 });
+    expect(cues).toContainEqual(expect.objectContaining({ kind: "number", toId: "bruiser", text: CHARGE_SHIELD_TAG, style: "shield" }));
+  });
+
+  it("does not tag the Shield of a Block as a Charge's", () => {
+    const cues = effectCuesOf([{ kind: EventKind.ShieldGained, tick: 1, heroId: "bruiser", amount: 2 }], fireOf);
+    expect(cues.some((cue) => cue.kind === "number")).toBe(false);
   });
 });
 
