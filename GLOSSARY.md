@@ -121,7 +121,7 @@ _Avoid_: Sniper shot, ranged finisher
 ### Battlefield and objectives
 
 **Grid**:
-The tile-based battlefield (31 by 17 on the Reactor Deck) used for movement, range, line of sight, and cover.
+The tile-based battlefield (45 by 25 on the Reactor Deck) used for movement, range, line of sight, and cover.
 _Avoid_: Map, board, arena
 
 **Line of Sight**:
@@ -165,11 +165,11 @@ One simultaneous Resolution step in which each non-exhausted Hero processes the 
 _Avoid_: Turn, phase
 
 **Prime Zone**:
-The central 3 by 3 zone, worth 2 Victory Points per Resolution in the classic mode. It is inactive (scores nothing) until Round 4. In Attack and Defend the Attacker wins by controlling it during three consecutive Resolutions.
+The central 5 by 5 zone, worth 2 Victory Points per Resolution in the classic mode. It is inactive (scores nothing) until Round 4. In Attack and Defend the Attacker wins by controlling it during three consecutive Resolutions.
 _Avoid_: Point, base, capture zone
 
 **Outpost**:
-One of two side zones of the classic mode, worth 1 Victory Point per Resolution to the Squad that controls it (ADR 0024). Active from Round 1.
+One of two 3 by 3 zones of the classic mode, on the centre column north and south of the Prime Zone, worth 1 Victory Point per Resolution to the Squad that controls it (ADR 0024). Active from Round 1.
 _Avoid_: Capture point, flag, side zone
 
 **Control**:
@@ -204,8 +204,12 @@ _Avoid_: Timeout, draw
 A set of weights chosen per match from the match seed (for example Aggressive, Defensive, Flanker) that shifts how the AI scores its options.
 
 **Overwatch Nest**:
-The single Full Cover position with a sightline into the Prime Zone. **Removed for now** (ADR 0024): no map places it at present.
+A Full Cover tile (`O`) with a sightline towards the Prime Zone. The Reactor Deck has two of them, in its top half (ADR 0016).
 _Avoid_: Sniper nest, camp spot
+
+**Spawn**:
+One of the 2 by 5 strips of tiles at the left and right edge of the Grid where a Squad starts; no sight line leads from one Spawn to the other (ADR 0016).
+_Avoid_: Base, start zone
 
 **Reactor Deck**:
 The first Primefall map: a damaged cargo ship whose central reactor is the Prime Zone.

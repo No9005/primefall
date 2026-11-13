@@ -9,7 +9,7 @@ Matches are one-sided. Both Squads run to the Prime Zone and play Shield plus At
 - A match ends after 5 to 6 Rounds, 100 % by the Zone; the first Squad in the Zone wins in 100 % of the pairings against a waiting or holding AI, and the card advantage at the end is about 0 (nobody is hurt).
 - Round 1 is the same plan in all 300 matches; the AI Styles do not differ before the first contact in Round 3.
 - A Hero that Blocks every Round is never Exhausted: the card played as Block returns to the Deck at the end of the Resolution.
-- With a 3 by 3 Zone and 8-direction movement every lane to the Zone is equally long, so side routes give no advantage.
+- With a 5 by 5 Zone and 8-direction movement every lane to the Zone is equally long, so side routes give no advantage.
 
 ## Goals
 
