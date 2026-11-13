@@ -24,7 +24,7 @@ const tileOf = (index: number): GridPosition => ({ col: 8 + index, row: 3 });
 function place(match: MatchState, squad: SquadId, card: number, tile: GridPosition) {
   const next = startRound(match);
   const id = squad === SquadId.Left ? LEFT_CONTROLLER : RIGHT_CONTROLLER;
-  hero(next, id).position = { col: tile.col, row: 5 };
+  hero(next, id).position = { col: tile.col, row: tile.row + 1 };
   hero(next, id).hand = [card, 4, 1, 5];
   const plan: SquadPlan = {
     squad,
@@ -128,13 +128,13 @@ describe("Placed Cover", () => {
   });
 
   describe("on a Prime Zone tile", () => {
-    const primeTile: GridPosition = { col: 15, row: 7 };
+    const primeTile: GridPosition = { col: 22, row: 12 };
 
     it("gives the Prime Zone tile back when a Breach Charge destroys the Cover", () => {
       const placed = place(startRound(createMatch(5)), SquadId.Left, DEPLOY_COVER, primeTile).match;
       expect(tileAt(placed.grid, primeTile)).toBe(TileKind.HalfCover);
       const next = startRound(placed);
-      hero(next, LEFT_BRUISER).position = { col: 12, row: 7 };
+      hero(next, LEFT_BRUISER).position = { col: 19, row: 12 };
       hero(next, LEFT_BRUISER).hand = [BRUISER_BREACH_CHARGE, BRUISER_SLAM_SHOT, 1, 5];
       const plan: SquadPlan = {
         squad: SquadId.Left,

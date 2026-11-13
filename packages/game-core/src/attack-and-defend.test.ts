@@ -8,7 +8,7 @@ import { resolveRound } from "./resolution";
 
 const mode = (defender: SquadId): MatchModeSetting => ({ kind: MatchMode.AttackAndDefend, defender });
 const zoneTiles = findTiles(createMatch(1).grid, TileKind.PrimeZone);
-const FAR = (squad: SquadId, i: number) => ({ col: squad === SquadId.Left ? 1 : 29, row: 1 + i });
+const FAR = (squad: SquadId, i: number) => ({ col: squad === SquadId.Left ? 1 : 43, row: 1 + i });
 
 /** A Round-1 match (Defender: Left) with the given numbers of Heroes of each Squad standing in the Zone, the rest far away. */
 function matchWith(attackers: number, defenders: number, defender = SquadId.Left): MatchState {
@@ -18,8 +18,8 @@ function matchWith(attackers: number, defenders: number, defender = SquadId.Left
     match.heroes
       .filter((hero) => hero.squad === squad)
       .forEach((hero, i) => (hero.position = i < count ? { ...tiles[i]! } : FAR(squad, i)));
-  place(defender, defenders, zoneTiles.filter(({ col }) => col === 14));
-  place(attacker, attackers, zoneTiles.filter(({ col }) => col === 16));
+  place(defender, defenders, zoneTiles.filter(({ col }) => col === 20));
+  place(attacker, attackers, zoneTiles.filter(({ col }) => col === 24));
   return match;
 }
 
@@ -27,12 +27,12 @@ const resolveEmpty = (match: MatchState) => resolveRound(match, []).match;
 
 describe("Attack and Defend: start positions", () => {
   it.each([
-    [SquadId.Left, 14],
-    [SquadId.Right, 16],
-  ])("puts a %s Defender on the Zone tiles of column %i, rows 7 to 9", (defender, col) => {
+    [SquadId.Left, 20],
+    [SquadId.Right, 24],
+  ])("puts a %s Defender on the Zone tiles of column %i, rows 11 to 13", (defender, col) => {
     const match = createMatch(7, mode(defender));
     const squad = match.heroes.filter((hero) => hero.squad === defender);
-    expect(squad.map((hero) => hero.position)).toEqual([7, 8, 9].map((row) => ({ col, row })));
+    expect(squad.map((hero) => hero.position)).toEqual([11, 12, 13].map((row) => ({ col, row })));
   });
 
   it("starts the Attacker on its Spawn tiles, as in the classic mode", () => {
@@ -71,7 +71,7 @@ describe("Attack and Defend: control of the Zone", () => {
 
   it("does not count Exhausted Attacker Heroes", () => {
     const match = matchWith(1, 1);
-    match.heroes.find((hero) => hero.squad === SquadId.Right && hero.position.col === 16)!.exhausted = true;
+    match.heroes.find((hero) => hero.squad === SquadId.Right && hero.position.col === 24)!.exhausted = true;
     expect(resolveEmpty(match).primeZone.controller).not.toBe(SquadId.Right);
   });
 });
@@ -131,7 +131,7 @@ describe("Attack and Defend: Squad View and host", () => {
       const view = buildSquadView(match, squad);
       expect(view.roundLimit).toBe(DEFENDER_ROUND_LIMIT);
       expect(view.attackAndDefend).toMatchObject({ defender: SquadId.Right, roundsLeft: DEFENDER_ROUND_LIMIT });
-      expect(view.attackAndDefend?.zone).toHaveLength(9);
+      expect(view.attackAndDefend?.zone).toHaveLength(25);
     }
     expect(buildSquadView(createMatch(3), SquadId.Left).attackAndDefend).toBeUndefined();
   });
@@ -166,11 +166,12 @@ describe("Attack and Defend: Squad View and host", () => {
 describe("the classic mode", () => {
   // Recorded from the classic path (AI against AI, 60 Rounds at most). Re-recorded when the classic mode became Victory Points
   // from three zones (#357) and after the Block change (#352, #358); re-recorded for the new decks (#371: Bruiser 12, Controller 10, Assassin 9 cards, ADR 0025), because every Deck and the plans of the AI changed;
+  // re-recorded for the Crossroads map of 45 by 25 tiles (#361);
   // re-recorded for the one-Round lookahead (#395), which changes every plan of the AI, and for the Fog of War worlds (#396), which change the replies it plays against.
   const recorded = [
-    { seed: 3, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 16, right: 5 }, deckTotals: { left: 13, right: 6 }, positions: "16,9:4 15,7:4 15,9:5 14,7:2 15,9:0 16,8:4", rng: 2624919877 },
-    { seed: 11, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 20, right: 14 }, deckTotals: { left: 10, right: 4 }, positions: "14,3:4 15,7:2 11,11:4 14,4:0 15,3:0 16,12:4", rng: 2312790200 },
-    { seed: 42, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 10, right: 23 }, deckTotals: { left: 8, right: 11 }, positions: "16,12:4 13,10:0 15,4:4 14,12:5 14,3:2 15,8:4", rng: 857295300 },
+    { seed: 3, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 12, right: 14 }, deckTotals: { left: 13, right: 8 }, positions: "20,11:4 21,20:5 20,14:4 20,13:3 21,11:2 24,11:3", rng: 4016473611 },
+    { seed: 11, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 21, right: 16 }, deckTotals: { left: 10, right: 1 }, positions: "21,2:5 21,12:2 22,20:3 23,21:0 24,10:0 23,20:1", rng: 1177001254 },
+    { seed: 42, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 12, right: 14 }, deckTotals: { left: 8, right: 10 }, positions: "21,11:8 22,22:0 20,10:0 23,2:6 24,14:0 23,20:4", rng: 800930403 },
   ];
 
   it.each(recorded)("plays seed $seed exactly as recorded", ({ seed, round, winner, reason, scores, deckTotals, positions, rng }) => {

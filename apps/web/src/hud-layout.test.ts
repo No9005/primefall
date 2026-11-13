@@ -139,8 +139,8 @@ describe("framing a pick inside the free area", () => {
       }
 
       it("zooms out as far as needed to fit far tiles, but not past the fitted view", () => {
-        const far = [{ col: 0, row: 0 }, { col: 30, row: 16 }];
-        const camera = frameMoveCamera({ col: 15, row: 8 }, far, view, free);
+        const far = [{ col: 0, row: 0 }, { col: 44, row: 24 }];
+        const camera = frameMoveCamera({ col: 22, row: 12 }, far, view, free);
         expect(camera.scale).toBeCloseTo(fitted.scale);
       });
     });

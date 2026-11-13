@@ -33,7 +33,7 @@ Eight fixed views, 45 degrees apart, switched with two buttons and a short anima
 
 ## Terrain is drawn from the grid
 
-Floor, Walls, Cover, the Overwatch Nest, the Prime Zone and the Spawn tiles are shapes computed from the grid and the view angle, not sprites:
+Floor, Walls, Cover, the Overwatch Nest, the Prime Zone, the Outposts and the Spawn tiles are shapes computed from the grid and the view angle, not sprites:
 
 - A thin wall kit: wall, corner, pillar, and low wall (Half Cover, with a yellow top edge).
 - A lit field of view and dark fog. Nothing is visible behind Walls.

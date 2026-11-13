@@ -38,19 +38,19 @@ const attackEvents = (events: readonly { kind: EventKind }[]) =>
 
 describe("Declared Target: hits when it is valid in the Tick the Attack fires", () => {
   it("hits an enemy that was out of Range at planning time once the Moves have brought the Hero close", () => {
-    const match = scene({ col: 3, row: 5 }, { col: 9, row: 5 });
-    const { events } = resolveRound(match, [leftPlan(move(2, 5, 5), move(3, 7, 5), wait, shoot())]);
+    const match = scene({ col: 3, row: 3 }, { col: 9, row: 3 });
+    const { events } = resolveRound(match, [leftPlan(move(2, 5, 3), move(3, 7, 3), wait, shoot())]);
     expect(attackEvents(events)).toMatchObject([{ kind: EventKind.AttackHit, tick: 4, heroId: LEFT, targetId: RIGHT, damage: 2 }]);
   });
 
   it("hits an enemy that moved into Range before the Tick", () => {
-    const match = scene({ col: 5, row: 5 }, { col: 10, row: 5 });
-    const { events } = resolveRound(match, [leftPlan(wait, wait, shoot()), rightPlan(move(2, 8, 5), move(3, 7, 5))]);
+    const match = scene({ col: 5, row: 3 }, { col: 10, row: 3 });
+    const { events } = resolveRound(match, [leftPlan(wait, wait, shoot()), rightPlan(move(2, 8, 3), move(3, 7, 3))]);
     expect(attackEvents(events)).toMatchObject([{ kind: EventKind.AttackHit, tick: 3, targetId: RIGHT }]);
   });
 
   it("hits a Hidden enemy that is Marked, because Marked is always seen", () => {
-    const match = scene({ col: 5, row: 5 }, { col: 7, row: 5 });
+    const match = scene({ col: 5, row: 3 }, { col: 7, row: 3 });
     hero(match, RIGHT).hidden = 1;
     hero(match, RIGHT).marked = 2;
     const { events } = resolveRound(match, [leftPlan(shoot())]);
@@ -68,14 +68,14 @@ describe("Declared Target: a miss has one reason and does nothing", () => {
   };
 
   it("misses with OutOfRange when the enemy moved away", () => {
-    const match = scene({ col: 6, row: 5 }, { col: 8, row: 5 });
-    const event = miss(match, [leftPlan(wait, shoot()), rightPlan(move(2, 10, 5))]);
+    const match = scene({ col: 6, row: 3 }, { col: 8, row: 3 });
+    const event = miss(match, [leftPlan(wait, shoot()), rightPlan(move(2, 10, 3))]);
     expect(event).toMatchObject({ kind: EventKind.AttackFailed, tick: 2, reason: AttackFailReason.OutOfRange, distance: 4 });
   });
 
   it("misses with NoLineOfSight when a Wall stands in between (a Marked enemy is still seen)", () => {
-    // The Wall at (8,6) blocks the line from (8,5) to (8,7).
-    const match = scene({ col: 8, row: 5 }, { col: 8, row: 7 });
+    // The Wall at (12,5) blocks the line from (12,4) to (12,6).
+    const match = scene({ col: 12, row: 4 }, { col: 12, row: 6 });
     hero(match, RIGHT).marked = 2;
     expect(miss(match, [leftPlan(shoot())])).toMatchObject({ reason: AttackFailReason.NoLineOfSight });
   });
@@ -88,36 +88,36 @@ describe("Declared Target: a miss has one reason and does nothing", () => {
   });
 
   it("misses with TargetExhausted when the target is already Exhausted", () => {
-    const match = scene({ col: 5, row: 5 }, { col: 7, row: 5 });
+    const match = scene({ col: 5, row: 3 }, { col: 7, row: 3 });
     hero(match, RIGHT).exhausted = true;
     expect(miss(match, [leftPlan(shoot())])).toMatchObject({ reason: AttackFailReason.TargetExhausted });
   });
 
   it("misses with NotVisible when the target left sight, and reveals no distance", () => {
-    const match = scene({ col: 3, row: 5 }, { col: 9, row: 5 });
-    const event = miss(match, [leftPlan(wait, shoot()), rightPlan(move(2, 11, 5))]);
+    const match = scene({ col: 3, row: 3 }, { col: 9, row: 3 });
+    const event = miss(match, [leftPlan(wait, shoot()), rightPlan(move(2, 11, 3))]);
     expect(event).toMatchObject({ kind: EventKind.AttackFailed, tick: 2, reason: AttackFailReason.NotVisible });
     expect(event).not.toHaveProperty("distance");
     expect(event).not.toHaveProperty("tile");
   });
 
   it("misses with NotVisible when the target became Hidden", () => {
-    const match = scene({ col: 5, row: 5 }, { col: 7, row: 5 });
+    const match = scene({ col: 5, row: 3 }, { col: 7, row: 3 });
     hero(match, RIGHT).hidden = 1;
     expect(miss(match, [leftPlan(shoot())])).toMatchObject({ reason: AttackFailReason.NotVisible });
   });
 
   it("still runs the later actions of the Queue after a miss", () => {
-    const match = scene({ col: 3, row: 5 }, { col: 9, row: 5 });
-    const { match: after } = resolveRound(match, [leftPlan(shoot(), move(2, 5, 5))]);
-    expect(hero(after, LEFT).position).toEqual({ col: 5, row: 5 });
+    const match = scene({ col: 3, row: 3 }, { col: 9, row: 3 });
+    const { match: after } = resolveRound(match, [leftPlan(shoot(), move(2, 5, 3))]);
+    expect(hero(after, LEFT).position).toEqual({ col: 5, row: 3 });
   });
 });
 
 describe("Declared Target: Fog of War holds", () => {
   const unseenMiss = () => {
-    const match = scene({ col: 3, row: 5 }, { col: 9, row: 5 });
-    return resolveRound(match, [leftPlan(wait, shoot()), rightPlan(move(2, 11, 5))]);
+    const match = scene({ col: 3, row: 3 }, { col: 9, row: 3 });
+    return resolveRound(match, [leftPlan(wait, shoot()), rightPlan(move(2, 11, 3))]);
   };
 
   it("delivers a miss on an unseen target to the attacker only", () => {
@@ -137,8 +137,8 @@ describe("Declared Target: Fog of War holds", () => {
 
 describe("Declared Target: determinism", () => {
   it("gives the same events whichever Squad plan comes first, and when resolved twice", () => {
-    const match = scene({ col: 4, row: 5 }, { col: 10, row: 5 });
-    const plans = [leftPlan(wait, wait, shoot()), rightPlan(move(2, 8, 5), move(3, 7, 5))];
+    const match = scene({ col: 4, row: 3 }, { col: 10, row: 3 });
+    const plans = [leftPlan(wait, wait, shoot()), rightPlan(move(2, 8, 3), move(3, 7, 3))];
     const first = resolveRound(match, plans);
     expect(resolveRound(match, plans)).toEqual(first);
     expect(resolveRound(match, [...plans].reverse())).toEqual(first);

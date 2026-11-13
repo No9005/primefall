@@ -9,11 +9,11 @@ const BRUISER = "left-bruiser";
 
 describe("reachableMoveDestinations", () => {
   it("leaves out a tile behind a Wall corner but keeps straight paths", () => {
-    // The Wall at (5,6) blocks the diagonal first step (5,5) -> (4,6).
-    const offered = reachableMoveDestinations({ col: 5, row: 5 });
-    expect(offered).not.toContainEqual({ col: 3, row: 7 });
-    expect(offered).toContainEqual({ col: 4, row: 5 });
-    expect(offered).toContainEqual({ col: 3, row: 5 });
+    // The Wall at (10,5) blocks the diagonal first step (9,5) -> (10,4).
+    const offered = reachableMoveDestinations({ col: 9, row: 5 });
+    expect(offered).not.toContainEqual({ col: 11, row: 3 });
+    expect(offered).toContainEqual({ col: 9, row: 4 });
+    expect(offered).toContainEqual({ col: 9, row: 3 });
   });
 
   it("only offers destinations that the Resolution reaches when nothing else is in the way", () => {
@@ -21,13 +21,14 @@ describe("reachableMoveDestinations", () => {
       for (let col = 0; col < REACTOR_DECK.width; col++) {
         const from = { col, row };
         if (tileAt(REACTOR_DECK, from) === undefined || tileAt(REACTOR_DECK, from) === TileKind.Wall) continue;
+        // The Resolution does not change its input, so one Match State serves every destination of this tile.
+        const match = startRound(createMatch(5));
+        const others = match.heroes.filter((hero) => hero.id !== BRUISER);
+        // Keep the other Heroes out of the way so only Walls can stop the Move.
+        if (others.some((hero) => chebyshevDistance(hero.position, from) <= 3)) continue;
+        const bruiser = match.heroes.find((hero) => hero.id === BRUISER)!;
+        bruiser.position = from;
         for (const destination of reachableMoveDestinations(from)) {
-          const match = startRound(createMatch(5));
-          const others = match.heroes.filter((hero) => hero.id !== BRUISER);
-          // Keep the other Heroes out of the way so only Walls can stop the Move.
-          if (others.some((hero) => chebyshevDistance(hero.position, from) <= 3)) continue;
-          const bruiser = match.heroes.find((hero) => hero.id === BRUISER)!;
-          bruiser.position = from;
           const plan = {
             squad: SquadId.Left,
             heroes: [{ heroId: BRUISER, queue: [{ kind: ActionKind.Move as const, card: bruiser.hand[0]!, destination }] }],
@@ -38,5 +39,5 @@ describe("reachableMoveDestinations", () => {
         }
       }
     }
-  });
+  }, 30_000);
 });

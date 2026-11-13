@@ -19,7 +19,7 @@ For the **classic mode** only:
 - **Exhaustion** of a whole Squad still ends the match at once.
 - **Block** is no longer an action of every card. Shield comes from Shield cards. The refill rule is decided after the Exposed Hero measurement is repeated.
 - **Information:** control of each zone and both scores are public; enemy Heroes stay in the Fog.
-- The Overwatch Nest is removed for now.
+- The Overwatch Nest is removed for now. (Update, #361: the Crossroads map places two Overwatch Nests again, see ADR 0016.)
 - Attack and Defend (ADR 0022) keeps its own win rules, Round limit and Block. The cards and combat rules of ADR 0023 to 0025 (decks, Crossfire, Minimum Range, Placed Cover) apply to both modes, so its balance (#302) is measured again after the new decks.
 
 Considered and not chosen now: three mission types per game (hidden objectives, a later layer if the zones are not enough), a rotating zone (the way across the map takes two to three Rounds, so it would be out of reach), a progress track with Abbau and decay for a tie in one zone (#341, replaced by the points).
@@ -31,7 +31,7 @@ Taking a zone from the enemy (it controlled the zone at the end of the previous 
 ## Consequences
 
 - ADR 0010 and ADR 0019 stop applying to the classic mode; they still describe the history and Attack and Defend keeps its own rules.
-- The map needs two Outposts and a larger Prime Zone (#349), and the AI needs plans for splitting between zones.
+- The map needs two Outposts and a larger Prime Zone (#349; built in #361: 5 by 5 Prime Zone, two 3 by 3 Outposts, ADR 0016), and the AI needs plans for splitting between zones.
 - The HUD shows Victory Points and the control of each zone instead of the progress dots; the Round counter shows the limit 15.
 - The balance harness gets new gauges (`docs/design/game-goals.md`); the numbers of #302 for Attack and Defend are unaffected.
 - The length of a match is bounded by the Round Limit: about 15 minutes at the planning timer and the Resolution in the worst case.

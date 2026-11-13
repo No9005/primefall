@@ -24,8 +24,8 @@ const rightAttacks = () => planOf(SquadId.Right, RIGHT_BRUISER, [attack(LEFT_BRU
 /** Left and right Bruiser facing each other with a clear line, two tiles apart; both hold cards 0 to 3. */
 function duel(positions: Record<string, GridPosition> = {}): MatchState {
   const match = startRound(createMatch(5));
-  match.heroes.find((candidate) => candidate.id === LEFT_BRUISER)!.position = { col: 8, row: 5 };
-  hero(match, RIGHT_BRUISER).position = { col: 10, row: 5 };
+  match.heroes.find((candidate) => candidate.id === LEFT_BRUISER)!.position = { col: 8, row: 3 };
+  hero(match, RIGHT_BRUISER).position = { col: 10, row: 3 };
   for (const id of [LEFT_BRUISER, RIGHT_BRUISER]) hero(match, id).hand = [0, 1, 2, 3];
   for (const [id, position] of Object.entries(positions)) hero(match, id).position = position;
   return match;
@@ -73,15 +73,15 @@ describe("Attacks and Deck Damage", () => {
   });
 
   it("attacks the target where it stands after the movement of the same Tick", () => {
-    const match = duel({ [RIGHT_BRUISER]: { col: 12, row: 5 } });
-    const moveIn = planOf(SquadId.Right, RIGHT_BRUISER, [{ kind: ActionKind.Move, card: 2, destination: { col: 10, row: 5 } }]);
+    const match = duel({ [RIGHT_BRUISER]: { col: 12, row: 3 } });
+    const moveIn = planOf(SquadId.Right, RIGHT_BRUISER, [{ kind: ActionKind.Move, card: 2, destination: { col: 10, row: 3 } }]);
     expect(resolveRound(match, [leftAttacks(), moveIn]).events.at(-1)!.kind).toBe(EventKind.AttackHit);
   });
 });
 
 describe("Range and Line of Sight", () => {
   it("fails an Attack beyond Range, leaves the target alone and still discards the cards", () => {
-    const match = duel({ [RIGHT_BRUISER]: { col: 12, row: 5 } });
+    const match = duel({ [RIGHT_BRUISER]: { col: 12, row: 3 } });
     const { match: after, events } = resolveRound(match, [leftAttacks()]);
     expect(events.map(({ kind }) => kind)).toEqual([EventKind.AttackFailed]);
     expect(hero(after, RIGHT_BRUISER).deck).toEqual(hero(match, RIGHT_BRUISER).deck);
@@ -96,8 +96,8 @@ describe("Range and Line of Sight", () => {
   });
 
   it("is blocked by a Wall", () => {
-    // (8,6) is a Wall between (8,5) and (8,7).
-    const match = duel({ [LEFT_BRUISER]: { col: 8, row: 5 }, [RIGHT_BRUISER]: { col: 8, row: 7 } });
+    // (10,7) and (11,7) are Walls between (8,7) and (12,7).
+    const match = duel({ [LEFT_BRUISER]: { col: 8, row: 7 }, [RIGHT_BRUISER]: { col: 12, row: 7 } });
     expect(resolveRound(match, [leftAttacks()]).events[0]!.kind).toBe(EventKind.AttackFailed);
   });
 
@@ -111,11 +111,11 @@ describe("Range and Line of Sight", () => {
   });
 
   it("does not affect the later actions of the Queue when it fails", () => {
-    const match = duel({ [RIGHT_BRUISER]: { col: 14, row: 5 } });
-    const queue = [attack(RIGHT_BRUISER), { kind: ActionKind.Move as const, card: 2, destination: { col: 9, row: 5 } }];
+    const match = duel({ [RIGHT_BRUISER]: { col: 14, row: 3 } });
+    const queue = [attack(RIGHT_BRUISER), { kind: ActionKind.Move as const, card: 2, destination: { col: 9, row: 3 } }];
     const { match: after, events } = resolveRound(match, [planOf(SquadId.Left, LEFT_BRUISER, queue, [1])]);
     expect(events.map(({ kind, tick }) => [kind, tick])).toEqual([[EventKind.AttackFailed, 1], [EventKind.Step, 2]]);
-    expect(hero(after, LEFT_BRUISER).position).toEqual({ col: 9, row: 5 });
+    expect(hero(after, LEFT_BRUISER).position).toEqual({ col: 9, row: 3 });
   });
 });
 
@@ -186,7 +186,7 @@ describe("Exhaustion", () => {
     const counter = planOf(
       SquadId.Right,
       RIGHT_BRUISER,
-      [{ kind: ActionKind.Move, card: 2, destination: { col: 10, row: 5 } }, attack(LEFT_BRUISER)],
+      [{ kind: ActionKind.Move, card: 2, destination: { col: 10, row: 3 } }, attack(LEFT_BRUISER)],
       [1],
     );
     const leftDeck = hero(match, LEFT_BRUISER).deck.length;

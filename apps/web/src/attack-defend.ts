@@ -1,4 +1,4 @@
-import { findTiles, type GridPosition, HeroClass, MatchEndReason, MatchMode, type MatchModeSetting, type MatchResult, REACTOR_DECK, SquadId, type SquadView, TileKind } from "game-core";
+import { defenderStartTiles, findTiles, spawnStartTiles,type GridPosition, HeroClass, MatchEndReason, MatchMode, type MatchModeSetting, type MatchResult, REACTOR_DECK, SquadId, type SquadView, TileKind } from "game-core";
 import { computeCamera, gridToWorld } from "./board-layout";
 
 // What the web app shows for the Attack and Defend mode (docs/design/attack-defend): the role of the player, its texts,
@@ -95,18 +95,6 @@ export interface Point {
   y: number;
 }
 
-const spawnTilesOf = (left: boolean): GridPosition[] =>
-  findTiles(REACTOR_DECK, TileKind.Spawn)
-    .filter(({ col }) => col < REACTOR_DECK.width / 2 === left)
-    .sort((a, b) => a.row - b.row);
-
-/** The Prime Zone tiles of the column next to a side: where that side's Defenders start (ADR 0022). */
-const innerZoneTilesOf = (left: boolean): GridPosition[] => {
-  const zone = findTiles(REACTOR_DECK, TileKind.PrimeZone);
-  const columns = zone.map(({ col }) => col);
-  const sideCol = left ? Math.min(...columns) : Math.max(...columns);
-  return zone.filter(({ col }) => col === sideCol).sort((a, b) => a.row - b.row);
-};
 
 const HERO_ORDER = [HeroClass.Bruiser, HeroClass.Controller, HeroClass.Assassin] as const;
 
@@ -139,9 +127,9 @@ export function previewLayout(role: Role): PreviewLayout {
     return { x: world.x * camera.scale + camera.x, y: world.y * camera.scale + camera.y };
   };
   const squad = (tiles: GridPosition[], prefix: string): PreviewHero[] => tiles.map((position, i) => ({ id: `${prefix}${i}`, heroClass: HERO_ORDER[i]!, position, exhausted: false }));
-  const spawn = centreOf(spawnTilesOf(true).map(toStage));
+  const spawn = centreOf(spawnStartTiles(true).map(toStage));
   const zone = centreOf(findTiles(REACTOR_DECK, TileKind.PrimeZone).map(toStage));
-  const enemySpawn = centreOf(spawnTilesOf(false).map(toStage));
+  const enemySpawn = centreOf(spawnStartTiles(false).map(toStage));
   // The translate that puts a stage point in the free middle of the screen (between the role buttons and the text), x centred.
   const centred = (point: Point): Point => ({ x: 844 / 2 - point.x, y: PREVIEW_CENTRE_Y - point.y });
   // The camera drifts from a view near the start of the route to one near its end; both views have the whole route on screen.
@@ -149,8 +137,8 @@ export function previewLayout(role: Role): PreviewLayout {
   const between = (t: number): Point => ({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
   const [start, end] = [between(PREVIEW_DRIFT[0]), between(PREVIEW_DRIFT[1])];
   return {
-    heroes: squad(role === "attack" ? spawnTilesOf(true) : innerZoneTilesOf(true), "p"),
-    enemies: squad(role === "attack" ? innerZoneTilesOf(false) : spawnTilesOf(false), "e"),
+    heroes: squad(role === "attack" ? spawnStartTiles(true) : defenderStartTiles(true), "p"),
+    enemies: squad(role === "attack" ? defenderStartTiles(false) : spawnStartTiles(false), "e"),
     spawn,
     zone,
     enemySpawn,

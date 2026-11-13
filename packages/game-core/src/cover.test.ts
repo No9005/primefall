@@ -30,28 +30,28 @@ function attackFrom(attacker: GridPosition, target: GridPosition) {
 }
 
 describe("Cover against Attacks", () => {
-  // The Reactor Deck has Half Cover at (14,5).
-  const halfCover = { col: 14, row: 5 };
+  // The Reactor Deck has Half Cover at (18,8).
+  const halfCover = { col: 18, row: 8 };
 
   it("reduces damage by 1 for a target on Half Cover attacked from Range 2 or more", () => {
-    expect(attackFrom({ col: 17, row: 5 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 1 });
-    expect(attackFrom({ col: 16, row: 5 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 1 });
+    expect(attackFrom({ col: 21, row: 8 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 1 });
+    expect(attackFrom({ col: 20, row: 8 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 1 });
   });
 
   it("flags the hit that Half Cover reduced, so the playback can show the wall taking it", () => {
-    expect(attackFrom({ col: 17, row: 5 }, halfCover)).toMatchObject({ halfCover: true });
-    expect(attackFrom({ col: 15, row: 5 }, halfCover)).not.toHaveProperty("halfCover");
-    expect(attackFrom({ col: 17, row: 5 }, { col: 8, row: 5 })).not.toHaveProperty("halfCover");
+    expect(attackFrom({ col: 21, row: 8 }, halfCover)).toMatchObject({ halfCover: true });
+    expect(attackFrom({ col: 19, row: 8 }, halfCover)).not.toHaveProperty("halfCover");
+    expect(attackFrom({ col: 21, row: 8 }, { col: 23, row: 8 })).not.toHaveProperty("halfCover");
   });
 
   it("ignores Half Cover for an attacker at Range 1", () => {
-    expect(attackFrom({ col: 15, row: 5 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
-    expect(attackFrom({ col: 15, row: 4 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
+    expect(attackFrom({ col: 19, row: 8 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
+    expect(attackFrom({ col: 19, row: 7 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
   });
 
   it("has no facing: Half Cover protects from every side", () => {
-    expect(attackFrom({ col: 14, row: 8 }, halfCover)).toMatchObject({ damage: 1 });
-    expect(attackFrom({ col: 14, row: 3 }, halfCover)).toMatchObject({ damage: 1 });
+    expect(attackFrom({ col: 18, row: 11 }, halfCover)).toMatchObject({ damage: 1 });
+    expect(attackFrom({ col: 18, row: 6 }, halfCover)).toMatchObject({ damage: 1 });
   });
 
   it("blocks Attacks from Range 2 or more against a Hero on Full Cover", () => {
@@ -71,8 +71,8 @@ describe("Cover against Attacks", () => {
   it("classifies tiles", () => {
     expect(coverAt(REACTOR_DECK, halfCover)).toBe(CoverKind.Half);
     expect(coverAt(withFullCover(startRound(createMatch(5)), FULL_COVER).grid, FULL_COVER)).toBe(CoverKind.Full);
-    expect(coverAt(REACTOR_DECK, { col: 8, row: 5 })).toBe(CoverKind.None);
-    expect(coverAgainst(REACTOR_DECK, { col: 15, row: 5 }, halfCover)).toBe(CoverKind.None);
+    expect(coverAt(REACTOR_DECK, { col: 23, row: 8 })).toBe(CoverKind.None);
+    expect(coverAgainst(REACTOR_DECK, { col: 19, row: 8 }, halfCover)).toBe(CoverKind.None);
   });
 });
 

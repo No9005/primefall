@@ -20,9 +20,9 @@ const VANISH = idx("Vanish");
 const REPOSITION = idx("Reposition");
 const PITCH = idx("Long Shot", 1);
 
-// Row 1 is open floor; (14,5) is Half Cover (H) with open floor on both sides; the tests that need Full Cover put it at (15,1).
+// Row 1 is open floor; (18,8) is Half Cover (H) with open floor on both sides; the tests that need Full Cover put it at (15,1).
 const OPEN = { col: 2, row: 1 };
-const HALF_COVER = { col: 14, row: 5 };
+const HALF_COVER = { col: 18, row: 8 };
 const FULL_COVER = { col: 15, row: 1 };
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
@@ -58,13 +58,13 @@ describe("Precision Shot, Cover Breaker and Execution Round", () => {
 
   it("Execution Round ignores Half Cover (ADR 0025): 3 damage through it, where Precision Shot is reduced", () => {
     const hand = [PITCH, EXECUTION_ROUND, 0, REPOSITION];
-    const match = scene({ col: 11, row: 5 }, HALF_COVER, hand);
+    const match = scene({ col: 15, row: 8 }, HALF_COVER, hand);
     const execution = resolveRound(match, [plan([primary(EXECUTION_ROUND, ENEMY)], [PITCH, 0])]).match;
     expect(deckLoss(match, execution)).toBe(3);
   });
 
   it("Cover Breaker ignores Half Cover while a Precision Shot is reduced by it", () => {
-    const attacker = { col: 11, row: 5 };
+    const attacker = { col: 15, row: 8 };
     const hand = [PITCH, COVER_BREAKER, 0, REPOSITION];
     const match = scene(attacker, HALF_COVER, hand);
     const breaker = resolveRound(match, [plan([primary(COVER_BREAKER, ENEMY)])]).match;
@@ -89,7 +89,7 @@ describe("Shield Breaker (Piercing Damage)", () => {
   });
 
   it("is reduced by 1 by Half Cover and blocked by Full Cover", () => {
-    const half = scene({ col: 11, row: 5 }, HALF_COVER, hand);
+    const half = scene({ col: 15, row: 8 }, HALF_COVER, hand);
     expect(deckLoss(half, fire(half).match)).toBe(1);
     const full = withFullCover(scene({ col: 12, row: 1 }, FULL_COVER, hand), FULL_COVER);
     expect(deckLoss(full, fire(full).match)).toBe(0);
@@ -162,7 +162,7 @@ describe("Hidden", () => {
   });
 
   it("hides the Hero from enemies, also on a tile in their sight", () => {
-    const match = scene(HALF_COVER, { col: 17, row: 5 });
+    const match = scene(HALF_COVER, { col: 21, row: 8 });
     expect(buildSquadView(match, SquadId.Right).enemies.find(({ id }) => id === ASSASSIN)?.visibility).toBe(Visibility.Visible);
     const { match: after } = resolveRound(match, [plan([primary(VANISH, ASSASSIN)])]);
     const seen = buildSquadView(after, SquadId.Right).enemies.find(({ id }) => id === ASSASSIN);
@@ -171,7 +171,7 @@ describe("Hidden", () => {
   });
 
   it("ends when the Hero attacks", () => {
-    const match = scene(HALF_COVER, { col: 17, row: 5 }, [PITCH, VANISH, 0, REPOSITION]);
+    const match = scene(HALF_COVER, { col: 21, row: 8 }, [PITCH, VANISH, 0, REPOSITION]);
     hero(match, ASSASSIN).hidden = 2;
     // An enemy Hero cannot see a Hidden Assassin, but the Assassin sees the enemy and may attack it.
     const { match: after, events } = resolveRound(match, [plan([primary(0, ENEMY)])]);
@@ -180,8 +180,8 @@ describe("Hidden", () => {
   });
 
   it("gives a Hidden Assassin sight range 9 instead of 7", () => {
-    const open = { col: 2, row: 9 };
-    const enemyAt = { col: open.col + 9, row: 9 };
+    const open = { col: 2, row: 3 };
+    const enemyAt = { col: open.col + 9, row: open.row };
     const seenBy = (hidden: number) => {
       const match = scene(open, enemyAt);
       hero(match, ASSASSIN).hidden = hidden;
@@ -244,7 +244,7 @@ describe("Ghost Shot Overdrive", () => {
     hero(full, ENEMY).position = FULL_COVER;
     expect(deckLoss(full, shoot(full).match)).toBe(0);
     const half = ghostScene(HALF_COVER, HALF_COVER);
-    hero(half, ASSASSIN).position = { col: 11, row: 5 };
+    hero(half, ASSASSIN).position = { col: 15, row: 8 };
     expect(deckLoss(half, shoot(half).match)).toBe(1);
   });
 

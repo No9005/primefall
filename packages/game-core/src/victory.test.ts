@@ -28,7 +28,7 @@ function place(match: MatchState, squad: SquadId, count: number, zone = PRIME_ZO
   match.heroes
     .filter((hero) => hero.squad === squad)
     .forEach((hero, i) => {
-      hero.position = i < count ? { ...tilesOf(zone, squad)[i]! } : { col: squad === SquadId.Left ? 1 : 29, row: 1 + i };
+      hero.position = i < count ? { ...tilesOf(zone, squad)[i]! } : { col: squad === SquadId.Left ? 1 : 43, row: 1 + i };
     });
 }
 
@@ -45,11 +45,11 @@ const resolveEmpty = (match: MatchState) => resolveRound(match, []).match;
 const scoresAfter = (match: MatchState) => resolveEmpty(match).scores;
 
 describe("the zones", () => {
-  it("are the Prime Zone and two Outposts of 3 by 2 tiles, read from the Grid", () => {
+  it("are the Prime Zone of 5 by 5 tiles and two Outposts of 3 by 3 tiles, read from the Grid", () => {
     expect(ZONES.map((zone) => [zone.kind, zone.tiles.length, zone.value, zone.unlockRound])).toEqual([
-      [ZoneKind.PrimeZone, 9, PRIME_ZONE_VALUE, PRIME_ZONE_UNLOCK_ROUND],
-      [ZoneKind.Outpost, 6, OUTPOST_VALUE, OUTPOST_UNLOCK_ROUND],
-      [ZoneKind.Outpost, 6, OUTPOST_VALUE, OUTPOST_UNLOCK_ROUND],
+      [ZoneKind.PrimeZone, 25, PRIME_ZONE_VALUE, PRIME_ZONE_UNLOCK_ROUND],
+      [ZoneKind.Outpost, 9, OUTPOST_VALUE, OUTPOST_UNLOCK_ROUND],
+      [ZoneKind.Outpost, 9, OUTPOST_VALUE, OUTPOST_UNLOCK_ROUND],
     ]);
   });
 

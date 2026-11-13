@@ -171,10 +171,10 @@ describe("Pull", () => {
 
   it("can pull an enemy out of the Prime Zone", () => {
     const cards = withTestCards();
-    const match = setup({ col: 11, row: 8 }, { col: 14, row: 8 });
+    const match = setup({ col: 17, row: 13 }, { col: 20, row: 13 });
     expect(tileAt(match.grid, hero(match, ENEMY).position)).toBe(TileKind.PrimeZone);
     const { match: after } = resolveRound(match, [bruiserPlan(match, [cards.pull], [use(cards.pull)])]);
-    expect(hero(after, ENEMY).position).toEqual({ col: 12, row: 8 });
+    expect(hero(after, ENEMY).position).toEqual({ col: 18, row: 13 });
     expect(tileAt(after.grid, hero(after, ENEMY).position)).not.toBe(TileKind.PrimeZone);
   });
 });
@@ -200,14 +200,14 @@ describe("Slam Shot at Range 1 to 2", () => {
 describe("Wrecking Blow", () => {
   it("deals 2 damage and destroys Half Cover on the target tile", () => {
     const cards = withTestCards();
-    // (4,2) is Half Cover on the Reactor Deck.
-    const match = setup({ col: 2, row: 2 }, { col: 4, row: 2 });
-    expect(coverAt(match.grid, { col: 4, row: 2 })).toBe(CoverKind.Half);
+    // (7,2) is Half Cover on the Reactor Deck.
+    const match = setup({ col: 5, row: 2 }, { col: 7, row: 2 });
+    expect(coverAt(match.grid, { col: 7, row: 2 })).toBe(CoverKind.Half);
     const { match: after, events } = resolveRound(match, [bruiserPlan(match, [cards.wreckingBlow], [use(cards.wreckingBlow)])]);
     // The Cover protected against the damage in its Tick (2 - 1).
     expect(damageTaken(match, after)).toBe(1);
-    expect(coverAt(after.grid, { col: 4, row: 2 })).toBe(CoverKind.None);
-    expect(events.find(({ kind }) => kind === EventKind.CoverDestroyed)).toMatchObject({ to: { col: 4, row: 2 }, card: "Wrecking Blow" });
+    expect(coverAt(after.grid, { col: 7, row: 2 })).toBe(CoverKind.None);
+    expect(events.find(({ kind }) => kind === EventKind.CoverDestroyed)).toMatchObject({ to: { col: 7, row: 2 }, card: "Wrecking Blow" });
   });
 
   it("destroys Full Cover on the target tile", () => {

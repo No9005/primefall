@@ -52,8 +52,8 @@ describe("Visible, Ghost and Unknown", () => {
   });
 
   it("does not see through a Wall even within sight range", () => {
-    // The Wall at (8,6) blocks the straight line from (8,5) to (8,7).
-    const match = setup({ [LEFT_BRUISER]: { col: 8, row: 5 }, [RIGHT_BRUISER]: { col: 8, row: 7 } });
+    // The Walls at (10,7) and (11,7) block the straight line from (8,7) to (12,7).
+    const match = setup({ [LEFT_BRUISER]: { col: 8, row: 7 }, [RIGHT_BRUISER]: { col: 12, row: 7 } });
     expect(enemyOf(match, SquadId.Left, RIGHT_BRUISER).visibility).toBe(Visibility.Unknown);
   });
 
@@ -66,35 +66,35 @@ describe("Visible, Ghost and Unknown", () => {
   });
 
   it("shares vision: one Hero seeing an enemy is enough", () => {
-    const enemy = { [RIGHT_BRUISER]: { col: 10, row: 5 } };
+    const enemy = { [RIGHT_BRUISER]: { col: 9, row: 5 } };
     const alone = setup({ [LEFT_BRUISER]: { col: 1, row: 1 }, ...enemy });
     expect(enemyOf(alone, SquadId.Left, RIGHT_BRUISER).visibility).toBe(Visibility.Unknown);
     const together = setup({ [LEFT_BRUISER]: { col: 1, row: 1 }, [LEFT_CONTROLLER]: { col: 3, row: 5 }, ...enemy });
-    expect(enemyOf(together, SquadId.Left, RIGHT_BRUISER)).toMatchObject({ visibility: Visibility.Visible, position: { col: 10, row: 5 } });
+    expect(enemyOf(together, SquadId.Left, RIGHT_BRUISER)).toMatchObject({ visibility: Visibility.Visible, position: { col: 9, row: 5 } });
   });
 
   it("turns Visible into Ghost at the position where the enemy was last seen, then back to Visible", () => {
-    const match = setup({ [LEFT_BRUISER]: { col: 3, row: 5 }, [RIGHT_BRUISER]: { col: 8, row: 5 } });
+    const match = setup({ [LEFT_BRUISER]: { col: 3, row: 3 }, [RIGHT_BRUISER]: { col: 8, row: 3 } });
     expect(enemyOf(match, SquadId.Left, RIGHT_BRUISER).visibility).toBe(Visibility.Visible);
 
-    // Two Moves east: (10,5) after Tick 1 is still in sight range, (12,5) after Tick 2 is not.
-    const leaving = resolveRound(match, [moveTo(match, SquadId.Right, RIGHT_BRUISER, { col: 10, row: 5 }, { col: 12, row: 5 })]);
+    // Two Moves east: (10,3) after Tick 1 is still in sight range, (12,3) after Tick 2 is not.
+    const leaving = resolveRound(match, [moveTo(match, SquadId.Right, RIGHT_BRUISER, { col: 10, row: 3 }, { col: 12, row: 3 })]);
     const nextRound = startRound(leaving.match);
     expect(enemyOf(nextRound, SquadId.Left, RIGHT_BRUISER)).toMatchObject({
       visibility: Visibility.Ghost,
-      position: { col: 10, row: 5 },
+      position: { col: 10, row: 3 },
       lastSeenRound: 1,
     });
-    // Vision is mutual: at (10,5) after Tick 1 the right Squad saw the left Bruiser too.
-    expect(enemyOf(nextRound, SquadId.Right, LEFT_BRUISER)).toMatchObject({ visibility: Visibility.Ghost, position: { col: 3, row: 5 } });
+    // Vision is mutual: at (10,3) after Tick 1 the right Squad saw the left Bruiser too.
+    expect(enemyOf(nextRound, SquadId.Right, LEFT_BRUISER)).toMatchObject({ visibility: Visibility.Ghost, position: { col: 3, row: 3 } });
 
     // The Ghost stays while nobody looks, and the enemy is Visible again when it returns.
     const idle = startRound(resolveRound(nextRound, []).match);
     expect(enemyOf(idle, SquadId.Left, RIGHT_BRUISER).visibility).toBe(Visibility.Ghost);
     const returning = startRound(
-      resolveRound(idle, [moveTo(idle, SquadId.Right, RIGHT_BRUISER, { col: 10, row: 5 })]).match,
+      resolveRound(idle, [moveTo(idle, SquadId.Right, RIGHT_BRUISER, { col: 10, row: 3 })]).match,
     );
-    expect(enemyOf(returning, SquadId.Left, RIGHT_BRUISER)).toMatchObject({ visibility: Visibility.Visible, position: { col: 10, row: 5 } });
+    expect(enemyOf(returning, SquadId.Left, RIGHT_BRUISER)).toMatchObject({ visibility: Visibility.Visible, position: { col: 10, row: 3 } });
   });
 
   it("remembers the counts last seen, not the current ones", () => {

@@ -24,15 +24,15 @@ const PITCH = [idx("Slam Shot", 1), idx("Bulwark"), idx("Bulwark", 1), idx("Char
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 const deckSize = (match: MatchState, id: string) => hero(match, id).deck.length;
 
-/** A fight in the Prime Zone: this Bruiser at (9,5), the enemy Bruiser at (10,5). */
+/** A fight in the Prime Zone: this Bruiser at (21,12), the enemy Bruiser at (22,12). */
 function fight(positions: Record<string, GridPosition> = {}): MatchState {
   const match = startRound(createMatch(5));
   const placed: Record<string, GridPosition> = {
-    [BRUISER]: { col: 9, row: 5 },
-    [ENEMY]: { col: 10, row: 5 },
-    [CONTROLLER]: { col: 9, row: 3 },
-    [ENEMY_CONTROLLER]: { col: 13, row: 8 },
-    [ENEMY_ASSASSIN]: { col: 13, row: 9 },
+    [BRUISER]: { col: 21, row: 12 },
+    [ENEMY]: { col: 22, row: 12 },
+    [CONTROLLER]: { col: 21, row: 10 },
+    [ENEMY_CONTROLLER]: { col: 25, row: 15 },
+    [ENEMY_ASSASSIN]: { col: 25, row: 16 },
     ...positions,
   };
   for (const [id, position] of Object.entries(placed)) hero(match, id).position = position;
@@ -56,7 +56,7 @@ function play(match: MatchState, card: number, action: Partial<PrimaryAction> = 
 
 describe("Slam Shot and Concussion Round", () => {
   it("Slam Shot deals 2 damage at Range 2 and 3 damage at Range 1 (ADR 0025)", () => {
-    const far = fight({ [ENEMY]: { col: 11, row: 5 } });
+    const far = fight({ [ENEMY]: { col: 23, row: 12 } });
     const afterFar = resolveRound(far, [play(far, SLAM_SHOT, {}, 1)]).match;
     expect(deckSize(far, ENEMY) - deckSize(afterFar, ENEMY)).toBe(2);
     const close = fight();
@@ -77,8 +77,8 @@ describe("Breach Charge Overdrive", () => {
     resolveRound(match, [play(match, BREACH_CHARGE, { target: BRUISER, tile, overdrive: true })]);
 
   it("hurts every Hero on and next to the tile, allies and the caster included, and no one further away", () => {
-    const match = fight({ [CONTROLLER]: { col: 9, row: 4 }, [ENEMY_CONTROLLER]: { col: 11, row: 5 }, [ENEMY_ASSASSIN]: { col: 12, row: 5 } });
-    const { match: after } = blast(match, { col: 10, row: 5 });
+    const match = fight({ [CONTROLLER]: { col: 21, row: 11 }, [ENEMY_CONTROLLER]: { col: 23, row: 12 }, [ENEMY_ASSASSIN]: { col: 24, row: 12 } });
+    const { match: after } = blast(match, { col: 22, row: 12 });
     for (const id of [ENEMY, CONTROLLER, ENEMY_CONTROLLER, BRUISER]) {
       expect(deckSize(match, id) - deckSize(after, id), id).toBe(2);
     }
@@ -87,7 +87,7 @@ describe("Breach Charge Overdrive", () => {
 
   it("destroys any Cover on the tile, Full Cover included", () => {
     const fullCover = { col: 15, row: 1 };
-    const match = withFullCover(fight({ [BRUISER]: { col: 15, row: 4 }, [ENEMY]: { col: 13, row: 7 } }), fullCover);
+    const match = withFullCover(fight({ [BRUISER]: { col: 15, row: 4 }, [ENEMY]: { col: 14, row: 6 } }), fullCover);
     expect(coverAt(match.grid, fullCover)).toBe(CoverKind.Full);
     const { match: after, events } = blast(match, fullCover);
     expect(coverAt(after.grid, fullCover)).toBe(CoverKind.None);
@@ -97,7 +97,7 @@ describe("Breach Charge Overdrive", () => {
   it("Exiles the card", () => {
     const match = fight();
     // The caster is hurt by its own blast, so its Deck Damage lands in the Exile as well.
-    const caster = hero(blast(match, { col: 10, row: 5 }).match, BRUISER);
+    const caster = hero(blast(match, { col: 22, row: 12 }).match, BRUISER);
     expect(caster.exile).toContain(BREACH_CHARGE);
     expect(caster.discard).not.toContain(BREACH_CHARGE);
   });
@@ -108,7 +108,7 @@ describe("Shockwave", () => {
     const match = fight();
     const after = resolveRound(match, [play(match, SHOCKWAVE)]).match;
     expect(deckSize(match, ENEMY) - deckSize(after, ENEMY)).toBe(2);
-    expect(hero(after, ENEMY).position).toEqual({ col: 12, row: 5 });
+    expect(hero(after, ENEMY).position).toEqual({ col: 24, row: 12 });
     expect(hero(after, BRUISER).exile).toEqual([]);
   });
 
@@ -116,7 +116,7 @@ describe("Shockwave", () => {
     const match = fight();
     const after = resolveRound(match, [play(match, SHOCKWAVE, { overdrive: true })]).match;
     expect(deckSize(match, ENEMY) - deckSize(after, ENEMY)).toBe(3);
-    expect(hero(after, ENEMY).position).toEqual({ col: 12, row: 5 });
+    expect(hero(after, ENEMY).position).toEqual({ col: 24, row: 12 });
     expect(hero(after, BRUISER).exile).toEqual([SHOCKWAVE]);
   });
 });
@@ -127,7 +127,7 @@ describe("Adrenal Surge", () => {
     const { match: after, events } = resolveRound(match, [play(match, ADRENAL_SURGE, { target: BRUISER })]);
     expect(hero(after, BRUISER).attackBonus).toBe(1);
     expect(events).toContainEqual({ kind: EventKind.AttackBonusGained, tick: 1, heroId: BRUISER, amount: 1, card: "Adrenal Surge" });
-    const next = fight({ [ENEMY]: { col: 11, row: 5 } });
+    const next = fight({ [ENEMY]: { col: 23, row: 12 } });
     hero(next, BRUISER).attackBonus = hero(after, BRUISER).attackBonus;
     const slammed = resolveRound(next, [play(next, SLAM_SHOT, {}, 1)]).match;
     expect(deckSize(next, ENEMY) - deckSize(slammed, ENEMY)).toBe(3);

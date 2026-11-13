@@ -47,7 +47,7 @@ Dark tactical HUD. Colours: graphite `#12161c` (ground), panel `#1b222b`, steel 
 
 - UI language (English or German).
 - Resolved by ADR 0020: Chebyshev distance (the Range overlay is a square), Pitch is a planning step marked on the card, and a queue has at most 4 actions (5 with Forward Deploy).
-- Camera: the full 31 x 17 Grid is about 3072 px wide at 128 px tiles, so the phone view scales it down a lot; check tile and sprite readability once real assets exist.
+- Camera: the full 45 x 25 Grid is about 4480 px wide at 128 px tiles, so the phone view scales it down a lot; check tile and sprite readability once real assets exist.
 - Art direction and the open question about pixel art for eight view angles: ADR 0021.
 - Final card artwork and iconography (placeholders use text only).
 - Sound and haptics are out of scope for the MVP.

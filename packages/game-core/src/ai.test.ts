@@ -1,3 +1,4 @@
+import { setImmediate } from "node:timers/promises";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { playAiMatch } from "./ai-match";
@@ -6,7 +7,7 @@ import { AI_WEIGHTS, AiStyle, aiStyleFor, assignRoles, GHOST_MEMORY_ROUNDS, plan
 import { MatchMode, ROUND_LIMIT, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { ActionKind, moveEnd, validatePlan } from "./plan";
-import { CoverKind, coverAt, type GridPosition, parseGrid, REACTOR_DECK } from "./reactor-deck";
+import { CoverKind, coverAt, type GridPosition, parseGrid } from "./reactor-deck";
 import { resolveRound } from "./resolution";
 
 const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
@@ -15,6 +16,47 @@ const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
 // Vitest worker and CI fails with "Timeout calling onTaskUpdate".
 const MATCH_SEEDS = SEEDS.slice(0, 8);
 const MAX_ROUNDS = 60;
+
+/**
+ * Lets the Vitest worker report to its parent between two long matches. A whole file of back-to-back matches on the
+ * 45 by 25 map keeps the worker busy for over a minute, and a worker that never yields ends in "Timeout calling onTaskUpdate".
+ */
+const yieldToWorker = () => setImmediate();
+
+/**
+ * A small mirror-symmetric map (31 by 17, Prime Zone 3 by 3 in the middle, two Outposts of 3 by 2) for the tests that
+ * check how the scoring reads a map, with coordinates that stay readable. The AI plans from the grid and the zones of its
+ * Squad View, so the tests swap them into the view; the rules of the real Reactor Deck are not involved.
+ */
+const SMALL_MAP = parseGrid([
+  "###############################",
+  "#.............................#",
+  "#...H...HH...HH.HH...HH...H...#",
+  "#.............XXX.............#",
+  "#.....HH..##.HXXXH.##..HH.....#",
+  "#.............H.H.............#",
+  "#....#######HH...HH#######....#",
+  "#S............PPP............S#",
+  "#S............PPP............S#",
+  "#S............PPP............S#",
+  "#....#######HH...HH#######....#",
+  "#.............H.H.............#",
+  "#.....HH..##.HXXXH.##..HH.....#",
+  "#.............XXX.............#",
+  "#...H...HH...HH.HH...HH...H...#",
+  "#.............................#",
+  "###############################",
+]);
+const SMALL_MAP_ZONES: GridPosition[][] = [
+  [14, 15, 16].flatMap((col) => [7, 8, 9].map((row) => ({ col, row }))),
+  [14, 15, 16].flatMap((col) => [3, 4].map((row) => ({ col, row }))),
+  [14, 15, 16].flatMap((col) => [12, 13].map((row) => ({ col, row }))),
+];
+const onSmallMap = <View extends { grid: unknown; zones?: readonly { tiles: readonly GridPosition[] }[] }>(view: View): View => ({
+  ...view,
+  grid: SMALL_MAP,
+  zones: view.zones?.map((zone, i) => ({ ...zone, tiles: SMALL_MAP_ZONES[i]! })),
+});
 
 describe("AI planning", () => {
   it("is deterministic for the same Squad View", () => {
@@ -115,19 +157,19 @@ describe("AI scoring of Moves", () => {
     const match = startRound(createMatch(5));
     match.heroes.find((hero) => hero.id === "left-bruiser")!.position = start;
     match.heroes.find((hero) => hero.id === "right-assassin")!.position = enemy;
-    return buildSquadView(match, SquadId.Left);
+    return onSmallMap(buildSquadView(match, SquadId.Left));
   };
   const firstMove = (view: ReturnType<typeof arrange>) => {
     const queue = planSquad(view).heroes.find((hero) => hero.heroId === "left-bruiser")!.queue;
     const move = queue.find((action) => action.kind === ActionKind.Move);
-    return move?.kind === ActionKind.Move ? moveEnd(view.heroes.find((hero) => hero.id === "left-bruiser")!.position, move.destination) : undefined;
+    return move?.kind === ActionKind.Move ? moveEnd(view.heroes.find((hero) => hero.id === "left-bruiser")!.position, move.destination, view.grid) : undefined;
   };
 
   it("ends the Move in Cover when an open tile is equally far from the Prime Zone and an enemy is Visible", () => {
     // From (11, 8) the Half Cover at (13, 6) and the open tiles (13, 7) to (13, 9) are all one step from the Zone.
     const end = firstMove(arrange({ col: 11, row: 8 }, { col: 17, row: 7 }));
     expect(end).toEqual({ col: 13, row: 6 });
-    expect(coverAt(REACTOR_DECK, end!)).not.toBe(CoverKind.None);
+    expect(coverAt(SMALL_MAP, end!)).not.toBe(CoverKind.None);
   });
 
   it("takes the flank tile beside the enemy instead of the straight advance", () => {
@@ -166,10 +208,10 @@ describe("AI scoring of Moves", () => {
     const match = startRound(createMatch(5));
     match.heroes.find((hero) => hero.id === "right-assassin")!.position = { col: 12, row: 2 };
     for (const hero of match.heroes.filter((candidate) => candidate.squad === SquadId.Left)) hero.position = start;
-    const sameStart = buildSquadView(match, SquadId.Left);
+    const sameStart = onSmallMap(buildSquadView(match, SquadId.Left));
     const endOf = (heroId: string, plan: ReturnType<typeof planSquad>) => {
       const move = plan.heroes.find((hero) => hero.heroId === heroId)!.queue.find((action) => action.kind === ActionKind.Move);
-      return move?.kind === ActionKind.Move ? moveEnd(start, move.destination) : undefined;
+      return move?.kind === ActionKind.Move ? moveEnd(start, move.destination, sameStart.grid) : undefined;
     };
     // One Hero planned at a time, so claimed tiles do not separate them: only the role does.
     const alone = (heroId: string) => planSquad(sameStart, [heroId]);
@@ -245,13 +287,13 @@ describe("AI symmetry", () => {
     const match = startRound(createMatch(5));
     match.heroes.find((hero) => hero.id === "left-bruiser")!.position = start;
     match.heroes.find((hero) => hero.id === "right-bruiser")!.position = mirror(start);
-    const left = planSquad(buildSquadView(match, SquadId.Left)).heroes.find((hero) => hero.heroId === "left-bruiser")!;
-    const right = planSquad(buildSquadView(match, SquadId.Right)).heroes.find((hero) => hero.heroId === "right-bruiser")!;
+    const left = planSquad(onSmallMap(buildSquadView(match, SquadId.Left))).heroes.find((hero) => hero.heroId === "left-bruiser")!;
+    const right = planSquad(onSmallMap(buildSquadView(match, SquadId.Right))).heroes.find((hero) => hero.heroId === "right-bruiser")!;
     const destinations = (queue: typeof left.queue) => queue.flatMap((action) => (action.kind === ActionKind.Move ? [action.destination] : []));
     expect(destinations(right.queue)).toEqual(destinations(left.queue).map(mirror));
   });
 
-  it("does not let one side win nearly every match", () => {
+  it("does not let one side win nearly every match", async () => {
     const wins = { [SquadId.Left]: 0, [SquadId.Right]: 0 };
     // Sixteen seeds: with eight, a fair coin gives seven wins to one side in one run of thirty.
     const seeds = SEEDS.slice(0, 16);
@@ -260,15 +302,17 @@ describe("AI symmetry", () => {
       // of the Round of the first contest decides who wins it. Half of the seeds start one Round later to cancel that out.
       const winner = playAiMatch(seed, MAX_ROUNDS, seed % 2 === 0 ? 1 : 2).match.result?.winner;
       if (winner) wins[winner] += 1;
+      await yieldToWorker();
     }
     expect(Math.max(wins[SquadId.Left], wins[SquadId.Right])).toBeLessThanOrEqual(seeds.length - 3);
   }, 120_000);
 });
 
 describe("AI in the classic mode", () => {
-  it("never plans a Block, over many seeds", () => {
+  it("never plans a Block, over many seeds", async () => {
     for (const seed of MATCH_SEEDS) {
       const { plans, issues } = playAiMatch(seed, MAX_ROUNDS);
+      await yieldToWorker();
       expect(issues).toEqual([]);
       const blocks = plans.flatMap((plan) => plan.heroes.flatMap((hero) => hero.queue)).filter((action) => action.kind === ActionKind.Block);
       expect(blocks).toEqual([]);
@@ -292,9 +336,10 @@ describe("AI does not freeze", () => {
   });
 
   // The AI only walks to the Prime Zone and does not split (a later ticket), so most classic matches end at the Round limit.
-  it("ends every classic match within the Round limit with legal plans", () => {
+  it("ends every classic match within the Round limit with legal plans", async () => {
     for (const seed of MATCH_SEEDS) {
       const { match, issues } = playAiMatch(seed, MAX_ROUNDS);
+      await yieldToWorker();
       expect(issues).toEqual([]);
       expect(match.result).toBeDefined();
       expect(match.round).toBeLessThanOrEqual(ROUND_LIMIT);
@@ -305,33 +350,33 @@ describe("AI does not freeze", () => {
 describe("AI in Attack and Defend", () => {
   const mode = (defender: SquadId) => ({ kind: MatchMode.AttackAndDefend as const, defender });
   const zoneTiles = (match: ReturnType<typeof createMatch>) =>
-    match.heroes.filter((hero) => hero.squad === SquadId.Left).every((hero) => hero.position.col === 14);
+    match.heroes.filter((hero) => hero.squad === SquadId.Left).every((hero) => hero.position.col === 20);
 
   it("keeps the Defender on the Zone tiles while an Attacker Hero is in range", () => {
     const match = startRound(createMatch(7, mode(SquadId.Left)));
     expect(zoneTiles(match)).toBe(true);
-    match.heroes.find((hero) => hero.id === "right-bruiser")!.position = { col: 18, row: 8 };
+    match.heroes.find((hero) => hero.id === "right-bruiser")!.position = { col: 26, row: 11 };
     const plan = planSquad(buildSquadView(match, SquadId.Left));
     for (const hero of plan.heroes) expect(hero.queue.filter((action) => action.kind === ActionKind.Move)).toEqual([]);
   });
 
   it("sends an Attacker with three Heroes close to the Zone into it in the same Round", () => {
     const match = startRound(createMatch(7, mode(SquadId.Right)));
-    const starts = [{ col: 8, row: 7 }, { col: 8, row: 8 }, { col: 8, row: 9 }];
+    const starts = [{ col: 14, row: 13 }, { col: 14, row: 14 }, { col: 14, row: 15 }];
     match.heroes.filter((hero) => hero.squad === SquadId.Left).forEach((hero, i) => (hero.position = starts[i]!));
     const view = buildSquadView(match, SquadId.Left);
     const plan = planSquad(view);
     expect(plan.heroes).toHaveLength(3);
     for (const hero of plan.heroes) expect(hero.queue.some((action) => action.kind === ActionKind.Move)).toBe(true);
     const { match: after } = resolveRound(match, [plan, { squad: SquadId.Right, heroes: [] }]);
-    const inZone = after.heroes.filter((hero) => hero.squad === SquadId.Left && hero.position.col >= 14 && hero.position.col <= 16);
+    const inZone = after.heroes.filter((hero) => hero.squad === SquadId.Left && hero.position.col >= 20 && hero.position.col <= 24);
     expect(inZone).toHaveLength(3);
   });
 
   it("holds an Attacker Hero back at the staging distance while a Squad mate is still far away", () => {
     const match = startRound(createMatch(7, mode(SquadId.Right)));
     const left = match.heroes.filter((hero) => hero.squad === SquadId.Left);
-    [{ col: 9, row: 7 }, { col: 9, row: 8 }, { col: 1, row: 9 }].forEach((tile, i) => (left[i]!.position = tile));
+    [{ col: 15, row: 13 }, { col: 15, row: 14 }, { col: 1, row: 12 }].forEach((tile, i) => (left[i]!.position = tile));
     const plan = planSquad(buildSquadView(match, SquadId.Left));
     const near = plan.heroes.find((hero) => hero.heroId === left[0]!.id)!;
     expect(near.queue.some((action) => action.kind === ActionKind.Move)).toBe(false);
@@ -348,21 +393,28 @@ describe("AI in Attack and Defend", () => {
 describe("AI-versus-AI smoke test", () => {
   // Played on first use inside a test, not while Vitest collects the tests (a long run there blocks the worker).
   let played: ReturnType<typeof playOutcomes> | undefined;
-  const playOutcomes = () => MATCH_SEEDS.map((seed) => ({ seed, ...playAiMatch(seed, MAX_ROUNDS) }));
+  const playOutcomes = async () => {
+    const outcomes = [];
+    for (const seed of MATCH_SEEDS) {
+      outcomes.push({ seed, ...playAiMatch(seed, MAX_ROUNDS) });
+      await yieldToWorker();
+    }
+    return outcomes;
+  };
   const outcomes = () => (played ??= playOutcomes());
 
-  it("plays only legal plans", () => {
-    for (const { seed, issues } of outcomes()) expect({ seed, issues }).toEqual({ seed, issues: [] });
+  it("plays only legal plans", async () => {
+    for (const { seed, issues } of await outcomes()) expect({ seed, issues }).toEqual({ seed, issues: [] });
   }, 120_000);
 
-  it("ends every match within the Round limit", () => {
-    for (const { seed, match } of outcomes()) {
+  it("ends every match within the Round limit", async () => {
+    for (const { seed, match } of await outcomes()) {
       expect({ seed, ended: match.result !== undefined }).toEqual({ seed, ended: true });
     }
   });
 
-  it("produces plans that stay valid when re-checked against the view", () => {
-    const { plans } = outcomes()[0]!;
+  it("produces plans that stay valid when re-checked against the view", async () => {
+    const { plans } = (await outcomes())[0]!;
     expect(plans.length).toBeGreaterThan(0);
     const view = buildSquadView(startRound(createMatch(1)), SquadId.Left);
     expect(validatePlan(view, planSquad(view))).toEqual([]);

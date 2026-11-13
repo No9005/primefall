@@ -33,42 +33,42 @@ const positionOf = (match: MatchState, heroId: string) => match.heroes.find((her
 
 describe("resolveRound: Move", () => {
   it("moves a Hero up to two tiles per action and diagonally", () => {
-    const match = matchWith({ [LEFT_BRUISER]: { col: 1, row: 11 } });
-    const { match: after, events } = resolveRound(match, [movePlan(match, { [LEFT_BRUISER]: [{ col: 3, row: 13 }] })]);
-    expect(positionOf(after, LEFT_BRUISER)).toEqual({ col: 3, row: 13 });
+    const match = matchWith({ [LEFT_BRUISER]: { col: 6, row: 6 } });
+    const { match: after, events } = resolveRound(match, [movePlan(match, { [LEFT_BRUISER]: [{ col: 8, row: 8 }] })]);
+    expect(positionOf(after, LEFT_BRUISER)).toEqual({ col: 8, row: 8 });
     expect(events.map(({ kind, tick, to }) => [kind, tick, to])).toEqual([
-      [EventKind.Step, 1, { col: 2, row: 12 }],
-      [EventKind.Step, 1, { col: 3, row: 13 }],
+      [EventKind.Step, 1, { col: 7, row: 7 }],
+      [EventKind.Step, 1, { col: 8, row: 8 }],
     ]);
   });
 
   it("resolves one action per Hero per Tick", () => {
-    const match = matchWith({ [LEFT_BRUISER]: { col: 8, row: 3 } });
-    const plan = movePlan(match, { [LEFT_BRUISER]: [{ col: 10, row: 3 }, { col: 10, row: 1 }] });
+    const match = matchWith({ [LEFT_BRUISER]: { col: 3, row: 3 } });
+    const plan = movePlan(match, { [LEFT_BRUISER]: [{ col: 5, row: 3 }, { col: 5, row: 1 }] });
     const { events } = resolveRound(match, [plan]);
     expect(events.map(({ tick }) => tick)).toEqual([1, 1, 2, 2]);
   });
 
   it("stops a Hero in front of a Wall", () => {
-    // (5,6) is the first Wall of the upper channel Wall.
-    const match = matchWith({ [LEFT_BRUISER]: { col: 4, row: 6 } });
-    const { match: after, events } = resolveRound(match, [movePlan(match, { [LEFT_BRUISER]: [{ col: 6, row: 6 }] })]);
-    expect(positionOf(after, LEFT_BRUISER)).toEqual({ col: 4, row: 6 });
+    // (10,7) is the first Wall of the ruin wall at columns 10 and 11.
+    const match = matchWith({ [LEFT_BRUISER]: { col: 9, row: 7 } });
+    const { match: after, events } = resolveRound(match, [movePlan(match, { [LEFT_BRUISER]: [{ col: 11, row: 7 }] })]);
+    expect(positionOf(after, LEFT_BRUISER)).toEqual({ col: 9, row: 7 });
     expect(events.map(({ kind }) => kind)).toEqual([EventKind.MoveBlocked]);
   });
 
   it("stops a Hero after the first step when the second hits a Wall", () => {
-    const match = matchWith({ [LEFT_BRUISER]: { col: 3, row: 6 } });
-    const { match: after, events } = resolveRound(match, [movePlan(match, { [LEFT_BRUISER]: [{ col: 5, row: 6 }] })]);
-    expect(positionOf(after, LEFT_BRUISER)).toEqual({ col: 4, row: 6 });
+    const match = matchWith({ [LEFT_BRUISER]: { col: 8, row: 7 } });
+    const { match: after, events } = resolveRound(match, [movePlan(match, { [LEFT_BRUISER]: [{ col: 10, row: 7 }] })]);
+    expect(positionOf(after, LEFT_BRUISER)).toEqual({ col: 9, row: 7 });
     expect(events.map(({ kind }) => kind)).toEqual([EventKind.Step, EventKind.MoveBlocked]);
   });
 
   it("does not let a diagonal step cut a Wall corner", () => {
-    // (5,6) is a Wall: stepping from (5,5) to (4,6) would squeeze past its corner.
-    const match = matchWith({ [LEFT_BRUISER]: { col: 5, row: 5 } });
-    const { match: after } = resolveRound(match, [movePlan(match, { [LEFT_BRUISER]: [{ col: 4, row: 6 }] })]);
-    expect(positionOf(after, LEFT_BRUISER)).toEqual({ col: 5, row: 5 });
+    // (10,5) is a Wall: stepping from (9,5) to (10,4) would squeeze past its corner.
+    const match = matchWith({ [LEFT_BRUISER]: { col: 9, row: 5 } });
+    const { match: after } = resolveRound(match, [movePlan(match, { [LEFT_BRUISER]: [{ col: 10, row: 4 }] })]);
+    expect(positionOf(after, LEFT_BRUISER)).toEqual({ col: 9, row: 5 });
   });
 
   it("fails a step into another Hero", () => {
@@ -96,16 +96,16 @@ describe("resolveRound: Move", () => {
   });
 
   it("discards the card of a failed move as well", () => {
-    const match = matchWith({ [LEFT_BRUISER]: { col: 4, row: 6 } });
-    const plan = movePlan(match, { [LEFT_BRUISER]: [{ col: 6, row: 6 }] });
+    const match = matchWith({ [LEFT_BRUISER]: { col: 9, row: 7 } });
+    const plan = movePlan(match, { [LEFT_BRUISER]: [{ col: 11, row: 7 }] });
     const bruiser = resolveRound(match, [plan]).match.heroes.find((hero) => hero.id === LEFT_BRUISER)!;
     expect(bruiser.discard).toHaveLength(1);
   });
 
   it("gives identical results for identical state and plans, without touching the input", () => {
-    const match = matchWith({ [LEFT_BRUISER]: { col: 8, row: 3 } });
+    const match = matchWith({ [LEFT_BRUISER]: { col: 3, row: 3 } });
     const before = structuredClone(match);
-    const plan = movePlan(match, { [LEFT_BRUISER]: [{ col: 10, row: 3 }, { col: 10, row: 1 }] });
+    const plan = movePlan(match, { [LEFT_BRUISER]: [{ col: 5, row: 3 }, { col: 5, row: 1 }] });
     expect(resolveRound(match, [plan])).toEqual(resolveRound(match, [plan]));
     expect(match).toEqual(before);
   });

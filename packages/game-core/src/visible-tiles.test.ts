@@ -40,9 +40,9 @@ describe("SquadView.visibleTiles", () => {
   });
 
   it("is blocked by a Wall: the tile behind it is dark", () => {
-    // The Wall at (8,6) blocks the straight line from (8,5) to (8,7).
-    const seen = visibleKeys(setup({ [LEFT_BRUISER]: { col: 8, row: 5 } }), SquadId.Left);
-    expect(seen.has(key({ col: 8, row: 7 }))).toBe(false);
+    // The Walls at (10,7) and (11,7) block the straight line from (8,7) to (12,7).
+    const seen = visibleKeys(setup({ [LEFT_BRUISER]: { col: 8, row: 7 } }), SquadId.Left);
+    expect(seen.has(key({ col: 12, row: 7 }))).toBe(false);
   });
 
   it("does not show the Prime Zone from the Spawn area, but does from a Hero standing in it", () => {

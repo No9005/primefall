@@ -150,7 +150,7 @@ describe("tile picking at the fitted scale", () => {
   });
 
   it("picks a Wall in front of a tile, not the floor it hides", () => {
-    const wall = { col: 8, row: 6 };
+    const wall = { col: 12, row: 5 };
     expect(REACTOR_DECK.tiles[wall.row]?.[wall.col]).toBe(TileKind.Wall);
     // A point on the top of the Wall (64 px above its footprint) lies over the floor tile behind it.
     const { x, y } = gridToWorld(wall);
@@ -188,8 +188,8 @@ describe("resolveTap", () => {
   });
 
   describe("next to a Wall", () => {
-    const wall = { col: 11, row: 4 };
-    const target = { col: 11, row: 3 };
+    const wall = { col: 12, row: 5 };
+    const target = { col: 12, row: 4 };
     const { x, y } = world(target.col, target.row);
     const inset = 4;
     const points = [
@@ -321,9 +321,9 @@ describe("framing a Move", () => {
   });
 
   it("stays within the zoom limits", () => {
-    const tight = frameMoveCamera({ col: 15, row: 8 }, [], view);
+    const tight = frameMoveCamera({ col: 22, row: 12 }, [], view);
     expect(tight.scale).toBeCloseTo(fitted.scale * MAX_ZOOM);
-    const wide = frameMoveCamera({ col: 15, row: 8 }, [{ col: 0, row: 0 }, { col: 30, row: 16 }], view);
+    const wide = frameMoveCamera({ col: 22, row: 12 }, [{ col: 0, row: 0 }, { col: 44, row: 24 }], view);
     // Tiles at the board corners need (about) the whole board: no more than the fitted scale.
     expect(wide.scale).toBeGreaterThanOrEqual(fitted.scale);
     expect(wide.scale).toBeLessThan(fitted.scale * 1.1);
@@ -372,9 +372,10 @@ describe("frameSquadCamera", () => {
   it("zooms to 1.6 times the fitted scale and shows Heroes at least 40 px high", () => {
     const view = viewOf(844, 390);
     const camera = frameSquadCamera(squadAt("left"), zone, view, freeOf(844, 390));
-    // 1.6 times fitted, raised only as far as the 40 px Hero height needs.
+    // 1.6 times fitted, raised only as far as the 40 px Hero height needs (on the 45 x 25 map that is the larger of the two).
+    const wanted = Math.max(fitCamera(view).scale * 1.6, 40 / HERO_WORLD_HEIGHT);
     expect(camera.scale).toBeGreaterThanOrEqual(fitCamera(view).scale * 1.6 - 1e-9);
-    expect(camera.scale).toBeLessThan(fitCamera(view).scale * 1.6 + 0.005);
+    expect(camera.scale).toBeLessThan(wanted + 0.005);
     expect(HERO_WORLD_HEIGHT * camera.scale).toBeGreaterThanOrEqual(40);
   });
 

@@ -56,14 +56,14 @@ describe("describeEffects", () => {
 
 describe("coverProtectionLabel", () => {
   it("names the protection a target tile gives against the attacker", () => {
-    expect(coverProtectionLabel({ col: 17, row: 5 }, { col: 14, row: 5 })).toBe("Half Cover · damage -1");
+    expect(coverProtectionLabel({ col: 21, row: 8 }, { col: 18, row: 8 })).toBe("Half Cover · damage -1");
     const fullCoverGrid = parseGrid([".....", ".....", "..F..", ".....", "....."]);
     expect(coverProtectionLabel({ col: 2, row: 4 }, { col: 2, row: 2 }, fullCoverGrid)).toBe("Full Cover · cannot be attacked");
   });
 
   it("shows nothing on open floor or at Range 1", () => {
-    expect(coverProtectionLabel({ col: 17, row: 5 }, { col: 15, row: 5 })).toBeUndefined();
-    expect(coverProtectionLabel({ col: 15, row: 5 }, { col: 14, row: 5 })).toBeUndefined();
+    expect(coverProtectionLabel({ col: 21, row: 8 }, { col: 19, row: 8 })).toBeUndefined();
+    expect(coverProtectionLabel({ col: 19, row: 8 }, { col: 18, row: 8 })).toBeUndefined();
   });
 });
 
