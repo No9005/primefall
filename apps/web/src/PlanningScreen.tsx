@@ -823,7 +823,8 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   );
   dragHandlers.current.move = (event) => {
     if (event.pointerId !== gesture.current?.pointerId) return;
-    setPull(movePull(pullRef.current, { x: event.clientX, y: event.clientY }));  };
+    setPull(movePull(pullRef.current, { x: event.clientX, y: event.clientY }));
+  };
   dragHandlers.current.end = (event) => {
     if (event.pointerId !== gesture.current?.pointerId) return;
     gesture.current = undefined;
@@ -856,7 +857,8 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
       pickBoard: pick,
     };
     const reasons = cardUseReasons(selected.heroClass, state.card, queue, pitched);
-    const drop = resolveDrop(point, layout, dragPlaces, reasons);    return drop && { card: state.card, drop };
+    const drop = resolveDrop(point, layout, dragPlaces, reasons);
+    return drop && { card: state.card, drop };
   }
   /** The drop adds its action to the Queue the way the tap flow does. */
   function dropCard(card: CardIndex, drop: DropUse) {
