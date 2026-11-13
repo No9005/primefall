@@ -49,7 +49,7 @@ import { DeckBurn } from "./DeckBurn";
 import { addShuffle, NO_SHUFFLE_PENDING, settleShuffle, shownDeckAfterShuffle, shownDiscardCount, SHUFFLE_MS, type ShuffleStep, shuffledWhileDrawing } from "./deck-shuffle";
 import { DeckShuffle } from "./DeckShuffle";
 import { exhaustionHud } from "./exhaustion-hud";
-import type { BoardPick, Point } from "./card-drag";
+import { applyDrop, type BoardPick, type DropLayout, type DropPlaces, type DropUse, type Point, type Rect, resolveDrop } from "./card-drag";
 import { Callout } from "./Callout";
 import { defenderZone, ROLE_LABELS, roleOf, roundPillText } from "./attack-defend";
 import { AttackerPill, DefenderPill, RoleBanner, RoleLabel } from "./RoleHud";
@@ -737,6 +737,29 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     return outOfReach ? "red lines may miss from the planned position" : undefined;
   }, [namesDeclaredTarget, aimedCard, shotLines]);
 
+  // While a card is pulled, the places it can be dropped on are lit (issue 410): the tiles of Move 2 and of its tile
+  // target, and the Heroes its Primary can be aimed at. They are the same places the tap flow offers.
+  const pulling = !playing && pull.phase === "pulled";
+  const dragPlaces = useMemo<DropPlaces | undefined>(() => {
+    if (!pulling || heldInHand === undefined) return undefined;
+    const card = HERO_DECKS[selected.heroClass][heldInHand]!;
+    const targetsSelf = card.target === CardTarget.SelfHero || card.target === CardTarget.EnemiesInRange;
+    let heroIds: string[] = [];
+    if (!targetsSelf) {
+      const candidates = heroTargetsOf(card);
+      const ranged = card.type === CardType.Attack && card.range !== undefined;
+      const shots = ranged ? drawShots(knownGrid, planningFrom, card.range!, view.enemies, candidates) : NO_SHOTS;
+      const positioned = [...view.heroes, ...view.enemies].flatMap((unit) => (candidates.includes(unit.id) && "position" in unit ? [{ id: unit.id, position: unit.position }] : []));
+      heroIds =
+        card.type === CardType.Attack && card.target === CardTarget.VisibleEnemy
+          ? candidates
+          : targetsInReach(positioned, planningFrom, card, (id) => shots.find((shot) => shot.targetId === id)?.ringed ?? true);
+    }
+    return { selfId: selected.id, heroIds, primaryTiles: tileTargetsOf(card), moveTiles: reachableMoveDestinations(planningFrom), here: undefined };
+  }, [pulling, heldInHand, selected.id, selected.heroClass, planningFrom, knownGrid, view.heroes, view.enemies, view.placedCover]);
+  const dragHighlights = useMemo(() => (dragPlaces ? [...dragPlaces.moveTiles, ...dragPlaces.primaryTiles] : NO_TILES), [dragPlaces]);
+  const energyPillRef = useRef<HTMLDivElement>(null);
+
   // The state of the pull is kept in a ref as well, because the window listeners of a gesture read it between renders.
   const pullRef = useRef<PullState>(IDLE);
   function setPull(next: PullState) {
@@ -809,8 +832,45 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     window.removeEventListener("pointerup", onDragEnd);
     window.removeEventListener("pointercancel", onDragEnd);
     if (event.type === "pointercancel") setPull(cancelPull());
-    else applyPull(releasePull(pullRef.current, faceAt({ x: event.clientX, y: event.clientY }), window.innerHeight * MIDDLE_LINE));
+    else {
+      const point = { x: event.clientX, y: event.clientY };
+      const face = faceAt(point);
+      const dropped = face === undefined ? dropAt(point) : undefined;
+      if (dropped) dropCard(dropped.card, dropped.drop);
+      else applyPull(releasePull(pullRef.current, face, window.innerHeight * MIDDLE_LINE));
+    }
   };
+  /** The use a pulled card released at `point` performs, if the point is a drop zone that is allowed right now. */
+  function dropAt(point: Point): { card: CardIndex; drop: DropUse } | undefined {
+    const state = pullRef.current;
+    const pick = pickBoard.current;
+    if (state.phase !== "pulled" || !dragPlaces || !pick || heldInHand !== state.card) return undefined;
+    const rectOf = (element: Element | null): Rect => {
+      const box = element?.getBoundingClientRect();
+      return box ? { left: box.left, top: box.top, right: box.right, bottom: box.bottom } : { left: 0, top: 0, right: -1, bottom: -1 };
+    };
+    const layout: DropLayout = {
+      board: { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight },
+      blockChip: rectOf(null),
+      energyOrb: rectOf(energyPillRef.current),
+      hud: [".hand-column", ".commit-panel"].map((selector) => rectOf(document.querySelector(selector))),
+      pickBoard: pick,
+    };
+    const reasons = cardUseReasons(selected.heroClass, state.card, queue, pitched);
+    const drop = resolveDrop(point, layout, dragPlaces, reasons);
+    return drop && { card: state.card, drop };
+  }
+  /** The drop adds its action to the Queue the way the tap flow does. */
+  function dropCard(card: CardIndex, drop: DropUse) {
+    setPull(IDLE);
+    setArmed(undefined);
+    setAiming(undefined);
+    setFirstAlly(undefined);
+    setOverdriveAim(false);
+    const next = applyDrop(card, drop, queue, pitched);
+    setQueue(next.queue);
+    setPitched(next.pitched);
+  }
   function startCardPress(card: CardIndex, event: ReactPointerEvent) {
     if (playing || gesture.current || (event.pointerType === "mouse" && event.button !== 0)) return;
     // A mouse press must not start a text selection or a native drag, which would cancel the pointer gesture (the click still fires).
@@ -1075,7 +1135,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         enemies={boardEnemies}
         selectedId={selected.id}
         onSelect={(id) => view.heroes.find((hero) => hero.id === id)?.heroClass === playerHeroClass && changeSelection(id)}
-        targetableIds={targetableIds}
+        targetableIds={dragPlaces ? dragPlaces.heroIds : targetableIds}
         onTargetTap={tapTarget}
         hitIds={playback?.hit ?? []}
         clips={playback?.clips}
@@ -1084,7 +1144,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         aims={playback?.aims}
         clipDelays={playback?.clipDelays}
         effects={playback?.effects}
-        highlights={highlights}
+        highlights={dragPlaces ? dragHighlights : highlights}
         zoneTint={zoneTint(score)}
         zoneLabels={NO_LABELS}
         areaTiles={NO_TILES}
@@ -1225,8 +1285,9 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
           <div className="energy-row">
             <EnergyPill
               available={energy.available}
-              lit={false}
+              lit={pulling}
               active={false}
+              pillRef={energyPillRef}
               title={`Pitched ${energy.pitched} · Spent ${energy.spent}`}
               opacity={focus.energyPill}
             />
