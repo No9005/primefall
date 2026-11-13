@@ -1,3 +1,4 @@
+import { setImmediate } from "node:timers/promises";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { playAiMatch } from "./ai-match";
@@ -15,6 +16,12 @@ const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
 // Vitest worker and CI fails with "Timeout calling onTaskUpdate".
 const MATCH_SEEDS = SEEDS.slice(0, 8);
 const MAX_ROUNDS = 60;
+
+/**
+ * Lets the Vitest worker report to its parent between two long matches. A whole file of back-to-back matches on the
+ * 45 by 25 map keeps the worker busy for over a minute, and a worker that never yields ends in "Timeout calling onTaskUpdate".
+ */
+const yieldToWorker = () => setImmediate();
 
 /**
  * A small mirror-symmetric map (31 by 17, Prime Zone 3 by 3 in the middle, two Outposts of 3 by 2) for the tests that
@@ -286,7 +293,7 @@ describe("AI symmetry", () => {
     expect(destinations(right.queue)).toEqual(destinations(left.queue).map(mirror));
   });
 
-  it("does not let one side win nearly every match", () => {
+  it("does not let one side win nearly every match", async () => {
     const wins = { [SquadId.Left]: 0, [SquadId.Right]: 0 };
     // Sixteen seeds: with eight, a fair coin gives seven wins to one side in one run of thirty.
     const seeds = SEEDS.slice(0, 16);
@@ -295,15 +302,17 @@ describe("AI symmetry", () => {
       // of the Round of the first contest decides who wins it. Half of the seeds start one Round later to cancel that out.
       const winner = playAiMatch(seed, MAX_ROUNDS, seed % 2 === 0 ? 1 : 2).match.result?.winner;
       if (winner) wins[winner] += 1;
+      await yieldToWorker();
     }
     expect(Math.max(wins[SquadId.Left], wins[SquadId.Right])).toBeLessThanOrEqual(seeds.length - 3);
   }, 120_000);
 });
 
 describe("AI in the classic mode", () => {
-  it("never plans a Block, over many seeds", () => {
+  it("never plans a Block, over many seeds", async () => {
     for (const seed of MATCH_SEEDS) {
       const { plans, issues } = playAiMatch(seed, MAX_ROUNDS);
+      await yieldToWorker();
       expect(issues).toEqual([]);
       const blocks = plans.flatMap((plan) => plan.heroes.flatMap((hero) => hero.queue)).filter((action) => action.kind === ActionKind.Block);
       expect(blocks).toEqual([]);
@@ -327,9 +336,10 @@ describe("AI does not freeze", () => {
   });
 
   // The AI only walks to the Prime Zone and does not split (a later ticket), so most classic matches end at the Round limit.
-  it("ends every classic match within the Round limit with legal plans", () => {
+  it("ends every classic match within the Round limit with legal plans", async () => {
     for (const seed of MATCH_SEEDS) {
       const { match, issues } = playAiMatch(seed, MAX_ROUNDS);
+      await yieldToWorker();
       expect(issues).toEqual([]);
       expect(match.result).toBeDefined();
       expect(match.round).toBeLessThanOrEqual(ROUND_LIMIT);
@@ -383,21 +393,28 @@ describe("AI in Attack and Defend", () => {
 describe("AI-versus-AI smoke test", () => {
   // Played on first use inside a test, not while Vitest collects the tests (a long run there blocks the worker).
   let played: ReturnType<typeof playOutcomes> | undefined;
-  const playOutcomes = () => MATCH_SEEDS.map((seed) => ({ seed, ...playAiMatch(seed, MAX_ROUNDS) }));
+  const playOutcomes = async () => {
+    const outcomes = [];
+    for (const seed of MATCH_SEEDS) {
+      outcomes.push({ seed, ...playAiMatch(seed, MAX_ROUNDS) });
+      await yieldToWorker();
+    }
+    return outcomes;
+  };
   const outcomes = () => (played ??= playOutcomes());
 
-  it("plays only legal plans", () => {
-    for (const { seed, issues } of outcomes()) expect({ seed, issues }).toEqual({ seed, issues: [] });
+  it("plays only legal plans", async () => {
+    for (const { seed, issues } of await outcomes()) expect({ seed, issues }).toEqual({ seed, issues: [] });
   }, 120_000);
 
-  it("ends every match within the Round limit", () => {
-    for (const { seed, match } of outcomes()) {
+  it("ends every match within the Round limit", async () => {
+    for (const { seed, match } of await outcomes()) {
       expect({ seed, ended: match.result !== undefined }).toEqual({ seed, ended: true });
     }
   });
 
-  it("produces plans that stay valid when re-checked against the view", () => {
-    const { plans } = outcomes()[0]!;
+  it("produces plans that stay valid when re-checked against the view", async () => {
+    const { plans } = (await outcomes())[0]!;
     expect(plans.length).toBeGreaterThan(0);
     const view = buildSquadView(startRound(createMatch(1)), SquadId.Left);
     expect(validatePlan(view, planSquad(view))).toEqual([]);
