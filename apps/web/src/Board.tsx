@@ -11,7 +11,7 @@ import {
   tileAt,
 } from "game-core";
 import { Application, Assets, Container, Graphics, Text } from "pixi.js";
-import { COVER_BLUE, drawCoverLook, drawCoverPanels } from "./cover-look";
+import { areaColorOf, drawScoutArea, drawTerrain, drawZone, ghostMark, scannedFrame } from "./board-drawing";
 import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPick, Point } from "./card-drag";
 import {
@@ -38,13 +38,13 @@ import {
 } from "./board-layout";
 import { freeBoardArea } from "./hud-layout";
 import { FogClouds, type FogWalker, fogDuringWalk, fogShape } from "./fog-clouds";
-import { buildTerrain, coverLook, coverMarks, depthOf, hasCoverLook, type Face, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, withoutCover, worldLineWidth } from "./terrain";
+import { coverLook, depthOf, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, withoutCover } from "./terrain";
 import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
 import { baseFacing, type Facing, turnHeroes } from "./facing";
 import { walkProgress } from "./playback";
-import { AREA_COLOR, AREA_PIPS, areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, TRANSITION_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
+import { areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, TRANSITION_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
 import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
@@ -303,22 +303,6 @@ interface Terrain {
   planning: Container;
 }
 
-/** A shield glyph about 14 px wide on screen, centred on the origin: filled for Full Cover, outline only for Half Cover. */
-function shieldGlyph(kind: "full" | "half", scale: number): Graphics {
-  const unit = 7 / scale;
-  const scaled = (values: number[]) => values.map((value) => value * unit);
-  const color = COVER_BLUE;
-  const glyph = new Graphics().poly(scaled([-1, -0.8, 1, -0.8, 1, 0.2, 0, 1.1, -1, 0.2])).fill({ color: 0x0b1016 });
-  if (kind === "full") glyph.poly(scaled([-1, -0.8, 1, -0.8, 1, 0.2, 0, 1.1, -1, 0.2])).fill({ color });
-  else glyph.poly(scaled([-1, -0.3, 1, -0.3, 1, 0.2, 0, 1.1, -1, 0.2])).fill({ color });
-  return glyph.poly(scaled([-1, -0.8, 1, -0.8, 1, 0.2, 0, 1.1, -1, 0.2])).stroke({ width: worldLineWidth(1.5, scale), color, join: "round" });
-}
-
-/** Fills a face and outlines it with a line that keeps its width on screen at the camera `scale`. */
-function fillFace(graphics: Graphics, { points, fill, edge, edgeWidth }: Face, scale: number): Graphics {
-  return graphics.poly(points).fill(fill).stroke({ width: worldLineWidth(edgeWidth, scale), color: edge, join: "round" });
-}
-
 /** The middle of the Prime Zone tiles (the zone is drawn faintly even in the fog, so using it reveals nothing). */
 function zoneCentre(): GridPosition | undefined {
   const tiles = findTiles(REACTOR_DECK, TileKind.PrimeZone);
@@ -432,26 +416,6 @@ function animateAppear(shape: Graphics, ms: number): () => void {
   return () => cancelAnimationFrame(frame);
 }
 
-/** The dashed ring and the `last seen` tag of a Ghost. */
-function ghostMark(): Container {
-  const mark = new Container();
-  const ring = new Graphics();
-  const rx = TILE_WIDTH * 0.42;
-  const ry = TILE_HEIGHT * 0.42;
-  const dashes = 16;
-  for (let i = 0; i < dashes; i++) {
-    const from = (i / dashes) * 2 * Math.PI;
-    const to = from + Math.PI / dashes;
-    ring.moveTo(Math.cos(from) * rx, -TILE_HEIGHT / 2 + Math.sin(from) * ry).lineTo(Math.cos(to) * rx, -TILE_HEIGHT / 2 + Math.sin(to) * ry);
-  }
-  ring.stroke({ width: 3, color: 0xe5484d, alpha: 0.8 });
-  const tag = new Text({ text: "last seen", style: { fontFamily: "IBM Plex Mono", fontSize: 12, fill: 0x8a99a8, stroke: { color: 0x0b1016, width: 3 } } });
-  tag.anchor.set(0.5, 0);
-  tag.position.set(0, 4);
-  mark.addChild(ring, tag);
-  return mark;
-}
-
 /** Fades a figure between the real figure and its Ghost; with reduced motion the caller does not call this. Returns a cancel function. */
 function animateFade(figure: Container, kind: "toGhost" | "toSeen" | "appear"): () => void {
   const start = performance.now();
@@ -496,7 +460,6 @@ const FRAME_MS = 250;
 
 const NO_SCANNED_AREAS: readonly Pick<RevealedArea, "center" | "size">[] = [];
 /** Red outline of an area the enemy scans. */
-const SCANNED_COLOR = 0xff4d4d;
 
 export function Board({
   destroyedCover,
@@ -1068,115 +1031,22 @@ export function Board({
     if (!terrain) return;
     const { floor, objects, planning } = terrain;
     const grid = coverGrid;
-    const created: Container[] = [];
-    // Floor tiles share one shape layer; standing pieces are drawn per tile and sort with the Heroes by depth.
-    const ground = new Graphics();
-    floor.addChild(ground);
-    created.push(ground);
     const lit = litTiles(
       visibleTiles,
       heroes.map((hero) => hero.position),
     );
-    for (const tile of buildTerrain(grid, angle, lit)) {
-      fillFace(ground, tile.floor, strokeScale);
-      if (tile.marker) ground.poly(tile.marker.points).stroke({ width: 2, color: tile.marker.color, alpha: 0.9 });
-      if (!tile.piece) continue;
-      const piece = new Graphics();
-      if (hasCoverLook(tile.kind)) {
-        const built = placedCover.some((p) => p.col === tile.position.col && p.row === tile.position.row);
-        // Fog of War: the map's own Cover is not drawn where the Squad does not see; it shows when the tile is revealed.
-        // Cover a Hero placed is remembered and stays.
-        if (!built && !tile.lit) continue;
-        const look = coverLook(tile.position, tile.kind === TileKind.FullCover ? "full" : "half", built, angle);
-        drawCoverLook(piece, look, strokeScale);
-        if (look.panels.length > 0) {
-          // The panel stands in front of the Heroes on the tile (they sit at depth + 0.5) and behind the next tile.
-          const front = new Graphics();
-          drawCoverPanels(front, look, strokeScale);
-          front.zIndex = tile.depth + 0.75;
-          if (!tile.lit) front.alpha = TERRAIN_STYLE.fogPieceAlpha;
-          objects.addChild(front);
-          created.push(front);
-        }
-      } else for (const face of tile.piece) fillFace(piece, face, strokeScale);
-      piece.zIndex = tile.depth;
-      if (!tile.lit) piece.alpha = TERRAIN_STYLE.fogPieceAlpha;
-      objects.addChild(piece);
-      created.push(piece);
-    }
-
-    // Cover tiles get an outline on the floor: orange for Full Cover, blue for Half Cover.
-    // Destroyed Cover keeps a grey outline so the broken tile stays readable.
-    grid.tiles.forEach((line, row) =>
-      line.forEach((_, col) => {
-        const cover = coverAt(grid, { col, row });
-        const isTile = (tile: GridPosition) => tile.col === col && tile.row === row;
-        const placed = placedCover.some(isTile);
-        const destroyed = !placed && destroyedCover.some(isTile);
-        if (cover === CoverKind.None && !destroyed) return;
-        // Standing Cover has its own look (panels or bars); only the broken tile keeps a floor outline.
-        if (!destroyed) return;
-        const { x, y } = gridToWorld({ col, row }, angle);
-        const outline = new Graphics().poly(floorOutline(angle)).stroke({ width: 2, color: TERRAIN_STYLE.coverOutline.destroyed, alpha: 0.6 });
-        outline.position.set(x, y);
-        planning.addChild(outline);
-        created.push(outline);
-      }),
-    );
-
-    // A shield glyph sits above each piece of the map's own Cover.
-    const builtTiles = new Set(placedCover.map((p) => `${p.col},${p.row}`));
-    for (const mark of coverMarks(grid, angle, builtTiles)) {
-      if (!lit.has(`${mark.position.col},${mark.position.row}`)) continue;
-      const glyph = shieldGlyph(mark.kind, strokeScale);
-      glyph.position.set(mark.x, mark.y);
-      // Above its own piece and the Heroes on it (depth + 0.9), under the pieces in front; not under the props, which lie on
-      // the objects layer and would cut it off.
-      glyph.zIndex = depthOf(mark.position, angle) + 0.9;
-      objects.addChild(glyph);
-      created.push(glyph);
-    }
+    const created: Container[] = drawTerrain({ floor, objects, planning }, { grid, angle, strokeScale, lit, placedCover, destroyedCover });
 
     // The Prime Zone tint (grey, teal, gold, amber, red); our Squad holding it sends a ring over the zone.
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const zoneTiles: GridPosition[] = [];
-    grid.tiles.forEach((line, row) =>
-      line.forEach((kind, col) => {
-        if (kind !== TileKind.PrimeZone) return;
-        zoneTiles.push({ col, row });
-        const { x, y } = gridToWorld({ col, row }, angle);
-        const tint = new Graphics().poly(floorOutline(angle)).fill({ color: zoneColor, alpha: zoneAlpha });
-        tint.position.set(x, y);
-        planning.addChild(tint);
-        created.push(tint);
-      }),
-    );
+    const zone = drawZone(planning, grid, angle, { color: zoneColor, alpha: zoneAlpha, emblemAlpha: zoneEmblemAlpha });
+    const zoneTiles = zone.tiles;
+    created.push(...zone.created);
     const animated: ((now: number) => void)[] = [];
     /** Run on every frame while the zone is on screen (the idle pulse), unlike `animated`, which ends after 3 s. */
     const idle: ((now: number) => void)[] = [];
-    if (zoneTiles.length > 0) {
-      // One outline around the outer edge of the zone (not per tile), with a wide glow under it, and a flat emblem on the middle tile.
-      const cols = zoneTiles.map((tile) => tile.col);
-      const rows = zoneTiles.map((tile) => tile.row);
-      const [minCol, maxCol, minRow, maxRow] = [Math.min(...cols) - 0.5, Math.max(...cols) + 0.5, Math.min(...rows) - 0.5, Math.max(...rows) + 0.5];
-      const outer = [[minCol, minRow], [maxCol, minRow], [maxCol, maxRow], [minCol, maxRow]].flatMap(([col, row]) => {
-        const { x, y } = gridToWorld({ col: col!, row: row! }, angle);
-        return [x, y];
-      });
-      const glow = new Graphics().poly(outer).stroke({ width: 7, color: zoneColor, join: "round" });
-      const border = new Graphics().poly(outer).stroke({ width: 3, color: zoneColor, join: "round" });
-      const middleTile = gridToWorld({ col: (minCol + maxCol) / 2, row: (minRow + maxRow) / 2 }, angle);
-      const emblem = new Graphics()
-        .ellipse(0, 0, TILE_WIDTH * 0.275, TILE_HEIGHT * 0.275)
-        .stroke({ width: 2, color: zoneColor })
-        .poly([-TILE_WIDTH * 0.125, 0, 0, -TILE_HEIGHT * 0.125, TILE_WIDTH * 0.125, 0, 0, TILE_HEIGHT * 0.125])
-        .fill({ color: zoneColor });
-      emblem.position.set(middleTile.x, middleTile.y);
-      emblem.alpha = zoneEmblemAlpha;
-      for (const graphic of [glow, border, emblem]) {
-        planning.addChild(graphic);
-        created.push(graphic);
-      }
+    if (zone.border && zone.glow) {
+      const { border, glow } = zone;
       const setBorder = (now: number) => {
         const alpha = zoneBorderAlpha(now, reducedMotion);
         border.alpha = alpha;
@@ -1212,47 +1082,19 @@ export function Board({
       const key = `${center.col},${center.row},${size}`;
       seenNow.set(key, { center, size });
       const plays = !reducedMotion && !areaSeen.current.has(key);
-      const reach = Math.floor(size / 2);
-      for (let row = center.row - reach; row <= center.row + reach; row++) {
-        for (let col = center.col - reach; col <= center.col + reach; col++) {
-          if (tileAt(grid, { col, row }) === undefined) continue;
-          const { x, y } = gridToWorld({ col, row }, angle);
-          // The 5 by 5 area of an Overdrive Scout Drone is gold.
-          const areaColor = size >= 5 ? 0xffb000 : AREA_COLOR;
-          const tint = new Graphics().poly(floorOutline(angle)).fill({ color: areaColor, alpha: 0.28 }).stroke({ width: 1, color: areaColor, alpha: 0.6 });
-          tint.position.set(x, y);
-          planning.addChild(tint);
-          created.push(tint);
-          if (!plays) continue;
-          const ring = areaRing(center, { col, row });
-          tint.alpha = 0;
-          animated.push((now) => {
-            tint.alpha = areaLift(now, ring);
-          });
-        }
+      const area = drawScoutArea(planning, grid, angle, { center, size, remaining }, (tile) => areaRing(center, tile));
+      created.push(...area.created);
+      if (!plays) continue;
+      for (const { tint, ring } of area.tints) {
+        tint.alpha = 0;
+        animated.push((now) => {
+          tint.alpha = areaLift(now, ring);
+        });
       }
-      const top = gridToWorld(center, angle);
-      const pips = new Graphics();
-      for (let pip = 0; pip < AREA_PIPS; pip++) pips.circle((pip - 0.5) * 12, 0, 3.5).fill({ color: AREA_COLOR, alpha: pip < remaining ? 1 : 0.25 }).stroke({ width: 1, color: 0x0b1016 });
-      pips.position.set(top.x, top.y - TILE_HEIGHT * (reach + 2.2));
-      planning.addChild(pips);
-      created.push(pips);
     }
     // Areas the enemy scans: only an outline around the square.
-    const outline = floorOutline(angle);
     for (const { center, size } of scannedAreas) {
-      const reach = Math.floor(size / 2);
-      const corner = (col: number, row: number, index: number) => {
-        const { x, y } = gridToWorld({ col, row }, angle);
-        return [x + outline[index * 2]!, y + outline[index * 2 + 1]!];
-      };
-      const points = [
-        corner(center.col - reach, center.row - reach, 0),
-        corner(center.col + reach, center.row - reach, 1),
-        corner(center.col + reach, center.row + reach, 2),
-        corner(center.col - reach, center.row + reach, 3),
-      ].flat();
-      const frame = new Graphics().poly(points).fill({ color: SCANNED_COLOR, alpha: 0.08 }).stroke({ width: 2, color: SCANNED_COLOR, alpha: 0.9 });
+      const frame = scannedFrame(center, size, angle);
       planning.addChild(frame);
       created.push(frame);
     }
@@ -1265,7 +1107,7 @@ export function Board({
           for (let col = center.col - reach; col <= center.col + reach; col++) {
             if (tileAt(grid, { col, row }) === undefined) continue;
             const { x, y } = gridToWorld({ col, row }, angle);
-            const tint = new Graphics().poly(floorOutline(angle)).fill({ color: size >= 5 ? 0xffb000 : AREA_COLOR, alpha: 0.28 });
+            const tint = new Graphics().poly(floorOutline(angle)).fill({ color: areaColorOf(size), alpha: 0.28 });
             tint.position.set(x, y);
             planning.addChild(tint);
             created.push(tint);
