@@ -47,6 +47,12 @@ Three sources of people: the military, craft, the underworld.
 | Controller | **Tilly Turnover** | Tinkerer and mech mechanic. Her third arm is her own build, which also explains the Scout Drone, Barricade and Placed Cover as scrap-built gear. She had no earlier client: she is hired together with the other two. "Turnover" can mean turning old things into new. |
 | Assassin | **Kit Crosshair** | Former syndicate assassin. "Crosshair" is the cover name from the syndicate days. Why Kit works for a client now (debt, an amnesty, an open bill) stays open on purpose. The name is not tied to a gender. |
 
+### Quotes (one line per Hero, shown on the BIO sheet)
+
+- **Max Overload:** "I came here to move cargo and kick ass. The cargo is optional."
+- **Tilly Turnover:** "Everything is a spare part if you squint hard enough."
+- **Kit Crosshair:** "Nobody asked for my real name. Nobody will."
+
 Notes:
 
 - **Decided: Bruiser = Max Overload.** "Overload" ties to the loadmaster and to reactor and Overdrive. Considered and dropped: Max Power (the alias Homer Simpson takes in *Homer to the Max*), Max Strong, Max Payload, and German names such as Rolf Rammbock (the game is in English, so the puns would not land).
