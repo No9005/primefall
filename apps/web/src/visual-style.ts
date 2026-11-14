@@ -54,9 +54,9 @@ export function currentVisualStyle(search: string = globalThis.location?.search 
 }
 
 /**
- * The seam the board and the Hero Select ask for the look to draw. The Pixel-art renderers do not exist yet, so
- * Pixel art still resolves to the Original look; the next tickets add a second way to draw, not a second way to play.
+ * The seam the board and the Hero Select ask for the look to draw. Only the Heroes have a Pixel-art renderer so far (the
+ * terrain keeps its look in both styles until its own ticket), so only the Hero code asks. Another way to draw, not to play.
  */
 export function renderedStyle(style: VisualStyle = currentVisualStyle()): VisualStyle {
-  return style === VisualStyle.Pixel ? VisualStyle.Original : style;
+  return style;
 }

@@ -38,6 +38,15 @@ Path: `heroes/<class>/<pose>`, class one of `bruiser`, `controller`, `assassin`.
 
 27 Hero sprites in total (7 shared x 3 classes + 6 class-specific).
 
+### Pixel art style: sprite sheets
+
+The Pixel art style (`?style=pixel`, the default) does not use the poses above. It plays the sprite sheets of `apps/web/public/assets/pixel-heroes/<class>/` (format and clips: `docs/design/pixel-heroes/README.md`; they are loaded by `apps/web/src/pixel-heroes.ts`, not through the manifest). The poses above stay valid for the Original style, which still draws the shape rig.
+
+- **Frame** 136 x 104 px, feet at (58, 86), 20 frames per second, facing right and mirrored (`scale.x = -1`) for the left. Scaled by the whole number `PIXEL_SCALE` (2) with nearest-neighbour filtering, so a Hero is about 90 px tall at game size.
+- **Which clip is which sheet** is `pixelSheetOf` in `pixel-heroes.ts`; a test checks that every game clip of every class has a sheet. Fallbacks: a clip a class lacks plays its basic attack (a Long Shot of a Bruiser is `slam`), and the Controller and the Assassin, which have no clip for a hit the Shield absorbs, stand in `idle` (the Shield mark of the game carries the hit). `inCover` and `inCoverFull` are the loop of `half` and `full` after the taking. Which clip plays when, and for how long, stays with `playback.ts` and `hero-clips.ts`: the sheet is played at the progress of the rig clip it stands for.
+- **Layers.** On the board only the `figure` layer is drawn: the game draws the Shield bubble, the damage numbers, the Wait mark, the Cover, the Scout Drone and the shots itself (`effects-layer.ts`, `board-drawing.ts`). The Hero Select draws all three layers (muzzle flash, tracer and the Hidden label are baked in there).
+- **From `clips.json`:** `ringRedFrames` flashes the Squad ring red, `ringAlpha` fades the Squad ring, `shake` offsets the sprite. The Squad colour is the ring the renderer draws; the sprites carry no team colour. The Hidden look of the Assassin is the figure fading to the translucent look it keeps.
+
 ## VFX (canvas 128 x 128, anchor 0.5, 0.5)
 
 `vfx/muzzle_flash`, `energy_projectile`, `shotgun_blast`, `shield_ring`, `cover_deploy_effect`, `drone`, `mark_reticle`, `slow_indicator`, `reactor_pulse`, `explosion`.

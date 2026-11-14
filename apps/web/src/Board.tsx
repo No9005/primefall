@@ -47,7 +47,9 @@ import { walkProgress } from "./playback";
 import { areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, TRANSITION_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
-import { BEACON_LABEL, beaconAlpha, heroFigure, marksFigure, shieldBubble } from "./hero-figure";
+import { BEACON_LABEL, beaconAlpha, marksFigure, shieldBubble } from "./hero-figure";
+import { loadPixelHeroes, type PixelHero, styledHeroFigure } from "./pixel-heroes";
+import { renderedStyle, VisualStyle } from "./visual-style";
 import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
 import { chestOf, dashRuns, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
@@ -116,7 +118,7 @@ function pathGraphics(path: PlannedPath, angle: number, scale: number): { ground
     container.alpha = PLAN_STYLE.allyAlpha;
     return { ground: container, top };
   }
-  const ghost = heroFigure(path.heroClass, false, "idle", scale);
+  const ghost = styledHeroFigure(path.heroClass, false, "idle", scale).figure;
   const foot = gridToWorld(finalTile(path), angle);
   ghost.position.set(foot.x, foot.y + footOffset(angle));
   ghost.alpha = PLAN_STYLE.ghostAlpha;
@@ -773,7 +775,7 @@ export function Board({
     // Heroes that walk one tile in this frame glide from the tile they came from.
     const glides: { token: Container; fromX: number; fromY: number }[] = [];
     // The figures that play a clip (not the hit or Exhausted ones, which are flat poses).
-    const animated: { id: string; heroClass: HeroClass; cover: CoverKind; parts: BoundPart[] }[] = [];
+    const animated: { id: string; heroClass: HeroClass; cover: CoverKind; parts: BoundPart[]; pixel: PixelHero | undefined }[] = [];
     const ring = (color: number) =>
       new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color });
     const addToken = (hero: TokenHero, enemy: boolean) => {
@@ -808,7 +810,7 @@ export function Board({
       const falling = hero.exhausted && clips[hero.id] === "exhausted" && !reduced;
       const pose = hero.exhausted && !falling ? "exhausted" : reduced && hitIds.includes(hero.id) ? "hit" : "idle";
       // The enemy Squad is told apart by the red ring under the figure.
-      const figure = heroFigure(hero.heroClass, enemy, pose, strokeScale, facings.current.get(hero.id) ?? baseFacing(enemy));
+      const { figure, pixel } = styledHeroFigure(hero.heroClass, enemy, pose, strokeScale, facings.current.get(hero.id) ?? baseFacing(enemy));
       if (hero.ghost) figure.alpha = GHOST_ALPHA;
       // The Hidden clip fades the figure itself; reduced motion and every other moment show the ghost at once.
       if (hero.hidden && (clips[hero.id] !== "hidden" || reduced)) figure.alpha = 0.55;
@@ -826,7 +828,7 @@ export function Board({
       token.addChild(figure);
       const beacon = figure.getChildByLabel(BEACON_LABEL, true);
       if (beacon && pose === "idle" && !falling) cancels.push(animateBeacon(beacon));
-      if (pose === "idle") animated.push({ id: hero.id, heroClass: hero.heroClass, cover: coverAt(coverGrid, hero.position), parts: bindParts(figure, falling) });
+      if (pose === "idle") animated.push({ id: hero.id, heroClass: hero.heroClass, cover: coverAt(coverGrid, hero.position), parts: pixel ? [] : bindParts(figure, falling), pixel });
       const heroMarks = hero.ghost ? undefined : marks[hero.id];
       // A Shield that changes in this frame (gained, or hit and absorbing) is drawn with its own animation.
       let shield: StatusMark | undefined;
@@ -927,11 +929,12 @@ export function Board({
       for (const { token, fromX, fromY } of glides) token.pivot.set(-fromX * (1 - walked), -fromY * (1 - walked));
       // Marked and Slow are past their lock-on here; the Slow field keeps breathing.
       for (const mark of statusMarks) mark.update(reducedMotion ? STATUS_AT_REST_MS : 300 + now - pulseStart);
-      for (const { id, heroClass, cover, parts } of animated) {
+      for (const { id, heroClass, cover, parts, pixel } of animated) {
         // A Hero with nothing to show stands, or stands behind the Cover it is on.
         const name = clips[id] ?? restClipName(cover);
         if (reducedMotion) {
-          applyRestPose(parts, name);
+          if (pixel) pixel.showStill(name);
+          else applyRestPose(parts, name);
           continue;
         }
         let player = clipPlayers.current.get(id);
@@ -940,7 +943,9 @@ export function Board({
           clipPlayers.current.set(id, player);
         }
         player.play(name, now, clipDelays[id] ?? 0, clips);
-        applyPose(parts, player.sample(now));
+        const pose = player.sample(now);
+        if (pixel) pixel.show(player.playing, player.clipTimeMs(now));
+        else applyPose(parts, pose);
       }
       if (!reducedMotion) clipFrame = requestAnimationFrame(playClips);
     };
@@ -1223,6 +1228,8 @@ export function Board({
     void (async () => {
       await Promise.all([
         loadAssets(),
+        // Without the sheets (a failed load) the Heroes are drawn with the shape rig.
+        renderedStyle() === VisualStyle.Pixel ? loadPixelHeroes().catch(() => undefined) : undefined,
         app.init({ background: "#12161c", resizeTo: element, preference: "webgl", antialias: true, autoDensity: true, resolution: window.devicePixelRatio }),
       ]);
       if (cancelled) {
