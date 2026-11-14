@@ -25,7 +25,6 @@ import {
   frameSquadCamera,
   type MoveFraming,
   takeOverFraming,
-  turnCamera,
   gridToWorld,
   isZoomed,
   panBy,
@@ -40,7 +39,7 @@ import {
 } from "./board-layout";
 import { freeBoardArea } from "./hud-layout";
 import { FogClouds, type FogWalker, fogDuringWalk, fogShape } from "./fog-clouds";
-import { coverLook, depthOf, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, withoutCover } from "./terrain";
+import { coverLook, depthOf, floorOutline, footOffset, coverGridOf, lineScale, litTiles, withoutCover } from "./terrain";
 import { CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, hiddenSeenMark, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
@@ -88,8 +87,8 @@ function slotBadge(text: string, x: number, y: number, color: number): Container
 }
 
 /** A flat ring on a tile's floor. */
-function tileRing(tile: GridPosition, angle: number, color: number, fillAlpha = 0): Graphics {
-  const { x, y } = gridToWorld(tile, angle);
+function tileRing(tile: GridPosition, color: number, fillAlpha = 0): Graphics {
+  const { x, y } = gridToWorld(tile);
   const ring = new Graphics().ellipse(x, y, TILE_WIDTH * 0.3, TILE_HEIGHT * 0.3);
   if (fillAlpha > 0) ring.fill({ color, alpha: fillAlpha });
   return ring.stroke({ width: PLAN_STYLE.width, color });
@@ -101,17 +100,17 @@ function tileRing(tile: GridPosition, angle: number, color: number, fillAlpha = 
  * The line and the rings lie on the floor (`ground`); the ghost and the numbers are drawn above the props (`top`), so a
  * wall in front of the final tile never hides what the player planned.
  */
-function pathGraphics(path: PlannedPath, angle: number, scale: number): { ground: Container; top: Container } {
+function pathGraphics(path: PlannedPath, scale: number): { ground: Container; top: Container } {
   const { owner, from, stops } = path;
   const own = owner === PathOwner.Player;
   const color = own ? PLAN_STYLE.own : PLAN_STYLE.ally;
   const container = new Container();
   const top = new Container();
   const line = new Graphics();
-  const start = chestOf(from, angle);
+  const start = chestOf(from);
   line.moveTo(start.x, start.y);
   for (const { tile } of stops) {
-    const point = chestOf(tile, angle);
+    const point = chestOf(tile);
     line.lineTo(point.x, point.y);
   }
   line.stroke({ width: PLAN_STYLE.width, color, cap: "round", join: "round" });
@@ -121,13 +120,13 @@ function pathGraphics(path: PlannedPath, angle: number, scale: number): { ground
     return { ground: container, top };
   }
   const ghost = styledHeroFigure(path.heroClass, false, "idle", scale).figure;
-  const foot = gridToWorld(finalTile(path), angle);
-  ghost.position.set(foot.x, foot.y + footOffset(angle));
+  const foot = gridToWorld(finalTile(path));
+  ghost.position.set(foot.x, foot.y + footOffset());
   ghost.alpha = PLAN_STYLE.ghostAlpha;
   top.addChild(ghost);
   for (const { tile, tick } of stops) {
-    const { x, y } = gridToWorld(tile, angle);
-    container.addChild(tileRing(tile, angle, color, PLAN_STYLE.ringFillAlpha));
+    const { x, y } = gridToWorld(tile);
+    container.addChild(tileRing(tile, color, PLAN_STYLE.ringFillAlpha));
     top.addChild(slotBadge(String(tick), x + TILE_WIDTH * 0.42, y, color));
   }
   return { ground: container, top };
@@ -141,17 +140,17 @@ const F = HERO_STYLE.figureScale;
  * The path of a queued Pull or Charge (docs/design/role-visuals/380/pull.png and charge.png): every tile teal with a
  * chevron that points the way it is travelled, and the tag over the Bruiser or the target. Pulls point to the Bruiser.
  */
-function effectPathGraphics(path: EffectPath, angle: number, scale: number): { ground: Container; top: Container } {
+function effectPathGraphics(path: EffectPath, scale: number): { ground: Container; top: Container } {
   const ground = new Container();
   const top = new Container();
-  const diamond = floorOutline(angle);
+  const diamond = floorOutline();
   for (const { tile, direction } of path.tiles) {
-    const { x, y } = gridToWorld(tile, angle);
+    const { x, y } = gridToWorld(tile);
     const floor = new Graphics().poly(diamond).fill({ color: EFFECT_PATH_COLOR, alpha: 0.22 }).stroke({ width: 1.5 / scale, color: EFFECT_PATH_COLOR, alpha: 0.8 });
     floor.position.set(x, y);
     ground.addChild(floor);
     // The chevron points along the screen direction of the step.
-    const next = gridToWorld({ col: tile.col + direction.col, row: tile.row + direction.row }, angle);
+    const next = gridToWorld({ col: tile.col + direction.col, row: tile.row + direction.row });
     const dx = next.x - x;
     const dy = next.y - y;
     const length = Math.hypot(dx, dy) || 1;
@@ -163,7 +162,7 @@ function effectPathGraphics(path: EffectPath, angle: number, scale: number): { g
     chevron.moveTo(a.x, a.y).lineTo(b.x, b.y).lineTo(c.x, c.y).stroke({ width: 2.5 / scale, color: EFFECT_PATH_COLOR, cap: "round", join: "round" });
     ground.addChild(chevron);
   }
-  const { x, y } = gridToWorld(path.tagTile, angle);
+  const { x, y } = gridToWorld(path.tagTile);
   const tag = new Text({ text: path.tag, style: { fontFamily: "IBM Plex Mono", fontSize: 9 * F, fontWeight: "700", fill: EFFECT_PATH_COLOR, stroke: { color: 0x0b1016, width: 3 } } });
   tag.anchor.set(0.5, 1);
   tag.position.set(x, y - TILE_HEIGHT * 1.9);
@@ -172,8 +171,8 @@ function effectPathGraphics(path: EffectPath, angle: number, scale: number): { g
 }
 
 /** The red cross on the destination of a Move that will fail through another Hero of the Squad. */
-function collisionCross(tile: GridPosition, angle: number): Graphics {
-  const { x, y } = chestOf(tile, angle);
+function collisionCross(tile: GridPosition): Graphics {
+  const { x, y } = chestOf(tile);
   const size = 12;
   return new Graphics()
     .moveTo(x - size, y - size)
@@ -199,13 +198,13 @@ const NO_EFFECT_PATHS: readonly EffectPath[] = [];
  * is a thick teal arc (orange when it may be a Crossfire) with its number outside the ring; a free Tick is thin and steel.
  * A chip "+1 ?" above the target says a Crossfire may happen (the Attacks can still miss).
  */
-function crossfireRingGraphics(ring: CrossfireRing, angle: number): { ground: Container; top: Container } {
+function crossfireRingGraphics(ring: CrossfireRing): { ground: Container; top: Container } {
   const ground = new Container();
   const top = new Container();
-  const centre = gridToWorld(ring.position, angle);
+  const centre = gridToWorld(ring.position);
   // Under the Hero's feet, not under the middle of the tile.
   const x = centre.x;
-  const y = centre.y + footOffset(angle);
+  const y = centre.y + footOffset();
   const rx = TILE_WIDTH * 0.62;
   const ry = TILE_HEIGHT * 0.62;
   const at = (theta: number, scale = 1) => ({ x: x + Math.cos(theta) * rx * scale, y: y + Math.sin(theta) * ry * scale });
@@ -234,10 +233,10 @@ function crossfireRingGraphics(ring: CrossfireRing, angle: number): { ground: Co
 }
 
 /** A target line: the shot drawing for an Attack, an arrow to an allied Hero, a ring on a tile; the Tick sits in the middle. */
-function targetLineGraphics(line: TargetLine, angle: number): Container {
+function targetLineGraphics(line: TargetLine): Container {
   const container = new Container();
-  const from = chestOf(line.from, angle);
-  const to = chestOf(line.to, angle);
+  const from = chestOf(line.from);
+  const to = chestOf(line.to);
   if (line.planned && line.faint) {
     // An ally's plan: the bare line in yellow, no badge, no ring.
     const dashed = line.kind === LineKind.Attack;
@@ -253,7 +252,7 @@ function targetLineGraphics(line: TargetLine, angle: number): Container {
     const graphics = new Graphics();
     const [dash, gap] = line.unreachable ? [PLAN_STYLE.dot, PLAN_STYLE.dotGap] : [PLAN_STYLE.dash, PLAN_STYLE.dashGap];
     for (const run of dashRuns(from, to, dash, gap)) graphics.moveTo(run.from.x, run.from.y).lineTo(run.to.x, run.to.y);
-    container.addChild(graphics.stroke({ width: PLAN_STYLE.width, color, cap: "round" }), tileRing(line.to, angle, PLAN_STYLE.danger));
+    container.addChild(graphics.stroke({ width: PLAN_STYLE.width, color, cap: "round" }), tileRing(line.to, PLAN_STYLE.danger));
     container.addChild(slotBadge(`${line.tick}${line.unreachable ? "!" : ""}`, (from.x + to.x) / 2, (from.y + to.y) / 2, color));
     return container;
   }
@@ -261,7 +260,7 @@ function targetLineGraphics(line: TargetLine, angle: number): Container {
   if (line.kind === LineKind.Attack && line.shot) {
     // An enemy's shot is always red, whatever the segment says.
     const shot = line.own ? line.shot : { ...line.shot, segments: line.shot.segments.map((segment) => ({ ...segment, style: SegmentStyle.Stopped })) };
-    container.addChild(shotGraphics(shot, angle));
+    container.addChild(shotGraphics(shot));
   } else {
     const graphics = new Graphics().moveTo(from.x, from.y).lineTo(to.x, to.y).stroke({ width: SHOT_STYLE.width, color, cap: "round" });
     if (line.kind === LineKind.Ally) {
@@ -274,20 +273,20 @@ function targetLineGraphics(line: TargetLine, angle: number): Container {
     container.addChild(graphics);
   }
   if (line.kind !== LineKind.Ally && (line.tone === LineTone.Clear || line.kind === LineKind.Tile)) {
-    const { x, y } = gridToWorld(line.to, angle);
-    const ring = new Graphics().poly(floorOutline(angle).map((value, index) => value + (index % 2 === 0 ? x : y))).stroke({ width: 4, color });
+    const { x, y } = gridToWorld(line.to);
+    const ring = new Graphics().poly(floorOutline().map((value, index) => value + (index % 2 === 0 ? x : y))).stroke({ width: 4, color });
     container.addChild(ring);
   }
   container.addChild(slotBadge(String(line.tick), (from.x + to.x) / 2, (from.y + to.y) / 2, color));
   return container;
 }
 
-function shotGraphics(drawing: ShotDrawing, angle: number): Graphics {
-  const { segments, cross } = shotInWorld(drawing, angle);
+function shotGraphics(drawing: ShotDrawing): Graphics {
+  const { segments, cross } = shotInWorld(drawing);
   const graphics = new Graphics();
   if (drawing.coverTile) {
-    const { x, y } = gridToWorld(drawing.coverTile, angle);
-    graphics.poly(floorOutline(angle).map((value, index) => value + (index % 2 === 0 ? x : y))).stroke({ width: 5, color: SHOT_STYLE.cover });
+    const { x, y } = gridToWorld(drawing.coverTile);
+    graphics.poly(floorOutline().map((value, index) => value + (index % 2 === 0 ? x : y))).stroke({ width: 5, color: SHOT_STYLE.cover });
   }
   segments.forEach((segment) => strokeShotSegment(graphics, segment));
   if (cross) {
@@ -602,9 +601,6 @@ export function Board({
   const [pressed, setPressed] = useState<GridPosition>();
   // The camera scale in steps; outlines are drawn in world pixels of `1 / strokeScale` so they keep their width on screen.
   const [strokeScale, setStrokeScale] = useState(1);
-  // The angle the board is drawn at right now; it changes every frame of a turn.
-  const [angle, setAngle] = useState(VIEW_ANGLE);
-  const angleRef = useRef(VIEW_ANGLE);
   // The way each Hero that has walked faces (presentation only). A Step turns it at once; it lasts until the next Step and
   // is dropped when the playback ends, so the next planning phase shows the base facing. Figures are rebuilt every frame,
   // so it is kept here.
@@ -621,10 +617,9 @@ export function Board({
         const position = (enemy ? enemies : heroes).find((hero) => hero.id === id)?.position;
         return position && { position, enemy };
       },
-      angle,
     );
   }
-  const cameraControl = useRef<{ toggle: () => void; frame: (hero: GridPosition) => void; release: () => void; turn: (steps: 1 | -1) => void } | undefined>(
+  const cameraControl = useRef<{ toggle: () => void; frame: (hero: GridPosition) => void; release: () => void } | undefined>(
     undefined,
   );
   const selectedIdRef = useRef(selectedId);
@@ -642,16 +637,16 @@ export function Board({
   useEffect(() => {
     if (!overlay || !overlayTop) return;
     const created: Container[] = [];
-    const diamond = floorOutline(angle);
+    const diamond = floorOutline();
     for (const tile of areaTiles) {
-      const { x, y } = gridToWorld(tile, angle);
+      const { x, y } = gridToWorld(tile);
       const tint = new Graphics().poly(diamond).fill({ color: 0xff8a3d, alpha: 0.2 }).stroke({ width: 1, color: 0xff8a3d, alpha: 0.5 });
       tint.position.set(x, y);
       overlay.addChild(tint);
       created.push(tint);
     }
     for (const { position, blocked } of rangeArea) {
-      const { x, y } = gridToWorld(position, angle);
+      const { x, y } = gridToWorld(position);
       const color = blocked ? RANGE_BLOCKED_COLOR : RANGE_COLOR;
       const tint = new Graphics().poly(diamond).fill({ color, alpha: RANGE_ALPHA });
       tint.position.set(x, y);
@@ -660,7 +655,7 @@ export function Board({
     }
     const lit: Graphics[] = [];
     for (const tile of highlights) {
-      const { x, y } = gridToWorld(tile, angle);
+      const { x, y } = gridToWorld(tile);
       const highlight = new Graphics().poly(diamond).fill({ color: 0x2ec4b6 }).stroke({ width: 4, color: 0x2ec4b6 });
       highlight.position.set(x, y);
       overlay.addChild(highlight);
@@ -680,7 +675,7 @@ export function Board({
     const previewTile = dropTile ?? pressed;
     if (previewTile) {
       // The tile under the finger, drawn larger than the tile so the finger does not hide it.
-      const { x, y } = gridToWorld(previewTile, angle);
+      const { x, y } = gridToWorld(previewTile);
       const preview = new Graphics().poly(diamond).fill({ color: 0xffffff, alpha: 0.3 }).stroke({ width: 6, color: 0xffffff });
       preview.position.set(x, y);
       preview.scale.set(1.15);
@@ -688,7 +683,7 @@ export function Board({
       created.push(preview);
     }
     markers.forEach(({ position, label }) => {
-      const { x, y } = gridToWorld(position, angle);
+      const { x, y } = gridToWorld(position);
       const marker = new Container();
       marker.position.set(x, y);
       marker.addChild(new Graphics().circle(0, 0, 16).fill(0xff8a3d).stroke({ width: 2, color: 0x12161c }));
@@ -700,7 +695,7 @@ export function Board({
     });
     zoneLabels.forEach(({ position, text }) => {
       // Above the token's head, so the label is not hidden by the Hero.
-      const { x, y } = gridToWorld(position, angle);
+      const { x, y } = gridToWorld(position);
       const label = new Container();
       label.position.set(x, y - TILE_HEIGHT * 1.5);
       const caption = new Text({ text, style: { fill: 0x12161c, fontSize: 22, fontWeight: "700" } });
@@ -712,43 +707,43 @@ export function Board({
     // The oldest Placed Cover that goes gets a dashed amber outline, the tile of the new one a dashed teal one.
     for (const [tiles, color, text] of [[coverPlan.oldest, COVER_AMBER, "OLDEST · GOES"], [coverPlan.fresh, COVER_OWN, "NEW COVER HERE"]] as const) {
       for (const tile of tiles) {
-        const dashed = dashedTileOutline(tile, angle, color, strokeScale);
-        const tag = coverTag(text, color, tile, angle);
+        const dashed = dashedTileOutline(tile, color, strokeScale);
+        const tag = coverTag(text, color, tile);
         // Above the Cover, so the outline of the oldest piece is not hidden behind its own bars.
         overlayTop.addChild(dashed, tag);
         created.push(dashed, tag);
       }
     }
     for (const effectPath of effectPaths) {
-      const drawn = effectPathGraphics(effectPath, angle, strokeScale);
+      const drawn = effectPathGraphics(effectPath, strokeScale);
       overlay.addChild(drawn.ground);
       overlayTop.addChild(drawn.top);
       created.push(drawn.ground, drawn.top);
     }
     for (const ring of crossfireRings) {
-      const drawn = crossfireRingGraphics(ring, angle);
+      const drawn = crossfireRingGraphics(ring);
       overlay.addChild(drawn.ground);
       overlayTop.addChild(drawn.top);
       created.push(drawn.ground, drawn.top);
     }
     for (const targetLine of targetLines) {
-      const drawn = targetLineGraphics(targetLine, angle);
+      const drawn = targetLineGraphics(targetLine);
       overlay.addChild(drawn);
       created.push(drawn);
     }
     for (const shot of shotLines) {
-      const line = shotGraphics(shot, angle);
+      const line = shotGraphics(shot);
       overlay.addChild(line);
       created.push(line);
     }
     for (const path of paths) {
-      const drawn = pathGraphics(path, angle, strokeScale);
+      const drawn = pathGraphics(path, strokeScale);
       overlay.addChild(drawn.ground);
       overlayTop.addChild(drawn.top);
       created.push(drawn.ground, drawn.top);
     }
     for (const tile of collisionTiles) {
-      const cross = collisionCross(tile, angle);
+      const cross = collisionCross(tile);
       overlay.addChild(cross);
       created.push(cross);
     }
@@ -756,7 +751,7 @@ export function Board({
       cancelAnimationFrame(pulseFrame);
       created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [overlay, overlayTop, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, crossfireRings, effectPaths, coverPlan, paths, collisionTiles, strokeScale]);
+  }, [overlay, overlayTop, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, crossfireRings, effectPaths, coverPlan, paths, collisionTiles, strokeScale]);
 
   useEffect(() => {
     if (!tokens) return;
@@ -779,20 +774,20 @@ export function Board({
     const addToken = (hero: TokenHero, enemy: boolean) => {
       // An enemy that goes Hidden is not drawn at all (Fog of War); only its own Squad sees the ghost.
       if (enemy && !enemyIsDrawn(clips[hero.id])) return;
-      const { x, y } = gridToWorld(hero.position, angle);
+      const { x, y } = gridToWorld(hero.position);
       const token = new Container();
-      token.position.set(x, y + footOffset(angle));
-      token.zIndex = depthOf(hero.position, angle) + 0.5;
+      token.position.set(x, y + footOffset());
+      token.zIndex = depthOf(hero.position) + 0.5;
       const targetable = targetableIds.includes(hero.id);
       const slide = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? undefined : effects.find((cue) => (cue.kind === "knockback" || cue.kind === "pull") && cue.toId === hero.id);
       if ((slide?.kind === "knockback" || slide?.kind === "pull") && slide.from) {
         // The token starts on the tile it was pushed from and slides to the one the rules put it on.
-        const from = gridToWorld(slide.from, angle);
+        const from = gridToWorld(slide.from);
         slides.push({ token, fromX: from.x - x, fromY: from.y - y, startMs: slide.startMs });
       }
       const walkedFrom = walks[hero.id];
       if (walkedFrom !== undefined && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        const from = gridToWorld(walkedFrom, angle);
+        const from = gridToWorld(walkedFrom);
         glides.push({ token, fromX: from.x - x, fromY: from.y - y });
       }
       if (hero.id === selectedId) token.addChild(ring(0x2ec4b6));
@@ -883,7 +878,7 @@ export function Board({
     };
     for (const hero of heroes) {
       // A soft light on the floor around each own Hero.
-      const { x, y } = gridToWorld(hero.position, angle);
+      const { x, y } = gridToWorld(hero.position);
       const { color, alpha, rings } = TERRAIN_STYLE.heroLight;
       const light = new Graphics();
       for (let ring = 1; ring <= rings; ring++) {
@@ -950,9 +945,9 @@ export function Board({
       cancels.forEach((cancel) => cancel());
       created.forEach((token) => token.destroy({ children: true }));
     };
-  }, [tokens, angle, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, walks, aims, effects, shotLines, marks, coverGrid]);
+  }, [tokens, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, walks, aims, effects, shotLines, marks, coverGrid]);
 
-  // The effects of the attacks of the frame being shown. They read the latest Heroes and angle from refs, so a redraw of
+  // The effects of the attacks of the frame being shown. They read the latest Heroes from refs, so a redraw of
   // the tokens does not restart them; a new frame (a new `effects` array) does.
   const effectsLayer = useRef<EffectsLayer | undefined>(undefined);
   useEffect(() => {
@@ -969,8 +964,8 @@ export function Board({
     if (!layer || !effectsHost) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const tile = (position: GridPosition) => {
-      const { x, y } = gridToWorld(position, angleRef.current);
-      return { x, y: y + footOffset(angleRef.current) };
+      const { x, y } = gridToWorld(position);
+      return { x, y: y + footOffset() };
     };
     const world: EffectsWorld = {
       place: (id) => {
@@ -978,7 +973,7 @@ export function Board({
         return hero && tile(hero.position);
       },
       tile,
-      builtCover: (position, grow) => coverLook(position, "half", true, angleRef.current, grow),
+      builtCover: (position, grow) => coverLook(position, "half", true, grow),
       own: (id) => !enemyIdsRef.current.has(id),
     };
     layer.play(effects, frameClock.current, world, reduced);
@@ -999,7 +994,7 @@ export function Board({
   const [fogClouds, setFogClouds] = useState<FogClouds>();
   useEffect(() => {
     if (!fogLayer) return;
-    const clouds = new FogClouds(coverGrid, angleRef.current, window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    const clouds = new FogClouds(coverGrid, window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     fogLayer.addChild(clouds.container);
     setFogClouds(clouds);
     return () => {
@@ -1007,7 +1002,6 @@ export function Board({
       clouds.destroy();
     };
   }, [fogLayer, coverGrid.width, coverGrid.height]);
-  useEffect(() => fogClouds?.setAngle(angle), [fogClouds, angle]);
   // The fog is the Squad's own sight only. A Scout Drone area fades the fog out (or back in when it ends) over the area's own timing.
   const fogAreaSeen = useRef(new Map<string, { center: GridPosition; size: number }>());
   useEffect(() => {
@@ -1134,11 +1128,11 @@ export function Board({
       visibleTiles,
       heroes.map((hero) => hero.position),
     );
-    const created: Container[] = drawTerrain({ floor, objects, planning }, { grid, angle, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover });
+    const created: Container[] = drawTerrain({ floor, objects, planning }, { grid, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover });
 
     // The Prime Zone tint (grey, teal, gold, amber, red); our Squad holding it sends a ring over the zone.
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const zone = drawZone(planning, grid, angle, { color: zoneColor, alpha: zoneAlpha, emblemAlpha: zoneEmblemAlpha });
+    const zone = drawZone(planning, grid, { color: zoneColor, alpha: zoneAlpha, emblemAlpha: zoneEmblemAlpha });
     const zoneTiles = zone.tiles;
     created.push(...zone.created);
     const animated: ((now: number) => void)[] = [];
@@ -1156,7 +1150,7 @@ export function Board({
       if (!reducedMotion) idle.push(setBorder);
     }
     if (zoneRingOn && zoneTiles.length > 0) {
-      const middle = gridToWorld({ col: zoneTiles.reduce((sum, tile) => sum + tile.col, 0) / zoneTiles.length, row: zoneTiles.reduce((sum, tile) => sum + tile.row, 0) / zoneTiles.length }, angle);
+      const middle = gridToWorld({ col: zoneTiles.reduce((sum, tile) => sum + tile.col, 0) / zoneTiles.length, row: zoneTiles.reduce((sum, tile) => sum + tile.row, 0) / zoneTiles.length });
       const zoneRing = new Graphics().ellipse(0, 0, TILE_WIDTH * 1.4, TILE_HEIGHT * 1.4).stroke({ width: 3, color: zoneColor });
       zoneRing.position.set(middle.x, middle.y);
       planning.addChild(zoneRing);
@@ -1182,11 +1176,11 @@ export function Board({
       const key = `${center.col},${center.row},${size}`;
       seenNow.set(key, { center, size });
       const plays = !reducedMotion && !areaSeen.current.has(key);
-      const area = drawScoutArea(planning, grid, angle, { center, size, remaining }, (tile) => areaRing(center, tile));
+      const area = drawScoutArea(planning, grid, { center, size, remaining }, (tile) => areaRing(center, tile));
       created.push(...area.created);
       // The drone circles over the area and scans; it hangs still with reduced motion.
-      const drone = scoutDroneMark(center, size, angle, reducedMotion);
-      drone.container.zIndex = depthOf(center, angle) + size;
+      const drone = scoutDroneMark(center, size, reducedMotion);
+      drone.container.zIndex = depthOf(center) + size;
       objects.addChild(drone.container);
       created.push(drone.container);
       drone.update(0);
@@ -1201,8 +1195,8 @@ export function Board({
     }
     // Areas the enemy scans: a dashed amber outline with a sweep and the Resolutions left.
     for (const { center, size, remaining } of scannedAreas) {
-      const mark = scannedMark(center, size, remaining, angle, reducedMotion);
-      mark.container.zIndex = depthOf(center, angle) + size;
+      const mark = scannedMark(center, size, remaining, reducedMotion);
+      mark.container.zIndex = depthOf(center) + size;
       objects.addChild(mark.container);
       created.push(mark.container);
       mark.update(0);
@@ -1216,8 +1210,8 @@ export function Board({
         for (let row = center.row - reach; row <= center.row + reach; row++) {
           for (let col = center.col - reach; col <= center.col + reach; col++) {
             if (tileAt(grid, { col, row }) === undefined) continue;
-            const { x, y } = gridToWorld({ col, row }, angle);
-            const tint = new Graphics().poly(floorOutline(angle)).fill({ color: areaColorOf(size), alpha: 0.28 });
+            const { x, y } = gridToWorld({ col, row });
+            const tint = new Graphics().poly(floorOutline()).fill({ color: areaColorOf(size), alpha: 0.28 });
             tint.position.set(x, y);
             planning.addChild(tint);
             created.push(tint);
@@ -1244,12 +1238,12 @@ export function Board({
       cancelAnimationFrame(effectFrame);
       created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [terrain, angle, strokeScale, aiming, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
+  }, [terrain, strokeScale, aiming, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
 
   // The laser walls of the Prime Zone: closed while it is inactive (they show through the fog), a short flicker when it opens.
   useEffect(() => {
     if (!wallsLayer || !terrain) return;
-    const drawn = drawLaserWalls(wallsLayer, REACTOR_DECK, angle);
+    const drawn = drawLaserWalls(wallsLayer, REACTOR_DECK);
     const flicker = wallsWereUp.current && !primeWalls && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     wallsWereUp.current = primeWalls;
     if (!primeWalls && !flicker) {
@@ -1273,7 +1267,7 @@ export function Board({
       cancelAnimationFrame(frame);
       drawn.created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [wallsLayer, terrain, angle, primeWalls]);
+  }, [wallsLayer, terrain, primeWalls]);
 
   useEffect(() => {
     const element = host.current;
@@ -1317,7 +1311,7 @@ export function Board({
       setTerrain({ floor, objects, planning, atlas });
 
       // Pixel art zooms in whole steps, except in the overview, which always shows the whole board as large as fits.
-      const size = (): CameraView => ({ width: app.screen.width, height: app.screen.height, angle: angleRef.current, pixel: !overview });
+      const size = (): CameraView => ({ width: app.screen.width, height: app.screen.height, pixel: !overview });
       // The start framing: the own Squad and the Prime Zone, never an enemy (Fog of War).
       const startFraming = (): Camera => {
         const view = size();
@@ -1333,14 +1327,9 @@ export function Board({
       };
       // Eases to a camera in FRAME_MS; jumps when the player prefers reduced motion.
       let animation: number | undefined;
-      // Set while a turn is animating; cancelling the animation then snaps to the turn's end view.
-      let finishTurn: (() => void) | undefined;
       const stopAnimation = () => {
         if (animation !== undefined) cancelAnimationFrame(animation);
         animation = undefined;
-        const finish = finishTurn;
-        finishTurn = undefined;
-        finish?.();
       };
       const animateTo = (target: Camera) => {
         stopAnimation();
@@ -1366,41 +1355,11 @@ export function Board({
         framing = takeOverFraming(framing);
         setCamera(next);
       };
-      // Turns the board one step (the angle rests in 0..359; a cancelled turn snaps to its end view). The terrain is
-      // redrawn at the in-between angles; the camera is refitted (or, when zoomed, kept on the same tile) each frame.
-      const showAngle = (next: number) => {
-        const turned = turnCamera(camera, size(), next);
-        angleRef.current = next;
-        setAngle(next);
-        setCamera(turned);
-      };
-      const turnBy = (steps: 1 | -1) => {
-        stopAnimation(); // finishes a turn still running, so `from` is a resting view
-        framing = takeOverFraming(framing);
-        const from = angleRef.current;
-        const end = turnView(from, steps);
-        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return showAngle(end);
-        finishTurn = () => showAngle(end);
-        const start = performance.now();
-        const step = (now: number) => {
-          const t = Math.min((now - start) / FRAME_MS, 1);
-          if (t < 1) {
-            showAngle(from + steps * VIEW_STEP * (1 - (1 - t) ** 3));
-            animation = requestAnimationFrame(step);
-          } else {
-            animation = undefined;
-            finishTurn = undefined;
-            showAngle(end);
-          }
-        };
-        animation = requestAnimationFrame(step);
-      };
       cameraControl.current = {
-        turn: turnBy,
         toggle: () => {
           const hero = candidatesRef.current.heroes.find((h) => h.id === selectedIdRef.current);
           if (isZoomed(camera, size()) || !hero) setCameraByHand(fitCamera(size()));
-          else setCameraByHand(zoomOnPoint(gridToWorld(hero.position, angleRef.current), size()));
+          else setCameraByHand(zoomOnPoint(gridToWorld(hero.position), size()));
         },
         frame: (hero) => {
           framing ??= beginMoveFraming(camera);
@@ -1416,7 +1375,7 @@ export function Board({
         heroScreenRef.current = (heroId) => {
           const hero = candidatesRef.current.heroes.find((h) => h.id === heroId);
           if (!hero) return undefined;
-          const world = gridToWorld(hero.position, angleRef.current);
+          const world = gridToWorld(hero.position);
           const rect = app.canvas.getBoundingClientRect();
           return { x: rect.left + world.x * camera.scale + camera.x, y: rect.top + world.y * camera.scale + camera.y };
         };
@@ -1424,12 +1383,12 @@ export function Board({
 
       const pick = (viewX: number, viewY: number) => {
         const { x, y } = viewToWorld(viewX, viewY, app.screen.width, app.screen.height, undefined, camera);
-        return { x, y, target: resolveTap(x, y, candidatesRef.current, undefined, angleRef.current, camera.scale) };
+        return { x, y, target: resolveTap(x, y, candidatesRef.current, undefined, camera.scale) };
       };
       pickRef.current = ({ x: clientX, y: clientY }) => {
         const rect = app.canvas.getBoundingClientRect();
         const { x, y, target } = pick(clientX - rect.left, clientY - rect.top);
-        return { target, ground: pickTileAt(x, y, undefined, angleRef.current) };
+        return { target, ground: pickTileAt(x, y, undefined) };
       };
       // Fingers (or the mouse button) currently down, by pointer id; two of them pinch, one pans a zoomed board.
       const down = new Map<number, { x: number; y: number }>();
@@ -1447,7 +1406,7 @@ export function Board({
           dragged = false;
           dragStart = { x: event.global.x, y: event.global.y };
           const { x, y, target } = pick(event.global.x, event.global.y);
-          setPressed(target.kind === "tile" ? target.tile : pickTileAt(x, y, undefined, angleRef.current));
+          setPressed(target.kind === "tile" ? target.tile : pickTileAt(x, y, undefined));
         } else {
           suppressTap = true;
           setPressed(undefined);

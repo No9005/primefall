@@ -1,5 +1,5 @@
 import type { GridPosition } from "game-core";
-import { gridToWorld, VIEW_ANGLE } from "./terrain";
+import { gridToWorld } from "./terrain";
 
 /** The way a Hero faces on the screen. */
 export type Facing = "left" | "right";
@@ -13,8 +13,8 @@ export function baseFacing(enemy: boolean): Facing {
  * The facing of a Hero after a Step from one tile to another: the screen direction of the step. A step that does not move
  * the Hero sideways on the screen (straight up or down it) keeps the current facing.
  */
-export function facingAfterStep(from: GridPosition, to: GridPosition, current: Facing, angle: number = VIEW_ANGLE): Facing {
-  const dx = gridToWorld(to, angle).x - gridToWorld(from, angle).x;
+export function facingAfterStep(from: GridPosition, to: GridPosition, current: Facing): Facing {
+  const dx = gridToWorld(to).x - gridToWorld(from).x;
   // Rounded so that float noise of a step straight up the screen does not turn the Hero.
   if (Math.abs(dx) < 1e-6) return current;
   return dx < 0 ? "left" : "right";
@@ -35,15 +35,14 @@ export function turnHeroes(
   facings: Map<string, Facing>,
   frame: { walks: Readonly<Record<string, GridPosition>>; aims: Readonly<Record<string, string>> },
   heroOf: (heroId: string) => FacingHero | undefined,
-  angle: number = VIEW_ANGLE,
 ): void {
   for (const [id, from] of Object.entries(frame.walks)) {
     const hero = heroOf(id);
-    if (hero) facings.set(id, facingAfterStep(from, hero.position, facings.get(id) ?? baseFacing(hero.enemy), angle));
+    if (hero) facings.set(id, facingAfterStep(from, hero.position, facings.get(id) ?? baseFacing(hero.enemy)));
   }
   for (const [id, targetId] of Object.entries(frame.aims)) {
     const hero = heroOf(id);
     const target = heroOf(targetId);
-    if (hero && target) facings.set(id, facingAfterStep(hero.position, target.position, facings.get(id) ?? baseFacing(hero.enemy), angle));
+    if (hero && target) facings.set(id, facingAfterStep(hero.position, target.position, facings.get(id) ?? baseFacing(hero.enemy)));
   }
 }

@@ -1,45 +1,31 @@
 import { coverAt, CoverKind, destroyCover, type Grid, type GridPosition, isWreck, REACTOR_DECK, TileKind, withTile, withWreck } from "game-core";
 import { PIECE_OUTLINE_WIDTH, PIECE_SHAPE, type PieceStyle, TERRAIN_STYLE } from "./terrain-style";
 
-// The terrain as shapes: the grid and a view angle in, drawing primitives out (floor polygons, and for each
+// The terrain as shapes: the grid in, drawing primitives out (floor polygons, and for each
 // standing piece its top and two visible side faces). Pure; the Pixi code only fills the polygons.
 // 2:1 projection with 128 x 64 px tiles (asset contract, skill isometric-grid-math).
 
 export const TILE_WIDTH = 128;
 export const TILE_HEIGHT = 64;
 
-/** The view angle the camera starts in, in degrees: today's diamond. */
-export const VIEW_ANGLE = 45;
-
-/** Degrees between two neighbouring views; there are eight. */
-export const VIEW_STEP = 45;
-
-/** The view one step to the right (`1`) or left (`-1`) of `angle`. */
-export function turnView(angle: number, steps: 1 | -1): number {
-  return (((angle + steps * VIEW_STEP) % 360) + 360) % 360;
+/** Centre of a tile in world pixels. */
+export function gridToWorld({ col, row }: GridPosition): { x: number; y: number } {
+  return PROJECTION.point(col, row);
 }
 
-/** Centre of a tile in world pixels at a view angle. */
-export function gridToWorld({ col, row }: GridPosition, angle: number = VIEW_ANGLE): { x: number; y: number } {
-  return projection(angle).point(col, row);
+/** Tile units (col, row as fractions) under a world point; the inverse of `gridToWorld`. */
+export function worldToGrid(x: number, y: number): { col: number; row: number } {
+  return { col: (x / (TILE_WIDTH / 2) + y / (TILE_HEIGHT / 2)) / 2, row: (y / (TILE_HEIGHT / 2) - x / (TILE_WIDTH / 2)) / 2 };
 }
 
-/** Tile units (col, row as fractions) under a world point at a view angle; the inverse of `gridToWorld`. */
-export function worldToGrid(x: number, y: number, angle: number = VIEW_ANGLE): { col: number; row: number } {
-  const turnedCol = (x / (TILE_WIDTH / 2) + y / (TILE_HEIGHT / 2)) / 2;
-  const turnedRow = (y / (TILE_HEIGHT / 2) - x / (TILE_WIDTH / 2)) / 2;
-  const { cos, sin } = turnOf(angle);
-  return { col: turnedCol * cos + turnedRow * sin, row: -turnedCol * sin + turnedRow * cos };
+/** Distance from the viewer of a tile: larger is nearer, so drawing in this order puts nearer things on top. */
+export function depthOf({ col, row }: GridPosition): number {
+  return PROJECTION.depth(col, row);
 }
 
-/** Distance from the viewer of a tile at a view angle: larger is nearer, so drawing in this order puts nearer things on top. */
-export function depthOf({ col, row }: GridPosition, angle: number = VIEW_ANGLE): number {
-  return projection(angle).depth(col, row);
-}
-
-/** The floor polygon of a tile (flat x, y pairs) relative to the tile's centre, at a view angle. */
-export function floorOutline(angle: number): number[] {
-  const proj = projection(angle);
+/** The floor polygon of a tile (flat x, y pairs) relative to the tile's centre. */
+export function floorOutline(): number[] {
+  const proj = PROJECTION;
   return [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]].flatMap(([c, r]) => {
     const p = proj.point(c!, r!);
     return [p.x, p.y];
@@ -50,21 +36,16 @@ export function floorOutline(angle: number): number[] {
  * Distance in world pixels from a tile's centre down to where a Hero token stands: a little below the centre, so the feet
  * rest on the middle of the tile (not on its lower vertex, which would put the figure in front of the tile).
  */
-export function footOffset(angle: number): number {
-  const proj = projection(angle);
+export function footOffset(): number {
+  const proj = PROJECTION;
   const lowerVertex = Math.max(...[-0.5, 0.5].flatMap((c) => [-0.5, 0.5].map((r) => proj.point(c, r).y)));
   return lowerVertex * 0.25;
 }
 
-/** The four outer corners of the grid's footprint in world pixels at a view angle. */
-export function footprintCorners({ width, height }: Grid, angle: number): { x: number; y: number }[] {
-  const proj = projection(angle);
+/** The four outer corners of the grid's footprint in world pixels. */
+export function footprintCorners({ width, height }: Grid): { x: number; y: number }[] {
+  const proj = PROJECTION;
   return [proj.point(-0.5, -0.5), proj.point(width - 0.5, -0.5), proj.point(width - 0.5, height - 0.5), proj.point(-0.5, height - 0.5)];
-}
-
-function turnOf(angle: number): { cos: number; sin: number } {
-  const turn = ((angle - VIEW_ANGLE) * Math.PI) / 180;
-  return { cos: Math.cos(turn), sin: Math.sin(turn) };
 }
 
 interface Projection {
@@ -74,21 +55,11 @@ interface Projection {
   depth: (col: number, row: number) => number;
 }
 
-/** The board turned from `VIEW_ANGLE` to `angle` about the grid origin; at `VIEW_ANGLE` it is `gridToWorld`. */
-function projection(angle: number): Projection {
-  const { cos, sin } = turnOf(angle);
-  const turned = (col: number, row: number) => ({ col: col * cos - row * sin, row: col * sin + row * cos });
-  return {
-    point: (col, row, lift = 0) => {
-      const t = turned(col, row);
-      return { x: ((t.col - t.row) * TILE_WIDTH) / 2, y: ((t.col + t.row) * TILE_HEIGHT) / 2 - lift };
-    },
-    depth: (col, row) => {
-      const t = turned(col, row);
-      return t.col + t.row;
-    },
-  };
-}
+/** The 2:1 diamond projection of the grid. */
+const PROJECTION: Projection = {
+  point: (col, row, lift = 0) => ({ x: ((col - row) * TILE_WIDTH) / 2, y: ((col + row) * TILE_HEIGHT) / 2 - lift }),
+  depth: (col, row) => col + row,
+};
 
 export enum FaceRole {
   Floor = "floor",
@@ -282,8 +253,8 @@ function pieceFaces(proj: Projection, position: GridPosition, choice: PieceChoic
 }
 
 /** Every tile of the grid as drawing primitives, sorted so that nearer tiles come last. */
-export function buildTerrain(grid: Grid, angle: number = VIEW_ANGLE, lit?: ReadonlySet<string>): TerrainTile[] {
-  const proj = projection(angle);
+export function buildTerrain(grid: Grid, lit?: ReadonlySet<string>): TerrainTile[] {
+  const proj = PROJECTION;
   const tiles: TerrainTile[] = [];
   grid.tiles.forEach((line, row) =>
     line.forEach((kind, col) => {
@@ -325,11 +296,11 @@ function insideConvex(points: readonly number[], x: number, y: number): boolean 
  * The Wall whose drawn silhouette (top and side faces) contains a world point. A Wall stands in front of the
  * tiles behind it, so the nearest one wins; of two equally near ones, the one the point is horizontally closer to.
  */
-export function pickWallAt(x: number, y: number, grid: Grid, angle: number = VIEW_ANGLE): GridPosition | undefined {
+export function pickWallAt(x: number, y: number, grid: Grid): GridPosition | undefined {
   let best: { position: GridPosition; depth: number; offset: number } | undefined;
-  for (const tile of buildTerrain(grid, angle)) {
+  for (const tile of buildTerrain(grid)) {
     if (tile.kind !== TileKind.Wall || !tile.piece?.some((face) => insideConvex(face.points, x, y))) continue;
-    const offset = Math.abs(x - gridToWorld(tile.position, angle).x);
+    const offset = Math.abs(x - gridToWorld(tile.position).x);
     if (!best || tile.depth > best.depth || (tile.depth === best.depth && offset < best.offset)) best = { position: tile.position, depth: tile.depth, offset };
   }
   return best?.position;
@@ -426,9 +397,9 @@ function stripesOn(face: number[]): number[][] {
   return bands;
 }
 
-/** The look of a Cover tile at a view angle; `built` is Cover a Hero placed (bars), otherwise the map's own (panels). */
-export function coverLook(position: GridPosition, kind: "full" | "half", built: boolean, angle: number = VIEW_ANGLE, grow = 1): CoverLook {
-  const proj = projection(angle);
+/** The look of a Cover tile; `built` is Cover a Hero placed (bars), otherwise the map's own (panels). */
+export function coverLook(position: GridPosition, kind: "full" | "half", built: boolean, grow = 1): CoverLook {
+  const proj = PROJECTION;
   const { col, row } = position;
   const colors = TERRAIN_STYLE.coverLook;
   const edges = [
@@ -449,7 +420,7 @@ export function coverLook(position: GridPosition, kind: "full" | "half", built: 
     look.plinth = boxFaces(proj, whole, COVER_LOOK.plinth * GAME_PX, plinthStyle, 1);
     const lift = COVER_LOOK.plinth * GAME_PX;
     const height = COVER_LOOK.natural[kind] * GAME_PX;
-    // One panel across the front of the tile, level on the screen at every view angle, drawn above the Heroes on the tile:
+    // One panel across the front of the tile, level on the screen, drawn above the Heroes on the tile:
     // a Hero standing on Cover is hidden behind it.
     const front = edges.filter((edge) => {
       const middle = proj.point(col + (edge.from[0] + edge.to[0]) / 2, row + (edge.from[1] + edge.to[1]) / 2);
@@ -513,8 +484,8 @@ export interface CoverMark {
 }
 
 /** One mark per standing piece of natural Cover (Exhausted Hero wrecks and built Cover have none). */
-export function coverMarks(grid: Grid, angle: number = VIEW_ANGLE, built: ReadonlySet<string> = new Set()): CoverMark[] {
-  const proj = projection(angle);
+export function coverMarks(grid: Grid, built: ReadonlySet<string> = new Set()): CoverMark[] {
+  const proj = PROJECTION;
   return grid.tiles.flatMap((line, row) =>
     line.flatMap((tileKind, col) => {
       const kind = tileKind === TileKind.FullCover ? "full" : tileKind === TileKind.HalfCover ? "half" : undefined;

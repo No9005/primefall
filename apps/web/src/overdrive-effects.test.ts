@@ -150,7 +150,7 @@ describe("drawing the Overdrive effects", () => {
     place: (id) => ({ x: id === "a" ? 0 : 128, y: id === "g" ? 40 : 0 }),
     tile: ({ col, row }) => ({ x: col * 64, y: row * 32 }),
     own: (id) => id === "a",
-    builtCover: (position, grow) => coverLook(position, "half", true, undefined, grow),
+    builtCover: (position, grow) => coverLook(position, "half", true, grow),
   };
   const cues: EffectCue[] = [
     { kind: "aura", heroId: "a", endMs: 1200 },

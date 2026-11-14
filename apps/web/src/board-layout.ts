@@ -1,7 +1,7 @@
 import { REACTOR_DECK, type Grid, type GridPosition } from "game-core";
 import type { Rect } from "./card-drag";
 import { HERO_WORLD_HEIGHT } from "./hero-style";
-import { footprintCorners, gridToWorld, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE, worldToGrid } from "./terrain";
+import { footprintCorners, gridToWorld, pickWallAt, TILE_HEIGHT, TILE_WIDTH, worldToGrid } from "./terrain";
 
 // Pure layout of the isometric board: camera, zoom and pan, and what a tap picks.
 // The terrain shapes and the projection are in terrain.ts.
@@ -20,16 +20,16 @@ export interface Camera {
 }
 
 /** World rectangle covering every tile footprint of the grid plus the height of tall props. */
-export function boardBounds(grid: Grid, angle: number = VIEW_ANGLE): { left: number; right: number; top: number; bottom: number } {
-  const corners = footprintCorners(grid, angle);
+export function boardBounds(grid: Grid): { left: number; right: number; top: number; bottom: number } {
+  const corners = footprintCorners(grid);
   const xs = corners.map((corner) => corner.x);
   const ys = corners.map((corner) => corner.y);
   return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys) - PROP_HEIGHT, bottom: Math.max(...ys) };
 }
 
-/** Scale and offset of the world container so the whole board is shown at a view angle, as large as fits, centred. */
-export function computeCamera(viewWidth: number, viewHeight: number, grid: Grid = REACTOR_DECK, angle: number = VIEW_ANGLE): Camera {
-  const bounds = boardBounds(grid, angle);
+/** Scale and offset of the world container so the whole board is shown, as large as fits, centred. */
+export function computeCamera(viewWidth: number, viewHeight: number, grid: Grid = REACTOR_DECK): Camera {
+  const bounds = boardBounds(grid);
   const boardWidth = bounds.right - bounds.left;
   const boardHeight = bounds.bottom - bounds.top;
   const scale = Math.min(viewWidth / boardWidth, viewHeight / boardHeight) * (1 - 2 * CAMERA_MARGIN);
@@ -47,11 +47,11 @@ export const HERO_PICK_TOLERANCE = 0.75;
  * The tile under a world point, or undefined outside the grid. A Wall stands in front of the tiles behind it,
  * so a point on a drawn Wall (top or side faces) picks the Wall's tile (the nearest one wins), not the floor it hides.
  */
-export function pickTileAt(x: number, y: number, grid: Grid = REACTOR_DECK, angle: number = VIEW_ANGLE): GridPosition | undefined {
-  const wall = pickWallAt(x, y, grid, angle);
+export function pickTileAt(x: number, y: number, grid: Grid = REACTOR_DECK): GridPosition | undefined {
+  const wall = pickWallAt(x, y, grid);
   if (wall) return wall;
   // A tile is a unit square in grid space, which is exactly its floor polygon on screen.
-  const fraction = worldToGrid(x, y, angle);
+  const fraction = worldToGrid(x, y);
   const tile = { col: Math.round(fraction.col) + 0, row: Math.round(fraction.row) + 0 }; // + 0 turns -0 into 0
   const inside = tile.col >= 0 && tile.row >= 0 && tile.col < grid.width && tile.row < grid.height;
   return inside ? tile : undefined;
@@ -79,8 +79,6 @@ export interface CameraView {
   width: number;
   height: number;
   grid?: Grid;
-  /** View angle in degrees; the diagonal view when missing. */
-  angle?: number;
   /** Pixel art: the zoom rests on whole-number steps of the art (`PIXEL_ZOOMS`), so a pixel stays a whole number of screen pixels. */
   pixel?: boolean;
 }
@@ -98,7 +96,7 @@ export function pixelStepScale(scale: number): number {
 }
 
 export function fitCamera(view: CameraView): Camera {
-  const fitted = computeCamera(view.width, view.height, view.grid, view.angle);
+  const fitted = computeCamera(view.width, view.height, view.grid);
   if (!view.pixel) return fitted;
   // The whole board at a whole-number zoom: the largest step that fits (0.5x at least), centred.
   const scale = pixelStepScale(fitted.scale);
@@ -111,20 +109,6 @@ export function isZoomed(camera: Camera, view: CameraView): boolean {
   return camera.scale > fitCamera(view).scale * 1.001;
 }
 
-/**
- * The camera after turning the board from `view.angle` to `toAngle`. Fitted stays fitted; a zoomed camera keeps
- * its zoom (relative to the fitted scale) and the tile in the middle of the view stays in the middle.
- */
-export function turnCamera(camera: Camera, view: CameraView, toAngle: number): Camera {
-  const from = fitCamera(view);
-  const to = fitCamera({ ...view, angle: toAngle });
-  if (!isZoomed(camera, view)) return to;
-  const centre = worldToGrid((view.width / 2 - camera.x) / camera.scale, (view.height / 2 - camera.y) / camera.scale, view.angle);
-  const middle = gridToWorld(centre, toAngle);
-  const scale = (camera.scale / from.scale) * to.scale;
-  return clampCamera({ scale, x: view.width / 2 - middle.x * scale, y: view.height / 2 - middle.y * scale }, { ...view, angle: toAngle });
-}
-
 /** Keeps the scale within fitted..MAX_ZOOM times fitted and the view within the board plus its margin (centred when the board is smaller than the view). */
 export function clampCamera(camera: Camera, view: CameraView): Camera {
   return clampCameraIn(camera, view, { left: 0, top: 0, right: view.width, bottom: view.height });
@@ -132,11 +116,11 @@ export function clampCamera(camera: Camera, view: CameraView): Camera {
 
 /** Like clampCamera, but the board only has to cover `area` (a part of the view) instead of the whole view. */
 function clampCameraIn(camera: Camera, view: CameraView, area: Rect): Camera {
-  const { grid = REACTOR_DECK, angle } = view;
+  const { grid = REACTOR_DECK } = view;
   const fitted = fitCamera(view);
   const clamped = Math.min(Math.max(camera.scale, fitted.scale), view.pixel ? PIXEL_MAX_SCALE : fitted.scale * MAX_ZOOM);
   const scale = view.pixel ? Math.max(pixelStepScale(clamped), fitted.scale) : clamped;
-  const bounds = boardBounds(grid, angle);
+  const bounds = boardBounds(grid);
   const marginX = (bounds.right - bounds.left) * CAMERA_MARGIN;
   const marginY = (bounds.bottom - bounds.top) * CAMERA_MARGIN;
   return {
@@ -189,7 +173,7 @@ export function zoomOnPoint(world: { x: number; y: number }, view: CameraView): 
  */
 export function frameMoveCamera(hero: GridPosition, highlights: readonly GridPosition[], view: CameraView, free?: Rect): Camera {
   const area = free ?? { left: 0, top: 0, right: view.width, bottom: view.height };
-  const points = [hero, ...highlights].map((tile) => gridToWorld(tile, view.angle));
+  const points = [hero, ...highlights].map((tile) => gridToWorld(tile));
   const left = Math.min(...points.map((p) => p.x)) - TILE_WIDTH / 2 - TILE_WIDTH;
   const right = Math.max(...points.map((p) => p.x)) + TILE_WIDTH / 2 + TILE_WIDTH;
   const top = Math.min(...points.map((p) => p.y)) - TILE_HEIGHT / 2 - TILE_HEIGHT;
@@ -217,7 +201,7 @@ export function frameSquadCamera(heroes: readonly GridPosition[], zone: GridPosi
   const scale = view.pixel
     ? Math.max(fitted.scale, PIXEL_WORLD_SCALE)
     : Math.min(Math.max(fitted.scale * SQUAD_ZOOM, MIN_HERO_SCREEN_HEIGHT / HERO_WORLD_HEIGHT), fitted.scale * MAX_ZOOM);
-  const world = (tile: GridPosition) => gridToWorld(tile, view.angle);
+  const world = (tile: GridPosition) => gridToWorld(tile);
   const squadPoints = heroes.map(world);
   const squad = { x: average(squadPoints.map((p) => p.x)), y: average(squadPoints.map((p) => p.y)) };
   const zonePoint = world(zone);
@@ -310,16 +294,16 @@ export function resolveTap(
   x: number,
   y: number,
   { heroes, targetableIds, highlights }: TapCandidates,
-  ...optional: [grid?: Grid, angle?: number, scale?: number]
+  ...optional: [grid?: Grid, scale?: number]
 ): TapTarget {
-  const [grid = REACTOR_DECK, angle = VIEW_ANGLE, scale = 1] = optional;
-  const point = worldToGrid(x, y, angle);
+  const [grid = REACTOR_DECK, scale = 1] = optional;
+  const point = worldToGrid(x, y);
   const touchRadius = MIN_TOUCH_RADIUS / scale;
   let nearest: { id: string; distance: number } | undefined;
   for (const hero of heroes) {
     if (!targetableIds.includes(hero.id)) continue;
     const gridDistance = Math.hypot(point.col - hero.position.col, point.row - hero.position.row);
-    const centre = gridToWorld(hero.position, angle);
+    const centre = gridToWorld(hero.position);
     const pixelDistance = Math.hypot(x - centre.x, y - centre.y);
     if (gridDistance > HERO_PICK_TOLERANCE && pixelDistance > touchRadius) continue;
     // Rank by the distance in world pixels, which is what the finger sees.
@@ -329,17 +313,17 @@ export function resolveTap(
   // A highlighted tile is a valid target, so its floor diamond wins over a Wall sprite whose rectangle also covers the point.
   const floor = { col: Math.round(point.col) + 0, row: Math.round(point.row) + 0 };
   if (highlights.some((h) => h.col === floor.col && h.row === floor.row)) return { kind: "tile", tile: floor };
-  const tile = pickTileAt(x, y, grid, angle);
+  const tile = pickTileAt(x, y, grid);
   if (tile) {
     if (highlights.some((h) => h.col === tile.col && h.row === tile.row)) return { kind: "tile", tile };
     const hero = heroes.find((h) => h.position.col === tile.col && h.position.row === tile.row);
     if (hero) return { kind: "hero", id: hero.id };
   }
-  return nearestHighlight(x, y, highlights, touchRadius, angle);
+  return nearestHighlight(x, y, highlights, touchRadius);
 }
 
 /** The highlighted tile whose floor is nearest to the point, if within the radius (world pixels). */
-function nearestHighlight(x: number, y: number, highlights: readonly GridPosition[], radius: number, angle: number): TapTarget {
+function nearestHighlight(x: number, y: number, highlights: readonly GridPosition[], radius: number): TapTarget {
   let best: { tile: GridPosition; distance: number } | undefined;
   for (const tile of highlights) {
     const corners = [
@@ -347,8 +331,8 @@ function nearestHighlight(x: number, y: number, highlights: readonly GridPositio
       { col: tile.col + 0.5, row: tile.row - 0.5 },
       { col: tile.col + 0.5, row: tile.row + 0.5 },
       { col: tile.col - 0.5, row: tile.row + 0.5 },
-    ].map((corner) => gridToWorld(corner, angle));
-    // Corners run clockwise on screen or not depending on the angle; the inside test needs one winding.
+    ].map((corner) => gridToWorld(corner));
+    // The inside test needs one winding of the corners.
     const distance = Math.min(distanceToPolygon({ x, y }, corners), distanceToPolygon({ x, y }, [...corners].reverse()));
     if (distance <= radius && (!best || distance < best.distance)) best = { tile, distance };
   }

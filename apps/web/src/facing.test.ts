@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { baseFacing, type Facing, type FacingHero, facingAfterStep, turnHeroes } from "./facing";
-import { VIEW_ANGLE } from "./terrain";
 
 describe("facing", () => {
   it("starts own Heroes right and enemy Heroes left", () => {
@@ -19,13 +18,9 @@ describe("facing", () => {
   it("keeps the facing when the step is straight up or down the screen", () => {
     const from = { col: 3, row: 3 };
     const to = { col: 4, row: 4 };
-    expect(facingAfterStep(from, to, "left", VIEW_ANGLE)).toBe("left");
-    expect(facingAfterStep(from, to, "right", VIEW_ANGLE)).toBe("right");
+    expect(facingAfterStep(from, to, "left")).toBe("left");
+    expect(facingAfterStep(from, to, "right")).toBe("right");
     expect(facingAfterStep(from, from, "left")).toBe("left");
-  });
-
-  it("follows the view angle", () => {
-    expect(facingAfterStep({ col: 1, row: 1 }, { col: 2, row: 1 }, "right", 135)).not.toBe(facingAfterStep({ col: 1, row: 1 }, { col: 2, row: 1 }, "right", 315));
   });
 });
 

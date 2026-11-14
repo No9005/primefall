@@ -60,7 +60,6 @@ export interface TerrainLayers {
 export interface TerrainInput {
   /** The map as the Squad knows it (destroyed Cover gone, placed Cover standing). */
   grid: Grid;
-  angle: number;
   strokeScale: number;
   /** The tiles the Squad sees (`litTiles`); Cover of the map is only drawn on those. */
   lit: ReadonlySet<string>;
@@ -84,8 +83,8 @@ export const COVER_OWN = 0x2ec4b6;
 const TAG_FONT = 9 * (128 / 46);
 
 /** Four corner marks on the tile of Placed Cover: an angle at each corner of the diamond, a third of the way along each edge. */
-export function coverCornerMarks(tile: GridPosition, angle: number, color: number, scale: number): Graphics {
-  const outline = floorOutline(angle);
+export function coverCornerMarks(tile: GridPosition, color: number, scale: number): Graphics {
+  const outline = floorOutline();
   const corners = [0, 1, 2, 3].map((i) => ({ x: outline[i * 2]! * 0.9, y: outline[i * 2 + 1]! * 0.9 }));
   const marks = new Graphics();
   corners.forEach((corner, i) => {
@@ -94,23 +93,23 @@ export function coverCornerMarks(tile: GridPosition, angle: number, color: numbe
     marks.moveTo(before.x, before.y).lineTo(corner.x, corner.y).lineTo(after.x, after.y);
   });
   marks.stroke({ width: Math.max(4, 4.5 / scale), color, alpha: 0.95, cap: "round", join: "round" });
-  const { x, y } = gridToWorld(tile, angle);
+  const { x, y } = gridToWorld(tile);
   marks.position.set(x, y);
   return marks;
 }
 
 /** A small tag over a tile, in the style of the labels of the effects layer. */
-export function coverTag(text: string, color: number, tile: GridPosition, angle: number): Text {
+export function coverTag(text: string, color: number, tile: GridPosition): Text {
   const tag = new Text({ text, style: { fontFamily: "IBM Plex Mono", fontSize: TAG_FONT, fontWeight: "700", fill: color, stroke: { color: 0x0b1016, width: 3 } } });
   tag.anchor.set(0.5, 1);
-  const { x, y } = gridToWorld(tile, angle);
+  const { x, y } = gridToWorld(tile);
   tag.position.set(x, y - TILE_HEIGHT * 1.7);
   return tag;
 }
 
 /** The outline of a tile in dashes: the oldest Placed Cover that is going (amber) and the tile the new one will stand on (teal). */
-export function dashedTileOutline(tile: GridPosition, angle: number, color: number, scale: number): Graphics {
-  const outline = floorOutline(angle);
+export function dashedTileOutline(tile: GridPosition, color: number, scale: number): Graphics {
+  const outline = floorOutline();
   const outlineGraphics = new Graphics();
   for (let i = 0; i < 4; i++) {
     const from = { x: outline[i * 2]!, y: outline[i * 2 + 1]! };
@@ -118,20 +117,20 @@ export function dashedTileOutline(tile: GridPosition, angle: number, color: numb
     for (const run of dashRuns(from, to, 12, 8)) outlineGraphics.moveTo(run.from.x, run.from.y).lineTo(run.to.x, run.to.y);
   }
   outlineGraphics.stroke({ width: Math.max(3, 3 / scale), color, alpha: 0.95, cap: "round" });
-  const { x, y } = gridToWorld(tile, angle);
+  const { x, y } = gridToWorld(tile);
   outlineGraphics.position.set(x, y);
   return outlineGraphics;
 }
 
 /** Draws the floor, the Cover and the shield glyphs of the map; returns everything it made, for the caller to destroy. */
-export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid, angle, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover }: TerrainInput): Container[] {
+export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover }: TerrainInput): Container[] {
   const created: Container[] = [];
   const ownTiles = new Set((ownPlacedCover ?? placedCover).map((p) => `${p.col},${p.row}`));
   // Floor tiles share one shape layer; standing pieces are drawn per tile and sort with the Heroes by depth.
   const ground = new Graphics();
   floor.addChild(ground);
   created.push(ground);
-  for (const tile of buildTerrain(grid, angle, lit)) {
+  for (const tile of buildTerrain(grid, lit)) {
     if (!tile.lit) {
       // The baked floor is under this; the tiles the Squad does not see go dark.
       ground.poly(tile.floor.points).fill({ color: PIXEL_FOG.color, alpha: tile.kind === TileKind.PrimeZone ? PIXEL_FOG.landmarkAlpha : PIXEL_FOG.alpha });
@@ -145,12 +144,12 @@ export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid,
       // Fog of War: the map's own Cover is not drawn where the Squad does not see; it shows when the tile is revealed.
       // Cover a Hero placed is remembered and stays.
       if (!built && !tile.lit) continue;
-      const look = coverLook(tile.position, tile.kind === TileKind.FullCover ? "full" : "half", built, angle);
+      const look = coverLook(tile.position, tile.kind === TileKind.FullCover ? "full" : "half", built);
       drawCoverLook(piece, look, strokeScale);
       // Only the Squad's own Placed Cover is marked: it is the one a new placement can take (the oldest), and for a Hero in
       // cover it makes no difference whose Cover it is.
       if (built && ownTiles.has(`${tile.position.col},${tile.position.row}`)) {
-        const marks = coverCornerMarks(tile.position, angle, COVER_OWN, strokeScale);
+        const marks = coverCornerMarks(tile.position, COVER_OWN, strokeScale);
         // Above the bars of the Cover and below the Heroes (depth + 0.5), so the corners show round the foot of the piece.
         marks.zIndex = tile.depth + 0.2;
         objects.addChild(marks);
@@ -178,8 +177,8 @@ export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid,
       const isTile = (tile: GridPosition) => tile.col === col && tile.row === row;
       const destroyed = !placedCover.some(isTile) && destroyedCover.some(isTile);
       if (!destroyed) return;
-      const { x, y } = gridToWorld({ col, row }, angle);
-      const outline = new Graphics().poly(floorOutline(angle)).stroke({ width: 2, color: TERRAIN_STYLE.coverOutline.destroyed, alpha: 0.6 });
+      const { x, y } = gridToWorld({ col, row });
+      const outline = new Graphics().poly(floorOutline()).stroke({ width: 2, color: TERRAIN_STYLE.coverOutline.destroyed, alpha: 0.6 });
       outline.position.set(x, y);
       planning.addChild(outline);
       created.push(outline);
@@ -188,13 +187,13 @@ export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid,
 
   // A shield glyph sits above each piece of the map's own Cover.
   const builtTiles = new Set(placedCover.map((p) => `${p.col},${p.row}`));
-  for (const mark of coverMarks(grid, angle, builtTiles)) {
+  for (const mark of coverMarks(grid, builtTiles)) {
     if (!lit.has(`${mark.position.col},${mark.position.row}`)) continue;
     const glyph = shieldGlyph(mark.kind, strokeScale);
     glyph.position.set(mark.x, mark.y);
     // Above its own piece and the Heroes on it (depth + 0.9), under the pieces in front; not under the props, which lie on
     // the objects layer and would cut it off.
-    glyph.zIndex = depthOf(mark.position, angle) + 0.9;
+    glyph.zIndex = depthOf(mark.position) + 0.9;
     objects.addChild(glyph);
     created.push(glyph);
   }
@@ -211,15 +210,15 @@ export interface ZoneDrawing {
 }
 
 /** The Prime Zone: a tint on each tile, one outline around the outer edge with a glow under it, and a flat emblem on the middle. */
-export function drawZone(planning: Container, grid: Grid, angle: number, { color, alpha, emblemAlpha }: Pick<ZoneLook, "color" | "alpha" | "emblemAlpha">): ZoneDrawing {
+export function drawZone(planning: Container, grid: Grid, { color, alpha, emblemAlpha }: Pick<ZoneLook, "color" | "alpha" | "emblemAlpha">): ZoneDrawing {
   const created: Container[] = [];
   const tiles: GridPosition[] = [];
   grid.tiles.forEach((line, row) =>
     line.forEach((kind, col) => {
       if (kind !== TileKind.PrimeZone) return;
       tiles.push({ col, row });
-      const { x, y } = gridToWorld({ col, row }, angle);
-      const tint = new Graphics().poly(floorOutline(angle)).fill({ color, alpha });
+      const { x, y } = gridToWorld({ col, row });
+      const tint = new Graphics().poly(floorOutline()).fill({ color, alpha });
       tint.position.set(x, y);
       planning.addChild(tint);
       created.push(tint);
@@ -230,12 +229,12 @@ export function drawZone(planning: Container, grid: Grid, angle: number, { color
   const rows = tiles.map((tile) => tile.row);
   const [minCol, maxCol, minRow, maxRow] = [Math.min(...cols) - 0.5, Math.max(...cols) + 0.5, Math.min(...rows) - 0.5, Math.max(...rows) + 0.5];
   const outer = [[minCol, minRow], [maxCol, minRow], [maxCol, maxRow], [minCol, maxRow]].flatMap(([col, row]) => {
-    const { x, y } = gridToWorld({ col: col!, row: row! }, angle);
+    const { x, y } = gridToWorld({ col: col!, row: row! });
     return [x, y];
   });
   const glow = new Graphics().poly(outer).stroke({ width: 7, color, join: "round" });
   const border = new Graphics().poly(outer).stroke({ width: 3, color, join: "round" });
-  const middleTile = gridToWorld({ col: (minCol + maxCol) / 2, row: (minRow + maxRow) / 2 }, angle);
+  const middleTile = gridToWorld({ col: (minCol + maxCol) / 2, row: (minRow + maxRow) / 2 });
   const emblem = new Graphics()
     .ellipse(0, 0, TILE_WIDTH * 0.275, TILE_HEIGHT * 0.275)
     .stroke({ width: 2, color })
@@ -267,7 +266,7 @@ export interface LaserWallDrawing {
  * stand on the outline of the zone. Each tile edge is a translucent panel with a rim and a ring pattern; a post with a lamp stands
  * on every corner. A drawing only: the walls are not Cover and block neither sight nor movement.
  */
-export function drawLaserWalls(layer: Container, grid: Grid, angle: number): LaserWallDrawing {
+export function drawLaserWalls(layer: Container, grid: Grid): LaserWallDrawing {
   const created: Container[] = [];
   const panels: Graphics[] = [];
   const posts: Graphics[] = [];
@@ -276,7 +275,7 @@ export function drawLaserWalls(layer: Container, grid: Grid, angle: number): Las
   if (zone.length === 0) return { created, panels, posts };
   const [minCol, maxCol] = [Math.min(...zone.map((t) => t.col)) - 0.5, Math.max(...zone.map((t) => t.col)) + 0.5];
   const [minRow, maxRow] = [Math.min(...zone.map((t) => t.row)) - 0.5, Math.max(...zone.map((t) => t.row)) + 0.5];
-  const at = (col: number, row: number) => gridToWorld({ col, row }, angle);
+  const at = (col: number, row: number) => gridToWorld({ col, row });
   const edges: [number, number, number, number][] = [];
   for (let col = minCol; col < maxCol; col++) edges.push([col, minRow, col + 1, minRow], [col, maxRow, col + 1, maxRow]);
   for (let row = minRow; row < maxRow; row++) edges.push([minCol, row, minCol, row + 1], [maxCol, row, maxCol, row + 1]);
@@ -331,19 +330,19 @@ export function areaTilesOf(grid: Grid, center: GridPosition, size: number): Gri
 export const areaColorOf = (size: number): number => (size >= 5 ? OVERDRIVE_AREA_COLOR : AREA_COLOR);
 
 /** A Scout Drone area: its tiles in cyan (gold for the Overdrive 5 by 5) and two pips for the Resolutions it has left. */
-export function drawScoutArea(planning: Container, grid: Grid, angle: number, { center, size, remaining }: { center: GridPosition; size: number; remaining: number }, ringOf: (tile: GridPosition) => number): ScoutAreaDrawing {
+export function drawScoutArea(planning: Container, grid: Grid, { center, size, remaining }: { center: GridPosition; size: number; remaining: number }, ringOf: (tile: GridPosition) => number): ScoutAreaDrawing {
   const created: Container[] = [];
   const tints: ScoutAreaDrawing["tints"] = [];
   const color = areaColorOf(size);
   for (const tile of areaTilesOf(grid, center, size)) {
-    const { x, y } = gridToWorld(tile, angle);
-    const tint = new Graphics().poly(floorOutline(angle)).fill({ color, alpha: 0.28 }).stroke({ width: 1, color, alpha: 0.6 });
+    const { x, y } = gridToWorld(tile);
+    const tint = new Graphics().poly(floorOutline()).fill({ color, alpha: 0.28 }).stroke({ width: 1, color, alpha: 0.6 });
     tint.position.set(x, y);
     planning.addChild(tint);
     created.push(tint);
     tints.push({ tint, ring: ringOf(tile) });
   }
-  const top = gridToWorld(center, angle);
+  const top = gridToWorld(center);
   const pips = new Graphics();
   for (let pip = 0; pip < AREA_PIPS; pip++) pips.circle((pip - 0.5) * 12, 0, 3.5).fill({ color: AREA_COLOR, alpha: pip < remaining ? 1 : 0.25 }).stroke({ width: 1, color: 0x0b1016 });
   pips.position.set(top.x, top.y - TILE_HEIGHT * (Math.floor(size / 2) + 2.2));
@@ -355,11 +354,11 @@ export function drawScoutArea(planning: Container, grid: Grid, angle: number, { 
 type Point2 = { x: number; y: number };
 
 /** The four outer corners of an area (top, right, bottom, left on screen), relative to the world origin. */
-function areaCorners(center: GridPosition, size: number, angle: number): [Point2, Point2, Point2, Point2] {
+function areaCorners(center: GridPosition, size: number): [Point2, Point2, Point2, Point2] {
   const reach = Math.floor(size / 2);
-  const outline = floorOutline(angle);
+  const outline = floorOutline();
   const corner = (col: number, row: number, index: number): Point2 => {
-    const { x, y } = gridToWorld({ col, row }, angle);
+    const { x, y } = gridToWorld({ col, row });
     return { x: x + outline[index * 2]!, y: y + outline[index * 2 + 1]! };
   };
   return [
@@ -386,9 +385,9 @@ const SCAN_PERIOD_MS = SCAN_LOOP_MS / 2;
  * An area the enemy scans, as the scanned Squad sees it: a dashed amber outline, an amber sweep that runs across the square
  * twice per loop, and the tag SCANNED · n with the Resolutions left. Not who looks and not what was seen. With `still` there is no sweep.
  */
-export function scannedMark(center: GridPosition, size: number, remaining: number, angle: number, still: boolean): LoopingMark {
+export function scannedMark(center: GridPosition, size: number, remaining: number, still: boolean): LoopingMark {
   const container = new Container();
-  const [top, right, bottom, left] = areaCorners(center, size, angle);
+  const [top, right, bottom, left] = areaCorners(center, size);
   const base = new Graphics().poly([top, right, bottom, left].flatMap(({ x, y }) => [x, y])).fill({ color: SCANNED_COLOR, alpha: 0.06 });
   for (const [from, to] of [[top, right], [right, bottom], [bottom, left], [left, top]] as const) {
     for (const run of dashRuns(from, to, 16, 10)) base.moveTo(run.from.x, run.from.y).lineTo(run.to.x, run.to.y);
@@ -418,15 +417,15 @@ export function scannedMark(center: GridPosition, size: number, remaining: numbe
  * The Scout Drone over its own area (docs/design/role-visuals/380/scout-drone-a.png): it circles above the square and, twice per
  * loop, sends scan rays down to the corners and a ring over the floor. The tag names it. With `still` it hangs over the middle.
  */
-export function scoutDroneMark(center: GridPosition, size: number, angle: number, still: boolean): LoopingMark {
+export function scoutDroneMark(center: GridPosition, size: number, still: boolean): LoopingMark {
   const container = new Container();
   const rays = new Graphics();
   const drone = new Graphics();
   const tag = new Text({ text: "SCOUT DRONE · ANYWHERE", style: { fontFamily: "IBM Plex Mono", fontSize: TAG_FONT * 0.8, fontWeight: "700", fill: AREA_COLOR, stroke: { color: 0x0b1016, width: 3 } } });
   tag.anchor.set(0.5, 1);
   container.addChild(rays, drone, tag);
-  const middle = gridToWorld(center, angle);
-  const corners = areaCorners(center, size, angle);
+  const middle = gridToWorld(center);
+  const corners = areaCorners(center, size);
   const lift = TILE_HEIGHT * (Math.floor(size / 2) + 1.7);
   return {
     container,

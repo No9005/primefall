@@ -2,7 +2,7 @@ import { coverAt, CoverKind, parseGrid, REACTOR_DECK, tileAt, TileKind } from "g
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildTerrain, choosePiece, coverLook, coverMarks, FaceRole, gridToWorld, Join, lineScale, litTiles, pickWallAt, TILE_HEIGHT, TILE_WIDTH, VIEW_ANGLE, withoutCover, worldLineWidth } from "./terrain";
+import { buildTerrain, choosePiece, coverLook, coverMarks, FaceRole, gridToWorld, Join, lineScale, litTiles, pickWallAt, TILE_HEIGHT, TILE_WIDTH, withoutCover, worldLineWidth } from "./terrain";
 import { HERO_REFERENCE_LUMINANCE, OUTLINE, PIECE_SHAPE, TERRAIN_STYLE } from "./terrain-style";
 
 /** WCAG relative luminance of a 0xRRGGBB colour. */
@@ -17,7 +17,7 @@ function relativeLuminance(hex: number): number {
 const flatPoints = (points: number[]) => Array.from({ length: points.length / 2 }, (_, i) => ({ x: points[i * 2]!, y: points[i * 2 + 1]! }));
 
 describe("buildTerrain at 45 degrees", () => {
-  const tiles = buildTerrain(REACTOR_DECK, VIEW_ANGLE);
+  const tiles = buildTerrain(REACTOR_DECK);
 
   it("yields one floor polygon per tile, equal to the diamond around gridToWorld", () => {
     expect(tiles).toHaveLength(REACTOR_DECK.width * REACTOR_DECK.height);
@@ -92,25 +92,6 @@ describe("buildTerrain at 45 degrees", () => {
   });
 });
 
-describe("buildTerrain at another angle", () => {
-  it("turns the board and keeps the depth order consistent with the turn", () => {
-    const grid = parseGrid(["..", ".."]);
-    const turned = buildTerrain(grid, 135);
-    const depths = turned.map((t) => t.depth);
-    expect(depths).toEqual([...depths].sort((a, b) => a - b));
-    // A quarter turn about the origin moves tile (1, 0) to where tile (0, 1) was.
-    const centre = (tile: { floor: { points: number[] } }) => ({
-      x: (tile.floor.points[0]! + tile.floor.points[4]!) / 2,
-      y: (tile.floor.points[1]! + tile.floor.points[5]!) / 2,
-    });
-    const find = (tiles: ReturnType<typeof buildTerrain>, col: number, row: number) => tiles.find((t) => t.position.col === col && t.position.row === row)!;
-    const before = centre(find(buildTerrain(grid), 0, 1));
-    const after = centre(find(turned, 1, 0));
-    expect(after.x).toBeCloseTo(before.x);
-    expect(after.y).toBeCloseTo(before.y);
-  });
-});
-
 describe("choosePiece", () => {
   const choose = (rows: string[], col: number, row: number) => choosePiece(parseGrid(rows), { col, row });
   const center = ["...", ".#.", "..."];
@@ -171,7 +152,7 @@ describe("tile brightness from sight", () => {
     { col: 1, row: 0 },
     { col: 1, row: 1 },
   ];
-  const tiles = buildTerrain(grid, VIEW_ANGLE, litTiles(seen, [{ col: 0, row: 1 }]));
+  const tiles = buildTerrain(grid, litTiles(seen, [{ col: 0, row: 1 }]));
   const at = (col: number, row: number) => tiles.find((t) => t.position.col === col && t.position.row === row)!;
 
   it("draws a visible tile lit and the tile of an own Hero lit even when it is not visible", () => {
@@ -190,7 +171,7 @@ describe("tile brightness from sight", () => {
     expect(at(4, 0).floor.fill).not.toBe(TERRAIN_STYLE.floorDark.fill);
     expect(at(2, 0).lit).toBe(false);
     expect(at(2, 0).piece).toBeDefined();
-    const dark = buildTerrain(grid, VIEW_ANGLE, litTiles([], []));
+    const dark = buildTerrain(grid, litTiles([], []));
     expect(dark.find((t) => t.kind === TileKind.DropPoint)?.marker?.color).toBe(TERRAIN_STYLE.dropPointMarkerDark);
   });
 
@@ -249,7 +230,7 @@ describe("the look of the terrain (artboard J)", () => {
     const marks = coverMarks(grid);
     expect(marks.map((mark) => mark.kind).sort()).toEqual(["full", "full", "half"]);
     expect(new Set(marks.map((mark) => `${mark.position.col},${mark.position.row}`)).size).toBe(3);
-    expect(coverMarks(grid, VIEW_ANGLE, new Set(["1,0"])).map((mark) => mark.kind).sort()).toEqual(["full", "full"]);
+    expect(coverMarks(grid, new Set(["1,0"])).map((mark) => mark.kind).sort()).toEqual(["full", "full"]);
   });
 
   it("draws natural Cover as one panel across the front, 16 and 34 game px high, level on the screen", () => {
