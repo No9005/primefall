@@ -11,9 +11,11 @@ import {
   coverAt,
   destroyCover,
   EffectRecipient,
+  EffectKind,
   EventKind,
   HERO_DECKS,
   HeroClass,
+  MAX_PLACED_COVER_PER_SQUAD,
   MAX_QUEUE_LENGTH,
   withWreck,
   moveDestinations,
@@ -41,7 +43,7 @@ import { cancel as cancelPull, type Face, faceReveal, faceViews, heldCard, IDLE,
 import { CardUseStage, hudFocus } from "./hud-focus";
 import { drawShots, SegmentStyle, type ShotDrawing } from "./shot-lines";
 import { heroMarks } from "./shield-marks";
-import { crossfireRings, plannedEffectPaths, plannedTargetLines, replayTargetLines, type TargetLine } from "./target-lines";
+import { crossfireRings, NO_COVER_PLAN, plannedCoverPlan, plannedEffectPaths, plannedTargetLines, replayTargetLines, type TargetLine } from "./target-lines";
 import { cardAtX, FAN_WIDTH, fanSpacing } from "./hand-fan";
 import { drawSchedule, newCards, shownDeckCount } from "./hand-draw";
 import { addBurn, type BurnBatch, NO_BURN_PENDING, settleBurn, shownBurnCounts } from "./deck-burn";
@@ -116,6 +118,29 @@ interface PlaybackState {
   /** Cover destroyed and Cover placed so far in the playback, each from the moment its effect shows it; the board adds them to the view's. */
   coverDestroyed: GridPosition[];
   coverPlaced: GridPosition[];
+  /** The Cover placed so far in the playback by the Squad's own Heroes (the rest of `coverPlaced` is the enemy's). */
+  coverPlacedOwn: GridPosition[];
+  /** The tiles of `coverDestroyed` that leave no scorched outline (Placed Cover that went for a fourth). */
+  coverNoScorch: GridPosition[];
+}
+
+/**
+ * The chip at the top right under the timer: how many Placed Cover tiles the Squad has of the most it may have (docs/design/
+ * role-visuals/380/placed-cover.png). While a placement beyond the cap is planned or aimed it reads `●●● → 3 / 3`: the oldest goes.
+ */
+function CoverChip({ count, overflow, resolving }: { count: number; overflow: boolean; resolving: boolean }) {
+  return (
+    <div className={`cover-chip${resolving ? " resolving" : ""}`} data-testid="cover-chip" aria-label={`Placed Cover: ${count} of ${MAX_PLACED_COVER_PER_SQUAD}${overflow ? ", the oldest goes" : ""}`}>
+      <span className="cover-chip-label">COVER</span>
+      <span className="cover-chip-dots" aria-hidden="true">
+        {Array.from({ length: MAX_PLACED_COVER_PER_SQUAD }, (_, i) => (
+          <i key={i} className={i < count ? "on" : ""} />
+        ))}
+      </span>
+      {overflow && <span className="cover-chip-arrow">→</span>}
+      <span className="cover-chip-count">{count} / {MAX_PLACED_COVER_PER_SQUAD}</span>
+    </div>
+  );
 }
 
 /** Bottom right, above Commit: the Queue of the selected Hero, tick 1 on top. Each row shows the action, its target and why it is invalid. */
@@ -537,10 +562,20 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   // During the playback the board also shows the Cover that was destroyed or placed in it so far.
   const playedDestroyed = playback?.coverDestroyed;
   const playedPlaced = playback?.coverPlaced;
-  const shownDestroyed = useMemo(() => (playedDestroyed ? [...view.destroyedCover, ...playedDestroyed] : view.destroyedCover), [view.destroyedCover, playedDestroyed]);
+  const playedPlacedOwn = playback?.coverPlacedOwn;
+  const playedNoScorch = playback?.coverNoScorch;
+  const shownDestroyed = useMemo(
+    () => (playedDestroyed ? [...view.destroyedCover, ...playedDestroyed.filter((tile) => !playedNoScorch?.some((plain) => plain.col === tile.col && plain.row === tile.row))] : view.destroyedCover),
+    [view.destroyedCover, playedDestroyed, playedNoScorch],
+  );
   const shownPlaced = useMemo(
     () => (playedPlaced ? [...view.placedCover.filter((tile) => !playedDestroyed?.some((gone) => gone.col === tile.col && gone.row === tile.row)), ...playedPlaced] : view.placedCover),
     [view.placedCover, playedPlaced, playedDestroyed],
+  );
+  // The Squad's own Placed Cover, oldest first, as the board marks it: the view's, less what the playback destroyed, plus what it placed.
+  const shownOwnPlaced = useMemo(
+    () => (playedPlacedOwn ? [...view.ownPlacedCover.filter((tile) => !playedDestroyed?.some((gone) => gone.col === tile.col && gone.row === tile.row)), ...playedPlacedOwn] : view.ownPlacedCover),
+    [view.ownPlacedCover, playedPlacedOwn, playedDestroyed],
   );
   const knownGrid = useMemo(
     () => view.wreckCover.reduce(withWreck, view.destroyedCover.reduce(destroyCover, REACTOR_DECK)),
@@ -592,6 +627,13 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   }, [view.heroes, view.enemies, squadPlans, playback, playing, playerHeroId]);
   const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, overdriveAim);
   const aimedModes = aimedCard === undefined ? [] : [aimedCard];
+  // The Placed Cover the plans put down and the oldest that goes for it; a Placed-Cover card being aimed counts as one more.
+  const aimsToPlaceCover = !playing && aimedCard?.effects.some((effect) => effect.kind === EffectKind.PlaceCover) === true;
+  const coverChange = useMemo(
+    () => (playing ? undefined : plannedCoverPlan(view.ownPlacedCover, view.heroes, squadPlans, aimsToPlaceCover)),
+    [playing, view.ownPlacedCover, view.heroes, squadPlans, aimsToPlaceCover],
+  );
+  const coverPlan = coverChange ?? NO_COVER_PLAN;
   // Tile cards (Breach Charge), area cards (Scout Drone) and Deploy Cover are confirmed by tapping a tile.
   const aimsAtTile =
     aimedCard?.target === CardTarget.Tile ||
@@ -994,9 +1036,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     let commentaryTick = 0;
     const heroPositions = (heroes: typeof view.heroes) => Object.fromEntries(heroes.map((hero) => [hero.id, hero.position]));
     const sightAfter = { visibleTiles: result.view.visibleTiles, startPositions: heroPositions(view.heroes), endPositions: heroPositions(result.view.heroes) };
-    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, walks: {}, sightAfter, aims: {}, effects: [], slowed: [], marked: [], bonus: [], commentary, lines: [], coverDestroyed: [], coverPlaced: [] });
+    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, walks: {}, sightAfter, aims: {}, effects: [], slowed: [], marked: [], bonus: [], commentary, lines: [], coverDestroyed: [], coverPlaced: [], coverPlacedOwn: [], coverNoScorch: [] });
     let coverDestroyed: GridPosition[] = [];
     let coverPlaced: GridPosition[] = [];
+    let coverPlacedOwn: GridPosition[] = [];
+    let coverNoScorch: GridPosition[] = [];
+    const ownHeroIds = new Set(view.heroes.map((hero) => hero.id));
     const slowed: string[] = [];
     const marked: string[] = [];
     const bonus: string[] = [];
@@ -1064,6 +1109,8 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         lines: replayTargetLines(frame.events, view.heroes, view.enemies, (heroId) => positions[heroId] ?? startPositions[heroId]),
         coverDestroyed,
         coverPlaced,
+        coverPlacedOwn,
+        coverNoScorch,
       });
       // Cover that is placed or destroyed changes the board at the moment its effect shows it (at once with reduced motion).
       const hold = reducedMotion ? STEP_MS : Math.max(STEP_MS, frame.holdMs / CLIP_SPEED);
@@ -1076,10 +1123,16 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         const isTile = (tile: GridPosition) => tile.col === edit.tile.col && tile.row === edit.tile.row;
         if (edit.kind === "destroyed") {
           coverPlaced = coverPlaced.filter((tile) => !isTile(tile));
+          coverPlacedOwn = coverPlacedOwn.filter((tile) => !isTile(tile));
           coverDestroyed = [...coverDestroyed, edit.tile];
-        } else coverPlaced = [...coverPlaced, edit.tile];
-        const [destroyedNow, placedNow] = [coverDestroyed, coverPlaced];
-        setPlayback((current) => current && { ...current, coverDestroyed: destroyedNow, coverPlaced: placedNow });
+          // Placed Cover that goes because a fourth was placed leaves no scorched outline.
+          if (edit.scorch === false) coverNoScorch = [...coverNoScorch, edit.tile];
+        } else {
+          coverPlaced = [...coverPlaced, edit.tile];
+          if (edit.casterId !== undefined && ownHeroIds.has(edit.casterId)) coverPlacedOwn = [...coverPlacedOwn, edit.tile];
+        }
+        const [destroyedNow, placedNow, ownNow, noScorchNow] = [coverDestroyed, coverPlaced, coverPlacedOwn, coverNoScorch];
+        setPlayback((current) => current && { ...current, coverDestroyed: destroyedNow, coverPlaced: placedNow, coverPlacedOwn: ownNow, coverNoScorch: noScorchNow });
       }
       await new Promise((resolve) => setTimeout(resolve, hold - waited));
       if (unmounted.current) return;
@@ -1129,6 +1182,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
       <Board
         destroyedCover={shownDestroyed}
         placedCover={shownPlaced}
+        ownPlacedCover={shownOwnPlaced}
         wreckCover={view.wreckCover}
         revealedAreas={view.revealedAreas}
         scannedAreas={view.scannedAreas}
@@ -1154,6 +1208,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         shotLines={shotLines}
         targetLines={targetLines}
         effectPaths={effectPaths}
+        coverPlan={coverPlan}
         crossfireRings={crossfireRingList}
         marks={marks}
         paths={paths}
@@ -1212,6 +1267,9 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
           {secondsLeft === 0 || playing ? "LOCKED" : formatTimer(secondsLeft)}
         </span>
       </div>
+      {(shownOwnPlaced.length > 0 || coverChange?.fresh.length || aimsToPlaceCover) && (
+        <CoverChip count={shownOwnPlaced.length} overflow={coverChange?.overflow === true} resolving={playing} />
+      )}
       {!playing && countdownCallout(secondsLeft) !== undefined && (
         <Callout kind="number" text={countdownCallout(secondsLeft)!.text} tone={countdownCallout(secondsLeft)!.tone} durationMs={COUNTDOWN_CALLOUT_MS} />
       )}

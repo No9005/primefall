@@ -1,6 +1,6 @@
 import { type Grid, type GridPosition, HeroClass, TileKind, withTile, withWreck } from "game-core";
 import { Application, Container, Graphics, Rectangle } from "pixi.js";
-import { drawScoutArea, drawTerrain, drawZone, ghostMark, scannedFrame } from "./board-drawing";
+import { drawScoutArea, drawTerrain, drawZone, ghostMark, scannedMark, scoutDroneMark } from "./board-drawing";
 import { baseFacing } from "./facing";
 import { attackBadge, EffectsLayer, type EffectsWorld, hiddenSeenMark, markedMark, slowMark, STATUS_AT_REST_MS } from "./effects-layer";
 import { CLIP_SPEED } from "./clip-player";
@@ -39,7 +39,7 @@ class Scene {
 
   constructor(
     private grid: Grid,
-    private readonly cover: { placed?: readonly GridPosition[]; destroyed?: readonly GridPosition[] } = {},
+    private readonly cover: { placed?: readonly GridPosition[]; own?: readonly GridPosition[]; destroyed?: readonly GridPosition[] } = {},
     /** A scene with marks high above the Hero zooms out to keep them in the picture. */
     private readonly camera = CAMERA,
   ) {
@@ -55,7 +55,7 @@ class Scene {
   terrain(): this {
     drawTerrain(
       { floor: this.floor, objects: this.objects, planning: this.planning },
-      { grid: this.grid, angle: ANGLE, strokeScale: this.camera, lit: ALL_TILES, placedCover: this.cover.placed ?? [], destroyedCover: this.cover.destroyed ?? [] },
+      { grid: this.grid, angle: ANGLE, strokeScale: this.camera, lit: ALL_TILES, placedCover: this.cover.placed ?? [], ...(this.cover.own && { ownPlacedCover: this.cover.own }), destroyedCover: this.cover.destroyed ?? [] },
     );
     return this;
   }
@@ -264,6 +264,10 @@ const SCENES: Record<SceneName, () => Container> = {
     const placed = [CENTRE];
     return new Scene(withTile(FLOOR_GRID, CENTRE, TileKind.HalfCover), { placed }).terrain().finish();
   },
+  enemyPlacedCover() {
+    const placed = [CENTRE];
+    return new Scene(withTile(FLOOR_GRID, CENTRE, TileKind.HalfCover), { placed, own: [] }).terrain().finish();
+  },
   destroyedCover() {
     return new Scene(FLOOR_GRID, { destroyed: [CENTRE] }).terrain().finish();
   },
@@ -279,11 +283,17 @@ const SCENES: Record<SceneName, () => Container> = {
     const scene = new Scene(FLOOR_GRID, {}, 0.42).terrain();
     drawScoutArea(scene.planning, FLOOR_GRID, ANGLE, { center: CENTRE, size: 3, remaining: 2 }, (tile) => areaRing(CENTRE, tile));
     scene.hero(HERO_AT, { enemy: true });
+    // The drone mid-scan: rays down to the corners and the ring over the floor.
+    const drone = scoutDroneMark(CENTRE, 3, ANGLE, false);
+    drone.update(250);
+    scene.objects.addChild(drone.container);
     return scene.finish();
   },
   scannedArea() {
     const scene = new Scene(FLOOR_GRID).terrain();
-    scene.planning.addChild(scannedFrame(CENTRE, 3, ANGLE));
+    const mark = scannedMark(CENTRE, 3, 2, ANGLE, false);
+    mark.update(600);
+    scene.planning.addChild(mark.container);
     scene.hero(HERO_AT);
     return scene.finish();
   },

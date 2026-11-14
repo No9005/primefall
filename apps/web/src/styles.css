@@ -316,6 +316,15 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 
 /* Timer pill: top right. */
 .timer-pill { position: absolute; z-index: var(--z-pill); top: 4px; right: 8px; height: 34px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--steel); border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
+/* Placed Cover chip: under the timer pill, top right. */
+.cover-chip { position: absolute; z-index: var(--z-pill); top: 42px; right: 8px; height: 26px; box-sizing: border-box; padding: 0 10px; display: flex; align-items: center; gap: 6px; border: 1.5px solid var(--teal); border-radius: 13px; background: color-mix(in srgb, var(--ink) 93%, transparent); white-space: nowrap; pointer-events: none; }
+.cover-chip.resolving { top: 70px; }
+.cover-chip-label { font: 700 12px var(--font-label); letter-spacing: 0.1em; color: var(--text); }
+.cover-chip-count { font: 700 12px var(--font-label); color: var(--teal); }
+.cover-chip-arrow { font: 700 12px var(--font-label); color: var(--amber); }
+.cover-chip-dots { display: flex; gap: 4px; }
+.cover-chip-dots i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--teal); box-sizing: border-box; }
+.cover-chip-dots i.on { background: var(--teal); }
 .timer-round { font: 600 12px var(--font-label); letter-spacing: 0.08em; color: var(--muted); }
 .timer-time { font: 500 20px var(--font-number); color: var(--text); }
 .timer-amber { border-color: var(--amber); }

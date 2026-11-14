@@ -568,17 +568,8 @@ export class EffectsLayer {
     const ms = (now - this.startMs) * CLIP_SPEED;
     let shake: Point = { x: 0, y: 0 };
     this.cues.forEach((cue, i) => {
-      if (cue.kind === "number") this.drawNumber(this.texts[i]!, cue, ms);
-      else if (cue.kind === "crossfire" || cue.kind === "bonus") this.drawCrossfire(this.texts[i]!, cue, ms);
-      else if (cue.kind === "knockback") this.drawKnockback(this.shapeAt(i), this.texts[i]!, cue, ms);
-      else if (cue.kind === "pull") this.drawPull(this.shapeAt(i), this.texts[i]!, cue, ms);
-      else if (cue.kind === "charge") this.drawChargeStreaks(this.shapeAt(i), cue, ms);
-      else if (cue.kind === "shot" || cue.kind === "shockwave") shake = this.drawShaking(i, cue, ms) ?? shake;
-      else if (cue.kind === "aura") this.drawAura(this.shapeAt(i), this.texts[i]!, cue, ms);
-      else if (cue.kind === "surge") this.drawSurge(this.shapeAt(i), cue, ms);
-      else if (cue.kind === "aegisBeam") this.drawAegisBeam(this.shapeAt(i), cue, ms);
-      else if (cue.kind === "breach") this.drawBreach(this.shapeAt(i), cue, ms);
-      else if (cue.kind === "coverPlaced") this.drawCoverPlaced(this.shapeAt(i), cue, ms);
+      if (cue.kind === "shot" || cue.kind === "shockwave") shake = this.drawShaking(i, cue, ms) ?? shake;
+      else this.drawCue(cue, i, ms);
     });
     for (const { cue, mark } of this.statuses) {
       const at = this.place(cue.toId);
@@ -587,6 +578,21 @@ export class EffectsLayer {
       mark.update(this.reduced ? STATUS_AT_REST_MS : ms - cue.startMs);
     }
     return shake;
+  }
+
+  /** Draws one cue that does not shake the screen. */
+  private drawCue(cue: EffectCue, i: number, ms: number): void {
+    if (cue.kind === "number") this.drawNumber(this.texts[i]!, cue, ms);
+    else if (cue.kind === "crossfire" || cue.kind === "bonus") this.drawCrossfire(this.texts[i]!, cue, ms);
+    else if (cue.kind === "knockback") this.drawKnockback(this.shapeAt(i), this.texts[i]!, cue, ms);
+    else if (cue.kind === "pull") this.drawPull(this.shapeAt(i), this.texts[i]!, cue, ms);
+    else if (cue.kind === "charge") this.drawChargeStreaks(this.shapeAt(i), cue, ms);
+    else if (cue.kind === "aura") this.drawAura(this.shapeAt(i), this.texts[i]!, cue, ms);
+    else if (cue.kind === "surge") this.drawSurge(this.shapeAt(i), cue, ms);
+    else if (cue.kind === "aegisBeam") this.drawAegisBeam(this.shapeAt(i), cue, ms);
+    else if (cue.kind === "breach") this.drawBreach(this.shapeAt(i), cue, ms);
+    else if (cue.kind === "coverPlaced") this.drawCoverPlaced(this.shapeAt(i), cue, ms);
+    else if (cue.kind === "coverCrumble") this.drawCoverCrumble(this.shapeAt(i), cue, ms);
   }
 
   /** A shot or a shockwave: drawn, and the screen shake it causes (a Long Shot, an Overdrive Shockwave) in world pixels. */
@@ -810,6 +816,14 @@ export class EffectsLayer {
       if (smoke.alpha > 0) g.circle(centre.x + dx * F, centre.y + dy * F - smoke.rise * F, radius * F * smoke.scale).fill({ color: SMOKE, alpha: smoke.alpha });
     }
     if (cue.cover) drawCoverChunks(g, centre, t);
+  }
+
+  /** The oldest Placed Cover crumbles into four chunks, with no fireball and no scorch (docs/design/role-visuals/380/placed-cover.png). */
+  private drawCoverCrumble(g: Graphics, cue: Extract<EffectCue, { kind: "coverCrumble" }>, ms: number): void {
+    g.clear();
+    const t = ms - cue.startMs;
+    if (this.reduced || t < 0) return;
+    drawCoverChunks(g, this.world.tile(cue.tile), t);
   }
 
   /**

@@ -94,6 +94,8 @@ export type EffectCue =
   | { kind: "surge"; casterId: string; toId: string; startMs: number }
   /** Aegis Protocol in Overdrive: a gold beam from the caster to an ally that gains Shield. */
   | { kind: "aegisBeam"; casterId: string; toId: string; startMs: number }
+  /** The oldest Placed Cover of a Squad goes when a fourth is placed: it crumbles into four chunks (no fireball, no scorch). */
+  | { kind: "coverCrumble"; tile: GridPosition; startMs: number }
   /** Deploy Cover and Fortify: a flash on the tile at `startMs`, then the wall rises. */
   | { kind: "coverPlaced"; casterId: string; tile: GridPosition; startMs: number }
   /** A Hero gains Shield: the rubies pop and the bubble forms. `startMs` is when the rubies pop. */
@@ -149,6 +151,9 @@ export const BREACH_AFTER_MS = 1464;
 export const COVER_SLAM_MS = 950;
 export const COVER_WALL_UP_MS = 1170;
 export const COVER_PLACED_MS = 1400;
+/** The oldest Cover crumbles when the new crate has landed (0.45 s after the slam); the chunks are gone 0.9 s later. */
+export const COVER_CRUMBLE_DELAY_MS = 450;
+export const COVER_CRUMBLE_MS = 900;
 /** Overdrive: the aura lasts at least this long (the two rings rise in a 1200 ms loop), and until the shot has left. */
 export const AURA_MIN_MS = 1200;
 export const AURA_AFTER_FIRE_MS = 400;
@@ -180,6 +185,7 @@ const CUE_LENGTH_MS: Readonly<Partial<Record<EffectCue["kind"], number>>> = {
   pull: PULL_MS,
   charge: CHARGE_STREAK_MS,
   coverPlaced: COVER_PLACED_MS,
+  coverCrumble: COVER_CRUMBLE_MS,
   surge: SURGE_MS,
   aegisBeam: AEGIS_BEAM_MS,
   shieldGain: SHIELD_POP_MS,
@@ -413,12 +419,17 @@ export interface CoverEdit {
   kind: "placed" | "destroyed";
   tile: GridPosition;
   atMs: number;
+  /** The Hero that placed the Cover, for `placed`: the playback tells the Squad's own Cover from the enemy's. */
+  casterId?: string;
+  /** False for Placed Cover that goes because a fourth was placed: it leaves no scorched outline. */
+  scorch?: boolean;
 }
 
 export function coverEditsOf(cues: readonly EffectCue[]): CoverEdit[] {
   return cues.flatMap((cue): CoverEdit[] => {
     if (cue.kind === "breach") return !cue.cover ? [] : [{ kind: "destroyed", tile: cue.tile, atMs: cue.fireMs + cue.flightMs }];
-    if (cue.kind === "coverPlaced") return [{ kind: "placed", tile: cue.tile, atMs: cue.startMs + COVER_WALL_UP_MS }];
+    if (cue.kind === "coverPlaced") return [{ kind: "placed", tile: cue.tile, atMs: cue.startMs + COVER_WALL_UP_MS, casterId: cue.casterId }];
+    if (cue.kind === "coverCrumble") return [{ kind: "destroyed", tile: cue.tile, atMs: cue.startMs, scorch: false }];
     return [];
   });
 }
@@ -593,8 +604,17 @@ function pullCues(event: MatchEvent, frame: CueFrame): void {
   });
 }
 
+/** The cards that place Cover (Deploy Cover, Fortify, Barricade): the Cover they destroy is the oldest one going, not a blast. */
+function placesCover(card: string | undefined): boolean {
+  return Object.values(HERO_DECKS).flat().some((candidate) => candidate.name === card && candidate.effects.some((effect) => effect.kind === EffectKind.PlaceCover));
+}
+
 function coverDestroyedCues(event: MatchEvent, frame: CueFrame): void {
   if (!event.to) return;
+  if (placesCover(event.card)) {
+    frame.cues.push({ kind: "coverCrumble", tile: event.to, startMs: COVER_SLAM_MS + COVER_CRUMBLE_DELAY_MS });
+    return;
+  }
   addBreach(frame.cues, {
     kind: "breach",
     casterId: event.heroId,

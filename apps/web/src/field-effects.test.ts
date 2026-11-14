@@ -86,7 +86,7 @@ describe("Cover placed and Half Cover", () => {
   it("drops the crate at the slam and has the bars up 1.17 s later, when the terrain gets them", () => {
     const [cue] = effectCuesOf([{ kind: EventKind.CoverPlaced, tick: 1, heroId: "c", to: at(2, 2), card: "Deploy Cover" }], fireOf);
     expect(cue).toEqual({ kind: "coverPlaced", casterId: "c", tile: at(2, 2), startMs: 950 });
-    expect(coverEditsOf([cue!])).toEqual([{ kind: "placed", tile: at(2, 2), atMs: 950 + 1170 }]);
+    expect(coverEditsOf([cue!])).toEqual([{ kind: "placed", tile: at(2, 2), atMs: 950 + 1170, casterId: expect.any(String) }]);
     expect(cueEndMs(cue!)).toBe(950 + 1400);
   });
 

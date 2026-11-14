@@ -11,7 +11,7 @@ import {
   tileAt,
 } from "game-core";
 import { Application, Assets, Container, Graphics, Text } from "pixi.js";
-import { areaColorOf, drawScoutArea, drawTerrain, drawZone, ghostMark, scannedFrame } from "./board-drawing";
+import { areaColorOf, COVER_OWN, coverTag, dashedTileOutline, drawScoutArea, drawTerrain, drawZone, ghostMark, scannedMark, scoutDroneMark } from "./board-drawing";
 import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPick, Point } from "./card-drag";
 import {
@@ -52,7 +52,7 @@ import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
 import { chestOf, dashRuns, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
 import { finalTile, PathOwner, type PlannedPath } from "./ally-paths";
-import { type CrossfireRing, type EffectPath, LineKind, LineTone, RingSegment, type TargetLine } from "./target-lines";
+import { type CoverPlan, type CrossfireRing, type EffectPath, LineKind, NO_COVER_PLAN, LineTone, RingSegment, type TargetLine } from "./target-lines";
 import { PLAN_STYLE, SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
 import { pulseAlpha } from "./target-pick";
 
@@ -130,6 +130,7 @@ function pathGraphics(path: PlannedPath, angle: number, scale: number): { ground
 }
 
 const EFFECT_PATH_COLOR = 0x2ec4b6;
+const COVER_AMBER = 0xffb347;
 const F = HERO_STYLE.figureScale;
 
 /**
@@ -187,6 +188,7 @@ function enlarged(badge: Container): Container {
 }
 const NO_RINGS: readonly CrossfireRing[] = [];
 const NO_EFFECT_PATHS: readonly EffectPath[] = [];
+
 
 /**
  * The Tick ring under an enemy a plan attacks: four 90° arcs on the floor, Tick 1 at the top and clockwise. An attacked Tick
@@ -353,12 +355,16 @@ interface BoardProps {
   destroyedCover: readonly GridPosition[];
   /** Placed Cover the Squad knows of (it stays until destroyed): drawn as Half Cover with a cyan outline. */
   placedCover: readonly GridPosition[];
+  /** The tiles of `placedCover` that belong to the player's Squad, oldest first (the rest is the enemy's). Absent: all of them. */
+  ownPlacedCover?: readonly GridPosition[];
+  /** Planning only: the oldest Placed Cover that goes when the planned placements are made, and the tiles the new ones will stand on. */
+  coverPlan?: CoverPlan;
   /** Half Cover left by Exhausted Heroes the Squad knows of: a low slab under the downed figure. */
   wreckCover: readonly GridPosition[];
   /** Areas a Scout Drone reveals: tinted yellow. */
   revealedAreas: readonly RevealedArea[];
   /** Areas the enemy's Scout Drones scan: a red outline, nothing about what is in them. */
-  scannedAreas?: readonly Pick<RevealedArea, "center" | "size">[];
+  scannedAreas?: readonly Pick<RevealedArea, "center" | "size" | "remaining">[];
   /** Tiles the Squad sees; every other tile is drawn dark. */
   visibleTiles: readonly GridPosition[];
   heroes: readonly TokenHero[];
@@ -498,12 +504,14 @@ function animateFadeOut(shape: Graphics, ms: number): () => void {
 /** Length of the camera ease when a Move is armed, placed or cancelled. */
 const FRAME_MS = 250;
 
-const NO_SCANNED_AREAS: readonly Pick<RevealedArea, "center" | "size">[] = [];
+const NO_SCANNED_AREAS: readonly Pick<RevealedArea, "center" | "size" | "remaining">[] = [];
 /** Red outline of an area the enemy scans. */
 
 export function Board({
   destroyedCover,
   placedCover,
+  ownPlacedCover,
+  coverPlan = NO_COVER_PLAN,
   wreckCover,
   revealedAreas,
   scannedAreas = NO_SCANNED_AREAS,
@@ -701,6 +709,16 @@ export function Board({
       overlay.addChild(label);
       created.push(label);
     });
+    // The oldest Placed Cover that goes gets a dashed amber outline, the tile of the new one a dashed teal one.
+    for (const [tiles, color, text] of [[coverPlan.oldest, COVER_AMBER, "OLDEST · GOES"], [coverPlan.fresh, COVER_OWN, "NEW COVER HERE"]] as const) {
+      for (const tile of tiles) {
+        const dashed = dashedTileOutline(tile, angle, color, strokeScale);
+        const tag = coverTag(text, color, tile, angle);
+        // Above the Cover, so the outline of the oldest piece is not hidden behind its own bars.
+        overlayTop.addChild(dashed, tag);
+        created.push(dashed, tag);
+      }
+    }
     for (const effectPath of effectPaths) {
       const drawn = effectPathGraphics(effectPath, angle, strokeScale);
       overlay.addChild(drawn.ground);
@@ -738,7 +756,7 @@ export function Board({
       cancelAnimationFrame(pulseFrame);
       created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [overlay, overlayTop, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, crossfireRings, effectPaths, paths, collisionTiles, strokeScale]);
+  }, [overlay, overlayTop, angle, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, crossfireRings, effectPaths, coverPlan, paths, collisionTiles, strokeScale]);
 
   useEffect(() => {
     if (!tokens) return;
@@ -1084,7 +1102,7 @@ export function Board({
       visibleTiles,
       heroes.map((hero) => hero.position),
     );
-    const created: Container[] = drawTerrain({ floor, objects, planning }, { grid, angle, strokeScale, lit, placedCover, destroyedCover });
+    const created: Container[] = drawTerrain({ floor, objects, planning }, { grid, angle, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover });
 
     // The Prime Zone tint (grey, teal, gold, amber, red); our Squad holding it sends a ring over the zone.
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1092,6 +1110,7 @@ export function Board({
     const zoneTiles = zone.tiles;
     created.push(...zone.created);
     const animated: ((now: number) => void)[] = [];
+    const effectBegan = performance.now();
     /** Run on every frame while the zone is on screen (the idle pulse), unlike `animated`, which ends after 3 s. */
     const idle: ((now: number) => void)[] = [];
     if (zone.border && zone.glow) {
@@ -1133,6 +1152,13 @@ export function Board({
       const plays = !reducedMotion && !areaSeen.current.has(key);
       const area = drawScoutArea(planning, grid, angle, { center, size, remaining }, (tile) => areaRing(center, tile));
       created.push(...area.created);
+      // The drone circles over the area and scans; it hangs still with reduced motion.
+      const drone = scoutDroneMark(center, size, angle, reducedMotion);
+      drone.container.zIndex = depthOf(center, angle) + size;
+      objects.addChild(drone.container);
+      created.push(drone.container);
+      drone.update(0);
+      if (!reducedMotion) idle.push((now) => drone.update(now - effectBegan));
       if (!plays) continue;
       for (const { tint, ring } of area.tints) {
         tint.alpha = 0;
@@ -1141,11 +1167,14 @@ export function Board({
         });
       }
     }
-    // Areas the enemy scans: only an outline around the square.
-    for (const { center, size } of scannedAreas) {
-      const frame = scannedFrame(center, size, angle);
-      planning.addChild(frame);
-      created.push(frame);
+    // Areas the enemy scans: a dashed amber outline with a sweep and the Resolutions left.
+    for (const { center, size, remaining } of scannedAreas) {
+      const mark = scannedMark(center, size, remaining, angle, reducedMotion);
+      mark.container.zIndex = depthOf(center, angle) + size;
+      objects.addChild(mark.container);
+      created.push(mark.container);
+      mark.update(0);
+      if (!reducedMotion) idle.push((now) => mark.update(now - effectBegan));
     }
     // An area that ran out: the fog closes again from the outside inwards instead of cutting.
     if (!reducedMotion) {
@@ -1183,7 +1212,7 @@ export function Board({
       cancelAnimationFrame(effectFrame);
       created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [terrain, angle, strokeScale, aiming, destroyedCover, placedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
+  }, [terrain, angle, strokeScale, aiming, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
 
   useEffect(() => {
     const element = host.current;

@@ -153,6 +153,9 @@ export interface HeroView {
 }
 
 /** A square of tiles a Scout Drone shows the Squad for a while, regardless of walls and Cover. */
+/** A Squad has at most this many Placed Cover tiles; placing another removes its oldest. */
+export const MAX_PLACED_COVER_PER_SQUAD = 3;
+
 export interface RevealedArea {
   /** The centre tile. */
   center: GridPosition;

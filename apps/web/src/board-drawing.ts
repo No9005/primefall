@@ -2,14 +2,15 @@ import { type Grid, type GridPosition, tileAt, TileKind } from "game-core";
 import { Container, Graphics, Text } from "pixi.js";
 import { COVER_BLUE, drawCoverLook, drawCoverPanels } from "./cover-look";
 import { buildTerrain, coverLook, coverMarks, depthOf, type Face, floorOutline, gridToWorld, hasCoverLook, TILE_HEIGHT, TILE_WIDTH, worldLineWidth } from "./terrain";
+import { dashRuns } from "./shot-lines";
 import { TERRAIN_STYLE } from "./terrain-style";
 import { AREA_COLOR, AREA_PIPS, type ZoneLook } from "./vision-effects";
 
 // The drawing of the board's own marks that the Board and the glossary screen both use, so a symbol in the glossary is the
 // very shape the board draws. The Board decides when and where; these functions only make the Pixi shapes.
 
-/** The areas of an enemy scan are outlined in this colour. */
-export const SCANNED_COLOR = 0xff4d4d;
+/** The areas of an enemy scan are outlined in this amber (docs/design/role-visuals/380/scout-drone-b.png). */
+export const SCANNED_COLOR = 0xffb347;
 /** The 5 by 5 area of an Overdrive Scout Drone is gold. */
 const OVERDRIVE_AREA_COLOR = 0xffb000;
 
@@ -65,13 +66,65 @@ export interface TerrainInput {
   lit: ReadonlySet<string>;
   /** Cover a Hero placed (drawn as built Cover, remembered also in the fog). */
   placedCover: readonly GridPosition[];
+  /**
+   * The tiles of `placedCover` that belong to the Squad itself: four teal corner marks say "ours, and it stays"; the rest
+   * is the enemy's and gets red marks. Absent: all of it is the Squad's own.
+   */
+  ownPlacedCover?: readonly GridPosition[];
   /** Cover the Squad has seen destroyed: the tile keeps a scorched outline. */
   destroyedCover: readonly GridPosition[];
 }
 
+/** Corner marks and tags of Placed Cover: our Squad's teal, the enemy's red (docs/design/role-visuals/380/placed-cover.png). */
+export const COVER_OWN = 0x2ec4b6;
+export const COVER_ENEMY = 0xe5484d;
+/** The size of the tags over a tile, in figure scale units (the same as the labels of the effects layer). */
+const TAG_FONT = 9 * (128 / 46);
+
+/** Four corner marks on the tile of Placed Cover: an angle at each corner of the diamond, a third of the way along each edge. */
+export function coverCornerMarks(tile: GridPosition, angle: number, color: number, scale: number): Graphics {
+  const outline = floorOutline(angle);
+  const corners = [0, 1, 2, 3].map((i) => ({ x: outline[i * 2]! * 0.9, y: outline[i * 2 + 1]! * 0.9 }));
+  const marks = new Graphics();
+  corners.forEach((corner, i) => {
+    const toward = (other: { x: number; y: number }) => ({ x: corner.x + (other.x - corner.x) * 0.36, y: corner.y + (other.y - corner.y) * 0.36 });
+    const [before, after] = [toward(corners[(i + 3) % 4]!), toward(corners[(i + 1) % 4]!)];
+    marks.moveTo(before.x, before.y).lineTo(corner.x, corner.y).lineTo(after.x, after.y);
+  });
+  marks.stroke({ width: Math.max(4, 4.5 / scale), color, alpha: 0.95, cap: "round", join: "round" });
+  const { x, y } = gridToWorld(tile, angle);
+  marks.position.set(x, y);
+  return marks;
+}
+
+/** A small tag over a tile, in the style of the labels of the effects layer. */
+export function coverTag(text: string, color: number, tile: GridPosition, angle: number): Text {
+  const tag = new Text({ text, style: { fontFamily: "IBM Plex Mono", fontSize: TAG_FONT, fontWeight: "700", fill: color, stroke: { color: 0x0b1016, width: 3 } } });
+  tag.anchor.set(0.5, 1);
+  const { x, y } = gridToWorld(tile, angle);
+  tag.position.set(x, y - TILE_HEIGHT * 1.7);
+  return tag;
+}
+
+/** The outline of a tile in dashes: the oldest Placed Cover that is going (amber) and the tile the new one will stand on (teal). */
+export function dashedTileOutline(tile: GridPosition, angle: number, color: number, scale: number): Graphics {
+  const outline = floorOutline(angle);
+  const outlineGraphics = new Graphics();
+  for (let i = 0; i < 4; i++) {
+    const from = { x: outline[i * 2]!, y: outline[i * 2 + 1]! };
+    const to = { x: outline[((i + 1) % 4) * 2]!, y: outline[((i + 1) % 4) * 2 + 1]! };
+    for (const run of dashRuns(from, to, 12, 8)) outlineGraphics.moveTo(run.from.x, run.from.y).lineTo(run.to.x, run.to.y);
+  }
+  outlineGraphics.stroke({ width: Math.max(3, 3 / scale), color, alpha: 0.95, cap: "round" });
+  const { x, y } = gridToWorld(tile, angle);
+  outlineGraphics.position.set(x, y);
+  return outlineGraphics;
+}
+
 /** Draws the floor, the Cover and the shield glyphs of the map; returns everything it made, for the caller to destroy. */
-export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid, angle, strokeScale, lit, placedCover, destroyedCover }: TerrainInput): Container[] {
+export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid, angle, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover }: TerrainInput): Container[] {
   const created: Container[] = [];
+  const ownTiles = new Set((ownPlacedCover ?? placedCover).map((p) => `${p.col},${p.row}`));
   // Floor tiles share one shape layer; standing pieces are drawn per tile and sort with the Heroes by depth.
   const ground = new Graphics();
   floor.addChild(ground);
@@ -88,6 +141,21 @@ export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid,
       if (!built && !tile.lit) continue;
       const look = coverLook(tile.position, tile.kind === TileKind.FullCover ? "full" : "half", built, angle);
       drawCoverLook(piece, look, strokeScale);
+      if (built) {
+        const own = ownTiles.has(`${tile.position.col},${tile.position.row}`);
+        const marks = coverCornerMarks(tile.position, angle, own ? COVER_OWN : COVER_ENEMY, strokeScale);
+        // Above the bars of the Cover and below the Heroes (depth + 0.5), so the corners show round the foot of the piece.
+        marks.zIndex = tile.depth + 0.2;
+        objects.addChild(marks);
+        created.push(marks);
+        // Enemy Cover the Squad sees is named, so it is never mistaken for the map's own.
+        if (!own && tile.lit) {
+          const tag = coverTag("ENEMY COVER", COVER_ENEMY, tile.position, angle);
+          tag.zIndex = tile.depth + 0.95;
+          objects.addChild(tag);
+          created.push(tag);
+        }
+      }
       if (look.panels.length > 0) {
         // The panel stands in front of the Heroes on the tile (they sit at depth + 0.5) and behind the next tile.
         const front = new Graphics();
@@ -222,19 +290,100 @@ export function drawScoutArea(planning: Container, grid: Grid, angle: number, { 
   return { created, tints };
 }
 
-/** The outline round an area the enemy scans. */
-export function scannedFrame(center: GridPosition, size: number, angle: number): Graphics {
+type Point2 = { x: number; y: number };
+
+/** The four outer corners of an area (top, right, bottom, left on screen), relative to the world origin. */
+function areaCorners(center: GridPosition, size: number, angle: number): [Point2, Point2, Point2, Point2] {
   const reach = Math.floor(size / 2);
   const outline = floorOutline(angle);
-  const corner = (col: number, row: number, index: number) => {
+  const corner = (col: number, row: number, index: number): Point2 => {
     const { x, y } = gridToWorld({ col, row }, angle);
-    return [x + outline[index * 2]!, y + outline[index * 2 + 1]!];
+    return { x: x + outline[index * 2]!, y: y + outline[index * 2 + 1]! };
   };
-  const points = [
+  return [
     corner(center.col - reach, center.row - reach, 0),
     corner(center.col + reach, center.row - reach, 1),
     corner(center.col + reach, center.row + reach, 2),
     corner(center.col - reach, center.row + reach, 3),
-  ].flat();
-  return new Graphics().poly(points).fill({ color: SCANNED_COLOR, alpha: 0.08 }).stroke({ width: 2, color: SCANNED_COLOR, alpha: 0.9 });
+  ];
+}
+
+const lerpPoint = (a: Point2, b: Point2, t: number): Point2 => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+
+/** A mark that changes with time: `update(ms)` redraws it at `ms` into its loop. */
+export interface LoopingMark {
+  container: Container;
+  update(ms: number): void;
+}
+
+/** The loop of the scan marks: two scans in 3 s (docs/design/role-visuals/380/scout-drone-a.png and -b.png). */
+export const SCAN_LOOP_MS = 3000;
+const SCAN_PERIOD_MS = SCAN_LOOP_MS / 2;
+
+/**
+ * An area the enemy scans, as the scanned Squad sees it: a dashed amber outline, an amber sweep that runs across the square
+ * twice per loop, and the tag SCANNED · n with the Resolutions left. Not who looks and not what was seen. With `still` there is no sweep.
+ */
+export function scannedMark(center: GridPosition, size: number, remaining: number, angle: number, still: boolean): LoopingMark {
+  const container = new Container();
+  const [top, right, bottom, left] = areaCorners(center, size, angle);
+  const base = new Graphics().poly([top, right, bottom, left].flatMap(({ x, y }) => [x, y])).fill({ color: SCANNED_COLOR, alpha: 0.06 });
+  for (const [from, to] of [[top, right], [right, bottom], [bottom, left], [left, top]] as const) {
+    for (const run of dashRuns(from, to, 16, 10)) base.moveTo(run.from.x, run.from.y).lineTo(run.to.x, run.to.y);
+  }
+  base.stroke({ width: 4, color: SCANNED_COLOR, alpha: 0.95, cap: "round" });
+  const sweep = new Graphics();
+  const tag = new Text({ text: `SCANNED · ${remaining}`, style: { fontFamily: "IBM Plex Mono", fontSize: TAG_FONT, fontWeight: "700", fill: SCANNED_COLOR, stroke: { color: 0x0b1016, width: 3 } } });
+  tag.anchor.set(0.5, 1);
+  tag.position.set(top.x, top.y - TILE_HEIGHT * 0.5);
+  container.addChild(base, sweep, tag);
+  return {
+    container,
+    update(ms) {
+      sweep.clear();
+      if (still) return;
+      const t = (ms % SCAN_PERIOD_MS) / SCAN_PERIOD_MS;
+      const band = (at: number) => [lerpPoint(top, left, at), lerpPoint(right, bottom, at)] as const;
+      const [a0, b0] = band(t);
+      const [a1, b1] = band(Math.min(1, t + 0.16));
+      sweep.poly([a0, b0, b1, a1].flatMap(({ x, y }) => [x, y])).fill({ color: SCANNED_COLOR, alpha: 0.3 * (1 - Math.abs(t - 0.5) * 1.2) });
+      sweep.moveTo(a0.x, a0.y).lineTo(b0.x, b0.y).stroke({ width: 3, color: SCANNED_COLOR, alpha: 0.9 });
+    },
+  };
+}
+
+/**
+ * The Scout Drone over its own area (docs/design/role-visuals/380/scout-drone-a.png): it circles above the square and, twice per
+ * loop, sends scan rays down to the corners and a ring over the floor. The tag names it. With `still` it hangs over the middle.
+ */
+export function scoutDroneMark(center: GridPosition, size: number, angle: number, still: boolean): LoopingMark {
+  const container = new Container();
+  const rays = new Graphics();
+  const drone = new Graphics();
+  const tag = new Text({ text: "SCOUT DRONE · ANYWHERE", style: { fontFamily: "IBM Plex Mono", fontSize: TAG_FONT * 0.8, fontWeight: "700", fill: AREA_COLOR, stroke: { color: 0x0b1016, width: 3 } } });
+  tag.anchor.set(0.5, 1);
+  container.addChild(rays, drone, tag);
+  const middle = gridToWorld(center, angle);
+  const corners = areaCorners(center, size, angle);
+  const lift = TILE_HEIGHT * (Math.floor(size / 2) + 1.7);
+  return {
+    container,
+    update(ms) {
+      rays.clear();
+      drone.clear();
+      const turn = still ? 0 : ((ms % SCAN_LOOP_MS) / SCAN_LOOP_MS) * 2 * Math.PI;
+      const at = { x: middle.x + Math.cos(turn) * TILE_WIDTH * 0.6, y: middle.y - lift + Math.sin(turn) * TILE_HEIGHT * 0.6 };
+      drone.ellipse(at.x, at.y, 20, 9).fill(0x4da3ff).stroke({ width: 3, color: 0x0b1016 });
+      const rotor = still || Math.sin(ms / 28) > 0 ? 1 : 0.35;
+      drone.ellipse(at.x, at.y - 9, 28 * rotor, 5).fill({ color: 0xcfe8ff, alpha: 0.7 });
+      tag.position.set(at.x, at.y - 22);
+      const s = ms % SCAN_PERIOD_MS;
+      if (still || s >= 520) return;
+      const u = s / 520;
+      for (const corner of [corners[1], corners[2], corners[3]]) {
+        rays.moveTo(at.x, at.y + 6).lineTo(corner.x, corner.y).stroke({ width: 2.5, color: AREA_COLOR, alpha: 0.7 * (1 - u) });
+      }
+      rays.ellipse(middle.x, middle.y, TILE_WIDTH * (0.3 + 0.9 * u) * (size / 3), TILE_HEIGHT * (0.3 + 0.9 * u) * (size / 3)).stroke({ width: 3, color: AREA_COLOR, alpha: 0.8 * (1 - u) });
+    },
+  };
 }
