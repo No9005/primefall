@@ -31,7 +31,7 @@ describe("the playback of cover and Exhaustion", () => {
   it("plays Exhausted for the Exhausted Hero, with the hit flash landing at the impact of the shot that took the last card", () => {
     const classOf = (id: string) => (id === "a" ? HeroClass.Bruiser : HeroClass.Assassin);
     const events: MatchEvent[] = [
-      { kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Slam Shot", damage: 2, distance: 3 },
+      { kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Handle With Care", damage: 2, distance: 3 },
       { kind: EventKind.Exhausted, tick: 1, heroId: "t" },
     ];
     const [frame] = buildPlaybackFrames(events, classOf);

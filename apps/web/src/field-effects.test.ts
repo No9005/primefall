@@ -2,7 +2,6 @@ import { EventKind, HeroClass, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
 import { buildPlaybackFrames } from "./playback";
 import {
-  AEGIS_RUBIES_MS,
   BLOCK_RUBIES_MS,
   bubbleFormAt,
   chargeAt,
@@ -16,39 +15,13 @@ import {
   rubyBurstAt,
   rubyPopAt,
   shardAt,
-  shockRingAt,
   slideProgress,
 } from "./weapon-effects";
 
 const fireOf = () => 620;
 const at = (col: number, row: number) => ({ col, row });
 
-describe("Shockwave and Knockback", () => {
-  const events: MatchEvent[] = [
-    { kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Shockwave", damage: 2, distance: 1 },
-    { kind: EventKind.Knockback, tick: 1, heroId: "t", from: at(3, 3), to: at(4, 3), card: "Shockwave" },
-  ];
-
-  it("makes one ring-and-dust cue for the caster and a slide with a Knockback 2 tag for the pushed Hero", () => {
-    const cues = effectCuesOf(events, fireOf);
-    expect(cues.filter((cue) => cue.kind === "shockwave")).toEqual([{ kind: "shockwave", casterId: "a", startMs: 620 }]);
-    expect(cues.filter((cue) => cue.kind === "knockback")).toEqual([
-      { kind: "knockback", toId: "t", from: at(3, 3), to: at(4, 3), startMs: 620, tag: "Knockback 2" },
-    ]);
-  });
-
-  it("has only one Shockwave cue when it hits two enemies in the same frame", () => {
-    const second: MatchEvent = { ...events[0]!, targetId: "u" };
-    expect(effectCuesOf([events[0]!, second], fireOf).filter((cue) => cue.kind === "shockwave")).toHaveLength(1);
-  });
-
-  it("expands three rings from 0.5 x to 3 x over 580 ms, one every 100 ms", () => {
-    expect(shockRingAt(0, 0)).toEqual({ scale: 0.5, alpha: 1 });
-    expect(shockRingAt(580, 0)).toBeUndefined();
-    expect(shockRingAt(50, 1)).toBeUndefined();
-    expect(shockRingAt(390, 1)?.scale).toBeCloseTo(0.5 + 2.5 * (290 / 580));
-  });
-
+describe("Pull slide", () => {
   it("slides a tile in 300 ms, fast first and easing out", () => {
     expect(slideProgress(0)).toBe(0);
     expect(slideProgress(150)).toBe(0.75);
@@ -100,23 +73,21 @@ describe("Cover placed and Half Cover", () => {
   });
 
   it("sends the projectile into the wall and tags the reduced number Half Cover", () => {
-    const cues = effectCuesOf([{ kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Slam Shot", damage: 1, distance: 3, halfCover: true }], fireOf);
+    const cues = effectCuesOf([{ kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Handle With Care", damage: 1, distance: 3, halfCover: true }], fireOf);
     expect(cues[0]).toMatchObject({ kind: "shot", halfCover: true });
     expect(cues.filter((cue) => cue.kind === "number").map((cue) => (cue.kind === "number" ? [cue.text, cue.style] : []))).toEqual([["-1", "damage"], ["Half Cover", "failed"]]);
   });
 
   it("shows an unreduced hit without the wall", () => {
-    const [shot] = effectCuesOf([{ kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Slam Shot", damage: 2, distance: 3 }], fireOf);
+    const [shot] = effectCuesOf([{ kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Handle With Care", damage: 2, distance: 3 }], fireOf);
     expect(shot).not.toHaveProperty("halfCover");
   });
 });
 
 describe("Shield", () => {
-  it("pops the rubies at the Block's crouch and at the dome of Aegis Protocol", () => {
-    const block = effectCuesOf([{ kind: EventKind.ShieldGained, tick: 1, heroId: "a", amount: 2 }], fireOf);
-    expect(block).toEqual([{ kind: "shieldGain", toId: "a", startMs: BLOCK_RUBIES_MS, amount: 2 }]);
-    const aegis = effectCuesOf([{ kind: EventKind.ShieldGained, tick: 1, heroId: "b", amount: 3, card: "Aegis Protocol" }], fireOf);
-    expect(aegis[0]).toMatchObject({ toId: "b", startMs: AEGIS_RUBIES_MS, amount: 3 });
+  it("pops the rubies at the Shield gesture's crouch", () => {
+    const gained = effectCuesOf([{ kind: EventKind.ShieldGained, tick: 1, heroId: "a", amount: 2 }], fireOf);
+    expect(gained).toEqual([{ kind: "shieldGain", toId: "a", startMs: BLOCK_RUBIES_MS, amount: 2 }]);
   });
 
   it("pops a ruby from 0 to 1.5 x to 1 x, the next one 60 ms later", () => {
@@ -134,7 +105,7 @@ describe("Shield", () => {
   });
 
   it("ripples over the bubble and bursts one ruby for every absorbed hit, at the impact", () => {
-    const cues = effectCuesOf([{ kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Slam Shot", absorbed: 1, damage: 0, distance: 2 }], fireOf);
+    const cues = effectCuesOf([{ kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Handle With Care", absorbed: 1, damage: 0, distance: 2 }], fireOf);
     expect(cues).toContainEqual({ kind: "shieldHit", toId: "t", startMs: 620 + 480, absorbed: 1 });
     expect(rippleAt(100)).toBeUndefined();
     expect(rippleAt(110 + 104)?.scale).toBeCloseTo(1 + 0.7 * (104 / 990));
@@ -152,20 +123,6 @@ describe("Shield", () => {
 });
 
 describe("in the frames of the playback", () => {
-  it("lets a Shockwave frame last until its rings and the Knockback tag are over, and reports no Cover edits", () => {
-    const classOf = (id: string) => (id === "a" ? HeroClass.Bruiser : HeroClass.Assassin);
-    const frames = buildPlaybackFrames(
-      [
-        { kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", card: "Shockwave", damage: 2, distance: 1 },
-        { kind: EventKind.Knockback, tick: 1, heroId: "t", from: at(3, 3), to: at(4, 3), card: "Shockwave" },
-      ],
-      classOf,
-    );
-    expect(frames[0]!.moves).toEqual({ t: at(4, 3) });
-    expect(frames[0]!.effects.map((cue) => cue.kind)).toContain("knockback");
-    expect(frames[0]!.coverEdits).toEqual([]);
-  });
-
   it("takes the Cover edit of a Breach Charge from its cue", () => {
     const frames = buildPlaybackFrames([{ kind: EventKind.CoverDestroyed, tick: 1, heroId: "a", to: at(5, 2), card: "Breach Charge" }], () => HeroClass.Bruiser);
     expect(frames[0]!.coverEdits).toHaveLength(1);

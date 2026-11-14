@@ -28,13 +28,13 @@ describe("buildCommentary", () => {
   it("covers a Shield, a failed Attack, Utility and Exhaustion", () => {
     const entries = build([
       event(EventKind.ShieldGained, "me", { amount: 2 }),
-      event(EventKind.AttackFailed, "ally", { targetId: "foe", card: "Slam Shot", reason: AttackFailReason.OutOfRange }),
+      event(EventKind.AttackFailed, "ally", { targetId: "foe", card: "Handle With Care", reason: AttackFailReason.OutOfRange }),
       event(EventKind.SlowApplied, "ally", { targetId: "foe" }),
       event(EventKind.Exhausted, "foe"),
     ]);
     expect(entries.map((entry) => entry.detail)).toEqual([
       "Shield 2 until it is hit",
-      "Slam Shot misses: target is out of Range",
+      "Handle With Care misses: target is out of Range",
       "Its next Move 2 becomes a Move 1",
       "Out of cards: Exhausted",
     ]);
@@ -42,11 +42,11 @@ describe("buildCommentary", () => {
   });
 
   it("says why an Attack missed, and shows no distance for a target that was not visible", () => {
-    const miss = (reason: AttackFailReason) => build([event(EventKind.AttackFailed, "me", { targetId: "foe", card: "Slam Shot", reason })])[0]!.detail;
-    expect(miss(AttackFailReason.NotVisible)).toBe("Slam Shot misses: target not visible");
-    expect(miss(AttackFailReason.NoLineOfSight)).toBe("Slam Shot misses: no Line of Sight to the target");
-    expect(miss(AttackFailReason.FullCover)).toBe("Slam Shot misses: target is behind Full Cover");
-    expect(miss(AttackFailReason.TargetExhausted)).toBe("Slam Shot misses: target is already Exhausted");
+    const miss = (reason: AttackFailReason) => build([event(EventKind.AttackFailed, "me", { targetId: "foe", card: "Handle With Care", reason })])[0]!.detail;
+    expect(miss(AttackFailReason.NotVisible)).toBe("Handle With Care misses: target not visible");
+    expect(miss(AttackFailReason.NoLineOfSight)).toBe("Handle With Care misses: no Line of Sight to the target");
+    expect(miss(AttackFailReason.FullCover)).toBe("Handle With Care misses: target is behind Full Cover");
+    expect(miss(AttackFailReason.TargetExhausted)).toBe("Handle With Care misses: target is already Exhausted");
   });
 
   it("lists only your own Wait and skips follow-up events", () => {

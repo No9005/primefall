@@ -68,7 +68,7 @@ describe("selectHero", () => {
 });
 
 describe("energyReadout and cardUseReasons", () => {
-  // Bruiser card 4 is Breach Charge (cost 2), card 0 is Slam Shot (cost 1).
+  // Bruiser card 4 is Breach Charge (cost 2), card 0 is Handle With Care (cost 1).
   it("shows pitched, spent and available Energy", () => {
     const spending: QueuedAction[] = [{ kind: ActionKind.Primary, card: 0, target: "enemy" }];
     expect(energyReadout(HeroClass.Bruiser, spending, [1, 2, 3])).toEqual({ pitched: 3, spent: 1, available: 2 });
@@ -81,7 +81,7 @@ describe("energyReadout and cardUseReasons", () => {
 
   it("allows the Primary effect of an affordable Attack or Utility card", () => {
     expect(cardUseReasons(HeroClass.Bruiser, 0, [], [1])[CardUse.Primary]).toBeUndefined();
-    // Bruiser card 5 is Bulwark; Controller card 5 is Fortify and card 6 is Deploy Cover.
+    // Bruiser card 5 is Hard Hat; Controller card 5 is Fortify and card 6 is Deploy Cover.
     expect(cardUseReasons(HeroClass.Bruiser, 5, [], [1])[CardUse.Primary]).toBeUndefined();
     expect(cardUseReasons(HeroClass.Controller, 5, [], [1])[CardUse.Primary]).toBeUndefined();
     expect(cardUseReasons(HeroClass.Controller, 6, [], [1])[CardUse.Primary]).toBeUndefined();
@@ -120,13 +120,13 @@ describe("Queue window", () => {
     expect(label(queue[0]!)).toEqual({ name: "Wait", target: "" });
     expect(label(queue[1]!)).toEqual({ name: "Move 2", target: "to 3 · 3" });
     expect(label({ kind: ActionKind.Wait })).toEqual({ name: "Wait", target: "" });
-    // Bruiser card 0 is Slam Shot.
-    expect(label({ kind: ActionKind.Primary, card: 0, target: "right-bruiser" })).toEqual({ name: "Slam Shot", target: "Enemy Bruiser" });
+    // Bruiser card 0 is Handle With Care.
+    expect(label({ kind: ActionKind.Primary, card: 0, target: "right-bruiser" })).toEqual({ name: "Handle With Care", target: "Enemy Bruiser" });
     expect(label({ kind: ActionKind.Primary, card: 0, target: "left-bruiser" }).target).toBe("");
   });
 
   it("gives the Energy of a removed action back", () => {
-    // Bruiser card 0 is Slam Shot (cost 1).
+    // Bruiser card 0 is Handle With Care (cost 1).
     const withAttack: QueuedAction[] = [...queue, { kind: ActionKind.Primary, card: 0, target: "enemy" }];
     const pitched = [5, 6];
     expect(energyReadout(HeroClass.Bruiser, withAttack, pitched).available).toBe(energyReadout(HeroClass.Bruiser, queue, pitched).available - 1);

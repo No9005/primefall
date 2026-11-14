@@ -13,8 +13,6 @@ const world: EffectsWorld = {
 const tile = { col: 2, row: 1 };
 
 const CUES: EffectCue[] = [
-  { kind: "shockwave", casterId: "a", startMs: 100 },
-  { kind: "knockback", toId: "t", from: { col: 0, row: 0 }, to: tile, startMs: 100, tag: "Knockback 2" },
   { kind: "breach", casterId: "a", tile, fireMs: 100, flightMs: 480, cover: true },
   { kind: "coverPlaced", casterId: "a", tile, startMs: 100 },
   { kind: "shot", weapon: "slam", fromId: "a", toId: "t", fireMs: 100, flightMs: 300, halfCover: true },

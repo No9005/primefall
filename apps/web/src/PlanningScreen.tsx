@@ -107,8 +107,6 @@ interface PlaybackState {
   /** Heroes Slowed or Marked so far in the playback: they carry it until the end of the next Resolution. */
   slowed: string[];
   marked: string[];
-  /** Heroes that gained an Attack bonus (Adrenal Surge) in the playback so far: the badge shows beside their ring. */
-  bonus: string[];
   /** The commentary of the Tick being shown. */
   commentary: CommentaryEntry[];
   /** The target lines of the actions resolved in the frame being shown. */
@@ -638,12 +636,13 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         !occupied.some((position) => position.col === tile.col && position.row === tile.row),
     );
   }
-  /** The Heroes a single-target card can be aimed at: Ghosts for a Ghost shot, otherwise Visible enemies that are not Exhausted. */
+  /** The Heroes a single-target card can be aimed at: Ghosts for a Ghost shot, Visible enemies or Ghosts for a Cargo Hook, otherwise Visible enemies that are not Exhausted. */
   function enemyTargetsOf(card: CardDefinition | undefined): string[] {
     if (card?.target === CardTarget.GhostEnemy) {
       return view.enemies.filter((enemy) => enemy.visibility === Visibility.Ghost).map((enemy) => enemy.id);
     }
-    return view.enemies.filter((enemy) => enemy.visibility === Visibility.Visible && !enemy.exhausted).map((enemy) => enemy.id);
+    const ghostsToo = card?.target === CardTarget.VisibleOrGhostEnemy;
+    return view.enemies.filter((enemy) => (enemy.visibility === Visibility.Visible && !enemy.exhausted) || (ghostsToo && enemy.visibility === Visibility.Ghost)).map((enemy) => enemy.id);
   }
   const highlights = useMemo(() => {
     if (playing) return [];
@@ -663,7 +662,6 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
       ...unit,
       ...(playback?.slowed.includes(unit.id) && { slowed: true }),
       ...(playback?.marked.includes(unit.id) && { marked: true }),
-      ...(playback?.bonus.includes(unit.id) && { attackBonus: 1 }),
       position: playback?.positions[unit.id] ?? unit.position,
       exhausted: unit.exhausted || (playback?.exhausted.includes(unit.id) ?? false),
     }));
@@ -684,7 +682,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     (aimedCard.target === CardTarget.AllyHero || aimedCard.target === CardTarget.AllyHeroTile);
   /** The Heroes a card in one mode can be aimed at. */
   function heroTargetsOf(mode: CardDefinition): string[] {
-    if (mode.target === CardTarget.SelfHero || mode.target === CardTarget.EnemiesInRange) return [selected.id];
+    if (mode.target === CardTarget.SelfHero) return [selected.id];
     const modeAimsAtAlly = mode.type === CardType.Utility && (mode.target === CardTarget.AllyHero || mode.target === CardTarget.AllyHeroTile);
     if (modeAimsAtAlly) {
       return view.heroes.filter((hero) => hero.id !== selected.id && !hero.exhausted).map((hero) => hero.id);
@@ -748,7 +746,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   );
   // A card that aims at another Hero reaches it only inside its Range area, and a shot must be able to hit (issue 209).
   const aimsAtOtherHero =
-    aimedCard !== undefined && !aimsAtTile && aimedCard.target !== CardTarget.SelfHero && aimedCard.target !== CardTarget.EnemiesInRange;
+    aimedCard !== undefined && !aimsAtTile && aimedCard.target !== CardTarget.SelfHero;
   const namesDeclaredTarget = aimedCard?.type === CardType.Attack && aimedCard.target === CardTarget.VisibleEnemy;
   const targetableIds = useMemo(() => {
     if (!aimsAtOtherHero || !aimedCard) return candidateIds;
@@ -777,7 +775,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const dragPlaces = useMemo<DropPlaces | undefined>(() => {
     if (!pulling || heldInHand === undefined) return undefined;
     const card = HERO_DECKS[selected.heroClass][heldInHand]!;
-    const targetsSelf = card.target === CardTarget.SelfHero || card.target === CardTarget.EnemiesInRange;
+    const targetsSelf = card.target === CardTarget.SelfHero;
     let heroIds: string[] = [];
     if (!targetsSelf) {
       const candidates = heroTargetsOf(card);
@@ -824,7 +822,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     else if (face === CardUse.Move) setArmed(card);
     else {
       const { target } = HERO_DECKS[selected.heroClass][card]!;
-      if (target === CardTarget.SelfHero || target === CardTarget.EnemiesInRange) setQueue([...queue, primaryAction(card, selected.id)]);
+      if (target === CardTarget.SelfHero) setQueue([...queue, primaryAction(card, selected.id)]);
       else setAiming(card);
     }
   }
@@ -1002,7 +1000,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     let commentaryTick = 0;
     const heroPositions = (heroes: typeof view.heroes) => Object.fromEntries(heroes.map((hero) => [hero.id, hero.position]));
     const sightAfter = { visibleTiles: result.view.visibleTiles, startPositions: heroPositions(view.heroes), endPositions: heroPositions(result.view.heroes) };
-    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, walks: {}, sightAfter, aims: {}, effects: [], slowed: [], marked: [], bonus: [], commentary, lines: [], coverDestroyed: [], coverPlaced: [], coverPlacedOwn: [], coverNoScorch: [] });
+    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, walks: {}, sightAfter, aims: {}, effects: [], slowed: [], marked: [], commentary, lines: [], coverDestroyed: [], coverPlaced: [], coverPlacedOwn: [], coverNoScorch: [] });
     let coverDestroyed: GridPosition[] = [];
     let coverPlaced: GridPosition[] = [];
     let coverPlacedOwn: GridPosition[] = [];
@@ -1010,7 +1008,6 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     const ownHeroIds = new Set(view.heroes.map((hero) => hero.id));
     const slowed: string[] = [];
     const marked: string[] = [];
-    const bonus: string[] = [];
     const classes = new Map([...view.heroes, ...view.enemies].map((unit) => [unit.id, unit.heroClass]));
     // Reduced motion plays no clips, so a frame lasts one step; otherwise until the slowest clip is back at rest.
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1041,7 +1038,6 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         }
       }
       exhausted.push(...frame.exhausted);
-      for (const event of frame.events) if (event.kind === EventKind.AttackBonusGained) bonus.push(event.heroId);
       for (const cue of frame.effects) {
         if (cue.kind === "slow") slowed.push(cue.toId);
         if (cue.kind === "marked") marked.push(cue.toId);
@@ -1070,7 +1066,6 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         effects: frame.effects,
         slowed: [...slowed],
         marked: [...marked],
-        bonus: [...bonus],
         commentary,
         lines: replayTargetLines(frame.events, view.heroes, view.enemies, (heroId) => positions[heroId] ?? startPositions[heroId]),
         coverDestroyed,

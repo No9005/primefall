@@ -7,8 +7,9 @@ import { AttackFailReason, EffectKind, EventKind, type GridPosition, HERO_DECKS,
 export type Weapon = "slam" | "precision" | "long" | "tag";
 
 const WEAPON_OF_CARD: Readonly<Record<string, Weapon>> = {
-  "Slam Shot": "slam",
-  "Concussion Round": "slam",
+  "Handle With Care": "slam",
+  "Buy One, Get Two": "slam",
+  "Time for Coffee": "slam",
   "Precision Shot": "precision",
   "Cover Breaker": "precision",
   "Shield Breaker": "precision",
@@ -18,12 +19,12 @@ const WEAPON_OF_CARD: Readonly<Record<string, Weapon>> = {
   "Tag Round": "tag",
 };
 
-/** The weapon a card fires; cards without a projectile of their own (Breach Charge, Shockwave) have none yet. */
+/** The weapon a card fires; cards without a projectile of their own (Breach Charge) have none yet. */
 export function weaponOf(card: string | undefined): Weapon | undefined {
   return card === undefined ? undefined : WEAPON_OF_CARD[card];
 }
 
-/** One tile of Range in px at design size (a tile step of the Shockwave slides 24 px). */
+/** One tile of Range in px at design size (a tile step of a Pull slides 24 px). */
 export const TILE_PX = 24;
 /** Flight speed in design px per millisecond; the Long Shot has none, its line is there at once. */
 export const PROJECTILE_SPEED: Readonly<Record<Weapon, number>> = { slam: 0.1, precision: 0.3, long: Infinity, tag: 0.3 };
@@ -71,10 +72,6 @@ export type EffectCue =
   | { kind: "number"; toId: string; startMs: number; text: string; style: NumberStyle; drop?: number }
   /** Marked and Slow lock on at `startMs` and last (as state) until the end of the next Resolution. */
   | { kind: "marked" | "slow"; toId: string; startMs: number }
-  /** Shockwave: rings and dust around the Hero that plays it. */
-  | { kind: "shockwave"; casterId: string; startMs: number }
-  /** One tile of Knockback: the Hero slides from `from` to `to` (the rules have moved it there already). */
-  | { kind: "knockback"; toId: string; from: GridPosition; to: GridPosition; startMs: number; tag: string }
   /** The Bruiser has arrived next to its target after a Charge: speed streaks trail behind it, away from the target. */
   | { kind: "charge"; heroId: string; targetId: string; startMs: number }
   /**
@@ -98,10 +95,10 @@ export type EffectCue =
   | { kind: "shieldHit"; toId: string; startMs: number; absorbed: number }
   /** A hit with Crossfire: the label "CROSSFIRE +N" above the numbers; `stack` counts the labels already on the target in this frame. */
   | { kind: "crossfire"; toId: string; startMs: number; amount: number; stack: number }
-  /** The label of extra damage that is not Crossfire (CLOSE +1 of a close-range effect, CHARGE +1 after a Charge), stacked like the CROSSFIRE label. */
+  /** The label of extra damage that is not Crossfire (CLOSE +1 of a close-range effect), stacked like the CROSSFIRE label. */
   | { kind: "bonus"; toId: string; startMs: number; text: string; tone: BonusTone; stack: number };
 
-export type BonusTone = "close" | "charge";
+export type BonusTone = "close";
 
 /** When a cue is over, for the length of the frame. */
 export function cueEndMs(cue: EffectCue): number {
@@ -118,22 +115,18 @@ export function cueEndMs(cue: EffectCue): number {
   }
 }
 
-// ---- Field effects: Shockwave and Knockback, Breach Charge, Cover placed, Half Cover and the Shield ----
+// ---- Field effects: Pull and Charge, Breach Charge, Cover placed, Half Cover and the Shield ----
 
-export const SHOCKWAVE_CARD = "Shockwave";
 export const BREACH_CARD = "Breach Charge";
-export const AEGIS_CARD = "Aegis Protocol";
-export const CHARGE_CARD = "Charge";
-export const SHOCKWAVE_MS = 700;
-/** One tile of Knockback slides 24 px (a tile step) in 300 ms; the `Knockback 2` tag and the skid line outlast it. */
+export const CHARGE_CARD = "Express Delivery";
+/** One tile of Pull slides 24 px (a tile step) in 300 ms. */
 export const SLIDE_MS = 300;
-export const KNOCKBACK_TAG_MS = 800;
 /** A tile of Pull: the slide (`SLIDE_MS`), then the ring and the `PULL 2` tag; the whole cue is over after this. */
 export const PULL_MS = 1100;
 /** The speed streaks of a Charge grow over 150 ms and are gone after this. */
 export const CHARGE_STREAK_MS = 600;
 /** The tag over a Hero that gained Shield from a Charge. */
-export const CHARGE_SHIELD_TAG = "SHIELD 1 · THIS ROUND";
+export const CHARGE_SHIELD_TAG = "SHIELD 2 · THIS ROUND";
 /** The echoes of a pulled Hero trail behind it by these fractions of the slide. */
 export const PULL_ECHO_LAGS = [0.2, 0.4] as const;
 export const BREACH_FLIGHT_MS = UNARMED_FLIGHT_MS;
@@ -148,9 +141,8 @@ export const COVER_CRUMBLE_DELAY_MS = 450;
 export const COVER_CRUMBLE_MS = 900;
 export const SHIELD_POP_MS = 900;
 export const SHIELD_HIT_MS = 1100;
-/** Rubies pop at the Block's crouch (700 ms); Aegis Protocol's dome closes at 1340 ms. */
+/** Rubies pop at the Shield gesture's crouch (700 ms). */
 export const BLOCK_RUBIES_MS = 700;
-export const AEGIS_RUBIES_MS = 1340;
 /** The bubble starts forming this long before the rubies pop. */
 export const BUBBLE_LEAD_MS = 190;
 export const RIPPLE_DELAY_MS = 110;
@@ -160,8 +152,6 @@ const CUE_LENGTH_MS: Readonly<Partial<Record<EffectCue["kind"], number>>> = {
   number: NUMBER_RISE_MS,
   crossfire: CROSSFIRE_MS,
   bonus: CROSSFIRE_MS,
-  shockwave: SHOCKWAVE_MS,
-  knockback: KNOCKBACK_TAG_MS,
   pull: PULL_MS,
   charge: CHARGE_STREAK_MS,
   coverPlaced: COVER_PLACED_MS,
@@ -186,44 +176,16 @@ export function sampleTrack(track: Track, ms: number): number {
   return track[track.length - 1]![1];
 }
 
-/** The `+1` badge `ms` after it appears: drops in from 2 x to 1 x over 192 ms; it stays until Exhaustion. */
-export function badgeAt(ms: number): { scale: number; alpha: number } {
-  return { scale: sampleTrack([[0, 2], [192, 1]], ms), alpha: sampleTrack([[0, 0], [192, 1]], ms) };
-}
-
 /** The puff of a Ghost Shot that found nobody: 0.3 to 1 to 2 x while it fades. */
 export function puffAt(ms: number): { scale: number; alpha: number } | undefined {
   if (ms < 0 || ms >= 720) return undefined;
   return { scale: sampleTrack([[0, 0.3], [120, 1], [720, 2]], ms), alpha: sampleTrack([[0, 0], [120, 0.8], [720, 0]], ms) };
 }
 
-/** Shockwave ring `index` (0 to 2): orange, on the floor, 48 x 24 growing to 3 x over 580 ms, one every 100 ms. */
-export function shockRingAt(ms: number, index: number): { scale: number; alpha: number } | undefined {
-  const t = ms - index * 100;
-  if (t < 0 || t >= 580) return undefined;
-  return { scale: sampleTrack([[0, 0.5], [580, 3]], t), alpha: sampleTrack([[0, 1], [580, 0]], t) };
-}
-
-/** A dust puff of the Shockwave, `delay` ms after the rings: grows to 2.2 x and rises 4 px while it fades. */
-export function dustAt(ms: number, delay: number): { scale: number; alpha: number; rise: number } | undefined {
-  const t = ms - delay;
-  if (t < 0 || t >= 500) return undefined;
-  return {
-    scale: sampleTrack([[0, 0.4], [120, 1], [500, 2.2]], t),
-    alpha: sampleTrack([[0, 0], [120, 0.8], [500, 0]], t),
-    rise: sampleTrack([[0, 0], [500, 4]], t),
-  };
-}
-
-/** How far a Knockback slide has come (0 to 1), `ms` after it starts: it eases out over 300 ms. */
+/** How far a slide has come (0 to 1), `ms` after it starts: it eases out over 300 ms. */
 export function slideProgress(ms: number): number {
   const t = Math.min(1, Math.max(0, ms / SLIDE_MS));
   return 1 - (1 - t) * (1 - t);
-}
-
-/** The skid line behind a slid Hero: grows over 170 ms, fades by 560 ms. */
-export function skidAt(ms: number): { length: number; alpha: number } {
-  return { length: sampleTrack([[0, 0], [170, 1]], ms), alpha: ms <= 0 || ms >= 560 ? 0 : sampleTrack([[0, 0], [170, 0.8], [560, 0]], ms) };
 }
 
 /** The Breach Charge `ms` after it leaves: how far along the way it is (0 to 1) and how high the arc lifts it (26 px at most). */
@@ -366,20 +328,12 @@ export function coverEditsOf(cues: readonly EffectCue[]): CoverEdit[] {
   });
 }
 
-/** How many tiles a card pushes (its Knockback effect), for the tag. */
 /** The tiles of Pull a card names (the `2` of `PULL 2`). */
 function pullOf(card: string | undefined): number {
   const definition = Object.values(HERO_DECKS)
     .flat()
     .find((candidate) => candidate.name === card);
   return definition?.effects.find((effect) => effect.kind === EffectKind.Pull)?.amount ?? 1;
-}
-
-function pushOf(card: string | undefined): number {
-  const definition = Object.values(HERO_DECKS)
-    .flat()
-    .find((candidate) => candidate.name === card);
-  return definition?.effects.find((effect) => effect.kind === EffectKind.Knockback)?.amount ?? 1;
 }
 
 /** The number a hit puts above the target, in the order shown: Shield first, then Deck Damage. */
@@ -445,10 +399,9 @@ function crossfireCue(event: MatchEvent, toId: string, startMs: number, cues: Ef
 
 const labelsOn = (toId: string, cues: readonly EffectCue[]) => cues.filter((cue) => (cue.kind === "crossfire" || cue.kind === "bonus") && cue.toId === toId).length;
 
-/** The labels of the extra damage of a hit, lowest first: CLOSE +1, then CHARGE +1 (the CROSSFIRE label goes on top of them). */
+/** The label of the extra damage of a hit (CLOSE +1); the CROSSFIRE label goes on top of it. */
 function bonusCues(event: MatchEvent, toId: string, startMs: number, cues: EffectCue[]): void {
   if ((event.closeBonus ?? 0) > 0) cues.push({ kind: "bonus", toId, startMs, text: `CLOSE +${event.closeBonus}`, tone: "close", stack: labelsOn(toId, cues) });
-  if ((event.chargeBonus ?? 0) > 0) cues.push({ kind: "bonus", toId, startMs, text: `CHARGE +${event.chargeBonus}`, tone: "charge", stack: labelsOn(toId, cues) });
 }
 
 function hitCues(event: MatchEvent, toId: string, frame: CueFrame): void {
@@ -474,29 +427,12 @@ function hitCues(event: MatchEvent, toId: string, frame: CueFrame): void {
     cues.push({ kind: "number", toId, startMs: fire + flight + NUMBER_DELAY_MS, text: "Half Cover", style: "failed", drop: 9 });
   }
   if ((event.absorbed ?? 0) > 0) cues.push({ kind: "shieldHit", toId, startMs: fire + flight, absorbed: event.absorbed! });
-  if (event.card === SHOCKWAVE_CARD && !cues.some((cue) => cue.kind === "shockwave" && cue.casterId === event.heroId)) {
-    cues.push({ kind: "shockwave", casterId: event.heroId, startMs: fire });
-  }
 }
 
 function attackCues(event: MatchEvent, frame: CueFrame): void {
   if (event.targetId === undefined) return;
   if (event.kind === EventKind.AttackFailed) failedAttackCues(event, event.targetId, frame);
   else hitCues(event, event.targetId, frame);
-}
-
-function knockbackCues(event: MatchEvent, frame: CueFrame): void {
-  if (!event.from || !event.to) return;
-  const shock = frame.events.find((other) => other.kind === EventKind.AttackHit && other.card === event.card);
-  const start = shock === undefined ? 0 : frame.fireOf(shock.heroId, event.card);
-  frame.cues.push({
-    kind: "knockback",
-    toId: event.heroId,
-    from: event.from,
-    to: event.to,
-    startMs: start,
-    tag: `Knockback ${pushOf(event.card)}`,
-  });
 }
 
 /**
@@ -539,7 +475,7 @@ function coverDestroyedCues(event: MatchEvent, frame: CueFrame): void {
 }
 
 function shieldGainedCues(event: MatchEvent, frame: CueFrame): void {
-  const startMs = event.card === AEGIS_CARD ? AEGIS_RUBIES_MS : BLOCK_RUBIES_MS;
+  const startMs = BLOCK_RUBIES_MS;
   frame.cues.push({ kind: "shieldGain", toId: event.heroId, startMs, amount: event.amount ?? 0 });
   if (event.card === CHARGE_CARD) frame.cues.push({ kind: "number", toId: event.heroId, startMs, text: CHARGE_SHIELD_TAG, style: "shield", drop: -26 });
 }
@@ -570,7 +506,6 @@ function chargedCues(event: MatchEvent, frame: CueFrame): void {
 const CUE_BUILDERS: Partial<Record<EventKind, (event: MatchEvent, frame: CueFrame) => void>> = {
   [EventKind.AttackHit]: attackCues,
   [EventKind.AttackFailed]: attackCues,
-  [EventKind.Knockback]: knockbackCues,
   [EventKind.Pull]: pullCues,
   [EventKind.Charged]: chargedCues,
   [EventKind.CoverDestroyed]: coverDestroyedCues,

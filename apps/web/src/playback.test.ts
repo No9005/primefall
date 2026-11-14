@@ -29,30 +29,16 @@ describe("buildPlaybackFrames", () => {
     expect(frames.map((frame) => frame.moves)).toEqual([{}, {}]);
   });
 
-  it("shows a pushed Hero moving one tile per frame", () => {
-    const push = (to: number): MatchEvent => ({
-      kind: EventKind.Knockback,
-      tick: 1,
-      heroId: "b",
-      from: { col: to - 1, row: 0 },
-      to: { col: to, row: 0 },
-    });
-    const frames = buildPlaybackFrames([push(5), push(6)]);
-    expect(frames.map((frame) => frame.moves.b)).toEqual([{ col: 5, row: 0 }, { col: 6, row: 0 }]);
-  });
-
   describe("aims", () => {
     const classes = (id: string) => (id === "a" ? HeroClass.Bruiser : HeroClass.Assassin);
     const attack = (kind: EventKind, card: string, targetId = "b"): MatchEvent => ({ kind, tick: 1, heroId: "a", targetId, card, damage: 1, absorbed: 0 });
 
     it("names the target of an aimed Attack, hit or failed", () => {
-      expect(buildPlaybackFrames([attack(EventKind.AttackHit, "Slam Shot")], classes)[0]!.aims).toEqual({ a: "b" });
-      expect(buildPlaybackFrames([attack(EventKind.AttackFailed, "Slam Shot")], classes)[0]!.aims).toEqual({ a: "b" });
+      expect(buildPlaybackFrames([attack(EventKind.AttackHit, "Handle With Care")], classes)[0]!.aims).toEqual({ a: "b" });
+      expect(buildPlaybackFrames([attack(EventKind.AttackFailed, "Handle With Care")], classes)[0]!.aims).toEqual({ a: "b" });
     });
 
-    it("has no aim for Shockwave, Block, Wait, Vanish or Reposition", () => {
-      const shockwave = buildPlaybackFrames([attack(EventKind.AttackHit, "Shockwave")], classes)[0]!;
-      expect(shockwave.aims).toEqual({});
+    it("has no aim for a Shield, Wait, Vanish or Reposition", () => {
       const others: MatchEvent[] = [
         { kind: EventKind.ShieldGained, tick: 1, heroId: "a", amount: 1 },
         { kind: EventKind.Wait, tick: 1, heroId: "a" },
@@ -131,7 +117,6 @@ describe("enemyTokens", () => {
     hidden: false,
     slowed: false,
     marked: false,
-    attackBonus: 0,
   };
   const ghost: EnemyView = {
     id: "g",
@@ -160,8 +145,8 @@ describe("walking from tile to tile", () => {
     expect(frames[1]!.walks).toEqual({ a: { col: 1, row: 0 } });
   });
 
-  it("does not glide a Hero that is pushed by Knockback or does something else", () => {
-    const frames = buildPlaybackFrames([{ kind: EventKind.Knockback, tick: 1, heroId: "a", from: { col: 3, row: 3 }, to: { col: 4, row: 3 } }]);
+  it("does not glide a Hero that is pulled or does something else", () => {
+    const frames = buildPlaybackFrames([{ kind: EventKind.Pull, tick: 1, heroId: "a", from: { col: 3, row: 3 }, to: { col: 4, row: 3 }, casterId: "b" }]);
     expect(frames[0]!.moves.a).toEqual({ col: 4, row: 3 });
     expect(frames[0]!.walks).toEqual({});
   });

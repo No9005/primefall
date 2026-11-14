@@ -5,8 +5,6 @@ import {
   type CardEffect,
   type CardIndex,
   CardTarget,
-  CHARGE_DAMAGE_BONUS,
-  CHARGE_SHIELD,
   CoverKind,
   coverAgainst,
   EffectKind,
@@ -57,23 +55,21 @@ const EFFECT_TEXT: Record<EffectKind, (effect: CardEffect) => string> = {
   [EffectKind.ApplySlow]: ({ duration }) => `Slow for ${duration ?? 1} Resolution${duration === 1 || duration === undefined ? "" : "s"}`,
   // Marked has no damage amount (the card data gives only a duration); the text used to print "+undefined damage taken".
   [EffectKind.ApplyMarked]: ({ duration }) => `Marked for ${duration ?? 1} Resolution${duration === 1 || duration === undefined ? "" : "s"}`,
-  [EffectKind.Knockback]: ({ amount }) => `Knockback ${amount}`,
   [EffectKind.DestroyHalfCover]: () => "destroys Half Cover",
   [EffectKind.DestroyAnyCover]: () => "destroys any Cover",
   [EffectKind.IgnoreHalfCover]: () => "ignores Half Cover",
   [EffectKind.PiercingDamage]: () => "Piercing Damage: ignores Shield",
   [EffectKind.GainShield]: ({ amount }) => `Shield ${amount}`,
   [EffectKind.ExtendMove]: ({ amount }) => `next Move covers ${amount} tiles`,
-  [EffectKind.GainPermanentAttack]: ({ amount }) => `+${amount} Attack damage for the rest of the match`,
   [EffectKind.RevealArea]: ({ size }) => `reveals a ${size}x${size} area`,
   [EffectKind.PlaceCover]: ({ cover }) => `places ${cover === CoverKind.Full ? "Full" : "Half"} Cover until it is destroyed`,
   [EffectKind.BecomeHidden]: () => "become Hidden",
   [EffectKind.TargetGhost]: () => "shoots a Ghost's last known position",
   [EffectKind.RemoveHalfCoverReduction]: () => "Half Cover does not reduce the damage",
   [EffectKind.Pull]: ({ amount }) => `Pull ${amount}: the enemy moves up to ${amount} tiles toward this Hero`,
-  [EffectKind.Charge]: ({ amount }) =>
-    `moves up to ${amount} tiles toward the enemy and ends next to it, Shield ${CHARGE_SHIELD} until the end of the Round, +${CHARGE_DAMAGE_BONUS} damage on the next Attack at Range 1`,
+  [EffectKind.Charge]: ({ amount, shield }) => `Shield ${shield}, then moves up to ${amount} tiles toward the enemy and ends next to it`,
   [EffectKind.CloseRangeBonus]: ({ amount }) => `+${amount} damage at Range 1`,
+  [EffectKind.AttackTwice]: () => "attacks twice",
 };
 
 function describeEffect(effect: CardEffect): string {
@@ -170,8 +166,9 @@ export interface AimState {
 export function pickInstruction({ card, aimsAtTile, aimsAtAlly, noEnemyInRange }: AimState): string {
   if (noEnemyInRange) return "No enemy in sight";
   if (card.target === CardTarget.Area || card.target === CardTarget.EmptyTile || aimsAtTile) return "Tap a lit tile";
-  if (card.target === CardTarget.SelfHero || card.target === CardTarget.EnemiesInRange) return "Tap your Hero";
+  if (card.target === CardTarget.SelfHero) return "Tap your Hero";
   if (card.target === CardTarget.GhostEnemy) return "Tap a Ghost";
+  if (card.target === CardTarget.VisibleOrGhostEnemy) return "Tap an enemy or a Ghost";
   if (aimsAtAlly) return "Tap an ally";
   return "Tap an enemy";
 }

@@ -6,13 +6,11 @@ import { HERO_STYLE } from "./hero-style";
 import { drawCoverLook } from "./cover-look";
 import { coverLook, type CoverLook, TILE_HEIGHT } from "./terrain";
 import {
-  badgeAt,
   puffAt,
   chargeAt,
   chunkAt,
   COVER_WALL_UP_MS,
   coverDropAt,
-  dustAt,
   type EffectCue,
   bubbleFormAt,
   BUBBLE_LEAD_MS,
@@ -24,7 +22,6 @@ import {
   shardAt,
   SHARDS,
   flightProgress,
-  KNOCKBACK_TAG_MS,
   type BonusTone,
   CHARGE_STREAK_MS,
   PULL_ECHO_LAGS,
@@ -33,8 +30,6 @@ import {
   SLIDE_MS,
   sampleTrack,
   scorchAt,
-  shockRingAt,
-  skidAt,
   smokeAt,
   GLINT_BEFORE_FIRE_MS,
   IMPACT_BURST_MS,
@@ -86,8 +81,8 @@ const CROSSFIRE_OWN = 0x2ec4b6;
 const CROSSFIRE_FONT = 9;
 const SPARK_ANGLES = [0.6, 2.2, 3.7, 5.3];
 /** The Pull is teal when the player's Squad pulls, enemy red when the player's Hero is pulled (docs/design/role-visuals/380/pull.png). */
-/** CLOSE +1 is orange like the Slam Shot, CHARGE +1 gold (docs/design/role-visuals/380/charge.png). */
-const BONUS_COLOR: Readonly<Record<BonusTone, number>> = { close: 0xff8a3d, charge: 0xffd24a };
+/** CLOSE +1 is orange like the shot of Handle With Care. */
+const BONUS_COLOR: Readonly<Record<BonusTone, number>> = { close: 0xff8a3d };
 const PULL_OWN = 0x2ec4b6;
 const PULL_ENEMY = 0xe5484d;
 
@@ -218,35 +213,6 @@ function snailFigure(): Container {
   }
   figure.addChild(stalks, g);
   return figure;
-}
-
-/**
- * The small gold double-chevron badge with `+1` that stays beside the ring of a Hero with an Attack bonus (Adrenal Surge) until its Exhaustion. `update(ms)` is the time since it appeared; state passes a large `ms`.
- */
-export function attackBadge(): StatusMark {
-  const container = new Container();
-  const badge = new Container();
-  // A 30 x 13 frame centred above the head; the double chevron is centred on the frame's middle line.
-  const frame = new Graphics().roundRect(-15 * F, -6.5 * F, 30 * F, 13 * F, 4 * F).fill(OUTLINE).stroke({ width: 1.2 * F, color: GOLD });
-  const chevrons = new Graphics();
-  for (const y of [-1.8, 1.8]) {
-    chevrons.moveTo(-9.5 * F, (y + 1.6) * F).lineTo(-6 * F, (y - 1.6) * F).lineTo(-2.5 * F, (y + 1.6) * F);
-  }
-  chevrons.stroke({ width: 1.5 * F, color: GOLD, join: "round", cap: "round" });
-  const label = new Text({ text: "+1", style: { fontFamily: "Rajdhani", fontSize: 10 * F, fontWeight: "700", fill: GOLD } });
-  label.anchor.set(0, 0.5);
-  label.position.set(-0.5 * F, 0);
-  badge.addChild(frame, chevrons, label);
-  badge.position.set(0, -50 * F);
-  container.addChild(badge);
-  return {
-    container,
-    update(ms) {
-      const { scale, alpha } = badgeAt(ms);
-      badge.scale.set(scale);
-      badge.alpha = alpha;
-    },
-  };
 }
 
 export interface ShieldMarkInput {
@@ -514,7 +480,6 @@ export class EffectsLayer {
       if (cue.kind === "number") this.prepareLabel(i, cue.text, NUMBER_COLOR[cue.style]);
       else if (cue.kind === "crossfire") this.prepareCrossfire(i, `CROSSFIRE +${cue.amount}`, world.own(cue.toId) ? CROSSFIRE_ENEMY : CROSSFIRE_OWN);
       else if (cue.kind === "bonus") this.prepareCrossfire(i, cue.text, BONUS_COLOR[cue.tone]);
-      else if (cue.kind === "knockback") this.prepareLabel(i, cue.tag, SHOCK_ORANGE);
       else if (cue.kind === "pull") this.prepareLabel(i, cue.tag, world.own(cue.toId) ? PULL_ENEMY : PULL_OWN);
       else if (cue.kind === "marked" || cue.kind === "slow") {
         const mark = cue.kind === "marked" ? markedMark() : slowMark();
@@ -524,7 +489,7 @@ export class EffectsLayer {
     });
     for (let i = 0; i < this.texts.length; i++) {
       const kind = cues[i]?.kind;
-      if (kind !== "number" && kind !== "crossfire" && kind !== "bonus" && kind !== "knockback" && kind !== "pull") this.texts[i]!.visible = false;
+      if (kind !== "number" && kind !== "crossfire" && kind !== "bonus" && kind !== "pull") this.texts[i]!.visible = false;
     }
   }
 
@@ -558,7 +523,7 @@ export class EffectsLayer {
     const ms = (now - this.startMs) * CLIP_SPEED;
     let shake: Point = { x: 0, y: 0 };
     this.cues.forEach((cue, i) => {
-      if (cue.kind === "shot" || cue.kind === "shockwave") shake = this.drawShaking(i, cue, ms) ?? shake;
+      if (cue.kind === "shot") shake = this.drawShaking(i, cue, ms) ?? shake;
       else this.drawCue(cue, i, ms);
     });
     for (const { cue, mark } of this.statuses) {
@@ -574,7 +539,6 @@ export class EffectsLayer {
   private drawCue(cue: EffectCue, i: number, ms: number): void {
     if (cue.kind === "number") this.drawNumber(this.texts[i]!, cue, ms);
     else if (cue.kind === "crossfire" || cue.kind === "bonus") this.drawCrossfire(this.texts[i]!, cue, ms);
-    else if (cue.kind === "knockback") this.drawKnockback(this.shapeAt(i), this.texts[i]!, cue, ms);
     else if (cue.kind === "pull") this.drawPull(this.shapeAt(i), this.texts[i]!, cue, ms);
     else if (cue.kind === "charge") this.drawChargeStreaks(this.shapeAt(i), cue, ms);
     else if (cue.kind === "breach") this.drawBreach(this.shapeAt(i), cue, ms);
@@ -582,15 +546,11 @@ export class EffectsLayer {
     else if (cue.kind === "coverCrumble") this.drawCoverCrumble(this.shapeAt(i), cue, ms);
   }
 
-  /** A shot or a shockwave: drawn, and the screen shake it causes (a Long Shot) in world pixels. */
-  private drawShaking(i: number, cue: Extract<EffectCue, { kind: "shot" | "shockwave" }>, ms: number): Point | undefined {
+  /** A shot: drawn, and the screen shake it causes (a Long Shot) in world pixels. */
+  private drawShaking(i: number, cue: Extract<EffectCue, { kind: "shot" }>, ms: number): Point | undefined {
     let offset;
-    if (cue.kind === "shot") {
-      const drawn = this.reduced ? undefined : this.drawShot(this.shapeAt(i), cue, ms);
-      if (drawn && cue.weapon === "long") offset = shakeAt(ms - cue.fireMs);
-    } else {
-      this.drawShockwave(this.shapeAt(i), cue, ms);
-    }
+    const drawn = this.reduced ? undefined : this.drawShot(this.shapeAt(i), cue, ms);
+    if (drawn && cue.weapon === "long") offset = shakeAt(ms - cue.fireMs);
     return offset && { x: offset.x * F, y: offset.y * F };
   }
 
@@ -620,24 +580,6 @@ export class EffectsLayer {
     // With reduced motion the number stays where it appears and only fades.
     label.position.set(at.x, at.y - HEAD_LIFT - (this.reduced ? 0 : rise * F) + (cue.drop ?? 0) * F);
     label.alpha = alpha;
-  }
-
-  /** The orange rings along the floor, and the dust puffs around the Hero that plays the Shockwave. */
-  private drawShockwave(g: Graphics, cue: Extract<EffectCue, { kind: "shockwave" }>, ms: number): void {
-    g.clear();
-    const at = this.place(cue.casterId);
-    if (this.reduced || !at) return;
-    const s = ms - cue.startMs;
-    for (let ring = 0; ring < 3; ring++) {
-      const state = shockRingAt(s, ring);
-      if (state) g.ellipse(at.x, at.y, 24 * F * state.scale, 12 * F * state.scale).stroke({ width: 3 * F, color: SHOCK_ORANGE, alpha: state.alpha });
-    }
-    for (let puff = 0; puff < 6; puff++) {
-      const state = dustAt(s, 20 + puff * 25);
-      if (!state) continue;
-      const angle = (puff / 6) * 2 * Math.PI + 0.4;
-      g.ellipse(at.x + Math.cos(angle) * 24 * F, at.y + Math.sin(angle) * 12 * F - state.rise * F, 5 * F * state.scale, 3 * F * state.scale).fill({ color: DUST, alpha: state.alpha });
-    }
   }
 
   /**
@@ -703,24 +645,6 @@ export class EffectsLayer {
       g.roundRect(at.x - 8 * F, at.y - 30 * F, 16 * F, 26 * F, 5 * F).fill({ color, alpha: alpha * 0.8 });
       g.circle(at.x, at.y - 35 * F, 6 * F).fill({ color, alpha: alpha * 0.8 });
     });
-  }
-
-  /** The skid line behind a Hero that slides one tile, and the `Knockback 2` tag over it. The slide itself is the token's. */
-  private drawKnockback(g: Graphics, label: Text, cue: Extract<EffectCue, { kind: "knockback" }>, ms: number): void {
-    g.clear();
-    const at = this.place(cue.toId);
-    const s = ms - cue.startMs;
-    label.visible = at !== undefined && s >= 0 && s < KNOCKBACK_TAG_MS;
-    if (!at) return;
-    label.position.set(at.x, at.y - HEAD_LIFT - 10 * F);
-    label.alpha = sampleTrack([[0, 0], [100, 1], [500, 1], [KNOCKBACK_TAG_MS, 0]], s);
-    if (this.reduced) return;
-    const skid = skidAt(s);
-    if (skid.alpha <= 0) return;
-    const from = this.world.tile(cue.from);
-    const to = this.world.tile(cue.to);
-    const end = { x: from.x + (to.x - from.x) * skid.length, y: from.y + (to.y - from.y) * skid.length };
-    line(g, from, end, { width: 3 * F, color: DUST, alpha: skid.alpha });
   }
 
   /** The charge arcs to the tile (26 px high), a fireball and smoke, the Cover breaks into four chunks and a scorch stays. */

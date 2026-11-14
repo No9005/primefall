@@ -7,7 +7,7 @@ import { heroMarks, IconKind, NO_MARKS } from "./shield-marks";
 
 const wait: QueuedAction = { kind: ActionKind.Wait };
 const move: QueuedAction = { kind: ActionKind.Move, card: 0, destination: { col: 1, row: 1 } };
-const selfCard = HERO_DECKS[HeroClass.Bruiser].findIndex((card) => card.name === "Bulwark");
+const selfCard = HERO_DECKS[HeroClass.Bruiser].findIndex((card) => card.name === "Hard Hat");
 const bulwark: QueuedAction = { kind: ActionKind.Primary, card: selfCard, target: "b" };
 const own = { own: true, heroClass: HeroClass.Bruiser, shield: 0, resolving: false } as const;
 

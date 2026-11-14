@@ -20,11 +20,10 @@ export type SceneName =
   | "hiddenSeen"
   | "ghost"
   | "exhaustion"
-  | "attackBonus"
   | "plannedIcons"
   | "crossfire"
   | "charge"
-  | "closeAndCharge"
+  | "closeBonus"
   | "deckDamage"
   | "longRangeBonus"
   | "shieldLoss"
@@ -32,7 +31,6 @@ export type SceneName =
   | "outOfRange"
   | "tooClose"
   | "halfCoverTag"
-  | "knockback"
   | "pull"
   | "cover"
   | "placedCover"
@@ -105,12 +103,6 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
     picture: { scene: "exhaustion" },
   },
   {
-    name: "Attack bonus",
-    group: GlossaryGroup.Heroes,
-    text: "A small gold badge with a double chevron and +1 above the Hero, from Adrenal Surge. It stays until Exhaustion.",
-    picture: { scene: "attackBonus" },
-  },
-  {
     name: "Planned Wait and card on itself",
     group: GlossaryGroup.Heroes,
     text: "Above your own Hero a grey chip for each planned action without a line on the board: Wait (hourglass) and a card played on the Hero itself, numbered by Tick.",
@@ -123,16 +115,16 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
     picture: { scene: "crossfire" },
   },
   {
-    name: "Charge",
+    name: "Express Delivery (Charge)",
     group: GlossaryGroup.Heroes,
-    text: "The Bruiser rushes at the enemy with speed streaks behind it, ends next to it and gains Shield 1 for the Round (tag SHIELD 1 · THIS ROUND).",
+    text: "The Bruiser gains Shield 2 first, then rushes at the enemy with speed streaks behind it and ends next to it (tag SHIELD 2 · THIS ROUND).",
     picture: { scene: "charge" },
   },
   {
-    name: "Close and Charge bonus",
+    name: "Close bonus",
     group: GlossaryGroup.Numbers,
-    text: "Tags above the damage number say where extra damage comes from: CLOSE +1 for a close-range effect, CHARGE +1 for the first hit at Range 1 after a Charge.",
-    picture: { scene: "closeAndCharge" },
+    text: "A tag above the damage number says where extra damage comes from: CLOSE +1 for a card with a close-range effect, at Range 1.",
+    picture: { scene: "closeBonus" },
   },
   {
     name: "Deck Damage",
@@ -175,12 +167,6 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
     group: GlossaryGroup.Numbers,
     text: "A tag beside the number: Half Cover on the target's tile reduced the hit.",
     picture: { scene: "halfCoverTag" },
-  },
-  {
-    name: "Knockback",
-    group: GlossaryGroup.Numbers,
-    text: "The Hero slides back and the tag shows how many tiles.",
-    picture: { scene: "knockback" },
   },
   {
     name: "Pull",
