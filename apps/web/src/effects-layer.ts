@@ -171,7 +171,7 @@ export function markedMark(color = MARKED_RED): StatusMark {
   };
 }
 
-const SNAIL_SCALE = 1.6;
+const SNAIL_SCALE = 1.2;
 
 /** The violet ground field (34 x 16 ellipse) that pulses, and a snail above the head that crawls in place. */
 export function slowMark(): StatusMark {
