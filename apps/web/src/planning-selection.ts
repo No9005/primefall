@@ -7,13 +7,10 @@ import {
   CardTarget,
   CHARGE_DAMAGE_BONUS,
   CHARGE_SHIELD,
-  chebyshevDistance,
   CoverKind,
   coverAgainst,
-  damageAtDistance,
   EffectKind,
   energyPool,
-  LONG_RANGE_FROM,
   type Grid,
   type GridPosition,
   HALF_COVER_REDUCTION,
@@ -54,20 +51,9 @@ export function coverProtectionLabel(attacker: GridPosition, target: GridPositio
   }
 }
 
-/** For a card whose damage depends on the Range (Long Shot's Overdrive): the damage against a target at `target`. */
-export function rangeDamageLabel(card: CardDefinition, attacker: GridPosition, target: GridPosition): string | undefined {
-  const effect = card.effects.find(({ kind }) => kind === EffectKind.DamageAtLongRange);
-  if (!effect) return undefined;
-  const distance = chebyshevDistance(attacker, target);
-  const damage = damageAtDistance(effect, distance);
-  return `Range ${distance} · ${damage} damage${distance >= LONG_RANGE_FROM ? " (long range bonus)" : ""}`;
-}
-
 /** The card text of each kind of effect. */
 const EFFECT_TEXT: Record<EffectKind, (effect: CardEffect) => string> = {
   [EffectKind.Damage]: ({ amount }) => `${amount} damage`,
-  [EffectKind.DamageHeroesAtAndAroundTarget]: ({ amount }) => `${amount} damage to Heroes at and around the target`,
-  [EffectKind.DamageAtLongRange]: ({ amount, longRangeAmount }) => `${amount} damage, ${longRangeAmount} from Range ${LONG_RANGE_FROM}`,
   [EffectKind.ApplySlow]: ({ duration }) => `Slow for ${duration ?? 1} Resolution${duration === 1 || duration === undefined ? "" : "s"}`,
   // Marked has no damage amount (the card data gives only a duration); the text used to print "+undefined damage taken".
   [EffectKind.ApplyMarked]: ({ duration }) => `Marked for ${duration ?? 1} Resolution${duration === 1 || duration === undefined ? "" : "s"}`,
@@ -104,10 +90,9 @@ export function describeEffects(effects: readonly CardEffect[] | undefined): str
 /** What a card face shows besides its name and cost; the effect text always comes from the card data. */
 export function cardFace(card: CardDefinition): { type: string; effectText: string } {
   const effectText = describeEffects(card.effects) ?? "";
-  const overdriveText = describeEffects(card.overdrive);
   return {
     type: card.type === CardType.Attack ? "ATTACK" : "UTILITY",
-    effectText: overdriveText ? `${effectText}. Overdrive: ${overdriveText}` : effectText,
+    effectText,
   };
 }
 
@@ -161,42 +146,8 @@ export function blockAction(card: CardIndex): QueuedAction {
   return { kind: ActionKind.Block, card };
 }
 
-export function primaryAction(card: CardIndex, target: string, { tile, overdrive }: { tile?: GridPosition; overdrive?: boolean } = {}): QueuedAction {
-  return { kind: ActionKind.Primary, card, target, ...(tile ? { tile } : {}), ...(overdrive ? { overdrive } : {}) };
-}
-
-/** One of the two faces offered when a card with an Overdrive mode is played on a target. */
-export interface ModeFace {
-  overdrive: boolean;
-  effectText: string;
-  energyCost: number;
-  /** Set when this face cannot be chosen: why not. */
-  reason?: string;
-  /** Overdrive only: the card leaves the game after use (ADR 0003). */
-  exiled: boolean;
-}
-
-/**
- * The Normal and the Overdrive face of a card played on a target, or `undefined` for a card without an
- * Overdrive mode (it plays immediately). `acceptsTarget` tells whether the chosen target is valid for a mode.
- */
-export function modeChoiceFaces(
-  heroClass: HeroClass,
-  card: CardIndex,
-  queue: readonly QueuedAction[],
-  pitched: readonly CardIndex[],
-  acceptsTarget: (overdrive: boolean) => boolean = () => true,
-): [ModeFace, ModeFace] | undefined {
-  const definition = HERO_DECKS[heroClass][card]!;
-  if (!describeEffects(definition.overdrive)) return undefined;
-  const face = (overdrive: boolean): ModeFace => ({
-    overdrive,
-    effectText: describeEffects(overdrive ? definition.overdrive : definition.effects) ?? "",
-    energyCost: definition.energyCost,
-    reason: cardUseReasons(heroClass, card, queue, pitched, overdrive)[CardUse.Primary] ?? (acceptsTarget(overdrive) ? undefined : "needs another target"),
-    exiled: overdrive,
-  });
-  return [face(false), face(true)];
+export function primaryAction(card: CardIndex, target: string, { tile }: { tile?: GridPosition } = {}): QueuedAction {
+  return { kind: ActionKind.Primary, card, target, ...(tile ? { tile } : {}) };
 }
 
 export enum CardUse {
@@ -218,18 +169,14 @@ export interface AimState {
   /** The card needs a highlighted tile (Breach Charge). */
   aimsAtTile: boolean;
   aimsAtAlly: boolean;
-  needsSecondAlly: boolean;
-  /** An ally has already been picked (Aegis Protocol Overdrive). */
-  allyPicked: boolean;
   /** An enemy is to be picked but none can be: for an Attack, no enemy is Visible. */
   noEnemyInRange?: boolean;
 }
 
 /** The one-line instruction on the floating card: what to tap next while a card is aimed. */
-export function pickInstruction({ card, aimsAtTile, aimsAtAlly, needsSecondAlly, allyPicked, noEnemyInRange }: AimState): string {
+export function pickInstruction({ card, aimsAtTile, aimsAtAlly, noEnemyInRange }: AimState): string {
   if (noEnemyInRange) return "No enemy in sight";
   if (card.target === CardTarget.Area || card.target === CardTarget.EmptyTile || aimsAtTile) return "Tap a lit tile";
-  if (needsSecondAlly) return allyPicked ? "Tap the second ally" : "Tap the first ally";
   if (card.target === CardTarget.SelfHero || card.target === CardTarget.EnemiesInRange) return "Tap your Hero";
   if (card.target === CardTarget.GhostEnemy) return "Tap a Ghost";
   if (aimsAtAlly) return "Tap an ally";
@@ -249,8 +196,8 @@ export function energyReadout(heroClass: HeroClass, queue: readonly QueuedAction
 }
 
 /** Why the Primary effect of a card cannot be chosen, ignoring a full Queue. */
-function primaryReason(definition: CardDefinition, overdrive: boolean, available: number): string | undefined {
-  if (!isPlayableCard(definition, overdrive)) return overdrive ? "Overdrive is not playable yet" : "effect is not playable yet";
+function primaryReason(definition: CardDefinition, available: number): string | undefined {
+  if (!isPlayableCard(definition)) return "effect is not playable yet";
   return definition.energyCost > available ? `needs ${definition.energyCost} Energy` : undefined;
 }
 
@@ -260,12 +207,11 @@ export function cardUseReasons(
   card: CardIndex,
   queue: readonly QueuedAction[],
   pitched: readonly CardIndex[],
-  overdrive = false,
 ): Record<CardUse, string | undefined> {
   const queueFull = queue.length >= MAX_QUEUE_LENGTH ? "Queue is full" : undefined;
   const { available } = energyReadout(heroClass, queue, pitched);
   return {
-    [CardUse.Primary]: queueFull ?? primaryReason(HERO_DECKS[heroClass][card]!, overdrive, available),
+    [CardUse.Primary]: queueFull ?? primaryReason(HERO_DECKS[heroClass][card]!, available),
     [CardUse.Pitch]: undefined,
     [CardUse.Move]: queueFull,
     [CardUse.Block]: queueFull,

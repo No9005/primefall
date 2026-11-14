@@ -182,12 +182,6 @@ const SCENES: Record<SceneName, () => Container> = {
     scene.hero(HERO_AT, { pose: "exhausted" });
     return scene.finish();
   },
-  overdrive() {
-    const scene = new Scene(FLOOR_GRID).terrain();
-    scene.hero(HERO_AT);
-    scene.cues([{ kind: "aura", heroId: "target", endMs: 1800 }], { target: HERO_AT }, 560);
-    return scene.finish();
-  },
   attackBonus() {
     const scene = new Scene(FLOOR_GRID).terrain();
     const token = scene.hero(HERO_AT);

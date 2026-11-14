@@ -42,7 +42,7 @@ import { FogClouds, type FogWalker, fogDuringWalk, fogShape } from "./fog-clouds
 import { coverLook, depthOf, floorOutline, footOffset, coverGridOf, lineScale, litTiles, withoutCover } from "./terrain";
 import { CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, hiddenSeenMark, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
-import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
+import { type EffectCue, slideProgress } from "./weapon-effects";
 import { baseFacing, type Facing, turnHeroes } from "./facing";
 import { walkProgress } from "./playback";
 import { areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, TRANSITION_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
@@ -870,8 +870,7 @@ export function Board({
       if ((hero.attackBonus ?? 0) > 0 && !hero.exhausted && !hero.ghost) {
         const badge = attackBadge();
         token.addChild(badge.container);
-        const surge = reduced ? undefined : effects.find((cue) => cue.kind === "surge" && cue.toId === hero.id);
-        badges.push({ mark: badge, startMs: surge?.kind === "surge" ? surge.startMs + BADGE_DELAY_MS : undefined });
+        badges.push({ mark: badge, startMs: undefined });
       }
       tokens.addChild(token);
       created.push(token);
@@ -1211,7 +1210,7 @@ export function Board({
           for (let col = center.col - reach; col <= center.col + reach; col++) {
             if (tileAt(grid, { col, row }) === undefined) continue;
             const { x, y } = gridToWorld({ col, row });
-            const tint = new Graphics().poly(floorOutline()).fill({ color: areaColorOf(size), alpha: 0.28 });
+            const tint = new Graphics().poly(floorOutline()).fill({ color: areaColorOf(), alpha: 0.28 });
             tint.position.set(x, y);
             planning.addChild(tint);
             created.push(tint);

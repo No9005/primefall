@@ -103,7 +103,7 @@ interface Target {
   name: string;
   /** `{ none }`: not something the player taps by itself; the reason says why. */
   tier: Tier | { none: string };
-  /** The rule in styles.css or tutorial.css that sizes the element. */
+  /** The rule in styles.css that sizes the element. */
   selector?: string;
   /** Sizes the style sheet does not give (text-sized or set by the layout), per view. */
   size?: (view: { width: number; height: number }) => Partial<Size>;
@@ -128,17 +128,14 @@ const TARGETS: Target[] = [
   { name: "Queue row", tier: "secondary", selector: ".queue-row", size: () => ({ width: QUEUE_COLUMN_WIDTH }), gapIn: ".queue-rows" },
   { name: "Block drop chip", tier: "secondary", selector: ".drop-chip" },
   { name: "Floating card", tier: "primary", selector: ".floating-card", jsx: [{ file: "game-parts.tsx", includes: "floating-card" }] },
-  { name: "Mode face card", tier: "primary", selector: ".card.mode-face", jsx: [{ file: "game-parts.tsx", includes: "mode-face" }] },
   // The padding of the end-screen buttons is 24 px on each side of the label.
   { name: "Start and end screen button", tier: "primary", selector: ".end-screen button", size: () => ({ width: 48 }), jsx: [{ file: "App.tsx", includes: "<button" }, { file: "EndScreen.tsx", includes: "<button" }] },
-  { name: "Tutorial control", tier: "primary", selector: ".tutorial-controls button", jsx: ["tutorial-back", "tutorial-play", "tutorial-skip", "tutorial-exit"].map((includes) => ({ file: "TutorialScreen.tsx", includes })) },
-  { name: "Tutorial demo card", tier: { none: "a moving picture of a card, tabIndex -1, no handler" }, jsx: [{ file: "TutorialScreen.tsx", includes: "tutorial-card" }] },
   { name: "Hand fan", tier: { none: "the container of the Hand cards; a press in a gap of the fan grabs the card whose strip it is on, the cards are the targets" }, jsx: [{ file: "PlanningScreen.tsx", includes: "className={`hand${collapsed" }] },
   { name: "Parked card", tier: "primary", selector: ".pull-card.parked.card", jsx: [{ file: "game-parts.tsx", includes: "pull-card card" }] },
   { name: "Pull backdrop", tier: { none: "the whole view behind the pulled card; a tap anywhere outside the card closes it" }, jsx: [{ file: "game-parts.tsx", includes: "pull-backdrop" }] },
 ];
 
-const styleRules = loadRules(["styles.css", "tutorial.css", "hero-select.css"]);
+const styleRules = loadRules(["styles.css", "hero-select.css"]);
 
 /** The declarations of the rules with exactly this selector, merged in source order. */
 function declarationsOf(selector: string): Map<string, string> {
@@ -200,7 +197,7 @@ function interactiveElements(file: string): string[] {
   return found;
 }
 
-const SCREEN_FILES = ["PlanningScreen.tsx", "TutorialScreen.tsx", "EndScreen.tsx", "App.tsx", "game-parts.tsx"];
+const SCREEN_FILES = ["PlanningScreen.tsx", "EndScreen.tsx", "App.tsx", "game-parts.tsx"];
 
 describe("touch target tiers", () => {
   const allowlist = JSON.parse(readSource("touch-targets.allowlist.json")) as { target: string; check: string; reason: string }[];

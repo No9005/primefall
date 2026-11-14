@@ -12,7 +12,6 @@
   --blue: #4da3ff;
   --yellow: #e5b429;
   --amber: #ffb347;
-  --overdrive: #ffb000;
   --gold: #ffd24a;
   --white: #ffffff;
   --text: #dbe4ec;
@@ -106,8 +105,6 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .pull-card.parked.card .card-cost { top: -9px; right: -9px; width: 22px; height: 22px; font-size: 12px; }
 .pull-faces { position: absolute; left: calc((100% - 136px) / 2); top: 52px; transform: translateX(-50%); display: flex; gap: 6px; }
 .pull-face { width: 128px; min-height: 112px; box-sizing: border-box; padding: 8px 9px; display: flex; flex-direction: column; gap: 4px; background: var(--graphite); color: var(--text); border: 2px solid var(--teal); border-radius: var(--radius-m); text-align: left; cursor: pointer; pointer-events: auto; animation: pull-lift var(--dur-fast) ease-out; }
-.pull-face.overdrive { border-color: var(--overdrive); }
-.pull-face.overdrive .face-title { color: var(--overdrive); }
 .pull-face[aria-disabled="true"] { opacity: 0.7; border-color: var(--steel); cursor: default; }
 .face-title { display: flex; flex: none; justify-content: space-between; align-items: flex-start; gap: 4px; font: 700 12px/1.2 var(--font-label); letter-spacing: 0.06em; text-transform: uppercase; }
 .pull-face > * { flex: none; }
@@ -131,15 +128,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 @media (prefers-reduced-motion: reduce) {
   .hand.collapsed, .hand.collapsed li { transition: none; }
 }
-
-/* The Normal and the Overdrive face of a card side by side (the Tutorial shows them). */
 .use-reason { font-size: 12px; line-height: 1.1; color: var(--orange); }
-.card.mode-face { width: 168px; height: auto; min-height: 150px; }
-.card.mode-face.overdrive { border-color: var(--overdrive); }
-.card.mode-face.overdrive .card-text, .card.mode-face.overdrive .card-type { color: var(--overdrive); }
-.card.mode-face:disabled { opacity: 0.55; cursor: default; }
-.mode-note { display: block; font-size: 12px; color: var(--overdrive); }
-.od-marker { margin-left: 3px; padding: 0 2px; border-radius: 2px; background: var(--overdrive); color: var(--graphite); font-size: 12px; }
 /* The Hand is a fan of 108 x 134 px cards in the bottom left corner that bleed off the bottom edge (only the top 62 px show: name, cost, type); the piles sit left of it, the Energy pill right above it. */
 .hand-bar { z-index: var(--z-hand); background: none; border: 0; bottom: 0; left: 6px; display: flex; align-items: flex-end; gap: 6px; }
 .piles { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }

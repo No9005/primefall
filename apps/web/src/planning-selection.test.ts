@@ -1,21 +1,13 @@
 import { ActionKind, cardIndex, HERO_DECKS, HeroClass, parseGrid, PlanIssueKind, type QueuedAction, SquadId, validatePlan } from "game-core";
 import { createLocalHost } from "game-core/local-host";
 import { describe, expect, it } from "vitest";
-import { actionUsesCard, addWaitAction, cardFace, CardUse, cardUseReasons, modeChoiceFaces, queueRowLabel,removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
+import { actionUsesCard, addWaitAction, cardFace, CardUse, cardUseReasons, queueRowLabel,removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
 
 const LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot");
 
-describe("rangeDamageLabel", () => {
-  const from = { col: 2, row: 1 };
-
-  it("shows nothing for a card whose damage does not depend on Range", () => {
-    expect(rangeDamageLabel(HERO_DECKS[HeroClass.Assassin][0]!, from, { col: 8, row: 1 })).toBeUndefined();
-  });
-});
-
 describe("pickInstruction", () => {
   const card = HERO_DECKS[HeroClass.Assassin][0]!;
-  const base = { card, aimsAtTile: false, aimsAtAlly: false, needsSecondAlly: false, allyPicked: false };
+  const base = { card, aimsAtTile: false, aimsAtAlly: false };
 
   it("tells the player to pick an enemy by default and an ally for ally cards", () => {
     expect(pickInstruction(base)).toBe("Tap an enemy");
@@ -24,11 +16,6 @@ describe("pickInstruction", () => {
 
   it("says to move closer when no enemy is inside the Range", () => {
     expect(pickInstruction({ ...base, noEnemyInRange: true })).toBe("No enemy in sight");
-  });
-
-  it("asks for the first and then the second ally when a card needs two", () => {
-    expect(pickInstruction({ ...base, needsSecondAlly: true })).toBe("Tap the first ally");
-    expect(pickInstruction({ ...base, needsSecondAlly: true, allyPicked: true })).toBe("Tap the second ally");
   });
 
   it("asks for a lit tile for tile cards", () => {
@@ -42,9 +29,6 @@ describe("describeEffects", () => {
     expect(describeEffects(longShot.effects)).toBeTruthy();
   });
 
-  it("returns nothing for a card without Overdrive", () => {
-    expect(describeEffects(undefined)).toBeUndefined();
-  });
 });
 
 describe("coverProtectionLabel", () => {
@@ -120,14 +104,6 @@ describe("cardFace", () => {
         expect(effectText).toContain(describeEffects(card.effects));
         expect(["ATTACK", "UTILITY"]).toContain(type);
       }
-    }
-  });
-});
-
-describe("modeChoiceFaces", () => {
-  it("offers no choice of mode for any card: Overdrive is gone", () => {
-    for (const heroClass of Object.values(HeroClass)) {
-      HERO_DECKS[heroClass].forEach((_, index) => expect(modeChoiceFaces(heroClass, index, [], [1, 2, 3])).toBeUndefined());
     }
   });
 });

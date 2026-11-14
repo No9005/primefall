@@ -5,12 +5,10 @@ import {
   type CardIndex,
   type CardDefinition,
   CardTarget,
-  cardInMode,
   CardType,
   CoverKind,
   coverAt,
   destroyCover,
-  EffectRecipient,
   EffectKind,
   EventKind,
   HERO_DECKS,
@@ -194,7 +192,6 @@ export function QueueColumn({
               <span className="queue-text">
                 <span className="queue-name">
                   {name}
-                  {action.kind === ActionKind.Primary && action.overdrive && <span className="od-marker">OD</span>}
                 </span>
                 {target && <span className="queue-target">{target}</span>}
                 {reasons.length > 0 && (
@@ -358,8 +355,7 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
         let use = "";
         const queued = queue[queuedAt];
         if (queued && queued.kind !== ActionKind.Wait) {
-          const overdriven = queued.kind === ActionKind.Primary && queued.overdrive;
-          use = `${overdriven ? "Overdrive" : ACTION_USE_LABELS[queued.kind]} · #${queuedAt + 1}`;
+          use = `${ACTION_USE_LABELS[queued.kind]} · #${queuedAt + 1}`;
         } else if (isPitched) use = `${CARD_USE_LABELS[CardUse.Pitch]} · tap to undo`;
         else if (cardIndex === armed) use = armedLabel;
         const arrivalOrder = arriving.indexOf(cardIndex);
@@ -448,12 +444,8 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const [armed, setArmed] = useState<CardIndex>();
   /** The card of a Primary effect that waits for the player to tap its target. */
   const [aiming, setAiming] = useState<CardIndex>();
-  /** Aegis Protocol Overdrive: the first ally already picked, while the player still has to pick the second. */
-  const [firstAlly, setFirstAlly] = useState<string>();
   /** The card in the Hand that is pressed or pulled out (card-pull.ts); the faces of its uses are shown. */
   const [pull, setPullState] = useState<PullState>(IDLE);
-  /** The aimed card is used in its Overdrive mode (the Overdrive face was chosen). */
-  const [overdriveAim, setOverdriveAim] = useState(false);
   const [playback, setPlayback] = useState<PlaybackState>();
   // The Deck Damage animation (issue 203): hits on the player's Heroes wait in a queue and burn one batch at a time.
   // The shuffle animation (issue 204) waits in the same line, so it plays after the cards burned before it.
@@ -625,15 +617,13 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     ]);
     return Object.fromEntries([...own, ...enemies]);
   }, [view.heroes, view.enemies, squadPlans, playback, playing, playerHeroId]);
-  const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, overdriveAim);
+  const aimedCard = aiming === undefined ? undefined : HERO_DECKS[selected.heroClass][aiming]!;
   const aimedModes = aimedCard === undefined ? [] : [aimedCard];
   // Tile cards (Breach Charge), area cards (Scout Drone) and Deploy Cover are confirmed by tapping a tile.
   const aimsAtTile =
     aimedCard?.target === CardTarget.Tile ||
     aimedCard?.target === CardTarget.Area ||
     aimedCard?.target === CardTarget.EmptyTile;
-  // Aegis Protocol's Overdrive first picks one ally, then a second one.
-  const needsSecondAlly = aimedCard?.effects.some(({ recipient }) => recipient === EffectRecipient.SecondTarget) === true;
   /** The tiles a card with a tile target (Breach Charge, Scout Drone, Deploy Cover) can be aimed at. */
   function tileTargetsOf(card: CardDefinition | undefined): GridPosition[] {
     if (card?.target !== CardTarget.Tile && card?.target !== CardTarget.Area && card?.target !== CardTarget.EmptyTile) return [];
@@ -698,14 +688,14 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     if (mode.target === CardTarget.SelfHero || mode.target === CardTarget.EnemiesInRange) return [selected.id];
     const modeAimsAtAlly = mode.type === CardType.Utility && (mode.target === CardTarget.AllyHero || mode.target === CardTarget.AllyHeroTile);
     if (modeAimsAtAlly) {
-      return view.heroes.filter((hero) => hero.id !== selected.id && !(needsSecondAlly && hero.id === firstAlly) && !hero.exhausted).map((hero) => hero.id);
+      return view.heroes.filter((hero) => hero.id !== selected.id && !hero.exhausted).map((hero) => hero.id);
     }
     return enemyTargetsOf(mode);
   }
   const candidateIds = useMemo(() => {
     if (aiming === undefined || playing) return [];
     return [...new Set(aimedModes.flatMap(heroTargetsOf))];
-  }, [aiming, aimedModes, needsSecondAlly, playing, selected.id, firstAlly, view.heroes, view.enemies]);
+  }, [aiming, aimedModes, playing, selected.id, view.heroes, view.enemies]);
   const sideOf = (heroId: string): CommentarySide => {
     const ownSquadHero = view.heroes.find((hero) => hero.id === heroId);
     if (ownSquadHero === undefined) return "enemy";
@@ -724,7 +714,6 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     setArmed(next.armed);
     setAiming(undefined);
     setPullState(IDLE);
-    setOverdriveAim(false);
   }
 
   const planningRef = useRef<HTMLDivElement>(null);
@@ -825,8 +814,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
       : faceViews(
           pulledCard,
           cardUseReasons(selected.heroClass, heldInHand, queue, pitched),
-          cardUseReasons(selected.heroClass, heldInHand, queue, pitched, true)[CardUse.Primary],
-          { primary: describeEffects(pulledCard.effects) ?? "", overdrive: describeEffects(pulledCard.overdrive) },
+          { primary: describeEffects(pulledCard.effects) ?? "" },
           view.attackAndDefend !== undefined,
         );
 
@@ -834,19 +822,13 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   function useCard(card: CardIndex, face: Face) {
     setArmed(undefined);
     setAiming(undefined);
-    setFirstAlly(undefined);
-    setOverdriveAim(false);
     if (face === CardUse.Pitch) setPitched([...pitched, card]);
     else if (face === CardUse.Block) setQueue([...queue, blockAction(card)]);
     else if (face === CardUse.Move) setArmed(card);
     else {
-      const overdrive = face === "overdrive";
-      const { target } = cardInMode(HERO_DECKS[selected.heroClass][card]!, overdrive);
-      if (target === CardTarget.SelfHero || target === CardTarget.EnemiesInRange) setQueue([...queue, primaryAction(card, selected.id, { overdrive })]);
-      else {
-        setAiming(card);
-        setOverdriveAim(overdrive);
-      }
+      const { target } = HERO_DECKS[selected.heroClass][card]!;
+      if (target === CardTarget.SelfHero || target === CardTarget.EnemiesInRange) setQueue([...queue, primaryAction(card, selected.id)]);
+      else setAiming(card);
     }
   }
   function applyPull({ state, chosen }: { state: PullState; chosen?: { card: CardIndex; face: Face } }) {
@@ -911,8 +893,6 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     setPull(IDLE);
     setArmed(undefined);
     setAiming(undefined);
-    setFirstAlly(undefined);
-    setOverdriveAim(false);
     const next = applyDrop(card, drop, queue, pitched);
     setQueue(next.queue);
     setPitched(next.pitched);
@@ -933,7 +913,6 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   function clickCard(card: CardIndex, event: ReactMouseEvent) {
     setArmed(undefined);
     setAiming(undefined);
-    setOverdriveAim(false);
     if (queue.some((action) => actionUsesCard(action, card)) || pitched.includes(card)) {
       setQueue(queue.filter((action) => !actionUsesCard(action, card)));
       setPitched(unpitchCard(pitched, card));
@@ -944,30 +923,19 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   function cancelUse() {
     setArmed(undefined);
     setAiming(undefined);
-    setFirstAlly(undefined);
-    setOverdriveAim(false);
   }
 
   function tapTarget(targetId: string) {
     if (aiming === undefined || playing || !targetableIds.includes(targetId)) return;
-    // Aegis Protocol's Overdrive picks one ally, then a second one.
-    if (needsSecondAlly && firstAlly === undefined) {
-      setFirstAlly(targetId);
-      return;
-    }
-    if (needsSecondAlly) setQueue([...queue, { kind: ActionKind.Primary, card: aiming, target: firstAlly!, secondTarget: targetId, overdrive: true }]);
-    else setQueue([...queue, primaryAction(aiming, targetId, { overdrive: overdriveAim })]);
+    setQueue([...queue, primaryAction(aiming, targetId)]);
     setAiming(undefined);
-    setFirstAlly(undefined);
-    setOverdriveAim(false);
   }
 
   function tapTile(destination: GridPosition) {
     if (aiming !== undefined && aimsAtTile) {
-      setQueue([...queue, primaryAction(aiming, selected.id, { tile: destination, overdrive: overdriveAim })]);
+      setQueue([...queue, primaryAction(aiming, selected.id, { tile: destination })]);
       setAiming(undefined);
-      setOverdriveAim(false);
-      return;
+        return;
     }
     if (armed === undefined) return;
     setQueue([...queue, moveAction(armed, destination)]);
@@ -1407,7 +1375,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
           instruction={
             aimedCard === undefined
               ? "Tap a lit tile"
-              : pickInstruction({ card: aimedCard, aimsAtTile, aimsAtAlly, needsSecondAlly, allyPicked: firstAlly !== undefined, noEnemyInRange }) +
+              : pickInstruction({ card: aimedCard, aimsAtTile, aimsAtAlly, noEnemyInRange }) +
                 (aimHint ? ` · ${aimHint}` : "")
           }
           onCancel={cancelUse}

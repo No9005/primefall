@@ -1,4 +1,4 @@
-import { cardInMode, CoverKind, type EnemyView, EventKind, type GridPosition, HERO_DECKS, type HeroClass, isAreaAttack, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
+import { CoverKind, type EnemyView, EventKind, type GridPosition, HERO_DECKS, type HeroClass, isAreaAttack, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
 import type { TokenHero } from "./Board";
 import { attackClipName, type ClipName, clipOf, takeCoverClipName } from "./hero-clips";
 import { type CoverEdit, coverEditsOf, cueEndMs, type EffectCue, effectCuesOf, impactMs } from "./weapon-effects";
@@ -38,9 +38,8 @@ export interface PlaybackHit {
   damage: number;
   /** Damage the target's Shield absorbed. */
   absorbed: number;
-  /** The card that caused the hit, whether it was played in Overdrive and the Range of the shot. */
+  /** The card that caused the hit and the Range of the shot. */
   card?: string;
-  overdrive?: boolean;
   distance?: number;
 }
 
@@ -158,7 +157,6 @@ function hitOf(event: MatchEvent): PlaybackHit {
     damage: event.damage ?? 0,
     absorbed: event.absorbed ?? 0,
     ...(event.card !== undefined && { card: event.card }),
-    ...(event.overdrive && { overdrive: true }),
     ...(event.distance !== undefined && { distance: event.distance }),
   };
 }
@@ -203,7 +201,7 @@ function isAimedAtOneHero(event: MatchEvent, classOf: ClassOf): boolean {
   if (event.targetId === undefined || event.tile !== undefined) return false;
   const heroClass = classOf?.(event.heroId);
   const card = heroClass === undefined ? undefined : HERO_DECKS[heroClass].find((candidate) => candidate.name === event.card);
-  return card === undefined || !isAreaAttack(cardInMode(card, event.overdrive));
+  return card === undefined || !isAreaAttack(card);
 }
 
 function reactToHit(frame: PlaybackFrame, event: MatchEvent, targetId: string, classOf: ClassOf): void {
