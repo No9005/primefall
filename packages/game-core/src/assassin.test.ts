@@ -26,11 +26,10 @@ const HALF_COVER = { col: 18, row: 8 };
 const FULL_COVER = { col: 15, row: 1 };
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
-const primary = (card: number, target: string, overdrive?: boolean): QueuedAction => ({
+const primary = (card: number, target: string): QueuedAction => ({
   kind: ActionKind.Primary,
   card,
   target,
-  ...(overdrive ? { overdrive } : {}),
 });
 const plan = (queue: QueuedAction[], pitched: number[] = [PITCH], squad = SquadId.Left, heroId = ASSASSIN): SquadPlan => ({
   squad,

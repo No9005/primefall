@@ -1,7 +1,7 @@
 // Squad Plans and planning-time validation (ADR 0013, ADR 0020). Shared with clients: a plan is plain
 // data, and `validatePlan` lets the UI explain why a plan cannot be committed. The host validates again.
 
-import { type CardDefinition, type CardIndex, cardInMode, CardTarget, EffectKind, EffectRecipient, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
+import { type CardDefinition, type CardIndex, CardTarget, EffectKind, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type HeroView, type SquadId, type SquadView, Visibility } from "./host";
 import { CoverKind, coverAt, type Grid, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind, tileAt } from "./reactor-deck";
 
@@ -53,10 +53,6 @@ export interface PrimaryAction {
    * an area); `target` is then the casting Hero.
    */
   tile?: GridPosition;
-  /** For an Overdrive that affects two allied Heroes (Aegis Protocol): the second one, distinct from `target`. */
-  secondTarget?: string;
-  /** Play the card's Overdrive instead of its standard effect; the card is then Exiled (ADR 0003). */
-  overdrive?: boolean;
 }
 
 export interface WaitAction {
@@ -104,8 +100,6 @@ export enum PlanIssueKind {
   UnplayableCard = "unplayableCard",
   BadTarget = "badTarget",
   HeroExhausted = "heroExhausted",
-  /** Overdrive was requested for a card that has none. */
-  NoOverdrive = "noOverdrive",
   /** A Block in the classic mode, which has none: Shield comes from Shield cards. */
   BlockNotAllowed = "blockNotAllowed",
 }
@@ -227,17 +221,14 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
         report({ kind: PlanIssueKind.BlockNotAllowed, heroId, message: "This mode has no Block: Shield comes from Shield cards." });
       }
       if (action.kind === ActionKind.Primary) {
-        const extend = cardInMode(HERO_DECKS[hero.heroClass][action.card]!, action.overdrive).effects.find(
+        const extend = HERO_DECKS[hero.heroClass][action.card]!.effects.find(
           ({ kind }) => kind === EffectKind.ExtendMove,
         );
         if (extend) moveDistance = extend.amount ?? MOVE_DISTANCE;
       }
       if (action.kind === ActionKind.Primary) {
-        const base = HERO_DECKS[hero.heroClass][action.card];
-        const card = base && cardInMode(base, action.overdrive);
-        if (base && action.overdrive && !base.overdrive) {
-          report({ kind: PlanIssueKind.NoOverdrive, heroId, message: `${base.name} has no Overdrive.` });
-        } else if (!card || !isPlayableCard(base!, action.overdrive)) {
+        const card = HERO_DECKS[hero.heroClass][action.card];
+        if (!card || !isPlayableCard(card)) {
           report({ kind: PlanIssueKind.UnplayableCard, heroId, message: "This card's effect cannot be played yet." });
         } else if (card.target === CardTarget.GhostEnemy) {
           if (!view.enemies.some((enemy) => enemy.id === action.target && enemy.visibility === Visibility.Ghost)) {
@@ -261,12 +252,6 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
               heroId,
               message: isSelfCard ? `${card.name} can only target this Hero.` : `${card.name} needs an allied Hero as its target.`,
             });
-          }
-          if (card.effects.some(({ recipient }) => recipient === EffectRecipient.SecondTarget)) {
-            const second = view.heroes.find((ally) => ally.id === action.secondTarget);
-            if (!second || second.id === heroId || second.id === action.target || second.exhausted) {
-              report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a second, different allied Hero.` });
-            }
           }
         } else if (!view.enemies.some(
             (enemy) => enemy.id === action.target && enemy.visibility === Visibility.Visible && !enemy.exhausted,
@@ -439,7 +424,7 @@ export function findMoveCollisions(heroes: readonly HeroView[], plans: readonly 
       if (!action || hero.exhausted) return [];
       if (action.kind === ActionKind.Primary) {
         const card = HERO_DECKS[hero.heroClass][action.card];
-        const extend = card && cardInMode(card, action.overdrive).effects.find(({ kind }) => kind === EffectKind.ExtendMove);
+        const extend = card?.effects.find(({ kind }) => kind === EffectKind.ExtendMove);
         if (extend) extended.set(heroId, extend.amount ?? MOVE_DISTANCE);
       }
       if (action.kind !== ActionKind.Move) return [];
