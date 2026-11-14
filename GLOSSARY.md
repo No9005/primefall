@@ -87,7 +87,7 @@ Terrain a Hero can stand on that changes incoming attacks and visibility. Agains
 _Avoid_: Obstacle, wall, terrain
 
 **Hidden**:
-A Hero state granted by certain Assassin Utility cards. A hidden Hero remains concealed for up to two rounds unless it attacks or is revealed.
+A Hero state granted by certain Assassin Utility cards. A hidden Hero remains concealed for up to two rounds unless it attacks or is revealed. A Scout Drone area shows a Hidden enemy without ending Hidden.
 _Avoid_: Stealth, invisible, camouflage
 
 **Marked**:
@@ -137,7 +137,7 @@ An Attack that fails its check at fire time and does nothing. The Resolution log
 _Avoid_: Dodge, whiff
 
 **Visible**:
-An enemy Hero currently within Line of Sight and within the squad's sight range (7 tiles; 9 for a Hidden Assassin). The squad can see its current position, Shield, and the number of cards in its Deck, Discard, and Exile.
+An enemy Hero currently within Line of Sight and within the squad's sight range (7 tiles; 9 for a Hidden Assassin), or inside a Scout Drone area of the squad (a Hidden enemy there is Visible but stays Hidden). The squad can see its current position, Shield, and the number of cards in its Deck, Discard, and Exile.
 _Avoid_: Spotted, revealed
 
 **Ghost**:
