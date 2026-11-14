@@ -81,10 +81,29 @@ export interface CameraView {
   grid?: Grid;
   /** View angle in degrees; the diagonal view when missing. */
   angle?: number;
+  /** Pixel art: the zoom rests on whole-number steps of the art (`PIXEL_ZOOMS`), so a pixel stays a whole number of screen pixels. */
+  pixel?: boolean;
+}
+
+/** The zoom steps of the Pixel art style, as multiples of the art (at 1x a pixel of the tileset is one CSS pixel). */
+export const PIXEL_ZOOMS = [0.5, 1, 2] as const;
+/** The camera scale of 1x in Pixel art: a tile of the tileset is 32 px wide, a world tile 128 px. */
+export const PIXEL_WORLD_SCALE = 32 / TILE_WIDTH;
+export const PIXEL_MAX_SCALE = PIXEL_ZOOMS[PIXEL_ZOOMS.length - 1]! * PIXEL_WORLD_SCALE;
+
+/** The largest zoom step (as a camera scale) that is not above `scale`; the smallest step when `scale` is below all of them. */
+export function pixelStepScale(scale: number): number {
+  const step = [...PIXEL_ZOOMS].reverse().find((zoom) => zoom * PIXEL_WORLD_SCALE <= scale * 1.0001) ?? PIXEL_ZOOMS[0];
+  return step * PIXEL_WORLD_SCALE;
 }
 
 export function fitCamera(view: CameraView): Camera {
-  return computeCamera(view.width, view.height, view.grid, view.angle);
+  const fitted = computeCamera(view.width, view.height, view.grid, view.angle);
+  if (!view.pixel) return fitted;
+  // The whole board at a whole-number zoom: the largest step that fits (0.5x at least), centred.
+  const scale = pixelStepScale(fitted.scale);
+  const offset = { x: (fitted.x - view.width / 2) / fitted.scale, y: (fitted.y - view.height / 2) / fitted.scale };
+  return { scale, x: view.width / 2 + offset.x * scale, y: view.height / 2 + offset.y * scale };
 }
 
 /** True when the camera is zoomed in past the fitted view (so the board can be panned). */
@@ -113,9 +132,10 @@ export function clampCamera(camera: Camera, view: CameraView): Camera {
 
 /** Like clampCamera, but the board only has to cover `area` (a part of the view) instead of the whole view. */
 function clampCameraIn(camera: Camera, view: CameraView, area: Rect): Camera {
-  const { width, height, grid = REACTOR_DECK, angle } = view;
-  const fitted = computeCamera(width, height, grid, angle);
-  const scale = Math.min(Math.max(camera.scale, fitted.scale), fitted.scale * MAX_ZOOM);
+  const { grid = REACTOR_DECK, angle } = view;
+  const fitted = fitCamera(view);
+  const clamped = Math.min(Math.max(camera.scale, fitted.scale), view.pixel ? PIXEL_MAX_SCALE : fitted.scale * MAX_ZOOM);
+  const scale = view.pixel ? Math.max(pixelStepScale(clamped), fitted.scale) : clamped;
   const bounds = boardBounds(grid, angle);
   const marginX = (bounds.right - bounds.left) * CAMERA_MARGIN;
   const marginY = (bounds.bottom - bounds.top) * CAMERA_MARGIN;
@@ -157,7 +177,7 @@ export function panBy(camera: Camera, dx: number, dy: number, view: CameraView):
 
 /** The Hero view: HERO_ZOOM times the fitted scale with the world point in the middle of the view (as far as the board allows). */
 export function zoomOnPoint(world: { x: number; y: number }, view: CameraView): Camera {
-  const scale = fitCamera(view).scale * HERO_ZOOM;
+  const scale = view.pixel ? PIXEL_MAX_SCALE : fitCamera(view).scale * HERO_ZOOM;
   return clampCamera({ scale, x: view.width / 2 - world.x * scale, y: view.height / 2 - world.y * scale }, view);
 }
 
@@ -193,7 +213,10 @@ export function frameMoveCamera(hero: GridPosition, highlights: readonly GridPos
 export function frameSquadCamera(heroes: readonly GridPosition[], zone: GridPosition, view: CameraView, free: Rect): Camera {
   if (heroes.length === 0) return fitCamera(view);
   const fitted = fitCamera(view);
-  const scale = Math.min(Math.max(fitted.scale * SQUAD_ZOOM, MIN_HERO_SCREEN_HEIGHT / HERO_WORLD_HEIGHT), fitted.scale * MAX_ZOOM);
+  // Pixel art starts at 1x; otherwise the Heroes are zoomed to a readable size.
+  const scale = view.pixel
+    ? Math.max(fitted.scale, PIXEL_WORLD_SCALE)
+    : Math.min(Math.max(fitted.scale * SQUAD_ZOOM, MIN_HERO_SCREEN_HEIGHT / HERO_WORLD_HEIGHT), fitted.scale * MAX_ZOOM);
   const world = (tile: GridPosition) => gridToWorld(tile, view.angle);
   const squadPoints = heroes.map(world);
   const squad = { x: average(squadPoints.map((p) => p.x)), y: average(squadPoints.map((p) => p.y)) };
