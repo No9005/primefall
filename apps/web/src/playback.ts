@@ -239,7 +239,8 @@ export function utilityClipName(event: MatchEvent): { heroId: string; clip: Clip
     case EventKind.HiddenGained:
       return { heroId: event.heroId, clip: "hidden" };
     case EventKind.ShieldGained:
-      return event.card === "Aegis Protocol" ? { heroId: event.casterId ?? event.heroId, clip: "aegis" } : undefined;
+      // Every Shield card plays the Shield gesture on the Hero that plays it; Aegis Protocol has its own.
+      return { heroId: event.casterId ?? event.heroId, clip: event.card === "Aegis Protocol" ? "aegis" : "block" };
     default:
       return undefined;
   }

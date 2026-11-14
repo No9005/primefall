@@ -40,7 +40,7 @@ const CLASS_FOLDER: Record<HeroClass, string> = { [HeroClass.Bruiser]: "bruiser"
 
 /** The sheets of the clips the game plays; a clip the game plays for a class but that is not here uses `PIXEL_FALLBACKS`. */
 const SHEETS: Record<HeroClass, Partial<Record<ClipName, string>>> = {
-  [HeroClass.Bruiser]: { idle: "idle", walk: "walk", wait: "wait", attack: "slam", hit: "hit", absorb: "shield", takeCover: "half", takeCoverFull: "full", inCover: "half", inCoverFull: "full", exhausted: "exhausted" },
+  [HeroClass.Bruiser]: { idle: "idle", walk: "walk", wait: "wait", attack: "slam", block: "block", hit: "hit", absorb: "shield", takeCover: "half", takeCoverFull: "full", inCover: "half", inCoverFull: "full", exhausted: "exhausted" },
   [HeroClass.Controller]: {
     idle: "idle",
     walk: "walk",
@@ -51,7 +51,7 @@ const SHEETS: Record<HeroClass, Partial<Record<ClipName, string>>> = {
     scoutDrone: "drone",
     aegis: "aegis",
     deploy: "deploy",
-   
+    block: "block",
     hit: "hit",
     takeCover: "half",
     takeCoverFull: "full",
@@ -59,7 +59,7 @@ const SHEETS: Record<HeroClass, Partial<Record<ClipName, string>>> = {
     inCoverFull: "full",
     exhausted: "exhausted",
   },
-  [HeroClass.Assassin]: { idle: "idle", walk: "walk", wait: "wait", attack: "precision", longShot: "long", hidden: "hidden", hit: "hit", takeCover: "half", takeCoverFull: "full", inCover: "half", inCoverFull: "full", exhausted: "exhausted" },
+  [HeroClass.Assassin]: { idle: "idle", walk: "walk", wait: "wait", attack: "precision", longShot: "long", hidden: "hidden", block: "block", hit: "hit", takeCover: "half", takeCoverFull: "full", inCover: "half", inCoverFull: "full", exhausted: "exhausted" },
 };
 
 /**
