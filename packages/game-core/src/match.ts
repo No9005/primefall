@@ -388,13 +388,15 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   const placedCover = match.placedCover
     .filter((cover) => cover.squad === squad || canSquadSee(match, squad, cover.position))
     .map((cover) => ({ ...cover.position }));
+  // `match.placedCover` is in the order of placing, so this is oldest first.
+  const ownPlacedCover = match.placedCover.filter((cover) => cover.squad === squad).map((cover) => ({ ...cover.position }));
   const revealedAreas = match.revealedAreas
     .filter((area) => area.squad === squad)
     .map(({ center, size, remaining }) => ({ center: { ...center }, size, remaining }));
-  // The enemy only learns which area was scanned: no contents, no Hero, no remaining time.
+  // The enemy learns which area was scanned and for how long more: no contents, no Hero, not who looks.
   const scannedAreas = match.revealedAreas
     .filter((area) => area.squad !== squad)
-    .map(({ center, size }) => ({ center: { ...center }, size }));
+    .map(({ center, size, remaining }) => ({ center: { ...center }, size, remaining }));
   const visibleTiles: GridPosition[] = [];
   for (let row = 0; row < match.grid.height; row++) {
     for (let col = 0; col < match.grid.width; col++) {
@@ -420,7 +422,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   }));
   const points = classic ? { scores: { ...match.scores }, zones } : {};
   return {
-    squad, round: match.round, grid: REACTOR_DECK, ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, enemies,
+    squad, round: match.round, grid: REACTOR_DECK, ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, enemies,
   };
 }
 

@@ -253,12 +253,14 @@ export interface SquadView {
    * Used like other Half Cover; a wreck the Squad has not seen is not listed (Fog of War).
    */
   wreckCover: readonly GridPosition[];
-  /** Temporary Half Cover this Squad placed or currently sees (Deploy Cover, Fortify). */
+  /** Cover built with a card (Deploy Cover, Fortify, Barricade) that this Squad placed or currently sees; it stays until destroyed. */
   placedCover: readonly GridPosition[];
+  /** The Placed Cover tiles of this Squad itself, in the order of placing (the oldest goes first when a fourth is placed). The enemy's are the rest of `placedCover`. */
+  ownPlacedCover: readonly GridPosition[];
   /** The areas this Squad's Scout Drones still reveal. */
   revealedAreas: readonly RevealedArea[];
-  /** Areas the enemy Squad's Scout Drones scan right now: where and how big, never what is in them. */
-  scannedAreas: readonly Pick<RevealedArea, "center" | "size">[];
+  /** Areas the enemy Squad's Scout Drones scan right now: where, how big and for how many more Resolutions, never what is in them. */
+  scannedAreas: readonly Pick<RevealedArea, "center" | "size" | "remaining">[];
   /**
    * The tiles this Squad sees right now (own Heroes' sight and Scout Drone areas). Tiles seen earlier are
    * not listed; only current sight is lit.

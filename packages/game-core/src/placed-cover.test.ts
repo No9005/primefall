@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cardIndex, HeroClass } from "./cards";
 import { EventKind, SquadId } from "./host";
-import { createMatch, MAX_PLACED_COVER_PER_SQUAD, type MatchState, startRound } from "./match";
+import { buildSquadView, createMatch, MAX_PLACED_COVER_PER_SQUAD, type MatchState, startRound } from "./match";
 import { ActionKind, type SquadPlan } from "./plan";
 import { CoverKind, coverAgainst, coverAt, type GridPosition, tileAt, TileKind } from "./reactor-deck";
 import { resolveRound } from "./resolution";
@@ -62,6 +62,29 @@ describe("Placed Cover", () => {
     expect(right.events.some(({ kind }) => kind === EventKind.CoverDestroyed)).toBe(false);
     expect(right.match.placedCover).toHaveLength(MAX_PLACED_COVER_PER_SQUAD + 1);
     expect(coverAt(right.match.grid, tileOf(0))).toBe(CoverKind.Half);
+  });
+
+  it("lists the own Placed Cover in the order of placing, and the oldest goes first when a fourth is placed", () => {
+    let match = startRound(createMatch(5));
+    for (let index = 0; index < MAX_PLACED_COVER_PER_SQUAD; index += 1) {
+      match = place(match, SquadId.Left, DEPLOY_COVER, tileOf(index)).match;
+    }
+    expect(buildSquadView(match, SquadId.Left).ownPlacedCover).toEqual([tileOf(0), tileOf(1), tileOf(2)]);
+    const fourth = place(match, SquadId.Left, DEPLOY_COVER, tileOf(3));
+    expect(buildSquadView(fourth.match, SquadId.Left).ownPlacedCover).toEqual([tileOf(1), tileOf(2), tileOf(3)]);
+  });
+
+  it("shows the enemy Placed Cover it sees as not its own, and none it has not seen", () => {
+    const placed = place(startRound(createMatch(5)), SquadId.Left, DEPLOY_COVER, tileOf(0)).match;
+    // Out of sight: the Right Squad knows nothing of it.
+    const unseen = buildSquadView(placed, SquadId.Right);
+    expect([unseen.placedCover, unseen.ownPlacedCover]).toEqual([[], []]);
+    // In sight (a Right Hero near the tile): it is in `placedCover` and not in `ownPlacedCover`.
+    hero(placed, RIGHT_BRUISER).position = { col: tileOf(0).col + 2, row: tileOf(0).row };
+    const seen = buildSquadView(placed, SquadId.Right);
+    expect(seen.placedCover).toEqual([tileOf(0)]);
+    expect(seen.ownPlacedCover).toEqual([]);
+    expect(buildSquadView(placed, SquadId.Left).ownPlacedCover).toEqual([tileOf(0)]);
   });
 
   it("does not count the Cover wreck of an Exhausted Hero", () => {
