@@ -54,7 +54,7 @@ Decided: the default movement rises to 3 (every card can be used as Move 3 inste
 - **Charge** (moves up to 3 toward an enemy) is no longer faster than a Move: raise it to up to 4 tiles, or keep 3 and let the Shield 1 be its point.
 - **Reposition** of the Assassin (Move 3 this round) has no point any more; the Assassin's deck replaces it (Silent Entry).
 - **Map:** the walk from a Drop Point to the first zone is about 19 to 20 tiles on Crossroads v2, three Rounds with Move 2; with Move 3 it is about two. This also solves the open point of #361 (the Outposts should be about two Rounds from a Drop Point).
-- **Range and sight** stay. The AI, the balance harness and the tutorial text ("Move 2") need updating.
+- **Range and sight** stay. The AI and the balance harness need updating (the Tutorial is removed and will be rethought).
 
 ## Recommended decks
 
@@ -169,7 +169,7 @@ All ideas of the chat and of the tester, with their state:
 | A grabbing arm: Tilly picks up an object from a distance | **parked** | Her third arm; it would give her a carry job. Possible when Carry and extract is specified. |
 | A second reveal for Kit (a scope scan) | **parked** | The drone belongs to Tilly (decided). |
 | Concussion Round (Slow) on Max | out | Slow belongs to Tilly. |
-| Adrenal Surge (permanent +1 Attack) | out | A passive covers it. May return as an Overdrive-only card. |
+| Adrenal Surge (permanent +1 Attack) | out | A passive covers it. |
 | Precision Shot, Cover Breaker (Kit) | out | Overlap. May return if the measurement shows a hole. |
 | Mark Target (Kit) | out since ADR 0025 | Could return as the marker of a Sabotage target. |
 | Suppress, Forward Deploy | out since ADR 0025 | |

@@ -33,7 +33,7 @@ Path: `heroes/<class>/<pose>`, class one of `bruiser`, `controller`, `assassin`.
 | `move` | all | Move actions |
 | `attack_ranged` | all | Most Attack cards |
 | `block_shield` | all | Block 2, Shield effects |
-| `utility_cast` | all | Utility cards, Overdrives |
+| `utility_cast` | all | Utility cards |
 | `hit` | all | Deck Damage feedback |
 | `exhausted` | all | Exhaustion |
 | `heavy_attack`, `breach_charge_throw` | bruiser | Slam Shot family, Breach Charge |

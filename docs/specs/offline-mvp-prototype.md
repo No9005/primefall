@@ -12,7 +12,7 @@ Both squads plan simultaneously, commit commands, and resolve combat through a d
 
 ## Card Set
 
-The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That document is the authoritative reference for all card effects, Energy costs, and Overdrive modes.
+The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That document is the authoritative reference for all card effects, and Energy costs.
 
 ## User Stories
 
@@ -73,16 +73,10 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 55. As a player, I want Ghost Shot to target a Ghost’s last known position, so that predictable movement can be punished.
 56. As a player, I want Ghost Shot to hit only if an enemy occupies the targeted tile during Resolution, so that it remains a high-risk tool.
 57. As a player, I want Full Cover to block Ghost Shot and Half Cover to reduce its damage, so that Cover remains important against long-range threats.
-58. As a player, I want to activate Overdrive on selected cards, so that I can trade future card economy for immediate power.
-59. As a player, I want Overdrive to exile the used card, so that powerful effects have a lasting cost.
-60. As a player, I want some Overdrives to grant permanent buffs that end when the Hero becomes Exhausted, so that power remains tied to survival.
-61. As a player, I want each Hero Deck to contain three Overdrive modes, so that Overdrive decisions remain meaningful.
-62. As a player, I want the Bruiser to destroy Cover through a Zone Overdrive, so that defensive positions can be broken.
 63. As a player, I want the Controller to deploy Half Cover on an empty tile, so that the team can create protection where it is needed.
 64. As a player, I want the Controller to reveal an area with a Scout Drone, so that the Squad can gather information without exposing the Controller.
 65. As a player, I want the Controller to apply Marked with Tag Round, so that enemies become visible to the Squad.
 66. As a player, I want the Assassin to use Long Shot at Range 7, so that long-range precision is part of its identity.
-67. As a player, I want the Assassin’s Long Shot Overdrive to grant bonus damage at Range 6 or 7, so that distance remains tactically relevant.
 68. As a player, I want the Reactor Deck to be mirror-symmetric, so that both Squads begin with equivalent map conditions.
 69. As a player, I want the Reactor Deck to have no interactive doors, so that the first prototype remains focused on core combat.
 70. As a player, I want the Reactor Deck to have one floor level only, so that movement and Line of Sight remain easy to understand.
@@ -128,7 +122,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Implement squad-shared, enemy-only Fog of War with Visible, Ghost, and Unknown states. Base sight range is 7 tiles (9 for a Hidden Assassin); Visible requires sight range and Line of Sight. A Miss on a target the Squad no longer sees (`NotVisible`) reveals nothing about that enemy: no distance, no position, no new Ghost, and the enemy Squad is not told.
 - Implement Hidden only for the Assassin through selected Utility cards.
 - Implement Marked as a Squad-wide visibility effect until the end of the next round.
-- Implement Ghost Shot as the Assassin’s Attack Overdrive that targets a Ghost’s last known position.
+- Implement Ghost Shot as the Assassin’s Attack that targets a Ghost’s last known position.
 - Use simple legal-action heuristics for allied and enemy AI: move toward the objective, attack visible enemies, and block when appropriate (Attack and Defend only).
 - Keep match state in browser memory, with optional localStorage support.
 - Use PixiJS for stylized 2.5D presentation with an orthographic camera.

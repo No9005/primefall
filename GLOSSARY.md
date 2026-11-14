@@ -52,10 +52,6 @@ _Avoid_: Trash, graveyard
 Permanent removal of a card from the current match.
 _Avoid_: Banish, remove from game
 
-**Overdrive**:
-An alternative, stronger card mode that exiles the card and replaces its standard effect with a powerful one, sometimes including a permanent buff that ends when the Hero is exhausted.
-_Avoid_: Ultimate, special, finisher
-
 **Pitch**:
 Discarding a card to gain 1 Energy.
 _Avoid_: Spend, burn, discard for energy
@@ -119,7 +115,7 @@ Cover that a Hero put on a tile with a card. It stays until it is destroyed; a S
 _Avoid_: Temporary Cover, wall, barricade (a card name)
 
 **Long Shot**:
-An Assassin Attack with Range 7. Its Overdrive deals bonus damage when the target is at Range 6 or 7.
+An Assassin Attack with Range 3 to 7.
 _Avoid_: Sniper shot, ranged finisher
 
 ### Battlefield and objectives
