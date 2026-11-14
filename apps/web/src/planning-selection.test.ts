@@ -1,18 +1,12 @@
-import { ActionKind, cardIndex, cardInMode, HERO_DECKS, HeroClass, parseGrid, PlanIssueKind, type QueuedAction, SquadId, validatePlan } from "game-core";
+import { ActionKind, cardIndex, HERO_DECKS, HeroClass, parseGrid, PlanIssueKind, type QueuedAction, SquadId, validatePlan } from "game-core";
 import { createLocalHost } from "game-core/local-host";
 import { describe, expect, it } from "vitest";
-import { actionUsesCard, addWaitAction, cardFace, CardUse, cardUseReasons, modeChoiceFaces, primaryAction, queueRowLabel,removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
+import { actionUsesCard, addWaitAction, cardFace, CardUse, cardUseReasons, modeChoiceFaces, queueRowLabel,removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, rangeDamageLabel, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
 
 const LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot");
 
 describe("rangeDamageLabel", () => {
-  const longShotOverdrive = cardInMode(HERO_DECKS[HeroClass.Assassin][LONG_SHOT]!, true);
   const from = { col: 2, row: 1 };
-
-  it("shows the long range bonus from Range 6 and the usual damage closer", () => {
-    expect(rangeDamageLabel(longShotOverdrive, from, { col: 7, row: 1 })).toBe("Range 5 · 2 damage");
-    expect(rangeDamageLabel(longShotOverdrive, from, { col: 8, row: 1 })).toBe("Range 6 · 4 damage (long range bonus)");
-  });
 
   it("shows nothing for a card whose damage does not depend on Range", () => {
     expect(rangeDamageLabel(HERO_DECKS[HeroClass.Assassin][0]!, from, { col: 8, row: 1 })).toBeUndefined();
@@ -43,10 +37,9 @@ describe("pickInstruction", () => {
 });
 
 describe("describeEffects", () => {
-  it("describes the standard effects and the Overdrive of Long Shot", () => {
+  it("describes the standard effects of Long Shot", () => {
     const longShot = HERO_DECKS[HeroClass.Assassin][LONG_SHOT]!;
     expect(describeEffects(longShot.effects)).toBeTruthy();
-    expect(describeEffects(longShot.overdrive)).toBe("2 damage, 4 from Range 6");
   });
 
   it("returns nothing for a card without Overdrive", () => {
@@ -98,8 +91,8 @@ describe("energyReadout and cardUseReasons", () => {
   });
 
   it("explains a Primary effect the Hero cannot afford", () => {
-    // Assassin card 6 is Execution Round (cost 2).
-    expect(cardUseReasons(HeroClass.Assassin, 6, [], [1])[CardUse.Primary]).toBe("needs 2 Energy");
+    // Assassin card 6 is Execution Round (every card costs 1 Energy).
+    expect(cardUseReasons(HeroClass.Assassin, 6, [], [])[CardUse.Primary]).toBe("needs 1 Energy");
   });
 
   it("allows the Primary effect of an affordable Attack or Utility card", () => {
@@ -108,15 +101,6 @@ describe("energyReadout and cardUseReasons", () => {
     expect(cardUseReasons(HeroClass.Bruiser, 5, [], [1])[CardUse.Primary]).toBeUndefined();
     expect(cardUseReasons(HeroClass.Controller, 5, [], [1])[CardUse.Primary]).toBeUndefined();
     expect(cardUseReasons(HeroClass.Controller, 6, [], [1])[CardUse.Primary]).toBeUndefined();
-  });
-
-  it("allows an Overdrive that exists and explains one that is missing", () => {
-    // Assassin card 1 is Long Shot, card 0 is Precision Shot (no Overdrive); Controller card 1 is Scout Drone
-    // and card 3 is Aegis Protocol.
-    expect(cardUseReasons(HeroClass.Assassin, LONG_SHOT, [], [0], true)[CardUse.Primary]).toBeUndefined();
-    expect(cardUseReasons(HeroClass.Assassin, 0, [], [1], true)[CardUse.Primary]).toBe("Overdrive is not playable yet");
-    expect(cardUseReasons(HeroClass.Controller, 1, [], [0], true)[CardUse.Primary]).toBeUndefined();
-    expect(cardUseReasons(HeroClass.Controller, 3, [], [0], true)[CardUse.Primary]).toBeUndefined();
   });
 
   it("allows Pitch, Move and Block while the Queue has room and disables them when it is full", () => {
@@ -134,7 +118,6 @@ describe("cardFace", () => {
       for (const card of HERO_DECKS[heroClass]) {
         const { type, effectText } = cardFace(card);
         expect(effectText).toContain(describeEffects(card.effects));
-        if (card.overdrive) expect(effectText).toContain(describeEffects(card.overdrive));
         expect(["ATTACK", "UTILITY"]).toContain(type);
       }
     }
@@ -142,34 +125,10 @@ describe("cardFace", () => {
 });
 
 describe("modeChoiceFaces", () => {
-  it("offers the choice for every MVP card with an Overdrive mode and for no other", () => {
+  it("offers no choice of mode for any card: Overdrive is gone", () => {
     for (const heroClass of Object.values(HeroClass)) {
-      HERO_DECKS[heroClass].forEach((card, index) => {
-        const faces = modeChoiceFaces(heroClass, index, [], [1, 2, 3]);
-        if (!card.overdrive) {
-          expect(faces).toBeUndefined();
-          return;
-        }
-        expect(faces?.map((face) => face.overdrive)).toEqual([false, true]);
-        expect(faces?.[0]?.effectText).toBe(describeEffects(card.effects));
-        expect(faces?.[1]?.effectText).toBe(describeEffects(card.overdrive));
-        expect(faces?.map((face) => face.energyCost)).toEqual([card.energyCost, card.energyCost]);
-        expect(faces?.map((face) => face.exiled)).toEqual([false, true]);
-      });
+      HERO_DECKS[heroClass].forEach((_, index) => expect(modeChoiceFaces(heroClass, index, [], [1, 2, 3])).toBeUndefined());
     }
-  });
-
-  it("builds the plain Queue entry for Normal and the one with `overdrive` for Overdrive", () => {
-    const [normal, overdrive] = modeChoiceFaces(HeroClass.Assassin, LONG_SHOT, [], [1, 2])!;
-    expect(primaryAction(LONG_SHOT, "enemy", { overdrive: normal.overdrive })).toEqual({ kind: ActionKind.Primary, card: LONG_SHOT, target: "enemy" });
-    expect(primaryAction(LONG_SHOT, "enemy", { overdrive: overdrive.overdrive })).toEqual({ kind: ActionKind.Primary, card: LONG_SHOT, target: "enemy", overdrive: true });
-  });
-
-  it("dims a face with its reason when it cannot be afforded or the target does not fit", () => {
-    const unaffordable = modeChoiceFaces(HeroClass.Assassin, LONG_SHOT, [], [])!;
-    expect(unaffordable.map((face) => face.reason)).toEqual(["needs 1 Energy", "needs 1 Energy"]);
-    const wrongTarget = modeChoiceFaces(HeroClass.Assassin, LONG_SHOT, [], [1], (overdrive) => !overdrive)!;
-    expect(wrongTarget.map((face) => face.reason)).toEqual([undefined, "needs another target"]);
   });
 });
 
@@ -259,10 +218,10 @@ describe("unpitchCard", () => {
       validatePlan(withHand, { squad: SquadId.Left, heroes: [{ heroId: hero.id, queue, pitched: [...pitched] }] }).filter(
         (issue) => issue.kind === PlanIssueKind.NotEnoughEnergy,
       );
-    expect(energyIssues([0, 1])).toEqual([]);
-    const freed = unpitchCard([0, 1], 1);
+    expect(energyIssues([0])).toEqual([]);
+    const freed = unpitchCard([0], 0);
     expect(energyIssues(freed).map((issue) => issue.slot)).toEqual([0]);
     expect(queue).toEqual([executionRound]);
-    expect(energyIssues([...freed, 1])).toEqual([]);
+    expect(energyIssues([...freed, 0])).toEqual([]);
   });
 });

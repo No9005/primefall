@@ -31,20 +31,4 @@ describe("Hero Decks follow the card set spec", () => {
     }
   });
 
-  it("gives the Decks their Overdrive modes on at most four cards each (ADR 0003, ADR 0025: the Assassin has two)", () => {
-    const modeCounts = { [HeroClass.Bruiser]: 3, [HeroClass.Controller]: 3, [HeroClass.Assassin]: 2 };
-    for (const [heroClass, deck] of Object.entries(HERO_DECKS)) {
-      const overdriveCards = deck.filter((card) => card.overdrive);
-      const modes = new Set(overdriveCards.map((card) => card.name));
-      expect(modes.size, heroClass).toBe(modeCounts[heroClass as HeroClass]);
-      expect(overdriveCards.length, heroClass).toBeLessThanOrEqual(4);
-    }
-  });
-
-  it("matches the Overdrive card counts of the spec", () => {
-    const count = (heroClass: HeroClass) => HERO_DECKS[heroClass].filter((card) => card.overdrive).length;
-    expect(count(HeroClass.Bruiser)).toBe(3);
-    expect(count(HeroClass.Controller)).toBe(4);
-    expect(count(HeroClass.Assassin)).toBe(3);
-  });
 });

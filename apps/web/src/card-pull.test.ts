@@ -83,36 +83,26 @@ describe("the card pull state machine", () => {
 
 describe("the faces of a card", () => {
   const allFree = { [CardUse.Primary]: undefined, [CardUse.Pitch]: undefined, [CardUse.Move]: undefined, [CardUse.Block]: undefined };
-  const withOverdrive = HERO_DECKS[HeroClass.Assassin].find((card) => card.overdrive)!;
-  const without = HERO_DECKS[HeroClass.Assassin].find((card) => !card.overdrive)!;
+  const without = HERO_DECKS[HeroClass.Assassin][0]!;
 
-  it("has four faces, five on a card with an Overdrive, and no Block face in the classic mode", () => {
+  it("has four faces, and no Block face in the classic mode", () => {
     expect(faceViews(without, allFree, undefined, { primary: "x", overdrive: undefined }, true).map(({ face }) => face)).toEqual([
       CardUse.Primary,
       CardUse.Pitch,
       CardUse.Move,
       CardUse.Block,
     ]);
-    expect(faceViews(withOverdrive, allFree, undefined, { primary: "x", overdrive: "y" }, true).map(({ face }) => face)).toEqual([
+    expect(faceViews(without, allFree, undefined, { primary: "x", overdrive: undefined }, false).map(({ face }) => face)).toEqual([
       CardUse.Primary,
       CardUse.Pitch,
       CardUse.Move,
-      CardUse.Block,
-      "overdrive",
-    ]);
-    expect(faceViews(withOverdrive, allFree, undefined, { primary: "x", overdrive: "y" }, false).map(({ face }) => face)).toEqual([
-      CardUse.Primary,
-      CardUse.Pitch,
-      CardUse.Move,
-      "overdrive",
     ]);
   });
 
   it("shows an unaffordable cost as Not enough Energy and keeps other reasons", () => {
-    const faces = faceViews(withOverdrive, { ...allFree, [CardUse.Primary]: "needs 2 Energy", [CardUse.Move]: "Queue is full" }, "needs 2 Energy", { primary: "x", overdrive: "y" }, true);
+    const faces = faceViews(without, { ...allFree, [CardUse.Primary]: "needs 1 Energy", [CardUse.Move]: "Queue is full" }, "needs 1 Energy", { primary: "x", overdrive: undefined }, true);
     const reason = (face: Face) => faces.find((candidate) => candidate.face === face)?.reason;
     expect(reason(CardUse.Primary)).toBe("Not enough Energy");
-    expect(reason("overdrive")).toBe("Not enough Energy");
     expect(reason(CardUse.Move)).toBe("Queue is full");
     expect(reason(CardUse.Pitch)).toBeUndefined();
   });

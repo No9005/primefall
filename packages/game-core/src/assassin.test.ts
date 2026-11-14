@@ -202,7 +202,7 @@ describe("Hidden", () => {
   });
 });
 
-describe("Ghost Shot Overdrive", () => {
+describe("Ghost Shot", () => {
   const hand = [PITCH, GHOST_SHOT, 0, REPOSITION];
 
   /** The Left Squad remembers the enemy Bruiser at `ghostAt`; the enemy is now elsewhere (`standing`). */
@@ -214,14 +214,13 @@ describe("Ghost Shot Overdrive", () => {
     if (occupant) hero(match, "right-controller").position = occupant;
     return match;
   }
-  const shoot = (match: MatchState) => resolveRound(match, [plan([primary(GHOST_SHOT, ENEMY, true)])]);
+  const shoot = (match: MatchState) => resolveRound(match, [plan([primary(GHOST_SHOT, ENEMY)])]);
 
   it("hits an enemy that stands on the remembered tile", () => {
     // The Bruiser has left (it stands far away); another enemy Hero now occupies the Ghost's tile.
     const match = ghostScene({ col: 5, row: 1 }, { col: 15, row: 1 }, { col: 5, row: 1 });
     const { match: after } = shoot(match);
     expect(deckLoss(match, after, "right-controller")).toBe(2);
-    expect(hero(after, ASSASSIN).exile).toEqual([GHOST_SHOT]);
   });
 
   it("hits the enemy that is still there", () => {
@@ -251,7 +250,7 @@ describe("Ghost Shot Overdrive", () => {
   it("is planned against a Ghost only", () => {
     const match = ghostScene({ col: 5, row: 1 }, { col: 15, row: 1 });
     const issues = (target: string) =>
-      validatePlan(buildSquadView(match, SquadId.Left), plan([primary(GHOST_SHOT, target, true)])).map(({ kind }) => kind);
+      validatePlan(buildSquadView(match, SquadId.Left), plan([primary(GHOST_SHOT, target)])).map(({ kind }) => kind);
     expect(issues(ENEMY)).toEqual([]);
     expect(issues("right-controller")).toEqual([PlanIssueKind.BadTarget]);
   });

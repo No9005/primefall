@@ -41,14 +41,6 @@ describe("Events carry the card that caused them", () => {
     ]);
   });
 
-  it("tells the Long Shot Overdrive from a normal shot by the flag and the Range", () => {
-    const match = scene({ [ASSASSIN]: { col: 2, row: 1 }, [ENEMY]: { col: 8, row: 1 } });
-    const { events } = resolveRound(match, [
-      plan(ASSASSIN, { kind: ActionKind.Primary, card: LONG_SHOT, target: ENEMY, overdrive: true }, [0]),
-    ]);
-    expect(events[0]).toMatchObject({ kind: EventKind.AttackHit, damage: 4, card: "Long Shot", overdrive: true, distance: 6 });
-  });
-
   it("tags a failed Attack too, with the Range to the target", () => {
     const match = scene({ [ASSASSIN]: { col: 2, row: 1 }, [ENEMY]: { col: 12, row: 1 } });
     // A Marked enemy is seen from any distance, so the shot misses on Range, not on visibility.
@@ -66,17 +58,6 @@ describe("Events carry the card that caused them", () => {
     expect(events.length).toBeGreaterThanOrEqual(4);
     expect(events.every(({ card }) => card === "Shockwave")).toBe(true);
     expect(events.filter(({ kind }) => kind === EventKind.AttackHit).map(({ targetId }) => targetId).sort()).toEqual([ENEMY, OTHER_ENEMY]);
-  });
-
-  it("tags the blast and the destroyed Cover of Breach Charge", () => {
-    const match = scene({ [BRUISER]: { col: 8, row: 3 }, [ENEMY]: { col: 11, row: 3 } });
-    const tile = { col: 11, row: 3 };
-    const { events } = resolveRound(match, [
-      plan(BRUISER, { kind: ActionKind.Primary, card: BREACH_CHARGE, target: ENEMY, tile, overdrive: true }, [1, 2]),
-    ]);
-    const tagged = events.filter(({ kind }) => kind === EventKind.AttackHit || kind === EventKind.CoverDestroyed);
-    expect(tagged.length).toBeGreaterThan(0);
-    expect(tagged.every(({ card, overdrive }) => card === "Breach Charge" && overdrive === true)).toBe(true);
   });
 
   it("tags the Shield of a Utility card but not the Shield of a Block", () => {

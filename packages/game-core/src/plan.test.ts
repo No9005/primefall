@@ -76,15 +76,18 @@ describe("validatePlan: Pitch, Energy and Block", () => {
   });
 
   it("rejects a Queue whose Energy costs exceed the pool and accepts one that fits", () => {
-    // Execution Round (Assassin card 6) costs 2.
+    // Every card costs 1 Energy: two Attacks need two pitched cards.
     const assassin = view.heroes.find((hero) => hero.heroClass === HeroClass.Assassin)!;
     const withHand: SquadView = {
       ...view,
-      heroes: view.heroes.map((hero) => (hero === assassin ? { ...hero, hand: [6, 0, 1, 2] } : hero)),
+      heroes: view.heroes.map((hero) => (hero === assassin ? { ...hero, hand: [6, 4, 0, 1] } : hero)),
     };
-    const action: QueuedAction = { kind: ActionKind.Primary, card: 6, target: enemy.id };
+    const actions: QueuedAction[] = [
+      { kind: ActionKind.Primary, card: 6, target: enemy.id },
+      { kind: ActionKind.Primary, card: 4, target: enemy.id },
+    ];
     const kindsFor = (pitched: number[]) =>
-      validatePlan(withHand, { squad: SquadId.Left, heroes: [{ heroId: assassin.id, queue: [action], pitched }] }).map((issue) => issue.kind);
+      validatePlan(withHand, { squad: SquadId.Left, heroes: [{ heroId: assassin.id, queue: actions, pitched }] }).map((issue) => issue.kind);
     expect(kindsFor([])).toEqual([PlanIssueKind.NotEnoughEnergy]);
     expect(kindsFor([0])).toEqual([PlanIssueKind.NotEnoughEnergy]);
     expect(kindsFor([0, 1])).toEqual([]);

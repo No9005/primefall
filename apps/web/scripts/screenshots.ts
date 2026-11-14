@@ -331,7 +331,6 @@ const PLAYER_HERO_STORAGE_KEY = "primefall.playerHero"; // the same
 const SCENARIO_ACTION_TIMEOUT_MS = 10_000;
 const USE_FACE_NAMES: Record<StepUse, RegExp | string> = {
   primary: "Primary",
-  overdrive: "Overdrive",
   pitch: /^Pitch/,
   move: /^Move/,
   block: /^Block/,
