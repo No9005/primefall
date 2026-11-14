@@ -77,6 +77,48 @@ test("CARDS lists the Deck of the selected Hero and closes", async ({ page }) =>
   await expect(list).toBeHidden();
 });
 
+test("the background grid patch drifts to the upper left, slowly", async ({ page }) => {
+  await openHeroSelect(page);
+  const drift = page.locator(".hs-drift");
+  const first = await drift.boundingBox();
+  await page.waitForTimeout(3000);
+  const second = await drift.boundingBox();
+  expect(first && second).toBeTruthy();
+  expect(second!.x).toBeLessThan(first!.x);
+  expect(second!.y).toBeLessThan(first!.y);
+  const duration = await drift.evaluate((el) => getComputedStyle(el).animationDuration);
+  expect(parseFloat(duration)).toBeGreaterThanOrEqual(90);
+});
+
+test("with reduced motion the drifting grid patch is not drawn", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openHeroSelect(page);
+  expect(await page.locator(".hs-drift").boundingBox()).toBeNull();
+});
+
+for (const [button, testId] of [["BIO", "bio-sheet"], ["CARDS", "card-list"]] as const) {
+  test(`the ${button} sheet lies over the title`, async ({ page }) => {
+    await openHeroSelect(page);
+    await page.getByTestId("hero-controller").click();
+    await page.getByRole("button", { name: button }).click();
+    const box = await page.locator(".hs-title").boundingBox();
+    const overlayHit = await page.evaluate(
+      ({ x, y, id }) => {
+        const hit = document.elementFromPoint(x, y);
+        return !!hit?.closest(`[data-testid="${id}"]`);
+      },
+      { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2, id: testId },
+    );
+    expect(overlayHit).toBe(true);
+    // The title has pointer-events: none, so also compare the stacking orders.
+    const [titleZ, overlayZ] = await page.evaluate((id) => {
+      const z = (el: Element | null) => Number(getComputedStyle(el!).zIndex);
+      return [z(document.querySelector(".hs-title")), z(document.querySelector(`[data-testid="${id}"]`))];
+    }, testId);
+    expect(overlayZ).toBeGreaterThan(titleZ);
+  });
+}
+
 test("with reduced motion the Hero Select works without animation errors", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

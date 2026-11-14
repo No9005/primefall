@@ -1,12 +1,13 @@
 /* The Hero Select screen (docs/design/hero-select/README.md). The stage is 844 x 390 and is scaled to the window; every
    size and position below is in stage px, as in the acceptance table. The Heroes are drawn on the canvas below the controls. */
-:root { --cyan: #7fe8ff; }
+/* Stacking: the title is in front of the Heroes and their drone; the sheets (CARDS, BIO) lie over the title. */
+:root { --cyan: #7fe8ff; --hs-z-title: 3; --hs-z-sheet: 4; }
 .hero-select { position: absolute; inset: 0; overflow: hidden; background: var(--graphite); }
 .hs-stage { position: absolute; left: 50%; top: 50%; width: 844px; height: 390px; }
 .hs-grid { position: absolute; inset: 0; background: repeating-linear-gradient(30deg, transparent 0 46px, var(--panel) 46px 47px), repeating-linear-gradient(150deg, transparent 0 46px, var(--panel) 46px 47px); }
 /* A diffuse patch of isometric grid drifts from the lower right to the upper left, slowly and faintly, under the Heroes. */
-.hs-drift { position: absolute; left: 0; top: 0; width: 620px; height: 360px; pointer-events: none; opacity: 0; background-image: linear-gradient(30deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px), linear-gradient(150deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px); background-size: 64px 36px; -webkit-mask-image: radial-gradient(ellipse closest-side, #000 15%, transparent 100%); mask-image: radial-gradient(ellipse closest-side, #000 15%, transparent 100%); animation: hs-drift 52s linear infinite; }
-@keyframes hs-drift { 0% { transform: translate(520px, 240px); opacity: 0; } 12% { opacity: 0.16; } 88% { opacity: 0.16; } 100% { transform: translate(-300px, -210px); opacity: 0; } }
+.hs-drift { position: absolute; left: 0; top: 0; width: 620px; height: 360px; pointer-events: none; opacity: 0; background-image: linear-gradient(30deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px), linear-gradient(150deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px); background-size: 64px 36px; -webkit-mask-image: radial-gradient(ellipse closest-side, #000 15%, transparent 100%); mask-image: radial-gradient(ellipse closest-side, #000 15%, transparent 100%); animation: hs-drift 120s linear infinite; }
+@keyframes hs-drift { 0% { transform: translate(520px, 240px); opacity: 0; } 12% { opacity: 0.12; } 88% { opacity: 0.12; } 100% { transform: translate(-300px, -210px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .hs-drift { display: none; } }
 .hs-canvas { position: absolute; inset: 0; pointer-events: none; }
 .hs-canvas canvas { display: block; }
@@ -14,7 +15,7 @@
 .hs-back { position: absolute; left: 24px; top: 12px; height: 40px; box-sizing: border-box; padding: 0 20px 0 14px; display: flex; align-items: center; gap: 8px; border: 2px solid var(--text); border-radius: 20px; background: rgba(61, 90, 115, 0.7); font: 700 16px Rajdhani, sans-serif; letter-spacing: 0.1em; color: var(--text); cursor: pointer; }
 .hs-back svg { display: block; flex: none; }
 .hs-back span { display: block; line-height: 1; padding-top: 1px; }
-.hs-title { z-index: 3; text-shadow: 0 0 8px var(--graphite); position: absolute; left: 0; right: 0; top: 20px; height: 24px; margin: 0; text-align: center; font: 700 18px/24px Rajdhani, sans-serif; letter-spacing: 0.22em; color: var(--text); pointer-events: none; }
+.hs-title { z-index: var(--hs-z-title); text-shadow: 0 0 8px var(--graphite); position: absolute; left: 0; right: 0; top: 20px; height: 24px; margin: 0; text-align: center; font: 700 18px/24px Rajdhani, sans-serif; letter-spacing: 0.22em; color: var(--text); pointer-events: none; }
 .hs-chip { position: absolute; right: 24px; top: 17px; height: 30px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; border: 1.5px solid; border-radius: 15px; font: 700 13px Rajdhani, sans-serif; letter-spacing: 0.16em; }
 .hs-chip.classic { color: var(--teal); }
 .hs-chip.attack { color: var(--orange); }
@@ -37,7 +38,7 @@
 .hs-start { position: absolute; right: 24px; bottom: 20px; width: 160px; height: 48px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--teal); border-radius: 24px; background: var(--teal); color: var(--graphite); font: 700 20px Rajdhani, sans-serif; letter-spacing: 0.12em; cursor: pointer; }
 .hs-start:disabled { border-color: var(--steel); background: none; color: var(--muted); cursor: default; }
 
-.hs-cards-overlay { position: absolute; inset: 0; background: rgba(11, 16, 22, 0.72); }
+.hs-cards-overlay { z-index: var(--hs-z-sheet); position: absolute; inset: 0; background: rgba(11, 16, 22, 0.72); }
 .hs-cards { position: absolute; left: 40px; top: 16px; width: 764px; height: 358px; box-sizing: border-box; padding: 14px 24px 10px; display: flex; flex-direction: column; overflow: hidden; background: var(--panel); border: 1.5px solid var(--teal); border-radius: 10px; }
 .hs-cards-header { flex: none; display: flex; justify-content: space-between; align-items: center; height: 48px; margin-bottom: 10px; }
 .hs-cards-header h2 { margin: 0; font: 700 19px Rajdhani, sans-serif; letter-spacing: 0.12em; color: var(--teal); }
