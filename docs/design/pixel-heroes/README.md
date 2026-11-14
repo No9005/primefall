@@ -65,6 +65,10 @@ Durations and beats are the ones of `docs/design/animation/README.md`; only the 
 | `walk` | all | loop 0.64 s (Controller 0.58, Assassin 0.5) | `Step`; two steps per loop |
 | `wait` | all | loop 3.2 s | `Wait` |
 | `slam` | Bruiser | once 2.4 s, fire at 620 ms | Slam Shot, Concussion Round |
+| `double` | Bruiser | once 2.8 s, shots at 620 and 900 ms | Buy One, Get Two (Double Shot): two shotgun blasts, pumped in between (#415) |
+| `rush` | Bruiser | once 2.6 s, Shield at 400 ms, sprint from 570 ms | Express Delivery (Rush): the Shield first, then the sprint; runs in place, the game slides the token (#415) |
+| `hook` | Bruiser | once 3.2 s, throw at 520 ms | Cargo Hook (Grappling Hook): the hook orbits over the head, the throw and the pull; the flight and the chain are drawn by the game (#415) |
+| `concussion` | Bruiser | once 2.6 s, fire at 620 ms | Time for Coffee (Concussion Round): a pressure shot with violet rings (#415) |
 | `pulse` | Controller | once 2.4 s, fire at 620 ms | Pulse Bolt |
 | `tag` | Controller | once 2.8 s, fire at 730 ms | Tag Round |
 | `slow` | Controller | once 2.6 s, fire at 680 ms | Shock Pulse, Slow applied |

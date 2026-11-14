@@ -101,7 +101,7 @@ function drawFigure(p) {
   put(TORSO);
   const arm = (s, x, a, front) => {
     fctx.save(); fctx.translate(x, -17); fctx.rotate(rad(a)); put(s);
-    if (front) { info.muzzle = world(0, 29); info.breech = world(2, 16); }
+    if (front) { info.muzzle = world(0, 29); info.breech = world(2, 16); info.hand = world(0, 16); }
     fctx.restore();
   };
   arm(ARM_B, -12, p.armB, false);
@@ -168,6 +168,17 @@ function cigarSmoke(S, t, info) {
   }
 }
 const shakeAt = (t, t0, len, amp) => { const a = t - t0; if (a < 0 || a > len) return [0, 0]; const k = amp * (1 - a / len), f = Math.floor(a / FRAME); return [Math.round(f % 2 ? -k : k), Math.round(f % 3 === 0 ? k * .6 : -k * .4)]; };
+
+
+function muzzleBlast(S, a, m, big) {
+  if (a >= 0 && a < 150) {
+    const r = Math.round((a < 50 ? 10 : a < 100 ? 8 : 5) * big), cx = m.x + r - 2;
+    S.disc(cx, m.y, r, '#ff7a1a'); S.disc(cx, m.y, r - 2, '#ffd24a'); S.disc(cx, m.y, Math.max(1, r - 5), '#ffffff');
+    S.line(cx, m.y, cx + r + 12, m.y, '#ffd24a'); S.line(cx, m.y - 1, cx + r + 8, m.y - 1, '#fff3c0');
+    S.line(cx, m.y, cx + r + 2, m.y - r - 3, '#ff7a1a'); S.line(cx, m.y, cx + r + 2, m.y + r + 3, '#ff7a1a');
+    S.line(cx, m.y, cx - 2, m.y - r - 4, '#ffd24a'); S.line(cx, m.y, cx - 2, m.y + r + 4, '#ffd24a');
+  }
+}
 
 /* ---------- clips: timing and beats follow docs/design/animation, amplitudes are pushed ---------- */
 const wave = (t, dur) => Math.sin(t / dur * Math.PI * 2);
@@ -380,6 +391,135 @@ const CLIPS = [
       if (k > 0) { const w = Math.round(40 * k), h = Math.round(14 * k); S.slab(-26 - (w - 40) / 2, -h + 2, w, h); S.puff(-34 - (t - 4250) * .02, -1, t - 4250, 400, 4); S.puff(18 + (t - 4250) * .02, -1, t - 4250, 400, 4); }
     }
   }
+  ,
+  /* ====== New clips for the deck redesign (#415): the Hero alone; targets, chains and numbers are drawn by the game ====== */
+  {
+    id: 'double', section: 'Neue Karten für Max · Deck-Redesign (#415)', name: 'Attack: Double Shot', meta: 'NEU · Einmal 2,8 s · Schüsse bei 620 und 900 ms',
+    dur: 2800, still: 960, fireAts: [620, 900],
+    text: 'Zwei Schrotschüsse hintereinander auf dasselbe Ziel. Nach dem ersten Schuss pumpt er die Flinte durch (Arm ruckt runter und hoch, die Hülse fliegt), der zweite Rückstoß wirft ihn noch weiter zurück. Der Schrot fächert auf, der Gegner zuckt zweimal.',
+    tracks: {
+      crouch: [[0, 0], [290, 5, 'out'], [580, 3], [620, 0, 'out'], [700, 5, 'out'], [880, 3], [900, 0, 'out'], [990, 8, 'out'], [1250, 2], [1750, 0]],
+      lean: [[0, 0], [290, 14, 'out'], [580, -8], [620, -8], [690, -26, 'out'], [800, -4], [900, -6], [980, -30, 'out'], [1250, 14], [1500, -4], [1750, 0]],
+      dx: [[0, 0], [290, 1], [580, 3], [620, 3], [690, -8, 'out'], [900, -7], [980, -11, 'out'], [1500, -12], [1750, 0]],
+      armF: [[0, -30], [290, 4, 'out'], [520, -108, 'back'], [620, -90], [680, -160, 'out'], [760, -112], [830, -128, 'back'], [900, -92], [970, -178, 'out'], [1250, -70], [1500, -96], [1750, -30]],
+      armB: [[0, 4], [290, 28], [580, -18], [620, -18], [690, 62, 'out'], [800, -14, 'back'], [900, -14], [980, 74, 'out'], [1500, 10], [1750, 4]],
+      head: [[0, 0], [290, 8], [580, 4], [620, 4], [690, -22, 'out'], [800, 2], [900, 4], [980, -30, 'out'], [1250, 10], [1750, 0]],
+      stretch: [[0, 1], [290, .9, 'out'], [580, 1.04], [620, 1.04], [690, 1.14, 'out'], [800, .98], [900, 1.04], [980, 1.2, 'out'], [1250, .93], [1750, 1]],
+      padDy: [[0, 0], [290, 2], [620, 0], [700, -6, 'out'], [880, 2], [900, 0], [990, -8, 'out'], [1250, 3], [1500, 0]],
+      padL: [[0, 0], [620, 0], [700, 30, 'out'], [880, -8], [900, 0], [990, 36, 'out'], [1250, -12], [1550, 0]],
+      padR: [[0, 0], [620, 0], [700, -30, 'out'], [880, 8], [900, 0], [990, -36, 'out'], [1250, 12], [1550, 0]],
+      cigar: [[0, 0], [620, 0], [700, -40, 'out'], [880, 0], [990, -52, 'out'], [1300, 10], [1550, 0]]
+    },
+    shake: t => { const a = shakeAt(t, 620, 200, 3), b = shakeAt(t, 900, 280, 5); return [a[0] + b[0], a[1] + b[1]]; },
+    back(S, t) { for (const F of [620, 900]) for (let k = 0; k < 3; k++) S.puff(6 - (t - F - 20 - k * 60) * .02 - k * 4, -1, t - F - 20 - k * 60, 420, 4); },
+    front(S, t, info, clip) {
+      [620, 900].forEach((F, i) => {
+        const m = clip.fires[i].muzzle, b = clip.fires[i].breech, a = t - F, big = i ? 1.25 : 1;
+        muzzleBlast(S, a, m, big);
+        for (const ang of [-.22, -.08, .08, .22]) if (a >= 20 && a < 160) {
+          const d = (a - 20) * .32; S.rect(m.x + 8 + Math.cos(ang) * d, m.y + Math.sin(ang) * d, 2, 2, '#fff3c0'); S.rect(m.x + 8 + Math.cos(ang) * (d - 5), m.y + Math.sin(ang) * (d - 5), 3, 1, 'rgba(255,160,60,.6)');
+        }
+        for (let k = 0; k < 4; k++) S.puff(m.x + 4 + k * 3 + (a - 120) * .008, m.y - (a - 120 - k * 50) * .016, a - 120 - k * 50, 760, 5 * big);
+        const sh = a - 130; if (sh > 0 && sh < 1000) { const x = b.x - sh * .03, y0 = b.y - 6 - .1 * sh + .00017 * sh * sh, y = Math.min(y0, -1), flat = y0 >= -1 || Math.floor(sh / 90) % 2; S.rect(x, y, flat ? 3 : 1, flat ? 1 : 3, '#d0483a'); S.rect(x, y, 1, 1, '#f2c14a'); }
+      });
+      if (t > 640 && t < 1000) S.disc(info.cigar.x, info.cigar.y, 1, 'rgba(255,170,60,.6)');
+    }
+  }
+  ,
+  {
+    id: 'rush', name: 'Utility: Rush', meta: 'NEU · Einmal 2,6 s · erst Shield 2, dann der Sprint',
+    dur: 2600, still: 1400,
+    text: 'Erst das Shield: Er geht in die Hocke, kreuzt die Arme, die Blase springt auf, zwei Rubine ploppen. Dann holt er aus und rennt wie ein Frachtwagen los, Schulter voran, Speedlines und Staubfahne. Vor dem Gegner bremst er mit einer langen Rutschspur.',
+    tracks: {
+      crouch: [[0, 0], [260, 6, 'back'], [500, 6], [570, 8, 'out'], [640, 1], [830, 0], [900, 7, 'out'], [1150, 1], [1500, 0]],
+      lean: [[0, 0], [260, 10, 'back'], [500, 12], [570, -26, 'out'], [650, 44, 'out'], [830, 44], [900, -14, 'out'], [1150, 4], [1500, 0]],
+      armF: [[0, -30], [260, -152, 'back'], [500, -152], [570, -150], [650, 52, 'out'], [830, 60], [900, -54, 'out'], [1150, -30], [1500, -30]],
+      armB: [[0, 4], [260, -128, 'back'], [500, -128], [570, -120], [650, 98, 'out'], [830, 104], [900, 20], [1150, 4]],
+      head: [[0, 0], [260, 10, 'back'], [500, 10], [570, -14, 'out'], [650, -12], [830, -10], [900, 18, 'out'], [1200, 0]],
+      stretch: [[0, 1], [260, .9, 'back'], [500, .9], [570, .86, 'out'], [650, 1.12, 'out'], [830, 1.1], [900, .88, 'out'], [1150, 1]],
+      padDy: [[0, 0], [570, 2], [650, -5, 'out'], [830, -4], [900, 4, 'out'], [1150, 0]],
+      padL: [[0, 0], [570, 0], [650, 40, 'out'], [830, 36], [900, -16, 'out'], [1200, 0]], padR: [[0, 0], [570, 0], [650, -36, 'out'], [830, -32], [900, 16, 'out'], [1200, 0]],
+      cigar: [[0, 0], [570, 0], [650, -70, 'out'], [830, -60], [950, 12], [1250, 0]]
+    },
+    pose(t, p) {
+      p.armFront = t > 220 && t < 600 ? 1 : 0;
+      if (t >= 570 && t < 850) { const w = wave(t, 150); p.legL = 62 * w; p.legR = -62 * w; }
+      if (t >= 850 && t < 1100) { p.legL = 26; p.legR = -34; }
+    },
+    shake: t => { const a = shakeAt(t, 830, 220, 4); return a; },
+    bubbleK: t => tr(t, [[0, 0], [300, 0], [400, 1.25, 'out'], [470, .93], [540, 1.03], [610, 1], [2200, 1], [2460, 0, 'in']]),
+    back(S, t, info, clip) {
+      const dx = 0; // the token slides in the game; the sheet runs in place
+      S.bubble(clip.bubbleK(t), .6);
+      // speed lines and the dust trail while he runs
+      if (t >= 570 && t < 880) { const u = (t - 570) / 310; for (const [yy, len] of [[-8, 26], [-17, 38], [-27, 30], [-36, 22], [-44, 16]]) { const x = dx - 16 - len * (1 - u * .3); S.rect(x - 4 * ((t / 50) % 3), yy, len, 1, 'rgba(223,230,228,.75)'); S.rect(x - 4 * ((t / 50) % 3), yy + 1, len * .6, 1, 'rgba(111,214,180,.4)'); } }
+      if (t >= 570 && t < 880) for (let k = 0; k < 4; k++) { const age = t - (590 + k * 38); S.puff(-14 - k * 9, -1 - (age > 0 ? age * .012 : 0), age, 420, 4 + (k % 3)); }
+      if (t >= 830 && t < 1250) { const a = t - 830; for (let k = 0; k < 5; k++) S.puff(-8 - k * 7 - a * .03, -1, a - k * 20, 520, 5 + k % 2); }
+    },
+    front(S, t, info, clip) {
+      const k = clip.bubbleK(t);
+      if (k > 0) S.ell(0, -22, 27 * k, 31 * k, 'rgba(140,200,255,.9)');
+      const rs = t0 => t > 2200 ? tr(t, [[2200, 1], [2400, 0, 'in']]) : tr(t, [[t0, 0], [t0 + 120, 1.7, 'out'], [t0 + 260, 1]]);
+      S.ruby(-5, -64, rs(400)); S.ruby(6, -64, rs(500));
+    }
+  }
+  ,
+  {
+    id: 'hook', name: 'Utility: Grappling Hook', meta: 'NEU · Einmal 3,2 s · Wurf bei 520 ms · Range 7',
+    dur: 3200, still: 1000,
+    text: 'Der Frachthaken kreist überm Kopf, dann wirft er ihn nach vorn. Die Kette rasselt, der Haken beißt zu, und Max reißt den Gegner mit beiden Schultern zu sich heran: Speedlines, Staubspur, ein harter Aufprall mit Sternen. Der Haken kann auch eine Silhouette (Ghost) treffen.',
+    tracks: {
+      crouch: [[0, 0], [300, 2], [460, 1], [530, 0], [780, 6, 'out'], [1250, 7], [1330, 0, 'back'], [1700, 0]],
+      lean: [[0, 0], [300, -10], [440, -16], [520, 16, 'out'], [700, 8], [780, -16, 'out'], [1250, -14], [1330, 8, 'out'], [1700, 0]],
+      armF: [[0, -30], [200, -150], [440, -176], [520, -96, 'out'], [700, -96], [780, -62, 'out'], [1250, -62], [1330, -96], [1550, -30], [1700, -30]],
+      armB: [[0, 4], [440, 24], [520, 52, 'out'], [780, -20], [1250, -22], [1330, 30], [1700, 4]],
+      head: [[0, 0], [440, -8], [520, 12, 'out'], [780, -20, 'out'], [1250, -16], [1330, 10], [1700, 0]],
+      stretch: [[0, 1], [440, 1.04], [520, 1.1, 'out'], [780, .92, 'out'], [1250, .92], [1330, 1.06], [1700, 1]],
+      padDy: [[0, 0], [520, -4, 'out'], [780, 3, 'out'], [1250, 2], [1330, -3], [1600, 0]],
+      padL: [[0, 0], [520, 20, 'out'], [780, -16, 'out'], [1000, -6], [1330, 22, 'out'], [1600, 0]], padR: [[0, 0], [520, -20, 'out'], [780, 16, 'out'], [1000, 6], [1330, -22, 'out'], [1600, 0]],
+      cigar: [[0, 0], [520, 0], [580, -30, 'out'], [1250, 8], [1500, 0]],
+      dx: [[0, 0], [520, 0], [560, 2], [780, -5, 'out'], [1250, -7], [1330, 2, 'out'], [1700, 0]]
+    },
+    pose(t, p) { p.armFront = t > 500 && t < 1500 ? 1 : 0; },
+    shake: t => shakeAt(t, 1250, 300, 5),
+    back(S, t) { if (t > 780 && t < 1260) for (let k = 0; k < 4; k++) S.puff(2 - (t - 800 - k * 90) * .012, -1, t - 800 - k * 90, 420, 4); },
+    // The hook orbits over the head until the throw. The flight, the chain and the bite are drawn by the game, because the
+    // distance to the target changes with every use.
+    front(S, t, info) {
+      if (t >= 480) return;
+      const hand = info.hand, hx = hand.x + Math.cos(t / 55) * 11, hy = hand.y - 4 + Math.sin(t / 55) * 5, n = 8;
+      for (let i = 0; i <= n; i++) { const u = i / n; S.rect(hand.x + (hx - hand.x) * u, hand.y + (hy - hand.y) * u, 2, 2, i % 2 ? '#59636e' : '#c3ccd4'); }
+      S.rect(hx - 1, hy - 1, 5, 5, '#0b0f15'); S.rect(hx, hy, 3, 3, '#c3ccd4'); S.rect(hx + 3, hy + 2, 3, 4, '#0b0f15'); S.rect(hx + 2, hy + 2, 3, 3, '#9aa6b2'); S.rect(hx - 2, hy + 3, 3, 3, '#0b0f15'); S.rect(hx - 1, hy + 3, 2, 2, '#59636e');
+    }
+  }
+  ,
+  {
+    id: 'concussion', name: 'Attack: Concussion Round', meta: 'NEU · Einmal 2,6 s · Schuss bei 620 ms · Range 3',
+    dur: 2600, still: 1100, fireAts: [620],
+    text: 'Ein dumpfer Druckschuss: Max stemmt die Flinte wie eine Kanone, der Rückstoß schiebt ihn in die Knie, aus dem Lauf rollen violette Druckringe. Beim Gegner kracht eine Schockwelle, ihm kreisen Sterne um den Kopf, und über ihm erscheint die Schnecke für Slow.',
+    tracks: {
+      crouch: [[0, 0], [300, 6, 'out'], [580, 4], [620, 0, 'out'], [700, 8, 'out'], [960, 3], [1500, 0]],
+      lean: [[0, 0], [300, 18, 'out'], [580, 10], [620, 10], [700, -34, 'out'], [960, 14], [1200, -4], [1500, 0]],
+      dx: [[0, 0], [300, 2], [580, 4], [620, 4], [720, -14, 'out'], [1200, -10], [1550, 0]],
+      armF: [[0, -30], [300, 0, 'out'], [540, -118, 'back'], [620, -96], [690, -150, 'out'], [960, -78], [1200, -100], [1550, -30]],
+      armB: [[0, 4], [300, 32], [580, -22], [620, -22], [700, 70, 'out'], [1200, 12], [1550, 4]],
+      head: [[0, 0], [300, 10], [580, 6], [620, 6], [700, -26, 'out'], [960, 12], [1500, 0]],
+      stretch: [[0, 1], [300, .88, 'out'], [580, 1.05], [620, 1.05], [700, 1.2, 'out'], [960, .9], [1500, 1]],
+      padDy: [[0, 0], [300, 3], [620, 0], [710, -8, 'out'], [960, 3], [1200, 0]],
+      padL: [[0, 0], [620, 0], [710, 34, 'out'], [960, -12], [1250, 0]], padR: [[0, 0], [620, 0], [710, -34, 'out'], [960, 12], [1250, 0]],
+      cigar: [[0, 0], [620, 0], [710, -46, 'out'], [1050, 12], [1350, 0]]
+    },
+    shake: t => { const a = shakeAt(t, 620, 280, 4), b = shakeAt(t, 900, 200, 3); return [a[0] + b[0], a[1] + b[1]]; },
+    back(S, t) { for (let k = 0; k < 3; k++) S.puff(6 - (t - 640 - k * 60) * .02 - k * 4, -1, t - 640 - k * 60, 460, 4); },
+    front(S, t, info, clip) {
+      const m = clip.fires[0].muzzle, a = t - 620;
+      // muzzle: violet-white blast and pressure rings, then the round
+      if (a >= 0 && a < 170) { const r = a < 50 ? 12 : a < 100 ? 9 : 5, cx = m.x + r - 2; S.disc(cx, m.y, r, '#9b5cff'); S.disc(cx, m.y, r - 2, '#d9c2ff'); S.disc(cx, m.y, Math.max(1, r - 5), '#ffffff'); S.line(cx, m.y, cx + r + 10, m.y, '#d9c2ff'); }
+      for (let k = 0; k < 3; k++) { const s = a - 30 - k * 70; if (s >= 0 && s < 420) { const u = s / 420, rx = 3 + u * 16, ry = 3 + u * 22; S.ell(m.x + 6 + u * 14, m.y, rx * .5, ry, 'rgba(210,180,255,' + (.9 * (1 - u)).toFixed(2) + ')'); S.ell(m.x + 6 + u * 14, m.y, rx * .5 + 1, ry + 1, 'rgba(155,92,255,' + (.6 * (1 - u)).toFixed(2) + ')'); } }
+      if (a >= 60 && a < 280) { const u = (a - 60) / 220, x = m.x + 8 + (52 - m.x - 8) * u; S.disc(x, m.y, 4, '#0b0f15'); S.disc(x, m.y, 3, '#c9a8ff'); S.disc(x, m.y, 1, '#ffffff'); for (let k = 1; k < 4; k++) S.rect(x - k * 6, m.y - 2 + k % 2, 3, 3 - k % 2, 'rgba(180,140,255,' + (.6 - k * .15).toFixed(2) + ')'); }
+      if (a > 0 && a < 500) S.disc(info.cigar.x, info.cigar.y, 1, 'rgba(255,170,60,.6)');
+    }
+  }
 ];
 function p_sign(t) { return t < 1980 ? -1 : 1; }
 
@@ -417,6 +557,9 @@ function selRender(ctx, clip, t) {
 const breathe = (t, per) => .5 - .5 * Math.cos(t / per * Math.PI * 2);
 
 /* Bruiser on the Hero Select screen: idle with the muzzle at the sky, ready = swing down and three shots */
+
+// The muzzle and breech of the shots, for the effects of the clips that fire.
+for (const clip of CLIPS) if (clip.fireAts) clip.fires = clip.fireAts.map(t => drawFigure(poseAt(clip, t)));
 const SHOTS = [1320, 2040, 2760];
 const SEL_IDLE = {
   dur: 2000,
