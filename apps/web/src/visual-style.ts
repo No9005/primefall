@@ -54,8 +54,8 @@ export function currentVisualStyle(search: string = globalThis.location?.search 
 }
 
 /**
- * The seam the board and the Hero Select ask for the look to draw. Only the Heroes have a Pixel-art renderer so far (the
- * terrain keeps its look in both styles until its own ticket), so only the Hero code asks. Another way to draw, not to play.
+ * The seam the Hero Select and the Heroes ask for the look to draw. Another way to draw, not to play. The terrain does not
+ * use this seam: the board asks `currentVisualStyle()` and draws the Reactor Deck from the tileset "Notstrom" in Pixel art.
  */
 export function renderedStyle(style: VisualStyle = currentVisualStyle()): VisualStyle {
   return style;

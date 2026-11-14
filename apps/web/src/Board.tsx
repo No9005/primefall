@@ -28,6 +28,7 @@ import {
   gridToWorld,
   isZoomed,
   panBy,
+  PIXEL_MAX_SCALE,
   pickTileAt,
   resolveTap,
   TILE_HEIGHT,
@@ -57,6 +58,8 @@ import { finalTile, PathOwner, type PlannedPath } from "./ally-paths";
 import { type CoverPlan, type CrossfireRing, type EffectPath, LineKind, NO_COVER_PLAN, LineTone, RingSegment, type TargetLine } from "./target-lines";
 import { PLAN_STYLE, SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
 import { pulseAlpha } from "./target-pick";
+import { loadPixelAtlas, type PixelAtlas, PixelScenery } from "./pixel-terrain";
+import { currentVisualStyle, VisualStyle } from "./visual-style";
 
 /** Strokes `segment` as a run of dashes: long for a clear shot, dots for the stopped part, grey after a block. */
 function strokeShotSegment(graphics: Graphics, { from, to, style }: ShotInWorld["segments"][number]): void {
@@ -343,6 +346,8 @@ interface Terrain {
   floor: Container;
   objects: Container;
   planning: Container;
+  /** The tileset of the Pixel art style; absent in the Original style. */
+  atlas?: PixelAtlas;
 }
 
 /** The middle of the Prime Zone tiles (the zone is drawn faintly even in the fog, so using it reveals nothing). */
@@ -566,6 +571,9 @@ export function Board({
   /** Above the props and the Heroes, below the effects: the ghost and the numbers of the planned paths. */
   const [overlayTop, setOverlayTop] = useState<Container>();
   const [terrain, setTerrain] = useState<Terrain>();
+  // The style is read once per board: a change in the Options takes effect with the next board.
+  const [pixel] = useState(() => currentVisualStyle() === VisualStyle.Pixel);
+  const [scenery, setScenery] = useState<PixelScenery>();
   // Always the latest callbacks, so the pixi sprites need not be rebuilt for them.
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
@@ -1098,6 +1106,39 @@ export function Board({
     return () => cancelAnimationFrame(handle);
   }, [fogClouds, coverGrid, visibleTiles, heroes, revealedAreas, sightAfter, walks]);
 
+  // Pixel art: the floor is baked into one texture and the Walls and Cover are sprites. They are built again only when the map's
+  // own Cover changes (destroyed Cover); Placed Cover, wrecks and the fog are drawn over them by the effect below.
+  const destroyedKey = destroyedCover.map((tile) => `${tile.col},${tile.row}`).join(";");
+  useEffect(() => {
+    if (!terrain?.atlas) return;
+    const standing = coverGridOf(destroyedCover, [], []);
+    const built = new PixelScenery(terrain.atlas, overview ? withoutCover(standing) : standing);
+    built.attach(terrain.floor, terrain.objects);
+    setScenery(built);
+    return () => {
+      setScenery(undefined);
+      built.destroy();
+    };
+    // `destroyedKey` stands for `destroyedCover`: the scenery is built again when the set of destroyed Cover changes, not its array.
+  }, [terrain, destroyedKey, overview]);
+  useEffect(() => {
+    if (!scenery) return;
+    scenery.setLit(litTiles(visibleTiles, heroes.map((hero) => hero.position)));
+  }, [scenery, visibleTiles, heroes]);
+  useEffect(() => {
+    if (!scenery) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    scenery.tick(performance.now(), reducedMotion);
+    if (reducedMotion || !scenery.animated) return;
+    let frame = 0;
+    const step = (now: number) => {
+      scenery.tick(now, false);
+      frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [scenery]);
+
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
   useEffect(() => {
     if (!terrain) return;
@@ -1107,7 +1148,7 @@ export function Board({
       visibleTiles,
       heroes.map((hero) => hero.position),
     );
-    const created: Container[] = drawTerrain({ floor, objects, planning }, { grid, angle, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover });
+    const created: Container[] = drawTerrain({ floor, objects, planning }, { grid, angle, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover, pixel });
 
     // The Prime Zone tint (grey, teal, gold, amber, red); our Squad holding it sends a ring over the zone.
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1226,11 +1267,12 @@ export function Board({
     const app = new Application();
 
     void (async () => {
-      await Promise.all([
+      const [, , atlas] = await Promise.all([
         loadAssets(),
         // Without the sheets (a failed load) the Heroes are drawn with the shape rig.
         renderedStyle() === VisualStyle.Pixel ? loadPixelHeroes().catch(() => undefined) : undefined,
         app.init({ background: "#12161c", resizeTo: element, preference: "webgl", antialias: true, autoDensity: true, resolution: window.devicePixelRatio }),
+        pixel ? loadPixelAtlas() : undefined,
       ]);
       if (cancelled) {
         app.destroy(true, { children: true });
@@ -1256,9 +1298,10 @@ export function Board({
       setOverlay(planning);
       setOverlayTop(planningTop);
 
-      setTerrain({ floor, objects, planning });
+      setTerrain({ floor, objects, planning, atlas });
 
-      const size = (): CameraView => ({ width: app.screen.width, height: app.screen.height, angle: angleRef.current });
+      // Pixel art zooms in whole steps, except in the overview, which always shows the whole board as large as fits.
+      const size = (): CameraView => ({ width: app.screen.width, height: app.screen.height, angle: angleRef.current, pixel: pixel && !overview });
       // The start framing: the own Squad and the Prime Zone, never an enemy (Fog of War).
       const startFraming = (): Camera => {
         const view = size();
@@ -1407,7 +1450,7 @@ export function Board({
           const mid = { x: (a!.x + b!.x) / 2, y: (a!.y + b!.y) / 2 };
           down.set(event.pointerId, current);
           if (oldDistance === 0) return;
-          const zoomedCamera = zoomAt(camera, (camera.scale * distance) / oldDistance, oldMid.x, oldMid.y, size());
+          const zoomedCamera = zoomAt(camera, gestureZoom(distance / oldDistance), oldMid.x, oldMid.y, size());
           setCameraByHand(panBy(zoomedCamera, mid.x - oldMid.x, mid.y - oldMid.y, size()));
           return;
         }
@@ -1420,8 +1463,17 @@ export function Board({
         }
         if (dragged) setCameraByHand(panBy(camera, current.x - previous.x, current.y - previous.y, size()));
       });
+      // Pixel art zooms in whole steps, so the scale a pinch or the wheel asks for is added up here between the steps.
+      let gestureScale: number | undefined;
+      let wheelPause = 0;
+      const gestureZoom = (ratio: number): number => {
+        if (!size().pixel) return camera.scale * ratio;
+        gestureScale = Math.min(Math.max((gestureScale ?? camera.scale) * ratio, fitCamera(size()).scale), PIXEL_MAX_SCALE);
+        return gestureScale;
+      };
       const release = (event: { pointerId: number }) => {
         down.delete(event.pointerId);
+        if (down.size === 0) gestureScale = undefined;
         // The finger left after a pinch pans from where it is.
         if (down.size === 1) dragged = true;
         setPressed(undefined);
@@ -1434,7 +1486,10 @@ export function Board({
         (event) => {
           event.preventDefault();
           const rect = app.canvas.getBoundingClientRect();
-          setCameraByHand(zoomAt(camera, camera.scale * Math.exp(-event.deltaY * 0.0015), event.clientX - rect.left, event.clientY - rect.top, size()));
+          setCameraByHand(zoomAt(camera, gestureZoom(Math.exp(-event.deltaY * 0.0015)), event.clientX - rect.left, event.clientY - rect.top, size()));
+          // A pause ends the gesture: the next one starts from the camera again.
+          window.clearTimeout(wheelPause);
+          wheelPause = window.setTimeout(() => (gestureScale = undefined), 250);
         },
         { passive: false },
       );
