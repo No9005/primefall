@@ -94,7 +94,7 @@ describe("Slow", () => {
   it("Slow also applies to a Move planned in the Resolution that Slows, after the Slow", () => {
     const { match: after } = resolveRound(duel(), [
       snarePlan(RIGHT_BRUISER),
-      rightPlan([{ kind: ActionKind.Block, card: 0 }, move(1, 13, 3)]),
+      rightPlan([{ kind: ActionKind.Wait }, move(1, 13, 3)]),
     ]);
     expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 12, row: 3 });
   });
@@ -102,7 +102,7 @@ describe("Slow", () => {
   it("Slow lasts until the end of the next Resolution when no Move uses it", () => {
     const afterApplied = slowedByConcussion();
     expect(hero(afterApplied, RIGHT_BRUISER).slow).toBeGreaterThan(0);
-    const afterNext = resolveRound(afterApplied, [rightPlan([{ kind: ActionKind.Block, card: 0 }])]).match;
+    const afterNext = resolveRound(afterApplied, [rightPlan([{ kind: ActionKind.Wait }])]).match;
     expect(hero(afterNext, RIGHT_BRUISER).slow).toBe(0);
     const { match: moved } = resolveRound(afterNext, [rightPlan([move(1, 13, 3)])]);
     expect(hero(moved, RIGHT_BRUISER).position).toEqual({ col: 13, row: 3 });

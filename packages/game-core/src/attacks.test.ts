@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cardIndex, HeroClass } from "./cards";
 import { EventKind, SquadId } from "./host";
 import { createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type QueuedAction, type SquadPlan } from "./plan";
@@ -8,7 +9,7 @@ import { resolveRound } from "./resolution";
 const LEFT_BRUISER = "left-bruiser";
 const LEFT_CONTROLLER = "left-controller";
 const RIGHT_BRUISER = "right-bruiser";
-// Bruiser cards 0 and 1 are Slam Shot: damage 2, Range 1 to 2, cost 1. Cards 2 and 3 serve as Move or Block.
+// Bruiser cards 0 and 1 are Slam Shot: damage 2, Range 1 to 2, cost 1. Cards 2 and 3 serve as Move or Pitch.
 const SLAM_SHOT = 0;
 
 const hero = (match: MatchState, heroId: string) => match.heroes.find((candidate) => candidate.id === heroId)!;
@@ -46,8 +47,10 @@ describe("Attacks and Deck Damage", () => {
   it("lets Shield absorb damage before the Deck loses cards", () => {
     const match = duel();
     const deckSize = hero(match, RIGHT_BRUISER).deck.length;
-    const block = planOf(SquadId.Right, RIGHT_BRUISER, [{ kind: ActionKind.Block, card: 2 }]);
-    const { match: after, events } = resolveRound(match, [leftAttacks(), block]);
+    const bulwark = cardIndex(HeroClass.Bruiser, "Bulwark");
+    hero(match, RIGHT_BRUISER).hand = [0, 1, 2, bulwark];
+    const shield = planOf(SquadId.Right, RIGHT_BRUISER, [{ kind: ActionKind.Primary, card: bulwark, target: RIGHT_BRUISER }], [1]);
+    const { match: after, events } = resolveRound(match, [leftAttacks(), shield]);
     expect(hero(after, RIGHT_BRUISER).deck).toHaveLength(deckSize);
     expect(events.find(({ kind }) => kind === EventKind.AttackHit)).toMatchObject({ absorbed: 2, damage: 0 });
   });

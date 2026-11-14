@@ -66,9 +66,8 @@ describe("validatePlan", () => {
 
 describe("validatePlan: Pitch, Energy and Block", () => {
   // Block exists in Attack and Defend only; the classic mode has none.
-  const blockView: SquadView = { ...view, attackAndDefend: { defender: SquadId.Left, roundsLeft: 12, zone: [] } };
   const planKinds = (pitched: number[], queue: QueuedAction[]) =>
-    validatePlan(blockView, { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue, pitched }] }).map((issue) => issue.kind);
+    validatePlan(view, { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue, pitched }] }).map((issue) => issue.kind);
 
   it("gives 1 Energy per pitched card", () => {
     expect(energyPool([])).toBe(0);
@@ -161,25 +160,13 @@ describe("validatePlan: Pitch, Energy and Block", () => {
       ...view,
       heroes: view.heroes.map((hero) => (hero === bruiser ? { ...hero, exhausted: true } : hero)),
     };
-    const plan = { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue: [{ kind: ActionKind.Block as const, card: bruiser.hand[0]! }] }] };
+    const plan = { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue: [move(bruiser.hand[0]!, near(1))] }] };
     expect(validatePlan(exhausted, plan).map((issue) => issue.kind)).toEqual([PlanIssueKind.HeroExhausted]);
-  });
-
-  it("rejects a Block in the classic mode and accepts it in Attack and Defend", () => {
-    const [a] = bruiser.hand;
-    const plan = { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue: [{ kind: ActionKind.Block as const, card: a! }] }] };
-    expect(validatePlan(view, plan).map((issue) => issue.kind)).toEqual([PlanIssueKind.BlockNotAllowed]);
-    expect(validatePlan(blockView, plan)).toEqual([]);
-  });
-
-  it("makes Move 2 and Block 2 free", () => {
-    const [a, b] = bruiser.hand;
-    expect(planKinds([], [{ kind: ActionKind.Block, card: a! }, move(b!, near(1))])).toEqual([]);
   });
 
   it("lets a card fulfil only one role per Round", () => {
     const [a] = bruiser.hand;
-    expect(planKinds([a!], [{ kind: ActionKind.Block, card: a! }])).toEqual([PlanIssueKind.CardUsedTwice]);
+    expect(planKinds([a!], [move(a!, near(1))])).toEqual([PlanIssueKind.CardUsedTwice]);
     expect(planKinds([a!, a!], [])).toEqual([PlanIssueKind.CardUsedTwice]);
   });
 
