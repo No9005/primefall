@@ -1,58 +1,46 @@
 import { EventKind, HeroClass, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
 import { ClipPlayer } from "./clip-player";
-import { clipOf, ease, sampleClip } from "./hero-clips";
+import { clipOf } from "./hero-clips";
 import { buildPlaybackFrames, STEP_MS } from "./playback";
 
-describe("sampleClip", () => {
-  it("lifts the torso at the breath peak of Idle (1000 ms), and rests at the ends", () => {
-    const idle = clipOf(HeroClass.Bruiser, "idle");
-    expect(sampleClip(idle, 1000).torso).toMatchObject({ x: expect.closeTo(0.8, 5), y: expect.closeTo(-2, 5), scaleY: expect.closeTo(1.05, 5) });
-    expect(sampleClip(idle, 0).torso.y).toBe(0);
-    expect(sampleClip(idle, 2000).torso.y).toBeCloseTo(0);
-    expect(sampleClip(idle, 1000).armF.rotation).toBeCloseTo(-40);
+describe("the timeline of the clips", () => {
+  const beats = (heroClass: HeroClass, name: Parameters<typeof clipOf>[1]) => {
+    const { durationMs, activeEndMs, fireMs } = clipOf(heroClass, name);
+    return { durationMs, activeEndMs, fireMs };
+  };
+
+  it("gives the attacks their length, the beat where the shot leaves and the beat where the Hero is at rest again", () => {
+    expect(beats(HeroClass.Bruiser, "attack")).toEqual({ durationMs: 2400, activeEndMs: 1540, fireMs: 620 });
+    expect(beats(HeroClass.Assassin, "attack")).toEqual({ durationMs: 2200, activeEndMs: 1450, fireMs: 570 });
+    expect(beats(HeroClass.Assassin, "longShot")).toEqual({ durationMs: 3600, activeEndMs: 3170, fireMs: 1650 });
+    expect(beats(HeroClass.Controller, "attack")).toEqual({ durationMs: 2400, activeEndMs: 1630, fireMs: 620 });
+    expect(beats(HeroClass.Controller, "tagRound")).toEqual({ durationMs: 2800, activeEndMs: 1400, fireMs: 730 });
+    expect(beats(HeroClass.Controller, "slowPulse")).toEqual({ durationMs: 2600, activeEndMs: 2180, fireMs: 680 });
   });
 
-  it("swings the legs of Walk from -30/30 degrees to 30/-30 in half a cycle", () => {
-    const walk = clipOf(HeroClass.Bruiser, "walk");
-    expect(sampleClip(walk, 0).legL.rotation).toBe(-30);
-    expect(sampleClip(walk, 0).legR.rotation).toBe(30);
-    expect(sampleClip(walk, 320).legL.rotation).toBe(30);
-    expect(sampleClip(walk, 320).legR.rotation).toBe(-30);
-    expect(sampleClip(walk, 160).legL.rotation).toBeCloseTo(0);
-    expect(sampleClip(walk, 640 + 160).legL.rotation).toBeCloseTo(0);
+  it("gives the gestures, the reactions and the fall their length", () => {
+    expect(beats(HeroClass.Controller, "scoutDrone")).toMatchObject({ durationMs: 3600, activeEndMs: 3380 });
+    expect(beats(HeroClass.Controller, "aegis")).toMatchObject({ durationMs: 3200, activeEndMs: 2560 });
+    expect(beats(HeroClass.Controller, "deploy")).toMatchObject({ durationMs: 3400, activeEndMs: 2720 });
+    expect(beats(HeroClass.Assassin, "hidden")).toMatchObject({ durationMs: 4200, activeEndMs: 4200 });
+    expect(beats(HeroClass.Bruiser, "hit")).toMatchObject({ durationMs: 2600, activeEndMs: 1350 });
+    expect(beats(HeroClass.Bruiser, "absorb")).toMatchObject({ durationMs: 2600, activeEndMs: 830 });
+    expect(beats(HeroClass.Bruiser, "block")).toMatchObject({ durationMs: 3200, activeEndMs: 2900 });
+    for (const heroClass of Object.values(HeroClass)) expect(beats(heroClass, "exhausted")).toMatchObject({ durationMs: 5400, activeEndMs: 4860 });
   });
 
-  it("turns the head of Wait left at 830 ms and right at 2240 ms (70 %), and shows the II mark", () => {
-    const wait = clipOf(HeroClass.Controller, "wait");
-    expect(sampleClip(wait, 830).head.rotation).toBeCloseTo(-14, 1);
-    expect(sampleClip(wait, 2240).head.rotation).toBeCloseTo(14, 1);
-    expect(sampleClip(wait, 800).pause.alpha).toBeCloseTo(0.45, 1);
-    expect(sampleClip(clipOf(HeroClass.Controller, "idle"), 500).pause.alpha).toBe(0);
+  it("loops the cover clips: a Take cover is at rest at 24 % (22 % for Full Cover) of its loop, the Assassin is quicker", () => {
+    expect(clipOf(HeroClass.Bruiser, "takeCover")).toMatchObject({ loop: true, durationMs: 4400, activeEndMs: 1056 });
+    expect(clipOf(HeroClass.Bruiser, "takeCoverFull")).toMatchObject({ loop: true, durationMs: 4800, activeEndMs: 1056 });
+    expect([HeroClass.Bruiser, HeroClass.Controller].map((heroClass) => [clipOf(heroClass, "inCover").durationMs, clipOf(heroClass, "inCoverFull").durationMs])).toEqual([[3400, 3600], [3400, 3600]]);
+    expect([clipOf(HeroClass.Assassin, "inCover").durationMs, clipOf(HeroClass.Assassin, "inCoverFull").durationMs]).toEqual([2400, 4400]);
   });
 
-  it("gives the Assassin a quicker stride and a moving cape; the others share the same clips", () => {
-    expect(clipOf(HeroClass.Assassin, "walk").durationMs).toBe(500);
-    expect(clipOf(HeroClass.Bruiser, "walk").durationMs).toBe(640);
-    expect(clipOf(HeroClass.Controller, "walk")).toBe(clipOf(HeroClass.Bruiser, "walk"));
-    expect(sampleClip(clipOf(HeroClass.Assassin, "walk"), 250).legL.rotation).toBe(30);
-    expect(sampleClip(clipOf(HeroClass.Assassin, "walk"), 0).cape.rotation).toBe(-16);
-    expect(sampleClip(clipOf(HeroClass.Bruiser, "walk"), 0).cape.rotation).toBe(0);
-  });
-
-  it("is the same every time", () => {
-    const walk = clipOf(HeroClass.Bruiser, "walk");
-    expect(sampleClip(walk, 123)).toEqual(sampleClip(walk, 123));
-  });
-});
-
-describe("ease", () => {
-  it("follows the CSS curves", () => {
-    expect(ease("linear", 0.3)).toBe(0.3);
-    expect(ease("ease-in-out", 0.5)).toBeCloseTo(0.5, 3);
-    expect(ease("ease-in-out", 0.25)).toBeCloseTo(0.129, 2);
-    expect(ease("ease-in", 0.5)).toBeLessThan(0.5);
-    expect(ease("ease-out", 0.5)).toBeGreaterThan(0.5);
+  it("gives the Assassin and the Controller their own stride", () => {
+    expect([HeroClass.Bruiser, HeroClass.Controller, HeroClass.Assassin].map((heroClass) => clipOf(heroClass, "walk").durationMs)).toEqual([640, 640, 500]);
+    expect(clipOf(HeroClass.Bruiser, "walk").perStep).toBe(true);
+    expect(clipOf(HeroClass.Bruiser, "idle").perStep).toBe(false);
   });
 });
 

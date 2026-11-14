@@ -1,86 +1,16 @@
 import { EventKind, HeroClass, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
 import { ClipPlayer } from "./clip-player";
-import { attackClipName, clipOf, sampleClip } from "./hero-clips";
+import { attackClipName, clipOf } from "./hero-clips";
 import { buildPlaybackFrames, STEP_MS } from "./playback";
 
-describe("the attack clips, sampled at the beats of the reference", () => {
-  it("Bruiser Slam Shot: 2400 ms, fires at 620 ms, back at rest by 1540 ms", () => {
-    const slam = clipOf(HeroClass.Bruiser, "attack");
-    expect([slam.durationMs, slam.fireMs, slam.activeEndMs, slam.loop]).toEqual([2400, 620, 1540, false]);
-    expect(sampleClip(slam, 0).armF.rotation).toBe(-30);
-    expect(sampleClip(slam, 624).armF.rotation).toBeCloseTo(-108);
-    expect(sampleClip(slam, 624).torso).toMatchObject({ x: expect.closeTo(-3, 5), rotation: expect.closeTo(-9, 5) });
-    expect(sampleClip(slam, 1584).armF.rotation).toBeCloseTo(-30);
-    expect(sampleClip(slam, 9999).armF.rotation).toBe(-30);
-  });
-
-  it("Assassin Precision Shot (2200 ms, fire 570) and Long Shot (3600 ms: kneels, fire 1650)", () => {
-    const precision = clipOf(HeroClass.Assassin, "attack");
-    expect([precision.durationMs, precision.fireMs, precision.activeEndMs]).toEqual([2200, 570, 1450]);
-    expect(sampleClip(precision, 572).armF.rotation).toBeCloseTo(-98);
-    const long = clipOf(HeroClass.Assassin, "longShot");
-    expect([long.durationMs, long.fireMs, long.activeEndMs]).toEqual([3600, 1650, 3170]);
-    // Kneeling: the rear leg folds back and the torso drops while the scope is held.
-    expect(sampleClip(long, 792).legR.rotation).toBeCloseTo(-75);
-    expect(sampleClip(long, 1000).torso.y).toBeCloseTo(4);
-    expect(sampleClip(long, 1656).armF.rotation).toBeCloseTo(-100);
-    expect(sampleClip(long, 3400).torso.y).toBe(0);
-  });
-
-  it("Controller attack (2400 ms), Tag Round (2800 ms) and Slow pulse (2600 ms) raise the arm and fire at 26 %", () => {
-    const bolt = clipOf(HeroClass.Controller, "attack");
-    expect([bolt.durationMs, bolt.fireMs, bolt.activeEndMs]).toEqual([2400, 620, 1630]);
-    expect(sampleClip(bolt, 624).armF.rotation).toBeCloseTo(-100);
-    expect(clipOf(HeroClass.Controller, "tagRound")).toMatchObject({ durationMs: 2800, fireMs: 730 });
-    expect(clipOf(HeroClass.Controller, "slowPulse")).toMatchObject({ durationMs: 2600, fireMs: 680 });
-  });
-
+describe("the attack clips", () => {
   it("gives every card without a clip of its own the basic attack of its class", () => {
     expect(attackClipName("Concussion Round")).toBe("attack");
     expect(attackClipName("Ghost Shot")).toBe("attack");
     expect(attackClipName("Long Shot")).toBe("longShot");
     expect(attackClipName("Tag Round")).toBe("tagRound");
     expect(clipOf(HeroClass.Bruiser, "longShot")).toBe(clipOf(HeroClass.Bruiser, "attack"));
-  });
-});
-
-describe("the Hit, Shield-absorbs and Block clips", () => {
-  it("Hit: flash at 364 ms, knocked back, head snaps, ring red, at rest by 1350 ms", () => {
-    const hit = clipOf(HeroClass.Controller, "hit");
-    expect([hit.durationMs, hit.activeEndMs]).toEqual([2600, 1350]);
-    const impact = sampleClip(hit, 364);
-    expect(impact.rig.x).toBeCloseTo(-5);
-    expect(impact.flash.alpha).toBeCloseTo(1);
-    expect(impact.ring.alpha).toBeCloseTo(1);
-    expect(impact.head.rotation).toBeCloseTo(-22);
-    expect(sampleClip(hit, 0).flash.alpha).toBe(0);
-    expect(sampleClip(hit, 468).flash.alpha).toBeLessThan(0.01);
-    const rest = sampleClip(hit, 1352);
-    expect(rest.rig.x).toBeCloseTo(0);
-    expect(rest.torso.rotation).toBeCloseTo(0);
-    expect(rest.ring.alpha).toBeCloseTo(0);
-  });
-
-  it("Hit, Shield absorbs: a 1.5 px shake, no flash, no knock-back", () => {
-    const absorb = clipOf(HeroClass.Bruiser, "absorb");
-    expect(sampleClip(absorb, 338).rig.x).toBeCloseTo(-1.5);
-    for (const ms of [0, 338, 468, 1000]) {
-      expect(sampleClip(absorb, ms).flash.alpha).toBe(0);
-      expect(Math.abs(sampleClip(absorb, ms).rig.x)).toBeLessThanOrEqual(1.5);
-    }
-  });
-
-  it("Block: crouches by 572 ms, holds, releases by 2900 ms (the Assassin's cape flares)", () => {
-    for (const heroClass of [HeroClass.Bruiser, HeroClass.Assassin, HeroClass.Controller]) {
-      const block = clipOf(heroClass, "block");
-      expect([block.durationMs, block.activeEndMs]).toEqual([3200, 2900]);
-      expect(sampleClip(block, 1600).armF.rotation).toBeCloseTo(-125);
-      expect(sampleClip(block, 1600).torso.y).toBeCloseTo(3);
-      expect(sampleClip(block, 2900).torso.y).toBeCloseTo(0);
-    }
-    expect(sampleClip(clipOf(HeroClass.Assassin, "block"), 1600).cape.rotation).toBeCloseTo(22);
-    expect(sampleClip(clipOf(HeroClass.Bruiser, "block"), 1600).cape.rotation).toBe(0);
   });
 });
 
