@@ -16,6 +16,7 @@ export type ClipName =
   | "aegis"
   | "deploy"
   | "hidden"
+  | "block"
   | "hit"
   | "absorb"
   | "takeCover"
@@ -55,6 +56,7 @@ function common(strideMs: number, takeHalfMs: number, takeFullMs: number, inHalf
     idle: loops("idle", 2000),
     walk: loops("walk", strideMs),
     wait: loops("wait", 3200),
+    block: once("block", 3200, 2900),
     hit: once("hit", 2600, 1350),
     absorb: once("absorb", 2600, 830),
     // A Take cover reaches its rest (ducked, or against the wall) at 24 % / 22 % of its loop.

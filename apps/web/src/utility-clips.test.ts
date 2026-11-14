@@ -12,7 +12,7 @@ describe("the playback plays the gestures from the events", () => {
     expect(utilityClipName(event(EventKind.HiddenGained, "a", { card: "Hidden" }))).toEqual({ heroId: "a", clip: "hidden" });
     // The Shield is on the ally; the gesture is the caster's.
     expect(utilityClipName(event(EventKind.ShieldGained, "ally", { card: "Aegis Protocol", casterId: "c" }))).toEqual({ heroId: "c", clip: "aegis" });
-    expect(utilityClipName(event(EventKind.ShieldGained, "ally", { card: "Bulwark" }))).toBeUndefined();
+    expect(utilityClipName(event(EventKind.ShieldGained, "ally", { card: "Bulwark", casterId: "ally" }))).toEqual({ heroId: "ally", clip: "block" });
   });
 
   it("a Tick lasts until the slowest gesture has reached its active end", () => {

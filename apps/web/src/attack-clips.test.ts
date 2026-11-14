@@ -69,6 +69,13 @@ describe("the playback of attacks", () => {
     expect(frame!.holdMs).toBe(1450);
   });
 
+  it("plays the Shield gesture for the Hero that plays a Shield card, and Aegis Protocol its own", () => {
+    const [bulwark] = buildPlaybackFrames([{ kind: EventKind.ShieldGained, tick: 1, heroId: "a", amount: 3, card: "Bulwark", casterId: "a" }], classOf);
+    expect(bulwark!.clips).toEqual({ a: "block" });
+    expect(bulwark!.holdMs).toBe(2900);
+    const [reinforce] = buildPlaybackFrames([{ kind: EventKind.ShieldGained, tick: 1, heroId: "b", amount: 2, card: "Reinforce", casterId: "a" }], classOf);
+    expect(reinforce!.clips).toEqual({ a: "block" });
+  });
 
   it("keeps one step for a frame with only steps, whatever the classes", () => {
     const [frame] = buildPlaybackFrames([{ kind: EventKind.Step, tick: 1, heroId: "a", to: { col: 1, row: 0 } }], classOf);

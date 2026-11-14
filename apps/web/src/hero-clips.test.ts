@@ -26,6 +26,7 @@ describe("the timeline of the clips", () => {
     expect(beats(HeroClass.Assassin, "hidden")).toMatchObject({ durationMs: 4200, activeEndMs: 4200 });
     expect(beats(HeroClass.Bruiser, "hit")).toMatchObject({ durationMs: 2600, activeEndMs: 1350 });
     expect(beats(HeroClass.Bruiser, "absorb")).toMatchObject({ durationMs: 2600, activeEndMs: 830 });
+    expect(beats(HeroClass.Bruiser, "block")).toMatchObject({ durationMs: 3200, activeEndMs: 2900 });
     for (const heroClass of Object.values(HeroClass)) expect(beats(heroClass, "exhausted")).toMatchObject({ durationMs: 5400, activeEndMs: 4860 });
   });
 
