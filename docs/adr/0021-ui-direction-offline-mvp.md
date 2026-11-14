@@ -24,7 +24,7 @@ Cards are played by dragging them onto a zone:
 | Drop on | Result |
 |---|---|
 | An enemy | Primary effect |
-| A tile | Move 2 |
+| A tile | Move 3 |
 | Near the Hero | A Primary effect that needs no target |
 | The Energy orb | Pitch |
 

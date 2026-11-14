@@ -1,6 +1,6 @@
 # MVP Card Set Spec
 
-This is the complete fixed card set for the offline 3v3 prototype. Every card can alternatively be used as Pitch 1 or Move 2. A card fulfills only one of these roles during a round.
+This is the complete fixed card set for the offline 3v3 prototype. Every card can alternatively be used as Pitch 1 or Move 3. A card fulfills only one of these roles during a round.
 
 Cards with the same name are identical in every respect. Cards that differ have different names. Every card costs 1 Energy. There is no Overdrive: a card has one effect (ADR 0003, removed in the #415 deck redesign test).
 
@@ -10,7 +10,7 @@ An Attack that hits a single enemy Hero (every Attack except Breach Charge, whic
 
 ## Status effects
 
-**Slow:** The affected Hero’s next Move 2 use becomes Move 1. Slow lasts until the end of the next Resolution.
+**Slow:** The affected Hero’s next Move covers half the distance, rounded down (a Move 3 becomes a Move 1). Slow lasts until the end of the next Resolution.
 
 ## Deck sizes (ADR 0025)
 

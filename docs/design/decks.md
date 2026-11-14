@@ -8,11 +8,12 @@ This file keeps **every idea for the cards**, also those that did not make the r
 
 What is in the code and in `docs/specs/mvp-card-set.md` today:
 
-- **Overdrive, Block and the passives are gone.** Every card costs 1 Energy; a card is played, pitched or used as Move 2.
+- **Overdrive, Block and the passives are gone.** Every card costs 1 Energy; a card is played, pitched or used as Move 3 (Slow halves it, rounded down).
 - **Max Overload's deck** is the table under _Max Overload_ below, with the names of the cards: Buy One, Get Two (Double Shot), Express Delivery (Rush), Hard Hat (Shield 2), Cargo Hook (Grappling Hook, also on a Ghost), Handle With Care (Close Attack) and Time for Coffee (Concussion Round).
 - **Tilly creates and destroys Cover.** Her Shield cards (Aegis Protocol, Reinforce) are replaced by Breach Charge and Wrecking Blow. The rest of her deck is unchanged; the plan of the Field and the drone below is not built yet.
 - **Removed with Max' old cards:** Shockwave and Knockback, Adrenal Surge (the permanent Attack bonus), the Range 1 bonus of the old Charge.
-- **Not built yet:** Move 3, the decks of Tilly (beyond the two cards) and Kit, the Marked and Slow ideas, the card faces in the app (`docs/design/cards/`).
+- **Move 3 is built:** every card can be used as Move 3 and Slow halves the next Move, rounded down (a Move 3 becomes a Move 1). Reposition (Kit) is now Move 5 this round, because Move 3 is the default; its place in his deck is still open.
+- **Not built yet:** the decks of Tilly (beyond the two cards) and Kit, the Marked and Slow ideas, the card faces in the app (`docs/design/cards/`).
 
 ## Why a redesign
 
@@ -51,17 +52,17 @@ The idea of a passive effect per Hero (Max +1 damage at Range 1, Kit +1 at the A
 
 ## Carrying
 
-Decided: **Max carries objects without a malus.** The proposal for the others, until the rules of Carry and extract exist: a Hero carrying an object has its Move 3 reduced to Move 2 and cannot use Charge-like moves; the object drops on its tile when the carrier is Exhausted. Max has none of this. Kit's **Snatch** picks up a dropped object. The rules (pick up, carry, drop, who may pick up) are part of the mission ticket, not of this one.
+Decided: **Max carries objects without a malus.** The proposal for the others, until the rules of Carry and extract exist: a Hero carrying an object has its Move 3 reduced to Move 2 and cannot use Express Delivery; the object drops on its tile when the carrier is Exhausted. Max has none of this. Kit's **Snatch** picks up a dropped object. The rules (pick up, carry, drop, who may pick up) are part of the mission ticket, not of this one.
 
-## Move 3
+## Move 3 (implemented)
 
-Decided: the default movement rises to 3 (every card can be used as Move 3 instead of Move 2; a Hero's queue has at most four actions, so up to nine tiles per Round if three actions are Moves). What follows:
+Decided and built: the default movement is 3 (every card can be used as Move 3; a Hero's queue has at most four actions, so up to twelve tiles per Round if all are Moves). What follows:
 
-- **Slow** (today: the next Move 2 becomes Move 1): proposal, the next Move 3 becomes Move 1, as it was in relation; an alternative is Move 2.
-- **Charge** (moves up to 3 toward an enemy) is no longer faster than a Move: raise it to up to 4 tiles, or keep 3 and let the Shield 1 be its point.
-- **Reposition** of the Assassin (Move 3 this round) has no point any more; the Assassin's deck replaces it (Silent Entry).
-- **Map:** the walk from a Drop Point to the first zone is about 19 to 20 tiles on Crossroads v2, three Rounds with Move 2; with Move 3 it is about two. This also solves the open point of #361 (the Outposts should be about two Rounds from a Drop Point).
-- **Range and sight** stay. The AI and the balance harness need updating (the Tutorial is removed and will be rethought).
+- **Slow** halves the next Move, rounded down: a Move 3 becomes a Move 1.
+- **Express Delivery** (Max, up to 5 tiles toward an enemy) is faster than a Move and also gives Shield 2.
+- **Reposition** of the Assassin (Move 3 this round) had no point any more. It is Move 5 this round for now; the Assassin's deck may replace it (Silent Entry).
+- **Map:** the walk from a Drop Point to the first zone is about 19 to 20 tiles on Crossroads v2, about two Rounds with Move 3. This also solves the open point of #361 (the Outposts should be about two Rounds from a Drop Point).
+- **Range and sight** stay. The AI is unchanged but plays differently (its recorded matches are re-recorded); the balance harness has not been run.
 
 ## Recommended decks
 
@@ -191,7 +192,6 @@ All ideas of the chat and of the tester, with their state:
 
 0. The system: decided in the chat: Overdrive removed as a test, Pitch stays, every card costs 1 Energy, no Link (see _The system_). Still open: how the synergy comes natively (see _Native synergy_).
 1. Tilly: how Cover creation and destruction split across her cards (she now also breaks Cover).
-2. Slow with Move 3: Move 1 or Move 2.
 3. Arc Field: damage each Tick or once per Resolution; one tile or a pattern.
 4. Mission cards (Rig Charge, Snatch): in the deck only in the mission mode, or always (every card can be Pitch or Move, so none is dead, but they are weaker in the classic mode).
 5. The toughness (12, 10, 9): keep until the measurement?

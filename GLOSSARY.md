@@ -91,7 +91,7 @@ A target state that makes an enemy visible to the marking Hero’s squad until t
 _Avoid_: Tagged, revealed, spotted
 
 **Slow**:
-A status effect that makes the affected Hero’s next Move 2 use a Move 1 use. It lasts until the end of the next Resolution.
+A status effect that makes the affected Hero’s next Move cover half the distance, rounded down (a Move 3 becomes a Move 1). It lasts until the end of the next Resolution.
 _Avoid_: Hinder, debuff
 
 **Pull**:

@@ -8,7 +8,7 @@ The look of the cards, worked out with the product owner in a chat session for i
 
 | Path | Content |
 |---|---|
-| `apps/web/public/assets/cards/<card>.png` | The picture of each card, 136 x 104 px, drawn with the Bruiser sprite of `docs/design/pixel-heroes/`. `back.png` is the card back (100 x 140 px) |
+| `apps/web/public/assets/cards/<card>.png` | The picture of each card, 136 x 104 px, drawn with the Bruiser sprite of `docs/design/pixel-heroes/`. `back.png` is the whole card back with its text (300 x 420 CSS px at 2 x) |
 | `overview/<card>.png` | The finished card (frame, picture and text) at 2 x, to look at |
 | `reference/card-faces.html` | The live page: the frames, the backs and all cards. It draws the pictures pixel by pixel; its texts are German where they are notes to the product owner |
 | `tools/export.mjs` | Renders the pictures and the overview images from the reference page: `node docs/design/cards/tools/export.mjs` |
@@ -23,7 +23,7 @@ The look of the cards, worked out with the product owner in a chat session for i
 | Rush | Express Delivery | Max sprints in a Shield bubble; a parcel label |
 | Shield | Hard Hat | Max in the Shield bubble wearing a hard hat |
 | Grappling Hook | Cargo Hook | the target hangs on the chain |
-| Move | Walk It Off | Max walks; an arrow with a 2 on the floor |
+| Move | Walk It Off | Max walks; an arrow with a 3 on the floor |
 | Pitch | Overtime | Max puts a card into a time clock; "+1" |
 | Wait | Smoke Break | Max leans against a wall and smokes a cigar under a no-smoking sign |
 

@@ -44,7 +44,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 26. As a player, I want every card to have four possible uses, so that I always face a meaningful opportunity-cost decision.
 27. As a player, I want to play a card’s primary effect, so that I can use its intended tactical purpose.
 28. As a player, I want to Pitch a card for 1 Energy, so that I can fund Attack and Utility effects.
-29. As a player, I want to use any card as Move 2, so that I can reposition even when I do not want to use its primary effect.
+29. As a player, I want to use any card as Move 3, so that I can reposition even when I do not want to use its primary effect.
 31. As a player, I want a card to fulfill only one role during a round, so that card use remains a meaningful commitment.
 32. As a player, I want Energy to expire at the end of the round, so that resource planning stays round-scoped.
 33. As a player, I want the Discard to be shuffled into the Deck as soon as the Deck is empty and a card must be taken from it (Deck Damage, Draw) or a Resolution ends, so that a Hero can continue fighting after spending cards.
@@ -111,7 +111,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Implement Shield as a round-scoped defensive value created through Shield cards.
 - A **Wait** button next to the Queue slots of the selected Hero adds a Wait (an hourglass slot that needs no card and no Energy and can be removed like any other slot) to the first free slot.
 - Distances use Chebyshev distance and movement is 8-directional; Cover is occupiable and ignored by attackers at Range 1; Pitch is a planning step; a Hero's queue has at most 4 actions (ADR 0020).
-- Implement the standard uses for every card: primary effect, Pitch 1 and Move 2.
+- Implement the standard uses for every card: primary effect, Pitch 1 and Move 3.
 - Implement Energy as a round-scoped resource produced by Pitching and required for Attack and Utility effects.
 - Implement simultaneous planning with a fixed timer and early commit.
 - Implement deterministic priority-interleaved Resolution using per-Hero action queues and Ticks.

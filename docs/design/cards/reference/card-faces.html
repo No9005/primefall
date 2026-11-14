@@ -794,7 +794,7 @@ const ART = {
     extra(S, t) {
       for (let k = 0; k < 4; k++) S.rect(24 + k * 9, 7, 5, 1, '#dfe6e4');
       for (const x of [26, 36, 46]) { S.line(x, 3, x + 3, 7, '#6fd6b4'); S.line(x + 3, 7, x, 11, '#6fd6b4'); }
-      S.line(58, 7, 66, 7, '#6fd6b4'); S.line(62, 3, 66, 7, '#6fd6b4'); S.line(62, 11, 66, 7, '#6fd6b4'); S.glyphs('2', 68, 1, 2, '#dfe6e4');
+      S.line(58, 7, 66, 7, '#6fd6b4'); S.line(62, 3, 66, 7, '#6fd6b4'); S.line(62, 11, 66, 7, '#6fd6b4'); S.glyphs('3', 68, 1, 2, '#dfe6e4');
     } },
   pitch: { kind: 'action', pose: { lean: 10, armF: -88, armB: 36, crouch: 2, head: -6, legL: 14, legR: -20, stretch: 1.05, dx: -4 },
     extra(S, t, info) {
@@ -873,14 +873,14 @@ function backB(canvas) {
 const CARDS = {
   double: { cost: 1, kind: 'attack', name: 'Buy One, Get Two', text: 'Range 1 to 2. Deal <b class="dmg">2 damage</b> twice. <b class="dmg">+1 damage</b> each time at Range 1.', flavor: 'Limit: your face.', copies: 1 },
   close: { cost: 1, kind: 'attack', name: 'Handle With Care', text: 'Range 1 to 2. Deal <b class="dmg">2 damage</b>. <b class="dmg">+1 damage</b> at Range 1.', flavor: 'He did not.', copies: 3 },
-  coffee: { cost: 1, kind: 'attack', name: 'Time for Coffee', text: 'Range 3. Deal <b class="dmg">1 damage</b>. Apply <b class="slow">Slow</b>.', flavor: 'Fifteen minutes. Mandatory.', copies: 2 },
+  coffee: { cost: 1, kind: 'attack', name: 'Time for Coffee', text: 'Range 3. Deal <b class="dmg">1 damage</b>. Apply <b class="slow">Slow</b>.', flavor: 'Fifteen-minute break. Mandatory.', copies: 2 },
   rush: { cost: 1, kind: 'utility', name: 'Express Delivery', text: 'Gain <b class="shield">2 Shield</b>. Then move up to 5 tiles to an enemy Hero.', flavor: 'Signature required.', copies: 2 },
   hat: { cost: 1, kind: 'utility', name: 'Hard Hat', text: 'Gain <b class="shield">2 Shield</b>.', flavor: 'Safety is no accident.', copies: 2 },
   hook: { cost: 1, kind: 'utility', name: 'Cargo Hook', text: 'Range 7. Pull an enemy Hero next to you. Can target a <b class="ghost">Ghost</b>.', flavor: 'Heavy load. Handle accordingly.', copies: 2 }
 };
-CARDS.move = { cost: 0, kind: 'action', name: 'Walk It Off', text: 'Move up to <b class="energy">2 tiles</b>. Any card can be used this way.', flavor: 'Mind the gap.', copies: 0, label: 'Move' };
+CARDS.move = { cost: 0, kind: 'action', name: 'Walk It Off', text: 'Move up to <b class="energy">3 tiles</b>. Any card can be used this way.', flavor: 'Mind the gap.', copies: 0, label: 'Move' };
 CARDS.pitch = { cost: '+1', kind: 'action', name: 'Overtime', text: 'Discard a card. Gain <b class="energy">1 Energy</b>. Any card can be used this way.', flavor: 'Time and a half. In theory.', copies: 0, label: 'Pitch' };
-CARDS.wait = { cost: 0, kind: 'action', name: 'Smoke Break', text: 'Do nothing for one Tick. Needs no card.', flavor: 'Do not tell HR.', copies: 0, label: 'Wait' };
+CARDS.wait = { cost: 0, kind: 'action', name: 'Smoke Break', text: 'Do nothing for one Tick. Needs no card.', flavor: 'Union rules.', copies: 0, label: 'Wait' };
 function cardEl(key) {
   const c = CARDS[key], el = document.createElement('article'); el.className = 'card ' + c.kind;
   el.innerHTML = '<div class="cost" aria-label="Cost ' + c.cost + ' Energy">' + c.cost + '</div><h3 class="title"><span>' + c.name + '</span></h3><div class="art"><canvas role="img" aria-label="' + c.name + ', Max Overload"></canvas><span class="type">' + (c.label || (c.kind === 'attack' ? 'Attack' : 'Utility')) + '</span></div><div class="body"><p>' + c.text + '</p><p class="flavor">' + c.flavor + '</p></div>' + (c.copies ? '<span class="copies">×' + c.copies + ' im Deck</span>' : '<span class="copies">jede Karte</span>');

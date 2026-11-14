@@ -38,7 +38,13 @@ try {
   const seen = new Set();
   for (const [key, file] of Object.entries(FILES)) {
     const canvas = tab.locator('canvas[data-card="' + key + '"]').first();
-    await writeFile(join(assets, file + '.png'), pngBytes(await canvas.evaluate(c => c.toDataURL('image/png'))));
+    if (key === 'back-a') {
+      // The back has its wordmark as text over the pixel art, so the picture is the whole card back.
+      const back = tab.locator('.card[data-card="back-a"]').first();
+      await back.screenshot({ path: join(assets, file + '.png'), omitBackground: true });
+    } else {
+      await writeFile(join(assets, file + '.png'), pngBytes(await canvas.evaluate(c => c.toDataURL('image/png'))));
+    }
     const card = tab.locator('.card[data-card="' + key + '"]').first();
     // The cost orb and the ribbon reach out of the card, so the picture takes a margin.
     const box = await card.boundingBox();
