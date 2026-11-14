@@ -41,7 +41,7 @@ import {
 import { freeBoardArea } from "./hud-layout";
 import { FogClouds, type FogWalker, fogDuringWalk, fogShape } from "./fog-clouds";
 import { coverLook, depthOf, floorOutline, footOffset, coverGridOf, lineScale, litTiles, turnView, VIEW_ANGLE, VIEW_STEP, withoutCover } from "./terrain";
-import { applyPose, applyRestPose, type BoundPart, bindParts, CLIP_SPEED, ClipPlayer } from "./clip-player";
+import { CLIP_SPEED, ClipPlayer } from "./clip-player";
 import { attackBadge, EffectsLayer, type EffectsWorld, hiddenSeenMark, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { BADGE_DELAY_MS, type EffectCue, slideProgress } from "./weapon-effects";
 import { baseFacing, type Facing, turnHeroes } from "./facing";
@@ -49,9 +49,8 @@ import { walkProgress } from "./playback";
 import { areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, TRANSITION_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
-import { BEACON_LABEL, beaconAlpha, marksFigure, shieldBubble } from "./hero-figure";
+import { marksFigure, shieldBubble } from "./hero-figure";
 import { loadPixelHeroes, type PixelHero, styledHeroFigure } from "./pixel-heroes";
-import { currentVisualStyle, renderedStyle, VisualStyle } from "./visual-style";
 import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
 import { chestOf, dashRuns, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
@@ -484,18 +483,6 @@ function animateFade(figure: Container, kind: "toGhost" | "toSeen" | "appear"): 
   return () => cancelAnimationFrame(frame);
 }
 
-/** Blinks the Controller's beacon in a loop; with reduced motion it stays lit. Returns a cancel function. */
-function animateBeacon(beacon: Container): () => void {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return () => undefined;
-  let frame = 0;
-  const step = (now: number) => {
-    beacon.alpha = beaconAlpha(now);
-    frame = requestAnimationFrame(step);
-  };
-  frame = requestAnimationFrame(step);
-  return () => cancelAnimationFrame(frame);
-}
-
 /** Fades a shape from full to transparent in `ms`. Returns a cancel function. */
 function animateFadeOut(shape: Graphics, ms: number): () => void {
   const start = performance.now();
@@ -576,8 +563,6 @@ export function Board({
   /** Above the props and the Heroes, below the effects: the ghost and the numbers of the planned paths. */
   const [overlayTop, setOverlayTop] = useState<Container>();
   const [terrain, setTerrain] = useState<Terrain>();
-  // The style is read once per board: a change in the Options takes effect with the next board.
-  const [pixel] = useState(() => currentVisualStyle() === VisualStyle.Pixel);
   const [scenery, setScenery] = useState<PixelScenery>();
   // Always the latest callbacks, so the pixi sprites need not be rebuilt for them.
   const onSelectRef = useRef(onSelect);
@@ -788,7 +773,7 @@ export function Board({
     // Heroes that walk one tile in this frame glide from the tile they came from.
     const glides: { token: Container; fromX: number; fromY: number }[] = [];
     // The figures that play a clip (not the hit or Exhausted ones, which are flat poses).
-    const animated: { id: string; heroClass: HeroClass; cover: CoverKind; parts: BoundPart[]; pixel: PixelHero | undefined }[] = [];
+    const animated: { id: string; heroClass: HeroClass; cover: CoverKind; pixel: PixelHero }[] = [];
     const ring = (color: number) =>
       new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color });
     const addToken = (hero: TokenHero, enemy: boolean) => {
@@ -839,9 +824,7 @@ export function Board({
         }
       }
       token.addChild(figure);
-      const beacon = figure.getChildByLabel(BEACON_LABEL, true);
-      if (beacon && pose === "idle" && !falling) cancels.push(animateBeacon(beacon));
-      if (pose === "idle") animated.push({ id: hero.id, heroClass: hero.heroClass, cover: coverAt(coverGrid, hero.position), parts: pixel ? [] : bindParts(figure, falling), pixel });
+      if (pose === "idle") animated.push({ id: hero.id, heroClass: hero.heroClass, cover: coverAt(coverGrid, hero.position), pixel });
       const heroMarks = hero.ghost ? undefined : marks[hero.id];
       // A Shield that changes in this frame (gained, or hit and absorbing) is drawn with its own animation.
       let shield: StatusMark | undefined;
@@ -942,12 +925,11 @@ export function Board({
       for (const { token, fromX, fromY } of glides) token.pivot.set(-fromX * (1 - walked), -fromY * (1 - walked));
       // Marked and Slow are past their lock-on here; the Slow field keeps breathing.
       for (const mark of statusMarks) mark.update(reducedMotion ? STATUS_AT_REST_MS : 300 + now - pulseStart);
-      for (const { id, heroClass, cover, parts, pixel } of animated) {
+      for (const { id, heroClass, cover, pixel } of animated) {
         // A Hero with nothing to show stands, or stands behind the Cover it is on.
         const name = clips[id] ?? restClipName(cover);
         if (reducedMotion) {
-          if (pixel) pixel.showStill(name);
-          else applyRestPose(parts, name);
+          pixel.showStill(name);
           continue;
         }
         let player = clipPlayers.current.get(id);
@@ -956,9 +938,8 @@ export function Board({
           clipPlayers.current.set(id, player);
         }
         player.play(name, now, clipDelays[id] ?? 0, clips);
-        const pose = player.sample(now);
-        if (pixel) pixel.show(player.playing, player.clipTimeMs(now));
-        else applyPose(parts, pose);
+        player.update(now);
+        pixel.show(player.playing, player.clipTimeMs(now));
       }
       if (!reducedMotion) clipFrame = requestAnimationFrame(playClips);
     };
@@ -1153,7 +1134,7 @@ export function Board({
       visibleTiles,
       heroes.map((hero) => hero.position),
     );
-    const created: Container[] = drawTerrain({ floor, objects, planning }, { grid, angle, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover, pixel });
+    const created: Container[] = drawTerrain({ floor, objects, planning }, { grid, angle, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover });
 
     // The Prime Zone tint (grey, teal, gold, amber, red); our Squad holding it sends a ring over the zone.
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1303,10 +1284,9 @@ export function Board({
     void (async () => {
       const [, , , atlas] = await Promise.all([
         loadAssets(),
-        // Without the sheets (a failed load) the Heroes are drawn with the shape rig.
-        renderedStyle() === VisualStyle.Pixel ? loadPixelHeroes().catch(() => undefined) : undefined,
+        loadPixelHeroes(),
         app.init({ background: "#12161c", resizeTo: element, preference: "webgl", antialias: true, autoDensity: true, resolution: window.devicePixelRatio }),
-        pixel ? loadPixelAtlas() : undefined,
+        loadPixelAtlas(),
       ]);
       if (cancelled) {
         app.destroy(true, { children: true });
@@ -1337,7 +1317,7 @@ export function Board({
       setTerrain({ floor, objects, planning, atlas });
 
       // Pixel art zooms in whole steps, except in the overview, which always shows the whole board as large as fits.
-      const size = (): CameraView => ({ width: app.screen.width, height: app.screen.height, angle: angleRef.current, pixel: pixel && !overview });
+      const size = (): CameraView => ({ width: app.screen.width, height: app.screen.height, angle: angleRef.current, pixel: !overview });
       // The start framing: the own Squad and the Prime Zone, never an enemy (Fog of War).
       const startFraming = (): Camera => {
         const view = size();

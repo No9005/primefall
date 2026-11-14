@@ -2,9 +2,8 @@ import { HeroClass } from "game-core";
 import { Assets, Container, Sprite, type Spritesheet, type Texture } from "pixi.js";
 import { baseFacing, type Facing } from "./facing";
 import { type ClipName, clipOf } from "./hero-clips";
-import { groundMarks, heroFigure, type HeroPose } from "./hero-figure";
+import { groundMarks, type HeroPose } from "./hero-figure";
 import { HERO_STYLE } from "./hero-style";
-import { renderedStyle, VisualStyle } from "./visual-style";
 
 // The Heroes of the Pixel art style: sprite sheets (apps/web/public/assets/pixel-heroes, docs/design/pixel-heroes) played
 // instead of the shape rig. Which clip plays when stays with `playback.ts` and `hero-clips.ts`; this module only decides
@@ -237,15 +236,14 @@ export class PixelHero {
   }
 }
 
-/** A Hero figure in the style of the page, and the pixel hero that animates it (none for the shape rig, which `bindParts` animates). */
+/** A Hero figure and the pixel hero that animates it. The sheets must be loaded (`loadPixelHeroes`). */
 export function styledHeroFigure(
   heroClass: HeroClass,
   enemy: boolean,
   pose: HeroPose,
   cameraScale: number,
   facing: Facing = baseFacing(enemy),
-): { figure: Container; pixel: PixelHero | undefined } {
-  if (renderedStyle() !== VisualStyle.Pixel || !pixelHeroesReady()) return { figure: heroFigure(heroClass, enemy, pose, cameraScale, facing), pixel: undefined };
+): { figure: Container; pixel: PixelHero } {
   const pixel = new PixelHero(heroClass, enemy, cameraScale, facing);
   if (pose === "exhausted") pixel.showStill("exhausted");
   else pixel.showStill(pose === "hit" ? "hitImpact" : "idle");

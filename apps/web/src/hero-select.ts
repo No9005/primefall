@@ -54,3 +54,8 @@ export function cardListTitle(heroClass: HeroClass): string {
 export function cardRowName(row: CardRow): string {
   return row.copies > 1 ? `${row.name} x${row.copies}` : row.name;
 }
+
+/** Where the feet of a Hero stand inside its area: the selected Bruiser steps left so its tracer stays inside the area. */
+export function feetX(heroClass: HeroClass, selected: boolean): number {
+  return heroClass === HeroClass.Bruiser && selected ? 62 : 120;
+}

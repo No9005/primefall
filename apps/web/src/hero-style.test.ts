@@ -22,16 +22,6 @@ const litWithGlow = blend(TERRAIN_STYLE.floorLit.fill, TERRAIN_STYLE.heroLight.c
 const floors = [TERRAIN_STYLE.floorLit.fill, TERRAIN_STYLE.floor.fill, TERRAIN_STYLE.floorDark.fill];
 
 describe("Hero readability (contrast >= 3:1)", () => {
-  it("the rim separates from lit floor with glow, plain floor and fog", () => {
-    for (const rim of [HERO_STYLE.rim.own, HERO_STYLE.rim.enemy]) {
-      for (const floor of [litWithGlow, ...floors]) expect(contrast(rim, floor)).toBeGreaterThanOrEqual(3);
-    }
-  });
-
-  it("the dark outline reads against the rim", () => {
-    for (const rim of [HERO_STYLE.rim.own, HERO_STYLE.rim.enemy]) expect(contrast(HERO_STYLE.outline.color, rim)).toBeGreaterThanOrEqual(3);
-  });
-
   it("the own ring reads on lit floor with glow", () => {
     expect(contrast(HERO_STYLE.ring.own, litWithGlow)).toBeGreaterThanOrEqual(3);
   });

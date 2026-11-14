@@ -73,11 +73,6 @@ export interface TerrainInput {
   ownPlacedCover?: readonly GridPosition[];
   /** Cover the Squad has seen destroyed: the tile keeps a scorched outline. */
   destroyedCover: readonly GridPosition[];
-  /**
-   * Pixel art: the floor, the Walls and the map's own Cover are drawn from the tileset (`PixelScenery`); only the fog over the
-   * floor, Placed Cover, wrecks, destroyed Cover and the marks stay here.
-   */
-  pixel?: boolean;
 }
 
 /** The dark laid over the pixel floor where the Squad does not see; the Prime Zone stays a little brighter, as a landmark. */
@@ -129,7 +124,7 @@ export function dashedTileOutline(tile: GridPosition, angle: number, color: numb
 }
 
 /** Draws the floor, the Cover and the shield glyphs of the map; returns everything it made, for the caller to destroy. */
-export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid, angle, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover, pixel = false }: TerrainInput): Container[] {
+export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid, angle, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover }: TerrainInput): Container[] {
   const created: Container[] = [];
   const ownTiles = new Set((ownPlacedCover ?? placedCover).map((p) => `${p.col},${p.row}`));
   // Floor tiles share one shape layer; standing pieces are drawn per tile and sort with the Heroes by depth.
@@ -137,16 +132,13 @@ export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid,
   floor.addChild(ground);
   created.push(ground);
   for (const tile of buildTerrain(grid, angle, lit)) {
-    if (!pixel) {
-      fillFace(ground, tile.floor, strokeScale);
-      if (tile.marker) ground.poly(tile.marker.points).stroke({ width: 2, color: tile.marker.color, alpha: 0.9 });
-    } else if (!tile.lit) {
-      // Pixel art: the baked floor is under this; the tiles the Squad does not see go dark.
+    if (!tile.lit) {
+      // The baked floor is under this; the tiles the Squad does not see go dark.
       ground.poly(tile.floor.points).fill({ color: PIXEL_FOG.color, alpha: tile.kind === TileKind.PrimeZone ? PIXEL_FOG.landmarkAlpha : PIXEL_FOG.alpha });
     }
     if (!tile.piece) continue;
-    // Pixel art: the Walls and the Cover of the map are sprites; Placed Cover and wrecks keep the game's own drawing.
-    if (pixel && (tile.kind === TileKind.Wall || tile.kind === TileKind.OverwatchNest || (hasCoverLook(tile.kind) && !placedCover.some((p) => p.col === tile.position.col && p.row === tile.position.row)))) continue;
+    // The Walls and the Cover of the map are sprites; Placed Cover and wrecks keep the game's own drawing.
+    if ((tile.kind === TileKind.Wall || tile.kind === TileKind.OverwatchNest || (hasCoverLook(tile.kind) && !placedCover.some((p) => p.col === tile.position.col && p.row === tile.position.row)))) continue;
     const piece = new Graphics();
     if (hasCoverLook(tile.kind)) {
       const built = placedCover.some((p) => p.col === tile.position.col && p.row === tile.position.row);

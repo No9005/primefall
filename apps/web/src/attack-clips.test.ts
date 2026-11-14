@@ -90,23 +90,24 @@ describe("the ClipPlayer with attacks", () => {
     const first = {};
     player.play("hit", 0, 1100, first);
     expect(player.playing).toBe("idle");
-    player.sample(1099);
+    player.update(1099);
     expect(player.playing).toBe("idle");
     player.play("hit", 1099, 1100, first);
-    player.sample(1100);
+    player.update(1100);
     expect(player.playing).toBe("hit");
     player.play("attack", 2000, 0, {});
     player.play("attack", 2000, 0, first);
-    expect(player.sample(2624).armF.rotation).toBeCloseTo(-108);
+    expect(player.playing).toBe("attack");
+    expect(player.clipTimeMs(2624)).toBeCloseTo(624);
     // The same card in the next frame plays again from its start.
     player.play("attack", 5000, 0, {});
-    expect(player.sample(5624).armF.rotation).toBeCloseTo(-108);
+    expect(player.clipTimeMs(5624)).toBeCloseTo(624);
   });
 
   it("shortens the delay with the clip speed", () => {
     const player = new ClipPlayer(HeroClass.Bruiser, 0, 2);
     player.play("hit", 0, 1000);
-    player.sample(500);
+    player.update(500);
     expect(player.playing).toBe("hit");
   });
 });
