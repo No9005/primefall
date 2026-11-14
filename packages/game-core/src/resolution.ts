@@ -37,7 +37,6 @@ import {
 import { canSquadSee, canSquadSeeHero, type HeroState, MAX_PLACED_COVER_PER_SQUAD, type MatchState, recordSightings, refillDeck, ZONES } from "./match";
 import {
   ActionKind,
-  BLOCK_SHIELD,
   chebyshevDistance,
   MAX_QUEUE_LENGTH,
   MOVE_DISTANCE,
@@ -170,7 +169,7 @@ function applyMarked(tick: number, source: HeroState, target: HeroState, effect:
   endHidden(tick, target, events);
 }
 
-/** The events a card causes carry its name (not Block, Steps, shuffles or the end of Hidden). */
+/** The events a card causes carry its name (not Steps, shuffles or the end of Hidden). */
 const CARD_EVENT_KINDS: ReadonlySet<EventKind> = new Set([
   EventKind.AttackHit, EventKind.AttackFailed, EventKind.SlowApplied, EventKind.MarkedApplied, EventKind.HiddenGained,
   EventKind.Knockback, EventKind.CoverPlaced, EventKind.CoverDestroyed, EventKind.AreaRevealed,
@@ -857,13 +856,6 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     });
     for (const { hero, action } of actions) {
       if (action.kind === ActionKind.Wait) events.push({ kind: EventKind.Wait, tick, heroId: hero.id });
-    }
-    // Shield exists from its Tick on, so damage resolved later in the same Tick is absorbed by it.
-    for (const { hero, action } of actions) {
-      if (action.kind === ActionKind.Block) {
-        hero.shield += BLOCK_SHIELD;
-        events.push({ kind: EventKind.ShieldGained, tick, heroId: hero.id, amount: BLOCK_SHIELD });
-      }
     }
     for (const { hero, action } of actions) {
       if (action.kind !== ActionKind.Primary) continue;

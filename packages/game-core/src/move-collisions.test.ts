@@ -66,7 +66,7 @@ describe("findMoveCollisions", () => {
 
   it("does not flag a Move through a tile an ally has just left", () => {
     const heroes = [hero("x", a), hero("y", b)];
-    expect(findMoveCollisions(heroes, [planOf({ y: [move(d)], x: [{ kind: ActionKind.Block, card: 0 }, move(c)] })])).toEqual([]);
+    expect(findMoveCollisions(heroes, [planOf({ y: [move(d)], x: [{ kind: ActionKind.Wait }, move(c)] })])).toEqual([]);
   });
 
   it("returns nothing for a plan without Squad conflicts", () => {

@@ -149,8 +149,6 @@ const STAGING_DISTANCE = ENTRY_DISTANCE - 1;
 const ATTACKER_PATIENCE_ROUNDS = 8;
 /** The Defender queues at most this many actions per Hero: its Deck has to last until the Round limit. */
 const DEFENDER_QUEUE_LENGTH = 2;
-/** The Defender Blocks only when an enemy it can see is this close. */
-const DEFENDER_ALERT_DISTANCE = 8;
 
 interface Approach {
   /** Prefer a Cover tile among equally close destinations. */
@@ -489,7 +487,6 @@ function planHero(
   const queueLength = role === Role.Defender ? DEFENDER_QUEUE_LENGTH : AI_QUEUE_LENGTH;
   const approach: Approach =
     role === Role.Attacker ? { preferCover: true, stayAtLeast: attackerReady ? 0 : STAGING_DISTANCE } : {};
-  const enemyClose = () => targets.some((enemy) => chebyshevDistance(hero.position, enemy.position) <= DEFENDER_ALERT_DISTANCE);
 
   while (queue.length < Math.min(queueLength, MAX_QUEUE_LENGTH)) {
     // Every queued card and every pitched card must come from the Hand; Attacks need their Energy pitched.
@@ -507,16 +504,6 @@ function planHero(
       const target = inRangeTargets(position, attackCard).sort(
         (a, b) => focusScore(b) - focusScore(a) || a.deckCount - b.deckCount,
       )[0]!;
-      // A mate hits this target in this very Tick and none in the Tick before or after: shield first, so the hits are consecutive.
-      if (
-        role !== Role.Classic && matesAim(target.id, slot) && !matesAim(target.id, slot - 1) && !matesAim(target.id, slot + 1) &&
-        otherCards.length > 0 && cardsLeft - 2 - cost >= 0 && slot + 1 < Math.min(queueLength, MAX_QUEUE_LENGTH)
-      ) {
-        const card = otherCards.shift()!;
-        claimSteps(claimed, slot, [position, position], nav);
-        queue.push({ kind: ActionKind.Block, card });
-        continue;
-      }
       plannedAttacks.set(slot, (plannedAttacks.get(slot) ?? new Set<string>()).add(target.id));
       attackCards.splice(attackCards.indexOf(attackCard), 1);
       claimSteps(claimed, queue.length, [position, position], nav);
@@ -535,15 +522,6 @@ function planHero(
       queue.push({ kind: ActionKind.Move, card, destination });
       claimSteps(claimed, slot, tilesAfterSteps(position, destination, nav.grid), nav);
       position = moveEnd(position, destination, nav.grid);
-    } else if (
-      // The classic mode has no Block action: Shield comes from Shield cards only, so the Hero just waits.
-      role !== Role.Classic &&
-      (role === Role.Defender
-        ? enemyClose() && !queue.some((action) => action.kind === ActionKind.Block)
-        : targets.length > 0)
-    ) {
-      queue.push({ kind: ActionKind.Block, card });
-      claimSteps(claimed, slot, [position, position], nav);
     } else {
       break;
     }

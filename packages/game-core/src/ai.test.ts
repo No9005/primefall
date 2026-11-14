@@ -308,18 +308,6 @@ describe("AI symmetry", () => {
   }, 120_000);
 });
 
-describe("AI in the classic mode", () => {
-  it("never plans a Block, over many seeds", async () => {
-    for (const seed of MATCH_SEEDS) {
-      const { plans, issues } = playAiMatch(seed, MAX_ROUNDS);
-      await yieldToWorker();
-      expect(issues).toEqual([]);
-      const blocks = plans.flatMap((plan) => plan.heroes.flatMap((hero) => hero.queue)).filter((action) => action.kind === ActionKind.Block);
-      expect(blocks).toEqual([]);
-    }
-  }, 120_000);
-});
-
 describe("AI does not freeze", () => {
   it("keeps moving or acting while the Prime Zone is not held", () => {
     let match = startRound(createMatch(3));

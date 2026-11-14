@@ -14,14 +14,9 @@ export const MOVE_DISTANCE = 2;
 /** Energy one Pitch produces (ADR 0007). */
 export const PITCH_ENERGY = 1;
 
-/** Shield a Block creates (ADR 0002). */
-export const BLOCK_SHIELD = 2;
-
 export enum ActionKind {
   /** Any card used as Move 2: up to two steps towards the destination. */
   Move = "move",
-  /** Any card used as Block 2: Shield 2 in its Tick. */
-  Block = "block",
   /** A card's primary effect; it costs the card's Energy. Simple damage Attacks and Shield Utility cards resolve so far. */
   Primary = "primary",
   /** The Hero does nothing for one Tick; it needs no card and no Energy but takes a slot of the Queue. */
@@ -33,11 +28,6 @@ export interface MoveAction {
   /** The Hand card spent on this action. */
   card: CardIndex;
   destination: GridPosition;
-}
-
-export interface BlockAction {
-  kind: ActionKind.Block;
-  card: CardIndex;
 }
 
 export interface PrimaryAction {
@@ -60,7 +50,7 @@ export interface WaitAction {
 }
 
 /** Actions are a union that grows with the card uses. */
-export type QueuedAction = MoveAction | BlockAction | PrimaryAction | WaitAction;
+export type QueuedAction = MoveAction | PrimaryAction | WaitAction;
 
 export interface HeroPlan {
   heroId: string;
@@ -74,7 +64,7 @@ export function energyPool(pitched: readonly CardIndex[] = []): number {
   return pitched.length * PITCH_ENERGY;
 }
 
-/** Energy the Queue spends: only primary effects cost Energy; Move 2 and Block 2 are free. */
+/** Energy the Queue spends: only primary effects cost Energy; Move 2 is free. */
 export function queueEnergyCost(heroClass: HeroClass, queue: readonly QueuedAction[]): number {
   return queue.reduce(
     (sum, action) => sum + (action.kind === ActionKind.Primary ? HERO_DECKS[heroClass][action.card]!.energyCost : 0),
@@ -100,8 +90,6 @@ export enum PlanIssueKind {
   UnplayableCard = "unplayableCard",
   BadTarget = "badTarget",
   HeroExhausted = "heroExhausted",
-  /** A Block in the classic mode, which has none: Shield comes from Shield cards. */
-  BlockNotAllowed = "blockNotAllowed",
 }
 
 export interface PlanIssue {
@@ -166,11 +154,6 @@ function firstUnaffordableSlot(heroClass: HeroClass, queue: readonly QueuedActio
   return undefined;
 }
 
-/** Block is a rule of the match mode: only Attack and Defend has it (ADR 0022); the classic mode takes Shield from Shield cards. */
-export function blockAllowed(view: Pick<SquadView, "attackAndDefend">): boolean {
-  return view.attackAndDefend !== undefined;
-}
-
 /** Returns every rule the plan breaks against the Squad View; an empty list means it can be committed. */
 export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
   const issues: PlanIssue[] = [];
@@ -217,9 +200,6 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
       const report = (issue: PlanIssue) => issues.push({ ...issue, slot });
       if (action.kind === ActionKind.Wait) continue;
       useCard(action.card);
-      if (action.kind === ActionKind.Block && !blockAllowed(view)) {
-        report({ kind: PlanIssueKind.BlockNotAllowed, heroId, message: "This mode has no Block: Shield comes from Shield cards." });
-      }
       if (action.kind === ActionKind.Primary) {
         const extend = HERO_DECKS[hero.heroClass][action.card]!.effects.find(
           ({ kind }) => kind === EffectKind.ExtendMove,

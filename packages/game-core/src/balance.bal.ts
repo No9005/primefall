@@ -10,7 +10,7 @@
 // on a branch and measured with the same table. The AI is the measuring instrument, not a player: read its numbers as
 // comparisons between variants.
 
-import { it, vi } from "vitest";
+import { it } from "vitest";
 import { AI_WEIGHTS, AiStyle, aiStyleFor, planSquad } from "./ai";
 import { type CardDefinition, type CardIndex, CardTarget, CardType, EffectKind, HERO_DECKS, HeroClass } from "./cards";
 import { type AttackAndDefendRules, EventKind, MatchEndReason, type MatchEvent, MatchMode, type MatchModeSetting, ROUND_LIMIT, SquadId, type SquadView, ZoneTie } from "./host";
@@ -18,15 +18,6 @@ import { buildSquadView, createMatch, type HeroState, type MatchState, startRoun
 import { ActionKind, chebyshevDistance, type HeroPlan, moveDestinations, type QueuedAction, queueEnergyCost, type SquadPlan } from "./plan";
 import type { GridPosition } from "./reactor-deck";
 import { resolveRound } from "./resolution";
-
-// `BLOCK_SHIELD` is a constant of plan.ts that the rules read, so the harness cannot assign it. The mock below makes the
-// imported binding read a value the harness sets for the variant (the `blockShield` tweak). This changes no rule and no
-// shipped file; a variant that does not set it gets the real value.
-const block = vi.hoisted(() => ({ shield: undefined as number | undefined }));
-vi.mock("./plan", async (importOriginal) => {
-  const original = await importOriginal<typeof import("./plan")>();
-  return Object.defineProperty({ ...original }, "BLOCK_SHIELD", { get: () => block.shield ?? original.BLOCK_SHIELD, enumerable: true });
-});
 
 interface Tweaks {
   /** Damage of the Damage effect of the named cards. */
@@ -45,8 +36,6 @@ interface Tweaks {
   fatiguePerRound?: number;
   /** Plays Attack and Defend with these rules instead of the classic mode (the Defender side alternates by seed parity). */
   attackAndDefend?: AttackAndDefendRules;
-  /** Shield a Block creates instead of the real value (2). */
-  blockShield?: number;
   /** AI Styles of the Left and Right Squad; without it both play the default (Balanced) Style. "seeded" takes them from the match seed. */
   styles?: readonly [AiStyle, AiStyle] | "seeded";
 }
@@ -74,7 +63,6 @@ const CLASSIC_VARIANTS: Record<string, Tweaks> = {
   "Deck 9": { deckCut: 3 },
   "Pitch exiles": { pitchExile: true },
   "Deck 9 + Pitch exiles": { deckCut: 3, pitchExile: true },
-  block1: { blockShield: 1 },
   "attacks cost 2": { cardCost: { "Slam Shot": 2, "Precision Shot": 2 } },
 };
 
@@ -123,7 +111,6 @@ const cardsOf = () => [...new Set(Object.values(HERO_DECKS).flatMap((deck) => [.
 function applyCardTweaks(tweaks: Tweaks): () => void {
   const cards = cardsOf();
   const original = cards.map((card) => structuredClone(card));
-  block.shield = tweaks.blockShield;
   for (const card of cards) {
     const target = card as unknown as { energyCost: number; range?: number; effects: { kind: EffectKind; amount?: number }[] };
     if (tweaks.cardCost?.[card.name] !== undefined) target.energyCost = tweaks.cardCost[card.name]!;
@@ -132,7 +119,6 @@ function applyCardTweaks(tweaks: Tweaks): () => void {
     if (damage !== undefined) for (const effect of target.effects) if (effect.kind === EffectKind.Damage) effect.amount = damage;
   }
   return () => {
-    block.shield = undefined;
     cards.forEach((card, index) => Object.assign(card, original[index]));
   };
 }
@@ -514,10 +500,10 @@ const hasEffect = (match: MatchState, heroId: string, card: number, kind: Effect
   return HERO_DECKS[hero.heroClass][card]!.effects.some((effect) => effect.kind === kind);
 };
 
-/** A Shield-giving action (Block or a card with a Shield effect) and an Attack (a card with a Damage effect) in one Queue. */
+/** A Shield-giving action (a card with a Shield effect) and an Attack (a card with a Damage effect) in one Queue. */
 function isShieldAttack(match: MatchState, plan: HeroPlan): boolean {
   const shields = plan.queue.some(
-    (action) => action.kind === ActionKind.Block || (action.kind === ActionKind.Primary && hasEffect(match, plan.heroId, action.card, EffectKind.GainShield)),
+    (action) => action.kind === ActionKind.Primary && hasEffect(match, plan.heroId, action.card, EffectKind.GainShield),
   );
   const attacks = plan.queue.some((action) => action.kind === ActionKind.Primary && hasEffect(match, plan.heroId, action.card, EffectKind.Damage));
   return shields && attacks;

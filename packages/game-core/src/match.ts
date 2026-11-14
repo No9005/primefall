@@ -75,7 +75,7 @@ export interface HeroState {
   hand: CardIndex[];
   discard: CardIndex[];
   exile: CardIndex[];
-  /** Round-scoped: created by Block, cleared at the end of every Resolution (ADR 0002). */
+  /** Round-scoped: created by Shield cards, cleared at the end of every Resolution (ADR 0002). */
   shield: number;
   /**
    * Resolution ends left before Slow expires; 0 means not Slowed. Slow applied during a Resolution lasts

@@ -60,14 +60,11 @@ describe("Events carry the card that caused them", () => {
     expect(events.filter(({ kind }) => kind === EventKind.AttackHit).map(({ targetId }) => targetId).sort()).toEqual([ENEMY, OTHER_ENEMY]);
   });
 
-  it("tags the Shield of a Utility card but not the Shield of a Block", () => {
+  it("tags the Shield of a Utility card", () => {
     const match = scene({ [BRUISER]: { col: 8, row: 3 } });
     const utility = resolveRound(match, [plan(BRUISER, { kind: ActionKind.Primary, card: BULWARK, target: BRUISER }, [1])]);
     expect(utility.events).toEqual([
       { kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Bulwark", casterId: BRUISER },
     ]);
-    const block = resolveRound(match, [plan(BRUISER, { kind: ActionKind.Block, card: SLAM_SHOT }, [1])]);
-    expect(block.events).toEqual([{ kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: expect.any(Number) }]);
-    expect(block.events[0]).not.toHaveProperty("card");
   });
 });
