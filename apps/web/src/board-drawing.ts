@@ -11,8 +11,6 @@ import { AREA_COLOR, AREA_PIPS, type ZoneLook } from "./vision-effects";
 
 /** The areas of an enemy scan are outlined in this amber (docs/design/role-visuals/380/scout-drone-b.png). */
 export const SCANNED_COLOR = 0xffb347;
-/** The 5 by 5 area of an Overdrive Scout Drone is gold. */
-const OVERDRIVE_AREA_COLOR = 0xffb000;
 
 /** A shield glyph about 14 px wide on screen, centred on the origin: filled for Full Cover, outline only for Half Cover. */
 export function shieldGlyph(kind: "full" | "half", scale: number): Graphics {
@@ -327,13 +325,13 @@ export function areaTilesOf(grid: Grid, center: GridPosition, size: number): Gri
   return tiles;
 }
 
-export const areaColorOf = (size: number): number => (size >= 5 ? OVERDRIVE_AREA_COLOR : AREA_COLOR);
+export const areaColorOf = (): number => AREA_COLOR;
 
-/** A Scout Drone area: its tiles in cyan (gold for the Overdrive 5 by 5) and two pips for the Resolutions it has left. */
+/** A Scout Drone area: its tiles in cyan and two pips for the Resolutions it has left. */
 export function drawScoutArea(planning: Container, grid: Grid, { center, size, remaining }: { center: GridPosition; size: number; remaining: number }, ringOf: (tile: GridPosition) => number): ScoutAreaDrawing {
   const created: Container[] = [];
   const tints: ScoutAreaDrawing["tints"] = [];
-  const color = areaColorOf(size);
+  const color = areaColorOf();
   for (const tile of areaTilesOf(grid, center, size)) {
     const { x, y } = gridToWorld(tile);
     const tint = new Graphics().poly(floorOutline()).fill({ color, alpha: 0.28 }).stroke({ width: 1, color, alpha: 0.6 });

@@ -21,7 +21,6 @@ export type SceneName =
   | "hiddenSeen"
   | "ghost"
   | "exhaustion"
-  | "overdrive"
   | "attackBonus"
   | "plannedIcons"
   | "crossfire"
@@ -114,15 +113,9 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
     picture: { scene: "exhaustion" },
   },
   {
-    name: "Overdrive",
-    group: GlossaryGroup.Heroes,
-    text: "A gold glow, two gold rings rising from the ground and the tag OVERDRIVE before the action. The effect itself is the Overdrive side of the card.",
-    picture: { scene: "overdrive" },
-  },
-  {
     name: "Attack bonus",
     group: GlossaryGroup.Heroes,
-    text: "A small gold badge with a double chevron and +1 above the Hero, from Adrenal Surge in Overdrive. It stays until Exhaustion.",
+    text: "A small gold badge with a double chevron and +1 above the Hero, from Adrenal Surge. It stays until Exhaustion.",
     picture: { scene: "attackBonus" },
   },
   {

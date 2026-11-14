@@ -1,4 +1,4 @@
-import { AttackFailReason, EffectKind, EventKind, type GridPosition, HERO_DECKS, LONG_RANGE_FROM, type MatchEvent } from "game-core";
+import { AttackFailReason, EffectKind, EventKind, type GridPosition, HERO_DECKS, type MatchEvent } from "game-core";
 
 // The effects of the attacks (docs/design/animation/README.md, "Effects"): which cue an event causes and when it starts and
 // ends. Pure data and functions, so the scheduling is tested without a browser; `effects-layer.ts` draws the cues.
@@ -66,15 +66,15 @@ export type NumberStyle = "damage" | "bonus" | "shield" | "failed";
 
 export type EffectCue =
   /** `halfCover`: Half Cover on the target's tile reduced the damage, so the projectile hits the wall in front of the target. */
-  | { kind: "shot"; weapon: Weapon; fromId: string; toId: string; fireMs: number; flightMs: number; overdrive: boolean; halfCover?: true; miss?: true }
+  | { kind: "shot"; weapon: Weapon; fromId: string; toId: string; fireMs: number; flightMs: number; halfCover?: true; miss?: true }
   /** `drop`: design px the label sits below the usual place (a tag under a number). */
   | { kind: "number"; toId: string; startMs: number; text: string; style: NumberStyle; drop?: number }
   /** Marked and Slow lock on at `startMs` and last (as state) until the end of the next Resolution. */
-  | { kind: "marked" | "slow"; toId: string; startMs: number; overdrive?: true }
-  /** Shockwave: rings and dust around the Hero that plays it (Overdrive: a third, white ring and a screen shake). */
-  | { kind: "shockwave"; casterId: string; startMs: number; overdrive?: true }
+  | { kind: "marked" | "slow"; toId: string; startMs: number }
+  /** Shockwave: rings and dust around the Hero that plays it. */
+  | { kind: "shockwave"; casterId: string; startMs: number }
   /** One tile of Knockback: the Hero slides from `from` to `to` (the rules have moved it there already). */
-  | { kind: "knockback"; toId: string; from: GridPosition; to: GridPosition; startMs: number; tag: string; overdrive?: true }
+  | { kind: "knockback"; toId: string; from: GridPosition; to: GridPosition; startMs: number; tag: string }
   /** The Bruiser has arrived next to its target after a Charge: speed streaks trail behind it, away from the target. */
   | { kind: "charge"; heroId: string; targetId: string; startMs: number }
   /**
@@ -85,15 +85,9 @@ export type EffectCue =
   | { kind: "pull"; toId: string; from?: GridPosition; to: GridPosition; startMs: number; casterId?: string; tag: string }
   /**
    * Breach Charge: the charge flies from the caster to the tile, which blows up at `fireMs + flightMs`. `cover`: Cover was
-   * destroyed there, so its chunks fly. Overdrive: a much bigger gold blast.
+   * destroyed there, so its chunks fly.
    */
-  | { kind: "breach"; casterId: string; tile: GridPosition; fireMs: number; flightMs: number; cover: boolean; overdrive: boolean }
-  /** The gold aura of a Hero that plays a card in Overdrive, from the start of the frame until `endMs`. */
-  | { kind: "aura"; heroId: string; endMs: number }
-  /** Adrenal Surge in Overdrive: a gold beam from the caster to `toId` (none when they are the same), both glow, `toId` gets the badge. */
-  | { kind: "surge"; casterId: string; toId: string; startMs: number }
-  /** Aegis Protocol in Overdrive: a gold beam from the caster to an ally that gains Shield. */
-  | { kind: "aegisBeam"; casterId: string; toId: string; startMs: number }
+  | { kind: "breach"; casterId: string; tile: GridPosition; fireMs: number; flightMs: number; cover: boolean }
   /** The oldest Placed Cover of a Squad goes when a fourth is placed: it crumbles into four chunks (no fireball, no scorch). */
   | { kind: "coverCrumble"; tile: GridPosition; startMs: number }
   /** Deploy Cover and Fortify: a flash on the tile at `startMs`, then the wall rises. */
@@ -119,8 +113,6 @@ export function cueEndMs(cue: EffectCue): number {
     }
     case "breach":
       return cue.fireMs + cue.flightMs + BREACH_AFTER_MS;
-    case "aura":
-      return cue.endMs;
     default:
       return cue.startMs + (CUE_LENGTH_MS[cue.kind] ?? STATUS_INTRO_MS);
   }
@@ -154,18 +146,6 @@ export const COVER_PLACED_MS = 1400;
 /** The oldest Cover crumbles when the new crate has landed (0.45 s after the slam); the chunks are gone 0.9 s later. */
 export const COVER_CRUMBLE_DELAY_MS = 450;
 export const COVER_CRUMBLE_MS = 900;
-/** Overdrive: the aura lasts at least this long (the two rings rise in a 1200 ms loop), and until the shot has left. */
-export const AURA_MIN_MS = 1200;
-export const AURA_AFTER_FIRE_MS = 400;
-export const OVERDRIVE_TAG_IN_MS = 150;
-export const OVERDRIVE_TAG_OUT_MS = 800;
-/** The gold beam of Adrenal Surge starts here, is gone 672 ms later; the badge pops in `BADGE_DELAY_MS` after the beam starts. */
-export const SURGE_START_MS = 384;
-export const SURGE_MS = 1056;
-export const BADGE_DELAY_MS = 528;
-/** The beam of Aegis Protocol grows over 256 ms from here (full at about 900 ms), holds and is gone 1024 ms later. */
-export const AEGIS_BEAM_START_MS = 640;
-export const AEGIS_BEAM_MS = 1024;
 export const SHIELD_POP_MS = 900;
 export const SHIELD_HIT_MS = 1100;
 /** Rubies pop at the Block's crouch (700 ms); Aegis Protocol's dome closes at 1340 ms. */
@@ -186,8 +166,6 @@ const CUE_LENGTH_MS: Readonly<Partial<Record<EffectCue["kind"], number>>> = {
   charge: CHARGE_STREAK_MS,
   coverPlaced: COVER_PLACED_MS,
   coverCrumble: COVER_CRUMBLE_MS,
-  surge: SURGE_MS,
-  aegisBeam: AEGIS_BEAM_MS,
   shieldGain: SHIELD_POP_MS,
   shieldHit: SHIELD_HIT_MS,
 };
@@ -208,55 +186,9 @@ export function sampleTrack(track: Track, ms: number): number {
   return track[track.length - 1]![1];
 }
 
-// ---- Overdrive: the aura, the beams and the badge (OverdriveEffects.html) ----
-
-/** The gold glow around the Hero: fades in over 150 ms, holds, and fades out over the last 300 ms of the aura. */
-export function auraGlowAt(ms: number, endMs: number): number {
-  return sampleTrack([[0, 0], [150, 1], [Math.max(150, endMs - 300), 1], [endMs, 0]], ms);
-}
-
-/** One of the two gold rings rising from the ground (1200 ms loop, the second half a loop behind): 34 px up, 0.5 to 1.1 x. */
-export function auraRingAt(ms: number, index: number): { rise: number; scale: number; alpha: number } | undefined {
-  const t = ms - index * 600;
-  if (t < 0) return undefined;
-  const u = t % 1200;
-  return { rise: sampleTrack([[0, 0], [1200, 34]], u), scale: sampleTrack([[0, 0.5], [1200, 1.1]], u), alpha: sampleTrack([[0, 0], [240, 0.9], [1200, 0]], u) };
-}
-
-/** Horizontal offsets (design px) of the rising sparks, and how long each waits in the loop. */
-export const AURA_SPARKS = [{ dx: -10, delay: 0 }, { dx: -3, delay: 300 }, { dx: 5, delay: 600 }, { dx: 11, delay: 900 }] as const;
-
-/** A spark of the aura: rises 40 px over a 1200 ms loop. */
-export function auraSparkAt(ms: number, index: number): { rise: number; alpha: number } | undefined {
-  const t = ms - AURA_SPARKS[index]!.delay;
-  if (t < 0) return undefined;
-  const u = t % 1200;
-  return { rise: sampleTrack([[0, 0], [1200, 40]], u), alpha: sampleTrack([[0, 0], [240, 1], [1200, 0]], u) };
-}
-
-/** The `OVERDRIVE` tag: fades in over 150 ms, rises 10 px, gone by 800 ms. */
-export function overdriveTagAt(ms: number): { rise: number; alpha: number } {
-  return { rise: sampleTrack([[0, 0], [OVERDRIVE_TAG_OUT_MS, 10]], ms), alpha: ms >= OVERDRIVE_TAG_OUT_MS ? 0 : sampleTrack([[0, 0], [OVERDRIVE_TAG_IN_MS, 1], [OVERDRIVE_TAG_OUT_MS, 0]], ms) };
-}
-
-/** The gold beam from the caster to the ally, `ms` after it starts: grows over 192 ms, holds, gone by 672 ms. */
-export function surgeBeamAt(ms: number): { length: number; alpha: number } {
-  return { length: sampleTrack([[0, 0], [192, 1]], ms), alpha: ms < 0 ? 0 : sampleTrack([[0, 0.6], [192, 1], [480, 1], [672, 0]], ms) };
-}
-
 /** The `+1` badge `ms` after it appears: drops in from 2 x to 1 x over 192 ms; it stays until Exhaustion. */
 export function badgeAt(ms: number): { scale: number; alpha: number } {
   return { scale: sampleTrack([[0, 2], [192, 1]], ms), alpha: sampleTrack([[0, 0], [192, 1]], ms) };
-}
-
-/** The beam of Aegis Protocol, `ms` after it starts. */
-export function aegisBeamAt(ms: number): { length: number; alpha: number } {
-  return { length: sampleTrack([[0, 0], [256, 1]], ms), alpha: ms < 0 ? 0 : sampleTrack([[0, 0], [256, 1], [768, 1], [AEGIS_BEAM_MS, 0]], ms) };
-}
-
-/** The gold blast of an Overdrive Breach Charge, much bigger than the normal one: grows from 0.2 to 2.1 x while it fades. */
-export function bigFireballAt(ms: number): { scale: number; alpha: number } {
-  return { scale: sampleTrack([[0, 0.2], [120, 1], [456, 1.6], [888, 2.1]], ms), alpha: sampleTrack([[0, 0], [120, 1], [456, 0.95], [888, 0]], ms) };
 }
 
 /** The puff of a Ghost Shot that found nobody: 0.3 to 1 to 2 x while it fades. */
@@ -456,9 +388,7 @@ function hitNumbers(event: MatchEvent, startMs: number): EffectCue[] {
   const toId = event.targetId!;
   if ((event.absorbed ?? 0) > 0) cues.push({ kind: "number", toId, startMs, text: `Shield -${event.absorbed}`, style: "shield" });
   if ((event.damage ?? 0) > 0) {
-    // The long-range bonus of the Long Shot (4 from Range 6) is gold.
-    const bonus = event.card === "Long Shot" && (event.distance ?? 0) >= LONG_RANGE_FROM;
-    cues.push({ kind: "number", toId, startMs, text: `-${event.damage}`, style: bonus ? "bonus" : "damage" });
+    cues.push({ kind: "number", toId, startMs, text: `-${event.damage}`, style: "damage" });
   }
   return cues;
 }
@@ -476,29 +406,18 @@ export function failureText(event: MatchEvent): string {
  * Round or a Slow in the frame starts its state when the dart lands (or at the field beat of the Slow pulse).
  */
 export function effectCuesOf(events: readonly MatchEvent[], fireOf: (heroId: string, card: string | undefined) => number): EffectCue[] {
-  const frame: CueFrame = { events, fireOf, cues: [], auras: new Map(), surgeCaster: undefined };
+  const frame: CueFrame = { events, fireOf, cues: [] };
   for (const event of events) {
-    if (event.overdrive) noteAura(event, frame);
     CUE_BUILDERS[event.kind]?.(event, frame);
   }
-  for (const [heroId, endMs] of frame.auras) frame.cues.push({ kind: "aura", heroId, endMs });
   return frame.cues;
 }
 
-/** What the cue builders share while one frame is read: the events, the cues so far and the Overdrive state. */
+/** What the cue builders share while one frame is read: the events, and the cues so far. */
 interface CueFrame {
   events: readonly MatchEvent[];
   fireOf: (heroId: string, card: string | undefined) => number;
   cues: EffectCue[];
-  auras: Map<string, number>;
-  surgeCaster: string | undefined;
-}
-
-/** The Overdrive aura of the Hero who plays the card lasts until its action is over. */
-function noteAura(event: MatchEvent, frame: CueFrame): void {
-  const actor = overdriveActor(event, frame.events);
-  if (actor === undefined) return;
-  frame.auras.set(actor, Math.max(frame.auras.get(actor) ?? 0, auraEndMs(frame.fireOf(actor, event.card))));
 }
 
 /** The attack hit of the same Hero on the same target as `event` (the Tag Round and Slow cues time themselves by its distance). */
@@ -508,10 +427,10 @@ function hitBefore(event: MatchEvent, events: readonly MatchEvent[]): MatchEvent
 
 function failedAttackCues(event: MatchEvent, toId: string, frame: CueFrame): void {
   const fire = frame.fireOf(event.heroId, event.card);
-  if (event.overdrive && event.card === GHOST_SHOT_CARD) {
+  if (event.card === GHOST_SHOT_CARD) {
     // A Ghost Shot at a tile with nobody on it: the bolt flies there and a grey puff answers.
     const flight = flightMs(event.card, event.distance);
-    frame.cues.push({ kind: "shot", weapon: "precision", fromId: event.heroId, toId, fireMs: fire, flightMs: flight, overdrive: true, miss: true });
+    frame.cues.push({ kind: "shot", weapon: "precision", fromId: event.heroId, toId, fireMs: fire, flightMs: flight, miss: true });
     frame.cues.push({ kind: "number", toId, startMs: fire + flight + NUMBER_DELAY_MS, text: NOBODY_THERE, style: "failed" });
     return;
   }
@@ -545,13 +464,8 @@ function hitCues(event: MatchEvent, toId: string, frame: CueFrame): void {
       toId,
       fireMs: fire,
       flightMs: flight,
-      // A Long Shot in Overdrive at short range looks like the normal shot: the bonus needs the long range.
-      overdrive: event.overdrive === true && !(event.card === LONG_SHOT_CARD && (event.distance ?? 0) < LONG_RANGE_FROM),
       ...(event.halfCover && { halfCover: true as const }),
     });
-  }
-  if (event.card === BREACH_CARD && event.overdrive && event.tile) {
-    addBreach(cues, { kind: "breach", casterId: event.heroId, tile: event.tile, fireMs: fire, flightMs: BREACH_FLIGHT_MS, cover: false, overdrive: true });
   }
   cues.push(...hitNumbers(event, fire + flight + NUMBER_DELAY_MS));
   bonusCues(event, toId, fire + flight + NUMBER_DELAY_MS, cues);
@@ -561,7 +475,7 @@ function hitCues(event: MatchEvent, toId: string, frame: CueFrame): void {
   }
   if ((event.absorbed ?? 0) > 0) cues.push({ kind: "shieldHit", toId, startMs: fire + flight, absorbed: event.absorbed! });
   if (event.card === SHOCKWAVE_CARD && !cues.some((cue) => cue.kind === "shockwave" && cue.casterId === event.heroId)) {
-    cues.push({ kind: "shockwave", casterId: event.heroId, startMs: fire, ...(event.overdrive && { overdrive: true as const }) });
+    cues.push({ kind: "shockwave", casterId: event.heroId, startMs: fire });
   }
 }
 
@@ -582,7 +496,6 @@ function knockbackCues(event: MatchEvent, frame: CueFrame): void {
     to: event.to,
     startMs: start,
     tag: `Knockback ${pushOf(event.card)}`,
-    ...(event.overdrive && { overdrive: true as const }),
   });
 }
 
@@ -622,21 +535,10 @@ function coverDestroyedCues(event: MatchEvent, frame: CueFrame): void {
     fireMs: frame.fireOf(event.heroId, event.card),
     flightMs: BREACH_FLIGHT_MS,
     cover: true,
-    overdrive: event.overdrive === true,
   });
 }
 
-function attackBonusCues(event: MatchEvent, frame: CueFrame): void {
-  if (!event.overdrive) return;
-  // Adrenal Surge in Overdrive: the first event is the caster's own bonus, the second the ally's.
-  frame.surgeCaster ??= event.heroId;
-  frame.cues.push({ kind: "surge", casterId: frame.surgeCaster, toId: event.heroId, startMs: SURGE_START_MS });
-}
-
 function shieldGainedCues(event: MatchEvent, frame: CueFrame): void {
-  if (event.overdrive && event.card === AEGIS_CARD && event.casterId !== undefined && event.casterId !== event.heroId) {
-    frame.cues.push({ kind: "aegisBeam", casterId: event.casterId, toId: event.heroId, startMs: AEGIS_BEAM_START_MS });
-  }
   const startMs = event.card === AEGIS_CARD ? AEGIS_RUBIES_MS : BLOCK_RUBIES_MS;
   frame.cues.push({ kind: "shieldGain", toId: event.heroId, startMs, amount: event.amount ?? 0 });
   if (event.card === CHARGE_CARD) frame.cues.push({ kind: "number", toId: event.heroId, startMs, text: CHARGE_SHIELD_TAG, style: "shield", drop: -26 });
@@ -656,10 +558,7 @@ function markedCues(event: MatchEvent, frame: CueFrame): void {
 
 function slowCues(event: MatchEvent, frame: CueFrame): void {
   if (event.targetId === undefined) return;
-  // Tag Round in Overdrive: Marked and Slow at the same time, when the dart lands.
-  const hit = hitBefore(event, frame.events);
-  const together = event.overdrive && event.card === "Tag Round";
-  frame.cues.push({ kind: "slow", toId: event.targetId, startMs: together ? TAG_FIRE_MS + flightMs("Tag Round", hit?.distance) : SLOW_FIELD_MS });
+  frame.cues.push({ kind: "slow", toId: event.targetId, startMs: SLOW_FIELD_MS });
 }
 
 function chargedCues(event: MatchEvent, frame: CueFrame): void {
@@ -675,7 +574,6 @@ const CUE_BUILDERS: Partial<Record<EventKind, (event: MatchEvent, frame: CueFram
   [EventKind.Pull]: pullCues,
   [EventKind.Charged]: chargedCues,
   [EventKind.CoverDestroyed]: coverDestroyedCues,
-  [EventKind.AttackBonusGained]: attackBonusCues,
   [EventKind.ShieldGained]: shieldGainedCues,
   [EventKind.CoverPlaced]: coverPlacedCues,
   [EventKind.MarkedApplied]: markedCues,
@@ -685,29 +583,6 @@ const CUE_BUILDERS: Partial<Record<EventKind, (event: MatchEvent, frame: CueFram
 export const LONG_SHOT_CARD = "Long Shot";
 export const GHOST_SHOT_CARD = "Ghost Shot";
 export const NOBODY_THERE = "nobody there";
-
-/** How long the aura of an Overdrive action lasts when the Hero fires at `fireMs`. */
-function auraEndMs(fireMs: number): number {
-  return Math.max(AURA_MIN_MS, fireMs + AURA_AFTER_FIRE_MS);
-}
-
-/** The Hero that plays the card an Overdrive event comes from; the events that name the receiver or the victim first do not give it away. */
-function overdriveActor(event: MatchEvent, events: readonly MatchEvent[]): string | undefined {
-  switch (event.kind) {
-    case EventKind.Knockback:
-    case EventKind.Pull:
-    case EventKind.CoverReductionIgnored:
-    case EventKind.HiddenGained:
-      return undefined;
-    case EventKind.AttackBonusGained:
-      // The caster's own bonus comes first.
-      return events.find((other) => other.kind === EventKind.AttackBonusGained && other.card === event.card)?.heroId;
-    case EventKind.ShieldGained:
-      return event.casterId ?? event.heroId;
-    default:
-      return event.heroId;
-  }
-}
 
 type BreachCue = Extract<EffectCue, { kind: "breach" }>;
 

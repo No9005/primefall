@@ -76,12 +76,12 @@ describe("buildPlaybackFrames", () => {
     expect(frame!.exhausted).toEqual(["b"]);
   });
 
-  it("passes the card, the Overdrive flag and the Range of a hit on, in the hit and in the logged event", () => {
+  it("passes the card and the Range of a hit on, in the hit and in the logged event", () => {
     const hit: MatchEvent = {
-      kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "b", absorbed: 0, damage: 4, card: "Long Shot", overdrive: true, distance: 6,
+      kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "b", absorbed: 0, damage: 4, card: "Long Shot", distance: 6,
     };
     const [frame] = buildPlaybackFrames([hit]);
-    expect(frame!.hits).toEqual([{ targetId: "b", damage: 4, absorbed: 0, card: "Long Shot", overdrive: true, distance: 6 }]);
+    expect(frame!.hits).toEqual([{ targetId: "b", damage: 4, absorbed: 0, card: "Long Shot", distance: 6 }]);
     expect(frame!.events).toEqual([hit]);
   });
 

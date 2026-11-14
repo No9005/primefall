@@ -2,10 +2,10 @@ import type { CardDefinition } from "game-core";
 import { type ReactNode, type Ref, useState } from "react";
 import type { Point } from "./card-drag";
 import { type Face, type FaceView, REVEAL_SPAN } from "./card-pull";
-import { cardFace, type ModeFace } from "./planning-selection";
+import { cardFace } from "./planning-selection";
 import { pullOffset, ReleaseOutcome, releaseOutcome } from "./target-pick";
 
-// The card face and the drop targets of the game, shared by Planning and the Tutorial so that a change to one
+// The card face and the drop targets of the game, shared by the screens so that a change to one
 // changes the other.
 
 /** The inside of a Hand card: name, cost, type and effect text, and optionally how the card is used right now. */
@@ -77,7 +77,7 @@ export function PulledCard({
               key={face.face}
               type="button"
               data-face={face.face}
-              className={`pull-face${face.face === "overdrive" ? " overdrive" : ""}`}
+              className="pull-face"
               aria-disabled={face.reason !== undefined}
               aria-label={face.title}
               onClick={() => face.reason === undefined && onFace(face.face)}
@@ -128,27 +128,6 @@ export function FloatingCard({ card, instruction, onCancel }: { card: CardDefini
       <span className="floating-instruction">{instruction}</span>
       <span className="floating-cancel">pull down to cancel</span>
     </div>
-  );
-}
-
-/** One of the two faces of a card with an Overdrive mode. Without `onPick` it is only shown, not pressable. */
-export function ModeFaceCard({ card, face, onPick, chosen }: { card: CardDefinition; face: ModeFace; onPick?: (face: ModeFace) => void; chosen?: boolean }) {
-  return (
-    <button
-      type="button"
-      className={`card mode-face ${card.type}${face.overdrive ? " overdrive" : ""}${chosen ? " chosen" : ""}`}
-      disabled={face.reason !== undefined}
-      tabIndex={onPick ? undefined : -1}
-      aria-label={`${card.name} ${face.overdrive ? "Overdrive" : "Normal"}`}
-      onClick={() => onPick?.(face)}
-    >
-      <span className="card-name">{card.name}</span>
-      <span className="card-cost">{face.energyCost}</span>
-      <span className="card-type">{face.overdrive ? "OVERDRIVE" : "NORMAL"}</span>
-      <span className="card-text">{face.effectText}</span>
-      {face.exiled && <span className="mode-note">Exiled: leaves the game after use</span>}
-      {face.reason && <span className="use-reason">{face.reason}</span>}
-    </button>
   );
 }
 

@@ -5,8 +5,8 @@ import { CardUse } from "./planning-selection";
 // Pulling a card out of the Hand (issue 201): press lifts it, pulling it up shows the faces (one per use), and a
 // face chosen by tap or drop picks the use. This module is the state machine; the component only draws it.
 
-/** One use of a card as a face: the four uses and, on cards that have one, Overdrive. */
-export type Face = CardUse | "overdrive";
+/** One use of a card as a face: the four uses. */
+export type Face = CardUse;
 
 /** How far (CSS pixels) a pressed card must be moved before it counts as a drag (canvas board O). */
 export const PULL_THRESHOLD = 14;
@@ -99,7 +99,7 @@ export interface FaceView {
   face: Face;
   title: string;
   effect: string;
-  /** The Energy cost the face shows (Primary and Overdrive only). */
+  /** The Energy cost the face shows (Primary only). */
   cost?: number;
   /** Why the face cannot be chosen; the face is greyed and shows it in red. */
   reason?: string;
@@ -109,14 +109,13 @@ const NOT_ENOUGH_ENERGY = "Not enough Energy";
 
 /**
  * The faces of a card in order. `reasons` are the reasons of the existing planning selection for the Primary, Move
- * and Block uses, and `overdriveReason` the one for the Overdrive; a reason that is only about Energy is shown as
+ * and Block uses. A reason that is only about Energy is shown as
  * "Not enough Energy". Pitch is always available; Block only when the mode has it.
  */
 export function faceViews(
   card: CardDefinition,
   reasons: Record<CardUse, string | undefined>,
-  overdriveReason: string | undefined,
-  texts: { primary: string; overdrive: string | undefined },
+  texts: { primary: string },
   blockAllowed: boolean,
 ): FaceView[] {
   const readable = (reason: string | undefined) => (reason?.startsWith("needs ") && reason.endsWith(" Energy") ? NOT_ENOUGH_ENERGY : reason);
@@ -127,8 +126,5 @@ export function faceViews(
   ];
   // Block is a rule of Attack and Defend; the classic mode takes Shield from Shield cards.
   if (blockAllowed) faces.push({ face: CardUse.Block, title: "Block 2", effect: "Shield 2", reason: reasons[CardUse.Block] });
-  if (texts.overdrive !== undefined) {
-    faces.push({ face: "overdrive", title: "Overdrive", effect: texts.overdrive, cost: card.energyCost, reason: readable(overdriveReason) });
-  }
   return faces;
 }

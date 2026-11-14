@@ -1,5 +1,5 @@
 // Named screenshot scenarios: each puts the match into a chosen state so a state the standard path never reaches
-// (an Overdrive effect, Exhaustion, a Hero in fog) can be looked at. The Match State is built here, in Node, with the
+// (Exhaustion, a Hero in fog) can be looked at. The Match State is built here, in Node, with the
 // real rules API and plain edits; the tool resumes it in the browser through the Resume button, and the real local
 // host plays the Resolution. Nothing here forges a rule. To add a scenario: see "Screenshots of UI changes" in
 // docs/agents/software-factory.md.
@@ -258,7 +258,7 @@ const ASSASSIN_SCENARIOS: readonly Scenario[] = [
   }),
   assassinScenario({
     name: "long-shot",
-    description: "An Assassin fires Long Shot (normal face) at an enemy Bruiser at Range 6.",
+    description: "An Assassin fires Long Shot at an enemy Bruiser at Range 6.",
     seed: 23, at: { col: 8, row: 3 }, card: LONG_SHOT, enemies: { [RIGHT_BRUISER]: { col: 14, row: 3 } },
     use: [SHOOT_AT_BRUISER],
   }),
@@ -277,13 +277,13 @@ const ASSASSIN_SCENARIOS: readonly Scenario[] = [
   }),
   assassinScenario({
     name: "assassin-shield-breaker",
-    description: "An Assassin fires Shield Breaker (2 Energy, 2 Piercing Damage) at an enemy Bruiser at Range 4.",
+    description: "An Assassin fires Shield Breaker (2 Piercing Damage) at an enemy Bruiser at Range 4.",
     seed: 29, at: { col: 10, row: 3 }, card: SHIELD_BREAKER, enemies: { [RIGHT_BRUISER]: { col: 14, row: 3 } },
     pitch: 2, use: [SHOOT_AT_BRUISER],
   }),
   assassinScenario({
     name: "execution-round",
-    description: "An Assassin fires Execution Round (2 Energy, 3 damage) at an enemy Bruiser at Range 4.",
+    description: "An Assassin fires Execution Round (3 damage) at an enemy Bruiser at Range 4.",
     seed: 28, at: { col: 10, row: 3 }, card: EXECUTION_ROUND, enemies: { [RIGHT_BRUISER]: { col: 14, row: 3 } },
     pitch: 2, use: [SHOOT_AT_BRUISER],
   }),

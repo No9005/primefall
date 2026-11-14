@@ -1,4 +1,4 @@
-import { ActionKind, BLOCK_SHIELD, CardTarget, cardInMode, HERO_DECKS, type HeroClass, type QueuedAction, Visibility } from "game-core";
+import { ActionKind, BLOCK_SHIELD, CardTarget, HERO_DECKS, type HeroClass, type QueuedAction, Visibility } from "game-core";
 
 // What is drawn above a Hero besides its figure: Shield as rubies, the shield bubble, and the planned actions that have no
 // line on the board (Wait, a card played on the Hero itself). Pure: the board only draws the marks this returns.
@@ -44,7 +44,7 @@ export interface MarksInput {
 }
 
 function playsOnItself(heroClass: HeroClass, action: QueuedAction): boolean {
-  return action.kind === ActionKind.Primary && cardInMode(HERO_DECKS[heroClass][action.card]!, action.overdrive).target === CardTarget.SelfHero;
+  return action.kind === ActionKind.Primary && HERO_DECKS[heroClass][action.card]!.target === CardTarget.SelfHero;
 }
 
 /**

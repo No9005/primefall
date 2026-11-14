@@ -62,7 +62,7 @@ export interface CardRow {
   copies: number;
   type: string;
   cost: number;
-  /** The effect text of the card data, with the Overdrive after it where the card has one. */
+  /** The effect text of the card data. */
   effect: string;
 }
 

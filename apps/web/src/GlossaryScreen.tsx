@@ -8,7 +8,7 @@ import { resolutionBarText } from "./resolution-hud";
 
 // The glossary: one scrolling screen that shows every mark the player meets. The pictures are the game's own drawing (the
 // scenes of `glossary-pictures.ts`) and the game's own HUD components and styles. Static data only: it never creates a
-// match host and never reads or writes the saved match, like the Tutorial.
+// match host and never reads or writes the saved match.
 
 const QUEUE: readonly QueuedAction[] = [
   { kind: ActionKind.Move, card: 0 as CardIndex, destination: { col: 4, row: 3 } },

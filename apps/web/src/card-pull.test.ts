@@ -46,7 +46,6 @@ describe("the card pull state machine", () => {
   it("dropping on an enabled face chooses it, on a disabled face (no face found) chooses nothing", () => {
     const pulled = move(press(2, origin), up(200));
     expect(release(pulled, CardUse.Move, MIDDLE)).toEqual({ state: IDLE, chosen: { card: 2, face: CardUse.Move } });
-    expect(release(pulled, "overdrive", MIDDLE).chosen).toEqual({ card: 2, face: "overdrive" });
     expect(release(pulled, undefined, MIDDLE).chosen).toBeUndefined();
   });
 
@@ -86,13 +85,13 @@ describe("the faces of a card", () => {
   const without = HERO_DECKS[HeroClass.Assassin][0]!;
 
   it("has four faces, and no Block face in the classic mode", () => {
-    expect(faceViews(without, allFree, undefined, { primary: "x", overdrive: undefined }, true).map(({ face }) => face)).toEqual([
+    expect(faceViews(without, allFree, { primary: "x" }, true).map(({ face }) => face)).toEqual([
       CardUse.Primary,
       CardUse.Pitch,
       CardUse.Move,
       CardUse.Block,
     ]);
-    expect(faceViews(without, allFree, undefined, { primary: "x", overdrive: undefined }, false).map(({ face }) => face)).toEqual([
+    expect(faceViews(without, allFree, { primary: "x" }, false).map(({ face }) => face)).toEqual([
       CardUse.Primary,
       CardUse.Pitch,
       CardUse.Move,
@@ -100,7 +99,7 @@ describe("the faces of a card", () => {
   });
 
   it("shows an unaffordable cost as Not enough Energy and keeps other reasons", () => {
-    const faces = faceViews(without, { ...allFree, [CardUse.Primary]: "needs 1 Energy", [CardUse.Move]: "Queue is full" }, "needs 1 Energy", { primary: "x", overdrive: undefined }, true);
+    const faces = faceViews(without, { ...allFree, [CardUse.Primary]: "needs 1 Energy", [CardUse.Move]: "Queue is full" }, { primary: "x" }, true);
     const reason = (face: Face) => faces.find((candidate) => candidate.face === face)?.reason;
     expect(reason(CardUse.Primary)).toBe("Not enough Energy");
     expect(reason(CardUse.Move)).toBe("Queue is full");

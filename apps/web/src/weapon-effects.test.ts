@@ -37,16 +37,9 @@ describe("the cues of the events", () => {
   it("makes a shot and a red number for a hit, the number 20 ms after the impact", () => {
     const cues = effectCuesOf([hit({ card: "Slam Shot", damage: 2, distance: 3 })], fireOf);
     expect(cues).toEqual([
-      { kind: "shot", weapon: "slam", fromId: "a", toId: "t", fireMs: 620, flightMs: 720, overdrive: false },
+      { kind: "shot", weapon: "slam", fromId: "a", toId: "t", fireMs: 620, flightMs: 720 },
       { kind: "number", toId: "t", startMs: 620 + 720 + 20, text: "-2", style: "damage" },
     ]);
-  });
-
-  it("shows the long-range bonus of the Long Shot in gold, and a Shot closer by in red", () => {
-    const far = effectCuesOf([hit({ card: "Long Shot", damage: 4, distance: 6 })], fireOf);
-    expect(far.at(-1)).toMatchObject({ text: "-4", style: "bonus", startMs: 1670 });
-    const near = effectCuesOf([hit({ card: "Long Shot", damage: 2, distance: 5 })], fireOf);
-    expect(near.at(-1)).toMatchObject({ text: "-2", style: "damage" });
   });
 
   it("shows the Shield that absorbed in blue, before the Deck Damage", () => {

@@ -2,7 +2,6 @@ import {
   ActionKind,
   type CardDefinition,
   CardTarget,
-  cardInMode,
   chebyshevDistance,
   CoverKind,
   coverAt,
@@ -110,7 +109,7 @@ type PrimaryAction = Extract<QueuedAction, { kind: ActionKind.Primary }>;
 
 function linesOfAction({ grid, heroes, enemies }: LineContext, hero: HeroView, from: GridPosition, action: QueuedAction, tick: number): TargetLine[] {
   if (action.kind !== ActionKind.Primary) return [];
-  const card: CardDefinition = cardInMode(HERO_DECKS[hero.heroClass][action.card]!, action.overdrive);
+  const card: CardDefinition = HERO_DECKS[hero.heroClass][action.card]!;
   const base = { heroId: hero.id, own: true, tick };
   if (ENEMY_TARGETS.includes(card.target)) {
     return attackLines(grid, enemies, { base, from, action, range: card.range ?? NO_RANGE_LIMIT, minRange: card.minRange ?? 0 });
@@ -308,7 +307,7 @@ export function plannedEffectPaths(grid: Grid, heroes: readonly HeroView[], enem
       if (!hero || hero.exhausted) return [];
       return queue.flatMap((action, index): EffectPath[] => {
         if (action.kind !== ActionKind.Primary) return [];
-        const card = cardInMode(HERO_DECKS[hero.heroClass][action.card]!, action.overdrive);
+        const card = HERO_DECKS[hero.heroClass][action.card]!;
         const target = enemies.find((enemy) => enemy.id === action.target);
         if (target?.visibility !== Visibility.Visible) return [];
         const caster = positionBefore(hero, queue, index);
@@ -363,7 +362,7 @@ export function plannedCoverPlan(own: readonly GridPosition[], heroes: readonly 
       if (!hero || hero.exhausted) return [];
       return queue.flatMap((action) => {
         if (action.kind !== ActionKind.Primary || !action.tile) return [];
-        const card = cardInMode(HERO_DECKS[hero.heroClass][action.card]!, action.overdrive);
+        const card = HERO_DECKS[hero.heroClass][action.card]!;
         return card.effects.some((effect) => effect.kind === EffectKind.PlaceCover) ? [action.tile] : [];
       });
     }),
