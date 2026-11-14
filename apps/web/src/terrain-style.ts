@@ -20,7 +20,7 @@ export const TERRAIN_STYLE = {
   gridLineWidth: 0.6,
   /** Landmarks in the fog: known, but dark. */
   primeZoneDark: { fill: 0x0f1f22, edge: 0x1d6b66 },
-  spawnMarkerDark: 0x1d6b66,
+  dropPointMarkerDark: 0x1d6b66,
   /** Outpost tiles (an interim look until the HUD and map ticket): amber, so they differ from the teal Prime Zone. */
   outpost: { fill: 0x45391f, edge: 0xffb347 },
   outpostDark: { fill: 0x1f1b10, edge: 0x7a5a24 },
@@ -32,7 +32,7 @@ export const TERRAIN_STYLE = {
   /** Faint tint over the Prime Zone tiles: the own Squad holds it, contested, otherwise. */
   zoneTint: { own: 0x2ec4b6, contested: 0xffb347, neutral: 0x3d5a73 },
   primeZoneEdge: { fill: 0x1e3440, edge: 0x2ec4b6 },
-  spawnMarker: 0x2ec4b6,
+  dropPointMarker: 0x2ec4b6,
   /** Floor outlines that mark Cover tiles while planning. */
   coverOutline: { full: 0xff8a3d, half: 0x4aa3ff, placed: 0x7be0ff, destroyed: 0x8a8f98 },
   /** The look of Cover (docs/design/role-visuals): the map's own as blue panels on a plinth, built as yellow-black bars. */

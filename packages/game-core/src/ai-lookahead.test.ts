@@ -92,7 +92,7 @@ describe("AI lookahead", () => {
 
   it("avoids the move that walks a Hero into the enemy's fire, where the greedy plan takes it", () => {
     // Hand-made position: the Left Heroes face the Right Heroes across the map, six tiles apart in a column.
-    // Round 3: the enemies the Left Squad does not see could be anywhere they reached since the Spawn.
+    // Round 3: the enemies the Left Squad does not see could be anywhere they reached since the Drop Point.
     const seed = 2;
     const match = startRound(createMatch(seed));
     match.round = 3;

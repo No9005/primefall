@@ -64,7 +64,7 @@ describe("AI planning", () => {
     expect(planSquad(view)).toEqual(planSquad(view));
   });
 
-  it("plans a move toward the Prime Zone from the Spawn", () => {
+  it("plans a move toward the Prime Zone from the Drop Point", () => {
     const view = buildSquadView(startRound(createMatch(5)), SquadId.Left);
     const plan = planSquad(view);
     expect(plan.heroes.length).toBe(3);
@@ -152,7 +152,7 @@ describe("AI objective and navigation from the Squad View", () => {
 });
 
 describe("AI scoring of Moves", () => {
-  /** The Left Bruiser stands at `start`, the Right Assassin at `enemy`; the other Heroes stay at their Spawn. */
+  /** The Left Bruiser stands at `start`, the Right Assassin at `enemy`; the other Heroes stay at their Drop Point. */
   const arrange = (start: GridPosition, enemy: GridPosition) => {
     const match = startRound(createMatch(5));
     match.heroes.find((hero) => hero.id === "left-bruiser")!.position = start;

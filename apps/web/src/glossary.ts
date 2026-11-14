@@ -248,7 +248,7 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
   {
     name: "Outpost",
     group: GlossaryGroup.Board,
-    text: "An amber tile. The Squad that controls it earns a Victory Point per Resolution.",
+    text: "An amber tile. The Squad that controls it earns a Credit per Resolution.",
     mode: "Classic mode.",
     picture: { scene: "outposts" },
   },
@@ -267,7 +267,7 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
   {
     name: "Score pill",
     group: GlossaryGroup.Hud,
-    text: "Victory Points, yours then the enemy's, and a dot for each zone: Outpost, Prime Zone, Outpost. A dot is teal when you control the zone, red for the enemy, amber when contested.",
+    text: "Credits, yours then the enemy's, and a dot for each zone: Outpost, Prime Zone, Outpost. A dot is teal when you control the zone, red for the enemy, amber when contested.",
     mode: "Classic mode.",
     picture: { hud: "scorePill" },
   },

@@ -47,7 +47,7 @@ export function NextArrow() {
 
 /** The dashed arrow between two stage points (a gentle curve, the head on the second point) and the labels, all in stage px. */
 function RouteMarks({ role, layout }: { role: Role; layout: PreviewLayout }) {
-  const [start, end]: [Point, Point] = role === "attack" ? [layout.spawn, layout.zone] : [layout.enemySpawn, layout.zone];
+  const [start, end]: [Point, Point] = role === "attack" ? [layout.dropPoint, layout.zone] : [layout.enemyDropPoint, layout.zone];
   const colour = role === "attack" ? "#ff8a3d" : "#e5484d";
   // The head sits short of the Zone's centre, on the side the arrow comes from.
   const direction = Math.sign(end.x - start.x) || 1;
@@ -71,12 +71,12 @@ function RouteMarks({ role, layout }: { role: Role; layout: PreviewLayout }) {
         <path d={`M ${from.x} ${from.y} Q ${bend.x} ${bend.y} ${tip.x} ${tip.y}`} fill="none" stroke={colour} strokeWidth="2.5" strokeDasharray="7 6" strokeLinecap="round" />
         <path d={`M ${head[0]![0]} ${head[0]![1]} L ${head[1]![0]} ${head[1]![1]} L ${head[2]![0]} ${head[2]![1]}`} fill="none" stroke={colour} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      {/* Attack: the Zone is the lower end of the route, so its label stands above it. Defend: the enemy Spawn is the lower end. */}
-      {role === "attack" && label("YOUR SPAWN", { x: layout.spawn.x, y: layout.spawn.y + 44 })}
+      {/* Attack: the Zone is the lower end of the route, so its label stands above it. Defend: the enemy Drop Point is the lower end. */}
+      {role === "attack" && label("YOUR DROP POINT", { x: layout.dropPoint.x, y: layout.dropPoint.y + 44 })}
       {role === "attack" && label(zoneLabel, { x: layout.zone.x, y: layout.zone.y - 52 })}
       {role === "defend" && label(zoneLabel, { x: layout.zone.x - 40, y: layout.zone.y + 44 })}
-      {role === "defend" && label("ENEMY SPAWN", { x: layout.enemySpawn.x + 40, y: layout.enemySpawn.y - 70 })}
-      {role === "defend" && label("ATTACKERS COME FROM HERE", { x: layout.enemySpawn.x + 40, y: layout.enemySpawn.y - 52 })}
+      {role === "defend" && label("ENEMY DROP POINT", { x: layout.enemyDropPoint.x + 40, y: layout.enemyDropPoint.y - 70 })}
+      {role === "defend" && label("ATTACKERS COME FROM HERE", { x: layout.enemyDropPoint.x + 40, y: layout.enemyDropPoint.y - 52 })}
     </>
   );
 }

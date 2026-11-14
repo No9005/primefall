@@ -70,9 +70,9 @@ describe("buildTerrain at 45 degrees", () => {
     expect(tiles.find((t) => t.kind === TileKind.Floor)?.piece).toBeUndefined();
   });
 
-  it("marks Spawn tiles", () => {
-    expect(tiles.filter((t) => t.kind === TileKind.Spawn).every((t) => t.marker)).toBe(true);
-    expect(tiles.some((t) => t.kind === TileKind.Spawn)).toBe(true);
+  it("marks Drop Point tiles", () => {
+    expect(tiles.filter((t) => t.kind === TileKind.DropPoint).every((t) => t.marker)).toBe(true);
+    expect(tiles.some((t) => t.kind === TileKind.DropPoint)).toBe(true);
   });
 
   it("orders nearer tiles last, by column plus row", () => {
@@ -185,13 +185,13 @@ describe("tile brightness from sight", () => {
     expect(at(3, 0).floor.fill).toBe(TERRAIN_STYLE.floorDark.fill);
   });
 
-  it("keeps the Prime Zone, Spawns and Walls faintly visible in the fog", () => {
+  it("keeps the Prime Zone, Drop Points and Walls faintly visible in the fog", () => {
     expect(at(4, 0).floor.fill).toBe(TERRAIN_STYLE.primeZoneDark.fill);
     expect(at(4, 0).floor.fill).not.toBe(TERRAIN_STYLE.floorDark.fill);
     expect(at(2, 0).lit).toBe(false);
     expect(at(2, 0).piece).toBeDefined();
     const dark = buildTerrain(grid, VIEW_ANGLE, litTiles([], []));
-    expect(dark.find((t) => t.kind === TileKind.Spawn)?.marker?.color).toBe(TERRAIN_STYLE.spawnMarkerDark);
+    expect(dark.find((t) => t.kind === TileKind.DropPoint)?.marker?.color).toBe(TERRAIN_STYLE.dropPointMarkerDark);
   });
 
   it("draws every tile lit when no sight is given", () => {

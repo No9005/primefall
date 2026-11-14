@@ -27,11 +27,11 @@ function hudPicture(name: HudName): ReactNode {
   switch (name) {
     case "scorePill":
       return (
-        <div className="prime-pill with-zones prime-neutral" aria-label="Victory Points, you 1, enemy 0">
-          <span className="prime-label">VP</span>
-          <span className="prime-vp-score prime-vp-own">1</span>
-          <span className="prime-vp-divider">:</span>
-          <span className="prime-vp-score prime-vp-enemy">0</span>
+        <div className="prime-pill with-zones prime-neutral" aria-label="Credits, you 1, enemy 0">
+          <span className="prime-label">CR</span>
+          <span className="prime-credits-score prime-credits-own">1</span>
+          <span className="prime-credits-divider">:</span>
+          <span className="prime-credits-score prime-credits-enemy">0</span>
           <span className="zone-dots">
             {ZONE_DOTS.map((state, i) => (
               <span key={state} className={`zone-dot zone-dot-${state}${i === 1 ? " zone-dot-prime" : ""}`} data-state={state} />

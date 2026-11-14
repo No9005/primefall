@@ -45,7 +45,7 @@ describe("SquadView.visibleTiles", () => {
     expect(seen.has(key({ col: 12, row: 7 }))).toBe(false);
   });
 
-  it("does not show the Prime Zone from the Spawn area, but does from a Hero standing in it", () => {
+  it("does not show the Prime Zone from the Drop Point area, but does from a Hero standing in it", () => {
     const primeZone = findTiles(REACTOR_DECK, TileKind.PrimeZone);
     const fresh = startRound(createMatch(3));
     expect(primeZone.some((tile) => visibleKeys(fresh, SquadId.Left).has(key(tile)))).toBe(false);

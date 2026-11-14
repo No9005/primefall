@@ -33,7 +33,7 @@ describe("pixelLayout of the Reactor Deck", () => {
     expect(floors.size).toBe(open);
   });
 
-  it("uses the floor of its kind for the Prime Zone, the Outposts and the Spawns", () => {
+  it("uses the floor of its kind for the Prime Zone, the Outposts and the Drop Points", () => {
     const floorOf = (col: number, row: number) => layout.floors.find((floor) => floor.col === col && floor.row === row)!.name;
     expect(floorOf(22, 12)).toBe("prime_floor");
     expect(floorOf(22, 2)).toBe("outpost_floor");
@@ -68,7 +68,7 @@ describe("pixelLayout of the Reactor Deck", () => {
     for (const piece of layout.standing.filter((entry) => entry.kind !== "text")) expect(piece.depth).toBe(piece.col + piece.row);
   });
 
-  it("lights the Spawns, the core, every Cover and the lamps", () => {
+  it("lights the Drop Points, the core, every Cover and the lamps", () => {
     const kinds = layout.lights.map((light) => light.kind);
     expect(kinds.filter((kind) => kind === "breach")).toHaveLength(2);
     expect(kinds.filter((kind) => kind === "core")).toHaveLength(1);
@@ -76,7 +76,7 @@ describe("pixelLayout of the Reactor Deck", () => {
     expect(kinds).toContain("lamp");
   });
 
-  it("puts the guide lights on open floor between a Spawn and the Prime Zone only", () => {
+  it("puts the guide lights on open floor between a Drop Point and the Prime Zone only", () => {
     const guides = layout.floors.filter((floor) => floor.name === "guide_col");
     expect(guides.length).toBeGreaterThan(10);
     for (const guide of guides) expect(tileAt(REACTOR_DECK, guide)).toBe(TileKind.Floor);

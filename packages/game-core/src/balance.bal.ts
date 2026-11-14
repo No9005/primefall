@@ -304,8 +304,8 @@ function playRound(match: MatchState, tweaks: Tweaks, totals: Totals): { match: 
   return { match: next.result ? next : startRound(next), exhausted };
 }
 
-/** The matches decided by the zones: the Attacker's three Resolutions in Attack and Defend, the Victory Points in the classic mode. */
-const ZONE_END_REASONS: readonly (MatchEndReason | undefined)[] = [MatchEndReason.PrimeZoneHeld, MatchEndReason.VictoryPoints];
+/** The matches decided by the zones: the Attacker's three Resolutions in Attack and Defend, the Credits in the classic mode. */
+const ZONE_END_REASONS: readonly (MatchEndReason | undefined)[] = [MatchEndReason.PrimeZoneHeld, MatchEndReason.Credits];
 
 function recordTotals(match: MatchState, exhausted: number, totals: Totals): void {
   totals.rounds.push(match.round);
@@ -437,7 +437,7 @@ it("prints one table for all variants", async () => {
   exposedRows.forEach((row) => console.log(exposedLine(row)));
 });
 
-// The five gauges of docs/design/game-goals.md, for the classic mode (Victory Points), AI against AI. Nothing here changes
+// The five gauges of docs/design/game-goals.md, for the classic mode (Credits), AI against AI. Nothing here changes
 // a rule or the shipped AI: strategies are built from the existing seams (`planSquad`, AI Styles, the `focus` weight).
 
 const GAUGES = {

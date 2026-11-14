@@ -1,4 +1,4 @@
-# Game goals: resources, victory points and zones
+# Game goals: resources, Credits and zones
 
 The goals of the classic mode and how each one is measured. Map, roles and AI are designed from these; a change is judged by the gauges at the end. Decided by the owner in the goals discussion (issue #339 and its sub-issues). The rules decision itself is ADR 0024.
 
@@ -27,17 +27,17 @@ Matches are one-sided. Both Squads run to the Prime Zone and play Shield plus At
 |---|---|
 | Resource | Cards stay the only resource. |
 | Shield | No Block action for every card. Shield comes from Shield cards (Bulwark, Reinforce, Aegis Protocol). Afterwards the Exposed Hero measurement is repeated; the refill rule is decided only after that (#355). |
-| Zones | Three: the **Prime Zone** in the middle (2 Victory Points per Resolution) and two **Outposts** at the sides (1 Victory Point each). |
+| Zones | Three: the **Prime Zone** in the middle (2 Credits per Resolution) and two **Outposts** at the sides (1 Credit each). |
 | Activation | The Outposts are active from Round 1, the Prime Zone from Round 4. Visible from the start. |
 | Control | The Squad with more non-exhausted Heroes in a zone controls it. Equal and more than zero on both sides: **Contested**, nobody scores. An empty zone scores for nobody. |
-| Victory | First to 30 Victory Points wins at once. Otherwise after Round 15 the higher score wins; a tie goes to the larger card advantage (cards not in the Exile). Exhaustion of a whole Squad still ends the match at once. |
+| Victory | First to 30 Credits wins at once. Otherwise after Round 15 the higher score wins; a tie goes to the larger card advantage (cards not in the Exile). Exhaustion of a whole Squad still ends the match at once. |
 | Length | At most 15 Rounds. |
 | Public | Control of each zone and both scores are always visible; enemy Heroes stay in the Fog. |
 | Takeover bonus | Off by default. Two constants (bonus, cooldown per zone) exist for the case that the tug-of-war gauge is missed: a one-time bonus equal to the zone's value when a Squad takes a zone the enemy controlled in the previous Resolution. |
 | Attack and Defend | Keeps its own win rules, Round limit and Block (ADR 0022). The new decks and combat rules apply to both modes, so its balance (#302) is measured again after the decks. |
 | Overwatch Nest | Removed for now (the tile, its rules and the AI weight). The card Overwatch Uplink stays. |
 
-At most 4 Victory Points a Resolution can be scored (2 + 1 + 1) from Round 4, 2 before; at most about 54 in a match.
+At most 4 Credits a Resolution can be scored (2 + 1 + 1) from Round 4, 2 before; at most about 54 in a match.
 
 ## What this replaces
 
@@ -89,4 +89,4 @@ Distance decides a duel: close the Bruiser, far the Assassin. The Controller is 
 2. **Roles** (#348, ADR 0025): decided; the tickets build the cards. What the Heroes do with two Outposts is tested by the role gauges.
 3. **AI**: plans for splitting between zones and for holding vision; a Squad plan from the seed.
 4. **Mission types** (three per game) as a possible later layer; not part of this decision.
-5. **Wording:** "Victory Points" uses the word "Point", which `docs/design/decisions.md` keeps out of the UI as a name for the Zone; the owner confirms the UI word.
+5. **Wording:** "Credits" uses the word "Point", which `docs/design/decisions.md` keeps out of the UI as a name for the Zone; the owner confirms the UI word.

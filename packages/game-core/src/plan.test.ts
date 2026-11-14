@@ -45,7 +45,7 @@ describe("validatePlan", () => {
     expect(kinds(move(bruiser.hand[0]!, near(3)))).toEqual([PlanIssueKind.BadDestination]);
     expect(kinds(move(bruiser.hand[0]!, near(0)))).toEqual([PlanIssueKind.BadDestination]);
     expect(kinds(move(bruiser.hand[0]!, { col: -1, row: 4 }))).toEqual([PlanIssueKind.BadDestination]);
-    // (0, 7) is a Wall, one tile away from the Bruiser's Spawn tile.
+    // (0, 7) is a Wall, one tile away from the Bruiser's Drop Point tile.
     expect(kinds(move(bruiser.hand[0]!, { col: 0, row: 7 }))).toEqual([PlanIssueKind.BadDestination]);
   });
 

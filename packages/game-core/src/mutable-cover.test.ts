@@ -123,7 +123,7 @@ describe("destroyed Cover and the Fog of War", () => {
     const match = setup({ [LEFT_BRUISER]: { col: 18, row: 11 } });
     const { match: after } = resolveRound(match, [breachPlan(HALF_COVER_TILE)]);
     expect(buildSquadView(after, SquadId.Left).destroyedCover).toEqual([HALF_COVER_TILE]);
-    // The right Squad stands on its Spawn tiles, far away from the tile.
+    // The right Squad stands on its Drop Point tiles, far away from the tile.
     expect(buildSquadView(after, SquadId.Right).destroyedCover).toEqual([]);
   });
 

@@ -1,4 +1,4 @@
-import { defenderStartTiles, findTiles, spawnStartTiles,type GridPosition, HeroClass, MatchEndReason, MatchMode, type MatchModeSetting, type MatchResult, REACTOR_DECK, SquadId, type SquadView, TileKind } from "game-core";
+import { defenderStartTiles, findTiles, dropPointStartTiles,type GridPosition, HeroClass, MatchEndReason, MatchMode, type MatchModeSetting, type MatchResult, REACTOR_DECK, SquadId, type SquadView, TileKind } from "game-core";
 import { computeCamera, gridToWorld } from "./board-layout";
 
 // What the web app shows for the Attack and Defend mode (docs/design/attack-defend): the role of the player, its texts,
@@ -32,7 +32,7 @@ export const SIDE_TAGLINES: Record<Role, string> = { attack: "Take the Prime Zon
 /** The text under the role buttons of the side screen. */
 export const SIDE_TEXTS: Record<Role, string> = {
   attack:
-    "Start at your Spawn. Take the Prime Zone: you need at least as many Heroes in it as the Defender, a tie is yours. Control it for 3 Resolutions or Exhaust all three Defenders.",
+    "Start at your Drop Point. Take the Prime Zone: you need at least as many Heroes in it as the Defender, a tie is yours. Control it for 3 Resolutions or Exhaust all three Defenders.",
   // 9 is the default Defender Round limit (DEFENDER_ROUND_LIMIT in game-core host.ts); the Defender wins only by holding out, never by Exhausting the Attackers.
   defend: "Start in the Prime Zone. Hold out for 9 Rounds. You lose if all three of your Heroes are Exhausted or the Attacker controls the Zone for 3 Resolutions.",
 };
@@ -109,10 +109,10 @@ export interface PreviewLayout {
   /** The player's Squad and the enemy Squad in their start positions of the role. */
   heroes: PreviewHero[];
   enemies: PreviewHero[];
-  /** Stage px of the centre of the own Spawn, the Prime Zone and the enemy Spawn. */
-  spawn: Point;
+  /** Stage px of the centre of the own Drop Point, the Prime Zone and the enemy Drop Point. */
+  dropPoint: Point;
   zone: Point;
-  enemySpawn: Point;
+  enemyDropPoint: Point;
   /** The translate of the stage, in screen px, at the two ends of the camera move. */
   from: Point;
   to: Point;
@@ -127,21 +127,21 @@ export function previewLayout(role: Role): PreviewLayout {
     return { x: world.x * camera.scale + camera.x, y: world.y * camera.scale + camera.y };
   };
   const squad = (tiles: GridPosition[], prefix: string): PreviewHero[] => tiles.map((position, i) => ({ id: `${prefix}${i}`, heroClass: HERO_ORDER[i]!, position, exhausted: false }));
-  const spawn = centreOf(spawnStartTiles(true).map(toStage));
+  const dropPoint = centreOf(dropPointStartTiles(true).map(toStage));
   const zone = centreOf(findTiles(REACTOR_DECK, TileKind.PrimeZone).map(toStage));
-  const enemySpawn = centreOf(spawnStartTiles(false).map(toStage));
+  const enemyDropPoint = centreOf(dropPointStartTiles(false).map(toStage));
   // The translate that puts a stage point in the free middle of the screen (between the role buttons and the text), x centred.
   const centred = (point: Point): Point => ({ x: 844 / 2 - point.x, y: PREVIEW_CENTRE_Y - point.y });
   // The camera drifts from a view near the start of the route to one near its end; both views have the whole route on screen.
-  const [from, to] = role === "attack" ? [spawn, zone] : [zone, enemySpawn];
+  const [from, to] = role === "attack" ? [dropPoint, zone] : [zone, enemyDropPoint];
   const between = (t: number): Point => ({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
   const [start, end] = [between(PREVIEW_DRIFT[0]), between(PREVIEW_DRIFT[1])];
   return {
-    heroes: squad(role === "attack" ? spawnStartTiles(true) : defenderStartTiles(true), "p"),
-    enemies: squad(role === "attack" ? defenderStartTiles(false) : spawnStartTiles(false), "e"),
-    spawn,
+    heroes: squad(role === "attack" ? dropPointStartTiles(true) : defenderStartTiles(true), "p"),
+    enemies: squad(role === "attack" ? defenderStartTiles(false) : dropPointStartTiles(false), "e"),
+    dropPoint,
     zone,
-    enemySpawn,
+    enemyDropPoint,
     from: centred(start),
     to: centred(end),  };
 }

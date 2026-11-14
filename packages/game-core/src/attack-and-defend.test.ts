@@ -35,7 +35,7 @@ describe("Attack and Defend: start positions", () => {
     expect(squad.map((hero) => hero.position)).toEqual([11, 12, 13].map((row) => ({ col, row })));
   });
 
-  it("starts the Attacker on its Spawn tiles, as in the classic mode", () => {
+  it("starts the Attacker on its Drop Point tiles, as in the classic mode", () => {
     const classic = createMatch(7);
     const match = createMatch(7, mode(SquadId.Left));
     const positions = (state: MatchState) => state.heroes.filter((hero) => hero.squad === SquadId.Right).map((hero) => hero.position);
@@ -164,7 +164,7 @@ describe("Attack and Defend: Squad View and host", () => {
 });
 
 describe("the classic mode", () => {
-  // Recorded from the classic path (AI against AI, 60 Rounds at most). Re-recorded when the classic mode became Victory Points
+  // Recorded from the classic path (AI against AI, 60 Rounds at most). Re-recorded when the classic mode became Credits
   // from three zones (#357) and after the Block change (#352, #358); re-recorded for the new decks (#371: Bruiser 12, Controller 10, Assassin 9 cards, ADR 0025), because every Deck and the plans of the AI changed;
   // re-recorded for the Crossroads map of 45 by 25 tiles (#361);
   // re-recorded for the one-Round lookahead (#395), which changes every plan of the AI, and for the Fog of War worlds (#396), which change the replies it plays against.

@@ -1,5 +1,7 @@
 # Victory Points and Three Zones
 
+> **Terminology:** `GLOSSARY.md` now calls the score of the classic mode Credits (this record: Victory Points). This record keeps its original words.
+
 The classic mode is won by Victory Points from three zones, not by holding one Prime Zone for three Resolutions.
 
 ## Context

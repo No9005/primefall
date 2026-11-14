@@ -62,10 +62,10 @@ export function primeScore(progress: PrimeProgress, you: SquadId, contested: boo
  */
 export function pointsZoneScore(zones: readonly ZoneView[], you: SquadId, contestedNow: boolean): PrimeScore {
   const prime = zones.find((zone) => zone.kind === ZoneKind.PrimeZone);
-  if (!prime?.active) return { filled: 0, state: "neutral", label: "VP" };
-  if (contestedNow || prime.contested) return { filled: 0, state: "contested", label: "VP" };
-  if (prime.controller === undefined) return { filled: 0, state: "neutral", label: "VP" };
-  return { filled: 0, state: prime.controller === you ? "own" : "enemy", label: "VP" };
+  if (!prime?.active) return { filled: 0, state: "neutral", label: "CR" };
+  if (contestedNow || prime.contested) return { filled: 0, state: "contested", label: "CR" };
+  if (prime.controller === undefined) return { filled: 0, state: "neutral", label: "CR" };
+  return { filled: 0, state: prime.controller === you ? "own" : "enemy", label: "CR" };
 }
 
 export type ZoneDotState = "nobody" | "own" | "enemy" | "contested" | "inactive";
@@ -100,7 +100,7 @@ export function primeCountdown(zones: readonly ZoneView[], round: number): numbe
 const zoneName = (zone: ZoneView) => (zone.kind === ZoneKind.PrimeZone ? "PRIME ZONE" : "OUTPOST");
 
 /**
- * What to show after a Resolution, from the zones before and after it: the Victory Points of every zone that scored
+ * What to show after a Resolution, from the zones before and after it: the Credits of every zone that scored
  * (Squad-coloured), CONTESTED for a zone both Squads stand in, and ACTIVE when the Prime Zone just unlocked.
  */
 export function zoneCallouts(before: readonly ZoneView[], after: readonly ZoneView[], you: SquadId): PrimeCallout[] {
@@ -108,7 +108,7 @@ export function zoneCallouts(before: readonly ZoneView[], after: readonly ZoneVi
   after.forEach((zone, i) => {
     if (!zone.active) return;
     if (zone.kind === ZoneKind.PrimeZone && before[i] && !before[i].active) {
-      callouts.push({ text: "PRIME ZONE ACTIVE", detail: `${zone.value} VP per Resolution`, tone: "gold", durationMs: PRIME_ZONE_ACTIVE_CALLOUT_MS });
+      callouts.push({ text: "PRIME ZONE ACTIVE", detail: `${zone.value} CR per Resolution`, tone: "gold", durationMs: PRIME_ZONE_ACTIVE_CALLOUT_MS });
     }
     if (zone.contested) callouts.push({ text: "CONTESTED", detail: zoneName(zone), tone: "amber", durationMs: PRIME_ZONE_CALLOUT_MS });
     else if (zone.controller !== undefined) {
