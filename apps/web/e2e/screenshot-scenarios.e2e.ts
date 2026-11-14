@@ -7,7 +7,7 @@ import { SCENARIO_SCREENSHOT_NAMES } from "../scripts/scenarios";
 
 // The screenshot tool starts its own dev server and browser. It exits non-zero on a page error, a control it cannot
 // find or a missing PNG. CI runs one scenario to keep the pull request job short; `npm run test:e2e` locally runs all.
-const scenarios = process.env.CI ? ["shockwave-overdrive"] : Object.keys(SCENARIO_SCREENSHOT_NAMES);
+const scenarios = process.env.CI ? ["breach-charge"] : Object.keys(SCENARIO_SCREENSHOT_NAMES);
 
 test("the screenshot scenarios run without page errors and write every listed PNG", async () => {
   test.setTimeout(scenarios.length * 180_000);

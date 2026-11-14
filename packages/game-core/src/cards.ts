@@ -250,7 +250,7 @@ export function isPlayableCard(card: CardDefinition, overdrive?: boolean): boole
         isPlayableUtility(mode))
     );
   }
-  return isSimpleAttack(card) || isAreaAttack(card) || isTileAttack(card) || isPlayableUtility(card);
+  return isSimpleAttack(card) || isGhostAttack(card) || isAreaAttack(card) || isTileAttack(card) || isPlayableUtility(card);
 }
 
 const slow: CardEffect = { kind: EffectKind.ApplySlow, duration: 1 };
@@ -274,11 +274,9 @@ const concussionRound: CardDefinition = {
   target: CardTarget.VisibleEnemy, effects: [damage(2), slow],
 };
 const breachCharge: CardDefinition = {
-  name: "Breach Charge", type: CardType.Attack, energyCost: 2, range: BRUISER_RANGE,
+  name: "Breach Charge", type: CardType.Attack, energyCost: 1, range: BRUISER_RANGE,
   target: CardTarget.Tile,
   effects: [damage(2), { kind: EffectKind.DestroyHalfCover }],
-  // Destroys any Cover and hurts every Hero on the target tile and around it, allies and the caster included.
-  overdrive: [{ kind: EffectKind.DestroyAnyCover }, { kind: EffectKind.DamageHeroesAtAndAroundTarget, amount: 2 }],
 };
 // The Bruiser's tools to close in, to move enemies and to wreck Cover (ADR 0025).
 export const charge: CardDefinition = {
@@ -294,8 +292,8 @@ export const wreckingBlow: CardDefinition = {
   target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.DestroyAnyCover }],
 };
 const shockwave: CardDefinition = {
-  name: "Shockwave", type: CardType.Attack, energyCost: 2, range: 1,
-  target: CardTarget.EnemiesInRange, effects: [damage(2), knockback], overdrive: [damage(3), knockback],
+  name: "Shockwave", type: CardType.Attack, energyCost: 1, range: 1,
+  target: CardTarget.EnemiesInRange, effects: [damage(2), knockback],
 };
 const bulwark: CardDefinition = {
   name: "Bulwark", type: CardType.Utility, energyCost: 1, target: CardTarget.SelfHero, effects: [shield(3)],
@@ -304,33 +302,21 @@ const reinforce: CardDefinition = {
   name: "Reinforce", type: CardType.Utility, energyCost: 1, target: CardTarget.AllyHero, effects: [shield(2)],
 };
 const adrenalSurge: CardDefinition = {
-  name: "Adrenal Surge", type: CardType.Utility, energyCost: 2,
+  name: "Adrenal Surge", type: CardType.Utility, energyCost: 1,
   target: CardTarget.SelfHero, effects: [{ kind: EffectKind.GainPermanentAttack, amount: 1 }],
-  // Overdrive: this Hero and an allied Hero each gain the permanent +1 Attack.
-  overdriveTarget: CardTarget.AllyHero,
-  overdrive: [
-    { kind: EffectKind.GainPermanentAttack, amount: 1, recipient: EffectRecipient.Self },
-    { kind: EffectKind.GainPermanentAttack, amount: 1, recipient: EffectRecipient.Target },
-  ],
 };
 
 const tagRound: CardDefinition = {
   name: "Tag Round", type: CardType.Attack, energyCost: 1, range: CONTROLLER_RANGE,
-  target: CardTarget.VisibleEnemy, effects: [damage(1), marked], overdrive: [damage(1), marked, slow],
+  target: CardTarget.VisibleEnemy, effects: [damage(1), marked],
 };
 const scoutDrone: CardDefinition = {
   name: "Scout Drone", type: CardType.Utility, energyCost: 1, target: CardTarget.Area, // no Range: any tile of the map
   effects: [{ kind: EffectKind.RevealArea, size: 3, duration: 2 }],
-  overdrive: [{ kind: EffectKind.RevealArea, size: 5, duration: 2 }],
 };
-// Overdrive: two allied Heroes each gain Shield 3.
 const aegisProtocol: CardDefinition = {
   name: "Aegis Protocol", type: CardType.Utility, energyCost: 1,
   target: CardTarget.AllyHero, effects: [shield(3)],
-  overdrive: [
-    { ...shield(3), recipient: EffectRecipient.Target },
-    { ...shield(3), recipient: EffectRecipient.SecondTarget },
-  ],
 };
 const fortify: CardDefinition = {
   name: "Fortify", type: CardType.Utility, energyCost: 1, range: 3,
@@ -345,7 +331,7 @@ const barricade: CardDefinition = {
   target: CardTarget.EmptyTile, effects: [{ kind: EffectKind.PlaceCover, cover: CoverKind.Full }],
 };
 const gravitySnare: CardDefinition = {
-  name: "Gravity Snare", type: CardType.Utility, energyCost: 2, target: CardTarget.VisibleEnemy, effects: [slow],
+  name: "Gravity Snare", type: CardType.Utility, energyCost: 1, target: CardTarget.VisibleEnemy, effects: [slow],
 };
 const overwatchUplink: CardDefinition = {
   name: "Overwatch Uplink", type: CardType.Utility, energyCost: 1,
@@ -361,23 +347,20 @@ const coverBreaker: CardDefinition = {
   target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.IgnoreHalfCover }],
 };
 const shieldBreaker: CardDefinition = {
-  name: "Shield Breaker", type: CardType.Attack, energyCost: 2, range: 4, minRange: 2,
+  name: "Shield Breaker", type: CardType.Attack, energyCost: 1, range: 4, minRange: 2,
   target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.PiercingDamage }],
 };
 const longShot: CardDefinition = {
   name: "Long Shot", type: CardType.Attack, energyCost: 1, range: 7, minRange: 3,
   target: CardTarget.VisibleEnemy, effects: [damage(2)],
-  // Overdrive: 4 damage at Range 6 or 7, otherwise the usual 2.
-  overdrive: [{ kind: EffectKind.DamageAtLongRange, amount: 2, longRangeAmount: 4 }],
 };
 const ghostShot: CardDefinition = {
   name: "Ghost Shot", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE, minRange: 2,
-  target: CardTarget.VisibleEnemy, effects: [damage(2)],
-  overdriveTarget: CardTarget.GhostEnemy,
-  overdrive: [{ kind: EffectKind.TargetGhost }, damage(2)],
+  // Without Overdrive the Ghost mode is the card itself: it fires at the last known position of a Ghost.
+  target: CardTarget.GhostEnemy, effects: [{ kind: EffectKind.TargetGhost }, damage(2)],
 };
 const executionRound: CardDefinition = {
-  name: "Execution Round", type: CardType.Attack, energyCost: 2, range: ASSASSIN_RANGE, minRange: 2,
+  name: "Execution Round", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE, minRange: 2,
   target: CardTarget.VisibleEnemy, effects: [damage(3), { kind: EffectKind.IgnoreHalfCover }],
 };
 const vanish: CardDefinition = {

@@ -6,13 +6,13 @@
 import { ActionKind, type CardIndex, cardIndex, type GridPosition, HeroClass, type HeroPlan, type QueuedAction, type SquadPlan, SquadId, TileKind, withTile } from "game-core";
 import { createMatch, type HeroState, type MatchState, recordSightings, startRound } from "game-core/server";
 
-/** How a Hand card is used in a planning step. `overdrive` is the primary effect in its Overdrive face. */
-export type StepUse = "primary" | "overdrive" | "pitch" | "move" | "block";
+/** How a Hand card is used in a planning step. */
+export type StepUse = "primary" | "pitch" | "move" | "block";
 
 export type PlanStep =
   /**
    * A card of the Hand, by its position (0 = leftmost), used in a role. A Move needs the destination `tile`; a
-   * primary or overdrive use of a card aimed at a tile or area (Breach Charge, Scout Drone, Deploy Cover) needs the
+   * primary use of a card aimed at a tile or area (Breach Charge, Scout Drone, Deploy Cover) needs the
    * tile that is tapped.
    */
   | { slot: number; use: StepUse; tile?: GridPosition; target?: string }
@@ -139,7 +139,6 @@ const BRUISER_CHARGE = cardIndex(HeroClass.Bruiser, "Charge");
 const BRUISER_PULL = cardIndex(HeroClass.Bruiser, "Pull");
 const BRUISER_WRECKING_BLOW = cardIndex(HeroClass.Bruiser, "Wrecking Blow");
 
-const ALLY_CONTROLLER = `${SquadId.Left}-controller`;
 const ENEMY_BRUISER = `${SquadId.Right}-bruiser`;
 
 /**
@@ -264,30 +263,17 @@ const ASSASSIN_SCENARIOS: readonly Scenario[] = [
     use: [SHOOT_AT_BRUISER],
   }),
   assassinScenario({
-    name: "long-shot-overdrive",
-    description: "An Assassin fires Long Shot in Overdrive at an enemy Bruiser at Range 6: the thick gold tracer, 4 damage.",
-    seed: 24, at: { col: 8, row: 3 }, card: LONG_SHOT, enemies: { [RIGHT_BRUISER]: { col: 14, row: 3 } },
-    use: [{ ...SHOOT_AT_BRUISER, use: "overdrive" }],
-    shots: [450, 520, 620, 1100],
-  }),
-  assassinScenario({
     name: "ghost-shot",
-    description: "An Assassin fires Ghost Shot (normal face) at a visible enemy Bruiser.",
-    seed: 25, at: { col: 10, row: 3 }, card: GHOST_SHOT, enemies: { [RIGHT_BRUISER]: { col: 14, row: 3 } },
-    use: [SHOOT_AT_BRUISER],
-  }),
-  assassinScenario({
-    name: "ghost-shot-overdrive",
-    description: "An Assassin fires Ghost Shot in Overdrive at the last known position of a Ghost; the enemy Assassin is still Hidden there, so the shot hits.",
+    description: "An Assassin fires Ghost Shot at the last known position of a Ghost; the enemy Assassin is still Hidden there, so the shot hits.",
     seed: 26, at: { col: 10, row: 3 }, card: GHOST_SHOT, enemies: { [RIGHT_ASSASSIN]: { col: 13, row: 3 } },
     hidden: [RIGHT_ASSASSIN], ghosts: { [RIGHT_ASSASSIN]: { col: 13, row: 3 } },
-    use: [{ slot: 0, use: "overdrive", target: RIGHT_ASSASSIN }],
+    use: [{ slot: 0, use: "primary", target: RIGHT_ASSASSIN }],
   }),
   assassinScenario({
-    name: "ghost-shot-overdrive-miss",
-    description: "An Assassin fires Ghost Shot in Overdrive at the last known position of a Ghost that has left the tile: the shot hits nobody.",
+    name: "ghost-shot-miss",
+    description: "An Assassin fires Ghost Shot at the last known position of a Ghost that has left the tile: the shot hits nobody.",
     seed: 27, at: { col: 10, row: 3 }, card: GHOST_SHOT, ghosts: { [RIGHT_BRUISER]: { col: 13, row: 3 } },
-    use: [{ slot: 0, use: "overdrive", target: RIGHT_BRUISER }],
+    use: [{ slot: 0, use: "primary", target: RIGHT_BRUISER }],
   }),
   assassinScenario({
     name: "assassin-shield-breaker",
@@ -331,19 +317,6 @@ export const SCENARIOS: readonly Scenario[] = [
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
     placeHalfCover(match, { col: 14, row: 4 });
   }),
-  bruiserCard(
-    "breach-charge-overdrive",
-    "A Bruiser plays Breach Charge in Overdrive on a Half Cover tile with enemy Heroes around it: the Cover is destroyed and every Hero at and around the tile takes 2 damage.",
-    34,
-    BRUISER_BREACH_CHARGE,
-    2,
-    { use: "overdrive", tile: { col: 14, row: 4 } },
-    (hero, match) => {
-      arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
-      arrange(hero(`${SquadId.Right}-controller`), { col: 15, row: 3 }, ENEMIES_WITH_ATTACKS);
-      placeHalfCover(match, { col: 14, row: 4 });
-    },
-  ),
   bruiserCard("shockwave", "A Bruiser plays Shockwave: 2 damage and knockback to two enemy Heroes within Range 1.", 35, BRUISER_SHOCKWAVE, 2, { use: "primary" }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 13, row: 3 }, ENEMIES_WITH_ATTACKS);
     arrange(hero(`${SquadId.Right}-controller`), { col: 12, row: 4 }, ENEMIES_WITH_ATTACKS);
@@ -395,36 +368,6 @@ export const SCENARIOS: readonly Scenario[] = [
   bruiserCard("adrenal-surge", "A Bruiser plays Adrenal Surge: a permanent +1 Attack for itself.", 40, BRUISER_ADRENAL_SURGE, 2, { use: "primary" }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
-  bruiserCard(
-    "adrenal-surge-overdrive",
-    "A Bruiser plays Adrenal Surge in Overdrive: the Bruiser and the allied Controller each gain the permanent +1 Attack.",
-    41,
-    BRUISER_ADRENAL_SURGE,
-    2,
-    { use: "overdrive", target: ALLY_CONTROLLER },
-    (hero) => {
-      arrange(hero(ALLY_CONTROLLER), { col: 11, row: 3 }, { hand: [0, 1, 2, 3] });
-      arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
-    },
-  ),
-  {
-    name: "shockwave-overdrive",
-    description: "A Bruiser plays Shockwave in Overdrive with two enemy Heroes within Range 1.",
-    buildMatch: () =>
-      stage(11, (hero) => {
-        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_SHOCKWAVE, BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, BRUISER_BULWARK] });
-        arrange(hero("right-bruiser"), { col: 13, row: 3 }, { hand: [0, 1, 2, 3] });
-        arrange(hero("right-controller"), { col: 12, row: 4 }, { hand: [0, 1, 2, 3] });
-        arrange(hero("right-assassin"), { col: 14, row: 3 }, { hand: [0, 1, 2, 3] });
-      }),
-    heroId: PLAYER_BRUISER,
-    steps: [
-      { slot: 1, use: "pitch" },
-      { slot: 2, use: "pitch" },
-      { slot: 0, use: "overdrive" },
-    ],
-    resolutionShotsMs: [400, 1000, 1800, 2600],
-  },
   {
     name: "exhaustion",
     description: "A Bruiser with its last card in the Hand and an empty Deck and Discard becomes Exhausted at the end of the Resolution and leaves a wreck.",
@@ -683,7 +626,7 @@ export function preparedPlan(scenario: Scenario, match: MatchState, steps: reado
     else if (step.use === "move") {
       if (!step.tile) throw new Error(`${scenario.name}: a Move needs a tile`);
       queue.push({ kind: ActionKind.Move, card, destination: step.tile });
-    } else queue.push({ kind: ActionKind.Primary, card, target: step.target ?? hero.id, ...(step.tile ? { tile: step.tile } : {}), overdrive: step.use === "overdrive" });
+    } else queue.push({ kind: ActionKind.Primary, card, target: step.target ?? hero.id, ...(step.tile ? { tile: step.tile } : {}) });
   }
   const heroPlan: HeroPlan = { heroId: hero.id, queue, pitched };
   return { squad: hero.squad, heroes: [heroPlan] };

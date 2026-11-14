@@ -114,7 +114,7 @@ describe("AI lookahead", () => {
 
     const exiled = (plan: typeof greedy) =>
       resolveRound(match, [plan, enemy]).match.heroes.find((hero) => hero.id === "left-controller")!.exile.length;
-    expect(exiled(greedy)).toBe(2);
+    expect(exiled(greedy)).toBe(3);
     expect(exiled(looked)).toBe(0);
   });
 

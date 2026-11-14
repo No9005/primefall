@@ -110,16 +110,14 @@ describe("Assassin scenarios stage what their names say", () => {
     ["cover-breaker", 2],
     ["assassin-shield-breaker", 2],
     ["long-shot", 2],
-    ["long-shot-overdrive", 4],
     ["ghost-shot", 2],
-    ["ghost-shot-overdrive", 2],
     ["execution-round", 3],
   ])("%s hits for %i", async (name, damage) => {
     expect(await assassinEvents(name)).toEqual([hit(damage)]);
   });
 
-  it("ghost-shot-overdrive-miss finds nobody on the remembered tile", async () => {
-    expect(await assassinEvents("ghost-shot-overdrive-miss")).toEqual([expect.objectContaining({ kind: "attackFailed", reason: "emptyTile" })]);
+  it("ghost-shot-miss finds nobody on the remembered tile", async () => {
+    expect(await assassinEvents("ghost-shot-miss")).toEqual([expect.objectContaining({ kind: "attackFailed", reason: "emptyTile" })]);
   });
 
   it("vanish ends the Resolution Hidden", async () => {

@@ -8,7 +8,6 @@ import { resolveRound } from "./resolution";
 
 const CONTROLLER = "left-controller";
 const BRUISER = "left-bruiser";
-const ASSASSIN = "left-assassin";
 const ENEMY = "right-bruiser";
 
 const idx = (name: string, copy = 0) => cardIndex(HeroClass.Controller, name, copy);
@@ -66,24 +65,15 @@ describe("Tag Round", () => {
     expect(enemyView(next).visibility).not.toBe(Visibility.Visible);
   });
 
-  it("Overdrive also Slows the target and Exiles the card", () => {
-    const match = setup([TAG_ROUND, PULSE_BOLT, 1, 5]);
-    const { match: after, events } = resolveRound(match, [
-      planOf(CONTROLLER, [primary(TAG_ROUND, ENEMY, { overdrive: true })], [PULSE_BOLT]),
-    ]);
-    expect(events.map(({ kind }) => kind)).toEqual([EventKind.AttackHit, EventKind.SlowApplied, EventKind.MarkedApplied]);
-    expect(hero(after, ENEMY).slow).toBeGreaterThan(0);
-    expect(hero(after, CONTROLLER).exile).toContain(TAG_ROUND);
-  });
 });
 
 describe("Gravity Snare", () => {
-  it("Gravity Snare costs 2 Energy and Slows a visible enemy", () => {
+  it("Gravity Snare costs 1 Energy and Slows a visible enemy", () => {
     const match = setup([GRAVITY_SNARE, PULSE_BOLT, 1, 5]);
     const { match: after } = resolveRound(match, [planOf(CONTROLLER, [primary(GRAVITY_SNARE, ENEMY)], [PULSE_BOLT, 1])]);
     expect(hero(after, ENEMY).slow).toBeGreaterThan(0);
     const view = buildSquadView(match, SquadId.Left);
-    const issues = validatePlan(view, planOf(CONTROLLER, [primary(GRAVITY_SNARE, ENEMY)], [PULSE_BOLT]));
+    const issues = validatePlan(view, planOf(CONTROLLER, [primary(GRAVITY_SNARE, ENEMY)], []));
     expect(issues.map(({ kind }) => kind)).toEqual([PlanIssueKind.NotEnoughEnergy]);
   });
 });
@@ -113,19 +103,6 @@ describe("Scout Drone", () => {
     expect(after.ghosts[SquadId.Left][ENEMY]!.position).toEqual({ col: 13, row: 3 });
     // The enemy Squad learns nothing about the area.
     expect(buildSquadView(after, SquadId.Right).revealedAreas).toEqual([]);
-  });
-
-  it("does not show an enemy just outside the 3 by 3 area, but the 5 by 5 Overdrive does", () => {
-    const match = blockedSight([SCOUT_DRONE, PULSE_BOLT, 1, 5]);
-    const centre = { col: 11, row: 3 };
-    const standard = resolveRound(match, [planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile: centre })], [PULSE_BOLT])]);
-    expect(enemyView(standard.match).visibility).not.toBe(Visibility.Visible);
-    const overdrive = resolveRound(match, [
-      planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile: centre, overdrive: true })], [PULSE_BOLT]),
-    ]);
-    expect(enemyView(overdrive.match).visibility).toBe(Visibility.Visible);
-    expect(hero(overdrive.match, CONTROLLER).exile).toContain(SCOUT_DRONE);
-    expect(buildSquadView(overdrive.match, SquadId.Left).revealedAreas[0]!.size).toBe(5);
   });
 
   it("lasts two Resolutions, the one it is played in included", () => {
@@ -185,33 +162,6 @@ describe("Aegis Protocol", () => {
     expect(events).toEqual([{ kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Aegis Protocol", casterId: CONTROLLER }]);
   });
 
-  it("Overdrive gives two allied Heroes Shield 3 each and Exiles the card", () => {
-    const match = setup(hand);
-    const plan = planOf(CONTROLLER, [primary(AEGIS_PROTOCOL, BRUISER, { overdrive: true, secondTarget: ASSASSIN })], [PULSE_BOLT]);
-    expect(validatePlan(buildSquadView(match, SquadId.Left), plan)).toEqual([]);
-    const { match: after, events } = resolveRound(match, [plan]);
-    expect(events).toEqual([
-      { kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Aegis Protocol", overdrive: true, casterId: CONTROLLER },
-      { kind: EventKind.ShieldGained, tick: 1, heroId: ASSASSIN, amount: 3, card: "Aegis Protocol", overdrive: true, casterId: CONTROLLER },
-    ]);
-    expect(hero(after, CONTROLLER).exile).toContain(AEGIS_PROTOCOL);
-  });
-
-  it("Overdrive needs a second, different allied Hero", () => {
-    const match = setup(hand);
-    const view = buildSquadView(match, SquadId.Left);
-    for (const secondTarget of [undefined, BRUISER, CONTROLLER, ENEMY]) {
-      const plan = planOf(
-        CONTROLLER,
-        [primary(AEGIS_PROTOCOL, BRUISER, { overdrive: true, ...(secondTarget ? { secondTarget } : {}) })],
-        [PULSE_BOLT],
-      );
-      expect(validatePlan(view, plan).map(({ kind }) => kind)).toEqual([PlanIssueKind.BadTarget]);
-      // The simulation is safe on its own: nobody gains Shield.
-      const { events } = resolveRound(match, [plan]);
-      expect(events).toEqual([{ kind: EventKind.ActionFailed, tick: 1, heroId: CONTROLLER }]);
-    }
-  });
 });
 
 describe("Placed Cover", () => {
