@@ -105,6 +105,33 @@ Overdrive modes: Tag Round, Scout Drone, Arc Field. Out: Aegis Protocol and Rein
 
 Overdrive modes: Long Shot, Ghost Shot. Out: Precision Shot (Recoil Shot and Long Shot cover its range), Cover Breaker (Execution Round already ignores Half Cover), Reposition (Move 3 is the default now), Mark Target (already out).
 
+## The system: Pitch, Overdrive and synergy (ideas, not decided)
+
+The owner's playtests: Pitch and Overdrive do not feel good, there is never a reason to use an Overdrive, and the cards have no synergy with each other (inside a Hero's deck and between the Heroes). The ideas below come from the rules as written (glossary, ADR 0001, ADR 0003); nothing here is measured. A first measurement to make: how often the AI uses an Overdrive in the balance harness.
+
+**Why an Overdrive is never worth it (from the rules).** An Overdrive exiles the card, and the Deck is the life (ADR 0001): in a Deck of 9 to 12 cards that is about one tenth of the Hero's life for good, on top of the Energy the card costs. The reward is a stronger effect once (plus 1 or 2 damage, a bigger area). Only a few cards have one. It replaces the standard text, so it is also one more text to read, and a card already has four uses (effect, Pitch, Move, Block).
+
+**Why Pitch feels like a tax.** Energy only comes from pitching a card, so a 2 Energy card costs two more cards of the queue. The choice is rarely interesting: the worst card is pitched.
+
+**Idea 1: remove Overdrive.** Remove the exile mode (ADR 0003 would be superseded; exile stays only as Deck Damage). Its place is taken by the **Link**.
+
+**Idea 2: Link.** A card may carry one short condition and a small bonus: "**Link, Marked:** +1 damage." The conditions are a few shared states that the Heroes create and that last over Ticks, so it does not matter who plays first in a Round:
+
+| State | Created by | Who profits (examples) |
+|---|---|---|
+| **Marked** | Tilly (Tag Round) | Kit: Execution Round +1 against a Marked target; Max: Pull on a Marked enemy also Slows it |
+| **Slow** | Tilly (Gravity Snare, Tag Round Overdrive), Max (Concussion Round, if it returns) | Max: Charge and Pull cannot be avoided; Slam Shot +1 against a Slowed enemy |
+| **Revealed** (inside a drone area) | Tilly (Scout Drone) | Kit and Max may name a Revealed enemy as target; Kit: Long Shot +1 |
+| **Hidden** | Kit (Vanish, Silent Entry) | Kit: an Attack from Hidden +1 |
+| **On a Field** | Tilly (Arc Field) | Max: Pull into the Field; Kit: Recoil Shot into the Field |
+| **Cover** (Placed) | Tilly (Barricade, Scrap Wall) | Kit: Vanish needs Cover; Max: Brace in Cover gets Shield 2 |
+
+**Synergies that already exist and need no new rule:** Recoil Shot pushes an enemy to the maximum Range, so the next Long Shot gets Kit's passive +1. Pull brings an enemy to Range 1, so Max's passive +1 applies. Tilly's Cover lets Kit use Vanish. Max's Wrecking Blow takes away Cover that protects an enemy from Kit.
+
+**Idea 3: Pitch.** Option 1: leave Pitch as it is; when the cards have a Link, each card is worth playing, so pitching costs more and the choice is real. Option 2: a fixed Energy per Round (for example 3) and Pitch gives +1 on top; the tax goes away and the plan is easier to read, but it changes a core rule (spec stories 28 to 32). Recommendation: Option 1 first, measure, Option 2 as the fallback.
+
+**Rules and risks.** (1) The player controls one Hero in the classic mode; the two others are planned by the AI. Synergy between Heroes must not depend on the timing of the AI, so only **lasting states** (Marked, Slow, Revealed, Field, Cover) are used as conditions, not "played earlier this Round". The AI must still learn to use them. (2) At most one Link per card, a bonus of at most +1, so that no card swings. (3) Six conditions at most, so that the player can learn them (they belong in the glossary).
+
 ## The three missions and the Heroes
 
 | Mission | Max | Tilly | Kit | New rule |
@@ -136,6 +163,7 @@ All ideas of the chat and of the tester, with their state:
 
 ## Open questions
 
+0. The system: remove Overdrive, add the Link, keep Pitch (see _The system_).
 1. Tilly's passive: (a), (b), (c) or another.
 2. Slow with Move 3: Move 1 or Move 2.
 3. Arc Field: damage each Tick or once per Resolution; one tile or a pattern.
