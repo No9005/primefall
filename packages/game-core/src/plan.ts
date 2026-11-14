@@ -8,14 +8,17 @@ import { CoverKind, coverAt, type Grid, type GridPosition, isStepAllowed, REACTO
 /** A Hero's Queue holds at most 4 actions (the maximum Hand size, ADR 0020). */
 export const MAX_QUEUE_LENGTH = 4;
 
-/** Tiles a Move 2 covers at most. */
-export const MOVE_DISTANCE = 2;
+/** Tiles a Move 3 covers at most. */
+export const MOVE_DISTANCE = 3;
+
+/** Tiles a Slowed Hero's Move covers: half of the distance, rounded down (a Move 3 becomes a Move 1). */
+export const slowedDistance = (distance: number): number => Math.floor(distance / 2);
 
 /** Energy one Pitch produces (ADR 0007). */
 export const PITCH_ENERGY = 1;
 
 export enum ActionKind {
-  /** Any card used as Move 2: up to two steps towards the destination. */
+  /** Any card used as Move 3: up to three steps towards the destination. */
   Move = "move",
   /** A card's primary effect; it costs the card's Energy. Simple damage Attacks and Shield Utility cards resolve so far. */
   Primary = "primary",
@@ -64,7 +67,7 @@ export function energyPool(pitched: readonly CardIndex[] = []): number {
   return pitched.length * PITCH_ENERGY;
 }
 
-/** Energy the Queue spends: only primary effects cost Energy; Move 2 is free. */
+/** Energy the Queue spends: only primary effects cost Energy; Move 3 is free. */
 export function queueEnergyCost(heroClass: HeroClass, queue: readonly QueuedAction[]): number {
   return queue.reduce(
     (sum, action) => sum + (action.kind === ActionKind.Primary ? HERO_DECKS[heroClass][action.card]!.energyCost : 0),
@@ -105,7 +108,7 @@ export function chebyshevDistance(a: GridPosition, b: GridPosition): number {
   return Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row));
 }
 
-/** Tiles a Move 2 from `from` may be planned to: 1 or 2 tiles away, inside the Grid, not a Wall. */
+/** Tiles a Move 3 from `from` may be planned to: 1 to 3 tiles away, inside the Grid, not a Wall. */
 export function moveDestinations(from: GridPosition, grid: Grid = REACTOR_DECK, distance = MOVE_DISTANCE): GridPosition[] {
   const found: GridPosition[] = [];
   for (let row = from.row - distance; row <= from.row + distance; row++) {
@@ -119,12 +122,12 @@ export function moveDestinations(from: GridPosition, grid: Grid = REACTOR_DECK, 
   return found;
 }
 
-/** Where a Move 2 towards `destination` really ends: it stops before a Wall or Wall corner (ADR 0020). */
+/** Where a Move 3 towards `destination` really ends: it stops before a Wall or Wall corner (ADR 0020). */
 export function moveEnd(from: GridPosition, destination: GridPosition, grid: Grid = REACTOR_DECK): GridPosition {
   return movePath(from, destination, grid).at(-1) ?? from;
 }
 
-/** The tiles a Move 2 towards `destination` stands on after step 1 and step 2, without other Heroes in the way. */
+/** The tiles a Move 3 towards `destination` stands on after each step, without other Heroes in the way. */
 export function movePath(from: GridPosition, destination: GridPosition, grid: Grid = REACTOR_DECK): GridPosition[] {
   const path: GridPosition[] = [];
   let position = from;
@@ -137,7 +140,7 @@ export function movePath(from: GridPosition, destination: GridPosition, grid: Gr
   return path;
 }
 
-/** The Move 2 destinations the Hero reaches completely: `moveDestinations` minus tiles behind a Wall or Wall corner. */
+/** The Move 3 destinations the Hero reaches completely: `moveDestinations` minus tiles behind a Wall or Wall corner. */
 export const reachableMoveDestinations = (from: GridPosition): GridPosition[] =>
   moveDestinations(from).filter((destination) => {
     const end = moveEnd(from, destination);
@@ -249,7 +252,7 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
         (tile) => tile.col === action.destination.col && tile.row === action.destination.row,
       );
       if (!reachable) {
-        report({ kind: PlanIssueKind.BadDestination, heroId, message: "Move 2 needs a free destination 1 or 2 tiles away." });
+        report({ kind: PlanIssueKind.BadDestination, heroId, message: "Move 3 needs a free destination 1 to 3 tiles away." });
       }
       position = action.destination;
       moveDistance = MOVE_DISTANCE;
@@ -386,9 +389,6 @@ export interface MoveCollision {
   blockedBy: string;
 }
 
-/** A Slowed Hero's first Move 2 becomes a Move 1 (mirrors the Resolution). */
-const SLOWED_MOVE_DISTANCE = 1;
-
 /**
  * The planned Moves that stop short of their destination because another Hero of the Squad is on the tile they
  * would end on, judged by `resolveWalks` like the Resolution does. Enemies are not considered, and a Move stopped
@@ -415,7 +415,7 @@ export function findMoveCollisions(heroes: readonly HeroView[], plans: readonly 
       if (action.kind !== ActionKind.Move) return [];
       let distance = extended.get(heroId) ?? MOVE_DISTANCE;
       extended.delete(heroId);
-      if (slowed.delete(heroId)) distance = SLOWED_MOVE_DISTANCE;
+      if (slowed.delete(heroId)) distance = slowedDistance(distance);
       return [{ heroId, destination: action.destination, distance }];
     });
     // A Slowed Hero's walk is shorter, so the Resolution's Slow rule is already in `distance`.

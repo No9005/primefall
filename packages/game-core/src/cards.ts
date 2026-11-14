@@ -283,7 +283,7 @@ const vanish: CardDefinition = {
 };
 const reposition: CardDefinition = {
   name: "Reposition", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.SelfHero, effects: [{ kind: EffectKind.ExtendMove, amount: 3 }],
+  target: CardTarget.SelfHero, effects: [{ kind: EffectKind.ExtendMove, amount: 5 }],
 };
 
 /**

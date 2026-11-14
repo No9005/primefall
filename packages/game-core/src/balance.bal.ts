@@ -703,7 +703,7 @@ function duelMatch(seed: number, bruiserSquad: SquadId, distance: number): Match
   return startRound(created);
 }
 
-/** The tile within one Move 2 that is nearest to (`closer`) or farthest from the enemy, staying on the duel row where it can. */
+/** The tile within one Move 3 that is nearest to (`closer`) or farthest from the enemy, staying on the duel row where it can. */
 function duelStep(hero: HeroState, enemy: HeroState, closer: boolean): GridPosition {
   const sign = closer ? -1 : 1;
   const score = (tile: GridPosition) => sign * chebyshevDistance(tile, enemy.position) * 10 - Math.abs(tile.row - DUEL_ROW);

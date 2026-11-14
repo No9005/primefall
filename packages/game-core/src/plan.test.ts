@@ -42,7 +42,7 @@ describe("validatePlan", () => {
   });
 
   it("rejects destinations that are too far, unchanged, outside the Grid or a Wall", () => {
-    expect(kinds(move(bruiser.hand[0]!, near(3)))).toEqual([PlanIssueKind.BadDestination]);
+    expect(kinds(move(bruiser.hand[0]!, near(4)))).toEqual([PlanIssueKind.BadDestination]);
     expect(kinds(move(bruiser.hand[0]!, near(0)))).toEqual([PlanIssueKind.BadDestination]);
     expect(kinds(move(bruiser.hand[0]!, { col: -1, row: 4 }))).toEqual([PlanIssueKind.BadDestination]);
     // (0, 7) is a Wall, one tile away from the Bruiser's Drop Point tile.

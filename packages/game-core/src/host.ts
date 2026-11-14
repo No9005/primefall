@@ -142,7 +142,7 @@ export interface HeroView {
   hand: readonly number[];
   /** An Exhausted Hero is out of the match: it plans and acts no more, occupies no tile and leaves Half Cover. */
   exhausted: boolean;
-  /** Slowed: the next Move 2 becomes a Move 1. */
+  /** Slowed: the next Move covers half the distance, rounded down. */
   slowed: boolean;
   /** Hidden: enemies do not see this Hero, and an Assassin sees 2 tiles further. */
   hidden: boolean;
@@ -284,7 +284,7 @@ export enum EventKind {
   ActionFailed = "actionFailed",
   /** `heroId` made `targetId` Slowed (Attack or Utility card). */
   SlowApplied = "slowApplied",
-  /** A Slowed Hero's Move 2 was cut to a Move 1; the Slow is used up. */
+  /** A Slowed Hero's Move was cut to half the distance (rounded down); the Slow is used up. */
   SlowUsed = "slowUsed",
   /** `heroId` became Hidden. */
   HiddenGained = "hiddenGained",

@@ -85,7 +85,7 @@ export function buildCommentary(events: readonly MatchEvent[], { nameOf, sideOf 
         add(heroId, "Action", "The card cannot be used: nothing happens");
         break;
       case EventKind.SlowApplied:
-        add(heroId, "Slow", "Its next Move 2 becomes a Move 1", targetId);
+        add(heroId, "Slow", "Its next Move covers half the distance", targetId);
         break;
       case EventKind.MarkedApplied:
         add(heroId, "Mark", "Marked: Hidden and Cover do not protect it", targetId);

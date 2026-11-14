@@ -118,7 +118,7 @@ describe("Queue window", () => {
     const nameOf = (id: string) => (id === "right-bruiser" ? "Enemy Bruiser" : id);
     const label = (action: QueuedAction) => queueRowLabel(HeroClass.Bruiser, "left-bruiser", action, nameOf);
     expect(label(queue[0]!)).toEqual({ name: "Wait", target: "" });
-    expect(label(queue[1]!)).toEqual({ name: "Move 2", target: "to 3 · 3" });
+    expect(label(queue[1]!)).toEqual({ name: "Move 3", target: "to 3 · 3" });
     expect(label({ kind: ActionKind.Wait })).toEqual({ name: "Wait", target: "" });
     // Bruiser card 0 is Handle With Care.
     expect(label({ kind: ActionKind.Primary, card: 0, target: "right-bruiser" })).toEqual({ name: "Handle With Care", target: "Enemy Bruiser" });

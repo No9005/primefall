@@ -98,7 +98,7 @@ describe("AI lookahead", () => {
     match.round = 3;
     const place = (squad: SquadId, col: number) =>
       match.heroes.filter((hero) => hero.squad === squad).forEach((hero, i) => (hero.position = { col, row: 16 + i }));
-    place(SquadId.Left, 21);
+    place(SquadId.Left, 19);
     place(SquadId.Right, 25);
     const leftView = buildSquadView(match, SquadId.Left);
     const greedy = planSquadGreedy(leftView, undefined, aiStyleFor(seed, SquadId.Left));

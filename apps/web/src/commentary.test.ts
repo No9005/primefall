@@ -35,7 +35,7 @@ describe("buildCommentary", () => {
     expect(entries.map((entry) => entry.detail)).toEqual([
       "Shield 2 until it is hit",
       "Handle With Care misses: target is out of Range",
-      "Its next Move 2 becomes a Move 1",
+      "Its next Move covers half the distance",
       "Out of cards: Exhausted",
     ]);
     expect(entries[1]).toMatchObject({ side: "ally", title: "Controller  ·  Attack on Enemy Bruiser" });

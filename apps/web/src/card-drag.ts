@@ -44,7 +44,7 @@ export interface DropPlaces {
   heroIds: readonly string[];
   /** Tiles that are the tile target of the Primary effect (Breach Charge, Scout Drone, Deploy Cover). */
   primaryTiles: readonly GridPosition[];
-  /** Tiles the Hero can Move 2 to. */
+  /** Tiles the Hero can Move 3 to. */
   moveTiles: readonly GridPosition[];
   /** A card that needs no target is played on the board within `radius` tiles of `center`. */
   here: { center: GridPosition; radius: number } | undefined;

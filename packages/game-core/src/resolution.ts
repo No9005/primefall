@@ -37,6 +37,7 @@ import {
   chebyshevDistance,
   MAX_QUEUE_LENGTH,
   MOVE_DISTANCE,
+  slowedDistance,
   type QueuedAction,
   resolveWalks,
   type SquadPlan,
@@ -79,8 +80,6 @@ type WithheldField = "from" | "to" | "casterId";
 const SQUADS = [SquadId.Left, SquadId.Right];
 const PRIME_ZONE_TILES = findTiles(REACTOR_DECK, TileKind.PrimeZone);
 
-/** Tiles a Slowed Hero's Move covers at most (Move 1). */
-const SLOWED_MOVE_DISTANCE = 1;
 
 /** Slow applied in a Resolution lasts until the end of the next one: that is `duration` Resolutions after this. */
 function applySlow(tick: number, source: HeroState, target: HeroState, effect: CardEffect, events: MatchEvent[]): void {
@@ -268,7 +267,7 @@ const samePosition = (a: GridPosition, b: GridPosition) => a.col === b.col && a.
  * it stops is decided by `resolveWalks` (ADR 0013). Positions change only after the whole Tick is decided.
  */
 function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: MatchEvent[]): void {
-  // A Slowed Hero's Move 2 becomes a Move 1, and that uses the Slow up.
+  // A Slowed Hero's Move covers half the distance, rounded down, and that uses the Slow up.
   const slowedIds = new Set<string>();
   for (const { heroId } of movers) {
     const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
@@ -279,7 +278,7 @@ function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: 
   }
   const outcomes = resolveWalks(
     new Map(match.heroes.filter((hero) => !hero.exhausted).map((hero) => [hero.id, hero.position])),
-    movers.map((mover) => ({ ...mover, distance: slowedIds.has(mover.heroId) ? SLOWED_MOVE_DISTANCE : mover.distance })),
+    movers.map((mover) => ({ ...mover, distance: slowedIds.has(mover.heroId) ? slowedDistance(mover.distance) : mover.distance })),
   );
   const furthest = Math.max(0, ...[...outcomes.values()].map(({ path, blocked }) => path.length - 1 + (blocked ? 1 : 0)));
   for (let step = 1; step <= furthest; step++) {
