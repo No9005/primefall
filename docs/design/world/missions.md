@@ -20,6 +20,23 @@ Every mission has at least two goals that the three Heroes cannot all pursue at 
 
 Zones are held for Victory Points per Resolution (ADR 0024). It is the classic mode: the Prime Zone (2 points per Resolution, active from Round 4) and an Outpost north and south of it (1 point each, active from Round 1). The Prime Zone together with the Outposts is already a split of the Squad. Attack and Defend (ADR 0022) is the same map with roles: the Attacker wins by controlling the Prime Zone three Resolutions in a row or by Exhausting all Defending Heroes.
 
+### As a contract in the world (proposal)
+
+- **The Heroes are mercenaries.** They are hired before the match to secure the zone, for the extraction team or for the research team.
+- **The two Squads have different clients** (megacorps or military). Both clients want the site, so both send a team.
+- **Credits instead of Victory Points.** A Squad earns Credits for every Resolution in which it holds a zone; the Squad with the most Credits at the end wins. This is a change of the name only, the rules stay: the game currency is the score, there is no economy (nothing is bought or spent). The glossary term "Victory Points" and ADR 0024 would be renamed in a ticket; code and tests keep their names until then. "Credits" is the product owner's choice; it is not tied to a real currency.
+- **Why the Prime Zone is active only from Round 4:** on the stricken hauler the reactor sits behind blast shutters that power down after four Rounds. Until then only the Outposts pay. Each place needs its own reason for the delay, or none (see the open questions).
+
+### Names of the zones (proposal)
+
+| In the game | In the world |
+|---|---|
+| Prime Zone | **the Asset**, the contract word for the find (the reactor core on the hauler, a ring gate in the snow); the zone of the highest pay |
+| Outpost (north, south) | **Staging Post**: where the client's team sets up equipment and where the extraction is staged; a low but early pay |
+| Spawn | **Drop point**: where a Squad is landed |
+
+Why there are three zones: the Asset cannot be secured alone, the client's team needs the two Staging Posts (the two ways into the site, north and south) first. They pay from the start, the Asset pays more once it is reachable, and together they force the Squad to split (see the principle above). Open: whether this reason is enough or each place gets its own.
+
 ## 2. Carry and extract (idea)
 
 One Hero carries an object to an escape point (the product owner's word: "escape ledge"; the name is open) and evacuates with it. **The escape point opens only while a Squad holds a zone.**
