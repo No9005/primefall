@@ -56,8 +56,8 @@ describe("visual style setting", () => {
     expect(currentVisualStyle("", original)).toBe(VisualStyle.Original);
   });
 
-  it("draws the Original look in both settings until the Pixel-art renderers exist", () => {
-    expect(renderedStyle(VisualStyle.Pixel)).toBe(VisualStyle.Original);
+  it("draws the style that is set", () => {
+    expect(renderedStyle(VisualStyle.Pixel)).toBe(VisualStyle.Pixel);
     expect(renderedStyle(VisualStyle.Original)).toBe(VisualStyle.Original);
   });
 });

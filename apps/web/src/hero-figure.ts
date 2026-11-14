@@ -212,13 +212,37 @@ function flatColor(pose: HeroPose): number | undefined {
 }
 
 /**
+ * What lies under a Hero's feet, in drawing order: the contact shadow, the Squad ring (label "teamRing") and the red ring
+ * flash of a hit (label "ring", hidden at rest). Shared by the shape rig and the pixel figure. In design px, so they go in
+ * a container scaled by `HERO_STYLE.figureScale`; `scale` is the camera scale, so the strokes keep their width on screen.
+ */
+export function groundMarks(enemy: boolean, scale: number): [shadow: Graphics, teamRing: Graphics, ringFlash: Graphics] {
+  const { ring, shadow } = HERO_STYLE;
+  const inner = scale * HERO_STYLE.figureScale;
+  const ringFlash = new Graphics()
+    .ellipse(0, 0, ring.radiusX, ring.radiusY)
+    .fill({ color: ring.enemy, alpha: 0.33 })
+    .stroke({ width: worldLineWidth(ring.width, inner), color: ring.enemy });
+  ringFlash.label = "ring";
+  ringFlash.alpha = 0;
+  const ringColor = enemy ? ring.enemy : ring.own;
+  const teamRing = new Graphics()
+    .ellipse(0, 0, ring.radiusX, ring.radiusY)
+    .stroke({ width: worldLineWidth(ring.width + ring.glowExtra, inner), color: ringColor, alpha: ring.glowAlpha })
+    .ellipse(0, 0, ring.radiusX, ring.radiusY)
+    .stroke({ width: worldLineWidth(ring.width, inner), color: ringColor });
+  teamRing.label = "teamRing";
+  return [new Graphics().ellipse(0, 0, shadow.radiusX, shadow.radiusY).fill(shadow), teamRing, ringFlash];
+}
+
+/**
  * A Hero as a vector figure, the Hero rig of docs/design/animation, with its feet at (0, 0): contact shadow, Squad ring
  * and the rig, which faces right and is mirrored for the enemy. Every part is its own Graphics or container, so later
  * clips can move it. A hit Hero is flat white, an Exhausted one grey and slumped. `scale` is the camera scale, so the
  * outline keeps its width on screen. The Controller's beacon carries the label `BEACON_LABEL`.
  */
 export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose, scale: number, facing: Facing = baseFacing(enemy)): Container {
-  const { outline, ring, shadow, exhaustedSquash, line, rim } = HERO_STYLE;
+  const { outline, exhaustedSquash, line, rim } = HERO_STYLE;
   const team = heroLook(heroClass, enemy);
   const flat = flatColor(pose);
   const look: HeroLook = flat === undefined ? team : { ...team, body: flat, plate: flat, legs: flat, arms: flat, accent: flat, head: flat };
@@ -233,23 +257,9 @@ export function heroFigure(heroClass: HeroClass, enemy: boolean, pose: HeroPose,
   rig.label = "rig";
   rig.addChild(legs(heroClass, look, strokes), hips);
   if (facing === "left") rig.scale.x = -1;
-  // The Squad ring flashes red when the Hero is hit.
-  const ringFlash = new Graphics()
-    .ellipse(0, 0, ring.radiusX, ring.radiusY)
-    .fill({ color: ring.enemy, alpha: 0.33 })
-    .stroke({ width: worldLineWidth(ring.width, scale * HERO_STYLE.figureScale), color: ring.enemy });
-  ringFlash.label = "ring";
-  ringFlash.alpha = 0;
-  const ringColor = enemy ? ring.enemy : ring.own;
-  const teamRing = new Graphics()
-    .ellipse(0, 0, ring.radiusX, ring.radiusY)
-    .stroke({ width: worldLineWidth(ring.width + ring.glowExtra, inner), color: ringColor, alpha: ring.glowAlpha })
-    .ellipse(0, 0, ring.radiusX, ring.radiusY)
-    .stroke({ width: worldLineWidth(ring.width, inner), color: ringColor });
-  teamRing.label = "teamRing";
   const figure = new Container();
   figure.scale.set(HERO_STYLE.figureScale);
-  figure.addChild(new Graphics().ellipse(0, 0, shadow.radiusX, shadow.radiusY).fill(shadow), teamRing, ringFlash, rig);
+  figure.addChild(...groundMarks(enemy, scale), rig);
   if (heroClass === HeroClass.Assassin) figure.addChild(flungRifle(facing, strokes.limb));
   if (heroClass === HeroClass.Controller) figure.addChild(scoutDrone(facing, strokes.limb));
   figure.addChild(pauseMark());

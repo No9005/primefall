@@ -66,6 +66,11 @@ export class ClipPlayer {
     return (now - startMs) * pace;
   }
 
+  /** How far into the playing clip it is at `now`, in clip time; call `sample` first, which starts a clip that was delayed. */
+  clipTimeMs(now: number): number {
+    return this.timeOf(this.clip, this.startMs, now);
+  }
+
   /** The pose at `now`; the returned object is reused by the next call. */
   sample(now: number): Pose {
     if (this.pending !== undefined && now >= this.pending.at) {

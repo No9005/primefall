@@ -6,6 +6,8 @@ import { heroFigure } from "./hero-figure";
 import { cardListTitle, cardRowName, cardRows, HERO_NAMES, HERO_TASKS, MODE_LABELS, type SelectMode, SELECTABLE_HEROES } from "./hero-select";
 import { createSelectPose, feetX, sampleSelectPose } from "./hero-select-poses";
 import { HERO_STYLE } from "./hero-style";
+import { loadPixelHeroes, PixelHero, pixelHeroesReady } from "./pixel-heroes";
+import { renderedStyle, VisualStyle } from "./visual-style";
 import "./hero-select.css";
 
 // The Hero Select screen (docs/design/hero-select). The screen is laid out at 844 x 390 and scaled to the window; the
@@ -34,6 +36,8 @@ interface Stand {
   tracer: Graphics;
   glint: Graphics;
   label: Text;
+  /** The sprite-sheet figure of the Pixel art style, which poses itself instead of `parts`. */
+  pixel?: PixelHero;
   /** When it entered its current state, in page milliseconds. */
   since: number;
   state: "idle" | "ready";
@@ -48,6 +52,13 @@ function buildStand(heroClass: HeroClass, index: number): Stand {
   const holder = new Container();
   holder.position.set(AREA.lefts[index]! + feetX(heroClass, false), AREA.top + AREA.feetY);
   holder.scale.set(MAGNIFY);
+  if (pixelHeroesReady() && renderedStyle() === VisualStyle.Pixel) {
+    // The sheets carry the muzzle flash, the tracer and the Hidden label themselves, so all three layers are drawn.
+    // The holder magnifies by MAGNIFY, so the figure itself has scale 1 and the sprites are 2 screen px per pixel (about 90 px tall, as the shape rig).
+    const pixel = new PixelHero(heroClass, false, MAGNIFY / HERO_STYLE.figureScale, "right", { layers: ["fx_back", "figure", "fx_front"], figureScale: 1, pixelScale: 2 / MAGNIFY });
+    holder.addChild(tile(), pixel.container);
+    return { heroClass, holder, parts: [], pixel, muzzle: new Graphics(), tracer: new Graphics(), glint: new Graphics(), label: new Text(), since: performance.now(), state: "idle" };
+  }
   // The figure is drawn at the scale of the board; here it is MAGNIFY times a design px, so strokes keep their width on screen.
   const figure = heroFigure(heroClass, false, "idle", MAGNIFY / HERO_STYLE.figureScale);
   figure.scale.set(1);
@@ -77,6 +88,12 @@ function poseStands(stands: readonly Stand[], choice: Choice, now: number, reduc
   for (const stand of stands) {
     const state = stand.heroClass === choice.hero ? "ready" : "idle";
     stand.state = state;
+    if (stand.pixel) {
+      stand.pixel.showSelect(state === "ready", now - stand.since, reducedMotion);
+      const index = SELECTABLE_HEROES.indexOf(stand.heroClass);
+      stand.holder.position.x = AREA.lefts[index]! + feetX(stand.heroClass, state === "ready");
+      continue;
+    }
     const { pose, extras } = sampleSelectPose(stand.heroClass, state, now - stand.since, reducedMotion, scratch, now);
     applyPose(stand.parts, pose);
     stand.muzzle.alpha = extras.muzzle;
@@ -119,6 +136,11 @@ function HeroCanvas({ choice }: { choice: Choice }) {
     const app = new Application();
     void (async () => {
       await app.init({ width: SCREEN.width, height: SCREEN.height, backgroundAlpha: 0, preference: "webgl", antialias: true, autoDensity: true, resolution: window.devicePixelRatio });
+      if (cancelled) {
+        app.destroy(true, { children: true });
+        return;
+      }
+      if (renderedStyle() === VisualStyle.Pixel) await loadPixelHeroes().catch(() => undefined);
       if (cancelled) {
         app.destroy(true, { children: true });
         return;
