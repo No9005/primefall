@@ -5,7 +5,8 @@ import { baseFacing } from "./facing";
 import { attackBadge, EffectsLayer, type EffectsWorld, hiddenSeenMark, markedMark, slowMark, STATUS_AT_REST_MS } from "./effects-layer";
 import { CLIP_SPEED } from "./clip-player";
 import type { SceneName } from "./glossary";
-import { heroFigure, type HeroPose, marksFigure, shieldBubble } from "./hero-figure";
+import { type HeroPose, marksFigure, shieldBubble } from "./hero-figure";
+import { loadPixelHeroes, styledHeroFigure } from "./pixel-heroes";
 import { heroMarks, type HeroMarks, IconKind } from "./shield-marks";
 import { coverLook, depthOf, footOffset, gridToWorld, VIEW_ANGLE } from "./terrain";
 import { areaRing, GHOST_ALPHA, zoneLook, type ZoneState } from "./vision-effects";
@@ -66,7 +67,7 @@ class Scene {
     const token = new Container();
     token.position.set(x, y + footOffset(ANGLE));
     token.zIndex = depthOf(tile, ANGLE) + 0.5;
-    const figure = heroFigure(heroClass, enemy, pose, this.camera, baseFacing(enemy));
+    const { figure } = styledHeroFigure(heroClass, enemy, pose, this.camera, baseFacing(enemy));
     figure.alpha = alpha;
     token.addChild(figure);
     this.objects.addChild(token);
@@ -306,6 +307,7 @@ export function drawScene(name: SceneName): Container {
 export async function renderScenes(names: readonly SceneName[]): Promise<Map<SceneName, string>> {
   // The tags are text: the fonts must be loaded before the first picture is drawn.
   await Promise.all(["700 12px 'IBM Plex Mono'", "700 12px Rajdhani"].map((font) => document.fonts.load(font))).catch(() => undefined);
+  await loadPixelHeroes();
   const app = new Application();
   await app.init({ width: PICTURE.width, height: PICTURE.height, resolution: PICTURE.resolution, background: BACKGROUND, antialias: true, preference: "webgl" });
   const pictures = new Map<SceneName, string>();

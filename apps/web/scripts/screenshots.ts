@@ -11,7 +11,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { frameMoveCamera, frameSquadCamera, gridToWorld } from "../src/board-layout";
 import { freeBoardArea } from "../src/hud-layout";
-import { DEFAULT_VISUAL_STYLE, parseVisualStyle, VISUAL_STYLE_STORAGE_KEY, VisualStyle } from "../src/visual-style";
 import { type PlanStep, SCENARIO_NAMES, SCENARIO_SCREENSHOT_NAMES, SCENARIOS, type Scenario, scenarioRounds, scenarioScreenshotNames, type StepUse } from "./scenarios";
 
 /** The standard set, in the order the path plays them. Names are stable on purpose; do not rename without need. */
@@ -88,10 +87,6 @@ export const SCREEN_SCENARIOS: Record<string, { description: string; shots: read
     description: "The Hero Select: nothing selected, each Hero ready (Bruiser mid-shots, Controller with the drone out, Assassin Hidden), the card list",
     shots: ["01-idle.png", "02-bruiser-ready.png", "03-controller-ready.png", "04-assassin-ready.png", "05-cards.png"],
   },
-  options: {
-    description: "The start screen with the Options button, the Options screen (Pixel art chosen, then Original)",
-    shots: ["01-start.png", "02-pixel.png", "03-original.png"],
-  },
   glossary: {
     description: "The Glossary from the start screen: the Heroes group (two frames), the Numbers, Board and HUD groups, scrolled",
     shots: ["01-heroes.png", "05-heroes-more.png", "06-heroes-end.png", "07-heroes-last.png", "02-numbers.png", "08-numbers-more.png", "03-board.png", "09-board-more.png", "10-board-end.png", "04-hud.png", "11-hud-more.png"],
@@ -114,28 +109,6 @@ export const SCREEN_SCENARIOS: Record<string, { description: string; shots: read
     ],
   },
 };
-
-/** The start screen and the Options screen with each choice. */
-async function playOptions(browser: Browser): Promise<void> {
-  const directory = path.join(OUTPUT_DIR, "options");
-  rmSync(directory, { recursive: true, force: true });
-  mkdirSync(directory, { recursive: true });
-  const page = await browser.newPage({ viewport: VIEWPORT });
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(URL);
-  await page.getByTestId("start-screen").waitFor();
-  await page.screenshot({ path: path.join(directory, "01-start.png") });
-  await page.getByTestId("options-button").click();
-  await page.getByTestId("options").waitFor();
-  await page.screenshot({ path: path.join(directory, "02-pixel.png") });
-  await page.getByTestId("style-original").click();
-  await page.screenshot({ path: path.join(directory, "03-original.png") });
-  await page.getByTestId("options-back").click();
-  await page.getByTestId("start-screen").waitFor();
-  if (errors.length > 0) throw new Error(`options: ${errors.join("; ")}`);
-  checkWritten(directory, SCREEN_SCENARIOS.options!.shots);
-}
 
 const MORE_FRAMES: Record<string, readonly string[]> = {
   Heroes: ["05-heroes-more.png", "06-heroes-end.png", "07-heroes-last.png"],
@@ -375,7 +348,7 @@ async function useCardAs(page: Page, slot: number, use: StepUse): Promise<void> 
  */
 async function queueMoveTo(page: Page, slot: number, from: GridPosition, to: GridPosition): Promise<void> {
   const box = (await page.locator(".board canvas").boundingBox())!;
-  const view = { width: box.width, height: box.height, pixel: activeStyle === VisualStyle.Pixel };
+  const view = { width: box.width, height: box.height, pixel: true };
   await useCardAs(page, slot, "move");
   await page.getByTestId("floating-card").waitFor();
   await page.waitForTimeout(800); // the camera eases onto the Hero
@@ -409,7 +382,7 @@ async function aimCardAt(page: Page, match: MatchState, heroId: string, step: { 
         !occupied.some((position) => position.col === tile.col && position.row === tile.row)),
   );
   const box = (await page.locator(".board canvas").boundingBox())!;
-  const size = { width: box.width, height: box.height, pixel: activeStyle === VisualStyle.Pixel };
+  const size = { width: box.width, height: box.height, pixel: true };
   await useCardAs(page, step.slot, step.use);
   await page.getByTestId("floating-card").waitFor();
   await page.waitForTimeout(800); // the camera eases onto the Hero
@@ -427,7 +400,7 @@ async function aimCardAtHero(page: Page, match: MatchState, heroId: string, step
   const squad = match.heroes.find((candidate) => candidate.id === heroId)!.squad;
   const target = match.heroes.find((candidate) => candidate.id === step.target)!;
   const box = (await page.locator(".board canvas").boundingBox())!;
-  const size = { width: box.width, height: box.height, pixel: activeStyle === VisualStyle.Pixel };
+  const size = { width: box.width, height: box.height, pixel: true };
   const tiles = findTiles(REACTOR_DECK, TileKind.PrimeZone);
   const zone = { col: tiles.reduce((sum, tile) => sum + tile.col, 0) / tiles.length, row: tiles.reduce((sum, tile) => sum + tile.row, 0) / tiles.length };
   const own = match.heroes.filter((hero) => hero.squad === squad).map((hero) => hero.position);
@@ -479,7 +452,7 @@ function checkWritten(directory: string, names: readonly string[]): void {
   }
 }
 
-async function playScenario(browser: Browser, scenario: Scenario, style?: VisualStyle): Promise<void> {
+async function playScenario(browser: Browser, scenario: Scenario): Promise<void> {
   const directory = path.join(OUTPUT_DIR, scenario.name);
   rmSync(directory, { recursive: true, force: true });
   mkdirSync(directory, { recursive: true });
@@ -490,7 +463,6 @@ async function playScenario(browser: Browser, scenario: Scenario, style?: Visual
   const snapshot = JSON.stringify({ version: SNAPSHOT_VERSION, match });
   const page = await browser.newPage({ viewport: VIEWPORT });
   page.setDefaultTimeout(SCENARIO_ACTION_TIMEOUT_MS);
-  await useStyle(page, style);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
   page.on("console", (message) => {
@@ -572,23 +544,8 @@ export function parseArgs(args: readonly string[]): CliOptions {
   return { list: false, scenarios: [name] };
 }
 
-/** Reads `--style original|pixel`: the visual style of the standard path and of the match scenarios; the saved default (Pixel art) when absent. */
-export function parseStyle(args: readonly string[]): VisualStyle | undefined {
-  return parseVisualStyle(args[args.indexOf("--style") + 1]);
-}
-
-/** Saves the visual style in the page's storage before the app starts. */
-async function useStyle(page: Page, style: VisualStyle | undefined): Promise<void> {
-  if (style === undefined) return;
-  await page.addInitScript(([key, value]) => localStorage.setItem(key!, value!), [VISUAL_STYLE_STORAGE_KEY, style]);
-}
-
-/** The style of this run: the taps are computed with the camera of that style. */
-let activeStyle: VisualStyle = DEFAULT_VISUAL_STYLE;
 
 async function main(): Promise<void> {
-  const style = parseStyle(process.argv.slice(2));
-  activeStyle = style ?? DEFAULT_VISUAL_STYLE;
   const options = parseArgs(process.argv.slice(2));
   if (options.list || options.error) {
     if (options.error) console.error(`${options.error}. Valid names: all, ${[...SCENARIO_NAMES, ...Object.keys(SCREEN_SCENARIOS)].join(", ")}`);
@@ -610,19 +567,17 @@ async function main(): Promise<void> {
     try {
       if (options.scenarios.length === 0) {
         const page = await browser.newPage({ viewport: VIEWPORT });
-        await useStyle(page, style);
-        await playStandardPath(page, options.hero);
+              await playStandardPath(page, options.hero);
       }
       for (const name of options.scenarios) {
         if (name in SCREEN_SCENARIOS) {
           if (name === "attack-defend") await playAttackDefend(browser);
           else if (name === "glossary") await playGlossary(browser);
-          else if (name === "options") await playOptions(browser);
           else await playHeroSelect(browser);
           console.log(`Scenario ${name}: ${path.join(OUTPUT_DIR, name)}\n${SCREEN_SCENARIOS[name]!.shots.join("\n")}`);
           continue;
         }
-        await playScenario(browser, SCENARIOS.find((scenario) => scenario.name === name)!, style);
+        await playScenario(browser, SCENARIOS.find((scenario) => scenario.name === name)!);
         console.log(`Scenario ${name}: ${path.join(OUTPUT_DIR, name)}\n${SCENARIO_SCREENSHOT_NAMES[name]!.join("\n")}`);
       }
     } finally {

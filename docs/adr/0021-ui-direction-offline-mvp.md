@@ -1,5 +1,7 @@
 # UI Direction of the Offline MVP
 
+> **Update:** The Original style and the visual style setting (with the Options screen) were removed; the game is drawn in Pixel art only, from one fixed view. Where this record speaks of the Original style, the eight views or the setting, that no longer holds.
+
 > **Terminology:** `GLOSSARY.md` now calls the Spawn strips Drop Points (this record: Spawn). This record keeps its original words.
 
 The offline MVP is played in landscape on a phone, with the whole board always visible, cards played by dragging, and terrain drawn from the grid. This records decisions that were made in tickets (#97, #98, #114 to #126, #131) and in chat, so that `docs/design/ui-spec.md` can point here.

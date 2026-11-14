@@ -1,6 +1,6 @@
 import { EventKind, HeroClass, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
-import { ClipPlayer, CROSSFADE_MS } from "./clip-player";
+import { ClipPlayer } from "./clip-player";
 import { clipOf, ease, sampleClip } from "./hero-clips";
 import { buildPlaybackFrames, STEP_MS } from "./playback";
 
@@ -60,39 +60,22 @@ describe("ClipPlayer", () => {
   it("idles until told otherwise", () => {
     const player = new ClipPlayer(HeroClass.Bruiser, 0, 1);
     expect(player.playing).toBe("idle");
-    expect(player.sample(1000).torso.y).toBeCloseTo(-2);
+    expect(player.clipTimeMs(1000)).toBeCloseTo(1000);
   });
 
-  it("runs a Walk at half a cycle per playback step", () => {
+  it("runs a Walk at half a cycle per playback step, and goes on across steps", () => {
     const player = new ClipPlayer(HeroClass.Bruiser, 0);
     player.play("walk", 0);
-    expect(player.sample(CROSSFADE_MS).legL.rotation).toBeCloseTo(-30 + (60 * CROSSFADE_MS) / STEP_MS, 5);
-    // The Walk goes on across steps: asking again does not restart it.
+    const walk = clipOf(HeroClass.Bruiser, "walk");
+    expect(player.clipTimeMs(STEP_MS)).toBeCloseTo(walk.durationMs / 2);
+    // Asking again does not restart it.
     player.play("walk", STEP_MS);
-    expect(player.sample(STEP_MS).legL.rotation).toBeCloseTo(30);
-    expect(player.sample(2 * STEP_MS).legL.rotation).toBeCloseTo(-30);
-  });
-
-  it("blends the old pose into the new one over the cross-fade", () => {
-    const player = new ClipPlayer(HeroClass.Bruiser, 0);
-    const before = player.sample(1000).torso.y;
-    player.play("wait", 1000);
-    const start = player.sample(1000).torso.y;
-    const middle = player.sample(1000 + CROSSFADE_MS / 2).torso.y;
-    expect(start).toBeCloseTo(before);
-    expect(middle).toBeGreaterThan(before);
-    expect(middle).toBeLessThan(0);
-    expect(player.sample(1000 + CROSSFADE_MS).torso.y).toBe(0);
+    expect(player.clipTimeMs(2 * STEP_MS)).toBeCloseTo(walk.durationMs);
   });
 
   it("multiplies the time by the speed", () => {
     const player = new ClipPlayer(HeroClass.Bruiser, 0, 2);
-    expect(player.sample(500).torso.y).toBeCloseTo(-2);
-  });
-
-  it("reuses its pose between frames", () => {
-    const player = new ClipPlayer(HeroClass.Bruiser, 0);
-    expect(player.sample(10)).toBe(player.sample(20));
+    expect(player.clipTimeMs(500)).toBeCloseTo(1000);
   });
 });
 

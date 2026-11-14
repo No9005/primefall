@@ -1,7 +1,6 @@
 import { EventKind, HeroClass, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
 import { clipOf, sampleClip } from "./hero-clips";
-import { heroFigure } from "./hero-figure";
 import { buildPlaybackFrames, utilityClipName } from "./playback";
 
 /** Values rounded to 1/100: the easing curves leave float dust. */
@@ -58,13 +57,6 @@ describe("the Utility gestures, sampled at the beats of the reference", () => {
     expect(r(sampleClip(clip, 1260).teamRing.alpha)).toEqual([0.25]);
     expect(r(sampleClip(clip, 3864).cloak.alpha, sampleClip(clip, 3864).rig.alpha)).toEqual([0.7, 1]);
     expect(sampleClip(clip, 4200).rig.alpha).toBe(1);
-  });
-
-  it("the figures carry the parts the clips move: the drone is a separate shape of the Controller, the cloak of the Assassin", () => {
-    const controller = heroFigure(HeroClass.Controller, false, "idle", 1);
-    expect(controller.getChildByLabel("drone", true)?.alpha).toBe(0);
-    expect(controller.getChildByLabel("rotor", true)).not.toBeNull();
-    expect(heroFigure(HeroClass.Assassin, true, "idle", 1).getChildByLabel("cloak", true)).not.toBeNull();
   });
 });
 

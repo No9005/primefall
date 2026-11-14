@@ -1,8 +1,6 @@
 import { CoverKind, EventKind, HeroClass, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
-import { bindParts, greyTint } from "./clip-player";
 import { clipOf, restClipName, sampleClip, takeCoverClipName } from "./hero-clips";
-import { heroFigure } from "./hero-figure";
 import { buildPlaybackFrames } from "./playback";
 
 /** Values rounded to 1/100: the easing curves leave float dust. */
@@ -102,28 +100,6 @@ describe("the Exhausted clips", () => {
   it("is a pure function of the time", () => {
     const exhausted = clipOf(HeroClass.Assassin, "exhausted");
     expect(sampleClip(exhausted, 2345)).toEqual(sampleClip(exhausted, 2345));
-  });
-
-  it("tints a grey figure towards the Exhausted grey, and leaves a normal one alone", () => {
-    expect(greyTint(0)).toBe(0xffffff);
-    expect(greyTint(1)).toBe(0x7a828b);
-  });
-});
-
-describe("the figures carry the parts the clips move", () => {
-  it("every class has gun, body, grey overlay and Squad ring; the Assassin a rifle to fling, the Controller sparks and a red light", () => {
-    const names = (heroClass: HeroClass) => bindParts(heroFigure(heroClass, false, "idle", 1), true).map(({ part }) => part);
-    for (const heroClass of [HeroClass.Bruiser, HeroClass.Assassin, HeroClass.Controller]) {
-      expect(names(heroClass)).toEqual(expect.arrayContaining(["gun", "body", "grey", "teamRing", "rig", "torso"]));
-    }
-    expect(names(HeroClass.Assassin)).toContain("dropGun");
-    expect(names(HeroClass.Bruiser)).not.toContain("dropGun");
-    expect(names(HeroClass.Controller)).toEqual(expect.arrayContaining(["sparks", "beaconRed", "beacon"]));
-  });
-
-  it("leaves the beacon to the board's blink unless the clip drives it", () => {
-    const figure = heroFigure(HeroClass.Controller, false, "idle", 1);
-    expect(bindParts(figure).map(({ part }) => part)).not.toContain("beacon");
   });
 });
 

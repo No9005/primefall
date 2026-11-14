@@ -9,7 +9,6 @@ import { clearSavedMatch, loadSavedMatch, loadSavedPlayerHero, parsePlayerHero, 
 import { HeroSelectScreen } from "./HeroSelectScreen";
 import { PlanningScreen } from "./PlanningScreen";
 import { GlossaryScreen } from "./GlossaryScreen";
-import { OptionsScreen } from "./OptionsScreen";
 import { TutorialScreen } from "./TutorialScreen";
 
 /** The player's Squad in the offline prototype. */
@@ -28,10 +27,9 @@ interface StartScreenProps {
   onResume: () => void;
   onTutorial: () => void;
   onGlossary: () => void;
-  onOptions: () => void;
 }
 
-function StartScreen({ seed, canResume, onPlay, onPlayAttackAndDefend, onResume, onTutorial, onGlossary, onOptions }: StartScreenProps) {
+function StartScreen({ seed, canResume, onPlay, onPlayAttackAndDefend, onResume, onTutorial, onGlossary }: StartScreenProps) {
   return (
     <section className="start-screen" aria-label="Start" data-testid="start-screen">
       <h1>PRIMEFALL</h1>
@@ -59,9 +57,6 @@ function StartScreen({ seed, canResume, onPlay, onPlayAttackAndDefend, onResume,
         </button>
         <button type="button" data-testid="glossary-button" onClick={onGlossary}>
           Glossary
-        </button>
-        <button type="button" data-testid="options-button" onClick={onOptions}>
-          Options
         </button>
         <p className="seed" data-testid="start-seed">
           seed {seed}
@@ -127,7 +122,7 @@ export function App() {
   const seed = host.seed;
   const [started, setStarted] = useState(false);
   // Before the match: the start screen, the Hero Select (Play) the Tutorial or the Glossary, which run from static data and never touch the host or the saved match.
-  const [entry, setEntry] = useState<"start" | "side" | "select" | "replay" | "tutorial" | "glossary" | "options">("start");
+  const [entry, setEntry] = useState<"start" | "side" | "select" | "replay" | "tutorial" | "glossary">("start");
   // The side chosen in Attack and Defend; none in the classic mode.
   const [role, setRole] = useState<Role>();
   // A match saved by an earlier visit, offered for Resume on the start screen.
@@ -155,7 +150,6 @@ export function App() {
   function renderStartOrTutorial() {
     if (entry === "tutorial") return <TutorialScreen onPlay={() => setStarted(true)} onClose={() => setEntry("start")} />;
     if (entry === "glossary") return <GlossaryScreen onClose={() => setEntry("start")} />;
-    if (entry === "options") return <OptionsScreen onClose={() => setEntry("start")} />;
     if (entry === "side") return <SideScreen onBack={() => setEntry("start")} onNext={(side) => { setRole(side); setEntry("select"); }} />;
     if (entry === "select" || entry === "replay") {
       return (
@@ -192,7 +186,7 @@ export function App() {
           }
           setStarted(true);
         }}
-        onTutorial={() => setEntry("tutorial")} onGlossary={() => setEntry("glossary")} onOptions={() => setEntry("options")}
+        onTutorial={() => setEntry("tutorial")} onGlossary={() => setEntry("glossary")}
       />
     );
   }

@@ -43,7 +43,7 @@ describe("Glossary entries", () => {
 describe("Glossary screen", () => {
   it("draws with the board's own drawing code, not its own copy of a look", () => {
     const pictures = read("glossary-pictures.ts");
-    for (const shared of ["drawTerrain", "drawZone", "drawScoutArea", "scannedMark", "scoutDroneMark", "hiddenSeenMark", "ghostMark", "heroFigure", "marksFigure", "markedMark", "slowMark", "attackBadge", "EffectsLayer"]) {
+    for (const shared of ["drawTerrain", "drawZone", "drawScoutArea", "scannedMark", "scoutDroneMark", "hiddenSeenMark", "ghostMark", "styledHeroFigure", "marksFigure", "markedMark", "slowMark", "attackBadge", "EffectsLayer"]) {
       expect(pictures, shared).toContain(shared);
     }
     // The board uses the same functions.

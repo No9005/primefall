@@ -1,13 +1,9 @@
 import type { HeroClass } from "game-core";
-import { Application, Container, Graphics, Text } from "pixi.js";
+import { Application, Container, Graphics } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
-import { applyPose, type BoundPart, bindParts } from "./clip-player";
-import { heroFigure } from "./hero-figure";
-import { cardListTitle, cardRowName, cardRows, HERO_NAMES, HERO_TASKS, MODE_LABELS, type SelectMode, SELECTABLE_HEROES } from "./hero-select";
-import { createSelectPose, feetX, sampleSelectPose } from "./hero-select-poses";
+import { cardListTitle, cardRowName, cardRows, feetX, HERO_NAMES, HERO_TASKS, MODE_LABELS, type SelectMode, SELECTABLE_HEROES } from "./hero-select";
 import { HERO_STYLE } from "./hero-style";
-import { loadPixelHeroes, PixelHero, pixelHeroesReady } from "./pixel-heroes";
-import { renderedStyle, VisualStyle } from "./visual-style";
+import { loadPixelHeroes, PixelHero } from "./pixel-heroes";
 import "./hero-select.css";
 
 // The Hero Select screen (docs/design/hero-select). The screen is laid out at 844 x 390 and scaled to the window; the
@@ -27,17 +23,11 @@ interface Choice {
   tap: number;
 }
 
-/** One Hero on the canvas: the figure and what is needed to pose it. */
+/** One Hero on the canvas: the sprite-sheet figure, which poses itself, and when it entered its state. */
 interface Stand {
   heroClass: HeroClass;
   holder: Container;
-  parts: BoundPart[];
-  muzzle: Graphics;
-  tracer: Graphics;
-  glint: Graphics;
-  label: Text;
-  /** The sprite-sheet figure of the Pixel art style, which poses itself instead of `parts`. */
-  pixel?: PixelHero;
+  pixel: PixelHero;
   /** When it entered its current state, in page milliseconds. */
   since: number;
   state: "idle" | "ready";
@@ -52,58 +42,19 @@ function buildStand(heroClass: HeroClass, index: number): Stand {
   const holder = new Container();
   holder.position.set(AREA.lefts[index]! + feetX(heroClass, false), AREA.top + AREA.feetY);
   holder.scale.set(MAGNIFY);
-  if (pixelHeroesReady() && renderedStyle() === VisualStyle.Pixel) {
-    // The sheets carry the muzzle flash, the tracer and the Hidden label themselves, so all three layers are drawn.
-    // The holder magnifies by MAGNIFY, so the figure itself has scale 1 and the sprites are 2 screen px per pixel (about 90 px tall, as the shape rig).
-    const pixel = new PixelHero(heroClass, false, MAGNIFY / HERO_STYLE.figureScale, "right", { layers: ["fx_back", "figure", "fx_front"], figureScale: 1, pixelScale: 2 / MAGNIFY });
-    holder.addChild(tile(), pixel.container);
-    return { heroClass, holder, parts: [], pixel, muzzle: new Graphics(), tracer: new Graphics(), glint: new Graphics(), label: new Text(), since: performance.now(), state: "idle" };
-  }
-  // The figure is drawn at the scale of the board; here it is MAGNIFY times a design px, so strokes keep their width on screen.
-  const figure = heroFigure(heroClass, false, "idle", MAGNIFY / HERO_STYLE.figureScale);
-  figure.scale.set(1);
-  const muzzle = new Graphics().circle(0, 0, 5).fill(0xff8a3d).circle(0, 0, 3).fill(0xffd24a);
-  muzzle.position.set(1, 27);
-  muzzle.alpha = 0;
-  const gun = figure.getChildByLabel("gun", true);
-  if (gun) gun.addChild(muzzle);
-  // The tracer of the Bruiser's shots: 38 design px, so that with the feet at x 62 it stays inside the area; it grows from the muzzle.
-  const tracer = new Graphics().roundRect(0, 0, 38, 3, 1.5).fill(0x2ec4b6);
-  tracer.position.set(34, -26);
-  tracer.alpha = 0;
-  const glint = new Graphics().circle(0, 0, 4).fill({ color: 0x7fe8ff, alpha: 0.9 }).circle(0, 0, 1.6).fill(0xffffff);
-  glint.position.set(21, -32);
-  glint.alpha = 0;
-  const label = new Text({ text: "Hidden", style: { fill: 0x7fe8ff, fontSize: 8, fontFamily: "IBM Plex Mono, monospace", fontWeight: "500" }, resolution: Math.max(2, window.devicePixelRatio) * MAGNIFY });
-  label.anchor.set(0.5);
-  label.position.set(0, -44);
-  label.alpha = 0;
-  figure.addChild(tracer, glint, label);
-  holder.addChild(tile(), figure);
-  return { heroClass, holder, parts: bindParts(figure), muzzle, tracer, glint, label, since: performance.now(), state: "idle" };
+  // The sheets carry the muzzle flash, the tracer and the Hidden label themselves, so all three layers are drawn.
+  // The holder magnifies by MAGNIFY, so the figure itself has scale 1 and the sprites are 2 screen px per pixel.
+  const pixel = new PixelHero(heroClass, false, MAGNIFY / HERO_STYLE.figureScale, "right", { layers: ["fx_back", "figure", "fx_front"], figureScale: 1, pixelScale: 2 / MAGNIFY });
+  holder.addChild(tile(), pixel.container);
+  return { heroClass, holder, pixel, since: performance.now(), state: "idle" };
 }
 
 /** Poses every Hero for this moment; a Hero that has just changed state starts that state's pose from its beginning. */
-function poseStands(stands: readonly Stand[], choice: Choice, now: number, reducedMotion: boolean, scratch = createSelectPose()): void {
+function poseStands(stands: readonly Stand[], choice: Choice, now: number, reducedMotion: boolean): void {
   for (const stand of stands) {
     const state = stand.heroClass === choice.hero ? "ready" : "idle";
     stand.state = state;
-    if (stand.pixel) {
-      stand.pixel.showSelect(state === "ready", now - stand.since, reducedMotion);
-      const index = SELECTABLE_HEROES.indexOf(stand.heroClass);
-      stand.holder.position.x = AREA.lefts[index]! + feetX(stand.heroClass, state === "ready");
-      continue;
-    }
-    const { pose, extras } = sampleSelectPose(stand.heroClass, state, now - stand.since, reducedMotion, scratch, now);
-    applyPose(stand.parts, pose);
-    stand.muzzle.alpha = extras.muzzle;
-    stand.muzzle.scale.set(extras.muzzleScale);
-    stand.tracer.alpha = extras.tracer;
-    stand.tracer.scale.x = extras.tracerScale;
-    stand.glint.alpha = extras.glint;
-    stand.glint.scale.set(extras.glintScale);
-    stand.label.alpha = extras.label;
-    stand.label.position.y = -44 + extras.labelY;
+    stand.pixel.showSelect(state === "ready", now - stand.since, reducedMotion);
     const index = SELECTABLE_HEROES.indexOf(stand.heroClass);
     stand.holder.position.x = AREA.lefts[index]! + feetX(stand.heroClass, state === "ready");
   }
@@ -140,7 +91,7 @@ function HeroCanvas({ choice }: { choice: Choice }) {
         app.destroy(true, { children: true });
         return;
       }
-      if (renderedStyle() === VisualStyle.Pixel) await loadPixelHeroes().catch(() => undefined);
+      await loadPixelHeroes();
       if (cancelled) {
         app.destroy(true, { children: true });
         return;
@@ -150,10 +101,9 @@ function HeroCanvas({ choice }: { choice: Choice }) {
       stands.current = built;
       for (const stand of built) app.stage.addChild(stand.holder);
       const reducedMotion = prefersReducedMotion();
-      const scratch = createSelectPose();
-      poseStands(built, choiceRef.current, performance.now(), reducedMotion, scratch);
+      poseStands(built, choiceRef.current, performance.now(), reducedMotion);
       // With reduced motion nothing moves, so the one frame posed above is the picture; a later choice poses it again.
-      if (!reducedMotion) app.ticker.add(() => poseStands(built, choiceRef.current, performance.now(), false, scratch));
+      if (!reducedMotion) app.ticker.add(() => poseStands(built, choiceRef.current, performance.now(), false));
       element.dataset.ready = "true";
     })();
     return () => {
