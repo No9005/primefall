@@ -8,7 +8,7 @@ A proposal for the final look of the three Heroes, worked out with the product o
 
 | Path | Content |
 |---|---|
-| `apps/web/public/assets/pixel-heroes/<class>/` | The sheets, one per clip: `<clip>.png` and `<clip>.json` (PixiJS sprite sheet format), plus `clips.json` (the list of clips with their timing), `figure.png` (the standing figure of the design sheet) `portrait.png` (36 x 36) and `bio.png` (30 x 28, head and shoulders cut from frame 000 of `select_idle`, shown at 8 x on the BIO sheet of the Hero Select) |
+| `apps/web/public/assets/pixel-heroes/<class>/` | The sheets, one per clip: `<clip>.png` and `<clip>.json` (PixiJS sprite sheet format), plus `clips.json` (the list of clips with their timing), `figure.png` (the standing figure of the design sheet) `portrait.png` (36 x 36; also the close-up of the BIO sheet of the Hero Select, shown at 6 x) |
 | `overview/<class>.png` | One still per clip, with tile and Squad ring, to look at |
 | `reference/*.html` | The live pages. Open them in a browser to see the motion: the designs to choose from (`concepts-*`), the clips (`animation-*`) and the Hero Select screen (`hero-select`). Their texts are German, as written for the product owner |
 | `tools/` | The source of the sheets: the rigs (`rigs/<class>.js`) and the export (`export.mjs`) |

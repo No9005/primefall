@@ -54,9 +54,9 @@
 /* The BIO sheet: the close-up, the Hero Name in white, the class in teal, the bio and then the line of the Hero. */
 .hs-bio { position: absolute; left: 40px; top: 16px; width: 764px; height: 358px; box-sizing: border-box; background: #151b23; border: 1px solid #2a3643; border-radius: 8px; }
 .hs-bio-close { position: absolute; right: 14px; top: 14px; }
-.hs-bio-portrait { position: absolute; left: 28px; top: 62px; width: 240px; height: 224px; border: 2px solid var(--steel); background: linear-gradient(180deg, #1f2c38, #0d1116); }
-.hs-bio-portrait img { display: block; width: 240px; height: 224px; image-rendering: pixelated; }
-.hs-bio-text { position: absolute; left: 316px; top: 57px; width: 420px; }
+.hs-bio-portrait { position: absolute; left: 28px; top: 62px; width: 216px; height: 216px; border: 2px solid var(--steel); background: linear-gradient(180deg, #1f2c38, #0d1116); }
+.hs-bio-portrait img { display: block; width: 216px; height: 216px; image-rendering: pixelated; }
+.hs-bio-text { position: absolute; left: 296px; top: 57px; width: 440px; }
 .hs-bio-text h2 { margin: 0; font: 700 32px/36px Rajdhani, sans-serif; letter-spacing: 0.1em; color: var(--white); }
 .hs-bio-text p { margin: 0; }
 .hs-bio-text .hs-bio-class { margin-top: 2px; font: 700 13px/18px Rajdhani, sans-serif; letter-spacing: 0.2em; color: var(--teal); }

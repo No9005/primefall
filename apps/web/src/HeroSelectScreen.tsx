@@ -163,7 +163,7 @@ function BioSheet({ heroClass, onClose }: { heroClass: HeroClass; onClose: () =>
           </svg>
         </button>
         <div className="hs-bio-portrait">
-          <img src={`${import.meta.env.BASE_URL}assets/pixel-heroes/${HERO_CLOSE_UP[heroClass]}/bio.png`} alt={`Close-up of ${name}`} />
+          <img src={`${import.meta.env.BASE_URL}assets/pixel-heroes/${HERO_CLOSE_UP[heroClass]}/portrait.png`} alt={`Close-up of ${name}`} />
         </div>
         <div className="hs-bio-text">
           <h2>{name.toUpperCase()}</h2>
