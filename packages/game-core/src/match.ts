@@ -7,6 +7,7 @@ import {
   type MatchResult,
   type RevealedArea,
   DEFENDER_ROUND_LIMIT,
+  MAX_PLACED_COVER_PER_SQUAD,
   MatchMode,
   OUTPOST_UNLOCK_ROUND,
   OUTPOST_VALUE,
@@ -122,8 +123,8 @@ export interface PlacedCover {
   position: GridPosition;
 }
 
-/** A Squad has at most this many Placed Cover tiles; placing another removes its oldest. */
-export const MAX_PLACED_COVER_PER_SQUAD = 3;
+// A Squad has at most this many Placed Cover tiles; placing another removes its oldest (the constant is in host.ts, which a client may import).
+export { MAX_PLACED_COVER_PER_SQUAD };
 
 /** An area a Squad's Scout Drone reveals. */
 export interface ActiveReveal extends RevealedArea {

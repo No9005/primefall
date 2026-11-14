@@ -17,7 +17,7 @@ import { createLocalHost } from "game-core/local-host";
 import { describe, expect, it } from "vitest";
 import { buildPlaybackFrames } from "./playback";
 import { SegmentStyle } from "./shot-lines";
-import { crossfireRings, EffectPathKind, LineKind, LineTone, plannedEffectPaths, plannedTargetLines, replayTargetLines, RingSegment } from "./target-lines";
+import { crossfireRings, EffectPathKind, LineKind, LineTone, plannedCoverPlan, plannedEffectPaths, plannedTargetLines, replayTargetLines, RingSegment } from "./target-lines";
 
 const grid = parseGrid(["#########", "#.......#", "#...#...#", "#.......#", "#.......#", "#########"]);
 
@@ -280,5 +280,33 @@ describe("plannedEffectPaths", () => {
     expect(paths(use("Charge", "e"), [unknown("e")])).toEqual([]);
     expect(paths(attack("e"), [visible("e", { col: 3, row: 2 })])).toEqual([]);
     expect(plannedEffectPaths(open, [{ ...caster, exhausted: true }], [visible("e", { col: 5, row: 2 })], [plan("b", [use("Pull", "e")])])).toEqual([]);
+  });
+});
+
+describe("plannedCoverPlan", () => {
+  const controller = hero("c", HeroClass.Controller, { col: 1, row: 1 });
+  const own: GridPosition[] = [{ col: 2, row: 1 }, { col: 3, row: 1 }, { col: 4, row: 1 }];
+  const placeAt = (tile: GridPosition): QueuedAction => ({ kind: ActionKind.Primary, card: cardIndex(HeroClass.Controller, "Deploy Cover"), target: "c", tile });
+  const plansOf = (...tiles: GridPosition[]) => [plan("c", tiles.map(placeAt))];
+
+  it("takes nothing while the Squad has room, and lists the tile of the new Cover", () => {
+    const result = plannedCoverPlan(own.slice(0, 2), [controller], plansOf({ col: 5, row: 1 }), false);
+    expect(result).toEqual({ oldest: [], fresh: [{ col: 5, row: 1 }], overflow: false });
+  });
+
+  it("takes the oldest one when a fourth is planned, and the two oldest for a fifth", () => {
+    expect(plannedCoverPlan(own, [controller], plansOf({ col: 5, row: 1 }), false).oldest).toEqual([own[0]]);
+    expect(plannedCoverPlan(own, [controller], plansOf({ col: 5, row: 1 }, { col: 5, row: 2 }), false).oldest).toEqual([own[0], own[1]]);
+  });
+
+  it("counts a Placed-Cover card that is being aimed as one more placement", () => {
+    expect(plannedCoverPlan(own, [controller], [], true)).toEqual({ oldest: [own[0]], fresh: [], overflow: true });
+    expect(plannedCoverPlan(own.slice(0, 2), [controller], [], true).overflow).toBe(false);
+  });
+
+  it("ignores Primary actions of cards that do not place Cover, and Heroes that are Exhausted", () => {
+    const slam: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Bruiser, "Slam Shot"), target: "e" };
+    expect(plannedCoverPlan(own, [bruiser], [plan("b", [slam])], false).fresh).toEqual([]);
+    expect(plannedCoverPlan(own, [{ ...controller, exhausted: true }], plansOf({ col: 5, row: 1 }), false).fresh).toEqual([]);
   });
 });

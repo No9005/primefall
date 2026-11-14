@@ -38,6 +38,7 @@ export type SceneName =
   | "pull"
   | "cover"
   | "placedCover"
+  | "enemyPlacedCover"
   | "destroyedCover"
   | "zoneEmpty"
   | "zoneOurs"
@@ -212,8 +213,14 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
   {
     name: "Placed Cover",
     group: GlossaryGroup.Board,
-    text: "Cover a Hero built: striped bars with a cyan outline. The Squad remembers it, also in the fog.",
+    text: "Cover a Hero built: striped bars with four teal corner marks, which say it is your Squad's and that it stays until it is destroyed. At most three per Squad; the chip COVER 3 / 3 counts them, and the oldest goes when a fourth is placed (aiming it: OLDEST · GOES).",
     picture: { scene: "placedCover" },
+  },
+  {
+    name: "Enemy Placed Cover",
+    group: GlossaryGroup.Board,
+    text: "Cover the enemy built that you have seen stays on the map with red corner marks and the tag ENEMY COVER. You only know of it once you have seen the tile.",
+    picture: { scene: "enemyPlacedCover" },
   },
   {
     name: "Destroyed Cover",
@@ -255,13 +262,13 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
   {
     name: "Scout Drone area",
     group: GlossaryGroup.Board,
-    text: "Fog tiles lift from the middle outwards in cyan while the drone hovers; enemies in it are seen. Two dots count the Resolutions left; then the fog closes.",
+    text: "The drone circles over the area and sends scan rays down (tag SCOUT DRONE · ANYWHERE). Fog tiles lift in cyan; enemies in it are seen. Two dots count the Resolutions left; then the fog closes.",
     picture: { scene: "scoutArea" },
   },
   {
     name: "Scanned area",
     group: GlossaryGroup.Board,
-    text: "A red outline round an area the enemy Scout Drone scans: Heroes in it are seen by the enemy.",
+    text: "A dashed amber outline with an amber sweep and the tag SCANNED · n (the Resolutions left) round an area the enemy Scout Drone scans. You see that it is scanned, not who looks or what is seen.",
     picture: { scene: "scannedArea" },
   },
   {

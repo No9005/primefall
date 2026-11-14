@@ -1,7 +1,7 @@
 import { AttackFailReason, EventKind, HeroClass, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
 import { buildPlaybackFrames } from "./playback";
-import { CHARGE_SHIELD_TAG, crossfireAt, cueEndMs, effectCuesOf, flightMs, flightProgress, impactMs, numberAt, PULL_MS, reticleAt, shakeAt, weaponOf } from "./weapon-effects";
+import { CHARGE_SHIELD_TAG, COVER_CRUMBLE_MS, coverEditsOf, crossfireAt, cueEndMs, effectCuesOf, flightMs, flightProgress, impactMs, numberAt, PULL_MS, reticleAt, shakeAt, weaponOf } from "./weapon-effects";
 
 const hit = (extra: Partial<MatchEvent>): MatchEvent => ({ kind: EventKind.AttackHit, tick: 1, heroId: "a", targetId: "t", ...extra });
 const fireOf = (_heroId: string, card: string | undefined) => (card === "Long Shot" ? 1650 : 620);
@@ -140,6 +140,28 @@ describe("the cues of a Pull, a Charge and the extra damage of a hit", () => {
   it("does not tag the Shield of a Block as a Charge's", () => {
     const cues = effectCuesOf([{ kind: EventKind.ShieldGained, tick: 1, heroId: "bruiser", amount: 2 }], fireOf);
     expect(cues.some((cue) => cue.kind === "number")).toBe(false);
+  });
+});
+
+describe("the cues of Placed Cover", () => {
+  const destroyed = (extra: Partial<MatchEvent>): MatchEvent => ({ kind: EventKind.CoverDestroyed, tick: 1, heroId: "controller", to: { col: 8, row: 3 }, ...extra });
+
+  it("crumbles the oldest Placed Cover that goes for a fourth, with no blast and no scorch", () => {
+    const cues = effectCuesOf([destroyed({ card: "Deploy Cover" })], fireOf);
+    expect(cues).toEqual([{ kind: "coverCrumble", tile: { col: 8, row: 3 }, startMs: expect.any(Number) }]);
+    expect(cueEndMs(cues[0]!)).toBe(cues[0]!.kind === "coverCrumble" ? cues[0]!.startMs + COVER_CRUMBLE_MS : -1);
+    expect(coverEditsOf(cues)).toEqual([{ kind: "destroyed", tile: { col: 8, row: 3 }, atMs: expect.any(Number), scorch: false }]);
+  });
+
+  it("still blasts the Cover that Breach Charge or Wrecking Blow destroys, and leaves its scorch", () => {
+    const cues = effectCuesOf([destroyed({ card: "Wrecking Blow" })], fireOf);
+    expect(cues.some((cue) => cue.kind === "breach")).toBe(true);
+    expect(coverEditsOf(cues).every((edit) => edit.scorch !== false)).toBe(true);
+  });
+
+  it("names the Hero that placed Cover, so the playback tells ours from the enemy's", () => {
+    const cues = effectCuesOf([{ kind: EventKind.CoverPlaced, tick: 1, heroId: "left-controller", to: { col: 9, row: 3 }, card: "Deploy Cover" }], fireOf);
+    expect(coverEditsOf(cues)).toEqual([expect.objectContaining({ kind: "placed", tile: { col: 9, row: 3 }, casterId: "left-controller" })]);
   });
 });
 

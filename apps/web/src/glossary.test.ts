@@ -43,12 +43,12 @@ describe("Glossary entries", () => {
 describe("Glossary screen", () => {
   it("draws with the board's own drawing code, not its own copy of a look", () => {
     const pictures = read("glossary-pictures.ts");
-    for (const shared of ["drawTerrain", "drawZone", "drawScoutArea", "scannedFrame", "ghostMark", "heroFigure", "marksFigure", "markedMark", "slowMark", "attackBadge", "EffectsLayer"]) {
+    for (const shared of ["drawTerrain", "drawZone", "drawScoutArea", "scannedMark", "scoutDroneMark", "hiddenSeenMark", "ghostMark", "heroFigure", "marksFigure", "markedMark", "slowMark", "attackBadge", "EffectsLayer"]) {
       expect(pictures, shared).toContain(shared);
     }
     // The board uses the same functions.
     const board = read("Board.tsx");
-    for (const shared of ["drawTerrain", "drawZone", "drawScoutArea", "scannedFrame", "ghostMark"]) expect(board, shared).toContain(shared);
+    for (const shared of ["drawTerrain", "drawZone", "drawScoutArea", "scannedMark", "scoutDroneMark", "hiddenSeenMark", "ghostMark"]) expect(board, shared).toContain(shared);
   });
 
   it("is static data only: no match host, no saved match", () => {

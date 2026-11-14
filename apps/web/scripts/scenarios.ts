@@ -77,6 +77,19 @@ function placeHalfCover(match: MatchState, position: GridPosition): void {
   match.grid = withTile(match.grid, position, TileKind.HalfCover);
 }
 
+/** Half Cover placed by a Squad, written the way the rules write it (the order of `match.placedCover` is the order of placing). */
+function placeCoverFor(match: MatchState, squad: SquadId, position: GridPosition): void {
+  match.placedCover.push({ squad, position: { ...position } });
+  match.grid = withTile(match.grid, position, TileKind.HalfCover);
+}
+
+/** The Left Controller stands near three Placed Cover tiles of its Squad, and the enemy has one in sight. */
+function controllerWithThreeCovers(match: MatchState, hero: (id: string) => HeroState, hand: CardIndex[]): void {
+  arrange(hero(`${SquadId.Left}-controller`), { col: 13, row: 4 }, { hand });
+  for (const tile of [{ col: 12, row: 4 }, { col: 13, row: 3 }, { col: 15, row: 3 }]) placeCoverFor(match, SquadId.Left, tile);
+  placeCoverFor(match, SquadId.Right, { col: 16, row: 2 });
+}
+
 /** Round 1 of a fresh match with the edits applied; Ghost memory and Fog of War are brought up to date afterwards. */
 function stage(seed: number, edit: (hero: (id: string) => HeroState, match: MatchState) => void): MatchState {
   const match = startRound(createMatch(seed));
@@ -463,6 +476,39 @@ export const SCENARIOS: readonly Scenario[] = [
       { slot: 0, use: "primary", tile: { col: 13, row: 3 } },
     ],
     resolutionShotsMs: [260, 330, 400, 460, 520, 580, 640, 700],
+  },
+  {
+    name: "placed-cover-marks",
+    description: "Three Placed Cover tiles of the Squad carry four teal corner marks and the chip COVER ●●● 3 / 3; an enemy Placed Cover in sight has red marks and the tag ENEMY COVER.",
+    buildMatch: () => stage(26, (hero, match) => controllerWithThreeCovers(match, hero, [cardIndex(HeroClass.Controller, "Deploy Cover"), 0, 1, 2])),
+    playerHero: HeroClass.Controller,
+    heroId: `${SquadId.Left}-controller`,
+    steps: [{ wait: true }],
+    resolutionShotsMs: [400],
+  },
+  {
+    name: "placed-cover-fourth",
+    description: "The Controller plans Deploy Cover for a fourth tile: the oldest gets a dashed amber outline (OLDEST · GOES), the new tile a dashed teal one, the chip reads ●●● → 3 / 3; in the Resolution the oldest crumbles and the new Cover drops.",
+    buildMatch: () => stage(27, (hero, match) => controllerWithThreeCovers(match, hero, [cardIndex(HeroClass.Controller, "Deploy Cover"), 0, 1, 2])),
+    playerHero: HeroClass.Controller,
+    heroId: `${SquadId.Left}-controller`,
+    steps: [
+      { slot: 1, use: "pitch" },
+      { slot: 0, use: "primary", tile: { col: 12, row: 2 } },
+    ],
+    resolutionShotsMs: [300, 600, 900, 1200, 1500, 1900, 2500],
+  },
+  {
+    name: "scanned-by-enemy",
+    description: "The enemy's Scout Drone scans the area round the player's Hero: a dashed amber outline with an amber sweep and the tag SCANNED · 2 (not who looks, not what is seen).",
+    buildMatch: () =>
+      stage(28, (hero, match) => {
+        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        match.revealedAreas.push({ squad: SquadId.Right, center: { col: 12, row: 3 }, size: 3, remaining: 2 });
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [{ wait: true }],
+    resolutionShotsMs: [300, 900, 1500],
   },
   {
     name: "cover-natural",

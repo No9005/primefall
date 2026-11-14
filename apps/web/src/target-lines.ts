@@ -14,6 +14,7 @@ import {
   HERO_DECKS,
   type HeroView,
   isStepAllowed,
+  MAX_PLACED_COVER_PER_SQUAD,
   type MatchEvent,
   type QueuedAction,
   type SquadPlan,
@@ -340,4 +341,33 @@ export function plannedEffectPaths(grid: Grid, heroes: readonly HeroView[], enem
       });
     }),
   );
+}
+
+/** What the plan does to the Placed Cover of the Squad: the oldest tiles that go and the tiles the new Cover will stand on. */
+export interface CoverPlan {
+  oldest: readonly GridPosition[];
+  fresh: readonly GridPosition[];
+}
+
+export const NO_COVER_PLAN: CoverPlan = { oldest: [], fresh: [] };
+
+/**
+ * The Placed Cover the Squad's plans put down and the oldest tiles that go for it (docs/design/role-visuals/380/placed-cover.png,
+ * "Aiming a fourth"). `own` is the Squad's Placed Cover, oldest first; `aiming` is a card that places Cover being aimed, which counts
+ * as one more placement. A Squad has at most `MAX_PLACED_COVER_PER_SQUAD`: every placement beyond that takes the oldest.
+ */
+export function plannedCoverPlan(own: readonly GridPosition[], heroes: readonly HeroView[], plans: readonly SquadPlan[], aiming: boolean): CoverPlan & { overflow: boolean } {
+  const fresh = plans.flatMap((plan) =>
+    plan.heroes.flatMap(({ heroId, queue }) => {
+      const hero = heroes.find((candidate) => candidate.id === heroId);
+      if (!hero || hero.exhausted) return [];
+      return queue.flatMap((action) => {
+        if (action.kind !== ActionKind.Primary || !action.tile) return [];
+        const card = cardInMode(HERO_DECKS[hero.heroClass][action.card]!, action.overdrive);
+        return card.effects.some((effect) => effect.kind === EffectKind.PlaceCover) ? [action.tile] : [];
+      });
+    }),
+  );
+  const overflow = Math.max(0, own.length + fresh.length + (aiming ? 1 : 0) - MAX_PLACED_COVER_PER_SQUAD);
+  return { oldest: own.slice(0, overflow), fresh, overflow: overflow > 0 };
 }
