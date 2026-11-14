@@ -210,6 +210,11 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
         const card = HERO_DECKS[hero.heroClass][action.card];
         if (!card || !isPlayableCard(card)) {
           report({ kind: PlanIssueKind.UnplayableCard, heroId, message: "This card's effect cannot be played yet." });
+        } else if (card.target === CardTarget.VisibleOrGhostEnemy) {
+          const named = view.enemies.find((enemy) => enemy.id === action.target);
+          if (named?.visibility !== Visibility.Ghost && !(named?.visibility === Visibility.Visible && !named.exhausted)) {
+            report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Visible enemy Hero or a Ghost as its target.` });
+          }
         } else if (card.target === CardTarget.GhostEnemy) {
           if (!view.enemies.some((enemy) => enemy.id === action.target && enemy.visibility === Visibility.Ghost)) {
             report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Ghost as its target.` });
@@ -221,8 +226,8 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
             report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a tile that is not a Wall as its target.` });
           }
         } else if (card.target !== CardTarget.VisibleEnemy) {
-          // Self cards and area Attacks are confirmed on this Hero; ally cards need another Hero.
-          const isSelfCard = card.target === CardTarget.SelfHero || card.target === CardTarget.EnemiesInRange;
+          // Self cards are confirmed on this Hero; ally cards need another Hero.
+          const isSelfCard = card.target === CardTarget.SelfHero;
           const validTarget = isSelfCard
             ? action.target === heroId
             : view.heroes.some((ally) => ally.id === action.target && ally.id !== heroId && !ally.exhausted);

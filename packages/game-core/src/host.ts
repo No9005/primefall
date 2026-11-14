@@ -148,8 +148,6 @@ export interface HeroView {
   hidden: boolean;
   /** Marked: the enemy Squad sees this Hero until the end of the next Resolution. */
   marked: boolean;
-  /** The permanent Attack bonus (Adrenal Surge); the board shows a badge while it is above zero. */
-  attackBonus: number;
 }
 
 /** A square of tiles a Scout Drone shows the Squad for a while, regardless of walls and Cover. */
@@ -199,8 +197,6 @@ export interface VisibleEnemyView extends EnemyIdentity {
   slowed: boolean;
   /** Marked: shown only while the enemy is Visible, which a Marked Hero always is. */
   marked: boolean;
-  /** The permanent Attack bonus of a Visible Hero (Adrenal Surge). */
-  attackBonus: number;
 }
 
 /** The last known position and counts of an enemy Hero that is no longer Visible. */
@@ -296,8 +292,6 @@ export enum EventKind {
   HiddenEnded = "hiddenEnded",
   /** `heroId` made `targetId` Marked. */
   MarkedApplied = "markedApplied",
-  /** Knockback pushed `heroId` one tile, from `from` to `to`; a push of two tiles gives two events. */
-  Knockback = "knockback",
   /** Pull moved `heroId` one tile toward the caster, from `from` to `to`; a pull of two tiles gives two events. */
   Pull = "pull",
   /** `heroId` charged at `targetId`: its steps are `Step` events, this one follows them (also when it could not move). */
@@ -310,8 +304,6 @@ export enum EventKind {
   AreaRevealed = "areaRevealed",
   /** `targetId` ignores the Half Cover damage reduction until the end of the Round (Overwatch Uplink). */
   CoverReductionIgnored = "coverReductionIgnored",
-  /** `heroId` permanently gained `amount` Attack (Adrenal Surge). */
-  AttackBonusGained = "attackBonusGained",
   /** The Discard of `heroId` was shuffled into its empty Deck; `amount` is the number of cards shuffled. */
   DeckShuffled = "deckShuffled",
   /** A Hero waited: it did nothing in this Tick (`ActionKind.Wait`). */
@@ -360,10 +352,8 @@ export interface MatchEvent {
   damage?: number;
   /** True when Half Cover on the target's tile reduced the damage, for `AttackHit`. */
   halfCover?: boolean;
-  /** Damage a close-range effect added to this hit (the "CLOSE +1" of Slam Shot at Range 1), for `AttackHit`; absent when none. */
+  /** Damage a close-range effect added to this hit (the "CLOSE +1" of Handle With Care at Range 1), for `AttackHit`; absent when none. */
   closeBonus?: number;
-  /** Damage a Charge added to this hit (its once-only bonus at Range 1), for `AttackHit`; absent when none. */
-  chargeBonus?: number;
   /**
    * The Hero that played the card, for a `ShieldGained` from a card and for a `Pull` (`heroId` is the receiver of the
    * Shield, or the pulled Hero). A Squad that does not see the caster of a `Pull` does not get this field.

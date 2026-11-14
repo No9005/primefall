@@ -9,7 +9,7 @@ import { resolveRound } from "./resolution";
 const LEFT_BRUISER = "left-bruiser";
 const LEFT_CONTROLLER = "left-controller";
 const RIGHT_BRUISER = "right-bruiser";
-// Bruiser cards 0 and 1 are Slam Shot: damage 2, Range 1 to 2, cost 1. Cards 2 and 3 serve as Move or Pitch.
+// Bruiser cards 0 and 1 are Handle With Care: damage 2, Range 1 to 2, cost 1. Cards 2 and 3 serve as Move or Pitch.
 const SLAM_SHOT = 0;
 
 const hero = (match: MatchState, heroId: string) => match.heroes.find((candidate) => candidate.id === heroId)!;
@@ -40,14 +40,14 @@ describe("Attacks and Deck Damage", () => {
     expect(hero(after, RIGHT_BRUISER).deck).toEqual(deck.slice(0, -2));
     expect(hero(after, RIGHT_BRUISER).exile).toEqual(deck.slice(-2));
     expect(events).toEqual([
-      { kind: EventKind.AttackHit, tick: 1, heroId: LEFT_BRUISER, targetId: RIGHT_BRUISER, absorbed: 0, damage: 2, crossfire: 0, card: "Slam Shot", distance: 2 },
+      { kind: EventKind.AttackHit, tick: 1, heroId: LEFT_BRUISER, targetId: RIGHT_BRUISER, absorbed: 0, damage: 2, crossfire: 0, card: "Handle With Care", distance: 2 },
     ]);
   });
 
   it("lets Shield absorb damage before the Deck loses cards", () => {
     const match = duel();
     const deckSize = hero(match, RIGHT_BRUISER).deck.length;
-    const bulwark = cardIndex(HeroClass.Bruiser, "Bulwark");
+    const bulwark = cardIndex(HeroClass.Bruiser, "Hard Hat");
     hero(match, RIGHT_BRUISER).hand = [0, 1, 2, bulwark];
     const shield = planOf(SquadId.Right, RIGHT_BRUISER, [{ kind: ActionKind.Primary, card: bulwark, target: RIGHT_BRUISER }], [1]);
     const { match: after, events } = resolveRound(match, [leftAttacks(), shield]);

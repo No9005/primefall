@@ -8,7 +8,7 @@ const BRUISER = "left-bruiser";
 const CONTROLLER = "left-controller";
 const ASSASSIN = "left-assassin";
 const TARGET = "right-bruiser";
-// Card 0 of the Bruiser (Slam Shot) and the Assassin (Precision Shot) is a damage 2 Attack, of the Controller (Tag Round) a damage 1 Attack.
+// Card 0 of the Bruiser (Handle With Care) and the Assassin (Precision Shot) is a damage 2 Attack, of the Controller (Tag Round) a damage 1 Attack.
 const ATTACK_CARD = 0;
 
 const hero = (match: MatchState, heroId: string) => match.heroes.find((candidate) => candidate.id === heroId)!;

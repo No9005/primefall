@@ -1,30 +1,32 @@
 import { describe, expect, it } from "vitest";
 import { EventKind, SquadId } from "./host";
 import { createMatch, type MatchState, startRound } from "./match";
-import { ActionKind, type SquadPlan } from "./plan";
+import { ActionKind, chebyshevDistance, type SquadPlan } from "./plan";
 import { CoverKind, coverAgainst, coverAt, type GridPosition, hasLineOfSight, parseGrid, REACTOR_DECK } from "./reactor-deck";
 import { resolveRound } from "./resolution";
 import { withFullCover } from "./full-cover-fixture";
 
 const LEFT_BRUISER = "left-bruiser";
 const RIGHT_BRUISER = "right-bruiser";
-// Concussion Round (card 2) serves as the damage 2, Range 3 Attack.
-const SLAM_SHOT = 2; // Concussion Round: damage 2, Range 3 (Slam Shot is Range 1 to 2 since ADR 0025)
+// Cards: the Assassin's Precision Shot (card 0, damage 2, Range 2 to 5) shoots from Range 2 or more; the Bruiser's
+// Handle With Care (card 0, damage 2, 3 at Range 1) from Range 1.
+const LEFT_ASSASSIN = "left-assassin";
 
 // The Reactor Deck has no Full Cover tile; the matches here get one at (15,1).
 const FULL_COVER = { col: 15, row: 1 };
 
 const hero = (match: MatchState, heroId: string) => match.heroes.find((candidate) => candidate.id === heroId)!;
 
-/** The left Bruiser attacks the right Bruiser; returns the single Attack event. */
+/** The left Assassin (the left Bruiser at Range 1) attacks the right Bruiser; returns the single Attack event. */
 function attackFrom(attacker: GridPosition, target: GridPosition) {
   const match = withFullCover(startRound(createMatch(5)), FULL_COVER);
-  hero(match, LEFT_BRUISER).position = attacker;
+  const shooter = chebyshevDistance(attacker, target) === 1 ? LEFT_BRUISER : LEFT_ASSASSIN;
+  hero(match, shooter).position = attacker;
   hero(match, RIGHT_BRUISER).position = target;
-  hero(match, LEFT_BRUISER).hand = [0, 1, 2, 3];
+  hero(match, shooter).hand = [0, 1, 2, 3];
   const plan: SquadPlan = {
     squad: SquadId.Left,
-    heroes: [{ heroId: LEFT_BRUISER, queue: [{ kind: ActionKind.Primary, card: SLAM_SHOT, target: RIGHT_BRUISER }], pitched: [1] }],
+    heroes: [{ heroId: shooter, queue: [{ kind: ActionKind.Primary, card: 0, target: RIGHT_BRUISER }], pitched: [1] }],
   };
   return resolveRound(match, [plan]).events[0]!;
 }
@@ -45,8 +47,8 @@ describe("Cover against Attacks", () => {
   });
 
   it("ignores Half Cover for an attacker at Range 1", () => {
-    expect(attackFrom({ col: 19, row: 8 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
-    expect(attackFrom({ col: 19, row: 7 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
+    expect(attackFrom({ col: 19, row: 8 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 3 });
+    expect(attackFrom({ col: 19, row: 7 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 3 });
   });
 
   it("has no facing: Half Cover protects from every side", () => {
@@ -61,7 +63,7 @@ describe("Cover against Attacks", () => {
   });
 
   it("lets an attacker at Range 1 hit a Hero on Full Cover", () => {
-    expect(attackFrom({ col: 15, row: 2 }, FULL_COVER)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
+    expect(attackFrom({ col: 15, row: 2 }, FULL_COVER)).toMatchObject({ kind: EventKind.AttackHit, damage: 3 });
   });
 
   it("lets a Hero on Cover attack out of it", () => {

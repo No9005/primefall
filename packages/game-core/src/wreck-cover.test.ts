@@ -9,11 +9,12 @@ import { resolveRound } from "./resolution";
 import { restoreLocalHost } from "./local-host";
 
 const LEFT_BRUISER = "left-bruiser";
+const LEFT_CONTROLLER = "left-controller";
 const RIGHT_BRUISER = "right-bruiser";
 const RIGHT_ASSASSIN = "right-assassin";
-// Bruiser card 0 is Slam Shot (Range 3); card 4 is Breach Charge (destroys Half Cover).
-const SLAM_SHOT = 2; // Concussion Round: damage 2, Range 3 (Slam Shot is Range 1 to 2 since ADR 0025)
-const BREACH_CHARGE = cardIndex(HeroClass.Bruiser, "Breach Charge");
+// Bruiser card 2 is Time for Coffee; Tilly's Breach Charge destroys Half Cover.
+const SLAM_SHOT = 2; // Time for Coffee: Range 3 (Handle With Care is Range 1 to 2 since ADR 0025)
+const BREACH_CHARGE = cardIndex(HeroClass.Controller, "Breach Charge");
 
 const WRECK_TILE: GridPosition = { col: 8, row: 3 };
 const OPEN_TILE: GridPosition = { col: 8, row: 5 };
@@ -36,7 +37,7 @@ const slam = (target: string): SquadPlan => ({
   heroes: [{ heroId: LEFT_BRUISER, queue: [{ kind: ActionKind.Primary, card: SLAM_SHOT, target }] }],
 });
 
-/** The Deck Damage a Slam Shot from the attacker's tile does to the Right Bruiser standing on `tile`. */
+/** The Deck Damage a Handle With Care from the attacker's tile does to the Right Bruiser standing on `tile`. */
 function slamDamage(match: MatchState, from: GridPosition, tile: GridPosition): number {
   hero(match, LEFT_BRUISER).position = from;
   hero(match, LEFT_BRUISER).hand = [SLAM_SHOT, 0, 1, 3];
@@ -77,11 +78,11 @@ describe("Half Cover left by an Exhausted Hero", () => {
 
   it("is destroyed by Breach Charge, and the tile is plain floor afterwards", () => {
     const match = matchWithWreck(WRECK_TILE);
-    hero(match, LEFT_BRUISER).position = ATTACKER;
-    hero(match, LEFT_BRUISER).hand = [BREACH_CHARGE, SLAM_SHOT, 1, 2];
+    hero(match, LEFT_CONTROLLER).position = ATTACKER;
+    hero(match, LEFT_CONTROLLER).hand = [BREACH_CHARGE, SLAM_SHOT, 1, 2];
     const plan: SquadPlan = {
       squad: SquadId.Left,
-      heroes: [{ heroId: LEFT_BRUISER, queue: [{ kind: ActionKind.Primary, card: BREACH_CHARGE, target: LEFT_BRUISER, tile: WRECK_TILE }], pitched: [SLAM_SHOT, 1] }],
+      heroes: [{ heroId: LEFT_CONTROLLER, queue: [{ kind: ActionKind.Primary, card: BREACH_CHARGE, target: LEFT_CONTROLLER, tile: WRECK_TILE }], pitched: [SLAM_SHOT] }],
     };
     const { match: after, events } = resolveRound(match, [plan]);
     expect(events.map(({ kind }) => kind)).toContain(EventKind.CoverDestroyed);

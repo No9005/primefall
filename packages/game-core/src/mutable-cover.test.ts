@@ -18,11 +18,13 @@ import {
 } from "./reactor-deck";
 import { getSquadEvents, resolveRound } from "./resolution";
 
-const LEFT_BRUISER = "left-bruiser";
+const LEFT_BRUISER = "left-controller"; // Tilly breaks Cover (docs/design/decks.md)
+const LEFT_ASSASSIN = "left-assassin";
+const PRECISION_SHOT = 0; // Assassin card 0: 2 damage, Range 2 to 5
 const RIGHT_BRUISER = "right-bruiser";
-// Bruiser card 4 is Breach Charge (2 Energy, Range 3, 2 damage, destroys Half Cover); card 0 is Slam Shot.
-const BREACH_CHARGE = cardIndex(HeroClass.Bruiser, "Breach Charge");
-const SLAM_SHOT = cardIndex(HeroClass.Bruiser, "Slam Shot");
+// Breach Charge (Tilly): Range 3, 2 damage, destroys Half Cover. The other cards are Pitch fodder.
+const BREACH_CHARGE = cardIndex(HeroClass.Controller, "Breach Charge");
+const SLAM_SHOT = 0;
 
 const HALF_COVER_TILE = { col: 18, row: 8 };
 const FULL_COVER_TILE = { col: 15, row: 1 };
@@ -90,11 +92,11 @@ describe("Breach Charge", () => {
     const destroyed = resolveRound(match, [breachPlan(HALF_COVER_TILE)]).match;
     expect(coverAgainst(destroyed.grid, { col: 18, row: 11 }, HALF_COVER_TILE)).toBe(CoverKind.None);
     const next = startRound(destroyed);
-    hero(next, LEFT_BRUISER).hand = [SLAM_SHOT, 1, 2, 3];
-    hero(next, LEFT_BRUISER).position = { col: 18, row: 10 };
+    hero(next, LEFT_ASSASSIN).hand = [PRECISION_SHOT, 1, 2, 3];
+    hero(next, LEFT_ASSASSIN).position = { col: 18, row: 10 };
     const slam: SquadPlan = {
       squad: SquadId.Left,
-      heroes: [{ heroId: LEFT_BRUISER, queue: [{ kind: ActionKind.Primary, card: SLAM_SHOT, target: RIGHT_BRUISER }], pitched: [1] }],
+      heroes: [{ heroId: LEFT_ASSASSIN, queue: [{ kind: ActionKind.Primary, card: PRECISION_SHOT, target: RIGHT_BRUISER }], pitched: [1] }],
     };
     expect(resolveRound(next, [slam]).events[0]).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
   });

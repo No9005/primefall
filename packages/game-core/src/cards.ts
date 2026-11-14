@@ -16,7 +16,6 @@ export enum CardType {
 
 export enum CardTarget {
   VisibleEnemy = "visibleEnemy",
-  EnemiesInRange = "enemiesInRange",
   SelfHero = "selfHero",
   AllyHero = "allyHero",
   AllyHeroTile = "allyHeroTile",
@@ -25,13 +24,14 @@ export enum CardTarget {
   Area = "area",
   /** An enemy Hero that is a Ghost for the Squad: the shot goes to its last known position (ADR 0005). */
   GhostEnemy = "ghostEnemy",
+  /** A Visible enemy Hero, or a Ghost: the effect works if the Hero still stands on the Ghost's last known tile (Cargo Hook). */
+  VisibleOrGhostEnemy = "visibleOrGhostEnemy",
 }
 
 export enum EffectKind {
   Damage = "damage",
   ApplySlow = "applySlow",
   ApplyMarked = "applyMarked",
-  Knockback = "knockback",
   DestroyHalfCover = "destroyHalfCover",
   DestroyAnyCover = "destroyAnyCover",
   IgnoreHalfCover = "ignoreHalfCover",
@@ -40,24 +40,21 @@ export enum EffectKind {
   GainShield = "gainShield",
   /** The Hero's next Move action in the Queue covers `amount` tiles instead of 2 (ADR 0020). */
   ExtendMove = "extendMove",
-  GainPermanentAttack = "gainPermanentAttack",
   RevealArea = "revealArea",
   /** Placed Cover: stays until destroyed; `cover` picks the kind (Half unless stated). */
   PlaceCover = "placeCover",
   BecomeHidden = "becomeHidden",
   TargetGhost = "targetGhost",
   RemoveHalfCoverReduction = "removeHalfCoverReduction",
-  /** Pull: the named enemy moves up to `amount` tiles directly toward the caster (stops like Knockback). */
+  /** Pull: the named enemy moves up to `amount` tiles directly toward the caster; it stops at a Wall, Full Cover or a Hero. */
   Pull = "pull",
-  /** Charge: the caster moves up to `amount` tiles toward the named enemy and ends next to it, gains Shield and a Range 1 damage bonus. */
+  /** Charge (Express Delivery): the caster first gains Shield `shield`, then moves up to `amount` tiles toward the named enemy and ends next to it. */
   Charge = "charge",
-  /** The Attack deals `amount` more damage at Range 1 (the Bruiser's Slam Shot). */
+  /** The Attack deals `amount` more damage at Range 1 (Handle With Care, Buy One, Get Two). */
   CloseRangeBonus = "closeRangeBonus",
+  /** The Attack is made twice on the same target, one after the other (Buy One, Get Two). */
+  AttackTwice = "attackTwice",
 }
-
-/** Charge: Shield until the end of the Round, and extra damage of the next Attack at Range 1 in that Round. */
-export const CHARGE_SHIELD = 1;
-export const CHARGE_DAMAGE_BONUS = 1;
 
 export interface CardEffect {
   kind: EffectKind;
@@ -65,6 +62,8 @@ export interface CardEffect {
   amount?: number;
   /** Number of Resolutions the effect lasts, where it is not "this round". */
   duration?: number;
+  /** For Charge: the Shield the caster gains before it moves. */
+  shield?: number;
   /** Side length of a square area. */
   size?: number;
   /** For Placed Cover: Full instead of the default Half. */
@@ -105,6 +104,7 @@ export function isSimpleAttack(card: CardDefinition): boolean {
         effect.kind === EffectKind.IgnoreHalfCover ||
         effect.kind === EffectKind.PiercingDamage ||
         effect.kind === EffectKind.CloseRangeBonus ||
+        effect.kind === EffectKind.AttackTwice ||
         effect.kind === EffectKind.DestroyAnyCover ||
         effect.kind === EffectKind.ApplyMarked,
     )
@@ -129,7 +129,6 @@ export const PLAYABLE_UTILITY_EFFECTS = [
   EffectKind.ApplySlow,
   EffectKind.BecomeHidden,
   EffectKind.ExtendMove,
-  EffectKind.GainPermanentAttack,
   EffectKind.RevealArea,
   EffectKind.PlaceCover,
   EffectKind.RemoveHalfCoverReduction,
@@ -149,22 +148,9 @@ export function isPlayableUtility(card: CardDefinition): boolean {
       card.target === CardTarget.AllyHeroTile ||
       card.target === CardTarget.EmptyTile ||
       card.target === CardTarget.Area ||
-      card.target === CardTarget.VisibleEnemy) &&
+      card.target === CardTarget.VisibleEnemy ||
+      card.target === CardTarget.VisibleOrGhostEnemy) &&
     card.effects.every((effect) => (PLAYABLE_UTILITY_EFFECTS as readonly EffectKind[]).includes(effect.kind))
-  );
-}
-
-/**
- * Attacks that hit every enemy Hero in Range (no chosen target): damage, then Knockback. The player
- * confirms them on the casting Hero, so the action's target is that Hero.
- */
-export function isAreaAttack(card: CardDefinition): boolean {
-  const [first, ...rest] = card.effects;
-  return (
-    card.type === CardType.Attack &&
-    card.target === CardTarget.EnemiesInRange &&
-    first?.kind === EffectKind.Damage &&
-    rest.every((effect) => effect.kind === EffectKind.Knockback)
   );
 }
 
@@ -185,12 +171,11 @@ export function isTileAttack(card: CardDefinition): boolean {
 
 /** Whether a card's Primary effect can be planned and resolved so far. */
 export function isPlayableCard(card: CardDefinition): boolean {
-  return isSimpleAttack(card) || isGhostAttack(card) || isAreaAttack(card) || isTileAttack(card) || isPlayableUtility(card);
+  return isSimpleAttack(card) || isGhostAttack(card) || isTileAttack(card) || isPlayableUtility(card);
 }
 
 const slow: CardEffect = { kind: EffectKind.ApplySlow, duration: 1 };
 const marked: CardEffect = { kind: EffectKind.ApplyMarked, duration: 1 };
-const knockback: CardEffect = { kind: EffectKind.Knockback, amount: 2 };
 const damage = (amount: number): CardEffect => ({ kind: EffectKind.Damage, amount });
 const shield = (amount: number): CardEffect => ({ kind: EffectKind.GainShield, amount });
 
@@ -199,46 +184,44 @@ const BRUISER_RANGE = 3;
 const CONTROLLER_RANGE = 2;
 const ASSASSIN_RANGE = 5;
 
-// Range 1 to 2 (ADR 0025): 2 damage, 3 at Range 1.
-const slamShot: CardDefinition = {
-  name: "Slam Shot", type: CardType.Attack, energyCost: 1, range: 2,
+// Max Overload: up close and personal (docs/design/decks.md). Every card costs 1 Energy.
+// Range 1 to 2: 2 damage, 3 at Range 1.
+const handleWithCare: CardDefinition = {
+  name: "Handle With Care", type: CardType.Attack, energyCost: 1, range: 2,
   target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.CloseRangeBonus, amount: 1 }],
 };
-const concussionRound: CardDefinition = {
-  name: "Concussion Round", type: CardType.Attack, energyCost: 1, range: BRUISER_RANGE,
-  target: CardTarget.VisibleEnemy, effects: [damage(2), slow],
+// Two Attacks on the same target, each with the close-range bonus.
+const buyOneGetTwo: CardDefinition = {
+  name: "Buy One, Get Two", type: CardType.Attack, energyCost: 1, range: 2,
+  target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.CloseRangeBonus, amount: 1 }, { kind: EffectKind.AttackTwice }],
 };
+const timeForCoffee: CardDefinition = {
+  name: "Time for Coffee", type: CardType.Attack, energyCost: 1, range: BRUISER_RANGE,
+  target: CardTarget.VisibleEnemy, effects: [damage(1), slow],
+};
+// Shield 2 first, then up to 5 tiles toward a named enemy Hero; it cannot be used as a plain Move.
+const expressDelivery: CardDefinition = {
+  name: "Express Delivery", type: CardType.Utility, energyCost: 1,
+  target: CardTarget.VisibleEnemy, effects: [{ kind: EffectKind.Charge, amount: 5, shield: 2 }],
+};
+const hardHat: CardDefinition = {
+  name: "Hard Hat", type: CardType.Utility, energyCost: 1, target: CardTarget.SelfHero, effects: [shield(2)],
+};
+// Range 7: the named enemy is pulled until it stands next to the caster (it stops at a Wall, Full Cover or a Hero).
+const cargoHook: CardDefinition = {
+  name: "Cargo Hook", type: CardType.Utility, energyCost: 1, range: 7,
+  target: CardTarget.VisibleOrGhostEnemy, effects: [{ kind: EffectKind.Pull, amount: 6 }],
+};
+
+// Tilly Turnover creates and destroys Cover (docs/design/decks.md).
 const breachCharge: CardDefinition = {
-  name: "Breach Charge", type: CardType.Attack, energyCost: 1, range: BRUISER_RANGE,
+  name: "Breach Charge", type: CardType.Attack, energyCost: 1, range: 3,
   target: CardTarget.Tile,
   effects: [damage(2), { kind: EffectKind.DestroyHalfCover }],
 };
-// The Bruiser's tools to close in, to move enemies and to wreck Cover (ADR 0025).
-export const charge: CardDefinition = {
-  name: "Charge", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.VisibleEnemy, effects: [{ kind: EffectKind.Charge, amount: 3 }],
-};
-export const pull: CardDefinition = {
-  name: "Pull", type: CardType.Utility, energyCost: 1, range: 4,
-  target: CardTarget.VisibleEnemy, effects: [{ kind: EffectKind.Pull, amount: 2 }],
-};
-export const wreckingBlow: CardDefinition = {
+const wreckingBlow: CardDefinition = {
   name: "Wrecking Blow", type: CardType.Attack, energyCost: 1, range: 2,
   target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.DestroyAnyCover }],
-};
-const shockwave: CardDefinition = {
-  name: "Shockwave", type: CardType.Attack, energyCost: 1, range: 1,
-  target: CardTarget.EnemiesInRange, effects: [damage(2), knockback],
-};
-const bulwark: CardDefinition = {
-  name: "Bulwark", type: CardType.Utility, energyCost: 1, target: CardTarget.SelfHero, effects: [shield(3)],
-};
-const reinforce: CardDefinition = {
-  name: "Reinforce", type: CardType.Utility, energyCost: 1, target: CardTarget.AllyHero, effects: [shield(2)],
-};
-const adrenalSurge: CardDefinition = {
-  name: "Adrenal Surge", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.SelfHero, effects: [{ kind: EffectKind.GainPermanentAttack, amount: 1 }],
 };
 
 const tagRound: CardDefinition = {
@@ -248,10 +231,6 @@ const tagRound: CardDefinition = {
 const scoutDrone: CardDefinition = {
   name: "Scout Drone", type: CardType.Utility, energyCost: 1, target: CardTarget.Area, // no Range: any tile of the map
   effects: [{ kind: EffectKind.RevealArea, size: 3, duration: 2 }],
-};
-const aegisProtocol: CardDefinition = {
-  name: "Aegis Protocol", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.AllyHero, effects: [shield(3)],
 };
 const fortify: CardDefinition = {
   name: "Fortify", type: CardType.Utility, energyCost: 1, range: 3,
@@ -313,11 +292,11 @@ const reposition: CardDefinition = {
  */
 export const HERO_DECKS: Record<HeroClass, readonly CardDefinition[]> = {
   [HeroClass.Bruiser]: [
-    slamShot, slamShot, concussionRound, breachCharge, shockwave, bulwark,
-    bulwark, charge, charge, pull, adrenalSurge, wreckingBlow,
+    handleWithCare, handleWithCare, timeForCoffee, buyOneGetTwo, handleWithCare, hardHat,
+    hardHat, expressDelivery, expressDelivery, cargoHook, cargoHook, timeForCoffee,
   ],
   [HeroClass.Controller]: [
-    tagRound, scoutDrone, scoutDrone, aegisProtocol, reinforce,
+    tagRound, scoutDrone, scoutDrone, breachCharge, wreckingBlow,
     fortify, deployCover, barricade, gravitySnare, overwatchUplink,
   ],
   [HeroClass.Assassin]: [
