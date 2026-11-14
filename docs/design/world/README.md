@@ -1,5 +1,7 @@
 # World, tone and Heroes: working notes
 
+The missions are in `missions.md`.
+
 **Status: ideas from a chat session with the product owner. Nothing here is decided, built or part of a spec.** The game does not use these notes yet. They collect the direction so that the next decisions (names, maps, missions, the Prime Zone) start from the same picture. Decisions belong in an ADR or `docs/design/decisions.md` once they are made.
 
 ## Tone
