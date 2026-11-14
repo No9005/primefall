@@ -14,7 +14,6 @@ export const GLOSSARY_GROUPS: readonly GlossaryGroup[] = [GlossaryGroup.Heroes, 
 /** The pictures drawn with Pixi on a small board. */
 export type SceneName =
   | "shield"
-  | "plannedBlock"
   | "slow"
   | "marked"
   | "hidden"
@@ -68,13 +67,6 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
     group: GlossaryGroup.Heroes,
     text: "A blue crystal above the head for each Shield point and a bubble in front of the Hero. Each absorbed hit takes a crystal; at zero the bubble breaks.",
     picture: { scene: "shield" },
-  },
-  {
-    name: "Planned Block",
-    group: GlossaryGroup.Heroes,
-    text: "Hollow dashed crystals above your own Hero while its Queue holds a Block; the tag is the Tick of the Block.",
-    mode: "Attack and Defend only: the classic mode has no Block.",
-    picture: { scene: "plannedBlock" },
   },
   {
     name: "Slow",

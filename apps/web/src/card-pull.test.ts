@@ -81,25 +81,16 @@ describe("the card pull state machine", () => {
 });
 
 describe("the faces of a card", () => {
-  const allFree = { [CardUse.Primary]: undefined, [CardUse.Pitch]: undefined, [CardUse.Move]: undefined, [CardUse.Block]: undefined };
+  const allFree = { [CardUse.Primary]: undefined, [CardUse.Pitch]: undefined, [CardUse.Move]: undefined };
   const without = HERO_DECKS[HeroClass.Assassin][0]!;
 
-  it("has four faces, and no Block face in the classic mode", () => {
-    expect(faceViews(without, allFree, { primary: "x" }, true).map(({ face }) => face)).toEqual([
-      CardUse.Primary,
-      CardUse.Pitch,
-      CardUse.Move,
-      CardUse.Block,
-    ]);
-    expect(faceViews(without, allFree, { primary: "x" }, false).map(({ face }) => face)).toEqual([
-      CardUse.Primary,
-      CardUse.Pitch,
-      CardUse.Move,
-    ]);
+
+  it("has three faces: Primary, Pitch and Move", () => {
+    expect(faceViews(without, allFree, { primary: "x" }).map(({ face }) => face)).toEqual([CardUse.Primary, CardUse.Pitch, CardUse.Move]);
   });
 
   it("shows an unaffordable cost as Not enough Energy and keeps other reasons", () => {
-    const faces = faceViews(without, { ...allFree, [CardUse.Primary]: "needs 1 Energy", [CardUse.Move]: "Queue is full" }, { primary: "x" }, true);
+    const faces = faceViews(without, { ...allFree, [CardUse.Primary]: "needs 1 Energy", [CardUse.Move]: "Queue is full" }, { primary: "x" });
     const reason = (face: Face) => faces.find((candidate) => candidate.face === face)?.reason;
     expect(reason(CardUse.Primary)).toBe("Not enough Energy");
     expect(reason(CardUse.Move)).toBe("Queue is full");

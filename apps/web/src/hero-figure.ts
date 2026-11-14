@@ -34,21 +34,6 @@ function rubyPoints(x: number, y: number, size: number): number[] {
   return [-0.55, -0.9, 0.55, -0.9, 1, -0.2, 0, 0.9, -1, -0.2].map((value, index) => (index % 2 === 0 ? x + value * size : y + value * size));
 }
 
-/** Strokes a closed polygon as dashes, for the hollow rubies of a planned Shield. */
-function strokeDashed(graphics: Graphics, points: readonly number[], dash: number, line: { width: number; color: number }): void {
-  for (let i = 0; i < points.length; i += 2) {
-    const [x1, y1] = [points[i]!, points[i + 1]!];
-    const [x2, y2] = [points[(i + 2) % points.length]!, points[(i + 3) % points.length]!];
-    const dashes = Math.max(1, Math.round(Math.hypot(x2 - x1, y2 - y1) / dash / 2));
-    for (let step = 0; step < dashes; step++) {
-      const from = step / dashes;
-      const to = (step + 0.5) / dashes;
-      graphics.moveTo(x1 + (x2 - x1) * from, y1 + (y2 - y1) * from).lineTo(x1 + (x2 - x1) * to, y1 + (y2 - y1) * to);
-    }
-  }
-  graphics.stroke(line);
-}
-
 function tickLabel(text: string, x: number, y: number): Text {
   const { fill, size } = HERO_STYLE.marks.tickText;
   const label = new Text({ text, style: { fill, fontSize: size, fontWeight: "700", stroke: { color: HERO_STYLE.outline.color, width: 3 } } });
@@ -83,7 +68,7 @@ function iconGraphics(kind: IconKind, x: number, y: number, scale: number): Grap
 }
 
 /**
- * The marks above a Hero: a row of rubies (filled for held Shield, hollow and dashed for a queued Block, with its Tick)
+ * The marks above a Hero: a row of rubies (the held Shield)
  * and the icons of planned Waits and self-played cards. Drawn in the Hero's own Graphics, without filters.
  */
 export function marksFigure(marks: HeroMarks, cameraScale: number): Container {
@@ -98,18 +83,11 @@ export function marksFigure(marks: HeroMarks, cameraScale: number): Container {
   for (let i = 0; i < marks.rubies; i++) {
     const x = left + i * step;
     const points = rubyPoints(x, ruby.rowY, ruby.size);
-    if (marks.filled) {
-      rubies.poly(points).fill(ruby.fill).stroke(line);
-      const top = ruby.rowY - ruby.size * 0.9;
-      rubies.poly([x - ruby.size * 0.55, top, x + ruby.size * 0.55, top, x, ruby.rowY - ruby.size * 0.1]).fill(ruby.facet);
-    } else {
-      // A queued Block: a hollow dashed diamond.
-      const diamond = [0, -1, 1, 0, 0, 1, -1, 0].map((value, index) => (index % 2 === 0 ? x + value * ruby.size : ruby.rowY + value * ruby.size));
-      strokeDashed(rubies, diamond, ruby.dash, { width: worldLineWidth(2, scale), color: ruby.fill });
-    }
+    rubies.poly(points).fill(ruby.fill).stroke(line);
+    const top = ruby.rowY - ruby.size * 0.9;
+    rubies.poly([x - ruby.size * 0.55, top, x + ruby.size * 0.55, top, x, ruby.rowY - ruby.size * 0.1]).fill(ruby.facet);
   }
   container.addChild(rubies);
-  if (marks.ticks.length > 0) container.addChild(tickLabel(marks.ticks.join(","), -left + ruby.size + 4, ruby.rowY));
   const iconStep = icon.size * 2 + icon.gap + 16;
   const iconLeft = (-(marks.icons.length - 1) * iconStep) / 2;
   marks.icons.forEach(({ kind, tick }, i) => {

@@ -105,7 +105,6 @@ export function queueRowLabel(
 ): { name: string; target: string } {
   const tile = (position: GridPosition) => `to ${position.col} · ${position.row}`;
   if (action.kind === ActionKind.Move) return { name: "Move 2", target: tile(action.destination) };
-  if (action.kind === ActionKind.Block) return { name: "Block 2", target: "" };
   if (action.kind === ActionKind.Wait) return { name: "Wait", target: "" };
   const name = HERO_DECKS[heroClass][action.card]!.name;
   if (action.tile) return { name, target: tile(action.tile) };
@@ -142,10 +141,6 @@ export function actionUsesCard(action: QueuedAction, card: CardIndex): boolean {
   return action.kind !== ActionKind.Wait && action.card === card;
 }
 
-export function blockAction(card: CardIndex): QueuedAction {
-  return { kind: ActionKind.Block, card };
-}
-
 export function primaryAction(card: CardIndex, target: string, { tile }: { tile?: GridPosition } = {}): QueuedAction {
   return { kind: ActionKind.Primary, card, target, ...(tile ? { tile } : {}) };
 }
@@ -154,14 +149,12 @@ export enum CardUse {
   Primary = "primary",
   Pitch = "pitch",
   Move = "move",
-  Block = "block",
 }
 
 export const CARD_USE_LABELS: Record<CardUse, string> = {
   [CardUse.Primary]: "Primary effect",
   [CardUse.Pitch]: "Pitch 1",
   [CardUse.Move]: "Move 2",
-  [CardUse.Block]: "Block 2",
 };
 
 export interface AimState {
@@ -214,6 +207,5 @@ export function cardUseReasons(
     [CardUse.Primary]: queueFull ?? primaryReason(HERO_DECKS[heroClass][card]!, available),
     [CardUse.Pitch]: undefined,
     [CardUse.Move]: queueFull,
-    [CardUse.Block]: queueFull,
   };
 }

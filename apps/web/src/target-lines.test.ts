@@ -106,9 +106,9 @@ describe("plannedTargetLines", () => {
     ]);
   });
 
-  it("draws no line for Block, Move or a self effect", () => {
+  it("draws no line for Wait, Move or a self effect", () => {
     const bulwark: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Bruiser, "Bulwark"), target: "b" };
-    const queue: QueuedAction[] = [{ kind: ActionKind.Block, card: 0 }, { kind: ActionKind.Move, card: 1, destination: { col: 2, row: 1 } }, bulwark];
+    const queue: QueuedAction[] = [{ kind: ActionKind.Wait }, { kind: ActionKind.Move, card: 1, destination: { col: 2, row: 1 } }, bulwark];
     expect(plannedTargetLines(grid, heroes, [], [plan("b", queue)])).toEqual([]);
   });
 
@@ -206,7 +206,7 @@ describe("replayTargetLines over a recorded Resolution", () => {
 
 describe("crossfireRings", () => {
   const wait: QueuedAction = { kind: ActionKind.Wait };
-  const block: QueuedAction = { kind: ActionKind.Block, card: 0 };
+  const block: QueuedAction = { kind: ActionKind.Wait };
   const second = hero("c", HeroClass.Bruiser, { col: 1, row: 3 });
   const squad = [bruiser, second];
   const targets = [visible("e", { col: 3, row: 2 }), visible("f", { col: 5, row: 3 })];

@@ -7,7 +7,7 @@ import { ActionKind, type CardIndex, cardIndex, type GridPosition, HeroClass, ty
 import { createMatch, type HeroState, type MatchState, recordSightings, startRound } from "game-core/server";
 
 /** How a Hand card is used in a planning step. */
-export type StepUse = "primary" | "pitch" | "move" | "block";
+export type StepUse = "primary" | "pitch" | "move";
 
 export type PlanStep =
   /**
@@ -622,7 +622,6 @@ export function preparedPlan(scenario: Scenario, match: MatchState, steps: reado
     const card = hero.hand[step.slot];
     if (card === undefined) throw new Error(`${scenario.name}: no card in slot ${step.slot}`);
     if (step.use === "pitch") pitched.push(card);
-    else if (step.use === "block") queue.push({ kind: ActionKind.Block, card });
     else if (step.use === "move") {
       if (!step.tile) throw new Error(`${scenario.name}: a Move needs a tile`);
       queue.push({ kind: ActionKind.Move, card, destination: step.tile });

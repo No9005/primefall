@@ -21,7 +21,6 @@ const CLIP_NAMES: Record<ClipName, true> = {
   aegis: true,
   deploy: true,
   hidden: true,
-  block: true,
   hit: true,
   absorb: true,
   takeCover: true,

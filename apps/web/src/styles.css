@@ -339,10 +339,6 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 /* The parked card can be tapped or pulled down to put it back; while it floats under the finger it ignores the pointer. */
 .pull-card.parked:not(.floating) { pointer-events: auto; cursor: grab; touch-action: none; }
 .queue-column { display: flex; flex-direction: column; gap: 3px; }
-.drop-chip { width: 124px; min-height: 32px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; border-radius: 6px; font: 700 14px Rajdhani, sans-serif; letter-spacing: 0.06em; }
-.drop-chip.lit { background: color-mix(in srgb, var(--teal) 20%, transparent); border: 2px solid var(--teal); color: var(--teal); }
-.drop-chip.off { background: color-mix(in srgb, var(--panel) 87%, transparent); border: 2px dashed var(--steel); color: var(--muted); opacity: 0.7; }
-.drop-chip.active { background: var(--teal); color: var(--graphite); }
 .energy.drop-lit { box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 40%, transparent); }
 .energy.drop-lit.active { background: var(--orange); }
 .energy.drop-lit.active .energy-label, .energy.drop-lit.active .energy-count { color: var(--graphite); }

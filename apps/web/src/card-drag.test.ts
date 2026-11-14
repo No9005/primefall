@@ -1,13 +1,12 @@
 import { ActionKind, type CardIndex, type QueuedAction } from "game-core";
 import { describe, expect, it } from "vitest";
 import { applyDrop, type BoardPick, type DropLayout, type DropPlaces, type Point, probeDrop, resolveDrop } from "./card-drag";
-import { blockAction, CardUse, moveAction, primaryAction } from "./planning-selection";
+import { CardUse, moveAction, primaryAction } from "./planning-selection";
 
 const allowed: Record<CardUse, string | undefined> = {
   [CardUse.Primary]: undefined,
   [CardUse.Pitch]: undefined,
   [CardUse.Move]: undefined,
-  [CardUse.Block]: undefined,
 };
 
 const places: DropPlaces = {
@@ -29,7 +28,6 @@ const board: Record<number, BoardPick> = {
 };
 const layout: DropLayout = {
   board: { left: 300, top: 0, right: 1000, bottom: 500 },
-  blockChip: { left: 10, top: 100, right: 130, bottom: 140 },
   energyOrb: { left: 10, top: 400, right: 50, bottom: 440 },
   hud: [{ left: 300, top: 400, right: 1000, bottom: 500 }],
   pickBoard: ({ x }) => board[x] ?? { target: { kind: "none" }, ground: undefined },
@@ -62,8 +60,7 @@ describe("resolveDrop", () => {
     expect(resolveDrop(at(550), layout, places, allowed)).toBeUndefined();
   });
 
-  it("drops on the Block chip as Block and on the Energy orb as Pitch", () => {
-    expect(resolveDrop(at(60, 120), layout, places, allowed)).toEqual({ use: CardUse.Block });
+  it("drops on the Energy orb as Pitch", () => {
     expect(resolveDrop(at(30, 420), layout, places, allowed)).toEqual({ use: CardUse.Pitch });
   });
 
@@ -79,11 +76,10 @@ describe("resolveDrop", () => {
   });
 
   it("returns none for a use that is not allowed and says why", () => {
-    const reasons = { ...allowed, [CardUse.Primary]: "needs 2 Energy", [CardUse.Block]: "Queue is full", [CardUse.Move]: "Queue is full" };
+    const reasons = { ...allowed, [CardUse.Primary]: "needs 2 Energy", [CardUse.Move]: "Queue is full" };
     for (const x of [500, 520, 530, 540]) expect(resolveDrop(at(x), layout, places, reasons)).toBeUndefined();
-    expect(resolveDrop(at(60, 120), layout, places, reasons)).toBeUndefined();
     expect(probeDrop(at(500), layout, places, reasons, "ATTACK").blockedReason).toBe("needs 2 Energy");
-    expect(probeDrop(at(60, 120), layout, places, reasons, "ATTACK").blockedReason).toBe("Queue is full");
+    expect(probeDrop(at(530), layout, places, reasons, "ATTACK").blockedReason).toBe("Queue is full");
     expect(resolveDrop(at(30, 420), layout, places, reasons)).toEqual({ use: CardUse.Pitch });
   });
 
@@ -96,9 +92,9 @@ describe("resolveDrop", () => {
 
 describe("applyDrop", () => {
   const card: CardIndex = 3;
-  const queue: readonly QueuedAction[] = [{ kind: ActionKind.Block, card: 0 }];
+  const queue: readonly QueuedAction[] = [{ kind: ActionKind.Wait }];
 
-  it("adds the same Queue entry as the tap flow for Primary, Move and Block", () => {
+  it("adds the same Queue entry as the tap flow for Primary and Move", () => {
     const primary = resolveDrop(at(500), layout, places, allowed)!;
     expect(applyDrop(card, primary, queue, []).queue).toEqual([...queue, primaryAction(card, "right-assassin")]);
     expect(applyDrop(card, primary, queue, []).queue.at(-1)).toEqual({ kind: ActionKind.Primary, card, target: "right-assassin" });
@@ -109,10 +105,6 @@ describe("applyDrop", () => {
     const move = resolveDrop(at(530), layout, places, allowed)!;
     expect(applyDrop(card, move, queue, []).queue.at(-1)).toEqual(moveAction(card, { col: 3, row: 1 }));
     expect(applyDrop(card, move, queue, []).queue.at(-1)).toEqual({ kind: ActionKind.Move, card, destination: { col: 3, row: 1 } });
-
-    const block = resolveDrop(at(60, 120), layout, places, allowed)!;
-    expect(applyDrop(card, block, queue, []).queue.at(-1)).toEqual(blockAction(card));
-    expect(applyDrop(card, block, queue, []).queue.at(-1)).toEqual({ kind: ActionKind.Block, card });
   });
 
   it("pitches the card without touching the Queue, like the tap flow", () => {

@@ -17,7 +17,7 @@ const hero = (id: string, heroClass: HeroClass, col: number, row: number): HeroV
   attackBonus: 0,
 });
 const move = (col: number, row: number): QueuedAction => ({ kind: ActionKind.Move, card: 0, destination: { col, row } });
-const block: QueuedAction = { kind: ActionKind.Block, card: 1 };
+const block: QueuedAction = { kind: ActionKind.Wait };
 
 const heroes = [hero("b", HeroClass.Bruiser, 2, 2), hero("c", HeroClass.Controller, 4, 2)];
 

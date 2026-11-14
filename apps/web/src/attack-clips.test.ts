@@ -69,13 +69,6 @@ describe("the playback of attacks", () => {
     expect(frame!.holdMs).toBe(1450);
   });
 
-  it("plays Block for a Shield without a card, and not for the Shield of a card", () => {
-    const [block] = buildPlaybackFrames([{ kind: EventKind.ShieldGained, tick: 1, heroId: "a", amount: 2 }], classOf);
-    expect(block!.clips).toEqual({ a: "block" });
-    expect(block!.holdMs).toBe(2900);
-    const [bulwark] = buildPlaybackFrames([{ kind: EventKind.ShieldGained, tick: 1, heroId: "a", amount: 2, card: "Bulwark" }], classOf);
-    expect(bulwark!.clips).toEqual({});
-  });
 
   it("keeps one step for a frame with only steps, whatever the classes", () => {
     const [frame] = buildPlaybackFrames([{ kind: EventKind.Step, tick: 1, heroId: "a", to: { col: 1, row: 0 } }], classOf);

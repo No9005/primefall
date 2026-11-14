@@ -13,7 +13,6 @@ const allowed: Record<CardUse, string | undefined> = {
   [CardUse.Primary]: undefined,
   [CardUse.Pitch]: undefined,
   [CardUse.Move]: undefined,
-  [CardUse.Block]: undefined,
 };
 
 describe("minimum touch size of Heroes", () => {
@@ -60,7 +59,6 @@ describe("minimum touch size of tiles and card drops", () => {
 
   const layout: DropLayout = {
     board: { left: 0, top: 0, right: view.width, bottom: view.height },
-    blockChip: { left: -10, top: -10, right: -5, bottom: -5 },
     energyOrb: { left: -10, top: -10, right: -5, bottom: -5 },
     hud: [],
     pickBoard: (point) => {
@@ -126,7 +124,6 @@ const TARGETS: Target[] = [
   // "Undo Pitch" at 12 px is well over 60 px wide.
   { name: "Undo Pitch button", tier: "secondary", selector: ".pitch-undo", size: () => ({ width: 60 }), jsx: [{ file: "PlanningScreen.tsx", includes: "pitch-undo" }] },
   { name: "Queue row", tier: "secondary", selector: ".queue-row", size: () => ({ width: QUEUE_COLUMN_WIDTH }), gapIn: ".queue-rows" },
-  { name: "Block drop chip", tier: "secondary", selector: ".drop-chip" },
   { name: "Floating card", tier: "primary", selector: ".floating-card", jsx: [{ file: "game-parts.tsx", includes: "floating-card" }] },
   // The padding of the end-screen buttons is 24 px on each side of the label.
   { name: "Start and end screen button", tier: "primary", selector: ".end-screen button", size: () => ({ width: 48 }), jsx: [{ file: "App.tsx", includes: "<button" }, { file: "EndScreen.tsx", includes: "<button" }] },
