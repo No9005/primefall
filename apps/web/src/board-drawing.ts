@@ -67,17 +67,16 @@ export interface TerrainInput {
   /** Cover a Hero placed (drawn as built Cover, remembered also in the fog). */
   placedCover: readonly GridPosition[];
   /**
-   * The tiles of `placedCover` that belong to the Squad itself: four teal corner marks say "ours, and it stays"; the rest
-   * is the enemy's and gets red marks. Absent: all of it is the Squad's own.
+   * The tiles of `placedCover` that belong to the Squad itself: they get four teal corner marks, so the player sees which one a
+   * new placement can take. The rest is the enemy's and is not marked. Absent: all of it is the Squad's own.
    */
   ownPlacedCover?: readonly GridPosition[];
   /** Cover the Squad has seen destroyed: the tile keeps a scorched outline. */
   destroyedCover: readonly GridPosition[];
 }
 
-/** Corner marks and tags of Placed Cover: our Squad's teal, the enemy's red (docs/design/role-visuals/380/placed-cover.png). */
+/** Corner marks of the Squad's own Placed Cover and the tags of a planned placement (docs/design/role-visuals/380/placed-cover.png). */
 export const COVER_OWN = 0x2ec4b6;
-export const COVER_ENEMY = 0xe5484d;
 /** The size of the tags over a tile, in figure scale units (the same as the labels of the effects layer). */
 const TAG_FONT = 9 * (128 / 46);
 
@@ -141,20 +140,14 @@ export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid,
       if (!built && !tile.lit) continue;
       const look = coverLook(tile.position, tile.kind === TileKind.FullCover ? "full" : "half", built, angle);
       drawCoverLook(piece, look, strokeScale);
-      if (built) {
-        const own = ownTiles.has(`${tile.position.col},${tile.position.row}`);
-        const marks = coverCornerMarks(tile.position, angle, own ? COVER_OWN : COVER_ENEMY, strokeScale);
+      // Only the Squad's own Placed Cover is marked: it is the one a new placement can take (the oldest), and for a Hero in
+      // cover it makes no difference whose Cover it is.
+      if (built && ownTiles.has(`${tile.position.col},${tile.position.row}`)) {
+        const marks = coverCornerMarks(tile.position, angle, COVER_OWN, strokeScale);
         // Above the bars of the Cover and below the Heroes (depth + 0.5), so the corners show round the foot of the piece.
         marks.zIndex = tile.depth + 0.2;
         objects.addChild(marks);
         created.push(marks);
-        // Enemy Cover the Squad sees is named, so it is never mistaken for the map's own.
-        if (!own && tile.lit) {
-          const tag = coverTag("ENEMY COVER", COVER_ENEMY, tile.position, angle);
-          tag.zIndex = tile.depth + 0.95;
-          objects.addChild(tag);
-          created.push(tag);
-        }
       }
       if (look.panels.length > 0) {
         // The panel stands in front of the Heroes on the tile (they sit at depth + 0.5) and behind the next tile.

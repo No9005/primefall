@@ -627,13 +627,6 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   }, [view.heroes, view.enemies, squadPlans, playback, playing, playerHeroId]);
   const aimedCard = aiming === undefined ? undefined : cardInMode(HERO_DECKS[selected.heroClass][aiming]!, overdriveAim);
   const aimedModes = aimedCard === undefined ? [] : [aimedCard];
-  // The Placed Cover the plans put down and the oldest that goes for it; a Placed-Cover card being aimed counts as one more.
-  const aimsToPlaceCover = !playing && aimedCard?.effects.some((effect) => effect.kind === EffectKind.PlaceCover) === true;
-  const coverChange = useMemo(
-    () => (playing ? undefined : plannedCoverPlan(view.ownPlacedCover, view.heroes, squadPlans, aimsToPlaceCover)),
-    [playing, view.ownPlacedCover, view.heroes, squadPlans, aimsToPlaceCover],
-  );
-  const coverPlan = coverChange ?? NO_COVER_PLAN;
   // Tile cards (Breach Charge), area cards (Scout Drone) and Deploy Cover are confirmed by tapping a tile.
   const aimsAtTile =
     aimedCard?.target === CardTarget.Tile ||
@@ -738,6 +731,15 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   // The card whose use is in progress: pressed or pulled out, or selected for a tile or target.
   const heldInHand = playing ? undefined : heldCard(pull);
   const cardInUse = playing ? undefined : (heldInHand ?? armed ?? aiming);
+  // The Placed Cover the plans put down and the oldest that goes for it; a Placed-Cover card being aimed counts as one more.
+  // A card that places Cover counts from the moment it is picked up (pulled from the Hand) or aimed, so the player sees at once which Cover it takes.
+  const placesCover = (card: CardDefinition | undefined) => card?.effects.some((effect) => effect.kind === EffectKind.PlaceCover) === true;
+  const aimsToPlaceCover = !playing && (placesCover(aimedCard) || (heldInHand !== undefined && placesCover(HERO_DECKS[selected.heroClass][heldInHand])));
+  const coverChange = useMemo(
+    () => (playing ? undefined : plannedCoverPlan(view.ownPlacedCover, view.heroes, squadPlans, aimsToPlaceCover)),
+    [playing, view.ownPlacedCover, view.heroes, squadPlans, aimsToPlaceCover],
+  );
+  const coverPlan = coverChange ?? NO_COVER_PLAN;
   let stage = CardUseStage.Idle;
   if (cardInUse !== undefined) stage = showsFaces(pull) ? CardUseStage.UseChosen : CardUseStage.Selected;
   const focus = hudFocus({ energy: energy.available, stage });

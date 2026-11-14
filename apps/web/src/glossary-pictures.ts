@@ -264,10 +264,6 @@ const SCENES: Record<SceneName, () => Container> = {
     const placed = [CENTRE];
     return new Scene(withTile(FLOOR_GRID, CENTRE, TileKind.HalfCover), { placed }).terrain().finish();
   },
-  enemyPlacedCover() {
-    const placed = [CENTRE];
-    return new Scene(withTile(FLOOR_GRID, CENTRE, TileKind.HalfCover), { placed, own: [] }).terrain().finish();
-  },
   destroyedCover() {
     return new Scene(FLOOR_GRID, { destroyed: [CENTRE] }).terrain().finish();
   },
