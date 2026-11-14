@@ -1,6 +1,6 @@
 # MVP Card Set Spec
 
-This is the complete fixed card set for the offline 3v3 prototype. Every card can alternatively be used as Pitch 1, Move 2, or (in Attack and Defend only; the classic mode has no Block) Block 2. A card fulfills only one of these roles during a round.
+This is the complete fixed card set for the offline 3v3 prototype. Every card can alternatively be used as Pitch 1 or Move 2. A card fulfills only one of these roles during a round.
 
 Cards with the same name are identical in every respect. Cards that differ have different names. Every card costs 1 Energy. There is no Overdrive: a card has one effect (ADR 0003, removed in the #415 deck redesign test).
 
