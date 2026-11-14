@@ -161,12 +161,12 @@ describe("Scout Drone", () => {
     expect(enemyView(after)).toMatchObject({ visibility: Visibility.Visible, position: far });
   });
 
-  it("tells the enemy only which area was scanned, not what is in it", () => {
+  it("tells the enemy which area was scanned and for how long, not what is in it", () => {
     const match = blockedSight([SCOUT_DRONE, PULSE_BOLT, 1, 5]);
     const tile = { col: 13, row: 3 };
     const { match: after } = resolveRound(match, [planOf(CONTROLLER, [primary(SCOUT_DRONE, CONTROLLER, { tile })], [PULSE_BOLT])]);
     const enemySide = buildSquadView(after, SquadId.Right);
-    expect(enemySide.scannedAreas).toEqual([{ center: tile, size: 3 }]);
+    expect(enemySide.scannedAreas).toEqual([{ center: tile, size: 3, remaining: 1 }]);
     expect(buildSquadView(after, SquadId.Left).scannedAreas).toEqual([]);
     expect(enemySide.revealedAreas).toEqual([]);
     // The scanning Squad's Heroes stay as unknown to the enemy as before.
