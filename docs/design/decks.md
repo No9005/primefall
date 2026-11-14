@@ -22,6 +22,7 @@ Three tests for every card:
 - **Every Hero gets a passive effect.** Max: +1 damage at close distance. Kit: +1 damage when the target is at the Attack's maximum Range. Tilly: open (options below).
 - **Max carries objects without a malus** (see _Carrying_).
 - **The default movement rises to 3** (see _Move 3_).
+- **Overdrive is removed as a test** (decided in the chat; done in the branch `agent/issue-415-deck-redesign`: the cards have no Overdrive mode, Ghost Shot is the Ghost card). **Pitch stays. Every card costs 1 Energy** (so one pitched card pays for one card). **No Link:** synergy should come natively from the cards and their states, not from a condition text on the card.
 
 ## Main function of each Hero (one sentence)
 
@@ -64,46 +65,40 @@ Status: **existing** (as in the spec), **changed** (text changed), **new**. Ener
 | # | Card | Energy | Effect (proposal) | Status |
 |---|---|---|---|---|
 | 1-2 | **Slam Shot** x2 | 1 | Attack, Range 1 to 2: deal 2 damage to the named visible enemy Hero. (The +1 at Range 1 is the passive.) | changed |
-| 3 | **Breach Charge** | 2 | Attack: deal 2 damage and destroy Half Cover on the target tile. **Overdrive:** destroy any Cover on the target tile and deal 2 damage to every Hero on it and next to it, allies and this Hero included. | existing |
+| 3 | **Breach Charge** | 1 | Attack: deal 2 damage and destroy Half Cover on the target tile. | existing |
 | 4 | **Wrecking Blow** | 1 | Attack, Range 1 to 2: deal 2 damage to the named visible enemy Hero; destroy any Cover on the target tile after the damage. | existing |
-| 5 | **Shockwave** | 2 | Attack: deal 2 damage to every enemy Hero within Range 1. **Overdrive:** 3 damage. **Knockback is removed** (the Bruiser wants to stay next to them). | changed |
+| 5 | **Shockwave** | 1 | Attack: deal 2 damage to every enemy Hero within Range 1. | changed |
 | 6-7 | **Charge** x2 | 1 | Utility: move up to 4 tiles toward the named visible enemy Hero and end next to it (stops at a wall, Full Cover or a Hero); gain Shield 1 until the end of the Round. (The +1 damage is the passive.) | changed |
 | 8 | **Pull** | 1 | Utility, Range 4: move the named visible enemy Hero up to 2 tiles toward this Hero (stops at a wall, Full Cover or a Hero; may leave a zone). The flavour name on the card can be Cargo Hook. | existing |
 | 9-10 | **Bulwark** x2 | 1 | Utility: this Hero gains Shield 3. | existing |
 | 11 | **Brace** | 1 | Utility: until the end of the Round this Hero cannot be moved by Pull or Knockback and gains Shield 1. Keeps him in a zone. | **new** |
-| 12 | **Guard** | 1 | Utility: an allied Hero within Range 2 gains Shield 3. **Overdrive:** two allied Heroes each gain Shield 3. | changed (it is Aegis Protocol of the Controller, moved) |
-
-Overdrive modes: Breach Charge, Shockwave, Guard. Out: Concussion Round (the Slow belongs to Tilly), Adrenal Surge (a permanent buff next to a passive), Reinforce (merged into Guard).
+| 12 | **Guard** | 1 | Utility: an allied Hero within Range 2 gains Shield 3. | changed (it is Aegis Protocol of the Controller, moved) |
 
 ### Tilly Turnover (Controller), 10 cards: the Field and the sight
 
 | # | Card | Energy | Effect (proposal) | Status |
 |---|---|---|---|---|
-| 1 | **Tag Round** | 1 | Attack, Range 2: deal 1 damage and apply Marked until the end of the next Resolution. **Overdrive:** also Slow. | existing |
-| 2-3 | **Scout Drone** x2 | 1 | Utility: reveal a 3 by 3 area anywhere on the map, also in the Fog, for two Resolutions; a Hidden enemy inside is shown and stays Hidden. The enemy sees which area was scanned, not who looks. **Overdrive:** 5 by 5. | existing |
+| 1 | **Tag Round** | 1 | Attack, Range 2: deal 1 damage and apply Marked until the end of the next Resolution. | existing |
+| 2-3 | **Scout Drone** x2 | 1 | Utility: reveal a 3 by 3 area anywhere on the map, also in the Fog, for two Resolutions; a Hidden enemy inside is shown and stays Hidden. The enemy sees which area was scanned, not who looks. | existing |
 | 4 | **Barricade** | 1 | Utility, Range 3: place Full Cover on an empty tile (Placed Cover). | existing |
 | 5 | **Scrap Wall** | 1 | Utility, Range 3: place Half Cover on an empty tile or on the tile of an allied Hero (Placed Cover). It merges Fortify and Deploy Cover. | changed (Fortify + Deploy Cover) |
-| 6-7 | **Arc Field** x2 | 2 | Utility, Range 4: place a Field on a tile for two Resolutions. An enemy Hero that stands on it at the end of a Tick takes 1 damage. **Overdrive:** a 3 by 3 Field. (The number of Ticks per Resolution makes this strong: to be measured; a variant is damage once per Resolution.) | **new** |
-| 8 | **Gravity Snare** | 2 | Utility: a visible enemy Hero gains Slow until the end of the next Resolution. | existing |
+| 6-7 | **Arc Field** x2 | 1 | Utility, Range 4: place a Field on a tile for two Resolutions. An enemy Hero that stands on it at the end of a Tick takes 1 damage. | **new** |
+| 8 | **Gravity Snare** | 1 | Utility: a visible enemy Hero gains Slow until the end of the next Resolution. | existing |
 | 9 | **Overwatch Uplink** | 1 | Utility: an allied Hero may attack an enemy in Half Cover this round without the Half Cover damage reduction. | existing |
-| 10 | **Rig Charge** | 2 | Utility: prepare a mission target next to this Hero; the next Attack on it deals +2 damage (Sabotage). Without a mission it can be used as Pitch, Move or Block like every card. | **new** (mission card) |
-
-Overdrive modes: Tag Round, Scout Drone, Arc Field. Out: Aegis Protocol and Reinforce (Shield belongs to Max), Fortify and Deploy Cover (merged into Scrap Wall), Field Repair (below).
+| 10 | **Rig Charge** | 1 | Utility: prepare a mission target next to this Hero; the next Attack on it deals +2 damage (Sabotage). Without a mission it can be used as Pitch, Move or Block like every card. | **new** (mission card) |
 
 ### Kit Crosshair (Assassin), 9 cards: unseen, at range, on one target
 
 | # | Card | Energy | Effect (proposal) | Status |
 |---|---|---|---|---|
-| 1-2 | **Long Shot** x2 | 1 | Attack, Range 3 to 7: deal 2 damage. (The +1 at Range 6 and 7 is the passive; the Overdrive 4 damage is replaced.) **Overdrive:** deal 3 damage at maximum Range. | changed |
+| 1-2 | **Long Shot** x2 | 1 | Attack, Range 3 to 7: deal 2 damage. (The +1 at Range 6 and 7 is the passive.) | changed |
 | 3 | **Recoil Shot** | 1 | Attack, Range 2 to 5: deal 2 damage and apply Knockback 1 (the tester's wish: the Assassin keeps his distance). | **new** |
-| 4 | **Shield Breaker** | 2 | Attack, Range 2 to 4: deal 2 Piercing Damage; Shield is not reduced; Half Cover still reduces it by 1, Full Cover blocks. | existing |
-| 5 | **Execution Round** | 2 | Attack, Range 2 to 5: deal 3 damage; ignores Half Cover. | existing |
-| 6 | **Ghost Shot** | 1 | Attack, Range 2 to 5: deal 2 damage to the named visible enemy Hero. **Overdrive:** target the last known position of a Ghost; it hits if an enemy stands on that tile during the Resolution. | existing |
+| 4 | **Shield Breaker** | 1 | Attack, Range 2 to 4: deal 2 Piercing Damage; Shield is not reduced; Half Cover still reduces it by 1, Full Cover blocks. | existing |
+| 5 | **Execution Round** | 1 | Attack, Range 2 to 5: deal 3 damage; ignores Half Cover. | existing |
+| 6 | **Ghost Shot** | 1 | Attack, Range 2 to 5: fire at the last known position of a Ghost; deal 2 damage to the enemy that stands there. | **changed** (this was its Overdrive; without Overdrive it is the card) |
 | 7 | **Vanish** | 1 | Utility: this Hero becomes Hidden for up to two Resolutions, provided it ends its movement in Cover. | existing |
 | 8 | **Silent Entry** | 1 | Utility: move up to 3 tiles; this Hero stays Hidden and is not shown by a drone area on the way. The weapon for Sabotage and for cutting off a carrier. | **new** (replaces Reposition) |
 | 9 | **Snatch** | 1 | Utility: pick up a dropped object within 2 tiles of this Hero (Carry and extract). Without a mission: Pitch, Move or Block. | **new** (mission card) |
-
-Overdrive modes: Long Shot, Ghost Shot. Out: Precision Shot (Recoil Shot and Long Shot cover its range), Cover Breaker (Execution Round already ignores Half Cover), Reposition (Move 3 is the default now), Mark Target (already out).
 
 ## The system: Pitch, Overdrive and synergy (ideas, not decided)
 
@@ -115,7 +110,7 @@ The owner's playtests: Pitch and Overdrive do not feel good, there is never a re
 
 **Idea 1: remove Overdrive.** Remove the exile mode (ADR 0003 would be superseded; exile stays only as Deck Damage). Its place is taken by the **Link**.
 
-**Idea 2: Link.** A card may carry one short condition and a small bonus: "**Link, Marked:** +1 damage." The conditions are a few shared states that the Heroes create and that last over Ticks, so it does not matter who plays first in a Round:
+**Idea 2: Link. (The owner does not want it: synergy should come natively, from the cards and their states. Kept here as an idea.)** A card may carry one short condition and a small bonus: "**Link, Marked:** +1 damage." The conditions are a few shared states that the Heroes create and that last over Ticks, so it does not matter who plays first in a Round:
 
 | State | Created by | Who profits (examples) |
 |---|---|---|
@@ -131,6 +126,24 @@ The owner's playtests: Pitch and Overdrive do not feel good, there is never a re
 **Idea 3: Pitch.** Option 1: leave Pitch as it is; when the cards have a Link, each card is worth playing, so pitching costs more and the choice is real. Option 2: a fixed Energy per Round (for example 3) and Pitch gives +1 on top; the tax goes away and the plan is easier to read, but it changes a core rule (spec stories 28 to 32). Recommendation: Option 1 first, measure, Option 2 as the fallback.
 
 **Rules and risks.** (1) The player controls one Hero in the classic mode; the two others are planned by the AI. Synergy between Heroes must not depend on the timing of the AI, so only **lasting states** (Marked, Slow, Revealed, Field, Cover) are used as conditions, not "played earlier this Round". The AI must still learn to use them. (2) At most one Link per card, a bonus of at most +1, so that no card swings. (3) Six conditions at most, so that the player can learn them (they belong in the glossary).
+
+## Tilly: passive, Marked and Slow
+
+**Passive idea of the owner: less damage in her own Cover.** On Half Cover she placed herself, Tilly takes 2 less damage instead of 1.
+
+- *For:* it fits her main function (she reads the ground), it gives a reason to place Cover next to herself and to play around terrain, and the story is easy: she built it, she knows where to stand.
+- *Danger:* most Attacks deal 2 damage, so 2 less is 0: on her own Half Cover she would be immune to a 2-damage Attack. Counters exist (Execution Round and Shield Breaker ignore or pierce Half Cover, Wrecking Blow and Breach Charge destroy it), but the gauge "damage share" (game-goals) must show that she is not unkillable.
+- *Variants:* (a) 2 less, minimum 0 (strongest). (b) 2 less, but a hit never goes below 1: the same as today for 2-damage Attacks, so a change only against 3 damage. (c) **Her own Half Cover also works against Attacks from Range 1** (today Cover is ignored at Range 1): she cannot be rushed by a Bruiser on her Cover. My recommendation: **(c)**, it is a new fact about her place on the board, not a number, and it answers the Bruiser, the one Hero that stands next to her. (a) can be tried first in the harness.
+- *Rule:* the Placed Cover has an owner already (#433); "her own" is the Cover placed by Tilly.
+
+**How to explain Marked and Slow (story).** Marked is a statement about sight (glossary: the enemy is visible to the Squad until the end of the next round); Slow is a statement about the ground. So both follow from her two tools:
+
+- **Marked comes from the drone.** The drone paints targets: a Marked enemy is one her drone tracks, which is why the Squad keeps sight of it. Tag Round is the drone's marker round (1 damage and a tracker). Overwatch Uplink is the same link: the drone guides an ally's shot past a Half Cover.
+- **Slow comes from the ground.** A gravity or foam field slows what stands in it. Idea: **Gravity Snare becomes a Field** (the Field family: Arc Field damages, Snare Field slows), instead of a direct status on an enemy. Then she has two families of her own: the **Cover and Fields** of the ground and the **drone** with its markers. Every Slow comes from a tile, every Marked from the drone.
+
+## Native synergy (ideas, no condition text on the cards)
+
+Instead of a Link, the cards combine through what they do to the board and to the Heroes: a tile that is a Field, Cover that is placed or destroyed, a Hero that is pulled, pushed, slowed, marked or Hidden. Examples that need no new text: Recoil Shot pushes an enemy to the maximum Range, so Kit's passive +1 applies; Pull brings an enemy to Range 1, so Max's passive +1 applies; Pull or Recoil Shot into an Arc Field; a Snare Field holds an enemy where Max's Charge reaches; Tilly's Cover lets Kit use Vanish; a drone area shows what Kit and Max can name as a target. The deck design checks every card against this list: what does it do to the board or to a Hero that another card cares about?
 
 ## The three missions and the Heroes
 
@@ -163,7 +176,7 @@ All ideas of the chat and of the tester, with their state:
 
 ## Open questions
 
-0. The system: remove Overdrive, add the Link, keep Pitch (see _The system_).
+0. The system: decided in the chat: Overdrive removed as a test, Pitch stays, every card costs 1 Energy, no Link (see _The system_). Still open: how the synergy comes natively (see _Native synergy_).
 1. Tilly's passive: (a), (b), (c) or another.
 2. Slow with Move 3: Move 1 or Move 2.
 3. Arc Field: damage each Tick or once per Resolution; one tile or a pattern.
