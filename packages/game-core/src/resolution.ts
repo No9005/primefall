@@ -35,7 +35,7 @@ import {
   TAKEOVER_COOLDOWN,
   ROUND_LIMIT,
   SquadId,
-  VICTORY_POINTS_TO_WIN,
+  CREDITS_TO_WIN,
   ZONE_DECAY_CARDS,
   ZoneTie,
 } from "./host";
@@ -764,7 +764,7 @@ function evaluateMatchEnd(match: MatchState, events: MatchEvent[], tick: number)
     if (match.round >= roundLimit) end(MatchEndReason.DefenceHeld, otherSquad(attacker));
     return;
   }
-  if (SQUADS.some((squad) => match.scores[squad] >= VICTORY_POINTS_TO_WIN)) return end(MatchEndReason.VictoryPoints, winnerOnPoints());
+  if (SQUADS.some((squad) => match.scores[squad] >= CREDITS_TO_WIN)) return end(MatchEndReason.Credits, winnerOnPoints());
   if (match.round >= ROUND_LIMIT) end(MatchEndReason.RoundLimit, winnerOnPoints());
 }
 
@@ -776,7 +776,7 @@ function heroesIn(match: MatchState, squad: SquadId, tiles: readonly GridPositio
 }
 
 /**
- * Classic mode: the control of every zone at the end of a Resolution and the Victory Points it earns. More
+ * Classic mode: the control of every zone at the end of a Resolution and the Credits it earns. More
  * non-Exhausted Heroes control a zone; equal numbers with at least one each is Contested; an inactive zone
  * has no control and scores nothing.
  */

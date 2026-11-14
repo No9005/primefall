@@ -41,7 +41,7 @@ describe("createMatch", () => {
     }
   });
 
-  it("places both Squads on their Spawn tiles", () => {
+  it("places both Squads on their Drop Point tiles", () => {
     const match = createMatch(1);
     for (const [squad, col] of [[SquadId.Left, 2], [SquadId.Right, 42]] as const) {
       const squadHeroes = match.heroes.filter((h) => h.squad === squad);

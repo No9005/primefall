@@ -134,7 +134,7 @@ export function pixelLayout(grid: Grid, tileset: Pick<Tileset, "groups" | "texts
       const floor = (name: string) => layout.floors.push({ name, col, row });
       if (here === TileKind.PrimeZone) floor("prime_floor");
       else if (here === TileKind.Outpost) floor("outpost_floor");
-      else if (here === TileKind.Spawn) floor(pick("spawn_floor", col, row, 2));
+      else if (here === TileKind.DropPoint) floor(pick("spawn_floor", col, row, 2));
       else {
         const v = tileHash(col, row, 3);
         floor(v < 0.12 ? pick("floor_grate", col, row, 4) : v < 0.3 ? pick("floor_rust", col, row, 4) : pick("floor_plate", col, row, 4));
@@ -162,14 +162,14 @@ export function pixelLayout(grid: Grid, tileset: Pick<Tileset, "groups" | "texts
     }
   }
 
-  // Guide lights lead from each Spawn along its middle row to the Prime Zone, over the open floor in between.
+  // Guide lights lead from each Drop Point along its middle row to the Prime Zone, over the open floor in between.
   const zoneTiles = components(grid, TileKind.PrimeZone).flat();
   if (zoneTiles.length > 0) {
     const zoneMiddle = middleOf(zoneTiles);
-    for (const spawn of components(grid, TileKind.Spawn)) {
-      const middle = middleOf(spawn);
+    for (const dropPoint of components(grid, TileKind.DropPoint)) {
+      const middle = middleOf(dropPoint);
       const towards = zoneMiddle.col > middle.col ? 1 : -1;
-      const edge = towards === 1 ? Math.max(...spawn.map((tile) => tile.col)) : Math.min(...spawn.map((tile) => tile.col));
+      const edge = towards === 1 ? Math.max(...dropPoint.map((tile) => tile.col)) : Math.min(...dropPoint.map((tile) => tile.col));
       for (let col = edge + towards; kind(col, middle.row) !== TileKind.PrimeZone && kind(col, middle.row) !== undefined; col += towards) {
         if (kind(col, middle.row) === TileKind.Floor) layout.floors.push({ name: "guide_col", col, row: middle.row });
       }
@@ -200,7 +200,7 @@ export function pixelLayout(grid: Grid, tileset: Pick<Tileset, "groups" | "texts
         // The Overwatch Nest is a Full Cover tile (ADR 0016) and the tileset has no frame of its own for it.
         stand("cover", "full_cover");
         layout.lights.push({ kind: "cover", col, row, dx: 0 });
-      } else if (here !== TileKind.PrimeZone && tileHash(col, row, 12) < (here === TileKind.Spawn ? 0.5 : 0.04)) {
+      } else if (here !== TileKind.PrimeZone && tileHash(col, row, 12) < (here === TileKind.DropPoint ? 0.5 : 0.04)) {
         stand("plant", pick("fern", col, row, 13), { dx: Math.round((tileHash(col, row, 14) - 0.5) * 14), dy: Math.round(tileHash(row, col, 15) * 5) });
       }
     }

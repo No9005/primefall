@@ -27,7 +27,7 @@ describe("local host", () => {
     expect(Object.keys(view).sort()).toEqual(["destroyedCover", "enemies", "grid", "heroes", "ownPlacedCover", "placedCover", "primeProgress", "revealedAreas", "round", "roundLimit", "scannedAreas", "scores", "squad", "visibleTiles", "wreckCover", "zones"]);
     expect(Object.keys(view.heroes[0]!).sort()).toEqual(["attackBonus", "deckCount", "discardCount", "exhausted", "exileCount", "hand", "heroClass", "hidden", "id", "marked", "position", "slowed"]);
     expect(view.enemies).toHaveLength(3);
-    // At the Spawn areas no enemy is in sight yet, so nothing but identity is delivered.
+    // At the Drop Point areas no enemy is in sight yet, so nothing but identity is delivered.
     expect(view.enemies.map((enemy) => Object.keys(enemy).sort())).toEqual(
       Array(3).fill(["heroClass", "id", "visibility"]),
     );
@@ -130,6 +130,14 @@ describe("local host", () => {
     expect(restoreLocalHost("not json")).toBeUndefined();
     expect(restoreLocalHost("null")).toBeUndefined();
     expect(restoreLocalHost(JSON.stringify({ version: SNAPSHOT_VERSION, match: {} }))).toBeUndefined();
+  });
+
+  it("resumes a match saved when the Drop Point was still called spawn", async () => {
+    const text = createLocalHost(5).snapshot();
+    expect(text).toContain('"dropPoint"');
+    const old = text.replaceAll('"dropPoint"', '"spawn"');
+    const resumed = restoreLocalHost(old)!;
+    expect(resumed.snapshot()).toBe(text);
   });
 
   it("rejects an invalid plan", async () => {

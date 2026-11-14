@@ -165,11 +165,11 @@ One simultaneous Resolution step in which each non-exhausted Hero processes the 
 _Avoid_: Turn, phase
 
 **Prime Zone**:
-The central 5 by 5 zone, worth 2 Victory Points per Resolution in the classic mode. It is inactive (scores nothing) until Round 4. In Attack and Defend the Attacker wins by controlling it during three consecutive Resolutions.
+The central 5 by 5 zone, worth 2 Credits per Resolution in the classic mode. It is inactive (scores nothing) until Round 4. In Attack and Defend the Attacker wins by controlling it during three consecutive Resolutions.
 _Avoid_: Point, base, capture zone
 
 **Outpost**:
-One of two 3 by 3 zones of the classic mode, on the centre column north and south of the Prime Zone, worth 1 Victory Point per Resolution to the Squad that controls it (ADR 0024). Active from Round 1.
+One of two 3 by 3 zones of the classic mode, on the centre column north and south of the Prime Zone, worth 1 Credit per Resolution to the Squad that controls it (ADR 0024). Active from Round 1.
 _Avoid_: Capture point, flag, side zone
 
 **Control**:
@@ -180,16 +180,16 @@ _Avoid_: Capture, own, claim
 A zone with the same number of non-exhausted Heroes of both Squads in it, and at least one each. Nobody controls it and it scores for nobody (classic mode, ADR 0024).
 _Avoid_: Neutral, locked, disputed
 
-**Victory Points**:
-The score of the classic mode (ADR 0024): each Resolution a Squad earns the value of every zone it controls. The first Squad to reach the threshold wins; after the Round Limit the higher score wins.
-_Avoid_: Score points, kills, health
+**Credits**:
+The score of the classic mode (ADR 0024, called Credits there): the Heroes are mercenaries, and each Resolution a Squad is paid the value of every zone it controls. The first Squad to reach the threshold wins; after the Round Limit the higher amount wins. Credits are only the score: nothing is bought or spent with them.
+_Avoid_: Credits, score points, money, coins, kills, health
 
 **Round Limit**:
-The maximum of Rounds per match in the classic mode (15). When it is played, the Squad with more Victory Points wins; equal points go to the Squad with more cards not in the Exile (Deck, Discard and Hand of all its Heroes); if still equal the match is a draw. Attack and Defend has its own Round limit.
+The maximum of Rounds per match in the classic mode (15). When it is played, the Squad with more Credits wins; equal points go to the Squad with more cards not in the Exile (Deck, Discard and Hand of all its Heroes); if still equal the match is a draw. Attack and Defend has its own Round limit.
 _Avoid_: Timeout, turn cap
 
 **Attacker**:
-In Attack and Defend mode, the Squad that starts on its Spawn tiles and wins by controlling the Prime Zone during three consecutive Resolutions or by Exhausting all Heroes of the Defender. It takes control of the Prime Zone when at least one of its Heroes stands in it and it has at least as many Heroes in it as the Defender (a tie goes to the Attacker). In the classic mode the Squads have no roles.
+In Attack and Defend mode, the Squad that starts on its Drop Point tiles and wins by controlling the Prime Zone during three consecutive Resolutions or by Exhausting all Heroes of the Defender. It takes control of the Prime Zone when at least one of its Heroes stands in it and it has at least as many Heroes in it as the Defender (a tie goes to the Attacker). In the classic mode the Squads have no roles.
 _Avoid_: Aggressor, invader
 
 **Defender**:
@@ -207,9 +207,9 @@ A set of weights chosen per match from the match seed (for example Aggressive, D
 A Full Cover tile (`O`) with a sightline towards the Prime Zone. The Reactor Deck has two of them, in its top half (ADR 0016).
 _Avoid_: Sniper nest, camp spot
 
-**Spawn**:
-One of the 2 by 5 strips of tiles at the left and right edge of the Grid where a Squad starts; no sight line leads from one Spawn to the other (ADR 0016).
-_Avoid_: Base, start zone
+**Drop Point**:
+One of the 2 by 5 strips of tiles at the left and right edge of the Grid where a Squad is landed and starts; no sight line leads from one Drop Point to the other (ADR 0016, where it is called Drop Point).
+_Avoid_: Drop Point, base, start zone
 
 **Reactor Deck**:
 The first Primefall map: a damaged cargo ship whose central reactor is the Prime Zone.

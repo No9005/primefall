@@ -1,4 +1,4 @@
-import { MatchEndReason, type MatchResult, PRIME_ZONE_WIN_RESOLUTIONS, SquadId, VICTORY_POINTS_TO_WIN } from "game-core";
+import { MatchEndReason, type MatchResult, PRIME_ZONE_WIN_RESOLUTIONS, SquadId, CREDITS_TO_WIN } from "game-core";
 import { endTexts, type Role } from "./attack-defend";
 
 interface EndScreenProps {
@@ -23,8 +23,8 @@ function reasonText(result: MatchResult, squad: SquadId): string {
   switch (result.reason) {
     case MatchEndReason.PrimeZoneHeld:
       return `${own ? "Your Squad" : "The enemy Squad"} controlled the Prime Zone for ${PRIME_ZONE_WIN_RESOLUTIONS} consecutive Resolutions.`;
-    case MatchEndReason.VictoryPoints:
-      return `${own ? "Your Squad" : "The enemy Squad"} reached ${VICTORY_POINTS_TO_WIN} Victory Points. ${scoreText(result, squad)}`;
+    case MatchEndReason.Credits:
+      return `${own ? "Your Squad" : "The enemy Squad"} reached ${CREDITS_TO_WIN} Credits. ${scoreText(result, squad)}`;
     case MatchEndReason.AllHeroesExhausted:
       if (result.winner === undefined) return "All Heroes of both Squads are Exhausted.";
       return `All Heroes of ${own ? "the enemy Squad" : "your Squad"} are Exhausted.`;
@@ -41,7 +41,7 @@ function reasonText(result: MatchResult, squad: SquadId): string {
 
 function scoreText(result: MatchResult, squad: SquadId): string {
   const enemy = squad === SquadId.Left ? SquadId.Right : SquadId.Left;
-  return result.scores ? `Victory Points: you ${result.scores[squad]}, enemy ${result.scores[enemy]}.` : "";
+  return result.scores ? `Credits: you ${result.scores[squad]}, enemy ${result.scores[enemy]}.` : "";
 }
 
 export function EndScreen({ result, squad, seed, role, roundLimit, onPlayAgain }: EndScreenProps) {

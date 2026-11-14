@@ -14,12 +14,12 @@ export enum SquadId {
 /** Rounds per match in the classic mode (Round Limit; docs/design/game-goals.md). */
 export const ROUND_LIMIT = 15;
 
-/** Victory Points a Squad needs to win the classic mode at once. */
-export const VICTORY_POINTS_TO_WIN = 30;
+/** Credits a Squad needs to win the classic mode at once. */
+export const CREDITS_TO_WIN = 30;
 
-/** Victory Points per Resolution for controlling the Prime Zone. */
+/** Credits per Resolution for controlling the Prime Zone. */
 export const PRIME_ZONE_VALUE = 2;
-/** Victory Points per Resolution for controlling one Outpost. */
+/** Credits per Resolution for controlling one Outpost. */
 export const OUTPOST_VALUE = 1;
 /** The Round from which the Prime Zone scores (it is inactive before). */
 export const PRIME_ZONE_UNLOCK_ROUND = 4;
@@ -50,7 +50,7 @@ export interface ZoneControl {
 export interface ZoneView extends ZoneControl {
   kind: ZoneKind;
   tiles: readonly GridPosition[];
-  /** Victory Points per Resolution for the controlling Squad. */
+  /** Credits per Resolution for the controlling Squad. */
   value: number;
   /** The Round from which the zone scores. */
   unlockRound: number;
@@ -103,11 +103,11 @@ export const PLANNING_TIMER_SECONDS = 60;
 export enum MatchEndReason {
   /** Attack and Defend: the Attacker controlled the Prime Zone for three consecutive Resolutions. */
   PrimeZoneHeld = "primeZoneHeld",
-  /** Classic: a Squad reached the Victory Points needed to win. */
-  VictoryPoints = "victoryPoints",
+  /** Classic: a Squad reached the Credits needed to win. */
+  Credits = "credits",
   /** All three Heroes of a Squad are Exhausted. */
   AllHeroesExhausted = "allHeroesExhausted",
-  /** Classic: the Round Limit passed; decided by Victory Points, then by the cards not in the Exile. */
+  /** Classic: the Round Limit passed; decided by Credits, then by the cards not in the Exile. */
   RoundLimit = "roundLimit",
   /** Attack and Defend: the Defender survived the Round limit of the mode (ADR 0022). */
   DefenceHeld = "defenceHeld",
@@ -122,7 +122,7 @@ export interface MatchResult {
   round: number;
   /** Cards in all Decks of each Squad's Heroes at the end. */
   deckTotals: Record<SquadId, number>;
-  /** Classic only: the Victory Points at the end. */
+  /** Classic only: the Credits at the end. */
   scores?: Record<SquadId, number>;
   /** Classic only: cards not in the Exile (Deck, Discard and Hand of all Heroes), the tiebreak of equal scores. */
   cardTotals?: Record<SquadId, number>;
@@ -240,7 +240,7 @@ export interface SquadView {
   attackAndDefend?: { defender: SquadId; roundsLeft: number; zone: readonly GridPosition[] };
   /** Attack and Defend: consecutive Resolutions each Squad has controlled the Prime Zone (0 for the Squad that does not). Always 0 in the classic mode. */
   primeProgress: Record<SquadId, number>;
-  /** Classic only: the Victory Points of both Squads. */
+  /** Classic only: the Credits of both Squads. */
   scores?: Record<SquadId, number>;
   /** Classic only: the Prime Zone and the Outposts. Control is the result of the last Resolution; enemy Hero positions stay in the Fog. */
   zones?: readonly ZoneView[];
@@ -318,7 +318,7 @@ export enum EventKind {
   Wait = "wait",
   /** A Hero has no card left in its Deck and Discard after the Resolution; it is removed from the match. */
   Exhausted = "exhausted",
-  /** Classic: `squad` took the zone `zone` (index in `ZONES`) from the enemy and earned `amount` Victory Points (0 when the bonus is off). Public; `heroId` is empty. */
+  /** Classic: `squad` took the zone `zone` (index in `ZONES`) from the enemy and earned `amount` Credits (0 when the bonus is off). Public; `heroId` is empty. */
   ZoneTakenOver = "zoneTakenOver",
 }
 

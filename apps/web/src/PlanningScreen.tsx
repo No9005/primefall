@@ -480,7 +480,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const [resolutionStage, setResolutionStage] = useState<ResolutionStage>();
   /** The counts after the Resolution and the callout being shown, from the end of the Ticks until the next view arrives. */
   const [primeAfter, setPrimeAfter] = useState<PrimeProgress>();
-  /** Classic: the Victory Points after the Resolution, shown once its playback is done. */
+  /** Classic: the Credits after the Resolution, shown once its playback is done. */
   const [scoresAfter, setScoresAfter] = useState<PrimeProgress>();
   const [zonesAfter, setZonesAfter] = useState<readonly ZoneView[]>();
   const [primeCallout, setPrimeCallout] = useState<PrimeCallout>();
@@ -1235,12 +1235,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         <div
           className={`prime-pill prime-${score.state}${zoneList ? " with-zones" : ""}${playing ? " resolving" : ""}`}
           data-testid="prime-progress"
-          aria-label={`Victory Points, you ${points?.[view.squad] ?? 0}, enemy ${points?.[enemySquad] ?? 0}`}
+          aria-label={`Credits, you ${points?.[view.squad] ?? 0}, enemy ${points?.[enemySquad] ?? 0}`}
         >
           <span className="prime-label">{score.label}</span>
-          <span className="prime-vp-score prime-vp-own">{points?.[view.squad] ?? 0}</span>
-          <span className="prime-vp-divider">:</span>
-          <span className="prime-vp-score prime-vp-enemy">{points?.[enemySquad] ?? 0}</span>
+          <span className="prime-credits-score prime-credits-own">{points?.[view.squad] ?? 0}</span>
+          <span className="prime-credits-divider">:</span>
+          <span className="prime-credits-score prime-credits-enemy">{points?.[enemySquad] ?? 0}</span>
           {zoneList && (
             <span className="zone-dots" data-testid="zone-dots">
               {zoneDots(zoneList, view.squad).map((dot, i) => (

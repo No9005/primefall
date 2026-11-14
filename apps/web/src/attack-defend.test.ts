@@ -59,7 +59,7 @@ describe("end texts", () => {
 });
 
 describe("the side screen preview", () => {
-  it("starts the Defenders in the Prime Zone and the Attackers on their Spawn", () => {
+  it("starts the Defenders in the Prime Zone and the Attackers on their Drop Point", () => {
     const attack = previewLayout("attack");
     expect(attack.heroes.map((hero) => hero.position.col)).toEqual([2, 2, 2]);
     expect(attack.enemies.map((hero) => hero.position.col)).toEqual([24, 24, 24]);

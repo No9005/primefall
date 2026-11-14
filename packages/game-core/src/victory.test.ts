@@ -9,7 +9,7 @@ import {
   PRIME_ZONE_VALUE,
   ROUND_LIMIT,
   SquadId,
-  VICTORY_POINTS_TO_WIN,
+  CREDITS_TO_WIN,
   ZoneKind,
 } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound, ZONES } from "./match";
@@ -98,7 +98,7 @@ describe("zone control", () => {
   });
 });
 
-describe("Victory Points", () => {
+describe("Credits", () => {
   it("give 2 for the Prime Zone", () => {
     expect(scoresAfter(matchWithHeroesInZone(1, 0))).toEqual({ [SquadId.Left]: PRIME_ZONE_VALUE, [SquadId.Right]: 0 });
   });
@@ -153,17 +153,17 @@ describe("activation", () => {
 describe("Victory", () => {
   it("is won at once by the Squad that reaches the threshold", () => {
     const match = matchWithHeroesInZone(1, 0);
-    match.scores[SquadId.Left] = VICTORY_POINTS_TO_WIN - PRIME_ZONE_VALUE - 1;
+    match.scores[SquadId.Left] = CREDITS_TO_WIN - PRIME_ZONE_VALUE - 1;
     expect(resolveEmpty(match).result).toBeUndefined();
     match.scores[SquadId.Left] += 1;
-    expect(resolveEmpty(match).result).toMatchObject({ winner: SquadId.Left, reason: MatchEndReason.VictoryPoints, round: PRIME_ZONE_UNLOCK_ROUND });
+    expect(resolveEmpty(match).result).toMatchObject({ winner: SquadId.Left, reason: MatchEndReason.Credits, round: PRIME_ZONE_UNLOCK_ROUND });
   });
 
   it("goes to the higher score when both Squads pass the threshold in the same Resolution", () => {
     const match = matchWithHeroesInZone(1, 0);
     place(match, SquadId.Right, 1, FIRST_OUTPOST);
-    match.scores = { [SquadId.Left]: VICTORY_POINTS_TO_WIN - 1, [SquadId.Right]: VICTORY_POINTS_TO_WIN - 1 };
-    expect(resolveEmpty(match).result).toMatchObject({ winner: SquadId.Left, reason: MatchEndReason.VictoryPoints });
+    match.scores = { [SquadId.Left]: CREDITS_TO_WIN - 1, [SquadId.Right]: CREDITS_TO_WIN - 1 };
+    expect(resolveEmpty(match).result).toMatchObject({ winner: SquadId.Left, reason: MatchEndReason.Credits });
   });
 });
 
@@ -191,7 +191,7 @@ describe("Squad loss", () => {
 
   it("is not saved by points", () => {
     const match = matchWithHeroesInZone(0, 0);
-    match.scores[SquadId.Left] = VICTORY_POINTS_TO_WIN - 1;
+    match.scores[SquadId.Left] = CREDITS_TO_WIN - 1;
     for (const hero of match.heroes.filter((candidate) => candidate.squad === SquadId.Left)) hero.deck = [];
     expect(resolveEmpty(match).result).toMatchObject({ winner: SquadId.Right, reason: MatchEndReason.AllHeroesExhausted });
   });

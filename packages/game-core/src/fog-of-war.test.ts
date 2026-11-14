@@ -39,7 +39,7 @@ function moveTo(match: MatchState, squad: SquadId, heroId: string, ...destinatio
 }
 
 describe("Visible, Ghost and Unknown", () => {
-  it("shows every enemy as Unknown at the start: the Spawn areas are far apart", () => {
+  it("shows every enemy as Unknown at the start: the Drop Point areas are far apart", () => {
     const view = buildSquadView(startRound(createMatch(1)), SquadId.Left);
     expect(view.enemies.map((enemy) => enemy.visibility)).toEqual(Array(3).fill(Visibility.Unknown));
   });
@@ -57,7 +57,7 @@ describe("Visible, Ghost and Unknown", () => {
     expect(enemyOf(match, SquadId.Left, RIGHT_BRUISER).visibility).toBe(Visibility.Unknown);
   });
 
-  it("cannot see the Prime Zone from the Spawn areas", () => {
+  it("cannot see the Prime Zone from the Drop Point areas", () => {
     const primeZone = findTiles(REACTOR_DECK, TileKind.PrimeZone);
     const fresh = startRound(createMatch(3));
     for (const squad of [SquadId.Left, SquadId.Right]) {

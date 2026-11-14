@@ -5,7 +5,7 @@ import { type AiStyle, aiStyleFor, planSquad } from "./ai";
 import { type MatchHost, MatchMode, type MatchModeSetting, SquadId, type SquadView, type SubmitResult } from "./host";
 import { buildSquadView, createMatch, type MatchState, recordSightings, startRound, ZONES } from "./match";
 import { type SquadPlan, validatePlan } from "./plan";
-import { withWreck } from "./reactor-deck";
+import { TileKind, withWreck } from "./reactor-deck";
 import { getSquadEvents, resolveRound } from "./resolution";
 import { SERVER_ENTRY } from "./server";
 
@@ -48,13 +48,22 @@ export function restoreLocalHost(snapshot: string, planner: SquadPlanner = planO
   }
 }
 
+/** A match saved when the Drop Point was still called "spawn" stores that name in its grid. */
+function withDropPoints(match: MatchState): MatchState {
+  const stale = match.grid.tiles.some((line) => line.some((tile) => (tile as string) === "spawn"));
+  if (!stale) return match;
+  const tiles = match.grid.tiles.map((line) => line.map((tile) => ((tile as string) === "spawn" ? TileKind.DropPoint : tile)));
+  return { ...match, grid: { ...match.grid, tiles } };
+}
+
 /**
  * A match saved before Exhausted Heroes left Half Cover has no wrecks: every Exhausted Hero in it leaves Half
  * Cover on its tile now, and each Squad knows the wrecks it could have seen.
  */
 function upgradeSavedMatch(match: MatchState): MatchState {
+  match = withDropPoints(match);
   if (match.mode === undefined) match = { ...match, mode: { kind: MatchMode.Classic } };
-  // Matches saved before the Victory Points start with none.
+  // Matches saved before the Credits start with none.
   if (match.scores === undefined) match = { ...match, scores: { [SquadId.Left]: 0, [SquadId.Right]: 0 }, zoneControl: ZONES.map(() => ({ contested: false })) };
   if (match.takeoverCooldown === undefined) match = { ...match, takeoverCooldown: ZONES.map(() => 0) };
   if (match.knownWrecks !== undefined) return match;

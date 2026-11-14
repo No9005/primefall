@@ -125,7 +125,7 @@ export interface TerrainTile {
   /** Whether the Squad sees the tile; false is drawn dark (the fog). Always true when no sight is given. */
   lit: boolean;
   floor: Face;
-  /** A Spawn marker lying on the floor. */
+  /** A Drop Point marker lying on the floor. */
   marker?: { points: number[]; color: number };
   /** What stands on the tile (Wall, Cover, Overwatch Nest): the two visible sides, then the top, in drawing order. */
   piece?: Face[];
@@ -299,7 +299,7 @@ export function buildTerrain(grid: Grid, angle: number = VIEW_ANGLE, lit?: Reado
         lit: isLit ?? true,
         floor: { role: FaceRole.Floor, points: diamond(1), ...style, edgeWidth: TERRAIN_STYLE.gridLineWidth },
       };
-      if (kind === TileKind.Spawn) tile.marker = { points: diamond(0.5), color: tile.lit ? TERRAIN_STYLE.spawnMarker : TERRAIN_STYLE.spawnMarkerDark };
+      if (kind === TileKind.DropPoint) tile.marker = { points: diamond(0.5), color: tile.lit ? TERRAIN_STYLE.dropPointMarker : TERRAIN_STYLE.dropPointMarkerDark };
       const choice = choosePiece(grid, position);
       if (choice) tile.piece = pieceFaces(proj, position, choice);
       tiles.push(tile);
@@ -531,7 +531,7 @@ export const hasCoverLook = (kind: TileKind): kind is TileKind.FullCover | TileK
 
 export { tileKey };
 
-/** The grid with every Cover tile (Half and Full) turned into plain floor; Walls, zones and Spawns stay. */
+/** The grid with every Cover tile (Half and Full) turned into plain floor; Walls, zones and Drop Points stay. */
 export function withoutCover(grid: Grid): Grid {
   let result = grid;
   grid.tiles.forEach((line, row) =>

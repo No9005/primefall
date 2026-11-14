@@ -1,5 +1,7 @@
 # Reactor Deck Map
 
+> **Terminology:** `GLOSSARY.md` now calls the Spawn strips Drop Points (this record: Spawn). This record keeps its original words.
+
 **Status:** Rewritten in #361 as the "Crossroads" map for the three zones of ADR 0024. It replaces the 31 by 17 layout (issue 131) and the 21 by 11 layout before it. It has two Overwatch Nests again.
 
 The first Primefall map is the Reactor Deck: a damaged cargo ship whose central reactor is the Prime Zone. The map is horizontally oriented and mirror-symmetric: one squad spawns on the left edge and the other on the right edge.

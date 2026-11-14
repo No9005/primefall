@@ -354,14 +354,14 @@ describe("framing a Move", () => {
 });
 
 describe("frameSquadCamera", () => {
-  const spawns = findTiles(REACTOR_DECK, TileKind.Spawn);
+  const dropPoints = findTiles(REACTOR_DECK, TileKind.DropPoint);
   const zoneTiles = findTiles(REACTOR_DECK, TileKind.PrimeZone);
   const zone = {
     col: zoneTiles.reduce((sum, t) => sum + t.col, 0) / zoneTiles.length,
     row: zoneTiles.reduce((sum, t) => sum + t.row, 0) / zoneTiles.length,
   };
   const squadAt = (side: "left" | "right") =>
-    spawns.filter((t) => (side === "left" ? t.col < REACTOR_DECK.width / 2 : t.col > REACTOR_DECK.width / 2)).sort((a, b) => a.row - b.row);
+    dropPoints.filter((t) => (side === "left" ? t.col < REACTOR_DECK.width / 2 : t.col > REACTOR_DECK.width / 2)).sort((a, b) => a.row - b.row);
   const viewOf = (width: number, height: number) => ({ width, height, angle: 45 });
   const freeOf = (width: number, height: number) => freeBoardArea({ width, height }, { kind: "idle" });
   const screenOf = (tile: { col: number; row: number }, camera: { scale: number; x: number; y: number }) => {
@@ -386,7 +386,7 @@ describe("frameSquadCamera", () => {
   ])("keeps every own Hero tile inside the free area with a tile of margin at %i x %i", (width, height) => {
     const view = viewOf(width, height);
     const free = freeOf(width, height);
-    // The player is the Left Squad. (The Right Squad's Spawn lies in the board's bottom corner, where the camera
+    // The player is the Left Squad. (The Right Squad's Drop Point lies in the board's bottom corner, where the camera
     // clamp keeps the view on the board and so cannot give the same margin.)
     const camera = frameSquadCamera(squadAt("left"), zone, view, free);
     expect(HERO_WORLD_HEIGHT * camera.scale).toBeGreaterThanOrEqual(40);

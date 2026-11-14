@@ -9,13 +9,13 @@ import {
   isStepAllowed,
   parseGrid,
   REACTOR_DECK,
-  spawnStartTiles,
+  dropPointStartTiles,
   TileKind,
   tileAt,
 } from "./reactor-deck";
 
 const centreColumn = (REACTOR_DECK.width - 1) / 2;
-const spawns = findTiles(REACTOR_DECK, TileKind.Spawn);
+const dropPoints = findTiles(REACTOR_DECK, TileKind.DropPoint);
 const zone = findTiles(REACTOR_DECK, TileKind.PrimeZone);
 const outposts = findTiles(REACTOR_DECK, TileKind.Outpost);
 
@@ -40,7 +40,7 @@ function reaches(starts: readonly GridPosition[], isTarget: (tile: GridPosition)
 
 const isZone = (tile: GridPosition) => tileAt(REACTOR_DECK, tile) === TileKind.PrimeZone;
 const isOutpost = (tile: GridPosition) => tileAt(REACTOR_DECK, tile) === TileKind.Outpost;
-const spawnsOf = (side: "left" | "right") => spawns.filter((tile) => (side === "left" ? tile.col < centreColumn : tile.col > centreColumn));
+const dropPointsOf = (side: "left" | "right") => dropPoints.filter((tile) => (side === "left" ? tile.col < centreColumn : tile.col > centreColumn));
 const open = (tile: GridPosition) => tileAt(REACTOR_DECK, tile) !== TileKind.Wall;
 
 describe("Reactor Deck", () => {
@@ -82,17 +82,17 @@ describe("Reactor Deck", () => {
     }
   });
 
-  it("gives each Squad a 2 by 5 Spawn strip on its own edge", () => {
-    expect(spawns).toHaveLength(20);
-    expect(spawnsOf("left").every(({ col, row }) => col >= 1 && col <= 2 && row >= 10 && row <= 14)).toBe(true);
-    expect(spawnsOf("right").every(({ col, row }) => col >= 42 && col <= 43 && row >= 10 && row <= 14)).toBe(true);
-    expect(spawnsOf("left")).toHaveLength(10);
-    expect(spawnsOf("right")).toHaveLength(10);
+  it("gives each Squad a 2 by 5 Drop Point strip on its own edge", () => {
+    expect(dropPoints).toHaveLength(20);
+    expect(dropPointsOf("left").every(({ col, row }) => col >= 1 && col <= 2 && row >= 10 && row <= 14)).toBe(true);
+    expect(dropPointsOf("right").every(({ col, row }) => col >= 42 && col <= 43 && row >= 10 && row <= 14)).toBe(true);
+    expect(dropPointsOf("left")).toHaveLength(10);
+    expect(dropPointsOf("right")).toHaveLength(10);
   });
 
-  it("starts the three Heroes of a Squad on the middle rows of the inner Spawn column", () => {
-    expect(spawnStartTiles(true)).toEqual([11, 12, 13].map((row) => ({ col: 2, row })));
-    expect(spawnStartTiles(false)).toEqual([11, 12, 13].map((row) => ({ col: 42, row })));
+  it("starts the three Heroes of a Squad on the middle rows of the inner Drop Point column", () => {
+    expect(dropPointStartTiles(true)).toEqual([11, 12, 13].map((row) => ({ col: 2, row })));
+    expect(dropPointStartTiles(false)).toEqual([11, 12, 13].map((row) => ({ col: 42, row })));
   });
 
   it("starts Defenders on the middle rows of the inner column of the Prime Zone", () => {
@@ -130,9 +130,9 @@ describe("Reactor Deck", () => {
 });
 
 describe("Reactor Deck sight lines", () => {
-  it("has no Line of Sight from any left Spawn tile to any right Spawn tile", () => {
+  it("has no Line of Sight from any left Drop Point tile to any right Drop Point tile", () => {
     let open = 0;
-    for (const a of spawnsOf("left")) for (const b of spawnsOf("right")) if (hasLineOfSight(REACTOR_DECK, a, b)) open++;
+    for (const a of dropPointsOf("left")) for (const b of dropPointsOf("right")) if (hasLineOfSight(REACTOR_DECK, a, b)) open++;
     expect(open).toBe(0);
   });
 
@@ -164,13 +164,13 @@ describe("Reactor Deck sight lines", () => {
 });
 
 describe("Reactor Deck routes", () => {
-  it.each(["left", "right"] as const)("lets the %s Spawn reach the Prime Zone", (side) => {
-    expect(reaches(spawnsOf(side), isZone, open)).toBe(true);
+  it.each(["left", "right"] as const)("lets the %s Drop Point reach the Prime Zone", (side) => {
+    expect(reaches(dropPointsOf(side), isZone, open)).toBe(true);
   });
 
-  it.each(["left", "right"] as const)("lets the %s Spawn reach both Outposts", (side) => {
-    expect(reaches(spawnsOf(side), (tile) => isOutpost(tile) && tile.row < 12, open)).toBe(true);
-    expect(reaches(spawnsOf(side), (tile) => isOutpost(tile) && tile.row > 12, open)).toBe(true);
+  it.each(["left", "right"] as const)("lets the %s Drop Point reach both Outposts", (side) => {
+    expect(reaches(dropPointsOf(side), (tile) => isOutpost(tile) && tile.row < 12, open)).toBe(true);
+    expect(reaches(dropPointsOf(side), (tile) => isOutpost(tile) && tile.row > 12, open)).toBe(true);
   });
 });
 

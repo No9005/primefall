@@ -9,7 +9,7 @@ export enum TileKind {
   PrimeZone = "primeZone",
   Outpost = "outpost",
   OverwatchNest = "overwatchNest",
-  Spawn = "spawn",
+  DropPoint = "dropPoint",
 }
 
 export interface GridPosition {
@@ -38,7 +38,7 @@ const LEGEND: Record<string, TileKind> = {
   P: TileKind.PrimeZone,
   O: TileKind.OverwatchNest,
   X: TileKind.Outpost,
-  S: TileKind.Spawn,
+  S: TileKind.DropPoint,
 };
 
 /** Parses an ASCII layout (one string per row) into a Grid and rejects ragged or unknown rows. */
@@ -229,7 +229,7 @@ export function shotLine(grid: Grid, from: GridPosition, to: GridPosition, range
  * Three zones: the Prime Zone (5 by 5) in the middle and two Outposts (3 by 3) on the centre column, top and bottom.
  * On purpose not symmetric: the two slabs beside the Prime Zone are point-symmetric (offset by two rows), and the
  * Overwatch Nests exist only in the top half (the bottom half has Full Cover in their place).
- * `#` Wall, `H` Half Cover, `F` Full Cover, `O` Overwatch Nest, `P` Prime Zone, `X` Outpost, `S` Spawn, `.` open floor.
+ * `#` Wall, `H` Half Cover, `F` Full Cover, `O` Overwatch Nest, `P` Prime Zone, `X` Outpost, `S` Drop Point, `.` open floor.
  */
 export const REACTOR_DECK: Grid = parseGrid([
   "#############################################",
@@ -268,12 +268,12 @@ function middleThree(column: readonly GridPosition[]): GridPosition[] {
 
 const isOnSide = (left: boolean, col: number) => (left ? col < REACTOR_DECK.width / 2 : col > REACTOR_DECK.width / 2);
 
-/** Where a Squad starts: the middle three rows of the inner column of its Spawn strip. */
-export function spawnStartTiles(left: boolean): GridPosition[] {
-  const spawns = findTiles(REACTOR_DECK, TileKind.Spawn).filter(({ col }) => isOnSide(left, col));
-  const cols = spawns.map(({ col }) => col);
+/** Where a Squad starts: the middle three rows of the inner column of its Drop Point strip. */
+export function dropPointStartTiles(left: boolean): GridPosition[] {
+  const dropPoints = findTiles(REACTOR_DECK, TileKind.DropPoint).filter(({ col }) => isOnSide(left, col));
+  const cols = dropPoints.map(({ col }) => col);
   const innerCol = left ? Math.max(...cols) : Math.min(...cols);
-  return middleThree(spawns.filter(({ col }) => col === innerCol));
+  return middleThree(dropPoints.filter(({ col }) => col === innerCol));
 }
 
 /** Where a Defender starts (ADR 0022): the middle three rows of the Prime Zone column next to the Squad's side. */

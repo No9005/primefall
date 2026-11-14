@@ -230,7 +230,7 @@ export const AI_WEIGHTS = {
   /** Aiming at an enemy a Squad mate attacks in the same Tick or the Tick before or after (Crossfire needs consecutive Ticks). */
   focus: 5,
   /**
-   * The lookahead's value of a simulated Round (`evaluateRound`), own minus enemy: per Victory Point (or Prime Zone
+   * The lookahead's value of a simulated Round (`evaluateRound`), own minus enemy: per Credit (or Prime Zone
    * progress), per point of zone value controlled, per card not in the Exile, per Hero in Cover; minus per enemy that
    * can hit a Hero; plus for winning the match.
    */
@@ -622,7 +622,7 @@ const textHash = (text: string) => [...text].reduce((sum, char) => (Math.imul(su
  * The imagined worlds for one planning call: the position of each hidden enemy (Ghost or Unknown) by Hero id, one map per
  * world, world 0 empty. Only the Squad View and the seed are read, so the hidden state of the match cannot leak. A hidden
  * enemy stands on a tile the Squad does not see, is no Wall and no Hero of the Squad, and is within reach of where it
- * was last seen (a Ghost) or of a Spawn (never seen: the further the match, the more of the map it could have reached).
+ * was last seen (a Ghost) or of a Drop Point (never seen: the further the match, the more of the map it could have reached).
  */
 export function sampleWorlds(view: SquadView, seed: number, worldCount = WORLDS): ReadonlyMap<string, GridPosition>[] {
   const hidden = view.enemies.filter((enemy) => enemy.visibility !== Visibility.Visible);
@@ -637,14 +637,14 @@ export function sampleWorlds(view: SquadView, seed: number, worldCount = WORLDS)
       if (tileAt(view.grid, tile) !== TileKind.Wall && !seen.has(tileKeyOf(tile)) && !ownTiles.has(tileKeyOf(tile))) open.push(tile);
     }),
   );
-  const spawns = findTiles(view.grid, TileKind.Spawn).filter((tile) => !seen.has(tileKeyOf(tile)) && !ownTiles.has(tileKeyOf(tile)));
+  const dropPoints = findTiles(view.grid, TileKind.DropPoint).filter((tile) => !seen.has(tileKeyOf(tile)) && !ownTiles.has(tileKeyOf(tile)));
   const salt = view.round * 2 + (view.squad === SquadId.Left ? 0 : 1);
   for (let world = 1; world < worldCount; world++) {
     const placed = new Map<string, GridPosition>();
     const taken = new Set<string>();
     for (const enemy of hidden) {
       const ghost = enemy.visibility === Visibility.Ghost ? enemy : undefined;
-      const origins = ghost ? [ghost.position] : spawns;
+      const origins = ghost ? [ghost.position] : dropPoints;
       const radius = ghost ? Math.max(1, view.round - ghost.lastSeenRound) * REACH_PER_ROUND : (view.round - 1) * REACH_PER_ROUND;
       const reachable = open.filter((tile) => !taken.has(tileKeyOf(tile)) && origins.some((origin) => chebyshevDistance(origin, tile) <= radius));
       if (reachable.length === 0) continue;
@@ -693,7 +693,7 @@ function candidateVariants(view: SquadView, planned: number, preferred: AiStyle,
 const inCover = (match: MatchState, hero: HeroState) => coverAt(match.grid, hero.position) !== CoverKind.None;
 
 /**
- * How good the Match State after a simulated Round is for a Squad, own minus enemy: Victory Points (or the progress on
+ * How good the Match State after a simulated Round is for a Squad, own minus enemy: Credits (or the progress on
  * the Prime Zone), zone control, cards not in the Exile (Deck-as-Life), Heroes in Cover, and danger (enemies that can
  * still hit a Hero, less what Cover takes). It names no tile or zone; the weights are in `AI_WEIGHTS`.
  */

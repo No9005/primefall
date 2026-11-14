@@ -12,7 +12,7 @@ import {
   PITCH_ENERGY,
   PRIME_ZONE_UNLOCK_ROUND,
   REACTOR_DECK,
-  VICTORY_POINTS_TO_WIN,
+  CREDITS_TO_WIN,
 } from "game-core";
 import { describeEffects, modeChoiceFaces, type ModeFace } from "./planning-selection";
 import { drawShot } from "./shot-lines";
@@ -91,8 +91,8 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     topic: TutorialTopic.Goal,
     title: "Goal",
-    caption: `Control zones to earn Victory Points: ${VICTORY_POINTS_TO_WIN} win. The Prime Zone scores from Round ${PRIME_ZONE_UNLOCK_ROUND}.`,
-    terms: ["Prime Zone", "Victory Points"],
+    caption: `Control zones to earn Credits: ${CREDITS_TO_WIN} win. The Prime Zone scores from Round ${PRIME_ZONE_UNLOCK_ROUND}.`,
+    terms: ["Prime Zone", "Credits"],
     drop: TutorialDrop.None,
   },
   {

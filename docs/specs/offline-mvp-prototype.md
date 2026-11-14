@@ -8,7 +8,7 @@ A player wants to play a quick, tactical 3v3 match where both squads plan simult
 
 Primefall provides a mobile-first, offline 3v3 tactical match on the Reactor Deck. The player controls one Hero, allied AI controls the other two Heroes, and enemy AI controls all three opposing Heroes.
 
-Both squads plan simultaneously, commit commands, and resolve combat through a deterministic priority-interleaved Resolution. In the classic mode a squad wins by Victory Points from three zones: the central 3 by 3 Prime Zone (2 per Resolution, active from Round 4) and two Outposts (1 each, active from Round 1); the first to 30 wins.
+Both squads plan simultaneously, commit commands, and resolve combat through a deterministic priority-interleaved Resolution. In the classic mode a squad wins by Credits from three zones: the central 3 by 3 Prime Zone (2 per Resolution, active from Round 4) and two Outposts (1 each, active from Round 1); the first to 30 wins.
 
 ## Card Set
 
@@ -20,11 +20,11 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 2. As a player, I want to control one Hero directly, so that I can make the most important tactical decisions myself.
 3. As a player, I want allied AI to control my other two Heroes, so that I can focus on my own Hero without managing every unit.
 4. As a player, I want enemy AI to control all three opposing Heroes, so that I can play without another human player.
-5. As a player, I want both squads to spawn on opposite horizontal edges of the Reactor Deck, so that neither side begins with an unfair positional advantage.
+5. As a player, I want both squads to start on their Drop Points on opposite horizontal edges of the Reactor Deck, so that neither side begins with an unfair positional advantage.
 6. As a player, I want a central 3 by 3 Prime Zone, so that I have a clear objective to contest.
 7. As a player, I want the Prime Zone to contain no permanent Cover, so that holding it requires active protection and squad coordination.
 8. As a player, I want to see the Prime Zone from several approach angles, so that I can plan attacks and defenses around it.
-9. As a player, I want no direct Line of Sight from either Spawn area into the Prime Zone, so that early scouting matters.
+9. As a player, I want no direct Line of Sight from either Drop Point area into the Prime Zone, so that early scouting matters.
 10. As a player, I want side corridors with Half Cover, so that I can flank, retreat, and move without being permanently exposed.
 11. As a player, I want main routes to be at least two tiles wide, so that movement does not become blocked by frustrating one-tile chokepoints.
 12. _(Removed for now, ADR 0024; stories 12 to 14.)_ As a player, I want one Overwatch Nest with Full Cover, so that I can contest a valuable scouting position.
@@ -92,12 +92,12 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 74. As a player, I want the presentation to use stylized 2.5D with an orthographic camera, so that the battlefield remains readable from a tactical perspective.
 75. As a player, I want allied AI to move toward the objective, attack visible enemies, and (in Attack and Defend) block when appropriate, so that teammates contribute meaningfully.
 76. As a player, I want enemy AI to use simple legal-action heuristics, so that matches remain challenging without complex behaviour.
-77. (Classic mode.) As a player, I want to earn Victory Points at the end of each Resolution for every zone my Squad controls (the Prime Zone 2, an Outpost 1; the Prime Zone scores from Round 4, the Outposts from Round 1), and the match to end immediately when a Squad reaches 30, so that victory is clear. The Squad with more non-Exhausted Heroes in a zone controls it; equal numbers with at least one Hero each is Contested and nobody scores. Attack and Defend keeps its own rules (user stories 90 and following).
+77. (Classic mode.) As a player, I want to earn Credits at the end of each Resolution for every zone my Squad controls (the Prime Zone 2, an Outpost 1; the Prime Zone scores from Round 4, the Outposts from Round 1), and the match to end immediately when a Squad reaches 30, so that victory is clear. The Squad with more non-Exhausted Heroes in a zone controls it; equal numbers with at least one Hero each is Contested and nobody scores. Attack and Defend keeps its own rules (user stories 90 and following).
 78. As a player, I want Core Rush to be unavailable in the first prototype, so that the Prime Zone remains the only victory path.
 79. As a player, I want the user interface to use the project glossary vocabulary, so that game concepts remain consistent.
 80. As a player, I want to control the Bruiser by default and be able to choose another Player Hero, so that the first match is simple to understand and I can still play the other Heroes.
 81. As a player, I want to see the current Round as "Round X / 30", so that I know how much time is left.
-82. (Classic mode.) As a player, I want the match to end after 15 Rounds with the Squad with more Victory Points winning (equal points: the Squad with more cards not in the Exile, Deck plus Discard plus Hand; still equal: a draw), so that every match finishes.
+82. (Classic mode.) As a player, I want the match to end after 15 Rounds with the Squad with more Credits winning (equal points: the Squad with more cards not in the Exile, Deck plus Discard plus Hand; still equal: a draw), so that every match finishes.
 83. As a player, I want to see my Hand and the number of cards in my Deck and Exile, so that I can plan my economy.
 84. As a player, I want to see the Deck, Discard and Exile counts and the Shield of Visible enemies, so that I can predict when they will have their strong cards again.
 85. As a player, I want Ghosts to show the last seen counts and Unknown enemies to show nothing, so that scouting is valuable.
@@ -112,7 +112,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Keep the Prime Zone free of permanent Cover.
 - Classic mode: two 3 by 3 Outposts at columns 21–23, rows 2–4 and rows 20–22.
 - ~~Provide exactly one Overwatch Nest at column 15, row 1, with Full Cover and a limited sightline into the Prime Zone.~~ Removed for now (ADR 0024): the Reactor Deck has no Overwatch Nest.
-- Spawn one Squad on the left edge (column 1, rows 7–9) and the other on the right edge (column 29, rows 7–9), without direct Line of Sight into the Prime Zone.
+- Drop Point one Squad on the left edge (column 1, rows 7–9) and the other on the right edge (column 29, rows 7–9), without direct Line of Sight into the Prime Zone.
 - Implement three Hero classes: Bruiser/Vanguard, Controller/Tactician, and Assassin/Striker.
 - Give each Hero a fixed Deck with no Flex cards: Bruiser 12, Controller 10, Assassin 9 cards (ADR 0025).
 - Implement Deck-as-Life: unblocked damage removes cards from the top of the target’s Deck; a Hero whose Deck and Discard are both empty at the end of a Resolution is Exhausted. An Exhausted Hero is out of the match and its tile becomes Half Cover (it does not obstruct Moves; Cover-destroying effects such as Breach Charge destroy it; a Prime Zone tile stays a Prime Zone tile).
@@ -134,7 +134,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Use PixiJS for stylized 2.5D presentation with an orthographic camera.
 - Do not use Matter.js in the MVP; movement, Line of Sight, Cover, and combat are tile-based simulation rules.
 - The player controls one Player Hero; the default is the Bruiser / Vanguard, and the other two Heroes of the Squad are planned by the AI. The Hero Select screen that lets the player choose is a separate ticket.
-- Classic mode: a match ends after 15 Rounds (see user story 82; this replaces the 30 Rounds and the Deck tiebreak of ADR 0019 for the classic mode); the Round counter is shown in the UI as "Round X / 15" and the Zone pill shows both Victory Point scores.
+- Classic mode: a match ends after 15 Rounds (see user story 82; this replaces the 30 Rounds and the Deck tiebreak of ADR 0019 for the classic mode); the Round counter is shown in the UI as "Round X / 15" and the Zone pill shows both Credit scores.
 - Only a Match Host computes outcomes; the client sends Squad Plans and renders Squad View and filtered events (ADR 0017). The offline prototype runs the host in the browser main thread behind an asynchronous interface.
 - Card effects are declarative data interpreted by the engine (ADR 0018).
 - Tooling, repository layout and CI follow ADR 0018.
@@ -160,7 +160,7 @@ A second mode next to the classic mode described above, decided in ADR 0022 (Pro
 88. As a player, I want to choose the mode when a match starts, so that I can play the classic mode or Attack and Defend.
 89. As a player, I want one Squad to be the Defender and the other the Attacker, so that the two sides have different jobs.
 90. As a player, I want the Defender's Heroes to start on the Prime Zone tiles next to their side (column 14 for the Left Squad, column 16 for the Right Squad, rows 7 to 9), so that the Attacker has to fight its way in.
-91. As a player, I want the Attacker to start on its Spawn tiles, so that it has to cross the Reactor Deck first.
+91. As a player, I want the Attacker to start on its Drop Point tiles, so that it has to cross the Reactor Deck first.
 92. As a player, I want the Attacker to take control of the Prime Zone when at least one of its Heroes stands in it and it has at least as many Heroes in it as the Defender, so that the Defender has to Exhaust or push out the Attacker Heroes instead of just standing there.
 93. As a player, I want the previous controller to keep the Zone when the Attacker does not take it, so that control does not flicker.
 94. As an Attacker, I want to win by controlling the Zone during 3 consecutive Resolutions, so that pressure on the Zone is rewarded.

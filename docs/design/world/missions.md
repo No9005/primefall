@@ -27,15 +27,29 @@ Zones are held for Victory Points per Resolution (ADR 0024). It is the classic m
 - **Credits instead of Victory Points.** A Squad earns Credits for every Resolution in which it holds a zone; the Squad with the most Credits at the end wins. This is a change of the name only, the rules stay: the game currency is the score, there is no economy (nothing is bought or spent). The glossary term "Victory Points" and ADR 0024 would be renamed in a ticket; code and tests keep their names until then. "Credits" is the product owner's choice; it is not tied to a real currency.
 - **Why the Prime Zone is active only from Round 4:** on the stricken hauler the reactor sits behind blast shutters that power down after four Rounds. Until then only the Outposts pay. Each place needs its own reason for the delay, or none (see the open questions).
 
-### Names of the zones (proposal)
+### Names of the zones
 
 | In the game | In the world |
 |---|---|
-| Prime Zone | **the Asset**, the contract word for the find (the reactor core on the hauler, a ring gate in the snow); the zone of the highest pay |
-| Outpost (north, south) | **Staging Post**: where the client's team sets up equipment and where the extraction is staged; a low but early pay |
-| Spawn | **Drop point**: where a Squad is landed |
+| Prime Zone | where **the Asset** is found: the contract word for the find (the reactor core on the hauler, a ring gate in the snow). The zone of the highest pay. The name stays universal across places. |
+| Outpost (north, south) | the client's staging places: equipment is set up here and the extraction is staged. A low but early pay. The name stays. |
+| Drop Point (was Spawn) | where a Squad is landed. Renamed in the glossary and in the code (see below). |
 
-Why there are three zones: the Asset cannot be secured alone, the client's team needs the two Staging Posts (the two ways into the site, north and south) first. They pay from the start, the Asset pays more once it is reachable, and together they force the Squad to split (see the principle above). Open: whether this reason is enough or each place gets its own.
+Why there are three zones: the Asset cannot be secured alone, the client's team needs the two Outposts (the two ways into the site, north and south) first. The client pays for every secured place, like the lines of an invoice. The Outposts pay from the start, the Asset pays more once it is reachable, and together they force the Squad to split (see the principle above). Accepted for now as the reason; each place may get its own later.
+
+### Prime Zone look: red laser walls (first step, proposal)
+
+The Prime Zone is enclosed by **red laser walls**, similar to the Shield bubbles of Half Cover. They show that the Asset is not reachable yet.
+
+- **Before Round 4 (inactive):** the laser walls stand closed around the 5 by 5 zone. The Prime Zone scores nothing.
+- **The change in Round 4:** the walls flicker and drop away (a short flicker, then gone). From then on the zone is open and scores.
+- On the Reactor Deck this is the story of the blast shutters powering down after four Rounds. Another place can tell it differently with the same look.
+- It is a drawing in the game (`board-drawing.ts` / the effects layer) and in the Playback of the Resolution that ends Round 3; no rule changes, the Round-4 activation is the existing rule (`PRIME_ZONE_UNLOCK_ROUND`). The walls are not Cover and do not block Line of Sight or movement.
+- Open: the exact look (thickness, height in the Pixel art style, glow), whether the walls are visible in the Fog of War, a sound for the flicker, and how the Original style draws it.
+
+### Renamed in the code and the docs
+
+"Victory Points" are called **Credits** and the "Spawn" is called the **Drop Point** in `GLOSSARY.md`, in the code (`MatchEndReason.Credits`, `CREDITS_TO_WIN`, `TileKind.DropPoint`, `dropPointStartTiles` and similar), in the UI texts and in the specs. A match saved earlier is still resumed (its grid is converted). The ADRs keep their original words and carry a note. Not renamed: the frame names `spawn_floor` of the tileset "Notstrom" (they are in the atlas and its tool), the file name of ADR 0024, and the design canvas references.
 
 ## 2. Carry and extract (idea)
 

@@ -56,7 +56,7 @@ describe("primeCountdown", () => {
 describe("zoneCallouts", () => {
   const shown = (before: ZoneView[], after: ZoneView[], you = L) => zoneCallouts(before, after, you).map((c) => `${c.text}|${c.detail ?? ""}|${c.tone}`);
 
-  it("shows the Victory Points of an Outpost, mine and the enemy's", () => {
+  it("shows the Credits of an Outpost, mine and the enemy's", () => {
     expect(shown(zonesOf(), zonesOf({ controller: L }))).toEqual(["OUTPOST +1||teal"]);
     expect(shown(zonesOf(), zonesOf({}, {}, { controller: R }))).toEqual(["ENEMY OUTPOST +1||red"]);
   });
@@ -71,7 +71,7 @@ describe("zoneCallouts", () => {
   });
 
   it("announces the Prime Zone when it unlocks", () => {
-    expect(shown(zonesOf({}, { active: false }), zonesOf())).toEqual(["PRIME ZONE ACTIVE|2 VP per Resolution|gold"]);
+    expect(shown(zonesOf({}, { active: false }), zonesOf())).toEqual(["PRIME ZONE ACTIVE|2 CR per Resolution|gold"]);
   });
 
   it("shows nothing when nothing scored", () => {
