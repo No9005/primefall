@@ -4,7 +4,7 @@ A proposal for the final look of the map, worked out with the product owner in a
 
 The tileset is **modular**: it holds single tiles, not a picture of the map. Any layout of walls, Cover, zones and Spawns can be built from it. `overview/other-layout.png` is a layout that does not exist in the game, built from the same files as `overview/reactor-deck.png`.
 
-**Status: assets and reference only. Nothing in the app uses them yet.** The game still draws the terrain as shapes (`apps/web/src/terrain.ts`). Wiring the tiles in needs a ticket; the open points at the end belong in it.
+**Status: the Pixel art style of the app builds the Reactor Deck from these tiles** (`apps/web/src/pixel-terrain.ts`); the Original style still draws the terrain as shapes (`apps/web/src/terrain.ts`).
 
 ## What is here
 

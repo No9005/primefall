@@ -33,7 +33,7 @@ Eight fixed views, 45 degrees apart, switched with two buttons and a short anima
 
 ## Terrain is drawn from the grid
 
-Floor, Walls, Cover, the Overwatch Nest, the Prime Zone, the Outposts and the Spawn tiles are shapes computed from the grid and the view angle, not sprites:
+In the Original style, floor, Walls, Cover, the Overwatch Nest, the Prime Zone, the Outposts and the Spawn tiles are shapes computed from the grid and the view angle, not sprites. In the Pixel art style the terrain is built from the tileset "Notstrom" (see Style); the grid still decides what goes where. In both styles:
 
 - A thin wall kit: wall, corner, pillar, and low wall (Half Cover, with a yellow top edge).
 - A lit field of view and dark fog. Nothing is visible behind Walls.
@@ -41,7 +41,7 @@ Floor, Walls, Cover, the Overwatch Nest, the Prime Zone, the Outposts and the Sp
 
 ## Style
 
-Clear and graphic for the MVP. The final look is 8/16-bit pixel art in a dirty sci-fi setting, in the spirit of Final Fantasy Tactics and Jetpack Joyride. **Open question, not decided:** how pre-drawn pixel art works with eight view angles.
+Clear and graphic for the MVP. The final look is 8/16-bit pixel art in a dirty sci-fi setting, in the spirit of Final Fantasy Tactics and Jetpack Joyride. Pixel art is the default style and shows the terrain in **one fixed view**: the tileset is drawn for one angle, so the board has no rotation and zooms in whole steps (0.5x, 1x, 2x) with nearest-neighbour scaling. The eight views remain for the Original style.
 
 ## Map principles
 
