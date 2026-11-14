@@ -16,7 +16,7 @@ export const HERO_STYLE = {
   shadow: { color: 0x000000, alpha: 0.4, radiusX: 18, radiusY: 8 },
   /** Shield rubies, the shield bubble and the planned-action icons above the Hero. */
   marks: {
-    ruby: { fill: 0x2f7bff, facet: 0x9cc4ff, size: 7, gap: 3, rowY: -64, dash: 3 },
+    ruby: { fill: 0x2f7bff, facet: 0x9cc4ff, size: 7, gap: 3, rowY: -64 },
     bubble: { fill: 0x4aa3ff, fillAlpha: 0.22, edgeAlpha: 0.75, radiusX: 26, radiusY: 32, centerY: -22, appearMs: 250 },
     icon: { fill: 0xe8eef5, size: 9, rowY: -84, gap: 6 },
     /** The grey badge of a planned Wait ("n II"). */

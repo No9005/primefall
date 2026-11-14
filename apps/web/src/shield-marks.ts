@@ -1,4 +1,4 @@
-import { ActionKind, BLOCK_SHIELD, CardTarget, HERO_DECKS, type HeroClass, type QueuedAction, Visibility } from "game-core";
+import { ActionKind, CardTarget, HERO_DECKS, type HeroClass, type QueuedAction, Visibility } from "game-core";
 
 // What is drawn above a Hero besides its figure: Shield as rubies, the shield bubble, and the planned actions that have no
 // line on the board (Wait, a card played on the Hero itself). Pure: the board only draws the marks this returns.
@@ -15,19 +15,15 @@ export interface PlannedIcon {
 }
 
 export interface HeroMarks {
-  /** Number of rubies in the row above the head. */
+  /** Number of rubies in the row above the head: the Shield the Hero holds. */
   rubies: number;
-  /** Filled rubies are the Shield the Hero holds; hollow, dashed ones are the Shield a queued Block will create. */
-  filled: boolean;
-  /** For planned rubies: the Ticks of the queued Blocks. */
-  ticks: readonly number[];
   /** The translucent shield in front of the Hero: on while the Hero holds Shield. */
   bubble: boolean;
   /** Planned Waits and self-played cards, in Tick order. */
   icons: readonly PlannedIcon[];
 }
 
-export const NO_MARKS: HeroMarks = { rubies: 0, filled: false, ticks: [], bubble: false, icons: [] };
+export const NO_MARKS: HeroMarks = { rubies: 0, bubble: false, icons: [] };
 
 export interface MarksInput {
   /** A Hero of the Squad's own, as opposed to an enemy. */
@@ -48,17 +44,16 @@ function playsOnItself(heroClass: HeroClass, action: QueuedAction): boolean {
 }
 
 /**
- * The marks of one Hero. Nothing for a Ghost or an Unknown enemy, and never an enemy's plan: a planned Block is the
- * Squad's own knowledge. While the Resolution plays, the rubies are the Shield held at this moment.
+ * The marks of one Hero. Nothing for a Ghost or an Unknown enemy, and never an enemy's plan: planned Waits and
+ * self-played cards are the Squad's own knowledge. While the Resolution plays, the rubies are the Shield held at this moment.
  */
 export function heroMarks({ own, visibility, shield, queue = [], resolving, heroClass }: MarksInput): HeroMarks {
   if (!own && visibility !== Visibility.Visible) return NO_MARKS;
-  if (shield > 0) return { rubies: shield, filled: true, ticks: [], bubble: true, icons: [] };
+  if (shield > 0) return { rubies: shield, bubble: true, icons: [] };
   if (!own || resolving) return NO_MARKS;
-  const ticks = queue.flatMap((action, index) => (action.kind === ActionKind.Block ? [index + 1] : []));
   const icons = queue.flatMap((action, index): PlannedIcon[] => {
     if (action.kind === ActionKind.Wait) return [{ kind: IconKind.Wait, tick: index + 1 }];
     return playsOnItself(heroClass, action) ? [{ kind: IconKind.SelfCard, tick: index + 1 }] : [];
   });
-  return { rubies: ticks.length * BLOCK_SHIELD, filled: false, ticks, bubble: false, icons };
+  return { rubies: 0, bubble: false, icons };
 }

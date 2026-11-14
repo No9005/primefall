@@ -131,15 +131,6 @@ export function FloatingCard({ card, instruction, onCancel }: { card: CardDefini
   );
 }
 
-/** The Block 2 chip shown while a card is dragged: lit when Block is allowed, active under the dragged card. */
-export function BlockChip({ allowed, active, chipRef }: { allowed: boolean; active: boolean; chipRef?: Ref<HTMLDivElement> }) {
-  return (
-    <div ref={chipRef} className={`drop-chip${allowed ? " lit" : " off"}${active ? " active" : ""}`}>
-      BLOCK 2
-    </div>
-  );
-}
-
 const ENERGY_CAPACITY = 5;
 
 /** The Energy pill above the Hand, the drop target for Pitch; `lit` while a card is dragged, `active` under the dragged card. */

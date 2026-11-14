@@ -13,7 +13,7 @@ import "./side-screen.css";
 const NONE: readonly never[] = [];
 const NO_CLIPS = {};
 const NO_MARKS: Readonly<Record<string, HeroMarks>> = {};
-const BUBBLE: HeroMarks = { rubies: 0, filled: false, ticks: [], bubble: true, icons: [] };
+const BUBBLE: HeroMarks = { rubies: 0, bubble: true, icons: [] };
 const NEUTRAL_ZONE = zoneLook("neutral", 0);
 const noop = () => undefined;
 const pickRef = { current: undefined };

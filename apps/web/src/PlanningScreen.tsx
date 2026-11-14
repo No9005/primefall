@@ -63,7 +63,7 @@ import { coverGridOf } from "./terrain";
 import { buildPlaybackFrames, enemyTokens, STEP_MS, tickCountOf } from "./playback";
 import type { ClipName } from "./hero-clips";
 import type { EffectCue } from "./weapon-effects";
-import { actionUsesCard, addWaitAction, blockAction,CARD_USE_LABELS, CardUse, cardUseReasons, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,removeQueueAction, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
+import { actionUsesCard, addWaitAction, CARD_USE_LABELS, CardUse, cardUseReasons, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,removeQueueAction, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
 
 const NO_TILES: readonly GridPosition[] = [];
 const NO_SHOTS: readonly ShotDrawing[] = [];
@@ -321,7 +321,6 @@ const PILE_TO_CARD_Y = 22;
 
 const ACTION_USE_LABELS: Record<Exclude<ActionKind, ActionKind.Wait>, string> = {
   [ActionKind.Move]: CARD_USE_LABELS[CardUse.Move],
-  [ActionKind.Block]: CARD_USE_LABELS[CardUse.Block],
   [ActionKind.Primary]: CARD_USE_LABELS[CardUse.Primary],
 };
 
@@ -815,7 +814,6 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
           pulledCard,
           cardUseReasons(selected.heroClass, heldInHand, queue, pitched),
           { primary: describeEffects(pulledCard.effects) ?? "" },
-          view.attackAndDefend !== undefined,
         );
 
   /** Puts a chosen use of a card on its way: straight into the Queue when it needs no target, otherwise to the picking. */
@@ -823,7 +821,6 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     setArmed(undefined);
     setAiming(undefined);
     if (face === CardUse.Pitch) setPitched([...pitched, card]);
-    else if (face === CardUse.Block) setQueue([...queue, blockAction(card)]);
     else if (face === CardUse.Move) setArmed(card);
     else {
       const { target } = HERO_DECKS[selected.heroClass][card]!;
@@ -879,7 +876,6 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     };
     const layout: DropLayout = {
       board: { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight },
-      blockChip: rectOf(null),
       energyOrb: rectOf(energyPillRef.current),
       hud: [".hand-column", ".commit-panel"].map((selector) => rectOf(document.querySelector(selector))),
       pickBoard: pick,

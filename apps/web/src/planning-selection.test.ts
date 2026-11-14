@@ -87,12 +87,12 @@ describe("energyReadout and cardUseReasons", () => {
     expect(cardUseReasons(HeroClass.Controller, 6, [], [1])[CardUse.Primary]).toBeUndefined();
   });
 
-  it("allows Pitch, Move and Block while the Queue has room and disables them when it is full", () => {
+  it("allows Pitch and Move while the Queue has room and disables them when it is full", () => {
     const open = cardUseReasons(HeroClass.Bruiser, 0, [], []);
-    expect([open[CardUse.Pitch], open[CardUse.Move], open[CardUse.Block]]).toEqual([undefined, undefined, undefined]);
-    const full: QueuedAction[] = [1, 2, 3, 4].map((card) => ({ kind: ActionKind.Block, card }));
+    expect([open[CardUse.Pitch], open[CardUse.Move]]).toEqual([undefined, undefined]);
+    const full: QueuedAction[] = [1, 2, 3, 4].map((card) => ({ kind: ActionKind.Move, card, destination: { col: 3, row: 3 } }));
     const reasons = cardUseReasons(HeroClass.Bruiser, 0, full, []);
-    expect([reasons[CardUse.Pitch], reasons[CardUse.Move], reasons[CardUse.Block]]).toEqual([undefined, "Queue is full", "Queue is full"]);
+    expect([reasons[CardUse.Pitch], reasons[CardUse.Move]]).toEqual([undefined, "Queue is full"]);
   });
 });
 
@@ -110,14 +110,14 @@ describe("cardFace", () => {
 
 describe("Queue window", () => {
   const queue: QueuedAction[] = [
-    { kind: ActionKind.Block, card: 1 },
+    { kind: ActionKind.Wait },
     { kind: ActionKind.Move, card: 2, destination: { col: 3, row: 3 } },
   ];
 
   it("shows the action name and its target per row", () => {
     const nameOf = (id: string) => (id === "right-bruiser" ? "Enemy Bruiser" : id);
     const label = (action: QueuedAction) => queueRowLabel(HeroClass.Bruiser, "left-bruiser", action, nameOf);
-    expect(label(queue[0]!)).toEqual({ name: "Block 2", target: "" });
+    expect(label(queue[0]!)).toEqual({ name: "Wait", target: "" });
     expect(label(queue[1]!)).toEqual({ name: "Move 2", target: "to 3 · 3" });
     expect(label({ kind: ActionKind.Wait })).toEqual({ name: "Wait", target: "" });
     // Bruiser card 0 is Slam Shot.
@@ -182,7 +182,6 @@ describe("unpitchCard", () => {
     const uses = cardUseReasons(assassin, LONG_SHOT, [], freed);
     expect(uses[CardUse.Pitch]).toBeUndefined();
     expect(uses[CardUse.Move]).toBeUndefined();
-    expect(uses[CardUse.Block]).toBeUndefined();
     expect(primary([...freed, 5])).toBeUndefined();
   });
 

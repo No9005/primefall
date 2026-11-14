@@ -1,6 +1,6 @@
 import { chebyshevDistance, type CardIndex, type GridPosition, type QueuedAction } from "game-core";
 import type { TapTarget } from "./board-layout";
-import { blockAction, CardUse, moveAction, primaryAction } from "./planning-selection";
+import { CardUse, moveAction, primaryAction } from "./planning-selection";
 
 // Dragging a card from the Hand: the mapping from a drop point to one use of the card is pure; the React and Pixi
 // code only draw the zones and report points.
@@ -30,7 +30,6 @@ export interface BoardPick {
 /** Where things are on screen. The board is asked what it has under a point. */
 export interface DropLayout {
   board: Rect;
-  blockChip: Rect;
   energyOrb: Rect;
   /** HUD panels drawn over the board (the Hand, Squad panel, Commit panel): a release over them cancels. */
   hud: readonly Rect[];
@@ -86,7 +85,6 @@ export function probeDrop(
     return blockedReason === undefined ? { drop, label } : { blockedReason };
   };
   if (rectContains(layout.energyOrb, point)) return place({ use: CardUse.Pitch }, "PITCH +1");
-  if (rectContains(layout.blockChip, point)) return place({ use: CardUse.Block }, "BLOCK 2");
   if (!rectContains(layout.board, point) || layout.hud.some((rect) => rectContains(rect, point))) return {};
 
   const { target, ground } = layout.pickBoard(point);
@@ -126,8 +124,6 @@ export function applyDrop(
   switch (drop.use) {
     case CardUse.Pitch:
       return { queue, pitched: [...pitched, card] };
-    case CardUse.Block:
-      return { queue: [...queue, blockAction(card)], pitched };
     case CardUse.Move:
       return { queue: [...queue, moveAction(card, drop.tile!)], pitched };
     case CardUse.Primary:

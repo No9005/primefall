@@ -84,7 +84,7 @@ const isLarge = (size: number | undefined, bold: boolean) => size !== undefined 
 // ---- the surface a text sits on, by selector (first match wins); a text rule without one fails ----
 
 const SURFACES: [RegExp, string][] = [
-  [/^\.end-screen button$|^\.commit$|^\.queue-number|^\.hand \.card-use$|^\.drop-chip\.active$|^\.pull-card\.card \.card-cost$|^\.hand \.card-cost$|^\.hs-start$/, "--teal"],
+  [/^\.end-screen button$|^\.commit$|^\.queue-number|^\.hand \.card-use$|^\.pull-card\.card \.card-cost$|^\.hand \.card-cost$|^\.hs-start$/, "--teal"],
   // The Hero Select: the card list is a panel; the rest stands on the graphite screen.
   [/^\.hs-card|^\.hs-close$/, "--panel"],
   [/^\.hs-/, "--graphite"],
@@ -114,7 +114,6 @@ const DIMMED: Record<string, { texts: [string, string][] }> = {
   ".card:disabled": { texts: CARD_TEXTS },
   ".queue-remove:disabled": { texts: [["--text", "--panel"]] },
   ".pitch-undo:disabled": { texts: [["--orange", "--panel"]] },
-  ".drop-chip.off": { texts: [["--muted", "--panel"]] },
 };
 
 /** Opacity below 1 that is not about dimmed text: invisible on purpose, a decoration, or set per element. */

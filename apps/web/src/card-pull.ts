@@ -108,15 +108,14 @@ export interface FaceView {
 const NOT_ENOUGH_ENERGY = "Not enough Energy";
 
 /**
- * The faces of a card in order. `reasons` are the reasons of the existing planning selection for the Primary, Move
- * and Block uses. A reason that is only about Energy is shown as
- * "Not enough Energy". Pitch is always available; Block only when the mode has it.
+ * The faces of a card in order. `reasons` are the reasons of the existing planning selection for the Primary, Pitch
+ * and Move uses. A reason that is only about Energy is shown as
+ * "Not enough Energy". Pitch is always available.
  */
 export function faceViews(
   card: CardDefinition,
   reasons: Record<CardUse, string | undefined>,
   texts: { primary: string },
-  blockAllowed: boolean,
 ): FaceView[] {
   const readable = (reason: string | undefined) => (reason?.startsWith("needs ") && reason.endsWith(" Energy") ? NOT_ENOUGH_ENERGY : reason);
   const faces: FaceView[] = [
@@ -124,7 +123,5 @@ export function faceViews(
     { face: CardUse.Pitch, title: "Pitch +1 Energy", effect: "Adds 1 Energy", reason: reasons[CardUse.Pitch] },
     { face: CardUse.Move, title: "Move 2", effect: "Move up to 2 tiles", reason: reasons[CardUse.Move] },
   ];
-  // Block is a rule of Attack and Defend; the classic mode takes Shield from Shield cards.
-  if (blockAllowed) faces.push({ face: CardUse.Block, title: "Block 2", effect: "Shield 2", reason: reasons[CardUse.Block] });
   return faces;
 }

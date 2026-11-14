@@ -171,9 +171,6 @@ function clipOfEvent(event: MatchEvent): { heroId: string; clip: ClipName } | un
     case EventKind.AttackHit:
     case EventKind.AttackFailed:
       return { heroId: event.heroId, clip: attackClipName(event.card) };
-    case EventKind.ShieldGained:
-      // A Block (a Shield without a card) crouches.
-      return event.card === undefined ? { heroId: event.heroId, clip: "block" } : undefined;
     default:
       return undefined;
   }

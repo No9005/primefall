@@ -333,7 +333,6 @@ const USE_FACE_NAMES: Record<StepUse, RegExp | string> = {
   primary: "Primary",
   pitch: /^Pitch/,
   move: /^Move/,
-  block: /^Block/,
 };
 
 /** Taps the card of a Hand slot and picks the role in the "Use card as" group. */

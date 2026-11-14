@@ -25,7 +25,7 @@ describe("buildCommentary", () => {
     expect(hit(1, 1).detail).toBe("The Shield absorbs 1, 1 card burns from the Deck");
   });
 
-  it("covers Block, a failed Attack, Utility and Exhaustion", () => {
+  it("covers a Shield, a failed Attack, Utility and Exhaustion", () => {
     const entries = build([
       event(EventKind.ShieldGained, "me", { amount: 2 }),
       event(EventKind.AttackFailed, "ally", { targetId: "foe", card: "Slam Shot", reason: AttackFailReason.OutOfRange }),

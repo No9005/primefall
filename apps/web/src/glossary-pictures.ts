@@ -144,11 +144,6 @@ const SCENES: Record<SceneName, () => Container> = {
     addMarks(token, heldShield(2));
     return scene.finish();
   },
-  plannedBlock() {
-    const scene = new Scene(FLOOR_GRID).terrain();
-    addMarks(scene.hero(HERO_AT), { rubies: 1, filled: false, ticks: [2], bubble: false, icons: [] });
-    return scene.finish();
-  },
   slow() {
     const scene = new Scene(FLOOR_GRID).terrain();
     const token = scene.hero(HERO_AT, { enemy: true });
@@ -194,8 +189,6 @@ const SCENES: Record<SceneName, () => Container> = {
     const scene = new Scene(FLOOR_GRID, {}, 0.42).terrain();
     addMarks(scene.hero(HERO_AT), {
       rubies: 0,
-      filled: false,
-      ticks: [],
       bubble: false,
       icons: [
         { kind: IconKind.Wait, tick: 1 },
