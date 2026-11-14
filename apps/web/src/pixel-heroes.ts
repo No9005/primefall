@@ -1,5 +1,5 @@
 import { HeroClass } from "game-core";
-import { Assets, Container, Sprite, type Spritesheet, type Texture } from "pixi.js";
+import { Assets, Container, Graphics, Sprite, type Spritesheet, type Texture } from "pixi.js";
 import { baseFacing, type Facing } from "./facing";
 import { type ClipName, clipOf } from "./hero-clips";
 import { groundMarks, type HeroPose } from "./hero-figure";
@@ -180,6 +180,16 @@ export class PixelHero {
     this.sprites = { fx_back: make(), figure: make(), fx_front: make() };
     this.body.addChild(this.sprites.fx_back, this.sprites.figure, this.sprites.fx_front);
     this.container.addChild(shadow, teamRing, ringFlash, this.body);
+  }
+
+  /**
+   * Hides what the front effects layer draws above sprite row `spriteY` (0 at the top of the 136 x 104 frame). The sheet of the
+   * Assassin floats its Hidden label far above the head; the Hero Select draws its own label close above it instead.
+   */
+  clipFrontAbove(spriteY: number): void {
+    const keep = new Graphics().rect(-PIXEL_FRAME.width, spriteY - PIXEL_FRAME.feetY, PIXEL_FRAME.width * 2, PIXEL_FRAME.height).fill(0xffffff);
+    this.body.addChild(keep);
+    this.sprites.fx_front.mask = keep;
   }
 
   /** Shows a clip of a sheet by name at a frame; the ring flash, the ring fade and the shake of that frame go with it. */

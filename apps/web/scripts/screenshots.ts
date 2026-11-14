@@ -255,7 +255,7 @@ async function playHeroSelect(browser: Browser): Promise<void> {
   await page.getByTestId("hero-assassin").click();
   await page.waitForTimeout(3300); // invisible, the label floats up
   await shoot("04-assassin-ready.png");
-  await page.getByRole("button", { name: "VIEW CARDS" }).click();
+  await page.getByRole("button", { name: "CARDS" }).click();
   await page.getByTestId("card-list").waitFor();
   await shoot("05-cards.png");
   await page.getByRole("button", { name: "Close" }).click();

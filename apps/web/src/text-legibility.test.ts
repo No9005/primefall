@@ -127,6 +127,7 @@ const OPACITY_EXEMPT: Record<string, string> = {
   ".hand.collapsed li": "hidden while a target is picked",
   ".hand li": "per-card dimming while another card is in use (otherOpacity); that card is not the focus",
   ".card-back": "card back graphic without text",
+  ".hs-drift": "the faint drifting grid of the Hero Select; a background without text",
   ".burn-card": "animation graphic without text",
   ".burn-flame": "animation graphic without text",
   ".burn-ember": "animation graphic without text",

@@ -1,5 +1,5 @@
-import type { HeroClass } from "game-core";
-import { Application, Container, Graphics } from "pixi.js";
+import { HeroClass } from "game-core";
+import { Application, Container, Graphics, Text } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
 import { cardListTitle, cardRowName, cardRows, feetX, HERO_CLOSE_UP, HERO_NAMES, HERO_PROFILES, HERO_TASKS, MODE_LABELS, type SelectMode, SELECTABLE_HEROES } from "./hero-select";
 import { HERO_STYLE } from "./hero-style";
@@ -11,11 +11,11 @@ import "./hero-select.css";
 
 export const SCREEN = { width: 844, height: 390 };
 /** The tap area of a Hero (no box is drawn): its size, its top, the left of each, and where the feet stand inside it. */
-const AREA = { width: 240, height: 238, top: 56, lefts: [24, 302, 580], feetY: 158 };
+const AREA = { width: 240, height: 214, top: 56, lefts: [24, 302, 580], feetY: 138 };
 /** How much the figure of the board is magnified here. */
 const MAGNIFY = 2.5;
-/** Screen px per sprite px of a Hero here (a Hero is about 135 px tall). */
-const SPRITE_PX = 3;
+/** Screen px per sprite px of a Hero here (a Hero is about 143 px tall). */
+const SPRITE_PX = 2.5;
 
 export const prefersReducedMotion = (): boolean => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -30,6 +30,8 @@ interface Stand {
   heroClass: HeroClass;
   holder: Container;
   pixel: PixelHero;
+  /** The Hidden label of the Assassin, close above its head (the sheet's own label floats too high). */
+  hiddenLabel?: Text;
   /** When it entered its current state, in page milliseconds. */
   since: number;
   state: "idle" | "ready";
@@ -48,7 +50,23 @@ function buildStand(heroClass: HeroClass, index: number): Stand {
   // The holder magnifies by MAGNIFY, so the figure itself has scale 1 and the sprites are SPRITE_PX screen px per pixel.
   const pixel = new PixelHero(heroClass, false, MAGNIFY / HERO_STYLE.figureScale, "right", { layers: ["fx_back", "figure", "fx_front"], figureScale: 1, pixelScale: SPRITE_PX / MAGNIFY });
   holder.addChild(tile(), pixel.container);
-  return { heroClass, holder, pixel, since: performance.now(), state: "idle" };
+  if (heroClass !== HeroClass.Assassin) return { heroClass, holder, pixel, since: performance.now(), state: "idle" };
+  pixel.clipFrontAbove(HIDDEN_LABEL.clipRow);
+  const hiddenLabel = new Text({ text: "HIDDEN", style: { fill: HIDDEN_LABEL.color, fontSize: 5, fontFamily: "IBM Plex Mono, monospace", fontWeight: "500", letterSpacing: 0.5 }, resolution: Math.max(2, window.devicePixelRatio) * MAGNIFY });
+  hiddenLabel.anchor.set(0.5);
+  hiddenLabel.alpha = 0;
+  pixel.container.addChild(hiddenLabel);
+  return { heroClass, holder, pixel, hiddenLabel, since: performance.now(), state: "idle" };
+}
+
+/** The Hidden label of the Assassin: the colour of the sheet's, 6 design px above the head, from the moment the Hero has gone Hidden. */
+const HIDDEN_LABEL = { color: 0xc29bff, headY: -42, gap: 7, appearsMs: 2400, fadeMs: 300, riseDesignPx: 4, clipRow: 26 };
+
+/** Fades the label in above the head and lets it settle; with reduced motion it simply stands there. */
+function showHiddenLabel(label: Text, readyMs: number, reducedMotion: boolean): void {
+  const shown = readyMs <= 0 ? 0 : reducedMotion ? 1 : Math.min(1, Math.max(0, (readyMs - HIDDEN_LABEL.appearsMs) / HIDDEN_LABEL.fadeMs));
+  label.alpha = shown;
+  label.position.set(0, HIDDEN_LABEL.headY - HIDDEN_LABEL.gap - (1 - shown) * -HIDDEN_LABEL.riseDesignPx);
 }
 
 /** Poses every Hero for this moment; a Hero that has just changed state starts that state's pose from its beginning. */
@@ -57,6 +75,7 @@ function poseStands(stands: readonly Stand[], choice: Choice, now: number, reduc
     const state = stand.heroClass === choice.hero ? "ready" : "idle";
     stand.state = state;
     stand.pixel.showSelect(state === "ready", now - stand.since, reducedMotion);
+    if (stand.hiddenLabel) showHiddenLabel(stand.hiddenLabel, state === "ready" ? now - stand.since : 0, reducedMotion);
     const index = SELECTABLE_HEROES.indexOf(stand.heroClass);
     stand.holder.position.x = AREA.lefts[index]! + feetX(stand.heroClass, state === "ready");
   }
@@ -205,6 +224,7 @@ export function HeroSelectScreen({ mode, initial, onBack, onStart }: HeroSelectS
     <section className="hero-select" aria-label="Hero Select" data-testid="hero-select">
       <div className="hs-stage" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
         <div className="hs-grid" />
+        <div className="hs-drift" aria-hidden="true" />
         <HeroCanvas choice={choice} />
         <button type="button" className="hs-back" onClick={onBack}>
           <BackArrow />
@@ -234,9 +254,9 @@ export function HeroSelectScreen({ mode, initial, onBack, onStart }: HeroSelectS
               <p>{HERO_TASKS[hero]}</p>
               <div className="hs-actions">
                 <button type="button" className="hs-view-cards" onClick={() => setSheet("cards")}>
-                  VIEW CARDS
+                  CARDS
                 </button>
-                <button type="button" className="hs-view-cards hs-bio-button" onClick={() => setSheet("bio")}>
+                <button type="button" className="hs-view-cards" onClick={() => setSheet("bio")}>
                   BIO
                 </button>
               </div>
