@@ -44,7 +44,7 @@ export const HERO_PROFILES: Record<HeroClass, HeroProfile> = {
   },
 };
 
-/** The close-up of a Hero for the BIO sheet: the head and shoulders cut from its sprite sheet (30 x 28 px, shown at 8 x). */
+/** The folder of a Hero's sheets: its `portrait.png` (36 x 36 px, the close-up of the pixel concept) is shown at 6 x on the BIO sheet. */
 export const HERO_CLOSE_UP: Record<HeroClass, string> = {
   [HeroClass.Bruiser]: "bruiser",
   [HeroClass.Controller]: "controller",
