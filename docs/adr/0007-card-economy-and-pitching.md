@@ -1,6 +1,6 @@
 # Card Economy and Pitching
 
-Every card has three standard uses: Play its primary effect, Pitch it for 1 Energy, or use it as Move 2 (the fourth use, Block 2, was removed, ADR 0002). A card fulfills only one of these roles during a round.
+Every card has three standard uses: Play its primary effect, Pitch it for 1 Energy, or use it as Move 3 (the fourth use, Block 2, was removed, ADR 0002). A card fulfills only one of these roles during a round.
 
 Pitching always produces exactly 1 Energy. Energy is unlimited in quantity, expires at the end of the round, and is required to play Attack and Utility effects. Hand cards may be retained between rounds, but a Hero draws at most 4 new cards at the start of each round.
 
