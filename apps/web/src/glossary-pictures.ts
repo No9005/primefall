@@ -2,7 +2,7 @@ import { type Grid, type GridPosition, HeroClass, TileKind, withTile, withWreck 
 import { Application, Container, Graphics, Rectangle } from "pixi.js";
 import { drawScoutArea, drawTerrain, drawZone, ghostMark, scannedMark, scoutDroneMark } from "./board-drawing";
 import { baseFacing } from "./facing";
-import { attackBadge, EffectsLayer, type EffectsWorld, hiddenSeenMark, markedMark, slowMark, STATUS_AT_REST_MS } from "./effects-layer";
+import { EffectsLayer, type EffectsWorld, hiddenSeenMark, markedMark, slowMark, STATUS_AT_REST_MS } from "./effects-layer";
 import { CLIP_SPEED } from "./clip-player";
 import type { SceneName } from "./glossary";
 import { type HeroPose, marksFigure, shieldBubble } from "./hero-figure";
@@ -121,13 +121,6 @@ function zoneScene(state: ZoneState, filled: number): Container {
   return scene.finish();
 }
 
-function slideScene(tag: string, from: GridPosition, to: GridPosition): Container {
-  const scene = new Scene(FLOOR_GRID).terrain();
-  scene.hero(to, { enemy: true });
-  scene.cues([{ kind: "knockback", toId: "target", from, to, startMs: 0, tag }], { target: to }, 300);
-  return scene.finish();
-}
-
 /** A Pull a moment after the slide: the tether to the caster, the echoes behind the Hero and the first of the arrival ring. */
 function pullScene(from: GridPosition, to: GridPosition, caster: GridPosition): Container {
   const scene = new Scene(FLOOR_GRID).terrain();
@@ -177,14 +170,6 @@ const SCENES: Record<SceneName, () => Container> = {
     scene.hero(HERO_AT, { pose: "exhausted" });
     return scene.finish();
   },
-  attackBonus() {
-    const scene = new Scene(FLOOR_GRID).terrain();
-    const token = scene.hero(HERO_AT);
-    const badge = attackBadge();
-    badge.update(STATUS_AT_REST_MS);
-    token.addChild(badge.container);
-    return scene.finish();
-  },
   plannedIcons() {
     const scene = new Scene(FLOOR_GRID, {}, 0.42).terrain();
     addMarks(scene.hero(HERO_AT), {
@@ -209,7 +194,6 @@ const SCENES: Record<SceneName, () => Container> = {
   halfCoverTag() {
     return numberScene([number("-1", "damage"), number("Half Cover", "failed", 9)]);
   },
-  knockback: () => slideScene("Knockback 2", { col: 0, row: 1 }, CENTRE),
   pull: () => pullScene({ col: 2, row: 1 }, CENTRE, { col: 0, row: 1 }),
   hiddenSeen() {
     const scene = new Scene(FLOOR_GRID).terrain();
@@ -233,12 +217,11 @@ const SCENES: Record<SceneName, () => Container> = {
     );
     return scene.finish();
   },
-  closeAndCharge() {
+  closeBonus() {
     return numberScene(
       [
-        number("-4", "damage"),
+        number("-3", "damage"),
         { kind: "bonus", toId: "target", startMs: 0, text: "CLOSE +1", tone: "close", stack: 0 },
-        { kind: "bonus", toId: "target", startMs: 0, text: "CHARGE +1", tone: "charge", stack: 1 },
       ],
       200,
     );

@@ -9,7 +9,7 @@ const fireOf = (_heroId: string, card: string | undefined) => (card === "Long Sh
 describe("the flight of a projectile", () => {
   it("flies at the speed of its weapon over the tiles of the Range", () => {
     // 4 tiles of 24 px: the slug at 0.10 px/ms, the tracer at 0.30.
-    expect(flightMs("Slam Shot", 4)).toBe(960);
+    expect(flightMs("Handle With Care", 4)).toBe(960);
     expect(flightMs("Precision Shot", 4)).toBe(320);
   });
 
@@ -19,11 +19,11 @@ describe("the flight of a projectile", () => {
   });
 
   it("lands the impact at the fire beat plus the flight", () => {
-    expect(impactMs("Slam Shot", 3, 620)).toBe(620 + 720);
+    expect(impactMs("Handle With Care", 3, 620)).toBe(620 + 720);
   });
 
   it("maps the cards of a class to its weapon", () => {
-    expect(["Concussion Round", "Ghost Shot", "Tag Round", "Breach Charge"].map(weaponOf)).toEqual(["slam", "precision", "tag", undefined]);
+    expect(["Time for Coffee", "Ghost Shot", "Tag Round", "Breach Charge"].map(weaponOf)).toEqual(["slam", "precision", "tag", undefined]);
   });
 
   it("moves the projectile in proportion to the time since the fire beat", () => {
@@ -35,7 +35,7 @@ describe("the flight of a projectile", () => {
 
 describe("the cues of the events", () => {
   it("makes a shot and a red number for a hit, the number 20 ms after the impact", () => {
-    const cues = effectCuesOf([hit({ card: "Slam Shot", damage: 2, distance: 3 })], fireOf);
+    const cues = effectCuesOf([hit({ card: "Handle With Care", damage: 2, distance: 3 })], fireOf);
     expect(cues).toEqual([
       { kind: "shot", weapon: "slam", fromId: "a", toId: "t", fireMs: 620, flightMs: 720 },
       { kind: "number", toId: "t", startMs: 620 + 720 + 20, text: "-2", style: "damage" },
@@ -49,14 +49,14 @@ describe("the cues of the events", () => {
 
   it("adds a CROSSFIRE cue to a hit with Crossfire and stacks a second one on the same target", () => {
     const crossfire = (cues: ReturnType<typeof effectCuesOf>) => cues.filter((cue) => cue.kind === "crossfire");
-    expect(crossfire(effectCuesOf([hit({ card: "Slam Shot", damage: 2, distance: 3 })], fireOf))).toEqual([]);
-    const cues = effectCuesOf([hit({ card: "Slam Shot", damage: 3, crossfire: 1, distance: 3 }), hit({ heroId: "b", card: "Slam Shot", damage: 3, crossfire: 2, distance: 3 })], fireOf);
+    expect(crossfire(effectCuesOf([hit({ card: "Handle With Care", damage: 2, distance: 3 })], fireOf))).toEqual([]);
+    const cues = effectCuesOf([hit({ card: "Handle With Care", damage: 3, crossfire: 1, distance: 3 }), hit({ heroId: "b", card: "Handle With Care", damage: 3, crossfire: 2, distance: 3 })], fireOf);
     expect(crossfire(cues).map((cue) => (cue.kind === "crossfire" ? [cue.amount, cue.stack] : []))).toEqual([[1, 0], [2, 1]]);
     expect(cueEndMs(crossfire(cues)[0]!)).toBe(crossfire(cues)[0]!.startMs + 700);
   });
 
   it("names a failed Attack by its reason: Out of range, Not visible, or Blocked", () => {
-    const failed = (reason: AttackFailReason): MatchEvent => ({ kind: EventKind.AttackFailed, tick: 1, heroId: "a", targetId: "t", card: "Slam Shot", reason });
+    const failed = (reason: AttackFailReason): MatchEvent => ({ kind: EventKind.AttackFailed, tick: 1, heroId: "a", targetId: "t", card: "Handle With Care", reason });
     expect(effectCuesOf([failed(AttackFailReason.NoLineOfSight)], fireOf)).toEqual([{ kind: "number", toId: "t", startMs: 640, text: "Blocked", style: "failed" }]);
     expect(effectCuesOf([failed(AttackFailReason.FullCover)], fireOf)[0]).toMatchObject({ text: "Blocked" });
     expect(effectCuesOf([failed(AttackFailReason.OutOfRange)], fireOf)[0]).toMatchObject({ text: "Out of range" });
@@ -75,31 +75,31 @@ describe("the cues of the events", () => {
   });
 
   it("lets the frame last until the slowest effect is over", () => {
-    const [shot, number] = effectCuesOf([hit({ card: "Slam Shot", damage: 2, distance: 3 })], fireOf);
+    const [shot, number] = effectCuesOf([hit({ card: "Handle With Care", damage: 2, distance: 3 })], fireOf);
     expect(cueEndMs(shot!)).toBe(620 + 720 + 500);
     expect(cueEndMs(number!)).toBe(620 + 720 + 20 + 800);
   });
 
   it("is part of the frames of the playback", () => {
     const classOf = (id: string) => (id === "a" ? HeroClass.Bruiser : HeroClass.Assassin);
-    const [frame] = buildPlaybackFrames([hit({ card: "Slam Shot", damage: 2, distance: 3 })], classOf);
+    const [frame] = buildPlaybackFrames([hit({ card: "Handle With Care", damage: 2, distance: 3 })], classOf);
     expect(frame!.effects).toHaveLength(2);
   });
 });
 
 describe("the cues of a Pull, a Charge and the extra damage of a hit", () => {
-  const pull = (extra: Partial<MatchEvent>): MatchEvent => ({ kind: EventKind.Pull, tick: 1, heroId: "enemy", card: "Pull", ...extra });
+  const pull = (extra: Partial<MatchEvent>): MatchEvent => ({ kind: EventKind.Pull, tick: 1, heroId: "enemy", card: "Cargo Hook", ...extra });
   const tile = (col: number, row = 3) => ({ col, row });
 
   it("slides a pulled Hero from the tile it stood on, with the tether to its caster and the tag of the card", () => {
     const cues = effectCuesOf([pull({ from: tile(6), to: tile(5), casterId: "bruiser" })], fireOf);
-    expect(cues).toEqual([{ kind: "pull", toId: "enemy", from: tile(6), to: tile(5), startMs: 0, casterId: "bruiser", tag: "PULL 2" }]);
+    expect(cues).toEqual([{ kind: "pull", toId: "enemy", from: tile(6), to: tile(5), startMs: 0, casterId: "bruiser", tag: "PULL 6" }]);
     expect(cueEndMs(cues[0]!)).toBe(PULL_MS);
   });
 
   it("does not slide a Hero whose start tile the Squad was not told, and draws no tether without its caster", () => {
     const [cue] = effectCuesOf([pull({ to: tile(5) })], fireOf);
-    expect(cue).toEqual({ kind: "pull", toId: "enemy", to: tile(5), startMs: 0, tag: "PULL 2" });
+    expect(cue).toEqual({ kind: "pull", toId: "enemy", to: tile(5), startMs: 0, tag: "PULL 6" });
     expect(cue).not.toHaveProperty("from");
     expect(cue).not.toHaveProperty("casterId");
   });
@@ -108,21 +108,21 @@ describe("the cues of a Pull, a Charge and the extra damage of a hit", () => {
     expect(effectCuesOf([pull({})], fireOf)).toEqual([]);
   });
 
-  it("stacks CLOSE +1, then CHARGE +1, then CROSSFIRE +1 above the damage number", () => {
-    const cues = effectCuesOf([hit({ card: "Slam Shot", distance: 1, damage: 4, closeBonus: 1, chargeBonus: 1, crossfire: 1 })], fireOf);
+  it("stacks CLOSE +1, then CROSSFIRE +1 above the damage number", () => {
+    const cues = effectCuesOf([hit({ card: "Handle With Care", distance: 1, damage: 4, closeBonus: 1, crossfire: 1 })], fireOf);
     const labels = cues.flatMap((cue) => (cue.kind === "bonus" ? [[cue.text, cue.stack]] : cue.kind === "crossfire" ? [["CROSSFIRE", cue.stack]] : []));
-    expect(labels).toEqual([["CLOSE +1", 0], ["CHARGE +1", 1], ["CROSSFIRE", 2]]);
+    expect(labels).toEqual([["CLOSE +1", 0], ["CROSSFIRE", 1]]);
   });
 
   it("names no bonus on a hit without one", () => {
-    expect(effectCuesOf([hit({ card: "Slam Shot", distance: 2, damage: 2 })], fireOf).some((cue) => cue.kind === "bonus")).toBe(false);
+    expect(effectCuesOf([hit({ card: "Handle With Care", distance: 2, damage: 2 })], fireOf).some((cue) => cue.kind === "bonus")).toBe(false);
   });
 
-  it("puts speed streaks on the Hero that charged and the tag SHIELD 1 · THIS ROUND on its Shield", () => {
+  it("puts speed streaks on the Hero that charged and the tag SHIELD 2 · THIS ROUND on its Shield", () => {
     const cues = effectCuesOf(
       [
-        { kind: EventKind.Charged, tick: 1, heroId: "bruiser", targetId: "enemy", card: "Charge" },
-        { kind: EventKind.ShieldGained, tick: 1, heroId: "bruiser", amount: 1, casterId: "bruiser", card: "Charge" },
+        { kind: EventKind.Charged, tick: 1, heroId: "bruiser", targetId: "enemy", card: "Express Delivery" },
+        { kind: EventKind.ShieldGained, tick: 1, heroId: "bruiser", amount: 1, casterId: "bruiser", card: "Express Delivery" },
       ],
       fireOf,
     );

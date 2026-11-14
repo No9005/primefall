@@ -70,7 +70,7 @@ export interface TargetLine {
 
 const NO_RANGE_LIMIT = Number.MAX_SAFE_INTEGER;
 
-const ENEMY_TARGETS = [CardTarget.VisibleEnemy, CardTarget.GhostEnemy];
+const ENEMY_TARGETS = [CardTarget.VisibleEnemy, CardTarget.GhostEnemy, CardTarget.VisibleOrGhostEnemy];
 const ALLY_TARGETS = [CardTarget.AllyHero, CardTarget.AllyHeroTile];
 const TILE_TARGETS = [CardTarget.Tile, CardTarget.EmptyTile, CardTarget.Area];
 
@@ -106,6 +106,13 @@ interface LineContext {
 
 type LineBase = Pick<TargetLine, "heroId" | "own" | "tick">;
 type PrimaryAction = Extract<QueuedAction, { kind: ActionKind.Primary }>;
+
+/** The enemy an effect path may start from: a Visible one, or a Ghost for a card that can name one (Cargo Hook), at its last known tile. */
+function pathTargetOf(enemies: readonly EnemyView[], id: string, card: CardDefinition): { id: string; position: GridPosition } | undefined {
+  const enemy = enemies.find((candidate) => candidate.id === id);
+  if (enemy?.visibility === Visibility.Visible) return enemy;
+  return enemy?.visibility === Visibility.Ghost && card.target === CardTarget.VisibleOrGhostEnemy ? enemy : undefined;
+}
 
 function linesOfAction({ grid, heroes, enemies }: LineContext, hero: HeroView, from: GridPosition, action: QueuedAction, tick: number): TargetLine[] {
   if (action.kind !== ActionKind.Primary) return [];
@@ -308,8 +315,8 @@ export function plannedEffectPaths(grid: Grid, heroes: readonly HeroView[], enem
       return queue.flatMap((action, index): EffectPath[] => {
         if (action.kind !== ActionKind.Primary) return [];
         const card = HERO_DECKS[hero.heroClass][action.card]!;
-        const target = enemies.find((enemy) => enemy.id === action.target);
-        if (target?.visibility !== Visibility.Visible) return [];
+        const target = pathTargetOf(enemies, action.target, card);
+        if (!target) return [];
         const caster = positionBefore(hero, queue, index);
         const pull = card.effects.find((effect) => effect.kind === EffectKind.Pull);
         if (pull) {

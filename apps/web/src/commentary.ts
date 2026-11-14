@@ -102,17 +102,11 @@ export function buildCommentary(events: readonly MatchEvent[], { nameOf, sideOf 
       case EventKind.AreaRevealed:
         add(heroId, "Scout Drone", "The marked area is revealed");
         break;
-      case EventKind.Knockback:
-        add(heroId, "Knockback", "Is pushed back one tile");
-        break;
       case EventKind.Pull:
         add(heroId, "Pull", "Is pulled one tile toward the Bruiser");
         break;
       case EventKind.Charged:
-        add(heroId, "Charge", "Rushes at the enemy: Shield 1 and +1 damage at Range 1");
-        break;
-      case EventKind.AttackBonusGained:
-        add(heroId, "Adrenal Surge", `Gains +${event.amount ?? 0} Attack for the rest of the match`);
+        add(heroId, "Express Delivery", "Rushes at the enemy");
         break;
       case EventKind.Wait:
         if (sideOf(heroId) === "own") add(heroId, "Wait", "Holds position, no Energy used");

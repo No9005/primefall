@@ -8,7 +8,7 @@ const faces = (page: Page) => page.getByRole("group", { name: "Use card as" });
 const removeButtons = (page: Page) => page.getByRole("region", { name: "Queue" }).getByRole("button", { name: /^Remove action/ });
 
 async function startPlanning(page: Page) {
-  // The match seed is the first Date.now() of the page. Seed 6 deals the Bruiser Bulwark (no tile target) first, so
+  // The match seed is the first Date.now() of the page. Seed 6 deals the Bruiser Hard Hat (no tile target) first, so
   // the only lit tiles are those of Move 2 around the Hero.
   await page.addInitScript(() => {
     const realNow = Date.now;

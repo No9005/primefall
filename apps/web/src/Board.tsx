@@ -41,7 +41,7 @@ import { freeBoardArea } from "./hud-layout";
 import { FogClouds, type FogWalker, fogDuringWalk, fogShape } from "./fog-clouds";
 import { coverLook, depthOf, floorOutline, footOffset, coverGridOf, lineScale, litTiles, withoutCover } from "./terrain";
 import { CLIP_SPEED, ClipPlayer } from "./clip-player";
-import { attackBadge, EffectsLayer, type EffectsWorld, hiddenSeenMark, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
+import { EffectsLayer, type EffectsWorld, hiddenSeenMark, markedMark, shieldMark, slowMark, STATUS_AT_REST_MS, type StatusMark } from "./effects-layer";
 import { type EffectCue, slideProgress } from "./weapon-effects";
 import { baseFacing, type Facing, turnHeroes } from "./facing";
 import { walkProgress } from "./playback";
@@ -335,8 +335,6 @@ export interface TokenHero {
   ghost?: boolean;
   /** Marked: the enemy Squad sees this Hero; drawn with a marker above the token. */
   marked?: boolean;
-  /** The permanent Attack bonus (Adrenal Surge); above zero draws the gold `+1` badge beside the ring. */
-  attackBonus?: number;
 }
 
 /** The containers the terrain is drawn into. */
@@ -760,9 +758,7 @@ export function Board({
     // The rings of the Heroes that can be tapped as target pulse (issue 209); with reduced motion they stand still.
     const pulsingRings: Graphics[] = [];
     const statusMarks: StatusMark[] = [];
-    // The `+1` badges of Heroes with an Attack bonus; one that is gained in this frame pops in at `startMs`.
-    const badges: { mark: StatusMark; startMs: number | undefined }[] = [];
-    // Shields that change in this frame, and Heroes that slide one tile of Knockback (the rules moved them already).
+    // Shields that change in this frame, and Heroes that slide one tile of Pull (the rules moved them already).
     const shieldMarks: StatusMark[] = [];
     const slides: { token: Container; fromX: number; fromY: number; startMs: number }[] = [];
     // Heroes that walk one tile in this frame glide from the tile they came from.
@@ -779,9 +775,9 @@ export function Board({
       token.position.set(x, y + footOffset());
       token.zIndex = depthOf(hero.position) + 0.5;
       const targetable = targetableIds.includes(hero.id);
-      const slide = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? undefined : effects.find((cue) => (cue.kind === "knockback" || cue.kind === "pull") && cue.toId === hero.id);
-      if ((slide?.kind === "knockback" || slide?.kind === "pull") && slide.from) {
-        // The token starts on the tile it was pushed from and slides to the one the rules put it on.
+      const slide = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? undefined : effects.find((cue) => cue.kind === "pull" && cue.toId === hero.id);
+      if (slide?.kind === "pull" && slide.from) {
+        // The token starts on the tile it was pulled from and slides to the one the rules put it on.
         const from = gridToWorld(slide.from);
         slides.push({ token, fromX: from.x - x, fromY: from.y - y, startMs: slide.startMs });
       }
@@ -866,12 +862,6 @@ export function Board({
       }
       // A Hidden enemy that a Scout Drone area shows: the figure at about 55 % (above), a cyan ring, an eye and the tag.
       if (enemy && hero.hidden && !hero.exhausted && !hero.ghost) token.addChild(hiddenSeenMark());
-      // The Attack bonus of Adrenal Surge is state too: the badge stays beside the ring until Exhaustion.
-      if ((hero.attackBonus ?? 0) > 0 && !hero.exhausted && !hero.ghost) {
-        const badge = attackBadge();
-        token.addChild(badge.container);
-        badges.push({ mark: badge, startMs: undefined });
-      }
       tokens.addChild(token);
       created.push(token);
     };
@@ -910,7 +900,6 @@ export function Board({
     const playClips = (now: number) => {
       const frameMs = (now - frameClock.current) * CLIP_SPEED;
       for (const mark of shieldMarks) mark.update(frameMs);
-      for (const { mark, startMs } of badges) mark.update(startMs === undefined ? STATUS_AT_REST_MS : frameMs - startMs);
       for (const { token, fromX, fromY, startMs } of slides) {
         const left = 1 - slideProgress(frameMs - startMs);
         token.pivot.set(-fromX * left, -fromY * left);

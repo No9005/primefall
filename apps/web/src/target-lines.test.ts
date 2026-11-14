@@ -35,7 +35,7 @@ const controller = hero("c", HeroClass.Controller, { col: 1, row: 3 });
 const heroes = [bruiser, controller];
 
 const plan = (heroId: string, queue: QueuedAction[]): SquadPlan => ({ squad: "a", heroes: [{ heroId, queue }] }) as unknown as SquadPlan;
-const attack = (target: string): QueuedAction => ({ kind: ActionKind.Primary, card: cardIndex(HeroClass.Bruiser, "Slam Shot"), target });
+const attack = (target: string): QueuedAction => ({ kind: ActionKind.Primary, card: cardIndex(HeroClass.Bruiser, "Handle With Care"), target });
 
 describe("plannedTargetLines", () => {
   it("draws a teal Attack line numbered with its Tick when the shot can hit", () => {
@@ -93,21 +93,21 @@ describe("plannedTargetLines", () => {
   });
 
   it("draws an ally effect as an Ally line to the allied Hero", () => {
-    const reinforce: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Controller, "Reinforce"), target: "b" };
-    expect(plannedTargetLines(grid, heroes, [], [plan("c", [reinforce])])).toMatchObject([
+    const overwatch: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Controller, "Overwatch Uplink"), target: "b" };
+    expect(plannedTargetLines(grid, heroes, [], [plan("c", [overwatch])])).toMatchObject([
       { kind: LineKind.Ally, tone: LineTone.Clear, tick: 1, from: controller.position, to: bruiser.position },
     ]);
   });
 
   it("draws a tile effect as a Tile line ending on the tile", () => {
-    const breach: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Bruiser, "Breach Charge"), target: "b", tile: { col: 4, row: 2 } };
-    expect(plannedTargetLines(grid, heroes, [], [plan("b", [breach])])).toMatchObject([
+    const breach: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Controller, "Breach Charge"), target: "c", tile: { col: 4, row: 2 } };
+    expect(plannedTargetLines(grid, heroes, [], [plan("c", [breach])])).toMatchObject([
       { kind: LineKind.Tile, tick: 1, to: { col: 4, row: 2 } },
     ]);
   });
 
   it("draws no line for Wait, Move or a self effect", () => {
-    const bulwark: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Bruiser, "Bulwark"), target: "b" };
+    const bulwark: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Bruiser, "Hard Hat"), target: "b" };
     const queue: QueuedAction[] = [{ kind: ActionKind.Wait }, { kind: ActionKind.Move, card: 1, destination: { col: 2, row: 1 } }, bulwark];
     expect(plannedTargetLines(grid, heroes, [], [plan("b", queue)])).toEqual([]);
   });
@@ -253,33 +253,39 @@ describe("plannedEffectPaths", () => {
   const use = (name: string, target: string): QueuedAction => ({ kind: ActionKind.Primary, card: cardIndex(HeroClass.Bruiser, name), target });
   const paths = (action: QueuedAction, enemies: EnemyView[], onGrid = open) => plannedEffectPaths(onGrid, [caster], enemies, [plan("b", [action])]);
 
-  it("shows the two tiles a Pull would carry the enemy over, toward the Bruiser, with the Range in the tag", () => {
-    const [path] = paths(use("Pull", "e"), [visible("e", { col: 5, row: 2 })]);
-    expect(path).toMatchObject({ kind: EffectPathKind.Pull, tag: "PULL · RANGE 4", tagTile: { col: 5, row: 2 } });
-    expect(path!.tiles.map(({ tile }) => tile)).toEqual([{ col: 4, row: 2 }, { col: 3, row: 2 }]);
+  it("shows the tiles a Pull would carry the enemy over, toward the Bruiser, with the Range in the tag", () => {
+    const [path] = paths(use("Cargo Hook", "e"), [visible("e", { col: 5, row: 2 })]);
+    expect(path).toMatchObject({ kind: EffectPathKind.Pull, tag: "PULL · RANGE 7", tagTile: { col: 5, row: 2 } });
+    expect(path!.tiles.map(({ tile }) => tile)).toEqual([{ col: 4, row: 2 }, { col: 3, row: 2 }, { col: 2, row: 2 }]);
     expect(path!.tiles.every(({ direction }) => direction.col === -1 && direction.row === 0)).toBe(true);
   });
 
   it("stops the Pull path next to the Bruiser, before a Wall and before another Hero", () => {
-    expect(paths(use("Pull", "e"), [visible("e", { col: 3, row: 2 })])[0]!.tiles.map(({ tile }) => tile)).toEqual([{ col: 2, row: 2 }]);
+    expect(paths(use("Cargo Hook", "e"), [visible("e", { col: 3, row: 2 })])[0]!.tiles.map(({ tile }) => tile)).toEqual([{ col: 2, row: 2 }]);
     const walled = parseGrid(["###########", "#.........#", "#...#.....#", "#.........#", "###########"]);
-    expect(paths(use("Pull", "e"), [visible("e", { col: 5, row: 2 })], walled)[0]!.tiles.map(({ tile }) => tile)).toEqual([]);
-    expect(paths(use("Pull", "e"), [visible("e", { col: 6, row: 2 }), visible("f", { col: 5, row: 2 })]).filter(({ tagTile }) => tagTile.col === 6)[0]!.tiles).toEqual([]);
+    expect(paths(use("Cargo Hook", "e"), [visible("e", { col: 5, row: 2 })], walled)[0]!.tiles.map(({ tile }) => tile)).toEqual([]);
+    expect(paths(use("Cargo Hook", "e"), [visible("e", { col: 6, row: 2 }), visible("f", { col: 5, row: 2 })]).filter(({ tagTile }) => tagTile.col === 6)[0]!.tiles).toEqual([]);
   });
 
-  it("shows the tiles a Charge carries the Bruiser over, up to 3 and ending next to the target, with chevrons toward it", () => {
-    const [far] = paths(use("Charge", "e"), [visible("e", { col: 8, row: 2 })]);
-    expect(far).toMatchObject({ kind: EffectPathKind.Charge, tag: "CHARGE · MOVE 3 TOWARD", tagTile: { col: 1, row: 2 } });
-    expect(far!.tiles.map(({ tile }) => tile)).toEqual([{ col: 2, row: 2 }, { col: 3, row: 2 }, { col: 4, row: 2 }]);
-    const [near] = paths(use("Charge", "e"), [visible("e", { col: 4, row: 2 })]);
+  it("shows the tiles a Charge carries the Bruiser over, up to 5 and ending next to the target, with chevrons toward it", () => {
+    const [far] = paths(use("Express Delivery", "e"), [visible("e", { col: 8, row: 2 })]);
+    expect(far).toMatchObject({ kind: EffectPathKind.Charge, tag: "CHARGE · MOVE 5 TOWARD", tagTile: { col: 1, row: 2 } });
+    expect(far!.tiles.map(({ tile }) => tile)).toEqual([{ col: 2, row: 2 }, { col: 3, row: 2 }, { col: 4, row: 2 }, { col: 5, row: 2 }, { col: 6, row: 2 }]);
+    const [near] = paths(use("Express Delivery", "e"), [visible("e", { col: 4, row: 2 })]);
     expect(near!.tiles.map(({ tile }) => tile)).toEqual([{ col: 2, row: 2 }, { col: 3, row: 2 }]);
   });
 
-  it("draws no path for a Ghost or an Unknown enemy, for an Attack, or for a Hero that is Exhausted", () => {
-    expect(paths(use("Pull", "e"), [ghost("e", { col: 5, row: 2 })])).toEqual([]);
-    expect(paths(use("Charge", "e"), [unknown("e")])).toEqual([]);
+  it("draws the Pull path of a Cargo Hook that names a Ghost, from the Ghost's last known tile", () => {
+    const [path] = paths(use("Cargo Hook", "e"), [ghost("e", { col: 5, row: 2 })]);
+    expect(path).toMatchObject({ kind: EffectPathKind.Pull, tagTile: { col: 5, row: 2 } });
+  });
+
+  it("draws no path for a Ghost (Express Delivery) or an Unknown enemy, for an Attack, or for a Hero that is Exhausted", () => {
+    expect(paths(use("Express Delivery", "e"), [ghost("e", { col: 5, row: 2 })])).toEqual([]);
+    expect(paths(use("Express Delivery", "e"), [unknown("e")])).toEqual([]);
+    expect(paths(use("Cargo Hook", "e"), [unknown("e")])).toEqual([]);
     expect(paths(attack("e"), [visible("e", { col: 3, row: 2 })])).toEqual([]);
-    expect(plannedEffectPaths(open, [{ ...caster, exhausted: true }], [visible("e", { col: 5, row: 2 })], [plan("b", [use("Pull", "e")])])).toEqual([]);
+    expect(plannedEffectPaths(open, [{ ...caster, exhausted: true }], [visible("e", { col: 5, row: 2 })], [plan("b", [use("Cargo Hook", "e")])])).toEqual([]);
   });
 });
 
@@ -305,7 +311,7 @@ describe("plannedCoverPlan", () => {
   });
 
   it("ignores Primary actions of cards that do not place Cover, and Heroes that are Exhausted", () => {
-    const slam: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Bruiser, "Slam Shot"), target: "e" };
+    const slam: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Bruiser, "Handle With Care"), target: "e" };
     expect(plannedCoverPlan(own, [bruiser], [plan("b", [slam])], false).fresh).toEqual([]);
     expect(plannedCoverPlan(own, [{ ...controller, exhausted: true }], plansOf({ col: 5, row: 1 }), false).fresh).toEqual([]);
   });

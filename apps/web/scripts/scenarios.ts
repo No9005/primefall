@@ -99,11 +99,9 @@ function stage(seed: number, edit: (hero: (id: string) => HeroState, match: Matc
 }
 
 // Card indices in the Deck lists of packages/game-core/src/cards.ts.
-const BRUISER_SLAM_SHOT = cardIndex(HeroClass.Bruiser, "Slam Shot");
-const BRUISER_SLAM_SHOT_2 = cardIndex(HeroClass.Bruiser, "Slam Shot", 1);
-const BRUISER_BREACH_CHARGE = cardIndex(HeroClass.Bruiser, "Breach Charge");
-const BRUISER_SHOCKWAVE = cardIndex(HeroClass.Bruiser, "Shockwave");
-const BRUISER_BULWARK = cardIndex(HeroClass.Bruiser, "Bulwark");
+const BRUISER_HANDLE_WITH_CARE = cardIndex(HeroClass.Bruiser, "Handle With Care");
+const BRUISER_HANDLE_WITH_CARE_2 = cardIndex(HeroClass.Bruiser, "Handle With Care", 1);
+const BRUISER_HARD_HAT = cardIndex(HeroClass.Bruiser, "Hard Hat");
 
 // Controller cards. These scenarios keep the Bruiser as the Player Hero, so the Controller's card is played by the allied
 // AI, which plays only simple Attacks (isSimpleAttack in cards.ts). A scenario with `playerHero` set can play the other
@@ -133,11 +131,12 @@ function controllerAttack(name: string, description: string, seed: number, card:
 }
 
 // The rest of the Bruiser's Deck list (packages/game-core/src/cards.ts).
-const BRUISER_CONCUSSION_ROUND = cardIndex(HeroClass.Bruiser, "Concussion Round");
-const BRUISER_ADRENAL_SURGE = cardIndex(HeroClass.Bruiser, "Adrenal Surge");
-const BRUISER_CHARGE = cardIndex(HeroClass.Bruiser, "Charge");
-const BRUISER_PULL = cardIndex(HeroClass.Bruiser, "Pull");
-const BRUISER_WRECKING_BLOW = cardIndex(HeroClass.Bruiser, "Wrecking Blow");
+const BRUISER_TIME_FOR_COFFEE = cardIndex(HeroClass.Bruiser, "Time for Coffee");
+const BRUISER_BUY_ONE_GET_TWO = cardIndex(HeroClass.Bruiser, "Buy One, Get Two");
+const BRUISER_EXPRESS_DELIVERY = cardIndex(HeroClass.Bruiser, "Express Delivery");
+const BRUISER_CARGO_HOOK = cardIndex(HeroClass.Bruiser, "Cargo Hook");
+const CONTROLLER_BREACH_CHARGE = cardIndex(HeroClass.Controller, "Breach Charge");
+const CONTROLLER_WRECKING_BLOW = cardIndex(HeroClass.Controller, "Wrecking Blow");
 
 const ENEMY_BRUISER = `${SquadId.Right}-bruiser`;
 
@@ -156,7 +155,7 @@ function bruiserCard(
   edit: (hero: (id: string) => HeroState, match: MatchState) => void,
   resolutionShotsMs: readonly number[] = [600, 1300, 2000, 3000, 4500],
 ): Scenario {
-  const fillers = [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, BRUISER_CONCUSSION_ROUND, BRUISER_BREACH_CHARGE].filter((index) => index !== card);
+  const fillers = [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, BRUISER_TIME_FOR_COFFEE, BRUISER_BUY_ONE_GET_TWO].filter((index) => index !== card);
   return {
     name,
     description,
@@ -304,38 +303,50 @@ const ASSASSIN_SCENARIOS: readonly Scenario[] = [
 ];
 
 export const SCENARIOS: readonly Scenario[] = [
-  bruiserCard("slam-shot", "A Bruiser fires Slam Shot (2 damage, Range 1 to 2) at an enemy Bruiser two tiles away.", 31, BRUISER_SLAM_SHOT, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+  bruiserCard("handle-with-care", "A Bruiser fires Handle With Care (2 damage, 3 at Range 1; Range 1 to 2) at an enemy Bruiser two tiles away.", 31, BRUISER_HANDLE_WITH_CARE, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
-  bruiserCard("slam-shot-left", "The mirror of slam-shot: the Bruiser fires at an enemy Bruiser two tiles to its left, turns to it and keeps facing it.", 31, BRUISER_SLAM_SHOT, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+  bruiserCard("handle-with-care-left", "The mirror of handle-with-care: the Bruiser fires at an enemy Bruiser two tiles to its left, turns to it and keeps facing it.", 31, BRUISER_HANDLE_WITH_CARE, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 10, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
-  bruiserCard("concussion-round", "A Bruiser fires Concussion Round (2 damage and Slow) at an enemy Bruiser two tiles away.", 32, BRUISER_CONCUSSION_ROUND, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+  bruiserCard("time-for-coffee", "A Bruiser fires Time for Coffee (1 damage and Slow, Range 3) at an enemy Bruiser two tiles away.", 32, BRUISER_TIME_FOR_COFFEE, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
-  bruiserCard("breach-charge", "A Bruiser plays Breach Charge on a Half Cover tile in front of an enemy Bruiser: the Cover is destroyed, the enemy behind it is not hurt.", 33, BRUISER_BREACH_CHARGE, 2, { use: "primary", tile: { col: 14, row: 4 } }, (hero, match) => {
+  {
+    name: "breach-charge",
+    description: "Tilly plays Breach Charge on a Half Cover tile in front of an enemy Bruiser: the Cover is destroyed, the enemy behind it is not hurt.",
+    buildMatch: () =>
+      stage(33, (hero, match) => {
+        arrange(hero(`${SquadId.Left}-controller`), { col: 12, row: 3 }, { hand: [CONTROLLER_BREACH_CHARGE, 0, 1, 2] });
+        arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+        placeHalfCover(match, { col: 14, row: 4 });
+      }),
+    playerHero: HeroClass.Controller,
+    heroId: `${SquadId.Left}-controller`,
+    steps: [
+      { slot: 1, use: "pitch" },
+      { slot: 0, use: "primary", tile: { col: 14, row: 4 } },
+    ],
+    resolutionShotsMs: [600, 1300, 2000, 3000, 4500],
+  },
+  bruiserCard("buy-one-get-two", "A Bruiser plays Buy One, Get Two on an enemy Bruiser two tiles away: two shots, 2 damage each.", 34, BRUISER_BUY_ONE_GET_TWO, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
-    placeHalfCover(match, { col: 14, row: 4 });
   }),
-  bruiserCard("shockwave", "A Bruiser plays Shockwave: 2 damage and knockback to two enemy Heroes within Range 1.", 35, BRUISER_SHOCKWAVE, 2, { use: "primary" }, (hero) => {
-    arrange(hero(ENEMY_BRUISER), { col: 13, row: 3 }, ENEMIES_WITH_ATTACKS);
-    arrange(hero(`${SquadId.Right}-controller`), { col: 12, row: 4 }, ENEMIES_WITH_ATTACKS);
-  }),
-  bruiserCard("bulwark", "A Bruiser plays Bulwark: the Shield (3) bubble appears and soaks the enemy Slam Shots of the Resolution.", 36, BRUISER_BULWARK, 1, { use: "primary" }, (hero) => {
+  bruiserCard("hard-hat", "A Bruiser plays Hard Hat: the Shield (2) bubble appears and soaks the enemy Handle With Care shots of the Resolution.", 36, BRUISER_HARD_HAT, 1, { use: "primary" }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
-  bruiserCard("charge", "A Bruiser plays Charge on an enemy Bruiser three tiles away: it closes in, ends next to it and gains Shield 1.", 42, BRUISER_CHARGE, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
-    arrange(hero(ENEMY_BRUISER), { col: 15, row: 3 }, ENEMIES_WITH_ATTACKS);
-  }),
-  bruiserCard("pull", "A Bruiser plays Pull on an enemy Bruiser four tiles away: it is dragged two tiles toward the Bruiser.", 43, BRUISER_PULL, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+  bruiserCard("express-delivery", "A Bruiser plays Express Delivery on an enemy Bruiser four tiles away: Shield 2 first, then it closes in and ends next to the enemy.", 42, BRUISER_EXPRESS_DELIVERY, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 16, row: 3 }, ENEMIES_WITH_ATTACKS);
+  }),
+  bruiserCard("cargo-hook", "A Bruiser plays Cargo Hook on an enemy Bruiser five tiles away: it is dragged all the way next to the Bruiser.", 43, BRUISER_CARGO_HOOK, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+    arrange(hero(ENEMY_BRUISER), { col: 17, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
   {
     name: "charge-and-hit",
-    description: "A Bruiser plays Charge on an enemy Bruiser two tiles away, then Slam Shot at Range 1: the hit carries the tags CLOSE +1 and CHARGE +1.",
+    description: "A Bruiser plays Express Delivery on an enemy Bruiser two tiles away, then Handle With Care at Range 1: the hit carries the tag CLOSE +1.",
     buildMatch: () =>
       stage(42, (hero) => {
-        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_CHARGE, BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, BRUISER_CONCUSSION_ROUND] });
+        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_EXPRESS_DELIVERY, BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, BRUISER_TIME_FOR_COFFEE] });
         arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
       }),
     heroId: PLAYER_BRUISER,
@@ -352,7 +363,7 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "An enemy Assassin is Hidden inside a Scout Drone area of the Squad: shown translucent with a cyan ring, an eye and the tag HIDDEN · SEEN, not unmasked.",
     buildMatch: () =>
       stage(45, (hero, match) => {
-        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
         arrange(hero("right-assassin"), { col: 14, row: 3 }, { hand: [0, 1, 2, 3] });
         hero("right-assassin").hidden = 2;
         match.revealedAreas.push({ squad: SquadId.Left, center: { col: 14, row: 3 }, size: 3, remaining: 2 });
@@ -361,19 +372,29 @@ export const SCENARIOS: readonly Scenario[] = [
     steps: [{ wait: true }],
     resolutionShotsMs: [400, 1500],
   },
-  bruiserCard("wrecking-blow", "A Bruiser plays Wrecking Blow on an enemy Bruiser behind Half Cover two tiles away: 2 damage, and the Cover is destroyed.", 44, BRUISER_WRECKING_BLOW, 1, { use: "primary", target: ENEMY_BRUISER }, (hero, match) => {
-    arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
-    placeHalfCover(match, { col: 14, row: 3 });
-  }),
-  bruiserCard("adrenal-surge", "A Bruiser plays Adrenal Surge: a permanent +1 Attack for itself.", 40, BRUISER_ADRENAL_SURGE, 2, { use: "primary" }, (hero) => {
-    arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
-  }),
+  {
+    name: "wrecking-blow",
+    description: "Tilly plays Wrecking Blow on an enemy Bruiser behind Half Cover two tiles away: 2 damage, and the Cover is destroyed.",
+    buildMatch: () =>
+      stage(44, (hero, match) => {
+        arrange(hero(`${SquadId.Left}-controller`), { col: 12, row: 3 }, { hand: [CONTROLLER_WRECKING_BLOW, 0, 1, 2] });
+        arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
+        placeHalfCover(match, { col: 14, row: 3 });
+      }),
+    playerHero: HeroClass.Controller,
+    heroId: `${SquadId.Left}-controller`,
+    steps: [
+      { slot: 1, use: "pitch" },
+      { slot: 0, use: "primary", target: ENEMY_BRUISER },
+    ],
+    resolutionShotsMs: [600, 1300, 2000, 3000, 4500],
+  },
   {
     name: "exhaustion",
     description: "A Bruiser with its last card in the Hand and an empty Deck and Discard becomes Exhausted at the end of the Resolution and leaves a wreck.",
     buildMatch: () =>
       stage(12, (hero) => {
-        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_BULWARK], deck: [] });
+        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_HARD_HAT], deck: [] });
       }),
     heroId: PLAYER_BRUISER,
     steps: [{ wait: true }],
@@ -384,7 +405,7 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "A Bruiser moves onto a tile the enemy Squad cannot see.",
     buildMatch: () =>
       stage(13, (hero) => {
-        arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
       }),
     heroId: PLAYER_BRUISER,
     // Row 1 and a destination without Cover in front of it: a tall prop would catch the tap instead of the tile.
@@ -397,7 +418,7 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "Half Cover placed by Deploy Cover stands through Resolution 1 and is still there after Resolution 2.",
     buildMatch: () =>
       stage(21, (hero, match) => {
-        arrange(hero(PLAYER_BRUISER), { col: 8, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero(PLAYER_BRUISER), { col: 8, row: 3 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
         placeHalfCover(match, { col: 10, row: 3 });
       }),
     heroId: PLAYER_BRUISER,
@@ -446,7 +467,7 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "The enemy's Scout Drone scans the area round the player's Hero: a dashed amber outline with an amber sweep and the tag SCANNED · 2 (not who looks, not what is seen).",
     buildMatch: () =>
       stage(28, (hero, match) => {
-        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
         match.revealedAreas.push({ squad: SquadId.Right, center: { col: 12, row: 3 }, size: 3, remaining: 2 });
       }),
     heroId: PLAYER_BRUISER,
@@ -458,7 +479,7 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "The map's own Half and Full Cover next to the waiting Bruiser: blue shield panels on a plinth and the shield glyphs.",
     buildMatch: () =>
       stage(26, (hero) => {
-        arrange(hero(PLAYER_BRUISER), { col: 8, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero(PLAYER_BRUISER), { col: 8, row: 3 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
       }),
     heroId: PLAYER_BRUISER,
     steps: [{ wait: true }],
@@ -466,15 +487,15 @@ export const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "cover-destroyed",
-    description: "A Bruiser plays Breach Charge on a Half Cover tile; the Cover is destroyed and the scorch tile stays.",
+    description: "Tilly plays Breach Charge on a Half Cover tile; the Cover is destroyed and the scorch tile stays.",
     buildMatch: () =>
       stage(22, (hero) => {
-        arrange(hero(PLAYER_BRUISER), { col: 6, row: 3 }, { hand: [BRUISER_BREACH_CHARGE, BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, BRUISER_BULWARK] });
+        arrange(hero(`${SquadId.Left}-controller`), { col: 6, row: 3 }, { hand: [CONTROLLER_BREACH_CHARGE, 0, 1, 2] });
       }),
-    heroId: PLAYER_BRUISER,
+    playerHero: HeroClass.Controller,
+    heroId: `${SquadId.Left}-controller`,
     steps: [
       { slot: 1, use: "pitch" },
-      { slot: 2, use: "pitch" },
       { slot: 0, use: "primary", tile: { col: 8, row: 2 } },
     ],
     resolutionShotsMs: [400, 1200, 2800],
@@ -484,7 +505,7 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "A Scout Drone area (3 x 3, 2 Resolutions left) shows an enemy Hero behind a wall in Resolutions 1 and 2; then the fog closes.",
     buildMatch: () =>
       stage(23, (hero, match) => {
-        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
         // Behind the wall of row 5: out of sight for the Squad until the area covers it. The sighting makes it a Ghost later.
         hero("right-assassin").position = { col: 12, row: 7 };
         match.revealedAreas.push({ squad: SquadId.Left, center: { col: 12, row: 6 }, size: 3, remaining: 2 });
@@ -499,7 +520,7 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "An enemy Assassin seen earlier is out of sight and shown as a Ghost with the last seen tag; the Bruiser then moves close enough to see it again.",
     buildMatch: () =>
       stage(25, (hero, match) => {
-        arrange(hero(PLAYER_BRUISER), { col: 15, row: 2 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero(PLAYER_BRUISER), { col: 15, row: 2 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
         // Seen 6 tiles away, then 8 tiles away on the Outpost, beyond the sight range of 7: the Squad remembers the first tile.
         hero("right-assassin").position = { col: 21, row: 2 };
         recordSightings(match);
@@ -515,7 +536,7 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "A Bruiser walks two tiles with one Move: frames inside a step show the figure between two tiles, walking from A to B.",
     buildMatch: () =>
       stage(14, (hero) => {
-        arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
       }),
     heroId: PLAYER_BRUISER,
     // Row 1 and a destination without Cover in front of it: a tall prop would catch the tap instead of the tile.
@@ -527,7 +548,7 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "The mirror of walk-glide: the Bruiser walks two tiles the other way and faces the way it walks, during and after the step.",
     buildMatch: () =>
       stage(14, (hero) => {
-        arrange(hero(PLAYER_BRUISER), { col: 6, row: 1 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero(PLAYER_BRUISER), { col: 6, row: 1 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
       }),
     heroId: PLAYER_BRUISER,
     steps: [{ slot: 0, use: "move", tile: { col: 4, row: 1 } }],
@@ -538,7 +559,7 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "Two enemies with Attacks shoot the waiting Bruiser in consecutive Ticks: the second hit shows CROSSFIRE +1 above the damage numbers.",
     buildMatch: () =>
       stage(31, (hero) => {
-        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
         // Both enemies stand in Range and in sight with Attacks in their Hands, so the AI shoots the Bruiser.
         arrange(hero("right-bruiser"), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
         arrange(hero("right-assassin"), { col: 15, row: 4 }, ENEMIES_WITH_ATTACKS);
@@ -552,7 +573,7 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "Planning: the Bruiser and the allied Controller (Tag Round) both plan an Attack on the same enemy, so the Tick ring shows a possible Crossfire (orange segments, +1 ? chip).",
     buildMatch: () =>
       stage(31, (hero) => {
-        arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
         arrange(hero("left-controller"), { col: 4, row: 2 }, { hand: [CONTROLLER_TAG_ROUND, ...CONTROLLER_FILLER_CARDS] });
         arrange(hero("right-bruiser"), { col: 6, row: 1 }, ENEMIES_WITH_ATTACKS);
         arrange(hero("right-assassin"), { col: 20, row: 6 }, ENEMIES_WITH_ATTACKS);
@@ -566,7 +587,7 @@ export const SCENARIOS: readonly Scenario[] = [
     description: "Planning: the Bruiser attacks the same enemy in Ticks 1 and 2 and the allies are out of reach: the ring has two teal segments, no Crossfire.",
     buildMatch: () =>
       stage(31, (hero) => {
-        arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_SLAM_SHOT, BRUISER_SLAM_SHOT_2, 2, 3] });
+        arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
         arrange(hero("right-bruiser"), { col: 6, row: 1 }, ENEMIES_WITH_ATTACKS);
         arrange(hero("right-assassin"), { col: 20, row: 6 }, ENEMIES_WITH_ATTACKS);
       }),

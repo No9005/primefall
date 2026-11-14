@@ -42,7 +42,7 @@ test("a Pitch can be undone: the Energy goes back and the card can be used again
 });
 
 test("taking back a Pitch the Queue needs flags the action and disables Commit until it is pitched again", async ({ page }) => {
-  // The match seed is the first Date.now() of the page. Seed 6 deals the Bruiser Bulwark (1 Energy, on the own Hero) first.
+  // The match seed is the first Date.now() of the page. Seed 6 deals the Bruiser Hard Hat (1 Energy, on the own Hero) first.
   await page.addInitScript(() => {
     const realNow = Date.now;
     let first = true;
@@ -50,7 +50,7 @@ test("taking back a Pitch the Queue needs flags the action and disables Commit u
   });
   const hand = await startPlanning(page);
   const cards = hand.getByRole("button");
-  await expect(cards.first().locator(".card-name")).toHaveText("Bulwark");
+  await expect(cards.first().locator(".card-name")).toHaveText("Hard Hat");
 
   const pitchedPosition = (await cards.count()) - 1;
   await pitch(page, pitchedPosition);

@@ -10,9 +10,7 @@ describe("the playback plays the gestures from the events", () => {
     expect(utilityClipName(event(EventKind.AreaRevealed, "c", { card: "Scout Drone" }))).toEqual({ heroId: "c", clip: "scoutDrone" });
     expect(utilityClipName(event(EventKind.CoverPlaced, "c", { card: "Fortify" }))).toEqual({ heroId: "c", clip: "deploy" });
     expect(utilityClipName(event(EventKind.HiddenGained, "a", { card: "Hidden" }))).toEqual({ heroId: "a", clip: "hidden" });
-    // The Shield is on the ally; the gesture is the caster's.
-    expect(utilityClipName(event(EventKind.ShieldGained, "ally", { card: "Aegis Protocol", casterId: "c" }))).toEqual({ heroId: "c", clip: "aegis" });
-    expect(utilityClipName(event(EventKind.ShieldGained, "ally", { card: "Bulwark", casterId: "ally" }))).toEqual({ heroId: "ally", clip: "block" });
+    expect(utilityClipName(event(EventKind.ShieldGained, "ally", { card: "Hard Hat", casterId: "ally" }))).toEqual({ heroId: "ally", clip: "block" });
   });
 
   it("a Tick lasts until the slowest gesture has reached its active end", () => {
@@ -23,9 +21,4 @@ describe("the playback plays the gestures from the events", () => {
     expect(hidden?.holdMs).toBe(4200);
   });
 
-  it("the Aegis gesture does not move the receiver of the Shield, which still gains it", () => {
-    const [frame] = buildPlaybackFrames([event(EventKind.ShieldGained, "ally", { card: "Aegis Protocol", casterId: "c", amount: 3 })], classOf);
-    expect(frame?.clips).toEqual({ c: "aegis" });
-    expect(frame?.shields).toEqual({ ally: 3 });
-  });
 });

@@ -1,4 +1,4 @@
-import { CoverKind, type EnemyView, EventKind, type GridPosition, HERO_DECKS, type HeroClass, isAreaAttack, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
+import { CoverKind, type EnemyView, EventKind, type GridPosition, type HeroClass, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
 import type { TokenHero } from "./Board";
 import { attackClipName, type ClipName, clipOf, takeCoverClipName } from "./hero-clips";
 import { type CoverEdit, coverEditsOf, cueEndMs, type EffectCue, effectCuesOf, impactMs } from "./weapon-effects";
@@ -146,7 +146,7 @@ function addEventToFrame(frame: PlaybackFrame, event: MatchEvent): void {
   if (event.kind === EventKind.Exhausted) frame.exhausted.push(event.heroId);
   const clip = clipOfEvent(event);
   if (clip) frame.clips[clip.heroId] = clip.clip;
-  // The Utility gestures belong to the Hero that played the card; the Shield of an Aegis Protocol is on its target.
+  // The Utility gestures belong to the Hero that played the card; the Shield of a card played on an ally is on that ally.
   const gesture = utilityClipName(event);
   if (gesture !== undefined) frame.clips[gesture.heroId] = gesture.clip;
 }
@@ -179,7 +179,7 @@ function clipOfEvent(event: MatchEvent): { heroId: string; clip: ClipName } | un
 /** The targets react at the impact beat of the attacker's clip, unless they do something of their own in the frame; then the effects. */
 function addEffects(frame: PlaybackFrame, classOf: ClassOf): void {
   for (const event of frame.events) {
-    if (isAimedAtOneHero(event, classOf)) frame.aims[event.heroId] = event.targetId!;
+    if (isAimedAtOneHero(event)) frame.aims[event.heroId] = event.targetId!;
   }
   for (const event of frame.events) {
     if (event.kind === EventKind.AttackHit && event.targetId !== undefined) reactToHit(frame, event, event.targetId, classOf);
@@ -192,13 +192,11 @@ function addEffects(frame: PlaybackFrame, classOf: ClassOf): void {
   frame.coverEdits = coverEditsOf(frame.effects);
 }
 
-/** An Attack at one chosen Hero: the attacker turns to it. An area Attack (Shockwave) and a tile Attack have no one target. */
-function isAimedAtOneHero(event: MatchEvent, classOf: ClassOf): boolean {
+/** An Attack at one chosen Hero: the attacker turns to it. A tile Attack has no one target. */
+function isAimedAtOneHero(event: MatchEvent): boolean {
   if (event.kind !== EventKind.AttackHit && event.kind !== EventKind.AttackFailed) return false;
   if (event.targetId === undefined || event.tile !== undefined) return false;
-  const heroClass = classOf?.(event.heroId);
-  const card = heroClass === undefined ? undefined : HERO_DECKS[heroClass].find((candidate) => candidate.name === event.card);
-  return card === undefined || !isAreaAttack(card);
+  return true;
 }
 
 function reactToHit(frame: PlaybackFrame, event: MatchEvent, targetId: string, classOf: ClassOf): void {
@@ -239,8 +237,8 @@ export function utilityClipName(event: MatchEvent): { heroId: string; clip: Clip
     case EventKind.HiddenGained:
       return { heroId: event.heroId, clip: "hidden" };
     case EventKind.ShieldGained:
-      // Every Shield card plays the Shield gesture on the Hero that plays it; Aegis Protocol has its own.
-      return { heroId: event.casterId ?? event.heroId, clip: event.card === "Aegis Protocol" ? "aegis" : "block" };
+      // Every Shield card plays the Shield gesture on the Hero that plays it.
+      return { heroId: event.casterId ?? event.heroId, clip: "block" };
     default:
       return undefined;
   }
