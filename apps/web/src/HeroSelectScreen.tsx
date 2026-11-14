@@ -1,7 +1,7 @@
 import type { HeroClass } from "game-core";
 import { Application, Container, Graphics } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
-import { cardListTitle, cardRowName, cardRows, feetX, HERO_NAMES, HERO_TASKS, MODE_LABELS, type SelectMode, SELECTABLE_HEROES } from "./hero-select";
+import { cardListTitle, cardRowName, cardRows, feetX, HERO_CLOSE_UP, HERO_NAMES, HERO_PROFILES, HERO_TASKS, MODE_LABELS, type SelectMode, SELECTABLE_HEROES } from "./hero-select";
 import { HERO_STYLE } from "./hero-style";
 import { loadPixelHeroes, PixelHero } from "./pixel-heroes";
 import "./hero-select.css";
@@ -11,9 +11,11 @@ import "./hero-select.css";
 
 export const SCREEN = { width: 844, height: 390 };
 /** The tap area of a Hero (no box is drawn): its size, its top, the left of each, and where the feet stand inside it. */
-const AREA = { width: 240, height: 190, top: 64, lefts: [24, 302, 580], feetY: 118 };
+const AREA = { width: 240, height: 238, top: 56, lefts: [24, 302, 580], feetY: 158 };
 /** How much the figure of the board is magnified here. */
 const MAGNIFY = 2.5;
+/** Screen px per sprite px of a Hero here (a Hero is about 135 px tall). */
+const SPRITE_PX = 3;
 
 export const prefersReducedMotion = (): boolean => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -43,8 +45,8 @@ function buildStand(heroClass: HeroClass, index: number): Stand {
   holder.position.set(AREA.lefts[index]! + feetX(heroClass, false), AREA.top + AREA.feetY);
   holder.scale.set(MAGNIFY);
   // The sheets carry the muzzle flash, the tracer and the Hidden label themselves, so all three layers are drawn.
-  // The holder magnifies by MAGNIFY, so the figure itself has scale 1 and the sprites are 2 screen px per pixel.
-  const pixel = new PixelHero(heroClass, false, MAGNIFY / HERO_STYLE.figureScale, "right", { layers: ["fx_back", "figure", "fx_front"], figureScale: 1, pixelScale: 2 / MAGNIFY });
+  // The holder magnifies by MAGNIFY, so the figure itself has scale 1 and the sprites are SPRITE_PX screen px per pixel.
+  const pixel = new PixelHero(heroClass, false, MAGNIFY / HERO_STYLE.figureScale, "right", { layers: ["fx_back", "figure", "fx_front"], figureScale: 1, pixelScale: SPRITE_PX / MAGNIFY });
   holder.addChild(tile(), pixel.container);
   return { heroClass, holder, pixel, since: performance.now(), state: "idle" };
 }
@@ -150,6 +152,30 @@ function CardList({ heroClass, onClose }: { heroClass: HeroClass; onClose: () =>
   );
 }
 
+function BioSheet({ heroClass, onClose }: { heroClass: HeroClass; onClose: () => void }) {
+  const { name, quote, bio } = HERO_PROFILES[heroClass];
+  return (
+    <div className="hs-cards-overlay" data-testid="bio-sheet">
+      <section className="hs-bio" aria-label={`${name}, bio`}>
+        <button type="button" className="hs-close hs-bio-close" aria-label="Close" onClick={onClose}>
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M2 2L14 14M14 2L2 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+        <div className="hs-bio-portrait">
+          <img src={`${import.meta.env.BASE_URL}assets/pixel-heroes/${HERO_CLOSE_UP[heroClass]}/bio.png`} alt={`Close-up of ${name}`} />
+        </div>
+        <div className="hs-bio-text">
+          <h2>{name.toUpperCase()}</h2>
+          <p className="hs-bio-class">{HERO_NAMES[heroClass].toUpperCase()}</p>
+          <p className="hs-bio-body">{bio}</p>
+          <p className="hs-bio-quote">{`\u201c${quote}\u201d`}</p>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 /** The scale that fits the 844 x 390 screen into the window. */
 function fitScale(): number {
   return Math.min(window.innerWidth / SCREEN.width, window.innerHeight / SCREEN.height);
@@ -165,7 +191,7 @@ interface HeroSelectScreenProps {
 
 export function HeroSelectScreen({ mode, initial, onBack, onStart }: HeroSelectScreenProps) {
   const [choice, setChoice] = useState<Choice>({ hero: initial, tap: 0 });
-  const [cardsOpen, setCardsOpen] = useState(false);
+  const [sheet, setSheet] = useState<"cards" | "bio">();
   const [scale, setScale] = useState(fitScale);
 
   useEffect(() => {
@@ -198,18 +224,22 @@ export function HeroSelectScreen({ mode, initial, onBack, onStart }: HeroSelectS
             data-testid={`hero-${heroClass}`}
             onClick={() => setChoice((current) => ({ hero: heroClass, tap: current.tap + 1 }))}
           >
-            <span className="hs-name">{HERO_NAMES[heroClass].toUpperCase()}</span>
-            {hero === heroClass && <i className="hs-bar" />}
+            <span className="hs-name">{HERO_PROFILES[heroClass].name.toUpperCase()}</span>
+            <span className="hs-class">{HERO_NAMES[heroClass].toUpperCase()}</span>
           </button>
         ))}
         <div className={`hs-info${hero ? "" : " empty"}`} data-testid="hero-info">
           {hero ? (
             <>
-              <h2>{HERO_NAMES[hero].toUpperCase()}</h2>
               <p>{HERO_TASKS[hero]}</p>
-              <button type="button" className="hs-view-cards" onClick={() => setCardsOpen(true)}>
-                VIEW CARDS
-              </button>
+              <div className="hs-actions">
+                <button type="button" className="hs-view-cards" onClick={() => setSheet("cards")}>
+                  VIEW CARDS
+                </button>
+                <button type="button" className="hs-view-cards hs-bio-button" onClick={() => setSheet("bio")}>
+                  BIO
+                </button>
+              </div>
             </>
           ) : (
             <>
@@ -221,7 +251,8 @@ export function HeroSelectScreen({ mode, initial, onBack, onStart }: HeroSelectS
         <button type="button" className="hs-start" disabled={!hero} onClick={() => hero && onStart(hero)}>
           START
         </button>
-        {cardsOpen && hero && <CardList heroClass={hero} onClose={() => setCardsOpen(false)} />}
+        {sheet === "cards" && hero && <CardList heroClass={hero} onClose={() => setSheet(undefined)} />}
+        {sheet === "bio" && hero && <BioSheet heroClass={hero} onClose={() => setSheet(undefined)} />}
       </div>
     </section>
   );

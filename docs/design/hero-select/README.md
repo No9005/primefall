@@ -2,6 +2,17 @@
 
 The look of the Hero Select screen and of the poses its three Heroes strike. It was worked out with the product owner on the design canvas. **Build it the way it is shown here.** Where this text and the images disagree, the images and the CSS in `reference/` win. Decisions behind it: ticket #318 (and #319, the Player Hero parameter it builds on).
 
+## Update: Hero Names, bigger Heroes, the BIO sheet (design canvas page "Hero Select: names and bios", variant A)
+
+Chosen by the product owner. **Where this section differs from the table below, this section wins.** The pictures are `overview/names-controller.png` and `overview/names-bio.png` (screenshots of the game at 844 x 390).
+
+- **Heroes:** the sprites are drawn at 3 screen px per sprite px (before: 2); the feet of every Hero stand at y 214 (area top 56, feet 158 inside it); the tap area of a Hero is 240 x 238.
+- **Under each Hero:** its **Hero Name** (Rajdhani 700 19 px, letter spacing 0.12 em, white; teal when selected) at y 246, and its class (Rajdhani 600 12 px, letter spacing 0.2 em, muted) at y 270. No bar under the name.
+- **The band below:** only the role text (Barlow 500 14 px, line height 20, at (40, 298), 600 wide), and **under it** the two quiet pills VIEW CARDS and BIO at (40, 344), 10 px apart, 32 high. BIO has a teal border. With no Hero selected the band shows TAP A HERO and its text and no buttons. START stays at the right.
+- **The BIO sheet** (a sheet like the card list: 764 x 358 at (40, 16) over the 72 % dark overlay, background `#151b23`, border 1 px `#2a3643`): no title and no divider, only the close button (40 x 40) at the top right (right 14, top 14). The close-up (240 x 224, steel border, from `bio.png` at 8 x) at (28, 62) in the sheet. Right of it, from y 57 and flush with the top of the close-up: the Hero Name (Rajdhani 700 32 px, 36 line height), the class in teal (700 13 px, letter spacing 0.2 em), the bio (Barlow 15 px, line height 22, 16 px below), then the line of the Hero in italic with quotation marks (14 px below).
+- **The words** are in `apps/web/src/hero-select.ts` (`HERO_PROFILES`); their source is `docs/design/world/README.md`.
+- **The background grid** is visible (lines at 5.5 % white) and drifts diagonally, one cell (64 x 36 px) in 36 s; with reduced motion it stands still.
+
 ## Files
 
 - `overview/screen-1-idle.png` … `screen-5-cards.png`: the five states of the screen at 844 x 390 (landscape phone). **This is what your own screenshot is compared with.** `overview/HeroSelectScreen.png` shows all five on one sheet.

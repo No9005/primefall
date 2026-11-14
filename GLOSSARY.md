@@ -10,6 +10,10 @@ Primefall is a mobile-first, 2.5D tactical 3v3 game where teams plan simultaneou
 A controllable unit with a fixed deck, weapon range, and unique card set.
 _Avoid_: Character, unit, champion
 
+**Hero Name**:
+The proper name of the Hero of a class, besides the class name: Max Overload (Bruiser), Tilly Turnover (Controller), Kit Crosshair (Assassin). Shown on the Hero Select and the BIO sheet; the planning and the rules use the class names. Both Squads have the same three Heroes, so a Hero Name does not tell the Squads apart (the Squad ring does).
+_Avoid_: Callsign, nickname, character name
+
 **Squad**:
 A group of three Heroes fighting together.
 _Avoid_: Team, faction
