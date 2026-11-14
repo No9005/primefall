@@ -26,7 +26,6 @@ Cards are played by dragging them onto a zone:
 | An enemy | Primary effect |
 | A tile | Move 2 |
 | Near the Hero | A Primary effect that needs no target |
-| The Block chip | Block 2 |
 | The Energy orb | Pitch |
 
 The tap flow stays as a fallback.

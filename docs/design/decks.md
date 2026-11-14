@@ -19,7 +19,10 @@ Three tests for every card:
 - The decks are designed anew, from the main function of each Hero.
 - **Each Hero has one main function; every card serves it.** No Hero does vision, healing, cover and Shield at once.
 - **Tilly has the Field and the drone reconnaissance** (cover, Fields and the Scout Drone). The Shield and healing ideas leave her.
-- **Every Hero gets a passive effect.** Max: +1 damage at close distance. Kit: +1 damage when the target is at the Attack's maximum Range. Tilly: open (options below).
+- **No passives (decided later in the chat; the earlier decision is withdrawn).** Passives only add complexity. What the card says is what it does: the +1 damage at short range stands on the cards of Max that use it.
+- **No Block.** Using any card as Block 2 is gone from the rules and the code (ADR 0002). Shield comes only from Shield cards.
+- **Tilly creates and destroys Cover** (she is the Controller). Max no longer breaks Cover.
+- **Fewer effects:** the decks use fewer different effects; Max is built first.
 - **Max carries objects without a malus** (see _Carrying_).
 - **The default movement rises to 3** (see _Move 3_).
 - **Overdrive is removed as a test** (decided in the chat; done in the branch `agent/issue-415-deck-redesign`: the cards have no Overdrive mode, Ghost Shot is the Ghost card). **Pitch stays. Every card costs 1 Energy** (so one pitched card pays for one card). **No Link:** synergy should come natively from the cards and their states, not from a condition text on the card.
@@ -32,15 +35,9 @@ Three tests for every card:
 | **Tilly Turnover** (Controller) | Tilly changes the ground and sees across it: Cover, Fields and the drone decide where the enemy can walk and what he can hide. |
 | **Kit Crosshair** (Assassin) | Kit decides the fight before it starts: unseen, from a distance, on one target. |
 
-## Passives
+## Passives (dropped)
 
-| Hero | Passive (proposal) | Replaces |
-|---|---|---|
-| **Max** | **Close quarters:** every Attack of this Hero deals +1 damage at Range 1. | The "3 damage at Range 1" text of Slam Shot and the +1 of Charge (the passive carries it). |
-| **Kit** | **Full stretch:** every Attack of this Hero deals +1 damage when the target is at the Attack's maximum Range. | The Overdrive bonus of Long Shot at Range 6 and 7 (the passive carries it). |
-| **Tilly** | **Open.** Options: **(a) Tinker:** she may hold four Placed Cover or Fields instead of three (the cap of ADR 0025 is three per Squad; this is hers alone). **(b) Long fuse:** her Fields and her drone areas last one Resolution longer. **(c) Spotted:** an enemy inside a drone area she reveals takes +1 damage from her Squad's first Attack on it each Round. My recommendation: **(b)**, it lifts both of her tools (Field and drone) and adds no new status; (a) is the simplest to build; (c) ties her to Kit and Max and may be too strong. | |
-
-Rules needed: a passive is a Hero rule, not a card. It belongs in the glossary (term to be chosen) and an ADR.
+The idea of a passive effect per Hero (Max +1 damage at Range 1, Kit +1 at the Attack's maximum Range, Tilly open with options Tinker, Long fuse and Spotted) was dropped: it adds a rule outside the cards. Reading the card explains the card. Where a bonus is wanted it is written on the card, for example "+1 damage at Range 1". The old text is kept in the git history of this file.
 
 ## Carrying
 
@@ -60,19 +57,25 @@ Decided: the default movement rises to 3 (every card can be used as Move 3 inste
 
 Status: **existing** (as in the spec), **changed** (text changed), **new**. Energy costs are the current ones where the card exists. Deck sizes are those of ADR 0025 (Bruiser 12, Controller 10, Assassin 9; the Deck is the life); they are kept until the measurement.
 
-### Max Overload (Bruiser), 12 cards: hold, engage, break
+### Max Overload (Bruiser), 11 cards: up close and personal
 
-| # | Card | Energy | Effect (proposal) | Status |
+Max wants to be up close and personal: he pulls enemies to himself and shields himself. Agreed in the chat; the numbers are starting points.
+
+| # | Card | Energy | Effect (proposal) | Count |
 |---|---|---|---|---|
-| 1-2 | **Slam Shot** x2 | 1 | Attack, Range 1 to 2: deal 2 damage to the named visible enemy Hero. (The +1 at Range 1 is the passive.) | changed |
-| 3 | **Breach Charge** | 1 | Attack: deal 2 damage and destroy Half Cover on the target tile. | existing |
-| 4 | **Wrecking Blow** | 1 | Attack, Range 1 to 2: deal 2 damage to the named visible enemy Hero; destroy any Cover on the target tile after the damage. | existing |
-| 5 | **Shockwave** | 1 | Attack: deal 2 damage to every enemy Hero within Range 1. | changed |
-| 6-7 | **Charge** x2 | 1 | Utility: move up to 4 tiles toward the named visible enemy Hero and end next to it (stops at a wall, Full Cover or a Hero); gain Shield 1 until the end of the Round. (The +1 damage is the passive.) | changed |
-| 8 | **Pull** | 1 | Utility, Range 4: move the named visible enemy Hero up to 2 tiles toward this Hero (stops at a wall, Full Cover or a Hero; may leave a zone). The flavour name on the card can be Cargo Hook. | existing |
-| 9-10 | **Bulwark** x2 | 1 | Utility: this Hero gains Shield 3. | existing |
-| 11 | **Brace** | 1 | Utility: until the end of the Round this Hero cannot be moved by Pull or Knockback and gains Shield 1. Keeps him in a zone. | **new** |
-| 12 | **Guard** | 1 | Utility: an allied Hero within Range 2 gains Shield 3. | changed (it is Aegis Protocol of the Controller, moved) |
+| 1 | **Double Shot** | 1 | Attack, short range (Range 1 to 2): two Attacks on the same target, 2 damage each, +1 damage at Range 1. (Two hits of 3 at Range 1 is a lot: measure.) | 1 |
+| 2 | **Rush** | 1 | Utility: move up to 5 tiles toward a named visible enemy Hero and end next to it (stops at a wall, Full Cover or a Hero); this Hero gains Shield 2. It can only aim at a Hero, so it is not a Move. | 2 |
+| 3 | **Shield** | 1 | Utility: this Hero gains Shield 1 (open: 2). | 3 |
+| 4 | **Grappling Hook** | 1 | Utility, Range 7: move the named visible enemy Hero toward this Hero (open: all the way next to Max, or at most 3 tiles); needs Line of Sight. | 2 |
+| 5 | **Close Attack** | 1 | Attack, Range 1 to 2: deal 2 damage, +1 at Range 1. | 2 |
+| 6 | **Long Attack** | 1 | Attack, Range 3 (more Range, weaker): deal 1 damage. | 1 |
+
+Notes:
+
+- The deck has 11 cards (12 before): Max is a little less tough, or a twelfth card follows (open).
+- Gone from Max's deck: Breach Charge, Wrecking Blow, Shockwave, Concussion Round, Pull (replaced by the Hook), Adrenal Surge, Bulwark (replaced by Shield), Charge (replaced by Rush). They stay in this file as ideas; Cover destruction moves to Tilly.
+- Synergy that arises natively: the Hook pulls an enemy next to Max, where Double Shot and Close Attack deal +1 and Rush closes the rest.
+- Missing on purpose: no Slow, no Knockback, no Cover breaking.
 
 ### Tilly Turnover (Controller), 10 cards: the Field and the sight
 
@@ -91,7 +94,7 @@ Status: **existing** (as in the spec), **changed** (text changed), **new**. Ener
 
 | # | Card | Energy | Effect (proposal) | Status |
 |---|---|---|---|---|
-| 1-2 | **Long Shot** x2 | 1 | Attack, Range 3 to 7: deal 2 damage. (The +1 at Range 6 and 7 is the passive.) | changed |
+| 1-2 | **Long Shot** x2 | 1 | Attack, Range 3 to 7: deal 2 damage. (The +1 at Range 6 and 7 would be written on the card.) | changed |
 | 3 | **Recoil Shot** | 1 | Attack, Range 2 to 5: deal 2 damage and apply Knockback 1 (the tester's wish: the Assassin keeps his distance). | **new** |
 | 4 | **Shield Breaker** | 1 | Attack, Range 2 to 4: deal 2 Piercing Damage; Shield is not reduced; Half Cover still reduces it by 1, Full Cover blocks. | existing |
 | 5 | **Execution Round** | 1 | Attack, Range 2 to 5: deal 3 damage; ignores Half Cover. | existing |
@@ -127,7 +130,7 @@ The owner's playtests: Pitch and Overdrive do not feel good, there is never a re
 
 **Rules and risks.** (1) The player controls one Hero in the classic mode; the two others are planned by the AI. Synergy between Heroes must not depend on the timing of the AI, so only **lasting states** (Marked, Slow, Revealed, Field, Cover) are used as conditions, not "played earlier this Round". The AI must still learn to use them. (2) At most one Link per card, a bonus of at most +1, so that no card swings. (3) Six conditions at most, so that the player can learn them (they belong in the glossary).
 
-## Tilly: passive, Marked and Slow
+## Tilly: Marked and Slow (the passive part is dropped)
 
 **Passive idea of the owner: less damage in her own Cover.** On Half Cover she placed herself, Tilly takes 2 less damage instead of 1.
 
@@ -169,7 +172,7 @@ All ideas of the chat and of the tester, with their state:
 | A grabbing arm: Tilly picks up an object from a distance | **parked** | Her third arm; it would give her a carry job. Possible when Carry and extract is specified. |
 | A second reveal for Kit (a scope scan) | **parked** | The drone belongs to Tilly (decided). |
 | Concussion Round (Slow) on Max | out | Slow belongs to Tilly. |
-| Adrenal Surge (permanent +1 Attack) | out | A passive covers it. |
+| Adrenal Surge (permanent +1 Attack) | out | No passives; the card is simply not in the deck. |
 | Precision Shot, Cover Breaker (Kit) | out | Overlap. May return if the measurement shows a hole. |
 | Mark Target (Kit) | out since ADR 0025 | Could return as the marker of a Sabotage target. |
 | Suppress, Forward Deploy | out since ADR 0025 | |
@@ -177,9 +180,8 @@ All ideas of the chat and of the tester, with their state:
 ## Open questions
 
 0. The system: decided in the chat: Overdrive removed as a test, Pitch stays, every card costs 1 Energy, no Link (see _The system_). Still open: how the synergy comes natively (see _Native synergy_).
-1. Tilly's passive: (a), (b), (c) or another.
+1. Tilly: how Cover creation and destruction split across her cards (she now also breaks Cover).
 2. Slow with Move 3: Move 1 or Move 2.
 3. Arc Field: damage each Tick or once per Resolution; one tile or a pattern.
-4. Mission cards (Rig Charge, Snatch): in the deck only in the mission mode, or always (every card can be Pitch, Move or Block, so none is dead, but they are weaker in the classic mode).
+4. Mission cards (Rig Charge, Snatch): in the deck only in the mission mode, or always (every card can be Pitch or Move, so none is dead, but they are weaker in the classic mode).
 5. The toughness (12, 10, 9): keep until the measurement?
-6. Names of the passives and the term in the glossary.

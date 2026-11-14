@@ -17,7 +17,7 @@ The UI direction (orientation, layout, input, board rotation, terrain, style) is
 2. **Planning** (main screen, layout in ADR 0021): "Round X / 30", planning timer and Prime Zone control progress (0 to 3 Resolutions per Squad) in the top pill. The Squad panel shows the three Heroes (Deck / Exile counts, selected Hero highlighted; allied Heroes are AI planned and show their queue read-only) and the Queue of the selected Hero. The Hand of up to 4 cards, the Energy orb and the Commit button.
 3. **Resolution**: same board, HUD reduced to Tick indicator ("Tick 2 / 4"), an event log that names cause and effect ("Bruiser Slam Shot hits Enemy Assassin, 2 Deck Damage"), play / pause / speed (1x, 2x) and skip to end.
 4. **End**: result (victory, defeat, draw), reason (Prime Zone held, all Heroes Exhausted, Round Limit with Deck totals), Round reached, "Play again" and the match seed.
-5. **Card detail** (sheet over Planning): the card with its four uses (Primary effect, Pitch 1, Move 2, Block 2). Disabled uses state why (for example "needs 2 Energy").
+5. **Card detail** (sheet over Planning): the card with its three uses (Primary effect, Pitch 1, Move 2). Disabled uses state why (for example "needs 2 Energy").
 
 ## Information shown (ADR 0017)
 
@@ -32,7 +32,7 @@ The UI direction (orientation, layout, input, board rotation, terrain, style) is
 
 | Component | States |
 |---|---|
-| Card | in Hand, selected, use chosen (Primary / Pitch / Move 2 / Block 2), cannot afford, already used this Round |
+| Card | in Hand, selected, use chosen (Primary / Pitch / Move 2), cannot afford, already used this Round |
 | Energy | Pitched total, spent, available |
 | Queue slot | empty, filled (card + use + target), may miss at plan time (hint, still sendable), failed at execution (Resolution log) |
 | Hero token | selected, allied, Visible enemy, Ghost enemy, Hidden, Marked, Slow, Shielded, Exhausted |

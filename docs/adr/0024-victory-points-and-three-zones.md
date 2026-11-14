@@ -19,10 +19,10 @@ For the **classic mode** only:
 - **Control:** the Squad with more non-exhausted Heroes in a zone controls it. Equal and at least one each is Contested and scores for nobody. An empty zone scores for nobody.
 - **Victory Points:** at the end of each Resolution a Squad earns the value of each zone it controls. The first Squad to reach 30 wins at once. After Round 15 the higher score wins; a tie goes to the larger number of cards not in the Exile.
 - **Exhaustion** of a whole Squad still ends the match at once.
-- **Block** is no longer an action of every card. Shield comes from Shield cards. The refill rule is decided after the Exposed Hero measurement is repeated.
+- **Block** is no longer an action of any card, in any mode (ADR 0002). Shield comes from Shield cards. The refill rule is decided after the Exposed Hero measurement is repeated.
 - **Information:** control of each zone and both scores are public; enemy Heroes stay in the Fog.
 - The Overwatch Nest is removed for now. (Update, #361: the Crossroads map places two Overwatch Nests again, see ADR 0016.)
-- Attack and Defend (ADR 0022) keeps its own win rules, Round limit and Block. The cards and combat rules of ADR 0023 to 0025 (decks, Crossfire, Minimum Range, Placed Cover) apply to both modes, so its balance (#302) is measured again after the new decks.
+- Attack and Defend (ADR 0022) keeps its own win rules and Round limit. The cards and combat rules of ADR 0023 to 0025 (decks, Crossfire, Minimum Range, Placed Cover) apply to both modes, so its balance (#302) is measured again after the new decks.
 
 Considered and not chosen now: three mission types per game (hidden objectives, a later layer if the zones are not enough), a rotating zone (the way across the map takes two to three Rounds, so it would be out of reach), a progress track with Abbau and decay for a tie in one zone (#341, replaced by the points).
 
