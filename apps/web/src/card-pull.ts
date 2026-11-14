@@ -121,7 +121,7 @@ export function faceViews(
   const faces: FaceView[] = [
     { face: CardUse.Primary, title: "Primary", effect: texts.primary, cost: card.energyCost, reason: readable(reasons[CardUse.Primary]) },
     { face: CardUse.Pitch, title: "Pitch +1 Energy", effect: "Adds 1 Energy", reason: reasons[CardUse.Pitch] },
-    { face: CardUse.Move, title: "Move 2", effect: "Move up to 2 tiles", reason: reasons[CardUse.Move] },
+    { face: CardUse.Move, title: "Move 3", effect: "Move up to 3 tiles", reason: reasons[CardUse.Move] },
   ];
   return faces;
 }

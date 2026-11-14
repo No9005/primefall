@@ -82,9 +82,10 @@ describe("Slow", () => {
     expect(resolveRound(duel(), [snarePlan(BRUISER)]).events).toEqual(failed);
   });
 
-  it("a Slowed Hero's Move 2 becomes a Move 1 and uses the Slow up", () => {
-    const { match: after, events } = resolveRound(slowedByConcussion(), [rightPlan([move(0, 13, 3), move(1, 15, 3)])]);
-    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 14, row: 3 });
+  it("a Slowed Hero's Move 3 becomes a Move 1 (half, rounded down) and uses the Slow up", () => {
+    // The first Move covers 1 tile (3 / 2 rounded down) to col 12, the second one the full 3 tiles to col 15.
+    const { match: after, events } = resolveRound(slowedByConcussion(), [rightPlan([move(0, 14, 3), move(1, 15, 3)])]);
+    expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 15, row: 3 });
     expect(events.filter(({ kind }) => kind === EventKind.SlowUsed)).toEqual([
       { kind: EventKind.SlowUsed, tick: 1, heroId: RIGHT_BRUISER },
     ]);

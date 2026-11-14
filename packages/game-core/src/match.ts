@@ -79,7 +79,7 @@ export interface HeroState {
   shield: number;
   /**
    * Resolution ends left before Slow expires; 0 means not Slowed. Slow applied during a Resolution lasts
-   * until the end of the next one, so it starts at 2. A Move 2 that uses it up sets it to 0.
+   * until the end of the next one, so it starts at 2. A Move that uses it up sets it to 0.
    */
   slow: number;
   /** Resolution ends left before Hidden expires (0: not Hidden); an Attack or being Marked ends it at once. */

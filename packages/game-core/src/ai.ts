@@ -108,7 +108,7 @@ function buildNavigation(
 }
 
 /**
- * The Move 2 destinations in the order they are tried. The map is mirrored between the Squads, so the Right Squad
+ * The Move 3 destinations in the order they are tried. The map is mirrored between the Squads, so the Right Squad
  * tries them in the mirrored order (rows from the top, columns from the right): with the same order for both, the tie
  * between equally good destinations always went to the one with the lowest column, which is a longer advance for the
  * Right Squad and made it win nearly every match (issue 87).
@@ -167,7 +167,7 @@ function attackerIsReady(view: SquadView, nav: Navigation): boolean {
 }
 
 /**
- * The Move 2 destination that ends closest to the objective by walking distance; undefined if none gets closer.
+ * The Move 3 destination that ends closest to the objective by walking distance; undefined if none gets closer.
  * Moving Heroes do not hinder each other, but a Move cannot step onto a blocked tile (a Hero stays there) or a
  * tile another Hero already claimed for the same step of the queue slot.
  */
@@ -394,7 +394,7 @@ function scoreTile(
 }
 
 /**
- * The Move 2 destination with the best score, or undefined when staying put scores best. Legal destinations are the same
+ * The Move 3 destination with the best score, or undefined when staying put scores best. Legal destinations are the same
  * as for `stepTowardObjective`: no blocked tile, no tile another Hero already claimed for this step.
  */
 function chooseDestination(

@@ -166,15 +166,15 @@ describe("AI scoring of Moves", () => {
   };
 
   it("ends the Move in Cover when an open tile is equally far from the Prime Zone and an enemy is Visible", () => {
-    // From (11, 8) the Half Cover at (13, 6) and the open tiles (13, 7) to (13, 9) are all one step from the Zone.
-    const end = firstMove(arrange({ col: 11, row: 8 }, { col: 17, row: 7 }));
+    // From (10, 9) the Half Cover at (13, 6) and the open tiles (13, 7) to (13, 9) are all one step from the Zone.
+    const end = firstMove(arrange({ col: 10, row: 9 }, { col: 16, row: 7 }));
     expect(end).toEqual({ col: 13, row: 6 });
     expect(coverAt(SMALL_MAP, end!)).not.toBe(CoverKind.None);
   });
 
   it("takes the flank tile beside the enemy instead of the straight advance", () => {
-    const enemy = { col: 17, row: 8 };
-    const end = firstMove(arrange({ col: 11, row: 8 }, enemy))!;
+    const enemy = { col: 16, row: 8 };
+    const end = firstMove(arrange({ col: 11, row: 5 }, enemy))!;
     expect(Math.abs(end.row - enemy.row)).toBeGreaterThanOrEqual(2);
   });
 
@@ -189,9 +189,9 @@ describe("AI scoring of Moves", () => {
   });
 
   it("leaves the straight way that a remembered enemy covers, less the older the Ghost is", () => {
-    // From (11, 7) the open tiles (13, 7) to (13, 9) are equally far from the Zone. A Ghost at (13, 1) reaches
+    // From (10, 7) the open tiles (13, 7) to (13, 9) are equally far from the Zone. A Ghost at (13, 1) reaches
     // 7 tiles (Long Shot) down the column: it covers (13, 7) and (13, 8) but not (13, 9).
-    const base = arrange({ col: 11, row: 7 }, { col: 29, row: 1 });
+    const base = arrange({ col: 10, row: 7 }, { col: 29, row: 1 });
     const ghost = { col: 13, row: 1 };
     expect(firstMove(base)).toEqual({ col: 13, row: 7 });
     expect(firstMove(withGhost(base, ghost))).toEqual({ col: 13, row: 9 });
@@ -199,7 +199,7 @@ describe("AI scoring of Moves", () => {
   });
 
   it("gives the same plan for the same view with a Ghost", () => {
-    const view = withGhost(arrange({ col: 11, row: 7 }, { col: 29, row: 1 }), { col: 13, row: 1 });
+    const view = withGhost(arrange({ col: 10, row: 7 }, { col: 29, row: 1 }), { col: 13, row: 1 });
     expect(planSquad(view)).toEqual(planSquad(view));
   });
 

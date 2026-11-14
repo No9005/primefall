@@ -294,7 +294,7 @@ interface HandProps {
   hero: HeroView;
   queue: readonly QueuedAction[];
   pitched: readonly CardIndex[];
-  /** The card waiting for a tile (Move 2) or a target (Primary effect). */
+  /** The card waiting for a tile (Move 3) or a target (Primary effect). */
   armed: CardIndex | undefined;
   armedLabel: string;
   /** The card pressed or pulled out: it is lifted out of the fan (shown big in the middle of the board). */
@@ -769,7 +769,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     return outOfReach ? "red lines may miss from the planned position" : undefined;
   }, [namesDeclaredTarget, aimedCard, shotLines]);
 
-  // While a card is pulled, the places it can be dropped on are lit (issue 410): the tiles of Move 2 and of its tile
+  // While a card is pulled, the places it can be dropped on are lit (issue 410): the tiles of Move 3 and of its tile
   // target, and the Heroes its Primary can be aimed at. They are the same places the tap flow offers.
   const pulling = !playing && pull.phase === "pulled";
   const dragPlaces = useMemo<DropPlaces | undefined>(() => {

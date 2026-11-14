@@ -112,17 +112,17 @@ describe("Reposition", () => {
   const destination = (col: number) => ({ kind: ActionKind.Move as const, card: 0, destination: { col, row: 1 } });
   const hand = [PITCH, REPOSITION, 0, VANISH];
 
-  it("turns the next Move into Move 3", () => {
+  it("turns the next Move into Move 5", () => {
     const match = scene(OPEN, { col: 15, row: 1 }, hand);
-    const { match: after } = resolveRound(match, [plan([primary(REPOSITION, ASSASSIN), destination(5)])]);
-    expect(hero(after, ASSASSIN).position).toEqual({ col: 5, row: 1 });
+    const { match: after } = resolveRound(match, [plan([primary(REPOSITION, ASSASSIN), destination(7)])]);
+    expect(hero(after, ASSASSIN).position).toEqual({ col: 7, row: 1 });
   });
 
   it("does not stretch a second Move", () => {
     const match = scene(OPEN, { col: 15, row: 1 }, [PITCH, REPOSITION, 0, 3]);
-    const queue = [primary(REPOSITION, ASSASSIN), destination(5), { ...destination(8), card: 3 }];
+    const queue = [primary(REPOSITION, ASSASSIN), destination(7), { ...destination(12), card: 3 }];
     const { match: after } = resolveRound(match, [plan(queue)]);
-    expect(hero(after, ASSASSIN).position).toEqual({ col: 7, row: 1 });
+    expect(hero(after, ASSASSIN).position).toEqual({ col: 9, row: 1 }); // 3 tiles on from col 7 would end in the wall at col 10, so the Move stops at col 9
   });
 
   it("is accepted by planning only for the Move that follows it", () => {
@@ -130,8 +130,8 @@ describe("Reposition", () => {
     const view = buildSquadView(match, SquadId.Left);
     const issues = (queue: QueuedAction[]) =>
       validatePlan(view, plan(queue)).filter(({ kind }) => kind === PlanIssueKind.BadDestination);
-    expect(issues([primary(REPOSITION, ASSASSIN), destination(5)])).toEqual([]);
-    expect(issues([destination(5)])).toHaveLength(1);
+    expect(issues([primary(REPOSITION, ASSASSIN), destination(7)])).toEqual([]);
+    expect(issues([destination(7)])).toHaveLength(1);
   });
 });
 

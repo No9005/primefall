@@ -100,7 +100,7 @@ export function queueRowLabel(
   nameOf: (heroId: string) => string,
 ): { name: string; target: string } {
   const tile = (position: GridPosition) => `to ${position.col} · ${position.row}`;
-  if (action.kind === ActionKind.Move) return { name: "Move 2", target: tile(action.destination) };
+  if (action.kind === ActionKind.Move) return { name: "Move 3", target: tile(action.destination) };
   if (action.kind === ActionKind.Wait) return { name: "Wait", target: "" };
   const name = HERO_DECKS[heroClass][action.card]!.name;
   if (action.tile) return { name, target: tile(action.tile) };
@@ -150,7 +150,7 @@ export enum CardUse {
 export const CARD_USE_LABELS: Record<CardUse, string> = {
   [CardUse.Primary]: "Primary effect",
   [CardUse.Pitch]: "Pitch 1",
-  [CardUse.Move]: "Move 2",
+  [CardUse.Move]: "Move 3",
 };
 
 export interface AimState {
