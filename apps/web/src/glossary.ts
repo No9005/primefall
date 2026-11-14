@@ -71,7 +71,7 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
   {
     name: "Slow",
     group: GlossaryGroup.Heroes,
-    text: "A violet ground field and three downward chevrons above the head, until the end of the next Resolution.",
+    text: "A violet ground field and a snail above the head, until the end of the next Resolution.",
     picture: { scene: "slow" },
   },
   {

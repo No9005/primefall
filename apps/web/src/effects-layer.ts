@@ -171,17 +171,16 @@ export function markedMark(color = MARKED_RED): StatusMark {
   };
 }
 
-/** The violet ground field (34 x 16 ellipse) that pulses, and three stacked downward chevrons above the head. */
+const SNAIL_SCALE = 1.6;
+
+/** The violet ground field (34 x 16 ellipse) that pulses, and a snail above the head that crawls in place. */
 export function slowMark(): StatusMark {
   const container = new Container();
   const field = new Graphics();
   field.ellipse(0, 0, 17 * F, 8 * F).fill({ color: SLOW_VIOLET, alpha: 0.2 }).stroke({ width: 2 * F, color: SLOW_VIOLET });
-  const chevrons = new Graphics();
-  for (let i = 0; i < 3; i++) {
-    const y = -HEAD_LIFT - 14 * F + i * 4 * F;
-    chevrons.moveTo(-4 * F, y).lineTo(0, y + 3 * F).lineTo(4 * F, y).stroke({ width: 1.8 * F, color: SLOW_VIOLET, alpha: 1 - i * 0.2, join: "round" });
-  }
-  container.addChild(field, chevrons);
+  const snail = snailFigure();
+  snail.position.set(0, -HEAD_LIFT - 16 * F);
+  container.addChild(field, snail);
   return {
     container,
     update(ms) {
@@ -190,10 +189,35 @@ export function slowMark(): StatusMark {
       // Three pulses at the start, then a slow breathing.
       field.scale.set(intro < 1 ? 0.3 + 0.7 * intro : 1 + 0.15 * Math.sin(((t - 300) / 1200) * 2 * Math.PI));
       field.alpha = intro < 1 ? intro : 0.7 + 0.3 * Math.sin(((t - 300) / 1200) * 2 * Math.PI);
-      chevrons.alpha = intro;
-      chevrons.y = ((t / 400) % 1) * 2 * F;
+      snail.alpha = intro;
+      // The snail inches to the right and back; its shell bobs and the eye stalks sway.
+      snail.x = Math.sin((t / 1600) * 2 * Math.PI) * 2 * F;
+      snail.scale.set(SNAIL_SCALE * (intro < 1 ? 0.4 + 0.6 * intro : 1 + 0.06 * Math.sin((t / 500) * 2 * Math.PI)));
     },
   };
+}
+
+/** A small snail facing right in the Slow violet, dark outline: shell with a spiral, soft body and two eye stalks. Centred on (0, 0). */
+function snailFigure(): Container {
+  const figure = new Container();
+  const g = new Graphics();
+  const line = { width: 1.4 * F, color: OUTLINE, join: "round" as const };
+  // Body: a long foot and the raised head.
+  g.roundRect(-10 * F, 0, 21 * F, 4 * F, 2 * F).fill(0xb9a2ff).stroke(line);
+  g.circle(9 * F, -0.4 * F, 2.8 * F).fill(0xb9a2ff).stroke(line);
+  g.circle(10.2 * F, -1 * F, 0.7 * F).fill(OUTLINE);
+  // Shell with a spiral.
+  g.circle(-2.5 * F, -4.6 * F, 5.8 * F).fill(SLOW_VIOLET).stroke(line);
+  g.arc(-2.5 * F, -4.6 * F, 3.6 * F, 0.4, 4.6).stroke({ width: 1.2 * F, color: 0xe3d8ff });
+  g.arc(-2.5 * F, -4.6 * F, 1.6 * F, 0.2, 4.2).stroke({ width: 1.2 * F, color: 0xe3d8ff });
+  // Eye stalks.
+  const stalks = new Graphics();
+  for (const [x0, x1] of [[8, 7.2], [10.2, 11.6]] as const) {
+    stalks.moveTo(x0 * F, -2.4 * F).lineTo(x1 * F, -6.4 * F).stroke({ width: 1.2 * F, color: OUTLINE });
+    stalks.circle(x1 * F, -6.8 * F, 1 * F).fill(0xe3d8ff).stroke({ width: 0.8 * F, color: OUTLINE });
+  }
+  figure.addChild(stalks, g);
+  return figure;
 }
 
 /**
