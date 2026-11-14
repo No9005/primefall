@@ -479,7 +479,7 @@ export const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "placed-cover-marks",
-    description: "Three Placed Cover tiles of the Squad carry four teal corner marks and the chip COVER ●●● 3 / 3; an enemy Placed Cover in sight has red marks and the tag ENEMY COVER.",
+    description: "Three Placed Cover tiles of the Squad carry four teal corner marks and the chip COVER ●●● 3 / 3; an enemy Placed Cover in sight is not marked.",
     buildMatch: () => stage(26, (hero, match) => controllerWithThreeCovers(match, hero, [cardIndex(HeroClass.Controller, "Deploy Cover"), 0, 1, 2])),
     playerHero: HeroClass.Controller,
     heroId: `${SquadId.Left}-controller`,

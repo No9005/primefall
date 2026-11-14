@@ -15,7 +15,7 @@ What the owner has approved from the design canvas (page "New role visuals" and 
 
 ## Approved in `380/`, all built
 - **#432:** Pull, Charge (path, streaks, the Shield tag, the tags CLOSE +1 and CHARGE +1) and Hidden, seen by a drone (`380/pull.png`, `pull-in-fog.png`, `charge.png`, `hidden-seen.png`).
-- **#433:** the four corner marks of built cover (teal for the Squad's own, red for the enemy's), the chip COVER ●●● 3 / 3, the dashed outline of the oldest cover and of the new tile when a fourth is planned, the oldest crumbling without a scorch (`380/placed-cover.png`), and the Scout Drone area: the drone circling with scan rays in your view, a dashed amber outline with a sweep and `SCANNED · n` in the enemy's (`380/scout-drone-*.png`).
+- **#433:** the four teal corner marks on the Squad's own built cover (the enemy's is not marked and carries no tag: for a Hero in cover it makes no difference, the marks show which of ours a new placement can take), the chip COVER ●●● 3 / 3, the dashed outline of the oldest cover and of the new tile when a fourth is planned, the oldest crumbling without a scorch (`380/placed-cover.png`), and the Scout Drone area: the drone circling with scan rays in your view, a dashed amber outline with a sweep and `SCANNED · n` in the enemy's (`380/scout-drone-*.png`).
 
 ## How a ticket uses this
 Take screenshots with the screenshot tool (844 x 390) of the states you touched and compare them with the images: shapes, colours, heights, the vertical centring of the chevrons in the badge, the yellow-black stripes. Fix every deviation yourself.

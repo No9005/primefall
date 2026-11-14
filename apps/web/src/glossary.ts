@@ -38,7 +38,6 @@ export type SceneName =
   | "pull"
   | "cover"
   | "placedCover"
-  | "enemyPlacedCover"
   | "destroyedCover"
   | "zoneEmpty"
   | "zoneOurs"
@@ -213,14 +212,8 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
   {
     name: "Placed Cover",
     group: GlossaryGroup.Board,
-    text: "Cover a Hero built: striped bars with four teal corner marks, which say it is your Squad's and that it stays until it is destroyed. At most three per Squad; the chip COVER 3 / 3 counts them, and the oldest goes when a fourth is placed (aiming it: OLDEST · GOES).",
+    text: "Cover a Hero built: striped bars. Your Squad's own pieces carry four teal corner marks. At most three per Squad; the chip COVER 3 / 3 counts them, and when you place or aim a fourth, the oldest that goes gets a dashed amber outline (OLDEST · GOES).",
     picture: { scene: "placedCover" },
-  },
-  {
-    name: "Enemy Placed Cover",
-    group: GlossaryGroup.Board,
-    text: "Cover the enemy built that you have seen stays on the map with red corner marks and the tag ENEMY COVER. You only know of it once you have seen the tile.",
-    picture: { scene: "enemyPlacedCover" },
   },
   {
     name: "Destroyed Cover",
