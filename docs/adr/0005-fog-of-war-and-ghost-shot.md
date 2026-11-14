@@ -8,6 +8,10 @@ Normal attacks still require current Line of Sight, checked when the Attack fire
 
 The base sight range of 7 matches the Assassin's Long Shot range and keeps both Spawn areas (8 tiles from the nearest Prime Zone tile) out of sight of the Prime Zone.
 
+## What a Squad is told of what it does not see (events)
+
+The events of a Resolution follow the same rule: a Squad is told what its Heroes can see during that Tick, and no more. A Pull (ADR 0025) is the case that tells the most: the Squad of the pulled Hero always gets the slide, but not who pulled it when it cannot see that Hero; any other Squad gets only the tiles it sees (an enemy pulled out of the fog appears at the end tile, with no slide from the edge, so the tile it stood on is never given away). A Squad that is not told a tile does not get it in the event at all: the information never leaves the simulation. Control of each zone stays public (ADR 0024), so a zone that changes after a Pull the Squad did not see still changes with its normal callout. Knockback has the same kind of event and the same leak; it is not covered yet.
+
 ## Status
 
 accepted. Revised: Ghost Shot is no longer the Assassin's only Overdrive. Its three Overdrive modes are Long Shot (both cards), Ghost Shot and Mark Target (a Utility card), on four Overdrive cards in total (see `docs/specs/mvp-card-set.md` and ADR 0003).

@@ -42,7 +42,7 @@ Overdrive modes: Breach Charge, Shockwave and Adrenal Surge (three Overdrive car
 The Controller has one attack. Placed Cover (Fortify, Deploy Cover, Barricade) stays until it is destroyed; at most three Placed Cover tiles per Squad, the oldest disappears first; only Cover-destroying effects (Breach Charge, Wrecking Blow) remove it.
 
 1. **Tag Round** — Attack, 1 Energy, Range 2: Deal 1 damage and apply Marked until the end of the next Resolution. **Overdrive:** Deal 1 damage; apply Marked and Slow until the end of the next Resolution.
-2. **Scout Drone** — Utility, 1 Energy: Reveal a 3 by 3 area anywhere on the map (no Range, also in the Fog) for two Resolutions. A Hidden enemy inside is shown but stays Hidden. The enemy Squad sees which area was scanned, not what is in it. **Overdrive:** Reveal a 5 by 5 area.
+2. **Scout Drone** — Utility, 1 Energy: Reveal a 3 by 3 area anywhere on the map (no Range, also in the Fog) for two Resolutions. A Hidden enemy inside is shown but stays Hidden. The enemy Squad sees which area was scanned and for how many more Resolutions, not what is in it. **Overdrive:** Reveal a 5 by 5 area.
 3. **Scout Drone** — as card 2.
 4. **Aegis Protocol** — Utility, 1 Energy: An allied Hero gains Shield 3. **Overdrive:** Two allied Heroes each gain Shield 3.
 5. **Reinforce** — Utility, 1 Energy: An allied Hero gains Shield 2.
