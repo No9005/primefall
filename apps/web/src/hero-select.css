@@ -3,7 +3,10 @@
 :root { --cyan: #7fe8ff; }
 .hero-select { position: absolute; inset: 0; overflow: hidden; background: var(--graphite); }
 .hs-stage { position: absolute; left: 50%; top: 50%; width: 844px; height: 390px; }
-.hs-grid { position: absolute; inset: 0; background: repeating-linear-gradient(30deg, transparent 0 46px, var(--panel) 46px 47px), repeating-linear-gradient(150deg, transparent 0 46px, var(--panel) 46px 47px); }
+/* The faint tile grid drifts diagonally, very slowly: one cell in 36 s, so the loop has no jump. */
+.hs-grid { position: absolute; inset: 0; background-image: linear-gradient(30deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px), linear-gradient(150deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px); background-size: 64px 36px; animation: hs-grid-drift 36s linear infinite; }
+@keyframes hs-grid-drift { from { background-position: 0 0; } to { background-position: 64px 36px; } }
+@media (prefers-reduced-motion: reduce) { .hs-grid { animation: none; } }
 .hs-canvas { position: absolute; inset: 0; pointer-events: none; }
 .hs-canvas canvas { display: block; }
 
@@ -18,15 +21,18 @@
 
 /* The tap area of a Hero: nothing is drawn, the Hero stands on the board background. */
 .hs-hero { position: absolute; box-sizing: border-box; padding: 0; border: 0; background: none; cursor: pointer; }
-.hs-name { position: absolute; left: 0; right: 0; bottom: 9px; text-align: center; font: 700 19px/1 Rajdhani, sans-serif; letter-spacing: 0.12em; color: var(--text); }
+.hs-name { position: absolute; left: 0; right: 0; top: 190px; text-align: center; font: 700 19px/24px Rajdhani, sans-serif; letter-spacing: 0.12em; color: var(--text); }
 .hs-hero.selected .hs-name { color: var(--teal); }
-.hs-bar { position: absolute; left: 50%; bottom: 0; width: 36px; height: 3px; margin-left: -18px; border-radius: 2px; background: var(--teal); }
+.hs-class { position: absolute; left: 0; right: 0; top: 214px; text-align: center; font: 600 12px/16px Rajdhani, sans-serif; letter-spacing: 0.2em; color: var(--muted); }
 
-.hs-info { position: absolute; left: 40px; top: 276px; width: 560px; height: 100px; box-sizing: border-box; color: var(--muted-light); }
+.hs-info { position: absolute; left: 40px; top: 298px; width: 600px; box-sizing: border-box; color: var(--muted-light); }
 .hs-info h2 { margin: 0; font: 700 17px Rajdhani, sans-serif; letter-spacing: 0.12em; color: var(--teal); }
-.hs-info p { margin: 4px 0 0; font: 500 14px/1.35 Barlow, system-ui, sans-serif; color: var(--text); }
+.hs-info p { margin: 0; font: 500 14px/20px Barlow, system-ui, sans-serif; color: var(--text); }
+.hs-info h2 + p { margin-top: 4px; }
 .hs-info.empty h2, .hs-info.empty p { color: var(--muted-light); }
-.hs-view-cards { margin-top: 10px; display: inline-flex; align-items: center; min-height: 32px; box-sizing: border-box; padding: 0 14px; border: 1px solid var(--steel); border-radius: 16px; background: none; font: 600 13px Rajdhani, sans-serif; letter-spacing: 0.08em; color: var(--muted-light); cursor: pointer; }
+.hs-actions { position: absolute; left: 0; top: 46px; display: flex; gap: 10px; }
+.hs-view-cards { display: inline-flex; align-items: center; min-height: 32px; box-sizing: border-box; padding: 0 14px; border: 1px solid var(--steel); border-radius: 16px; background: none; font: 600 13px Rajdhani, sans-serif; letter-spacing: 0.08em; color: var(--muted-light); cursor: pointer; }
+.hs-bio-button { color: var(--text); border-color: var(--teal); }
 
 .hs-start { position: absolute; right: 24px; bottom: 20px; width: 160px; height: 48px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--teal); border-radius: 24px; background: var(--teal); color: var(--graphite); font: 700 20px Rajdhani, sans-serif; letter-spacing: 0.12em; cursor: pointer; }
 .hs-start:disabled { border-color: var(--steel); background: none; color: var(--muted); cursor: default; }
@@ -44,3 +50,15 @@
 .hs-card-type.utility { color: var(--cyan); }
 .hs-card-cost { flex: none; width: 24px; font: 500 14px var(--font-number); color: var(--orange); }
 .hs-card-effect { color: var(--text-soft); }
+
+/* The BIO sheet: the close-up, the Hero Name in white, the class in teal, the bio and then the line of the Hero. */
+.hs-bio { position: absolute; left: 40px; top: 16px; width: 764px; height: 358px; box-sizing: border-box; background: #151b23; border: 1px solid #2a3643; border-radius: 8px; }
+.hs-bio-close { position: absolute; right: 14px; top: 14px; }
+.hs-bio-portrait { position: absolute; left: 28px; top: 62px; width: 240px; height: 224px; border: 2px solid var(--steel); background: linear-gradient(180deg, #1f2c38, #0d1116); }
+.hs-bio-portrait img { display: block; width: 240px; height: 224px; image-rendering: pixelated; }
+.hs-bio-text { position: absolute; left: 316px; top: 57px; width: 420px; }
+.hs-bio-text h2 { margin: 0; font: 700 32px/36px Rajdhani, sans-serif; letter-spacing: 0.1em; color: var(--white); }
+.hs-bio-text p { margin: 0; }
+.hs-bio-text .hs-bio-class { margin-top: 2px; font: 700 13px/18px Rajdhani, sans-serif; letter-spacing: 0.2em; color: var(--teal); }
+.hs-bio-text .hs-bio-body { margin-top: 16px; font: 400 15px/22px Barlow, system-ui, sans-serif; color: var(--text); }
+.hs-bio-text .hs-bio-quote { margin-top: 14px; font: italic 400 15px/22px Barlow, system-ui, sans-serif; color: var(--text-soft); }

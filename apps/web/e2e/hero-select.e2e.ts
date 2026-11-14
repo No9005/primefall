@@ -20,6 +20,27 @@ test("Start is disabled until a Hero is selected; all three Heroes stand idle fi
   await expect(page.getByTestId("hero-info")).toContainText("Support.");
 });
 
+test("each Hero shows its Hero Name and its class", async ({ page }) => {
+  await openHeroSelect(page);
+  await expect(page.getByTestId("hero-bruiser")).toContainText("MAX OVERLOAD");
+  await expect(page.getByTestId("hero-bruiser")).toContainText("BRUISER");
+  await expect(page.getByTestId("hero-controller")).toContainText("TILLY TURNOVER");
+  await expect(page.getByTestId("hero-assassin")).toContainText("KIT CROSSHAIR");
+});
+
+test("the BIO sheet shows the Hero Name, the class, the bio and the line of the selected Hero, and closes", async ({ page }) => {
+  await openHeroSelect(page);
+  await page.getByTestId("hero-controller").click();
+  await page.getByRole("button", { name: "BIO" }).click();
+  const sheet = page.getByTestId("bio-sheet");
+  await expect(sheet).toContainText("TILLY TURNOVER");
+  await expect(sheet).toContainText("CONTROLLER");
+  await expect(sheet).toContainText("Mech mechanic and tinkerer.");
+  await expect(sheet).toContainText("\u201cEverything is a spare part if you squint hard enough.\u201d");
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(sheet).toBeHidden();
+});
+
 test("tapping another Hero moves the selection; tapping the selected Hero keeps it", async ({ page }) => {
   await openHeroSelect(page);
   await page.getByTestId("hero-bruiser").click();

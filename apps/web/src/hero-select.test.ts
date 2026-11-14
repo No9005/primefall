@@ -1,6 +1,6 @@
 import { HERO_DECKS, HeroClass } from "game-core";
 import { describe, expect, it } from "vitest";
-import { cardListTitle, cardRowName, cardRows, feetX, SELECTABLE_HEROES } from "./hero-select";
+import { cardListTitle, cardRowName, cardRows, feetX, HERO_CLOSE_UP, HERO_PROFILES, SELECTABLE_HEROES } from "./hero-select";
 
 describe("the card list", () => {
   it("has one row per distinct card with the number of copies, for every Hero", () => {
@@ -29,5 +29,21 @@ describe("the position of the Heroes", () => {
     expect(feetX(HeroClass.Bruiser, true)).toBe(62);
     expect(feetX(HeroClass.Bruiser, false)).toBe(120);
     expect(feetX(HeroClass.Controller, true)).toBe(120);
+  });
+});
+
+describe("the Hero Names", () => {
+  it("gives every Hero a Hero Name, a bio and a line, and a close-up of its own", () => {
+    expect(SELECTABLE_HEROES.map((heroClass) => HERO_PROFILES[heroClass].name)).toEqual(["Max Overload", "Tilly Turnover", "Kit Crosshair"]);
+    for (const heroClass of SELECTABLE_HEROES) {
+      const { bio, quote } = HERO_PROFILES[heroClass];
+      expect(bio.length).toBeGreaterThan(40);
+      expect(quote.length).toBeGreaterThan(10);
+    }
+    expect(new Set(SELECTABLE_HEROES.map((heroClass) => HERO_CLOSE_UP[heroClass])).size).toBe(3);
+  });
+
+  it("keeps the bio free of the other Heroes' kit: nothing about the Scout Drone on the sheet of Tilly", () => {
+    expect(HERO_PROFILES[HeroClass.Controller].bio).not.toContain("Scout Drone");
   });
 });

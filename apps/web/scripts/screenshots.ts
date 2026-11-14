@@ -85,7 +85,7 @@ async function chooseHeroAndStart(page: Page, hero: HeroClass): Promise<void> {
 export const SCREEN_SCENARIOS: Record<string, { description: string; shots: readonly string[] }> = {
   "hero-select": {
     description: "The Hero Select: nothing selected, each Hero ready (Bruiser mid-shots, Controller with the drone out, Assassin Hidden), the card list",
-    shots: ["01-idle.png", "02-bruiser-ready.png", "03-controller-ready.png", "04-assassin-ready.png", "05-cards.png"],
+    shots: ["01-idle.png", "02-bruiser-ready.png", "03-controller-ready.png", "04-assassin-ready.png", "05-cards.png", "06-bio.png"],
   },
   glossary: {
     description: "The Glossary from the start screen: the Heroes group (two frames), the Numbers, Board and HUD groups, scrolled",
@@ -258,6 +258,11 @@ async function playHeroSelect(browser: Browser): Promise<void> {
   await page.getByRole("button", { name: "VIEW CARDS" }).click();
   await page.getByTestId("card-list").waitFor();
   await shoot("05-cards.png");
+  await page.getByRole("button", { name: "Close" }).click();
+  await page.getByTestId("hero-controller").click();
+  await page.getByRole("button", { name: "BIO" }).click();
+  await page.getByTestId("bio-sheet").waitFor();
+  await shoot("06-bio.png");
   if (errors.length > 0) throw new Error(`hero-select: ${errors.join("; ")}`);
   checkWritten(directory, SCREEN_SCENARIOS["hero-select"]!.shots);
 }
