@@ -86,12 +86,8 @@ export interface HeroState {
   hidden: number;
   /** Resolution ends left before Marked expires (0: not Marked); a Marked Hero is Visible to the enemy Squad. */
   marked: number;
-  /** Adrenal Surge: extra damage of every Attack this Hero plays; lasts until Exhaustion (ADR 0003). */
-  attackBonus: number;
   /** Overwatch Uplink: this Hero's Attacks ignore the Half Cover damage reduction until the end of the Round. */
   ignoresHalfCover: boolean;
-  /** Charge: extra damage of the Hero's next Attack at Range 1; absent when none is pending. Expires at the end of the Round. */
-  chargeBonus?: number;
   /** Reposition: the Hero's next Move action covers this many tiles; absent when none is pending. */
   extendedMove?: number;
   /** Set after a Resolution that leaves the Deck and the Discard empty; an Exhausted Hero is out of the match (ADR 0006). */
@@ -221,7 +217,6 @@ export function createMatch(seed: number, mode: MatchModeSetting = { kind: Match
         slow: 0,
         hidden: 0,
         marked: 0,
-        attackBonus: 0,
         ignoresHalfCover: false,
         exhausted: false,
       });
@@ -349,7 +344,6 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
       slowed: hero.slow > 0,
       hidden: hero.hidden > 0,
       marked: hero.marked > 0,
-      attackBonus: hero.attackBonus,
     }));
   const enemies: EnemyView[] = match.heroes
     .filter((hero) => hero.squad !== squad)
@@ -368,7 +362,6 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
           hidden: hero.hidden > 0,
           slowed: hero.slow > 0,
           marked: hero.marked > 0,
-          attackBonus: hero.attackBonus,
         };
       }
       const ghost = match.ghosts[squad][hero.id];
@@ -473,7 +466,7 @@ export function matchFromSquadView(view: SquadView, seed: number, imagined: Read
     return {
       id, squad, heroClass, position: { ...position },
       deck: exhausted ? [] : deck, hand: exhausted ? [] : hand, discard: exhausted ? [] : discard, exile: exhausted ? [] : exile,
-      shield: 0, slow: 0, hidden: 0, marked: 0, attackBonus: 0, ignoresHalfCover: false, exhausted,
+      shield: 0, slow: 0, hidden: 0, marked: 0, ignoresHalfCover: false, exhausted,
     };
   };
 
@@ -482,7 +475,6 @@ export function matchFromSquadView(view: SquadView, seed: number, imagined: Read
     slow: own.slowed ? 1 : 0,
     hidden: own.hidden ? 1 : 0,
     marked: own.marked ? 1 : 0,
-    attackBonus: own.attackBonus,
   }));
   const ghosts: MatchState["ghosts"] = { [SquadId.Left]: {}, [SquadId.Right]: {} };
   for (const enemy of view.enemies) {
@@ -497,7 +489,7 @@ export function matchFromSquadView(view: SquadView, seed: number, imagined: Read
     const where = enemy.visibility === Visibility.Ghost && guess ? guess : enemy.position;
     const state = heroState(enemy.id, enemySquad, enemy.heroClass, where, counts, undefined, enemy.visibility === Visibility.Visible && enemy.exhausted);
     if (enemy.visibility === Visibility.Visible) {
-      Object.assign(state, { shield: enemy.shield, slow: enemy.slowed ? 1 : 0, marked: enemy.marked ? 1 : 0, attackBonus: enemy.attackBonus });
+      Object.assign(state, { shield: enemy.shield, slow: enemy.slowed ? 1 : 0, marked: enemy.marked ? 1 : 0 });
     } else {
       ghosts[view.squad][enemy.id] = { deckCount: enemy.deckCount, discardCount: enemy.discardCount, exileCount: enemy.exileCount, position: { ...enemy.position }, lastSeenRound: enemy.lastSeenRound };
     }

@@ -12,12 +12,11 @@ const ENEMY = "right-bruiser";
 const ENEMY_CONTROLLER = "right-controller";
 const ENEMY_ASSASSIN = "right-assassin";
 const idx = (name: string, copy = 0) => cardIndex(HeroClass.Bruiser, name, copy);
-// Pitch fodder: the second Slam Shot, both Bulwarks and the first Charge.
-const SLAM_SHOT = idx("Slam Shot");
-const CONCUSSION_ROUND = idx("Concussion Round");
-const SHOCKWAVE = idx("Shockwave");
-const ADRENAL_SURGE = idx("Adrenal Surge");
-const PITCH = [idx("Slam Shot", 1), idx("Bulwark"), idx("Bulwark", 1), idx("Charge")];
+// Pitch fodder: the second Handle With Care, both Hard Hats and the first Express Delivery.
+const SLAM_SHOT = idx("Handle With Care");
+const CONCUSSION_ROUND = idx("Time for Coffee");
+const BUY_ONE_GET_TWO = idx("Buy One, Get Two");
+const PITCH = [idx("Handle With Care", 1), idx("Hard Hat"), idx("Hard Hat", 1), idx("Express Delivery")];
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 const deckSize = (match: MatchState, id: string) => hero(match, id).deck.length;
@@ -52,8 +51,8 @@ function play(match: MatchState, card: number, action: Partial<PrimaryAction> = 
   };
 }
 
-describe("Slam Shot and Concussion Round", () => {
-  it("Slam Shot deals 2 damage at Range 2 and 3 damage at Range 1 (ADR 0025)", () => {
+describe("Handle With Care and Time for Coffee", () => {
+  it("Handle With Care deals 2 damage at Range 2 and 3 damage at Range 1 (ADR 0025)", () => {
     const far = fight({ [ENEMY]: { col: 23, row: 12 } });
     const afterFar = resolveRound(far, [play(far, SLAM_SHOT, {}, 1)]).match;
     expect(deckSize(far, ENEMY) - deckSize(afterFar, ENEMY)).toBe(2);
@@ -62,35 +61,22 @@ describe("Slam Shot and Concussion Round", () => {
     expect(deckSize(close, ENEMY) - deckSize(afterClose, ENEMY)).toBe(3);
   });
 
-  it("Concussion Round deals 2 damage and Slows the target until the end of the next Resolution", () => {
+  it("Time for Coffee deals 1 damage and Slows the target until the end of the next Resolution", () => {
     const match = fight();
     const after = resolveRound(match, [play(match, CONCUSSION_ROUND, {}, 1)]).match;
-    expect(deckSize(match, ENEMY) - deckSize(after, ENEMY)).toBe(2);
+    expect(deckSize(match, ENEMY) - deckSize(after, ENEMY)).toBe(1);
     expect(hero(after, ENEMY).slow).toBe(1);
   });
 });
 
-describe("Shockwave", () => {
-  it("deals 2 damage and pushes the enemy back 2 tiles", () => {
-    const match = fight();
-    const after = resolveRound(match, [play(match, SHOCKWAVE)]).match;
-    expect(deckSize(match, ENEMY) - deckSize(after, ENEMY)).toBe(2);
-    expect(hero(after, ENEMY).position).toEqual({ col: 24, row: 12 });
-    expect(hero(after, BRUISER).exile).toEqual([]);
+describe("Buy One, Get Two", () => {
+  it("makes two Attacks on the same target: 2 damage each, 3 each at Range 1", () => {
+    const far = fight({ [ENEMY]: { col: 23, row: 12 } });
+    const { match: afterFar, events } = resolveRound(far, [play(far, BUY_ONE_GET_TWO, {}, 1)]);
+    expect(deckSize(far, ENEMY) - deckSize(afterFar, ENEMY)).toBe(4);
+    expect(events.filter(({ kind }) => kind === EventKind.AttackHit)).toHaveLength(2);
+    const close = fight();
+    const afterClose = resolveRound(close, [play(close, BUY_ONE_GET_TWO, {}, 1)]).match;
+    expect(deckSize(close, ENEMY) - deckSize(afterClose, ENEMY)).toBe(6);
   });
-
-});
-
-describe("Adrenal Surge", () => {
-  it("gives this Hero +1 Attack that lasts across Rounds", () => {
-    const match = fight();
-    const { match: after, events } = resolveRound(match, [play(match, ADRENAL_SURGE, { target: BRUISER })]);
-    expect(hero(after, BRUISER).attackBonus).toBe(1);
-    expect(events).toContainEqual({ kind: EventKind.AttackBonusGained, tick: 1, heroId: BRUISER, amount: 1, card: "Adrenal Surge" });
-    const next = fight({ [ENEMY]: { col: 23, row: 12 } });
-    hero(next, BRUISER).attackBonus = hero(after, BRUISER).attackBonus;
-    const slammed = resolveRound(next, [play(next, SLAM_SHOT, {}, 1)]).match;
-    expect(deckSize(next, ENEMY) - deckSize(slammed, ENEMY)).toBe(3);
-  });
-
 });

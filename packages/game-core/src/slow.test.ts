@@ -7,9 +7,9 @@ import { resolveRound } from "./resolution";
 
 const BRUISER = "left-bruiser";
 const RIGHT_BRUISER = "right-bruiser";
-// Bruiser cards: 0 Slam Shot, Concussion Round (2 damage, Slow). Controller: Gravity Snare (2 Energy, Slow on a visible enemy).
+// Bruiser cards: 0 Handle With Care, Time for Coffee (2 damage, Slow). Controller: Gravity Snare (2 Energy, Slow on a visible enemy).
 const SLAM_SHOT = 0;
-const CONCUSSION_ROUND = cardIndex(HeroClass.Bruiser, "Concussion Round");
+const CONCUSSION_ROUND = cardIndex(HeroClass.Bruiser, "Time for Coffee");
 const CONTROLLER = "left-controller";
 const GRAVITY_SNARE = cardIndex(HeroClass.Controller, "Gravity Snare");
 
@@ -45,22 +45,22 @@ function duel(): MatchState {
   return match;
 }
 
-/** The enemy Bruiser slowed by a Concussion Round, as the state after that Resolution. */
+/** The enemy Bruiser slowed by a Time for Coffee, as the state after that Resolution. */
 function slowedByConcussion(): MatchState {
   return resolveRound(duel(), [leftPlan([use(CONCUSSION_ROUND, RIGHT_BRUISER)], [SLAM_SHOT])]).match;
 }
 
 describe("Slow", () => {
-  it("Concussion Round deals 2 damage and then Slows the target", () => {
+  it("Time for Coffee deals 1 damage and then Slows the target", () => {
     const match = duel();
     const deckSize = hero(match, RIGHT_BRUISER).deck.length;
     const { match: after, events } = resolveRound(match, [leftPlan([use(CONCUSSION_ROUND, RIGHT_BRUISER)], [SLAM_SHOT])]);
     expect(events.map(({ kind }) => kind)).toEqual([EventKind.AttackHit, EventKind.SlowApplied]);
     expect(events[1]).toMatchObject({ tick: 1, heroId: BRUISER, targetId: RIGHT_BRUISER });
-    expect(hero(after, RIGHT_BRUISER).deck).toHaveLength(deckSize - 2);
+    expect(hero(after, RIGHT_BRUISER).deck).toHaveLength(deckSize - 1);
   });
 
-  it("a failed Concussion Round does not Slow", () => {
+  it("a failed Time for Coffee does not Slow", () => {
     const match = duel();
     hero(match, RIGHT_BRUISER).position = { col: 14, row: 3 };
     const { match: after, events } = resolveRound(match, [leftPlan([use(CONCUSSION_ROUND, RIGHT_BRUISER)], [SLAM_SHOT])]);

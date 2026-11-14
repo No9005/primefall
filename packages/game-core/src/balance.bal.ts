@@ -26,8 +26,6 @@ interface Tweaks {
   cardCost?: Record<string, number>;
   /** Range of the named cards. */
   cardRange?: Record<string, number>;
-  /** Every Hero starts with this permanent Attack bonus. */
-  attackBonus?: number;
   /** Cards cut from the top of every Deck before the match. */
   deckCut?: number;
   /** Pitched cards go to the Exile instead of the Discard. */
@@ -59,7 +57,6 @@ function styleVariants(): Record<string, Tweaks> {
 
 const CLASSIC_VARIANTS: Record<string, Tweaks> = {
   baseline: {},
-  "damage +1": { attackBonus: 1 },
   "Deck 9": { deckCut: 3 },
   "Pitch exiles": { pitchExile: true },
   "Deck 9 + Pitch exiles": { deckCut: 3, pitchExile: true },
@@ -241,7 +238,6 @@ function prepareMatch(seed: number, tweaks: Tweaks): MatchState {
   // already picks the Defender side, so the first Round follows the next bit to keep the two apart.
   created.round = (tweaks.attackAndDefend ? Math.floor(seed / 2) : seed) % 2 === 0 ? 0 : 1;
   for (const hero of created.heroes) {
-    if (tweaks.attackBonus) hero.attackBonus = tweaks.attackBonus;
     if (tweaks.deckCut) hero.deck = hero.deck.slice(tweaks.deckCut);
   }
   return startRound(created);

@@ -8,7 +8,7 @@ import { getSquadEvents, resolveRound } from "./resolution";
 
 const LEFT = "left-bruiser";
 const RIGHT = "right-bruiser";
-// Bruiser cards 0 and 1 are Slam Shot (damage 2, Range 1 to 2); cards 2 and 3 serve as Moves.
+// Bruiser cards 0 and 1 are Handle With Care (damage 2, Range 1 to 2); cards 2 and 3 serve as Moves.
 const SLAM_SHOT = 0;
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;

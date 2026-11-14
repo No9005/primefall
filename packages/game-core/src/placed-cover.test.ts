@@ -8,14 +8,15 @@ import { resolveRound } from "./resolution";
 
 const LEFT_CONTROLLER = "left-controller";
 const RIGHT_CONTROLLER = "right-controller";
-const LEFT_BRUISER = "left-bruiser";
 const RIGHT_BRUISER = "right-bruiser";
 
 // Reinforce (card 4) is Pitch fodder.
 const DEPLOY_COVER = cardIndex(HeroClass.Controller, "Deploy Cover");
 const BARRICADE = cardIndex(HeroClass.Controller, "Barricade");
-const BRUISER_BREACH_CHARGE = cardIndex(HeroClass.Bruiser, "Breach Charge");
-const BRUISER_SLAM_SHOT = cardIndex(HeroClass.Bruiser, "Concussion Round"); // damage 2, Range 3
+const BREACH_CHARGE = cardIndex(HeroClass.Controller, "Breach Charge");
+const LEFT_ASSASSIN = "left-assassin";
+const PRECISION_SHOT = 0; // Assassin card 0: damage 2, Range 2 to 5
+const BRUISER_SLAM_SHOT = 2; // Pitch fodder
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 const tileOf = (index: number): GridPosition => ({ col: 8 + index, row: 3 });
@@ -101,17 +102,17 @@ describe("Placed Cover", () => {
     expect(match.placedCover).toHaveLength(MAX_PLACED_COVER_PER_SQUAD);
   });
 
-  /** A Left Bruiser at (5,3) attacks the Right Bruiser on (8,3), where Cover was placed. */
+  /** The Left Assassin at (5,3) attacks the Right Bruiser on (8,3), where Cover was placed. */
   function attackOnCoveredTile(card: number, cover: CoverKind) {
     const placed = place(startRound(createMatch(5)), SquadId.Left, card, tileOf(0)).match;
     expect(coverAt(placed.grid, tileOf(0))).toBe(cover);
     const next = startRound(placed);
-    hero(next, LEFT_BRUISER).position = { col: 5, row: 3 };
-    hero(next, LEFT_BRUISER).hand = [BRUISER_SLAM_SHOT, 1, 2, 3];
+    hero(next, LEFT_ASSASSIN).position = { col: 5, row: 3 };
+    hero(next, LEFT_ASSASSIN).hand = [PRECISION_SHOT, 1, 2, 3];
     hero(next, RIGHT_BRUISER).position = tileOf(0);
     const plan: SquadPlan = {
       squad: SquadId.Left,
-      heroes: [{ heroId: LEFT_BRUISER, queue: [{ kind: ActionKind.Primary, card: BRUISER_SLAM_SHOT, target: RIGHT_BRUISER }], pitched: [1] }],
+      heroes: [{ heroId: LEFT_ASSASSIN, queue: [{ kind: ActionKind.Primary, card: PRECISION_SHOT, target: RIGHT_BRUISER }], pitched: [1] }],
     };
     return resolveRound(next, [plan]);
   }
@@ -134,13 +135,13 @@ describe("Placed Cover", () => {
   it("is destroyed by Breach Charge and then no longer counts", () => {
     const placed = place(startRound(createMatch(5)), SquadId.Left, DEPLOY_COVER, tileOf(0)).match;
     const next = startRound(placed);
-    hero(next, LEFT_BRUISER).position = { col: 5, row: 3 };
-    hero(next, LEFT_BRUISER).hand = [BRUISER_BREACH_CHARGE, BRUISER_SLAM_SHOT, 1, 5];
+    hero(next, LEFT_CONTROLLER).position = { col: 5, row: 3 };
+    hero(next, LEFT_CONTROLLER).hand = [BREACH_CHARGE, BRUISER_SLAM_SHOT, 1, 5];
     const plan: SquadPlan = {
       squad: SquadId.Left,
       heroes: [{
-        heroId: LEFT_BRUISER,
-        queue: [{ kind: ActionKind.Primary, card: BRUISER_BREACH_CHARGE, target: LEFT_BRUISER, tile: tileOf(0) }],
+        heroId: LEFT_CONTROLLER,
+        queue: [{ kind: ActionKind.Primary, card: BREACH_CHARGE, target: LEFT_CONTROLLER, tile: tileOf(0) }],
         pitched: [BRUISER_SLAM_SHOT, 1],
       }],
     };
@@ -157,13 +158,13 @@ describe("Placed Cover", () => {
       const placed = place(startRound(createMatch(5)), SquadId.Left, DEPLOY_COVER, primeTile).match;
       expect(tileAt(placed.grid, primeTile)).toBe(TileKind.HalfCover);
       const next = startRound(placed);
-      hero(next, LEFT_BRUISER).position = { col: 19, row: 12 };
-      hero(next, LEFT_BRUISER).hand = [BRUISER_BREACH_CHARGE, BRUISER_SLAM_SHOT, 1, 5];
+      hero(next, LEFT_CONTROLLER).position = { col: 19, row: 12 };
+      hero(next, LEFT_CONTROLLER).hand = [BREACH_CHARGE, BRUISER_SLAM_SHOT, 1, 5];
       const plan: SquadPlan = {
         squad: SquadId.Left,
         heroes: [{
-          heroId: LEFT_BRUISER,
-          queue: [{ kind: ActionKind.Primary, card: BRUISER_BREACH_CHARGE, target: LEFT_BRUISER, tile: primeTile }],
+          heroId: LEFT_CONTROLLER,
+          queue: [{ kind: ActionKind.Primary, card: BREACH_CHARGE, target: LEFT_CONTROLLER, tile: primeTile }],
           pitched: [BRUISER_SLAM_SHOT, 1],
         }],
       };

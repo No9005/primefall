@@ -11,11 +11,10 @@ const BRUISER = "left-bruiser";
 const ENEMY = "right-bruiser";
 
 const idx = (name: string, copy = 0) => cardIndex(HeroClass.Controller, name, copy);
-// Reinforce serves as Pitch fodder.
-const PULSE_BOLT = idx("Reinforce");
+// Wrecking Blow serves as Pitch fodder.
+const PULSE_BOLT = idx("Wrecking Blow");
 const TAG_ROUND = idx("Tag Round");
 const SCOUT_DRONE = idx("Scout Drone");
-const AEGIS_PROTOCOL = idx("Aegis Protocol");
 const FORTIFY = idx("Fortify");
 const DEPLOY_COVER = idx("Deploy Cover");
 const BARRICADE = idx("Barricade");
@@ -154,16 +153,6 @@ describe("Scout Drone", () => {
   });
 });
 
-describe("Aegis Protocol", () => {
-  const hand = [AEGIS_PROTOCOL, PULSE_BOLT, 1, 5];
-
-  it("gives an allied Hero Shield 3", () => {
-    const { events } = resolveRound(setup(hand), [planOf(CONTROLLER, [primary(AEGIS_PROTOCOL, BRUISER)], [PULSE_BOLT])]);
-    expect(events).toEqual([{ kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Aegis Protocol", casterId: CONTROLLER }]);
-  });
-
-});
-
 describe("Placed Cover", () => {
   const PRIME_TILE = { col: 22, row: 12 };
 
@@ -258,7 +247,7 @@ describe("Placed Cover", () => {
 });
 
 describe("Overwatch Uplink", () => {
-  // The enemy Bruiser stands on Half Cover at (7,2); the allied Bruiser attacks it from (9,2) with Slam Shot (card 0, 2 damage at Range 2).
+  // The enemy Bruiser stands on Half Cover at (7,2); the allied Bruiser attacks it from (9,2) with Handle With Care (card 0, 2 damage at Range 2).
   function coverFight(): MatchState {
     const match = setup([OVERWATCH_UPLINK, PULSE_BOLT, 1, 5]);
     hero(match, BRUISER).position = { col: 9, row: 2 };

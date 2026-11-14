@@ -4,25 +4,22 @@ import { AttackFailReason, EventKind, SquadId } from "./host";
 import { createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type QueuedAction, type SquadPlan } from "./plan";
 import type { GridPosition } from "./reactor-deck";
-import { getSquadEvents, resolveRound } from "./resolution";
+import { resolveRound } from "./resolution";
 
 const ASSASSIN = "left-assassin";
 const BRUISER = "left-bruiser";
 const ENEMY = "right-bruiser";
-const OTHER_ENEMY = "right-controller";
-// Assassin: Precision Shot (0), Long Shot. Bruiser: Slam Shot, Breach Charge, Shockwave, Bulwark.
+// Assassin: Precision Shot (0), Long Shot. Bruiser: Handle With Care, Hard Hat.
 const LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot", 1);
-const SLAM_SHOT = cardIndex(HeroClass.Bruiser, "Slam Shot");
-const BREACH_CHARGE = cardIndex(HeroClass.Bruiser, "Breach Charge");
-const SHOCKWAVE = cardIndex(HeroClass.Bruiser, "Shockwave");
-const BULWARK = cardIndex(HeroClass.Bruiser, "Bulwark");
+const SLAM_SHOT = cardIndex(HeroClass.Bruiser, "Handle With Care");
+const BULWARK = cardIndex(HeroClass.Bruiser, "Hard Hat");
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 
 function scene(positions: Record<string, GridPosition>): MatchState {
   const match = startRound(createMatch(5));
   hero(match, ASSASSIN).hand = [LONG_SHOT, 0, 1, 3];
-  hero(match, BRUISER).hand = [SLAM_SHOT, 1, 2, 3, BREACH_CHARGE, SHOCKWAVE, BULWARK];
+  hero(match, BRUISER).hand = [SLAM_SHOT, 1, 2, 3, BULWARK];
   for (const [id, position] of Object.entries(positions)) hero(match, id).position = position;
   return match;
 }
@@ -51,20 +48,11 @@ describe("Events carry the card that caused them", () => {
     ]);
   });
 
-  it("puts the card on every target's event of an area card, Knockback included, and keeps it in the Squad's events", () => {
-    const match = scene({ [BRUISER]: { col: 8, row: 3 }, [ENEMY]: { col: 9, row: 3 }, [OTHER_ENEMY]: { col: 9, row: 4 } });
-    const resolution = resolveRound(match, [plan(BRUISER, { kind: ActionKind.Primary, card: SHOCKWAVE, target: BRUISER }, [0, 1])]);
-    const events = getSquadEvents(SquadId.Right, resolution).filter(({ kind }) => kind === EventKind.AttackHit || kind === EventKind.Knockback);
-    expect(events.length).toBeGreaterThanOrEqual(4);
-    expect(events.every(({ card }) => card === "Shockwave")).toBe(true);
-    expect(events.filter(({ kind }) => kind === EventKind.AttackHit).map(({ targetId }) => targetId).sort()).toEqual([ENEMY, OTHER_ENEMY]);
-  });
-
   it("tags the Shield of a Utility card", () => {
     const match = scene({ [BRUISER]: { col: 8, row: 3 } });
     const utility = resolveRound(match, [plan(BRUISER, { kind: ActionKind.Primary, card: BULWARK, target: BRUISER }, [1])]);
     expect(utility.events).toEqual([
-      { kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 3, card: "Bulwark", casterId: BRUISER },
+      { kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: 2, card: "Hard Hat", casterId: BRUISER },
     ]);
   });
 });

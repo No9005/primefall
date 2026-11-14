@@ -167,12 +167,12 @@ describe("the classic mode", () => {
   // Recorded from the classic path (AI against AI, 60 Rounds at most). Re-recorded when the classic mode became Credits
   // from three zones (#357) and after the Block change (#352, #358); re-recorded for the new decks (#371: Bruiser 12, Controller 10, Assassin 9 cards, ADR 0025), because every Deck and the plans of the AI changed;
   // re-recorded for the Crossroads map of 45 by 25 tiles (#361);
-  // re-recorded without Overdrive and with every card at 1 Energy (#415 test);
+  // re-recorded without Overdrive and with every card at 1 Energy (#415 test), and for the new Bruiser and Controller decks (#415);
   // re-recorded for the one-Round lookahead (#395), which changes every plan of the AI, and for the Fog of War worlds (#396), which change the replies it plays against.
   const recorded = [
-    { seed: 3, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 15, right: 12 }, deckTotals: { left: 12, right: 14 }, positions: "21,13:2 16,18:6 20,14:4 22,2:7 26,4:3 24,11:4", rng: 4080414808 },
-    { seed: 11, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 21, right: 24 }, deckTotals: { left: 11, right: 6 }, positions: "21,2:1 21,20:6 20,11:4 23,13:2 18,8:3 24,13:1", rng: 3704343934 },
-    { seed: 42, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 21, right: 16 }, deckTotals: { left: 8, right: 7 }, positions: "20,12:8 24,14:0 21,10:0 22,2:3 23,12:0 22,20:4", rng: 992753994 },
+    { seed: 3, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 18, right: 12 }, deckTotals: { left: 10, right: 14 }, positions: "21,13:1 21,20:5 20,14:4 22,2:7 23,12:3 24,11:4", rng: 3576461532 },
+    { seed: 11, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 18, right: 6 }, deckTotals: { left: 12, right: 6 }, positions: "23,13:3 21,20:5 20,11:4 23,14:0 22,10:2 24,13:4", rng: 3952532422 },
+    { seed: 42, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 4, right: 6 }, deckTotals: { left: 11, right: 8 }, positions: "20,10:7 23,22:0 21,10:4 24,12:3 23,12:2 24,14:3", rng: 1240942482 },
   ];
 
   it.each(recorded)("plays seed $seed exactly as recorded", ({ seed, round, winner, reason, scores, deckTotals, positions, rng }) => {
