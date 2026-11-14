@@ -7,19 +7,14 @@ import {
   type CardDefinition,
   type CardEffect,
   type CardIndex,
-  cardInMode,
   CardTarget,
-  damageAtDistance,
   CardType,
   EffectKind,
-  EffectRecipient,
   HERO_DECKS,
   isAreaAttack,
   isGhostAttack,
-  isPlayableCard,
   isPlayableUtility,
   isTileAttack,
-  isTileBlast,
   type PLAYABLE_UTILITY_EFFECTS,
 } from "./cards";
 import {
@@ -175,7 +170,7 @@ function applyMarked(tick: number, source: HeroState, target: HeroState, effect:
   endHidden(tick, target, events);
 }
 
-/** The events a card causes carry its name and the Overdrive flag (not Block, Steps, shuffles or the end of Hidden). */
+/** The events a card causes carry its name (not Block, Steps, shuffles or the end of Hidden). */
 const CARD_EVENT_KINDS: ReadonlySet<EventKind> = new Set([
   EventKind.AttackHit, EventKind.AttackFailed, EventKind.SlowApplied, EventKind.MarkedApplied, EventKind.HiddenGained,
   EventKind.Knockback, EventKind.CoverPlaced, EventKind.CoverDestroyed, EventKind.AreaRevealed,
@@ -192,13 +187,11 @@ function tagCardEvents(
   first: number,
   caster: HeroState,
   card: CardDefinition,
-  overdrive: boolean | undefined,
   tile?: GridPosition,
 ): void {
   for (const event of events.slice(first)) {
     if (!CARD_EVENT_KINDS.has(event.kind)) continue;
     event.card = card.name;
-    if (overdrive) event.overdrive = true;
     if (event.kind !== EventKind.AttackHit && event.kind !== EventKind.AttackFailed) continue;
     // A miss on a target the Squad cannot see must not reveal how far away it stands.
     if (event.reason === AttackFailReason.NotVisible) continue;
@@ -272,8 +265,6 @@ interface Attack {
   missed?: boolean;
   /** For a tile Attack (Breach Charge): the targeted tile. */
   tile?: GridPosition;
-  /** The card was played in Overdrive. */
-  overdrive?: boolean;
 }
 
 const samePosition = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
@@ -334,9 +325,8 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     missReason(hero, card, target, false) === undefined;
   // An area Attack hits every enemy Hero it reaches and does nothing when there is none.
   // A Ghost Shot goes to a tile: it hits the enemy standing there when it resolves, or nobody.
-  const isTileCard = (card: CardDefinition) => isTileAttack(card) || isTileBlast(card);
-  const tileAttacks = attacks.filter(({ card }) => isTileCard(card));
-  const aimed = attacks.filter(({ card }) => !isTileCard(card)).flatMap((attack) => {
+  const tileAttacks = attacks.filter(({ card }) => isTileAttack(card));
+  const aimed = attacks.filter(({ card }) => !isTileAttack(card)).flatMap((attack) => {
     if (isAreaAttack(attack.card)) {
       return match.heroes.filter((target) => canReach(attack.hero, attack.card, target)).map((target) => ({ ...attack, targetId: target.id }));
     }
@@ -352,30 +342,30 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
   });
   // Attacking gives away a Hidden Hero, whether or not the Attack lands.
   for (const { hero } of attacks) endHidden(tick, hero, events);
-  const landed = aimed.filter(({ hero, card, targetId, missed, overdrive }) => {
+  const landed = aimed.filter(({ hero, card, targetId, missed }) => {
     const target = match.heroes.find((candidate) => candidate.id === targetId);
     let reason = target ? missReason(hero, card, target, !isGhostAttack(card) && !isAreaAttack(card)) : AttackFailReason.NotVisible;
     if (missed) reason = AttackFailReason.EmptyTile;
     if (reason) {
       const first = events.length;
       events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId, reason });
-      tagCardEvents(match, events, first, hero, card, overdrive);
+      tagCardEvents(match, events, first, hero, card);
     }
     return reason === undefined;
   });
-  for (const { hero, card, targetId, overdrive } of landed) {
+  for (const { hero, card, targetId } of landed) {
     const first = events.length;
     const target = match.heroes.find((candidate) => candidate.id === targetId)!;
     const distance = chebyshevDistance(hero.position, target.position);
     const ignoresHalfCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreHalfCover);
     const halfCover =
       coverAgainst(match.grid, hero.position, target.position) === CoverKind.Half && !ignoresHalfCover && !hero.ignoresHalfCover;
-    const damageEffect = card.effects.find(({ kind }) => kind === EffectKind.Damage || kind === EffectKind.DamageAtLongRange)!;
+    const damageEffect = card.effects.find(({ kind }) => kind === EffectKind.Damage)!;
     const closeRange = card.effects.find(({ kind }) => kind === EffectKind.CloseRangeBonus);
     // A Charge's bonus goes to the next Attack that lands at Range 1, once.
     const chargeBonus = distance === 1 ? (hero.chargeBonus ?? 0) : 0;
     if (chargeBonus > 0) delete hero.chargeBonus;
-    const damage = damageAtDistance(damageEffect, distance) + (distance === 1 ? (closeRange?.amount ?? 0) : 0) + chargeBonus + hero.attackBonus;
+    const damage = (damageEffect.amount ?? 0) + (distance === 1 ? (closeRange?.amount ?? 0) : 0) + chargeBonus + hero.attackBonus;
     const incoming = Math.max(0, damage - (halfCover ? HALF_COVER_REDUCTION : 0));
     const piercing = card.effects.some(({ kind }) => kind === EffectKind.PiercingDamage);
     dealDamage(match, tick, hero, target, incoming, events, piercing);
@@ -387,28 +377,28 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplyMarked)) {
       applyMarked(tick, hero, target, effect, events);
     }
-    tagCardEvents(match, events, first, hero, card, overdrive);
+    tagCardEvents(match, events, first, hero, card);
   }
   // Tile Attacks come after the other damage of the Tick, so Cover they destroy still protected against it.
   for (const attack of tileAttacks) {
     const first = events.length;
     resolveTileAttack(match, tick, attack, events);
-    tagCardEvents(match, events, first, attack.hero, attack.card, attack.overdrive, attack.tile);
+    tagCardEvents(match, events, first, attack.hero, attack.card, attack.tile);
   }
   // Wrecking Blow destroys the Cover on its target's tile after the damage of the Tick, like a tile Attack.
-  for (const { hero, card, targetId, overdrive } of landed) {
+  for (const { hero, card, targetId } of landed) {
     if (!card.effects.some(({ kind }) => kind === EffectKind.DestroyAnyCover)) continue;
     const first = events.length;
     destroyCoverAt(match, tick, hero, match.heroes.find((candidate) => candidate.id === targetId)!.position, events);
-    tagCardEvents(match, events, first, hero, card, overdrive);
+    tagCardEvents(match, events, first, hero, card);
   }
   // Knockback comes after all damage of the Tick, in Hero order, so an earlier push can block a later one.
-  for (const { hero, card, targetId, overdrive } of landed) {
+  for (const { hero, card, targetId } of landed) {
     const push = card.effects.find(({ kind }) => kind === EffectKind.Knockback);
     if (!push) continue;
     const first = events.length;
     knockBack(match, tick, hero, match.heroes.find((candidate) => candidate.id === targetId)!, push.amount ?? 0, events);
-    tagCardEvents(match, events, first, hero, card, overdrive);
+    tagCardEvents(match, events, first, hero, card);
   }
 }
 
@@ -426,25 +416,18 @@ function resolveTileAttack(match: MatchState, tick: number, { hero, card, tile }
     events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, reason: AttackFailReason.NoLineOfSight });
     return;
   }
-  if (isTileBlast(card)) {
-    // The blast hurts every Hero on the tile and the adjacent tiles, allies and the caster included; Cover does not protect.
-    const blast = card.effects.find(({ kind }) => kind === EffectKind.DamageHeroesAtAndAroundTarget)!;
-    const caught = match.heroes.filter((other) => !other.exhausted && chebyshevDistance(other.position, tile) <= 1);
-    for (const victim of caught) dealDamage(match, tick, hero, victim, (blast.amount ?? 0) + hero.attackBonus, events);
-  } else {
-    const occupant = match.heroes.find((other) => other.squad !== hero.squad && !other.exhausted && samePosition(other.position, tile));
-    const cover = coverAgainst(match.grid, hero.position, tile);
-    if (occupant && cover === CoverKind.Full) {
-      events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId: occupant.id, reason: AttackFailReason.FullCover });
-    } else if (occupant) {
-      const amount = (card.effects.find(({ kind }) => kind === EffectKind.Damage)?.amount ?? 0) + hero.attackBonus;
-      const reduced = cover === CoverKind.Half && !hero.ignoresHalfCover;
-      const first = events.length;
-      dealDamage(match, tick, hero, occupant, Math.max(0, amount - (reduced ? HALF_COVER_REDUCTION : 0)), events);
-      if (reduced && amount > 0) flagHalfCover(events, first);
-    }
+  const occupant = match.heroes.find((other) => other.squad !== hero.squad && !other.exhausted && samePosition(other.position, tile));
+  const cover = coverAgainst(match.grid, hero.position, tile);
+  if (occupant && cover === CoverKind.Full) {
+    events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId: occupant.id, reason: AttackFailReason.FullCover });
+  } else if (occupant) {
+    const amount = (card.effects.find(({ kind }) => kind === EffectKind.Damage)?.amount ?? 0) + hero.attackBonus;
+    const reduced = cover === CoverKind.Half && !hero.ignoresHalfCover;
+    const first = events.length;
+    dealDamage(match, tick, hero, occupant, Math.max(0, amount - (reduced ? HALF_COVER_REDUCTION : 0)), events);
+    if (reduced && amount > 0) flagHalfCover(events, first);
   }
-  if (isTileBlast(card) || coverAt(match.grid, tile) === CoverKind.Half) destroyCoverAt(match, tick, hero, tile, events);
+  if (coverAt(match.grid, tile) === CoverKind.Half) destroyCoverAt(match, tick, hero, tile, events);
 }
 
 /** Destroys the Cover (Half or Full, Placed or original) on a tile; does nothing on a tile without Cover. */
@@ -521,8 +504,6 @@ interface UtilityUse {
   caster: HeroState;
   /** The Hero the card is aimed at: the caster itself, an allied Hero or a visible enemy. */
   target: HeroState;
-  /** The second allied Hero of an Overdrive that affects two (Aegis Protocol). */
-  secondTarget?: HeroState;
   /** For Scout Drone, Deploy Cover and Barricade: the tile aimed at. */
   tile?: GridPosition;
   events: MatchEvent[];
@@ -553,12 +534,10 @@ function placeCover(use: UtilityUse, position: GridPosition, requireEmpty: boole
 
 /** One interpreter per Utility effect kind (ADR 0018); new Utility effects add an entry here. */
 const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: UtilityUse) => void> = {
-  [EffectKind.GainShield]: ({ tick, effect, caster, target, secondTarget, events }) => {
-    const receiver =
-      effect.recipient === EffectRecipient.SecondTarget ? secondTarget! : effect.recipient === EffectRecipient.Self ? caster : target;
+  [EffectKind.GainShield]: ({ tick, effect, caster, target, events }) => {
     const amount = effect.amount ?? 0;
-    receiver.shield += amount;
-    events.push({ kind: EventKind.ShieldGained, tick, heroId: receiver.id, amount, casterId: caster.id });
+    target.shield += amount;
+    events.push({ kind: EventKind.ShieldGained, tick, heroId: target.id, amount, casterId: caster.id });
   },
   // Scout Drone: the Squad sees the area for `duration` Resolutions, this one included; range was checked with the target.
   [EffectKind.RevealArea]: ({ match, tick, effect, caster, tile, events }) => {
@@ -606,12 +585,10 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
     caster.hidden = effect.duration ?? 1;
     events.push({ kind: EventKind.HiddenGained, tick, heroId: caster.id });
   },
-  // Without a recipient the effect goes to the card's target; Adrenal Surge's Overdrive names both Heroes.
-  [EffectKind.GainPermanentAttack]: ({ tick, effect, caster, target, events }) => {
-    const receiver = effect.recipient === EffectRecipient.Self ? caster : target;
+  [EffectKind.GainPermanentAttack]: ({ tick, effect, target, events }) => {
     const amount = effect.amount ?? 0;
-    receiver.attackBonus += amount;
-    events.push({ kind: EventKind.AttackBonusGained, tick, heroId: receiver.id, amount });
+    target.attackBonus += amount;
+    events.push({ kind: EventKind.AttackBonusGained, tick, heroId: target.id, amount });
   },
   [EffectKind.ExtendMove]: ({ effect, caster }) => {
     caster.extendedMove = effect.amount;
@@ -628,17 +605,14 @@ function resolveUtility(
   caster: HeroState,
   card: CardDefinition,
   targetId: string,
-  secondTargetId: string | undefined,
   tile: GridPosition | undefined,
   events: MatchEvent[],
 ): void {
   const target = match.heroes.find((candidate) => candidate.id === targetId);
-  const secondTarget = match.heroes.find((candidate) => candidate.id === secondTargetId);
   const isAlly = (hero: HeroState | undefined) => hero !== undefined && !hero.exhausted && hero.squad === caster.squad && hero !== caster;
   // Scout Drone, Fortify and Barricade reach as far as the card's Range (no Line of Sight needed).
   const inCardRange = (position: GridPosition | undefined) =>
     position !== undefined && chebyshevDistance(caster.position, position) <= (card.range ?? Infinity);
-  const needsSecond = card.effects.some(({ recipient }) => recipient === EffectRecipient.SecondTarget);
   let validTarget: boolean;
   switch (card.target) {
     case CardTarget.VisibleEnemy:
@@ -659,7 +633,7 @@ function resolveUtility(
       validTarget = isAlly(target) && inCardRange(target!.position);
       break;
     default:
-      validTarget = isAlly(target) && (!needsSecond || (isAlly(secondTarget) && secondTarget !== target));
+      validTarget = isAlly(target);
   }
   if (!validTarget || !isPlayableUtility(card)) {
     events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
@@ -667,7 +641,7 @@ function resolveUtility(
   }
   for (const effect of card.effects) {
     UTILITY_EFFECTS[effect.kind as (typeof PLAYABLE_UTILITY_EFFECTS)[number]]({
-      match, tick, card, effect, caster, target: target!, secondTarget, tile, events,
+      match, tick, card, effect, caster, target: target!, tile, events,
     });
   }
 }
@@ -817,13 +791,10 @@ interface HeroQueue {
   queue: readonly (QueuedAction | undefined)[];
   /** The Hand cards that leave the Hand: each at most once, and only cards the Hero holds. */
   spent: CardIndex[];
-  /** The part of `spent` that was played in Overdrive: these go to the Exile instead of the Discard. */
-  overdriven: CardIndex[];
 }
 
-/** The card an action plays, in the mode the action chose. */
-const playedCard = (hero: HeroState, action: { card: CardIndex; overdrive?: boolean }): CardDefinition =>
-  cardInMode(HERO_DECKS[hero.heroClass][action.card]!, action.overdrive);
+/** The card an action plays. */
+const playedCard = (hero: HeroState, action: { card: CardIndex }): CardDefinition => HERO_DECKS[hero.heroClass][action.card]!;
 
 /**
  * Drops what the host should have validated, so the simulation is safe on its own: a card that is not in
@@ -842,23 +813,13 @@ function legalQueues(match: MatchState, plans: readonly SquadPlan[]): HeroQueue[
         return true;
       };
       pitched.forEach(claim);
-      const overdriven: CardIndex[] = [];
       const legal = queue.map((action, index) => {
         if (index >= MAX_QUEUE_LENGTH) return undefined;
         if (action.kind === ActionKind.Wait) return action;
-        // An Overdrive that does not exist or cannot be played yet is illegal and fails without spending the card.
-        if (
-          action.kind === ActionKind.Primary &&
-          action.overdrive &&
-          !isPlayableCard(HERO_DECKS[hero.heroClass][action.card]!, true)
-        ) {
-          return undefined;
-        }
         if (!claim(action.card)) return undefined;
-        if (action.kind === ActionKind.Primary && action.overdrive) overdriven.push(action.card);
         return action;
       });
-      return [{ heroId, queue: legal, spent, overdriven }];
+      return [{ heroId, queue: legal, spent }];
     }),
   );
 }
@@ -909,8 +870,8 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
       const card = playedCard(hero, action);
       if (card.type !== CardType.Utility) continue;
       const first = events.length;
-      resolveUtility(match, tick, hero, card, action.target, action.secondTarget, action.tile, events);
-      tagCardEvents(match, events, first, hero, card, action.overdrive);
+      resolveUtility(match, tick, hero, card, action.target, action.tile, events);
+      tagCardEvents(match, events, first, hero, card);
     }
     const movers = actions.flatMap(({ hero, action }) => {
       if (action.kind !== ActionKind.Move) return [];
@@ -928,7 +889,6 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
             targetId: action.target,
             ghostTile: ghostTiles[hero.squad][action.target]?.position,
             tile: action.tile,
-            overdrive: action.overdrive,
           }]
         : [],
     );
@@ -937,13 +897,12 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
   }
 
   // Pitched and queued cards leave the Hand for the Discard; Energy and Shield expire with the Round.
-  // Cards played in Overdrive are Exiled and never return (ADR 0003).
-  for (const { heroId, spent, overdriven } of queues) {
+  for (const { heroId, spent } of queues) {
     const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
     if (hero.exhausted) continue;
     for (const card of spent) {
       hero.hand.splice(hero.hand.indexOf(card), 1);
-      (overdriven.includes(card) ? hero.exile : hero.discard).push(card);
+      hero.discard.push(card);
     }
   }
   for (const hero of match.heroes) {

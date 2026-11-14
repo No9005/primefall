@@ -29,8 +29,6 @@ export enum CardTarget {
 
 export enum EffectKind {
   Damage = "damage",
-  DamageHeroesAtAndAroundTarget = "damageHeroesAtAndAroundTarget",
-  DamageAtLongRange = "damageAtLongRange",
   ApplySlow = "applySlow",
   ApplyMarked = "applyMarked",
   Knockback = "knockback",
@@ -61,14 +59,6 @@ export enum EffectKind {
 export const CHARGE_SHIELD = 1;
 export const CHARGE_DAMAGE_BONUS = 1;
 
-/** Who receives an effect that can apply either to the casting Hero or to the card's target. */
-export enum EffectRecipient {
-  Self = "self",
-  Target = "target",
-  /** The second allied Hero of an Overdrive that affects two (Aegis Protocol). */
-  SecondTarget = "secondTarget",
-}
-
 export interface CardEffect {
   kind: EffectKind;
   /** Damage, Shield, tiles or bonus value, depending on the kind. */
@@ -79,10 +69,6 @@ export interface CardEffect {
   size?: number;
   /** For Placed Cover: Full instead of the default Half. */
   cover?: CoverKind.Half | CoverKind.Full;
-  /** For damage that is higher at long range: the damage at Range 6 or 7 (`amount` applies closer). */
-  longRangeAmount?: number;
-  /** Who receives the effect; defaults to the card's target. */
-  recipient?: EffectRecipient;
 }
 
 export interface CardDefinition {
@@ -95,10 +81,6 @@ export interface CardDefinition {
   minRange?: number;
   target: CardTarget;
   effects: readonly CardEffect[];
-  /** Present only on cards with an Overdrive mode; replaces the standard effects (ADR 0003). */
-  overdrive?: readonly CardEffect[];
-  /** Target of the Overdrive when it differs from `target`. */
-  overdriveTarget?: CardTarget;
 }
 
 /** Index of a card in its Hero's fixed Deck list (`HERO_DECKS`). */
@@ -106,23 +88,6 @@ export type CardIndex = number;
 
 /** Maximum Hand size a Draw fills up to. */
 export const HAND_SIZE = 4;
-
-/**
- * The card as it is played in a mode: with `overdrive`, the Overdrive effects (and target) replace the
- * standard ones (ADR 0003). A card without an Overdrive keeps its standard effects, so callers check
- * `card.overdrive` first where the mode must exist.
- */
-export function cardInMode(card: CardDefinition, overdrive: boolean | undefined): CardDefinition {
-  if (!overdrive || !card.overdrive) return card;
-  return { ...card, effects: card.overdrive, target: card.overdriveTarget ?? card.target };
-}
-
-/** Damage of a Damage-type effect at `distance` tiles: long-range damage applies from Range 6. */
-export const LONG_RANGE_FROM = 6;
-export function damageAtDistance(effect: CardEffect, distance: number): number {
-  const longRange = effect.kind === EffectKind.DamageAtLongRange && distance >= LONG_RANGE_FROM;
-  return (longRange ? effect.longRangeAmount : effect.amount) ?? 0;
-}
 
 /**
  * Cards whose Primary effect is only "deal damage to one visible enemy". These are the Attacks the
@@ -133,7 +98,7 @@ export function isSimpleAttack(card: CardDefinition): boolean {
   return (
     card.type === CardType.Attack &&
     card.target === CardTarget.VisibleEnemy &&
-    (first?.kind === EffectKind.Damage || first?.kind === EffectKind.DamageAtLongRange) &&
+    first?.kind === EffectKind.Damage &&
     rest.every(
       (effect) =>
         effect.kind === EffectKind.ApplySlow ||
@@ -146,7 +111,7 @@ export function isSimpleAttack(card: CardDefinition): boolean {
   );
 }
 
-/** The Overdrive of Ghost Shot: an Attack on a Ghost's last known position that deals damage to whoever stands there. */
+/** Ghost Shot: an Attack on a Ghost's last known position that deals damage to whoever stands there. */
 export function isGhostAttack(card: CardDefinition): boolean {
   const [first, second, ...rest] = card.effects;
   return (
@@ -204,7 +169,7 @@ export function isAreaAttack(card: CardDefinition): boolean {
 }
 
 /**
- * Breach Charge without Overdrive: an Attack on a tile that damages the enemy Hero standing there and
+ * Breach Charge: an Attack on a tile that damages the enemy Hero standing there and
  * destroys Half Cover on it. The action carries the tile; its target is the casting Hero.
  */
 export function isTileAttack(card: CardDefinition): boolean {
@@ -218,38 +183,8 @@ export function isTileAttack(card: CardDefinition): boolean {
   );
 }
 
-/** The Overdrive of Breach Charge: destroys any Cover on a tile and damages every Hero on and around it. */
-export function isTileBlast(card: CardDefinition): boolean {
-  const [first, second, ...rest] = card.effects;
-  return (
-    card.type === CardType.Attack &&
-    card.target === CardTarget.Tile &&
-    first?.kind === EffectKind.DestroyAnyCover &&
-    second?.kind === EffectKind.DamageHeroesAtAndAroundTarget &&
-    rest.length === 0
-  );
-}
-
-/**
- * Whether a card's Primary effect can be planned and resolved so far. Utility Overdrives with two allied
- * targets of the same kind (Aegis Protocol) or an area follow with their own tickets; an Overdrive aimed at
- * an ally is playable when every effect names its recipient (Adrenal Surge).
- */
-export function isPlayableCard(card: CardDefinition, overdrive?: boolean): boolean {
-  if (overdrive) {
-    if (card.overdrive === undefined) return false;
-    const mode = cardInMode(card, true);
-    const allyWithRecipients =
-      mode.target === CardTarget.AllyHero && mode.effects.every((effect) => effect.recipient !== undefined);
-    return (
-      isSimpleAttack(mode) ||
-      isGhostAttack(mode) ||
-      isAreaAttack(mode) ||
-      isTileBlast(mode) ||
-      ((mode.target === CardTarget.Area || allyWithRecipients) &&
-        isPlayableUtility(mode))
-    );
-  }
+/** Whether a card's Primary effect can be planned and resolved so far. */
+export function isPlayableCard(card: CardDefinition): boolean {
   return isSimpleAttack(card) || isGhostAttack(card) || isAreaAttack(card) || isTileAttack(card) || isPlayableUtility(card);
 }
 
@@ -356,7 +291,7 @@ const longShot: CardDefinition = {
 };
 const ghostShot: CardDefinition = {
   name: "Ghost Shot", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE, minRange: 2,
-  // Without Overdrive the Ghost mode is the card itself: it fires at the last known position of a Ghost.
+  // Ghost Shot fires at the last known position of a Ghost.
   target: CardTarget.GhostEnemy, effects: [{ kind: EffectKind.TargetGhost }, damage(2)],
 };
 const executionRound: CardDefinition = {

@@ -20,7 +20,7 @@ describe("Hero Decks follow the card set spec", () => {
     for (const gone of ["Suppress", "Forward Deploy", "Pulse Bolt", "Shock Pulse", "Mark Target"]) expect(all).not.toContain(gone);
   });
 
-  it("makes cards with the same name identical in every respect, Overdrive included", () => {
+  it("makes cards with the same name identical in every respect", () => {
     for (const deck of Object.values(HERO_DECKS)) {
       const byName = new Map<string, unknown>();
       for (const card of deck) {

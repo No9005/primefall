@@ -10,7 +10,7 @@ const ASSASSIN = "left-assassin";
 const BRUISER = "left-bruiser";
 const ENEMY = "right-bruiser";
 const OTHER_ENEMY = "right-controller";
-// Assassin: Precision Shot (0), Long Shot (Overdrive 4 at Range 6 or more). Bruiser: Slam Shot, Breach Charge, Shockwave, Bulwark.
+// Assassin: Precision Shot (0), Long Shot. Bruiser: Slam Shot, Breach Charge, Shockwave, Bulwark.
 const LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot", 1);
 const SLAM_SHOT = cardIndex(HeroClass.Bruiser, "Slam Shot");
 const BREACH_CHARGE = cardIndex(HeroClass.Bruiser, "Breach Charge");
@@ -33,7 +33,7 @@ const plan = (heroId: string, action: QueuedAction, pitched: number[]): SquadPla
 });
 
 describe("Events carry the card that caused them", () => {
-  it("tags an Attack with the card, the Range and no Overdrive flag in its standard mode", () => {
+  it("tags an Attack with the card, the Range", () => {
     const match = scene({ [ASSASSIN]: { col: 2, row: 1 }, [ENEMY]: { col: 8, row: 1 } });
     const { events } = resolveRound(match, [plan(ASSASSIN, { kind: ActionKind.Primary, card: LONG_SHOT, target: ENEMY }, [0])]);
     expect(events).toEqual([
@@ -69,6 +69,5 @@ describe("Events carry the card that caused them", () => {
     const block = resolveRound(match, [plan(BRUISER, { kind: ActionKind.Block, card: SLAM_SHOT }, [1])]);
     expect(block.events).toEqual([{ kind: EventKind.ShieldGained, tick: 1, heroId: BRUISER, amount: expect.any(Number) }]);
     expect(block.events[0]).not.toHaveProperty("card");
-    expect(block.events[0]).not.toHaveProperty("overdrive");
   });
 });

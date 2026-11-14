@@ -371,8 +371,6 @@ export interface MatchEvent {
   casterId?: string;
   /** The card that caused the event (for example "Slam Shot"); absent for events no card causes, such as Block. */
   card?: string;
-  /** True when the card was played in Overdrive. */
-  overdrive?: boolean;
   /** Why the Attack missed, for `AttackFailed`. */
   reason?: AttackFailReason;
   /** Range in tiles (Chebyshev) between attacker and target, for `AttackHit` and `AttackFailed` (not for `NotVisible`). */
