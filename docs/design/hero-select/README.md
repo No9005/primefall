@@ -4,14 +4,16 @@ The look of the Hero Select screen and of the poses its three Heroes strike. It 
 
 ## Update: Hero Names, bigger Heroes, the BIO sheet (design canvas page "Hero Select: names and bios", variant A)
 
-Chosen by the product owner. **Where this section differs from the table below, this section wins.** The pictures are `overview/names-controller.png` and `overview/names-bio.png` (screenshots of the game at 844 x 390).
+Chosen by the product owner. **Where this section differs from the table below, this section wins.** The pictures are `overview/names-controller.png`, `overview/names-assassin.png` and `overview/names-bio.png` (screenshots of the game at 844 x 390).
 
-- **Heroes:** the sprites are drawn at 3 screen px per sprite px (before: 2); the feet of every Hero stand at y 214 (area top 56, feet 158 inside it); the tap area of a Hero is 240 x 238.
-- **Under each Hero:** its **Hero Name** (Rajdhani 700 19 px, letter spacing 0.12 em, white; teal when selected) at y 246, and its class (Rajdhani 600 12 px, letter spacing 0.2 em, muted) at y 270. No bar under the name.
-- **The band below:** only the role text (Barlow 500 14 px, line height 20, at (40, 298), 600 wide), and **under it** the two quiet pills VIEW CARDS and BIO at (40, 344), 10 px apart, 32 high. BIO has a teal border. With no Hero selected the band shows TAP A HERO and its text and no buttons. START stays at the right.
+- **Heroes:** the sprites are drawn at 2.5 screen px per sprite px (before: 2); the feet of every Hero stand at y 194 (area top 56, feet 138 inside it); the tap area of a Hero is 240 x 214.
+- **Under each Hero:** its **Hero Name** (Rajdhani 700 17.5 px, letter spacing 0.12 em, 24 line height, white; teal when selected) at y 230, and its class (Rajdhani 600 12 px, letter spacing 0.2 em, muted) at y 254. No bar under the name.
+- **The band below:** only the role text (Barlow 500 14 px, line height 20, at (40, 286), 600 wide, two lines at most), and **under it** the two quiet pills CARDS and BIO at (40, 338), 10 px apart, 32 high, in the same style (1 px steel border). **The bottom edge of the pills is the bottom edge of START (y 370).** The gaps run 6 px (ring to name), 16 px (class to role text), 12 px (role text to pills). With no Hero selected the band shows TAP A HERO and its text and no buttons. START stays at the right.
+- **The title** (CHOOSE YOUR HERO) stands in front of the Heroes: the drone of the Controller floats behind it.
+- **HIDDEN:** the Assassin's label is drawn by the screen, 7 design px above the head (the sheet's own label floats too high and is hidden); it fades in when the Hero has gone Hidden.
 - **The BIO sheet** (a sheet like the card list: 764 x 358 at (40, 16) over the 72 % dark overlay, background `#151b23`, border 1 px `#2a3643`): no title and no divider, only the close button (40 x 40) at the top right (right 14, top 14). The close-up (216 x 216, steel border, the `portrait.png` of the pixel concept at 6 x) at (28, 62) in the sheet. Right of it (x 296, 440 wide), from y 57 and flush with the top of the close-up: the Hero Name (Rajdhani 700 32 px, 36 line height), the class in teal (700 13 px, letter spacing 0.2 em), the bio (Barlow 15 px, line height 22, 16 px below), then the line of the Hero in italic with quotation marks (14 px below).
 - **The words** are in `apps/web/src/hero-select.ts` (`HERO_PROFILES`); their source is `docs/design/world/README.md`.
-- **The background grid** is visible (lines at 5.5 % white) and drifts diagonally, one cell (64 x 36 px) in 36 s; with reduced motion it stands still.
+- **The background:** the quiet tile grid of before, and over it a diffuse patch of isometric grid (a soft elliptic mask, about 8 % white at its strongest) that drifts from the lower right to the upper left in 52 s and fades in and out; with reduced motion it is not drawn.
 
 ## Files
 

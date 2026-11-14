@@ -66,10 +66,10 @@ test("Back leads to the start screen", async ({ page }) => {
   await expect(page.getByTestId("start-screen")).toBeVisible();
 });
 
-test("View cards lists the Deck of the selected Hero and closes", async ({ page }) => {
+test("CARDS lists the Deck of the selected Hero and closes", async ({ page }) => {
   await openHeroSelect(page);
   await page.getByTestId("hero-controller").click();
-  await page.getByRole("button", { name: "VIEW CARDS" }).click();
+  await page.getByRole("button", { name: "CARDS" }).click();
   const list = page.getByTestId("card-list");
   await expect(list).toContainText("CONTROLLER: 10 CARDS");
   await expect(list).toContainText("Scout Drone x2");
