@@ -6,7 +6,7 @@ The look of the start flow, the side screen, the role announcement, the HUD and 
 
 | Image | State | Compare with |
 |---|---|---|
-| `overview/start-screen.png` | Start screen: Classic (default) and Attack and Defend, Resume, Tutorial, seed | the start flow |
+| `overview/start-screen.png` | Start screen: Classic (default) and Attack and Defend, Resume, seed | the start flow |
 | `overview/side-attack.png`, `side-defend.png` | side screen with the preview behind it | the side screen |
 | `overview/role-banner-attack.png`, `role-banner-defend.png` | role announcement when a match starts | the banner |
 | `overview/hud-attacker.png`, `hud-defender.png` | planning HUD | the HUD pills |
@@ -15,7 +15,7 @@ The look of the start flow, the side screen, the role announcement, the HUD and 
 
 ## Flow
 
-Classic: Start screen, Hero Select, match. Attack and Defend: Start screen, side screen (Attack or Defend), Hero Select, match. Back returns to the previous screen. Resume and Tutorial skip the side screen and the Hero Select (Resume restores mode, role and Hero; the Tutorial stays classic and Bruiser).
+Classic: Start screen, Hero Select, match. Attack and Defend: Start screen, side screen (Attack or Defend), Hero Select, match. Back returns to the previous screen. Resume skips the side screen and the Hero Select (it restores mode, role and Hero).
 
 ## Colours and tokens
 

@@ -1,9 +1,7 @@
 # Overdrive as Card Exile
 
-Overdrive is an alternative mode on selected cards, not a separate card type. Activating Overdrive exiles the card and replaces its standard effect with a stronger one (the Overdrive text is complete and says what it keeps from the standard effect); some Overdrives grant a permanent buff that disappears when the Hero becomes exhausted.
-
-Each Hero Deck contains three Overdrive modes, meaning three distinct Overdrive effects, on at most four cards. Cards with the same name are identical in every respect, including the Overdrive, so a mode on a card with two copies uses two of the four. The cost is future card economy, so Overdrive expresses the core Primefall tension: immediate power versus long-term survival.
+Overdrive was an alternative mode on selected cards: using it exiled the card and replaced its standard effect with a stronger one.
 
 ## Status
 
-accepted. Revised to state that an Overdrive replaces the standard effect, that same-name cards share their Overdrive, and the limit of four Overdrive cards per Deck.
+superseded. Removed in the card redesign test (#415): in playtests nobody had a reason to use an Overdrive, and it competed with Pitch for the same decision. Every card now has one effect and costs 1 Energy; Pitch stays. Exile still happens through Deck Damage (ADR 0001). The Overdrive text of ADRs 0001, 0004, 0005, 0009, 0014, 0015, 0021, 0023 and 0025 and of `docs/specs/mvp-card-set.md` is removed with it. The file is kept so that links to it keep working.

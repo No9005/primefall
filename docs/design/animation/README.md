@@ -10,10 +10,10 @@ The final art (sprites, VFX assets) is produced separately (see `asset-contract.
 - `sheets/*.png`: **filmstrips**. One strip per animation, six frames taken at the times printed in each frame (milliseconds from the start of the animation). Read them left to right. "once" animations play one pass and then rest; "loop" animations repeat.
 - `reference/*.html`: the live reference pages. **Open them in a browser to see the real motion.** Every animation is plain CSS `@keyframes` with the exact numbers (px at game size, degrees, percentages of the duration): those are the source of truth for angles, offsets and timing. Translate them one to one into the PixiJS rig and effects. The pages can be opened from disk, no server needed.
   - `BruiserPoses.html`, `AssassinPoses.html`, `ControllerPoses.html`: the figures and their poses.
-  - `EffectsWeapons.html`, `EffectsField.html`, `OverdriveEffects.html`: the board effects.
+  - `EffectsWeapons.html`, `EffectsField.html`: the board effects (`OverdriveEffects.html` is kept as a reference of a removed mechanic, ADR 0003).
   - `Squad.html`, `TeamColours.html`: the three Heroes next to each other, and the team colour options (option A, blue against red, was chosen).
 
-Sheets by file: `bruiser-1..3`, `assassin-1..4`, `controller-1..4` (poses); `effects-weapons-1..2`, `effects-field-1..2`, `overdrive-1..3` (effects).
+Sheets by file: `bruiser-1..3`, `assassin-1..4`, `controller-1..4` (poses); `effects-weapons-1..2`, `effects-field-1..2` (effects).
 
 ## Units and conventions
 
@@ -55,7 +55,7 @@ Our Squad is the blue family, the enemy the red family, and the class is a shade
 | Own | `#2a56a8` `#5f8fe0` `#173a78` `#234a94` `#1f4488` | `#4f8fe6` `#a9ccff` `#2d5aa8` `#3f78d0` `#2a5fb8` | `#8ec3ff` `#d0e8ff` `#4a7ab8` `#6aa6ea` `#3a6ab0` |
 | Enemy | `#a3212c` `#d8606a` `#6e141c` `#8c1b25` `#7a1822` | `#e04a44` `#ff9c96` `#9a2a2a` `#c93a38` `#b02e2e` | `#ff9a92` `#ffd0cc` `#b04a4a` `#e87a76` `#a63a3a` |
 
-The class stays readable by **shape** (shoulder pads, antenna, hood), the team by **colour**. Weapon and effect colours (orange slug, light-blue tracer, blue orb, gold Overdrive) do not depend on the team.
+The class stays readable by **shape** (shoulder pads, antenna, hood), the team by **colour**. Weapon and effect colours (orange slug, light-blue tracer, blue orb) do not depend on the team.
 
 ## Clips (Hero poses)
 
@@ -87,7 +87,7 @@ The poses of a class differ on purpose: the Bruiser is heavy and slow, the Assas
 
 ## Effects
 
-Each effect is a few shapes with an alpha curve. Timings are from the moment of the action (fire = the `fire` beat of the Hero's clip). Pictures: `effects-weapons-*`, `effects-field-*`, `overdrive-*`.
+Each effect is a few shapes with an alpha curve. Timings are from the moment of the action (fire = the `fire` beat of the Hero's clip). Pictures: `effects-weapons-*`, `effects-field-*`.
 
 - **Muzzle flash**: a radial blob at the muzzle, 0 to 1.5 x scale over 70 ms, gone by 270 ms. Colour by weapon.
 - **Projectile**: leaves at the fire beat. Slam slug: 11 x 5 orange, 0.10 px/ms. Precision tracer: a 24 x 2 light-blue streak, 0.30 px/ms. Pulse orb: 7 px, grows from 0.8 to 1.4 x on the way, 0.10 px/ms. Tag dart: 14 x 3 pink. Long Shot: no flight, an instant white-cyan line the whole way that fades over 450 ms, plus a red dotted laser (1 px) visible for 480 ms before the shot.
@@ -102,7 +102,7 @@ Each effect is a few shapes with an alpha curve. Timings are from the moment of 
 - **Scout Drone area**: a 3 by 3 diamond of fog tiles lifts from the middle outwards (cyan tint) while the drone hovers; enemies in it fade in; two pips count the Resolutions; then the fog closes. The drone circles over the area and sends scan rays down; the scanned Squad sees a dashed amber outline with a sweep and `SCANNED · n` (docs/design/role-visuals/380/).
 - **Fog and Ghost**: an enemy that leaves sight fades to a 45 % alpha Ghost with a dashed ring and a `last seen` tag while fog rolls over the tile.
 - **Prime Zone**: the 3 by 3 zone is grey (`#8a99a8` at 20 %) while empty, teal at 35 to 55 % when our Squad holds it with a ring pulse per Resolution, gold when the third is reached, amber when contested.
-- **Overdrive** (gold `#ffb000` / `#ffd24a`): before the action the Hero gets a gold glow (radial blob), two gold rings rising from the ground and rising sparks with an `OVERDRIVE` tag; the effects are the normal ones but gold and stronger as shown in `overdrive-*`. Adrenal Surge leaves a small gold double-chevron badge with `+1` beside the Hero's ring until Exhaustion.
+- **Adrenal Surge** leaves a small gold double-chevron badge with `+1` beside the Hero's ring until Exhaustion.
 
 ## Playback rules
 

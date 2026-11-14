@@ -55,7 +55,7 @@ Three sources of people: the military, craft, the underworld.
 
 Notes:
 
-- **Decided: Bruiser = Max Overload.** "Overload" ties to the loadmaster and to reactor and Overdrive. Considered and dropped: Max Power (the alias Homer Simpson takes in *Homer to the Max*), Max Strong, Max Payload, and German names such as Rolf Rammbock (the game is in English, so the puns would not land).
+- **Decided: Bruiser = Max Overload.** "Overload" ties to the loadmaster and to the reactor. Considered and dropped: Max Power (the alias Homer Simpson takes in *Homer to the Max*), Max Strong, Max Payload, and German names such as Rolf Rammbock (the game is in English, so the puns would not land).
 - Whether the same three Heroes stand on both sides in a match is open. The names belong to the three classes, so the two Squads' Heroes are told apart by the Squad ring and colour. Another option is that the opposing Squad gets its own names later.
 - Can a Squad have two Heroes of the same class? ADR 0025 mentions a Squad of three Assassins. If yes, two "Max Power" would stand in one Squad. A change of that rule is not part of this.
 - Where the name is shown is undecided. Suggestions so far: the Hero Select screen with the class as a smaller second line; the planning HUD keeps the class; the deck view shows the name as the owner of the cards; the Resolution log and match end use the name in text but not over the Hero on the board. A new glossary term (for example "Hero Name") would be needed.

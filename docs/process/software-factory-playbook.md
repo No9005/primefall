@@ -83,7 +83,7 @@ Read this before building. Each row is something that cost a run, a pull request
 - **Closed blockers do not mean the groundwork exists.** A ticket depends on the code it assumes, not only on the tickets it was filed behind. Before marking a ticket ready, check that `main` has what it builds on. If a run stops because the groundwork is missing, split the ticket; do not retry.
 - **A ticket sized for one context window.** Nine cards, five interpreters and new UI in one ticket was too big. Slices should be vertical and demonstrable, with the first slice a prefactoring that later slices plug into.
 - **Mention the shared parts in all consumers.** When a foundation ticket delivers something another ticket would have built (here: Long Shot), say so in that other ticket.
-- **Specification gaps surface late.** Sight range, distance metric, Cover occupancy, queue length and what Overdrive replaces came up only while specifying tickets and reading the first reviews; numbered grilling rounds with a recommended answer per question settled most of them in one pass.
+- **Specification gaps surface late.** Sight range, distance metric, Cover occupancy, queue length came up only while specifying tickets and reading the first reviews; numbered grilling rounds with a recommended answer per question settled most of them in one pass.
 
 ### Cloud-session specifics
 

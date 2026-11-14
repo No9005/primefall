@@ -29,7 +29,7 @@ Cards are played by dragging them onto a zone:
 | The Block chip | Block 2 |
 | The Energy orb | Pitch |
 
-The tap flow stays as a fallback. A card with Overdrive shows the Normal and the Overdrive face side by side; the player chooses by the face the card is dropped as.
+The tap flow stays as a fallback.
 
 ## Board rotation
 
