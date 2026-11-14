@@ -11,7 +11,8 @@ import {
   tileAt,
 } from "game-core";
 import { Application, Assets, Container, Graphics, Text } from "pixi.js";
-import { areaColorOf, COVER_OWN, coverTag, dashedTileOutline, drawScoutArea, drawTerrain, drawZone, ghostMark, scannedMark, scoutDroneMark } from "./board-drawing";
+import { LASER_FLICKER_MS, laserWallAlpha } from "./prime-zone";
+import { areaColorOf, COVER_OWN, coverTag, dashedTileOutline, drawLaserWalls, drawScoutArea, drawTerrain, drawZone, ghostMark, scannedMark, scoutDroneMark } from "./board-drawing";
 import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPick, Point } from "./card-drag";
 import {
@@ -410,6 +411,8 @@ interface BoardProps {
   moveFrameHero?: GridPosition;
   /** A faint tint over the Prime Zone tiles: teal while the own Squad holds it, amber while contested, steel otherwise. */
   zoneTint: ZoneLook;
+  /** The Prime Zone is not active yet: red laser walls stand around it, above the fog. They flicker and drop when it becomes active. */
+  primeWalls?: boolean;
   /** While a card is dragged: short labels on the Heroes or tiles that take a drop. */
   zoneLabels: readonly { position: GridPosition; text: string }[];
   /** While a card is dragged: a tinted area (the Range of a card played here). */
@@ -540,6 +543,7 @@ export function Board({
   onTileTap,
   moveFrameHero,
   zoneTint,
+  primeWalls = false,
   zoneLabels,
   areaTiles,
   rangeArea = NO_RANGE,
@@ -567,6 +571,8 @@ export function Board({
   const [overlay, setOverlay] = useState<Container>();
   /** The layer of the Fog of War clouds: above the floor and the props, below the planning marks and the effects. */
   const [fogLayer, setFogLayer] = useState<Container>();
+  const [wallsLayer, setWallsLayer] = useState<Container>();
+  const wallsWereUp = useRef(false);
   /** Above the props and the Heroes, below the effects: the ghost and the numbers of the planned paths. */
   const [overlayTop, setOverlayTop] = useState<Container>();
   const [terrain, setTerrain] = useState<Terrain>();
@@ -1259,6 +1265,35 @@ export function Board({
     };
   }, [terrain, angle, strokeScale, aiming, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
 
+  // The laser walls of the Prime Zone: closed while it is inactive (they show through the fog), a short flicker when it opens.
+  useEffect(() => {
+    if (!wallsLayer || !terrain) return;
+    const drawn = drawLaserWalls(wallsLayer, REACTOR_DECK, angle);
+    const flicker = wallsWereUp.current && !primeWalls && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    wallsWereUp.current = primeWalls;
+    if (!primeWalls && !flicker) {
+      drawn.created.forEach((child) => child.destroy({ children: true }));
+      return;
+    }
+    let frame = 0;
+    const began = performance.now();
+    const run = (now: number) => {
+      const ms = now - began;
+      drawn.panels.forEach((panel, index) => {
+        panel.alpha = flicker ? laserWallAlpha(ms, index) : 1;
+      });
+      drawn.posts.forEach((post) => {
+        post.alpha = flicker ? laserWallAlpha(ms, 1000) : 1;
+      });
+      if (flicker && ms < LASER_FLICKER_MS) frame = requestAnimationFrame(run);
+    };
+    run(began);
+    return () => {
+      cancelAnimationFrame(frame);
+      drawn.created.forEach((child) => child.destroy({ children: true }));
+    };
+  }, [wallsLayer, terrain, angle, primeWalls]);
+
   useEffect(() => {
     const element = host.current;
     if (!element) return;
@@ -1287,7 +1322,9 @@ export function Board({
       const planningTop = new Container();
       const effectsLayer = new Container();
       const fog = new Container();
-      world.addChild(floor, planning, objects, fog, planningTop, effectsLayer);
+      const walls = new Container();
+      world.addChild(floor, planning, objects, fog, walls, planningTop, effectsLayer);
+      setWallsLayer(walls);
       app.stage.addChild(world);
       setFogLayer(fog);
       setEffectsHost({ layer: effectsLayer, world });

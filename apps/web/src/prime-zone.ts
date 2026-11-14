@@ -9,6 +9,26 @@ export const PRIME_ZONE_END_CALLOUT_MS = 2400;
 /** The Prime Zone becoming active is announced longer than the scoring callouts. */
 export const PRIME_ZONE_ACTIVE_CALLOUT_MS = 2400;
 
+/** How long the laser walls around the Prime Zone flicker before they are gone, when the zone becomes active. */
+export const LASER_FLICKER_MS = 1100;
+const FLICKER_STEP_MS = 90;
+
+/** Deterministic noise in 0..1 from two integers (no Math.random: the same Resolution flickers the same way). */
+function noise(a: number, b: number): number {
+  let h = Math.imul(a + 1, 374761393) ^ Math.imul(b + 1, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/** The alpha of laser wall panel `index` `ms` after the flicker began: on at the start, more and more panels out, all gone at the end. */
+export function laserWallAlpha(ms: number, index: number): number {
+  if (ms >= LASER_FLICKER_MS) return 0;
+  if (ms <= 0) return 1;
+  const step = Math.floor(ms / FLICKER_STEP_MS);
+  const stillOn = noise(index, step) < 1 - ms / LASER_FLICKER_MS;
+  return stillOn ? 0.45 + 0.55 * noise(index + 97, step) : 0;
+}
+
 export type PrimeProgress = Record<SquadId, number>;
 
 export interface PrimeCallout {
