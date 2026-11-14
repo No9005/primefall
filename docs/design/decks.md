@@ -57,25 +57,25 @@ Decided: the default movement rises to 3 (every card can be used as Move 3 inste
 
 Status: **existing** (as in the spec), **changed** (text changed), **new**. Energy costs are the current ones where the card exists. Deck sizes are those of ADR 0025 (Bruiser 12, Controller 10, Assassin 9; the Deck is the life); they are kept until the measurement.
 
-### Max Overload (Bruiser), 11 cards: up close and personal
+### Max Overload (Bruiser), 12 cards: up close and personal
 
-Max wants to be up close and personal: he pulls enemies to himself and shields himself. Agreed in the chat; the numbers are starting points.
+Max wants to be up close and personal: he pulls enemies to himself and shields himself. Agreed in the chat; numbers are starting points. His Attacks reach Range 2 to 3, on purpose: only the Hook reaches far, to bring the enemy to him.
 
 | # | Card | Energy | Effect (proposal) | Count |
 |---|---|---|---|---|
-| 1 | **Double Shot** | 1 | Attack, short range (Range 1 to 2): two Attacks on the same target, 2 damage each, +1 damage at Range 1. (Two hits of 3 at Range 1 is a lot: measure.) | 1 |
-| 2 | **Rush** | 1 | Utility: move up to 5 tiles toward a named visible enemy Hero and end next to it (stops at a wall, Full Cover or a Hero); this Hero gains Shield 2. It can only aim at a Hero, so it is not a Move. | 2 |
-| 3 | **Shield** | 1 | Utility: this Hero gains Shield 1 (open: 2). | 3 |
+| 1 | **Double Shot** | 1 | Attack, Range 1 to 2: two Attacks on the same target, 2 damage each, +1 damage each at Range 1. (Measure: 6 damage at Range 1 is a lot.) | 1 |
+| 2 | **Rush** | 1 | Utility: first gain Shield 2, then move up to 5 tiles toward a named visible enemy Hero and end next to it (stops at a wall, Full Cover or a Hero). It can only aim at a Hero, so it is not a Move. | 2 |
+| 3 | **Shield** | 1 | Utility: this Hero gains Shield 2. | 2 |
 | 4 | **Grappling Hook** | 1 | Utility, Range 7: move the named visible enemy Hero toward this Hero (open: all the way next to Max, or at most 3 tiles); needs Line of Sight. | 2 |
-| 5 | **Close Attack** | 1 | Attack, Range 1 to 2: deal 2 damage, +1 at Range 1. | 2 |
-| 6 | **Long Attack** | 1 | Attack, Range 3 (more Range, weaker): deal 1 damage. | 1 |
+| 5 | **Close Attack** | 1 | Attack, Range 1 to 2: deal 2 damage, +1 at Range 1. | 3 |
+| 6 | **Concussion Round** | 1 | Attack, Range 3: deal 2 damage and apply Slow. (Proposed twelfth card: a hooked enemy cannot walk away.) | 1 |
+| 7 | **Long Attack** | 1 | Attack, Range 3 (more Range, weaker): deal 1 damage. | 1 |
 
 Notes:
 
-- The deck has 11 cards (12 before): Max is a little less tough, or a twelfth card follows (open).
-- Gone from Max's deck: Breach Charge, Wrecking Blow, Shockwave, Concussion Round, Pull (replaced by the Hook), Adrenal Surge, Bulwark (replaced by Shield), Charge (replaced by Rush). They stay in this file as ideas; Cover destruction moves to Tilly.
-- Synergy that arises natively: the Hook pulls an enemy next to Max, where Double Shot and Close Attack deal +1 and Rush closes the rest.
-- Missing on purpose: no Slow, no Knockback, no Cover breaking.
+- Gone from Max's deck compared with the old one: Breach Charge, Wrecking Blow, Shockwave, Pull (replaced by the Hook), Adrenal Surge, Bulwark (replaced by Shield), Charge (replaced by Rush). They stay in this file as ideas; Cover destruction moves to Tilly.
+- Synergy that arises natively: the Hook pulls an enemy next to Max, where Double Shot and Close Attack deal +1; Concussion Round keeps the hooked enemy there; Rush closes the rest and shields on the way in.
+- Missing on purpose: no Knockback, no Cover breaking.
 
 ### Tilly Turnover (Controller), 10 cards: the Field and the sight
 
