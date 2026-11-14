@@ -182,7 +182,7 @@ function rgb(color: number): [number, number, number] {
   return [((color >> 16) & 255) / 255, ((color >> 8) & 255) / 255, (color & 255) / 255];
 }
 
-/** The cloud layer of one board: a mesh over the grid footprint, turned with the view angle, with its own drift loop. */
+/** The cloud layer of one board: a mesh over the grid footprint, with its own drift loop. */
 export class FogClouds {
   readonly container = new Container();
   private readonly geometry: MeshGeometry;
@@ -195,7 +195,6 @@ export class FogClouds {
 
   constructor(
     private readonly grid: Pick<Grid, "width" | "height">,
-    angle: number,
     private readonly reducedMotion: boolean,
   ) {
     const { width, height } = grid;
@@ -213,7 +212,7 @@ export class FogClouds {
       uvs: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
       indices: new Uint32Array([0, 1, 2, 0, 2, 3]),
     });
-    this.setAngle(angle);
+    this.placeQuad();
     const { a, b } = FOG_CLOUDS;
     const shader = Shader.from({
       gl: { vertex: VERTEX, fragment: FRAGMENT },
@@ -235,10 +234,10 @@ export class FogClouds {
 
   private readonly shader: Shader;
 
-  /** Moves the quad to the footprint of the grid at a view angle (the clouds themselves stay in world space). */
-  setAngle(angle: number): void {
+  /** Puts the quad on the footprint of the grid (the clouds themselves stay in world space). */
+  private placeQuad(): void {
     const positions = this.geometry.positions;
-    footprintCorners(this.grid as Grid, angle).forEach(({ x, y }, index) => {
+    footprintCorners(this.grid as Grid).forEach(({ x, y }, index) => {
       positions[index * 2] = x;
       positions[index * 2 + 1] = y;
     });

@@ -8,7 +8,7 @@ const world: EffectsWorld = {
   place: (id) => ({ x: id === "a" ? 0 : 128, y: 0 }),
   tile: ({ col, row }) => ({ x: col * 64, y: row * 32 }),
   own: (id) => id === "a",
-  builtCover: (position, grow) => coverLook(position, "half", true, undefined, grow),
+  builtCover: (position, grow) => coverLook(position, "half", true, grow),
 };
 const tile = { col: 2, row: 1 };
 

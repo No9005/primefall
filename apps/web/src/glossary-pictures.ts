@@ -8,7 +8,7 @@ import type { SceneName } from "./glossary";
 import { type HeroPose, marksFigure, shieldBubble } from "./hero-figure";
 import { loadPixelHeroes, styledHeroFigure } from "./pixel-heroes";
 import { heroMarks, type HeroMarks, IconKind } from "./shield-marks";
-import { coverLook, depthOf, footOffset, gridToWorld, VIEW_ANGLE } from "./terrain";
+import { coverLook, depthOf, footOffset, gridToWorld } from "./terrain";
 import { areaRing, GHOST_ALPHA, zoneLook, type ZoneState } from "./vision-effects";
 import type { EffectCue } from "./weapon-effects";
 
@@ -19,7 +19,6 @@ import type { EffectCue } from "./weapon-effects";
 export const PICTURE = { width: 220, height: 160, resolution: 2 } as const;
 /** The camera scale of a picture: a 3 by 3 board fills the width, with room above the Hero for its marks. */
 const CAMERA = 0.55;
-const ANGLE = VIEW_ANGLE;
 const BACKGROUND = "#12161c";
 const CENTRE: GridPosition = { col: 1, row: 1 };
 
@@ -48,7 +47,7 @@ class Scene {
     this.root.addChild(this.floor, this.planning, this.objects);
     this.effects = new EffectsLayer(this.objects);
     this.root.scale.set(camera);
-    const centre = gridToWorld(CENTRE, ANGLE);
+    const centre = gridToWorld(CENTRE);
     this.root.position.set(PICTURE.width / 2 - centre.x * camera, PICTURE.height * 0.64 - centre.y * camera);
   }
 
@@ -56,17 +55,17 @@ class Scene {
   terrain(): this {
     drawTerrain(
       { floor: this.floor, objects: this.objects, planning: this.planning },
-      { grid: this.grid, angle: ANGLE, strokeScale: this.camera, lit: ALL_TILES, placedCover: this.cover.placed ?? [], ...(this.cover.own && { ownPlacedCover: this.cover.own }), destroyedCover: this.cover.destroyed ?? [] },
+      { grid: this.grid, strokeScale: this.camera, lit: ALL_TILES, placedCover: this.cover.placed ?? [], ...(this.cover.own && { ownPlacedCover: this.cover.own }), destroyedCover: this.cover.destroyed ?? [] },
     );
     return this;
   }
 
   /** A Hero token on `tile`, its feet on the tile. Marks and statuses are children of the token, as on the board. */
   hero(tile: GridPosition, { enemy = false, pose = "idle", heroClass = HeroClass.Bruiser, alpha = 1 }: { enemy?: boolean; pose?: HeroPose; heroClass?: HeroClass; alpha?: number } = {}): Container {
-    const { x, y } = gridToWorld(tile, ANGLE);
+    const { x, y } = gridToWorld(tile);
     const token = new Container();
-    token.position.set(x, y + footOffset(ANGLE));
-    token.zIndex = depthOf(tile, ANGLE) + 0.5;
+    token.position.set(x, y + footOffset());
+    token.zIndex = depthOf(tile) + 0.5;
     const { figure } = styledHeroFigure(heroClass, enemy, pose, this.camera, baseFacing(enemy));
     figure.alpha = alpha;
     token.addChild(figure);
@@ -79,10 +78,10 @@ class Scene {
     const at = (id: string) => {
       const tile = heroes[id];
       if (!tile) return undefined;
-      const { x, y } = gridToWorld(tile, ANGLE);
-      return { x, y: y + footOffset(ANGLE) };
+      const { x, y } = gridToWorld(tile);
+      return { x, y: y + footOffset() };
     };
-    const world: EffectsWorld = { place: at, tile: (tile) => gridToWorld(tile, ANGLE), own: () => own, builtCover: (tile, grow) => coverLook(tile, "half", true, ANGLE, grow) };
+    const world: EffectsWorld = { place: at, tile: (tile) => gridToWorld(tile), own: () => own, builtCover: (tile, grow) => coverLook(tile, "half", true, grow) };
     this.effects.play(cues, 0, world, false);
     this.updates.push(() => this.effects.update(ms / CLIP_SPEED));
   }
@@ -118,7 +117,7 @@ function zoneScene(state: ZoneState, filled: number): Container {
   const grid = gridOf([0, 1, 2].map(() => [TileKind.PrimeZone, TileKind.PrimeZone, TileKind.PrimeZone]));
   const scene = new Scene(grid);
   scene.terrain();
-  drawZone(scene.planning, grid, ANGLE, zoneLook(state, filled));
+  drawZone(scene.planning, grid, zoneLook(state, filled));
   return scene.finish();
 }
 
@@ -278,17 +277,17 @@ const SCENES: Record<SceneName, () => Container> = {
   },
   scoutArea() {
     const scene = new Scene(FLOOR_GRID, {}, 0.42).terrain();
-    drawScoutArea(scene.planning, FLOOR_GRID, ANGLE, { center: CENTRE, size: 3, remaining: 2 }, (tile) => areaRing(CENTRE, tile));
+    drawScoutArea(scene.planning, FLOOR_GRID, { center: CENTRE, size: 3, remaining: 2 }, (tile) => areaRing(CENTRE, tile));
     scene.hero(HERO_AT, { enemy: true });
     // The drone mid-scan: rays down to the corners and the ring over the floor.
-    const drone = scoutDroneMark(CENTRE, 3, ANGLE, false);
+    const drone = scoutDroneMark(CENTRE, 3, false);
     drone.update(250);
     scene.objects.addChild(drone.container);
     return scene.finish();
   },
   scannedArea() {
     const scene = new Scene(FLOOR_GRID).terrain();
-    const mark = scannedMark(CENTRE, 3, 2, ANGLE, false);
+    const mark = scannedMark(CENTRE, 3, 2, false);
     mark.update(600);
     scene.planning.addChild(mark.container);
     scene.hero(HERO_AT);

@@ -365,7 +365,7 @@ describe("frameSquadCamera", () => {
   const viewOf = (width: number, height: number) => ({ width, height, angle: 45 });
   const freeOf = (width: number, height: number) => freeBoardArea({ width, height }, { kind: "idle" });
   const screenOf = (tile: { col: number; row: number }, camera: { scale: number; x: number; y: number }) => {
-    const { x, y } = gridToWorld(tile, 45);
+    const { x, y } = gridToWorld(tile);
     return { x: x * camera.scale + camera.x, y: y * camera.scale + camera.y };
   };
 

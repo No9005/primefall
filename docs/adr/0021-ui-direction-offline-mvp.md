@@ -1,6 +1,6 @@
 # UI Direction of the Offline MVP
 
-> **Update:** The Original style and the visual style setting (with the Options screen) were removed; the game is drawn in Pixel art only, from one fixed view. Where this record speaks of the Original style, the eight views or the setting, that no longer holds.
+> **Update:** The Original style and the visual style setting (with the Options screen) were removed; the game is drawn in Pixel art only, from one fixed view. The eight views and the code that turned the board were removed too; whether and how the board turns is to be thought through anew. Where this record speaks of the Original style, the eight views or the setting, that no longer holds.
 
 > **Terminology:** `GLOSSARY.md` now calls the Spawn strips Drop Points (this record: Spawn). This record keeps its original words.
 

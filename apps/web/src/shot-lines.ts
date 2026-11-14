@@ -1,10 +1,10 @@
 import { CoverKind, type EnemyView, type Grid, type GridPosition, shotLine, Visibility } from "game-core";
 import type { Point } from "./card-drag";
-import { footOffset, gridToWorld, TILE_HEIGHT, VIEW_ANGLE } from "./terrain";
+import { footOffset, gridToWorld, TILE_HEIGHT } from "./terrain";
 
 // The line of fire drawn while aiming. The decision (hit, Cover, where the shot is blocked) is `shotLine` of
-// game-core. A drawing is kept in tiles, so it does not depend on the view angle; `shotInWorld` turns it into
-// world points with the same projection as the terrain and the tokens, whatever angle the board is turned to.
+// game-core. A drawing is kept in tiles; `shotInWorld` turns it into
+// world points with the same projection as the terrain and the tokens.
 
 export enum SegmentStyle {
   /** A shot that can be fired: dashed teal. */
@@ -34,7 +34,7 @@ export interface ShotDrawing {
   ringed: boolean;
 }
 
-/** A shot drawing in world pixels at one view angle. */
+/** A shot drawing in world pixels. */
 export interface ShotInWorld {
   segments: { from: Point; to: Point; style: SegmentStyle }[];
   cross?: Point;
@@ -43,10 +43,10 @@ export interface ShotInWorld {
 /** How high above the foot of a Hero the line starts and ends: the chest. */
 const CHEST_LIFT = TILE_HEIGHT * 1.05;
 
-/** The chest height above a tile, in world pixels at a view angle. Tokens stand on the middle of their tile. */
-export function chestOf(tile: GridPosition, angle: number = VIEW_ANGLE): Point {
-  const { x, y } = gridToWorld(tile, angle);
-  return { x, y: y + footOffset(angle) - CHEST_LIFT };
+/** The chest height above a tile, in world pixels. Tokens stand on the middle of their tile. */
+export function chestOf(tile: GridPosition): Point {
+  const { x, y } = gridToWorld(tile);
+  return { x, y: y + footOffset() - CHEST_LIFT };
 }
 
 /** The drawing of one shot. Pure: no state, same input gives the same lines. */
@@ -67,11 +67,11 @@ export function drawShot(grid: Grid, attacker: GridPosition, target: { id: strin
   };
 }
 
-/** The lines and the cross of a drawing as world points at a view angle. */
-export function shotInWorld({ segments, cross }: ShotDrawing, angle: number = VIEW_ANGLE): ShotInWorld {
+/** The lines and the cross of a drawing as world points. */
+export function shotInWorld({ segments, cross }: ShotDrawing): ShotInWorld {
   return {
-    segments: segments.map(({ from, to, style }) => ({ from: chestOf(from, angle), to: chestOf(to, angle), style })),
-    cross: cross && chestOf(cross, angle),
+    segments: segments.map(({ from, to, style }) => ({ from: chestOf(from), to: chestOf(to), style })),
+    cross: cross && chestOf(cross),
   };
 }
 

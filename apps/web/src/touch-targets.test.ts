@@ -31,7 +31,7 @@ describe("minimum touch size of Heroes", () => {
         const screen = { x: centre.x * camera.scale + camera.x, y: centre.y * camera.scale + camera.y };
         const tapAt = (dx: number) => {
           const { x, y } = viewToWorld(screen.x + dx, screen.y, view.width, view.height, undefined, camera);
-          return resolveTap(x, y, candidates, undefined, undefined, camera.scale);
+          return resolveTap(x, y, candidates, undefined, camera.scale);
         };
         expect(tapAt(15)).toEqual({ kind: "hero", id: "ally" });
         expect(tapAt(-15)).toEqual({ kind: "hero", id: "ally" });
@@ -52,7 +52,7 @@ describe("minimum touch size of tiles and card drops", () => {
   it("picks a highlighted tile within 22 px of its floor and none farther away", () => {
     const tapBelow = (px: number) => {
       const { x, y } = viewToWorld(below(px).x, below(px).y, view.width, view.height, undefined, camera);
-      return resolveTap(x, y, { heroes: [], targetableIds: [], highlights }, undefined, undefined, camera.scale);
+      return resolveTap(x, y, { heroes: [], targetableIds: [], highlights }, undefined, camera.scale);
     };
     expect(tapBelow(15)).toEqual({ kind: "tile", tile });
     expect(tapBelow(40)).toEqual({ kind: "none" });
@@ -65,7 +65,7 @@ describe("minimum touch size of tiles and card drops", () => {
     hud: [],
     pickBoard: (point) => {
       const { x, y } = viewToWorld(point.x, point.y, view.width, view.height, undefined, camera);
-      return { target: resolveTap(x, y, { heroes: [], targetableIds: [], highlights }, undefined, undefined, camera.scale), ground: pickTileAt(x, y) };
+      return { target: resolveTap(x, y, { heroes: [], targetableIds: [], highlights }, undefined, camera.scale), ground: pickTileAt(x, y) };
     },
   };
   const places: DropPlaces = { selfId: "ally", heroIds: [], primaryTiles: [], moveTiles: [tile], here: undefined };

@@ -320,7 +320,7 @@ export interface EffectsWorld {
   tile(tile: GridPosition): Point;
   /** True for a Hero of the player's own Squad. */
   own(heroId: string): boolean;
-  /** The look of built Cover on a tile at the current view angle, grown to `grow` (0 to 1) of its height. */
+  /** The look of built Cover on a tile, grown to `grow` (0 to 1) of its height. */
   builtCover(tile: GridPosition, grow: number): CoverLook;
 }
 
@@ -494,7 +494,7 @@ export class EffectsLayer {
   private readonly texts: Text[] = [];
   private cues: readonly EffectCue[] = [];
   private statuses: { cue: Extract<EffectCue, { kind: "marked" | "slow" }>; mark: StatusMark }[] = [];
-  private world: EffectsWorld = { place: () => undefined, tile: () => ({ x: 0, y: 0 }), own: () => true, builtCover: (tile, grow) => coverLook(tile, "half", true, undefined, grow) };
+  private world: EffectsWorld = { place: () => undefined, tile: () => ({ x: 0, y: 0 }), own: () => true, builtCover: (tile, grow) => coverLook(tile, "half", true, grow) };
   private startMs = 0;
   private reduced = false;
 
