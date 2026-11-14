@@ -1,6 +1,6 @@
 import { findTiles, REACTOR_DECK, SquadId, TileKind } from "game-core";
 import { describe, expect, it } from "vitest";
-import { primeCallouts, primeScore, zoneOccupancy, zoneTint } from "./prime-zone";
+import { LASER_FLICKER_MS, laserWallAlpha, primeCallouts, primeScore, zoneOccupancy, zoneTint } from "./prime-zone";
 
 const L = SquadId.Left;
 const R = SquadId.Right;
@@ -80,5 +80,18 @@ describe("zoneOccupancy and zoneTint", () => {
     expect(unseen.enemy).toBe(false);
     expect(zoneTint(primeScore(counts(0, 0), L, unseen.contested)).color).toBe(0xe8eef5);
     expect(zoneTint(primeScore(counts(0, 0), L, zoneOccupancy([], []).contested)).color).toBe(0xe8eef5);
+  });
+});
+
+describe("laser walls", () => {
+  it("stand at the start of the flicker, drop out one by one, and are gone at its end", () => {
+    expect(laserWallAlpha(0, 3)).toBe(1);
+    expect(laserWallAlpha(LASER_FLICKER_MS, 3)).toBe(0);
+    const on = (ms: number) => Array.from({ length: 20 }, (_, index) => laserWallAlpha(ms, index)).filter((alpha) => alpha > 0).length;
+    expect(on(150)).toBeGreaterThan(on(950));
+  });
+
+  it("flickers the same way every time", () => {
+    expect(laserWallAlpha(400, 7)).toBe(laserWallAlpha(400, 7));
   });
 });

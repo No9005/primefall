@@ -1204,6 +1204,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         effects={playback?.effects}
         highlights={dragPlaces ? dragHighlights : highlights}
         zoneTint={zoneTint(score)}
+        primeWalls={countdown !== undefined}
         zoneLabels={NO_LABELS}
         areaTiles={NO_TILES}
         rangeArea={rangeArea}

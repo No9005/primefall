@@ -258,6 +258,68 @@ export function drawZone(planning: Container, grid: Grid, angle: number, { color
   return { created, tiles, border, glow };
 }
 
+/** Height of the laser walls around the Prime Zone, in world px (a Hero is about 128 px tall). */
+const LASER_WALL_HEIGHT = 64;
+const LASER_COLOR = 0xff3b30;
+const LASER_EDGE = 0xff6a5c;
+
+export interface LaserWallDrawing {
+  created: Container[];
+  /** One panel per tile edge of the zone's outline, so a flicker can drop them one by one. */
+  panels: Graphics[];
+  posts: Graphics[];
+}
+
+/**
+ * The Prime Zone before it is active: red laser walls (design `docs/design/world/images/laser-walls-drafts.png`, variant C)
+ * stand on the outline of the zone. Each tile edge is a translucent panel with a rim and a ring pattern; a post with a lamp stands
+ * on every corner. A drawing only: the walls are not Cover and block neither sight nor movement.
+ */
+export function drawLaserWalls(layer: Container, grid: Grid, angle: number): LaserWallDrawing {
+  const created: Container[] = [];
+  const panels: Graphics[] = [];
+  const posts: Graphics[] = [];
+  const zone: GridPosition[] = [];
+  grid.tiles.forEach((line, row) => line.forEach((kind, col) => kind === TileKind.PrimeZone && zone.push({ col, row })));
+  if (zone.length === 0) return { created, panels, posts };
+  const [minCol, maxCol] = [Math.min(...zone.map((t) => t.col)) - 0.5, Math.max(...zone.map((t) => t.col)) + 0.5];
+  const [minRow, maxRow] = [Math.min(...zone.map((t) => t.row)) - 0.5, Math.max(...zone.map((t) => t.row)) + 0.5];
+  const at = (col: number, row: number) => gridToWorld({ col, row }, angle);
+  const edges: [number, number, number, number][] = [];
+  for (let col = minCol; col < maxCol; col++) edges.push([col, minRow, col + 1, minRow], [col, maxRow, col + 1, maxRow]);
+  for (let row = minRow; row < maxRow; row++) edges.push([minCol, row, minCol, row + 1], [maxCol, row, maxCol, row + 1]);
+  for (const [c0, r0, c1, r1] of edges) {
+    const [a, b] = [at(c0, r0), at(c1, r1)];
+    const lift = LASER_WALL_HEIGHT;
+    const panel = new Graphics()
+      .poly([a.x, a.y, b.x, b.y, b.x, b.y - lift, a.x, a.y - lift])
+      .fill({ color: LASER_COLOR, alpha: 0.2 })
+      .poly([a.x, a.y, b.x, b.y, b.x, b.y - lift * 0.45, a.x, a.y - lift * 0.45])
+      .fill({ color: LASER_COLOR, alpha: 0.18 })
+      .moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 3, color: LASER_EDGE, alpha: 0.95 })
+      .moveTo(a.x, a.y - lift).lineTo(b.x, b.y - lift).stroke({ width: 2, color: LASER_EDGE, alpha: 0.8 });
+    for (const [u, v] of [[0.25, 0.3], [0.75, 0.3], [0.5, 0.62], [0.25, 0.8], [0.75, 0.8]] as const) {
+      const x = a.x + (b.x - a.x) * u;
+      const y = a.y + (b.y - a.y) * u - lift * v;
+      panel.circle(x, y, 7).stroke({ width: 1.5, color: LASER_EDGE, alpha: 0.35 });
+    }
+    layer.addChild(panel);
+    created.push(panel);
+    panels.push(panel);
+  }
+  for (const [col, row] of [[minCol, minRow], [maxCol, minRow], [minCol, maxRow], [maxCol, maxRow]] as const) {
+    const { x, y } = at(col, row);
+    const post = new Graphics()
+      .moveTo(x, y).lineTo(x, y - LASER_WALL_HEIGHT - 10).stroke({ width: 6, color: 0x3b4048 })
+      .circle(x, y - LASER_WALL_HEIGHT - 10, 14).fill({ color: LASER_COLOR, alpha: 0.28 })
+      .circle(x, y - LASER_WALL_HEIGHT - 10, 5).fill({ color: LASER_COLOR });
+    layer.addChild(post);
+    created.push(post);
+    posts.push(post);
+  }
+  return { created, panels, posts };
+}
+
 export interface ScoutAreaDrawing {
   created: Container[];
   /** Each lifted tile with its ring from the middle (0 is the middle), so the board can lift them one ring after the other. */

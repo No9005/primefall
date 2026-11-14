@@ -37,7 +37,7 @@ Zones are held for Victory Points per Resolution (ADR 0024). It is the classic m
 
 Why there are three zones: the Asset cannot be secured alone, the client's team needs the two Outposts (the two ways into the site, north and south) first. The client pays for every secured place, like the lines of an invoice. The Outposts pay from the start, the Asset pays more once it is reachable, and together they force the Squad to split (see the principle above). Accepted for now as the reason; each place may get its own later.
 
-### Prime Zone look: red laser walls (first step, proposal)
+### Prime Zone look: red laser walls (built, variant C)
 
 The Prime Zone is enclosed by **red laser walls**, similar to the Shield bubbles of Half Cover. They show that the Asset is not reachable yet.
 
@@ -45,7 +45,9 @@ The Prime Zone is enclosed by **red laser walls**, similar to the Shield bubbles
 - **The change in Round 4:** the walls flicker and drop away (a short flicker, then gone). From then on the zone is open and scores.
 - On the Reactor Deck this is the story of the blast shutters powering down after four Rounds. Another place can tell it differently with the same look.
 - It is a drawing in the game (`board-drawing.ts` / the effects layer) and in the Playback of the Resolution that ends Round 3; no rule changes, the Round-4 activation is the existing rule (`PRIME_ZONE_UNLOCK_ROUND`). The walls are not Cover and do not block Line of Sight or movement.
-- Open: the exact look (thickness, height in the Pixel art style, glow), whether the walls are visible in the Fog of War, a sound for the flicker, and how the Original style draws it.
+- Decided: variant C, the shield panel with a ring pattern (`docs/design/world/images/laser-walls-drafts.png`); the walls are visible in the Fog of War; both styles draw the same walls.
+- Built in `drawLaserWalls` (`board-drawing.ts`) and the effect in `Board.tsx`; the flicker is `laserWallAlpha` in `prime-zone.ts` (1.1 s). It plays when the zone changes from inactive to active during the board's life, that is after the Resolution that unlocks it. Reduced motion: no flicker, the walls just go.
+- Open: a sound for the flicker; the flicker is not yet timed into the Playback itself.
 
 ### Renamed in the code and the docs
 
