@@ -50,7 +50,7 @@ import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
 import { BEACON_LABEL, beaconAlpha, marksFigure, shieldBubble } from "./hero-figure";
 import { loadPixelHeroes, type PixelHero, styledHeroFigure } from "./pixel-heroes";
-import { renderedStyle, VisualStyle } from "./visual-style";
+import { currentVisualStyle, renderedStyle, VisualStyle } from "./visual-style";
 import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
 import { chestOf, dashRuns, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
@@ -59,7 +59,6 @@ import { type CoverPlan, type CrossfireRing, type EffectPath, LineKind, NO_COVER
 import { PLAN_STYLE, SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
 import { pulseAlpha } from "./target-pick";
 import { loadPixelAtlas, type PixelAtlas, PixelScenery } from "./pixel-terrain";
-import { currentVisualStyle, VisualStyle } from "./visual-style";
 
 /** Strokes `segment` as a run of dashes: long for a clear shot, dots for the stopped part, grey after a block. */
 function strokeShotSegment(graphics: Graphics, { from, to, style }: ShotInWorld["segments"][number]): void {
@@ -1267,7 +1266,7 @@ export function Board({
     const app = new Application();
 
     void (async () => {
-      const [, , atlas] = await Promise.all([
+      const [, , , atlas] = await Promise.all([
         loadAssets(),
         // Without the sheets (a failed load) the Heroes are drawn with the shape rig.
         renderedStyle() === VisualStyle.Pixel ? loadPixelHeroes().catch(() => undefined) : undefined,
