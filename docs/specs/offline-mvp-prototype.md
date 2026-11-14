@@ -201,7 +201,7 @@ Browser tests are intentionally not part of the MVP. Rough idea for later: a sma
 
 ## Further Notes
 
-The spec uses the project glossary vocabulary and respects the existing ADRs. The Reactor Deck is intentionally open at its centre so that Controller effects, especially Deploy Cover, Scout Drone, Aegis Protocol, and Marked effects, become tactically valuable.
+The spec uses the project glossary vocabulary and respects the existing ADRs. The Reactor Deck is intentionally open at its centre so that Controller effects, especially Deploy Cover, Scout Drone, Breach Charge, and Marked effects, become tactically valuable.
 
 The single Overwatch Nest is a secondary objective rather than a permanent safe scouting position. It rewards positioning while remaining contestable, preventing passive camping without making information gathering worthless.
 

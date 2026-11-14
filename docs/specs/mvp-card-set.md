@@ -6,42 +6,44 @@ Cards with the same name are identical in every respect. Cards that differ have 
 
 ## Declared Target
 
-An Attack that hits a single enemy Hero (every Attack except Shockwave and Breach Charge, which aim at an area or a tile) names that Hero in planning. Only an enemy that is Visible at that moment can be named, whatever its Range and Line of Sight from the planned position; a Ghost or an Unknown enemy cannot (Ghost Shot is the way to hit a Ghost). The Attack is checked in the Tick it fires: the target must still be visible to the Squad, not Exhausted, within the card's Range, in Line of Sight and not behind Full Cover. If any check fails, the Attack misses and does nothing; later actions of the Queue still run. Attacks written as "an enemy" or "the target" without a Range below follow the same rule with the Range of the card. Utility cards that need a visible enemy (Charge, Pull, Gravity Snare) keep checking visibility when they resolve.
+An Attack that hits a single enemy Hero (every Attack except Breach Charge, which aims at a tile) names that Hero in planning. Only an enemy that is Visible at that moment can be named, whatever its Range and Line of Sight from the planned position; a Ghost or an Unknown enemy cannot (Ghost Shot is the way to hit a Ghost). The Attack is checked in the Tick it fires: the target must still be visible to the Squad, not Exhausted, within the card's Range, in Line of Sight and not behind Full Cover. If any check fails, the Attack misses and does nothing; later actions of the Queue still run. Attacks written as "an enemy" or "the target" without a Range below follow the same rule with the Range of the card. Utility cards that need a visible enemy (Charge, Pull, Gravity Snare) keep checking visibility when they resolve.
 
 ## Status effects
 
 **Slow:** The affected Hero’s next Move 2 use becomes Move 1. Slow lasts until the end of the next Resolution.
 
-**Knockback 2:** Move the target up to two tiles directly away from the attacker. The target stops early at a wall, full Cover, or another Hero.
-
 ## Deck sizes (ADR 0025)
 
 The Deck is a Hero's life, so the classes differ in toughness: Bruiser 12 cards, Controller 10, Assassin 9. A Squad has 31 cards.
 
-## Bruiser / Vanguard — 12 cards
+## Bruiser / Vanguard (Max Overload) — 12 cards
 
-1. **Slam Shot** — Attack, 1 Energy: Deal 2 damage to the named visible enemy Hero if it is visible and within Range 2 with a clear Line of Sight when the Attack fires; otherwise it misses. Deals 3 damage at Range 1 (ADR 0025).
-2. **Slam Shot** — as card 1.
-3. **Concussion Round** — Attack, 1 Energy: Deal 2 damage; apply Slow until the end of the next Resolution.
-4. **Breach Charge** — Attack, 1 Energy: Deal 2 damage and destroy Half Cover on the target tile.
-5. **Shockwave** — Attack, 1 Energy: Deal 2 damage to every enemy Hero within Range 1 and apply Knockback 2.
-6. **Bulwark** — Utility, 1 Energy: This Hero gains Shield 3.
-7. **Bulwark** — as card 6.
-8. **Charge** — Utility, 1 Energy: Move up to 3 tiles toward the named visible, not Exhausted enemy Hero and end next to it; the move stops early at a wall, Full Cover or another Hero. This Hero gains Shield 1 until the end of the Round and +1 damage on its next Attack at Range 1 in that Round (used once; it expires with the Round). A Slam Shot at Range 1 after a Charge deals 4.
-9. **Charge** — as card 8.
-10. **Pull** — Utility, 1 Energy, Range 4: Move the named visible enemy Hero up to 2 tiles directly toward this Hero. It stops early at a wall, Full Cover or another Hero, like Knockback, and may leave a zone.
-11. **Adrenal Surge** — Utility, 1 Energy: This Hero permanently gains +1 Attack until Exhaustion.
-12. **Wrecking Blow** — Attack, 1 Energy, Range 2: Deal 2 damage to the named visible enemy Hero; destroy any Cover (Half or Full) on the target tile after the damage of the Tick.
+Max wants to be up close and personal: he pulls enemies to himself and shields himself (`docs/design/decks.md`). The cards have no passives; what a card does stands on the card.
 
-## Controller / Tactician — 10 cards
+1. **Buy One, Get Two** (Double Shot) — Attack, 1 Energy, Range 1 to 2: Make two Attacks on the named visible enemy Hero, one after the other. Each deals 2 damage, 3 at Range 1.
+2. **Express Delivery** (Rush) — Utility, 1 Energy: This Hero gains Shield 2 until the end of the Round, then moves up to 5 tiles toward the named visible, not Exhausted enemy Hero and ends next to it; the move stops early at a wall, Full Cover or another Hero. It can only name an enemy Hero, so it is not a Move.
+3. **Express Delivery** — as card 2.
+4. **Hard Hat** (Shield) — Utility, 1 Energy: This Hero gains Shield 2.
+5. **Hard Hat** — as card 4.
+6. **Cargo Hook** (Grappling Hook) — Utility, 1 Energy, Range 7: Move the named visible enemy Hero directly toward this Hero until it stands next to it. It stops early at a wall, Full Cover or another Hero. It can also name a Ghost: it works if the enemy still stands on the tile where the Squad last saw it, otherwise the action fails.
+7. **Cargo Hook** — as card 6.
+8. **Handle With Care** (Close Attack) — Attack, 1 Energy, Range 1 to 2: Deal 2 damage to the named visible enemy Hero; 3 damage at Range 1.
+9. **Handle With Care** — as card 8.
+10. **Handle With Care** — as card 8.
+11. **Time for Coffee** (Concussion Round) — Attack, 1 Energy, Range 3: Deal 1 damage and apply Slow until the end of the next Resolution.
+12. **Time for Coffee** — as card 11.
 
-The Controller has one attack. Placed Cover (Fortify, Deploy Cover, Barricade) stays until it is destroyed; at most three Placed Cover tiles per Squad, the oldest disappears first; only Cover-destroying effects (Breach Charge, Wrecking Blow) remove it.
+The order in `HERO_DECKS` is different (the old positions of Handle With Care and Time for Coffee are kept for the tests); the order has no rule meaning.
+
+## Controller / Tactician (Tilly Turnover) — 10 cards
+
+The Controller has one attack. Placed Cover (Fortify, Deploy Cover, Barricade) stays until it is destroyed; at most three Placed Cover tiles per Squad, the oldest disappears first; only Cover-destroying effects (Breach Charge, Wrecking Blow) remove it. Tilly creates and destroys Cover; she has no Shield cards.
 
 1. **Tag Round** — Attack, 1 Energy, Range 2: Deal 1 damage and apply Marked until the end of the next Resolution.
 2. **Scout Drone** — Utility, 1 Energy: Reveal a 3 by 3 area anywhere on the map (no Range, also in the Fog) for two Resolutions. A Hidden enemy inside is shown but stays Hidden. The enemy Squad sees which area was scanned and for how many more Resolutions, not what is in it.
 3. **Scout Drone** — as card 2.
-4. **Aegis Protocol** — Utility, 1 Energy: An allied Hero gains Shield 3.
-5. **Reinforce** — Utility, 1 Energy: An allied Hero gains Shield 2.
+4. **Breach Charge** — Attack, 1 Energy, Range 3: Aim at a tile; deal 2 damage to the enemy Hero standing there and destroy Half Cover on the tile.
+5. **Wrecking Blow** — Attack, 1 Energy, Range 2: Deal 2 damage to the named visible enemy Hero; destroy any Cover (Half or Full) on the target tile after the damage of the Tick.
 6. **Fortify** — Utility, 1 Energy: Place Half Cover on the tile of an allied Hero within Range 3 (Placed Cover).
 7. **Deploy Cover** — Utility, 1 Energy: Place Half Cover on an empty tile (Placed Cover).
 8. **Barricade** — Utility, 1 Energy: Place Full Cover on an empty tile within Range 3 (Placed Cover).

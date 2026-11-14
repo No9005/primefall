@@ -6,4 +6,4 @@ The Match Simulation is the primary test seam: scenario tests on the Reactor Dec
 
 `apps/web` gets unit tests only for real logic (local host, building a Squad Plan from UI input); no browser or PixiJS tests in the MVP. Browser tests are future work, see the offline MVP spec.
 
-Cards are declarative data (type, cost, range, a list of effects such as damage, Shield, Slow, Knockback, place Cover, reveal) with one interpreter per effect kind, so the UI renders card text from data and balance changes are data changes.
+Cards are declarative data (type, cost, range, a list of effects such as damage, Shield, Slow, Pull, place Cover, reveal) with one interpreter per effect kind, so the UI renders card text from data and balance changes are data changes.

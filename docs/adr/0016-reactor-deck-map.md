@@ -65,7 +65,7 @@ This makes Controller effects especially valuable:
 
 - Deploy Cover can protect an ally holding the open Zone.
 - Scout Drone can reveal the flanks without exposing the Controller.
-- Aegis Protocol helps a Bruiser survive while holding the open center.
+- Hard Hat and Express Delivery help a Bruiser survive while holding the open center.
 - Marked effects create squad-wide information when the Assassin is not scouting.
 
 ## Outposts

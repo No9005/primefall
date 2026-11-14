@@ -94,12 +94,8 @@ _Avoid_: Tagged, revealed, spotted
 A status effect that makes the affected Hero’s next Move 2 use a Move 1 use. It lasts until the end of the next Resolution.
 _Avoid_: Hinder, debuff
 
-**Knockback**:
-A forced movement effect that moves the target directly away from the attacker. The target stops at a wall, Full Cover, or another Hero.
-_Avoid_: Push, displacement
-
 **Pull**:
-A forced movement effect that moves the target directly toward the caster. The target stops at a wall, Full Cover, or another Hero. The counterpart of Knockback.
+A forced movement effect that moves the target directly toward the caster. The target stops at a wall, Full Cover, or another Hero.
 _Avoid_: Hook, drag, grab
 
 **Minimum Range**:

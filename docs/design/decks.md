@@ -1,8 +1,18 @@
 # Decks: ideas and the recommended redesign
 
-**Status: a collection of ideas from a chat session with the product owner (issue #415). Nothing here is decided as a rule, specified, built or measured, except where "decided" is written.** Numbers are starting points for the balance harness. The current rules are `docs/specs/mvp-card-set.md` and ADR 0025; the Heroes are in `docs/design/world/README.md`, the missions in `docs/design/world/missions.md`.
+**Status: a collection of ideas from a chat session with the product owner (issue #415). Max Overload's deck, the removal of Overdrive, Block and the passives, and Tilly's Cover cards are decided and built (see _Implemented_ below); everything else is an idea and not specified, built or measured, except where "decided" is written.** Numbers are starting points for the balance harness. The current rules are `docs/specs/mvp-card-set.md` and ADR 0025; the Heroes are in `docs/design/world/README.md`, the missions in `docs/design/world/missions.md`.
 
 This file keeps **every idea for the cards**, also those that did not make the recommended decks. Whatever is decided later, ideas are added here and not deleted (move a rejected one to _Parked and rejected ideas_ with the reason).
+
+## Implemented
+
+What is in the code and in `docs/specs/mvp-card-set.md` today:
+
+- **Overdrive, Block and the passives are gone.** Every card costs 1 Energy; a card is played, pitched or used as Move 2.
+- **Max Overload's deck** is the table under _Max Overload_ below, with the names of the cards: Buy One, Get Two (Double Shot), Express Delivery (Rush), Hard Hat (Shield 2), Cargo Hook (Grappling Hook, also on a Ghost), Handle With Care (Close Attack) and Time for Coffee (Concussion Round).
+- **Tilly creates and destroys Cover.** Her Shield cards (Aegis Protocol, Reinforce) are replaced by Breach Charge and Wrecking Blow. The rest of her deck is unchanged; the plan of the Field and the drone below is not built yet.
+- **Removed with Max' old cards:** Shockwave and Knockback, Adrenal Surge (the permanent Attack bonus), the Range 1 bonus of the old Charge.
+- **Not built yet:** Move 3, the decks of Tilly (beyond the two cards) and Kit, the Marked and Slow ideas, the card faces in the app (`docs/design/cards/`).
 
 ## Why a redesign
 
@@ -57,25 +67,25 @@ Decided: the default movement rises to 3 (every card can be used as Move 3 inste
 
 Status: **existing** (as in the spec), **changed** (text changed), **new**. Energy costs are the current ones where the card exists. Deck sizes are those of ADR 0025 (Bruiser 12, Controller 10, Assassin 9; the Deck is the life); they are kept until the measurement.
 
-### Max Overload (Bruiser), 12 cards: up close and personal
+### Max Overload (Bruiser), 12 cards: up close and personal (implemented)
 
-Max wants to be up close and personal: he pulls enemies to himself and shields himself. Agreed in the chat; numbers are starting points. His Attacks reach Range 2 to 3, on purpose: only the Hook reaches far, to bring the enemy to him.
+Max wants to be up close and personal: he pulls enemies to himself and shields himself. Agreed in the chat and built; the numbers are starting points for the balance harness. His Attacks reach Range 2 to 3 on purpose: only the Hook reaches far, to bring the enemy to him. The cards of the other two Heroes below are ideas.
 
-| # | Card | Energy | Effect (proposal) | Count |
+| Card | Name on the card | Energy | Effect | Count |
 |---|---|---|---|---|
-| 1 | **Double Shot** | 1 | Attack, Range 1 to 2: two Attacks on the same target, 2 damage each, +1 damage each at Range 1. (Measure: 6 damage at Range 1 is a lot.) | 1 |
-| 2 | **Rush** | 1 | Utility: first gain Shield 2, then move up to 5 tiles toward a named visible enemy Hero and end next to it (stops at a wall, Full Cover or a Hero). It can only aim at a Hero, so it is not a Move. | 2 |
-| 3 | **Shield** | 1 | Utility: this Hero gains Shield 2. | 2 |
-| 4 | **Grappling Hook** | 1 | Utility, Range 7: move the named visible enemy Hero toward this Hero (decided: all the way next to Max); needs Line of Sight. It can also target a Ghost (the last known position; if the Hero is there it is pulled). | 2 |
-| 5 | **Close Attack** | 1 | Attack, Range 1 to 2: deal 2 damage, +1 at Range 1. | 3 |
-| 6 | **Concussion Round** | 1 | Attack, Range 3: deal 1 damage and apply Slow (the next Move is halved, until the end of the next Resolution). A hooked enemy cannot walk away. | 2 |
+| Double Shot | **Buy One, Get Two** | 1 | Attack, Range 1 to 2: two Attacks on the same target, 2 damage each, 3 at Range 1 (measure: 6 damage at Range 1 is a lot). | 1 |
+| Rush | **Express Delivery** | 1 | Utility: Shield 2 first, then move up to 5 tiles toward a named visible enemy Hero and end next to it (stops at a wall, Full Cover or a Hero). It can only aim at a Hero, so it is not a Move. | 2 |
+| Shield | **Hard Hat** | 1 | Utility: this Hero gains Shield 2. | 2 |
+| Grappling Hook | **Cargo Hook** | 1 | Utility, Range 7: move the named visible enemy Hero all the way next to Max (stops at a wall, Full Cover or a Hero). It can also name a Ghost: it works if the enemy still stands on the remembered tile. | 2 |
+| Close Attack | **Handle With Care** | 1 | Attack, Range 1 to 2: 2 damage, 3 at Range 1. | 3 |
+| Concussion Round | **Time for Coffee** | 1 | Attack, Range 3: 1 damage and Slow (the next Move is halved, until the end of the next Resolution). | 2 |
 
 Notes:
 
-- No Long Attack any more: its place is a second Concussion Round.
-- Gone from Max's deck compared with the old one: Breach Charge, Wrecking Blow, Shockwave, Pull (replaced by the Hook), Adrenal Surge, Bulwark (replaced by Shield), Charge (replaced by Rush). They stay in this file as ideas; Cover destruction moves to Tilly.
-- Synergy that arises natively: the Hook pulls an enemy next to Max, where Double Shot and Close Attack deal +1; Concussion Round keeps the hooked enemy there; Rush closes the rest and shields on the way in.
-- Missing on purpose: no Knockback, no Cover breaking.
+- Gone from Max's deck compared with the old one: Breach Charge and Wrecking Blow (they went to Tilly), Shockwave, Pull (replaced by the Hook), Adrenal Surge, Bulwark (replaced by Hard Hat), Charge (replaced by Express Delivery). The ideas stay in this file.
+- Synergy that arises natively: the Hook pulls an enemy next to Max, where Buy One, Get Two and Handle With Care deal +1; Time for Coffee keeps the hooked enemy there; Express Delivery closes the rest and shields on the way in.
+- Missing on purpose: no Knockback, no Cover breaking (Tilly does that).
+- Pictures, animations and frame: `docs/design/cards/` and `docs/design/pixel-heroes/` (the sprite sheets `double`, `rush`, `hook`, `concussion`).
 
 ### Tilly Turnover (Controller), 10 cards: the Field and the sight
 
