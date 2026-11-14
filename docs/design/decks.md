@@ -66,7 +66,7 @@ Max wants to be up close and personal: he pulls enemies to himself and shields h
 | 1 | **Double Shot** | 1 | Attack, Range 1 to 2: two Attacks on the same target, 2 damage each, +1 damage each at Range 1. (Measure: 6 damage at Range 1 is a lot.) | 1 |
 | 2 | **Rush** | 1 | Utility: first gain Shield 2, then move up to 5 tiles toward a named visible enemy Hero and end next to it (stops at a wall, Full Cover or a Hero). It can only aim at a Hero, so it is not a Move. | 2 |
 | 3 | **Shield** | 1 | Utility: this Hero gains Shield 2. | 2 |
-| 4 | **Grappling Hook** | 1 | Utility, Range 7: move the named visible enemy Hero toward this Hero (open: all the way next to Max, or at most 3 tiles); needs Line of Sight. It can also target a Ghost (the last known position; if the Hero is there it is pulled). | 2 |
+| 4 | **Grappling Hook** | 1 | Utility, Range 7: move the named visible enemy Hero toward this Hero (decided: all the way next to Max); needs Line of Sight. It can also target a Ghost (the last known position; if the Hero is there it is pulled). | 2 |
 | 5 | **Close Attack** | 1 | Attack, Range 1 to 2: deal 2 damage, +1 at Range 1. | 3 |
 | 6 | **Concussion Round** | 1 | Attack, Range 3: deal 1 damage and apply Slow (the next Move is halved, until the end of the next Resolution). A hooked enemy cannot walk away. | 2 |
 
