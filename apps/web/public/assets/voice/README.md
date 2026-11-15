@@ -1,6 +1,6 @@
 # Voice lines
 
-Source: ElevenLabs (v3), voice "Oxley - Evil Character". Direction and the occasions: the voice-line comment on issue #422. The licence must allow use in a game and a prototype; check it before shipping.
+Source: ElevenLabs (v3). Kit: voice "Oxley - Evil Character". Tilly: voice "Bella - Professional Bright Warm". Direction and the occasions: the voice-line comment on issue #422. The licence must allow use in a game and a prototype; check it before shipping.
 
 ## Files
 
