@@ -39,7 +39,7 @@ function torsoPart(core) {
     R(-5, t - 1, 2, 2, P.plateLo); R(3, t - 1, 2, 2, P.plateLo); R(-1, t - 1, 3, 1, SK.skinLo);
   });
 }
-const TORSO = torsoPart(P.glow), TORSO_V = torsoPart(P.violet), TORSO_OFF = torsoPart(null);
+const TORSO = torsoPart(P.glow), TORSO_V = torsoPart(P.violet), TORSO_S = torsoPart('#ff8a3d'), TORSO_OFF = torsoPart(null);
 const ARM_B = part(-3, -2, 2, 15, R => {   // her right arm: robotic
   R(-2, -2, 4, 4, P.metal); R(-2, -2, 4, 1, P.metalHi); R(-1, -1, 2, 2, P.metalLo);
   R(-1, 2, 2, 3, P.metalLo); R(-2, 5, 4, 2, P.metal); R(-2, 5, 4, 1, P.metalHi);
@@ -83,7 +83,7 @@ function poseAt(clip, t) {
 }
 
 
-Object.assign(REST, { armB: 6, pony: 0, g1: G1, g2: G2, g3: G3, claw: .5, gripFront: 0, core: 1, violet: 0, cigarOff: 1 });
+Object.assign(REST, { armB: 6, pony: 0, g1: G1, g2: G2, g3: G3, claw: .5, gripFront: 0, core: 1, violet: 0, cigarOff: 1, scrap: 0 });
 
 /* ---------- figure renderer ---------- */
 const fig = document.createElement('canvas'); fig.width = SW; fig.height = SH;
@@ -130,7 +130,7 @@ function drawFigure(p) {
     fctx.save(); fctx.translate(x, hipY); fctx.rotate(rad(a)); fctx.scale(1, (12 - crouch) / 12); put(s); fctx.restore();
   }
   torso();
-  put(p.core <= .2 ? TORSO_OFF : p.violet > .5 ? TORSO_V : TORSO);
+  put(p.core <= .2 ? TORSO_OFF : p.violet > .5 ? TORSO_V : p.scrap > .5 ? TORSO_S : TORSO);
   info.core = world(0, -10);
   fctx.save(); fctx.translate(-8, -13); fctx.rotate(rad(p.armB)); put(ARM_B); info.wrist = world(-1, 9); fctx.restore();
   const armF = () => { fctx.save(); fctx.translate(7, -14); fctx.rotate(rad(p.armF)); put(ARM_F); info.muzzle = world(0, 22); fctx.restore(); };
@@ -155,7 +155,7 @@ function drawFigure(p) {
     } else if ((x > 0 && solid[i - 1]) || (x < SW - 1 && solid[i + 1]) || (y > 0 && solid[i - SW]) || (y < SH - 1 && solid[i + SW])) { d[j] = or; d[j + 1] = og; d[j + 2] = ob; d[j + 3] = 255; }
   }
   fctx.putImageData(img, 0, 0);
-  if (p.core > .2 && p.grey < .5) halo(info.core, Math.round(3 + p.core), p.violet > .5 ? P.violet : P.glow, .22 * p.core);
+  if (p.core > .2 && p.grey < .5) halo(info.core, Math.round(3 + p.core), p.violet > .5 ? P.violet : p.scrap > .5 ? '#ff8a3d' : P.glow, .22 * p.core);
   return info;
 }
 
@@ -204,6 +204,12 @@ function stripedWall(S, x, y, w, h) {
 const brace = { g1: -85, g2: -150, g3: 165 };
 const wave = (t, dur) => Math.sin(t / dur * Math.PI * 2);
 const K = (...keys) => keys;
+
+/* ---------- helpers for the new clips (deck redesign #415): the pieces of Scrap and the bomb ---------- */
+const FOE_INK = '#0b0f15';
+function scrapBit(S, x, y, k) { const c = ['#8a5a30', '#9aa6b2', '#59636e', '#d0873a'][k % 4]; S.rect(x, y, 3 - k % 2, 2 + k % 2, c); S.rect(x, y, 1, 1, '#e6edf2'); }
+function bomb(S, x, y, t) { S.rect(x - 4, y - 4, 9, 9, FOE_INK); S.rect(x - 3, y - 3, 7, 7, '#8a5a30'); S.rect(x - 3, y - 3, 7, 2, '#b5834f'); S.rect(x - 3, y + 1, 7, 1, '#5a3a1c'); S.rect(x - 1, y - 6, 3, 2, '#c3ccd4'); S.rect(x, y - 1, 3, 3, Math.floor(t / 100) % 2 ? '#ff3b30' : '#7a1f1a'); }
+
 
 /* ---------- clips: timing and beats follow docs/design/animation, amplitudes are pushed ---------- */
 const CLIPS = [
@@ -506,8 +512,99 @@ const CLIPS = [
       if (k > 0) { const w = Math.round(40 * k), h = Math.round(14 * k); S.slab(6 - (w - 40) / 2, -h + 2, w, h); S.puff(0 - (t - 4250) * .02, -1, t - 4250, 400, 4); S.puff(50 + (t - 4250) * .02, -1, t - 4250, 400, 4); }
     }
   }
-];
+  ,
+  /* ====== Neue Clips für das Deck-Redesign (#415): Destroy Cover, Scrap Field, Scrap, Build Cover mit Scrap ====== */
+  {
+    id: 'demolish', section: 'Neue Karten für Tilly · Deck-Redesign (#415)', name: 'Destroy Cover: Scrap Bomb', meta: 'NEU · Einmal 3,4 s · Wurf bei 820 ms · Einschlag bei 1160 ms · 3×3',
+    dur: 3400, still: 1250,
+    text: 'Der Greifarm zieht eine Schrottbombe aus dem Rücken, holt weit aus und schleudert sie auf die Deckung. Die ganze 3×3-Fläche blitzt auf, die gestreifte Wand zerbirst in Trümmer, die Kacheln bleiben verkohlt. Tilly duckt sich hinter den Arm, der Pferdeschwanz peitscht.',
+    tracks: {
+      g1: K([0, G1], [420, -76, 'out'], [700, -82], [820, 40, 'in'], [1000, 50, 'out'], [1500, G1, 'back']), g2: K([0, G2], [420, -30, 'out'], [700, -36], [820, 60, 'in'], [1000, 70], [1500, G2, 'back']),
+      g3: K([0, G3], [420, 10, 'out'], [700, 4], [820, 80, 'in'], [1000, 100], [1500, G3, 'back']), claw: K([0, .1], [810, .1], [830, 1, 'step'], [1500, .5]),
+      lean: K([0, 0], [420, -16, 'out'], [700, -18], [820, 20, 'in'], [1050, 6], [1180, -16, 'out'], [1600, -8], [2000, 0]),
+      stretch: K([0, 1], [420, 1.1, 'out'], [700, 1.1], [820, .9, 'in'], [1050, .98], [1180, 1.08, 'out'], [1700, 1]), crouch: K([0, 0], [700, 0], [820, 4, 'in'], [1050, 2], [1180, 6, 'out'], [1700, 4], [2000, 0]),
+      armF: K([0, -30], [420, -20], [820, -60], [1100, -60], [1180, -150, 'out'], [1700, -140], [2000, -30]), armB: K([0, 6], [420, -60], [820, 10], [1180, -112, 'out'], [1700, -108], [2000, 6]),
+      head: K([0, 0], [420, -10], [820, 10], [1180, -16, 'out'], [1800, -14], [2000, 0]), pony: K([0, 0], [420, 26, 'out'], [830, -60, 'in'], [1000, 20], [1200, -56, 'out'], [1500, 10], [1900, 0]),
+      core: K([0, 1], [820, 1], [1180, 2.4], [1500, 1]), dx: K([0, 0], [820, 0], [1180, -4, 'out'], [1700, -3], [2000, 0])
+    },
+    shake: t => shakeAt(t, 1160, 340, 4),
+    // Only the Hero is in the sheet: the game draws the bomb's flight, the blast and the targets.
+    front(S, t, info) {
+      if (t < 820) bomb(S, info.hold.x, info.hold.y, t);
+    }
+  },
+  {
+    id: 'scrapfield', name: 'Scrap Field', meta: 'NEU · Einmal 3,4 s · Wurf bei 820 ms · 3×3 · Slow und 1 Schaden pro Bewegung',
+    dur: 3400, still: 2000,
+    text: 'Tilly schleudert eine Ladung Schrott wie Saatgut über die Fläche. Bolzen, Federn und Blechstücke prasseln nieder und bleiben liegen, Stacheldraht spannt sich, die Kacheln glimmen violett. Wer hineinläuft, wird langsam und zahlt bei jedem Schritt 1 Schaden.',
+    tracks: {
+      g1: K([0, G1], [420, -100, 'out'], [700, -104], [820, 10, 'in'], [1000, 34], [1500, G1, 'back']), g2: K([0, G2], [420, -60], [700, -64], [820, 30, 'in'], [1000, 40], [1500, G2, 'back']),
+      g3: K([0, G3], [420, -10], [700, -14], [820, 60, 'in'], [1000, 84], [1500, G3, 'back']), claw: K([0, .1], [810, .1], [830, 1, 'step'], [1500, .5]),
+      lean: K([0, 0], [420, -14, 'out'], [700, -16], [820, 18, 'in'], [1100, 6], [1900, 0]), stretch: K([0, 1], [420, 1.08, 'out'], [820, .92, 'in'], [1100, 1]),
+      armF: K([0, -30], [420, -110, 'out'], [700, -114], [820, -10, 'in'], [1300, -30]), armB: K([0, 6], [420, -40], [820, 20], [1300, 6]),
+      head: K([0, 0], [420, -8], [820, 12, 'in'], [1500, 0]), pony: K([0, 0], [420, 24, 'out'], [830, -66, 'in'], [1100, 24], [1500, 0]), core: K([0, 1], [820, 1], [860, 2, 'out'], [1300, 1])
+    },
+    front(S, t, info) {
+      if (t < 820) for (let k = 0; k < 6; k++) scrapBit(S, info.hold.x + (k % 3) - 1, info.hold.y + (k % 2), k);
+    }
+  },
+  {
+    id: 'scrapforce', name: 'Scrap: Force-Griff aus der Ferne', meta: 'NEU · Einmal 3,4 s · Teile heben ab bei 600 ms · Faust bei 2020 ms · Scrap gewonnen bei 2040 ms',
+    dur: 3400, still: 2300,
+    text: 'Zum Schrott muss sie nicht laufen. Der dritte Arm zeigt mit offener Hand auf die Trümmer am Zielfeld, ein Kraftfeld pulsiert in Wellen von der Hand zum Boden. Dort beginnen Schrauben, Zahnräder und Blechstücke zu zittern, heben ab und fliegen im Bogen in ihre Hand. Sie kreisen kurz, dann ballt sie die Faust, presst alles zu einer Kugel und schiebt sie in den Reaktorkern. Der Kern glüht orange, SCRAP steigt auf.',
+    tracks: {
+      g1: K([0, G1], [350, -60, 'out'], [560, 24, 'back'], [2100, 24], [2600, G1, 'back']), g2: K([0, G2], [350, 0], [560, 64, 'back'], [2100, 64], [2600, G2, 'back']),
+      g3: K([0, G3], [350, 40], [560, 90, 'back'], [2100, 90], [2600, G3, 'back']), claw: K([0, .5], [350, .9], [560, 1], [1950, 1], [2020, 0, 'in'], [2600, .5]),
+      armF: K([0, -30], [450, -20], [650, -78, 'back'], [2100, -74], [2600, -30]),
+      lean: K([0, 0], [560, 8, 'back'], [1650, 8], [2020, -4, 'in'], [2300, 0]), head: K([0, 0], [560, 6], [2020, -4], [2600, 0]),
+      pony: K([0, 0], [560, 22, 'out'], [900, 10], [2020, -30, 'out'], [2400, 0]),
+      core: K([0, 1], [2130, 1], [2160, 3, 'step'], [2330, 1.6], [2900, 1.4]), scrap: K([0, 0], [2160, 0], [2170, 1, 'step'], [3400, 1])
+    },
+    // Hero only: the field arcs, the pieces circling the hand, the fist and the core. The game draws the rubble that
+    // lifts off the tile and flies in, and the SCRAP label.
+    front(S, t, info) {
+      const h = info.hold, clamp = u => Math.max(0, Math.min(1, u));
+      if (t >= 560 && t < 1900) {
+        const al = clamp((t - 560) / 200) * clamp((1900 - t) / 250);
+        for (let i = 0; i < 3; i++) { const p = ((t - 560) / 700 + i / 3) % 1, x = Math.round(h.x + 4 + p * 26), y = Math.round(h.y + p * 18), a = (.7 * (1 - p) * al).toFixed(2);
+          for (let dy = -6; dy <= 6; dy++) S.rect(x - Math.round(dy * dy / 14), y + dy, 1, 1, 'rgba(160,232,255,' + a + ')'); }
+      }
+      for (let k = 0; k < 8; k++) {
+        if (t < 1100 + k * 70 + 450 || t >= 2020) continue;
+        const ang = t / 120 + k * .8, r = 6 + (k % 3) * 2;
+        scrapBit(S, Math.round(h.x + Math.cos(ang) * r), Math.round(h.y + Math.sin(ang) * r * .6), k);
+      }
+      if (t >= 2020 && t < 2130) {
+        const u = clamp((t - 2090) / 40), x = Math.round(h.x + (info.core.x - h.x) * u), y = Math.round(h.y + (info.core.y - h.y) * u);
+        S.disc(x, y, 4, FOE_INK); S.disc(x, y, 3, '#8a5a30'); S.rect(x - 2, y - 2, 3, 1, '#d0873a'); S.rect(x, y, 2, 2, '#9aa6b2');
+        if (t < 2060) for (let k = 0; k < 6; k++) S.rect(h.x + Math.round(Math.cos(k + t / 40) * 8), h.y + Math.round(Math.sin(k + t / 40) * 6), 1, 1, '#ffd24a');
+      }
+      const a = t - 2160;
+      if (a >= 0 && a < 360) { const r = 4 + a * .06; S.disc(info.core.x, info.core.y, r, 'rgba(255,138,61,' + (.8 * (1 - a / 360)).toFixed(2) + ')'); S.disc(info.core.x, info.core.y, Math.max(1, r - 3), 'rgba(255,243,192,' + (1 - a / 360).toFixed(2) + ')'); }
+      for (let k = 0; k < 8; k++) { const q = a - 20; if (q >= 0 && q < 600) { const ang = k * .8, v = .04 + (k % 3) * .012; S.rect(info.core.x + Math.cos(ang) * q * v, info.core.y + Math.sin(ang) * q * v + q * q * .00012, 2, 1, k % 2 ? '#ffb070' : '#ff8a3d'); } }
+    }
+  },
+  {
+    id: 'deployfull', name: 'Build Cover mit Scrap: Full Cover', meta: 'NEU · Einmal 3,4 s · Einschlag bei 850 ms · aus Half wird Full',
+    dur: 3400, still: 1650,
+    text: 'Wie beim normalen Aufstellen, nur mit Schrott im Kern: Der orange Kern schickt Funken über den Arm, der Hammerschlag ist härter, und aus dem Boden fährt keine niedrige Deckung, sondern eine hohe Stahlwand mit Warnstreifen. Sie bleibt stehen, bis sie zerstört wird.',
+    tracks: {
+      g1: K([0, G1], [450, -76, 'out'], [750, -82], [850, 80, 'in'], [1050, 70], [1500, G1, 'back']), g2: K([0, G2], [450, -30, 'out'], [750, -36], [850, 125, 'in'], [1050, 112], [1500, G2, 'back']),
+      g3: K([0, G3], [450, 10, 'out'], [750, 4], [850, 165, 'in'], [1050, 150], [1500, G3, 'back']), claw: K([0, 0], [850, 0], [900, 1, 'out'], [1500, .5]),
+      lean: K([0, 0], [450, -20, 'out'], [750, -22], [850, 30, 'in'], [1050, 18], [1500, 0, 'back']), crouch: K([0, 0], [450, 0], [850, 6, 'in'], [1050, 3], [1500, 0]),
+      stretch: K([0, 1], [450, 1.14, 'out'], [750, 1.14], [850, .86, 'in'], [1050, .96], [1500, 1]),
+      armF: K([0, -30], [450, -150, 'out'], [750, -156], [850, -20, 'in'], [1500, -30]), armB: K([0, 6], [450, -120, 'out'], [750, -126], [850, 30, 'in'], [1500, 6]),
+      head: K([0, 0], [450, -14], [850, 16, 'in'], [1500, 0]), pony: K([0, 0], [450, 34, 'out'], [750, 20], [860, -80, 'in'], [1100, 26], [1500, 0]),
+      core: K([0, 1.4], [850, 1.4], [880, 3, 'step'], [1300, 1.4]), scrap: K([0, 1], [3400, 1])
+    },
+    shake: t => shakeAt(t, 850, 300, 4),
+    // Only the Hero is in the sheet: the game draws the drop of the Cover.
+    front(S, t, info) {
+      if (t < 850) { S.rect(info.hold.x - 3, info.hold.y - 3, 6, 6, '#14181e'); S.rect(info.hold.x - 2, info.hold.y - 2, 4, 4, '#ff8a3d'); S.rect(info.hold.x - 2, info.hold.y, 4, 1, '#14181e'); }
+    }
+  }
 
+];
 
 // Points that a clip's effects start from, taken from the pose at the moment of the shot or the throw.
 const clipById = id => CLIPS.find(c => c.id === id);
