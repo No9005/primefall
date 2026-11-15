@@ -136,7 +136,7 @@
           <tr><td>Move 2</td><td>Walk It Off</td><td>Nichts passiert, also läuft man.</td></tr>
           <tr><td>Pitch</td><td>Overtime</td><td>Die Karte wird in die Stempeluhr gesteckt, dafür gibt es Energie.</td></tr>
           <tr><td>Long Shot</td><td>Long Shot</td><td>Der Abstand ist das Feature; mit Hidden reicht er weiter.</td></tr>
-          <tr><td>Hiding</td><td>Vanish</td><td>Abwesenheitsnotiz: Out of office.</td></tr>
+          <tr><td>Hiding</td><td>Vanish</td><td>Zuletzt gesehen: nie.</td></tr>
           <tr><td>Knockback</td><td>Personal Space</td><td>Der Gegner steht zu nah, also wird Abstand geschaffen.</td></tr>
           <tr><td>Shield Breaker</td><td>Shield Breaker</td><td>Die Versicherung zahlt nicht: Shield und Deckung zählen nicht.</td></tr>
           <tr><td>Pitch (Kit)</td><td>Trade-In</td><td>Eine Karte gegen eine Energie.</td></tr>
@@ -2213,11 +2213,11 @@ Object.assign(CARDS, {
 });
 Object.assign(CARDS, {
   kl: { cost: 1, kind: 'attack', name: 'Long Shot', text: 'Range 3 to 7. Deal <b class="dmg">3 damage</b>.<br><b class="hid">Hidden</b> or <b class="marked">Marked</b>: up to Range 9. <b class="hid">Hidden</b>: <b class="dmg">+1 damage</b> beyond 7.', flavor: 'Distance is a feature.', copies: 3, hero: 'kit' },
-  kv: { cost: 1, kind: 'utility', name: 'Vanish', text: 'Become <b class="hid">Hidden</b> for 2 Resolutions, wherever you stand. Taking damage or shooting ends it.', flavor: 'Out of office.', copies: 2, hero: 'kit' },
-  kk: { cost: 1, kind: 'attack', name: 'Personal Space', text: 'Range 1 to 2. Deal <b class="dmg">1 damage</b>. Push the target up to <b class="energy">3 tiles</b> away from you.', flavor: 'Boundaries are important.', copies: 2, hero: 'kit' },
+  kv: { cost: 1, kind: 'utility', name: 'Vanish', text: 'Become <b class="hid">Hidden</b> for 2 Resolutions, wherever you stand. Taking damage or shooting ends it.', flavor: 'Last seen: never.', copies: 2, hero: 'kit' },
+  kk: { cost: 1, kind: 'attack', name: 'Personal Space', text: 'Range 1 to 2. Deal <b class="dmg">1 damage</b>. Push the target up to <b class="energy">3 tiles</b> away from you.', flavor: 'Keep your distance. Or the rifle will keep it for you.', copies: 2, hero: 'kit' },
   kb: { cost: 1, kind: 'attack', name: 'Shield Breaker', text: 'Range 2 to 4. Deal <b class="dmg">2 damage</b> through <b class="shield">Shield</b> and all Cover.', flavor: 'Read the fine print. The bullet did.', copies: 2, hero: 'kit' },
   kmove: { cost: 0, kind: 'action', name: 'Walk It Off', text: 'Move up to <b class="energy">3 tiles</b>. Any card can be used this way.', flavor: 'Mind the gap.', copies: 0, label: 'Move', hero: 'kit' },
-  kpitch: { cost: '+1', kind: 'action', name: 'Trade-In', text: 'Discard a card. Gain <b class="energy">1 Energy</b>. Any card can be used this way.', flavor: 'Valued at one Energy.', copies: 0, label: 'Pitch', hero: 'kit' },
+  kpitch: { cost: '+1', kind: 'action', name: 'Trade-In', text: 'Discard a card. Gain <b class="energy">1 Energy</b>. Any card can be used this way.', flavor: 'Cards, organs, no questions asked.', copies: 0, label: 'Pitch', hero: 'kit' },
   kwait: { cost: 0, kind: 'action', name: 'Stakeout', text: 'Do nothing for one Tick. Needs no card.', flavor: 'Patience is a firearm.', copies: 0, label: 'Wait', hero: 'kit' }
 });
 function cardEl(key) {
