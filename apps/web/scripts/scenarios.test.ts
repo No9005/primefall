@@ -71,7 +71,7 @@ describe("memory scenarios stage what their names say", () => {
     expect(coverAt(afterTwo!.grid, { col: 10, row: 3 })).toBe(CoverKind.Half);
   });
 
-  it("cover-destroyed: Breach Charge destroys the Half Cover", async () => {
+  it("cover-destroyed: Urban Renewal destroys the Half Cover", async () => {
     const [start, after] = await playRounds("cover-destroyed");
     expect(coverAt(start!.grid, { col: 8, row: 2 })).toBe(CoverKind.Half);
     expect(coverAt(after!.grid, { col: 8, row: 2 })).toBe(CoverKind.None);

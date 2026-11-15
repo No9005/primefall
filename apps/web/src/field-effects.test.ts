@@ -30,20 +30,26 @@ describe("Pull slide", () => {
   });
 });
 
-describe("Breach Charge", () => {
-  const destroyed: MatchEvent = { kind: EventKind.CoverDestroyed, tick: 1, heroId: "a", to: at(5, 2), card: "Breach Charge" };
+describe("Urban Renewal", () => {
+  const destroyed: MatchEvent = { kind: EventKind.CoverDestroyed, tick: 1, heroId: "a", to: at(5, 2), card: "Urban Renewal" };
+  const blasted: MatchEvent = { kind: EventKind.AreaBlasted, tick: 1, heroId: "a", to: at(5, 2), amount: 3, card: "Urban Renewal" };
 
-  it("flies the charge for 480 ms and blows the Cover up where it lands", () => {
+  it("flies the bomb for 340 ms and blows the Cover up where it lands", () => {
     const [cue] = effectCuesOf([destroyed], fireOf);
-    expect(cue).toEqual({ kind: "breach", casterId: "a", tile: at(5, 2), fireMs: 620, flightMs: 480, cover: true });
-    expect(coverEditsOf([cue!])).toEqual([{ kind: "destroyed", tile: at(5, 2), atMs: 1100 }]);
-    expect(cueEndMs(cue!)).toBe(1100 + 1464);
+    expect(cue).toEqual({ kind: "breach", casterId: "a", tile: at(5, 2), fireMs: 620, flightMs: 340, cover: true, size: 1 });
+    expect(coverEditsOf([cue!])).toEqual([{ kind: "destroyed", tile: at(5, 2), atMs: 960 }]);
+    expect(cueEndMs(cue!)).toBe(960 + 1464);
   });
 
-  it("lifts the charge 26 px at the top of its arc and drops it back to the ground", () => {
+  it("blasts the whole area once, with or without Cover in it, and keeps one cue for the blast and the Cover", () => {
+    expect(effectCuesOf([blasted], fireOf)).toEqual([{ kind: "breach", casterId: "a", tile: at(5, 2), fireMs: 620, flightMs: 340, cover: false, size: 3 }]);
+    expect(effectCuesOf([blasted, destroyed], fireOf)).toEqual([{ kind: "breach", casterId: "a", tile: at(5, 2), fireMs: 620, flightMs: 340, cover: true, size: 1 }]);
+  });
+
+  it("lifts the bomb 26 px at the top of its arc and drops it back to the ground", () => {
     expect(chargeAt(0)).toEqual({ progress: 0, lift: 0 });
-    expect(chargeAt(240).lift).toBe(26);
-    expect(chargeAt(480)).toEqual({ progress: 1, lift: 0 });
+    expect(chargeAt(170).lift).toBe(26);
+    expect(chargeAt(340)).toEqual({ progress: 1, lift: 0 });
   });
 
   it("grows the fireball to 1 x at 120 ms and throws the chunks away from the wall", () => {
@@ -57,7 +63,7 @@ describe("Breach Charge", () => {
 
 describe("Cover placed and Half Cover", () => {
   it("drops the crate at the slam and has the bars up 1.17 s later, when the terrain gets them", () => {
-    const [cue] = effectCuesOf([{ kind: EventKind.CoverPlaced, tick: 1, heroId: "c", to: at(2, 2), card: "Deploy Cover" }], fireOf);
+    const [cue] = effectCuesOf([{ kind: EventKind.CoverPlaced, tick: 1, heroId: "c", to: at(2, 2), card: "Temporary Solution" }], fireOf);
     expect(cue).toEqual({ kind: "coverPlaced", casterId: "c", tile: at(2, 2), startMs: 950 });
     expect(coverEditsOf([cue!])).toEqual([{ kind: "placed", tile: at(2, 2), atMs: 950 + 1170, casterId: expect.any(String) }]);
     expect(cueEndMs(cue!)).toBe(950 + 1400);
@@ -123,9 +129,9 @@ describe("Shield", () => {
 });
 
 describe("in the frames of the playback", () => {
-  it("takes the Cover edit of a Breach Charge from its cue", () => {
-    const frames = buildPlaybackFrames([{ kind: EventKind.CoverDestroyed, tick: 1, heroId: "a", to: at(5, 2), card: "Breach Charge" }], () => HeroClass.Bruiser);
+  it("takes the Cover edit of an Urban Renewal from its cue", () => {
+    const frames = buildPlaybackFrames([{ kind: EventKind.CoverDestroyed, tick: 1, heroId: "a", to: at(5, 2), card: "Urban Renewal" }], () => HeroClass.Bruiser);
     expect(frames[0]!.coverEdits).toHaveLength(1);
-    expect(frames[0]!.holdMs).toBeGreaterThanOrEqual(1100 + 1464);
+    expect(frames[0]!.holdMs).toBeGreaterThanOrEqual(960 + 1464);
   });
 });

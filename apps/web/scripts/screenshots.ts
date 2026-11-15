@@ -370,7 +370,7 @@ function cardOf(match: MatchState, heroId: string, slot: number): CardDefinition
 
 /**
  * Aims a card at a tile with one tap, like `queueMoveTo`: the tiles the card can be aimed at frame the camera (the
- * same list PlanningScreen builds: every non-Wall tile within Range, for Deploy Cover only empty ones).
+ * same list PlanningScreen builds: every non-Wall tile within Range, for Temporary Solution only empty ones).
  */
 async function aimCardAt(page: Page, match: MatchState, heroId: string, step: { slot: number; use: StepUse; tile: GridPosition }): Promise<void> {
   const hero = match.heroes.find((candidate) => candidate.id === heroId)!;

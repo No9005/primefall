@@ -16,10 +16,10 @@ const WEAPON_OF_CARD: Readonly<Record<string, Weapon>> = {
   "Execution Round": "precision",
   "Ghost Shot": "precision",
   "Long Shot": "long",
-  "Tag Round": "tag",
+  "Price Tag": "tag",
 };
 
-/** The weapon a card fires; cards without a projectile of their own (Breach Charge) have none yet. */
+/** The weapon a card fires; cards without a projectile of their own (Urban Renewal) have none. */
 export function weaponOf(card: string | undefined): Weapon | undefined {
   return card === undefined ? undefined : WEAPON_OF_CARD[card];
 }
@@ -49,6 +49,12 @@ export const IMPACT_RING_MS = 500;
 /** Marked and Slow are shown from the dart's arrival, or from the field beat of the Slow pulse clip. */
 export const SLOW_FIELD_MS = 1200;
 export const TAG_FIRE_MS = 730;
+/** The SCRAP label rises when Tilly's Scrap clip has pressed the pieces into her core. */
+export const SCRAP_LABEL_MS = 2160;
+/** The rubble circles the hand until the fist closes at 2020 ms of the Scrap clip. */
+export const SCRAP_PULL_MS = 2020;
+/** The rubble lifts off at 600 ms and the pieces fly in one after the other from 1100 ms, 70 ms apart, in 450 ms each. */
+export const SCRAP_PIECES = 8;
 export const STATUS_INTRO_MS = 300;
 
 /** Milliseconds a projectile flies over `distance` tiles. */
@@ -63,7 +69,7 @@ export function impactMs(card: string | undefined, distance: number | undefined,
   return fireMs + flightMs(card, distance);
 }
 
-export type NumberStyle = "damage" | "bonus" | "shield" | "failed";
+export type NumberStyle = "damage" | "bonus" | "shield" | "failed" | "scrap";
 
 export type EffectCue =
   /** `halfCover`: Half Cover on the target's tile reduced the damage, so the projectile hits the wall in front of the target. */
@@ -81,13 +87,15 @@ export type EffectCue =
    */
   | { kind: "pull"; toId: string; from?: GridPosition; to: GridPosition; startMs: number; casterId?: string; tag: string }
   /**
-   * Breach Charge: the charge flies from the caster to the tile, which blows up at `fireMs + flightMs`. `cover`: Cover was
-   * destroyed there, so its chunks fly.
+   * Urban Renewal: the bomb flies from the caster to the tile, which blows up at `fireMs + flightMs`; the blast covers `size`
+   * by `size` tiles. `cover`: Cover was destroyed there, so its chunks fly.
    */
-  | { kind: "breach"; casterId: string; tile: GridPosition; fireMs: number; flightMs: number; cover: boolean }
+  | { kind: "breach"; casterId: string; tile: GridPosition; fireMs: number; flightMs: number; cover: boolean; size: number }
   /** The oldest Placed Cover of a Squad goes when a fourth is placed: it crumbles into four chunks (no fireball, no scorch). */
   | { kind: "coverCrumble"; tile: GridPosition; startMs: number }
-  /** Deploy Cover and Fortify: a flash on the tile at `startMs`, then the wall rises. */
+  /** Scrap: rubble lifts off the blasted tile, flies into the open hand of the caster, circles there and is pressed into a ball. */
+  | { kind: "scrapPull"; casterId: string; tile: GridPosition; startMs: number }
+  /** Temporary Solution: a flash on the tile at `startMs`, then the wall rises. */
   | { kind: "coverPlaced"; casterId: string; tile: GridPosition; startMs: number }
   /** A Hero gains Shield: the rubies pop and the bubble forms. `startMs` is when the rubies pop. */
   | { kind: "shieldGain"; toId: string; startMs: number; amount: number }
@@ -98,7 +106,7 @@ export type EffectCue =
   /** The label of extra damage that is not Crossfire (CLOSE +1 of a close-range effect), stacked like the CROSSFIRE label. */
   | { kind: "bonus"; toId: string; startMs: number; text: string; tone: BonusTone; stack: number };
 
-export type BonusTone = "close";
+export type BonusTone = "close" | "marked";
 
 /** When a cue is over, for the length of the frame. */
 export function cueEndMs(cue: EffectCue): number {
@@ -115,9 +123,11 @@ export function cueEndMs(cue: EffectCue): number {
   }
 }
 
-// ---- Field effects: Pull and Charge, Breach Charge, Cover placed, Half Cover and the Shield ----
+// ---- Field effects: Pull and Charge, Urban Renewal, Cover placed, Half Cover and the Shield ----
 
-export const BREACH_CARD = "Breach Charge";
+export const BREACH_CARD = "Urban Renewal";
+/** The card whose damage comes from a Scrap Field: its caster does not act when it lands. */
+export const FIELD_CARD = "Heavy Metal";
 export const CHARGE_CARD = "Express Delivery";
 /** One tile of Pull slides 24 px (a tile step) in 300 ms. */
 export const SLIDE_MS = 300;
@@ -129,7 +139,8 @@ export const CHARGE_STREAK_MS = 600;
 export const CHARGE_SHIELD_TAG = "SHIELD 2 · THIS ROUND";
 /** The echoes of a pulled Hero trail behind it by these fractions of the slide. */
 export const PULL_ECHO_LAGS = [0.2, 0.4] as const;
-export const BREACH_FLIGHT_MS = UNARMED_FLIGHT_MS;
+/** The bomb of Urban Renewal leaves at 820 ms and lands at 1160 ms of its clip. */
+export const BREACH_FLIGHT_MS = 340;
 export const BREACH_ARC_PX = 26;
 export const BREACH_AFTER_MS = 1464;
 /** The Controller slams the ground at 950 ms; the crate falls (0.45 s), lands (0.22 s) and unfolds (0.5 s): the bars stand 1.17 s later. */
@@ -155,6 +166,7 @@ const CUE_LENGTH_MS: Readonly<Partial<Record<EffectCue["kind"], number>>> = {
   pull: PULL_MS,
   charge: CHARGE_STREAK_MS,
   coverPlaced: COVER_PLACED_MS,
+  scrapPull: SCRAP_PULL_MS,
   coverCrumble: COVER_CRUMBLE_MS,
   shieldGain: SHIELD_POP_MS,
   shieldHit: SHIELD_HIT_MS,
@@ -188,7 +200,7 @@ export function slideProgress(ms: number): number {
   return 1 - (1 - t) * (1 - t);
 }
 
-/** The Breach Charge `ms` after it leaves: how far along the way it is (0 to 1) and how high the arc lifts it (26 px at most). */
+/** The bomb of Urban Renewal `ms` after it leaves: how far along the way it is (0 to 1) and how high the arc lifts it (26 px at most). */
 export function chargeAt(ms: number): { progress: number; lift: number } {
   const progress = Math.min(1, Math.max(0, ms / BREACH_FLIGHT_MS));
   return { progress, lift: BREACH_ARC_PX * 4 * progress * (1 - progress) };
@@ -402,13 +414,16 @@ const labelsOn = (toId: string, cues: readonly EffectCue[]) => cues.filter((cue)
 /** The label of the extra damage of a hit (CLOSE +1); the CROSSFIRE label goes on top of it. */
 function bonusCues(event: MatchEvent, toId: string, startMs: number, cues: EffectCue[]): void {
   if ((event.closeBonus ?? 0) > 0) cues.push({ kind: "bonus", toId, startMs, text: `CLOSE +${event.closeBonus}`, tone: "close", stack: labelsOn(toId, cues) });
+  if ((event.marked ?? 0) > 0) cues.push({ kind: "bonus", toId, startMs, text: `MARKED +${event.marked}`, tone: "marked", stack: labelsOn(toId, cues) });
 }
 
 function hitCues(event: MatchEvent, toId: string, frame: CueFrame): void {
   const { cues } = frame;
-  const fire = frame.fireOf(event.heroId, event.card);
+  // A Scrap Field hurts at once: nobody fires.
+  const fieldDamage = event.card === FIELD_CARD;
+  const fire = fieldDamage ? 0 : frame.fireOf(event.heroId, event.card);
   const weapon = weaponOf(event.card);
-  const flight = flightMs(event.card, event.distance);
+  const flight = fieldDamage ? 0 : flightMs(event.card, event.distance);
   if (weapon !== undefined) {
     cues.push({
       kind: "shot",
@@ -453,7 +468,7 @@ function pullCues(event: MatchEvent, frame: CueFrame): void {
   });
 }
 
-/** The cards that place Cover (Deploy Cover, Fortify, Barricade): the Cover they destroy is the oldest one going, not a blast. */
+/** The cards that place Cover (Temporary Solution): the Cover they destroy is the oldest one going, not a blast. */
 function placesCover(card: string | undefined): boolean {
   return Object.values(HERO_DECKS).flat().some((candidate) => candidate.name === card && candidate.effects.some((effect) => effect.kind === EffectKind.PlaceCover));
 }
@@ -471,7 +486,28 @@ function coverDestroyedCues(event: MatchEvent, frame: CueFrame): void {
     fireMs: frame.fireOf(event.heroId, event.card),
     flightMs: BREACH_FLIGHT_MS,
     cover: true,
+    size: 1,
   });
+}
+
+/** Urban Renewal blasts its area: the bomb arcs to the centre tile and the area blows up, whether or not it hits anything. */
+function areaBlastedCues(event: MatchEvent, frame: CueFrame): void {
+  if (!event.to) return;
+  addBreach(frame.cues, {
+    kind: "breach",
+    casterId: event.heroId,
+    tile: event.to,
+    fireMs: frame.fireOf(event.heroId, event.card),
+    flightMs: BREACH_FLIGHT_MS,
+    cover: false,
+    size: event.amount ?? 1,
+  });
+}
+
+/** Scrap: the label SCRAP rises over the Hero that has it now. */
+function scrapGainedCues(event: MatchEvent, frame: CueFrame): void {
+  if (event.to) frame.cues.push({ kind: "scrapPull", casterId: event.heroId, tile: event.to, startMs: 0 });
+  frame.cues.push({ kind: "number", toId: event.heroId, startMs: SCRAP_LABEL_MS, text: "SCRAP", style: "scrap", drop: -22 });
 }
 
 function shieldGainedCues(event: MatchEvent, frame: CueFrame): void {
@@ -488,8 +524,8 @@ function coverPlacedCues(event: MatchEvent, frame: CueFrame): void {
 function markedCues(event: MatchEvent, frame: CueFrame): void {
   if (event.targetId === undefined) return;
   const hit = hitBefore(event, frame.events);
-  // Tag Round's dart leaves at 730 ms.
-  frame.cues.push({ kind: "marked", toId: event.targetId, startMs: TAG_FIRE_MS + flightMs("Tag Round", hit?.distance) });
+  // Price Tag's dart leaves at 730 ms.
+  frame.cues.push({ kind: "marked", toId: event.targetId, startMs: TAG_FIRE_MS + flightMs("Price Tag", hit?.distance) });
 }
 
 function slowCues(event: MatchEvent, frame: CueFrame): void {
@@ -509,6 +545,8 @@ const CUE_BUILDERS: Partial<Record<EventKind, (event: MatchEvent, frame: CueFram
   [EventKind.Pull]: pullCues,
   [EventKind.Charged]: chargedCues,
   [EventKind.CoverDestroyed]: coverDestroyedCues,
+  [EventKind.AreaBlasted]: areaBlastedCues,
+  [EventKind.ScrapGained]: scrapGainedCues,
   [EventKind.ShieldGained]: shieldGainedCues,
   [EventKind.CoverPlaced]: coverPlacedCues,
   [EventKind.MarkedApplied]: markedCues,

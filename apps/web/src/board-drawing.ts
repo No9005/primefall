@@ -11,6 +11,8 @@ import { AREA_COLOR, AREA_PIPS, type ZoneLook } from "./vision-effects";
 
 /** The areas of an enemy scan are outlined in this amber (docs/design/role-visuals/380/scout-drone-b.png). */
 export const SCANNED_COLOR = 0xffb347;
+/** Violet of a Scrap Field: its tiles, its wire and its tag. */
+export const FIELD_COLOR = 0xc58bff;
 
 /** A shield glyph about 14 px wide on screen, centred on the origin: filled for Full Cover, outline only for Half Cover. */
 export function shieldGlyph(kind: "full" | "half", scale: number): Graphics {
@@ -347,6 +349,46 @@ export function drawScoutArea(planning: Container, grid: Grid, { center, size, r
   planning.addChild(pips);
   created.push(pips);
   return { created, tints };
+}
+
+/**
+ * A Scrap Field (Heavy Metal): its tiles in violet with bolts and plates lying on them, barbed wire across the middle and the
+ * tag SCRAP FIELD · n (the Resolutions left). The pieces are placed from the tile coordinates, so they stay where they fell.
+ */
+export function drawScrapField(planning: Container, grid: Grid, { center, size, remaining }: { center: GridPosition; size: number; remaining: number }): Container[] {
+  const created: Container[] = [];
+  const pieceColors = [0x8a5a30, 0x9aa6b2, 0x59636e, 0xd0873a];
+  for (const tile of areaTilesOf(grid, center, size)) {
+    const { x, y } = gridToWorld(tile);
+    const ground = new Graphics().poly(floorOutline()).fill({ color: FIELD_COLOR, alpha: 0.2 }).stroke({ width: 1, color: FIELD_COLOR, alpha: 0.65 });
+    for (let piece = 0; piece < 3; piece++) {
+      const seed = tile.col * 31 + tile.row * 17 + piece * 7;
+      const px = ((seed * 37) % 60) - 30, py = (((seed * 53) % 30) - 15) * 0.6;
+      ground.rect(px, py, 8 - (seed % 3), 5 + (seed % 2)).fill({ color: pieceColors[seed % 4]! });
+    }
+    ground.position.set(x, y);
+    planning.addChild(ground);
+    created.push(ground);
+  }
+  const [top, right, bottom, left] = areaCorners(center, size);
+  const wire = new Graphics();
+  for (const [from, to] of [[left, right], [top, bottom]] as const) {
+    wire.moveTo(from.x, from.y);
+    const steps = 10;
+    for (let step = 1; step <= steps; step++) {
+      const at = lerpPoint(from, to, step / steps);
+      wire.lineTo(at.x, at.y + (step % 2 === 0 ? -5 : 5));
+    }
+  }
+  wire.stroke({ width: 2, color: 0xc3ccd4, alpha: 0.9 });
+  planning.addChild(wire);
+  created.push(wire);
+  const tag = new Text({ text: `SCRAP FIELD · ${remaining}`, style: { fontFamily: "IBM Plex Mono", fontSize: TAG_FONT * 0.8, fontWeight: "700", fill: FIELD_COLOR, stroke: { color: 0x0b1016, width: 3 } } });
+  tag.anchor.set(0.5, 1);
+  tag.position.set(top.x, top.y - TILE_HEIGHT * 0.5);
+  planning.addChild(tag);
+  created.push(tag);
+  return created;
 }
 
 type Point2 = { x: number; y: number };

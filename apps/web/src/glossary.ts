@@ -189,7 +189,7 @@ export const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
   {
     name: "Destroyed Cover",
     group: GlossaryGroup.Board,
-    text: "After Breach Charge or Wrecking Blow the Cover is gone and a scorched outline stays on the tile.",
+    text: "After Urban Renewal the Cover is gone and a scorched outline stays on the tile.",
     picture: { scene: "destroyedCover" },
   },
   {

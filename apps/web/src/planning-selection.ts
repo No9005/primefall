@@ -55,8 +55,9 @@ const EFFECT_TEXT: Record<EffectKind, (effect: CardEffect) => string> = {
   [EffectKind.ApplySlow]: ({ duration }) => `Slow for ${duration ?? 1} Resolution${duration === 1 || duration === undefined ? "" : "s"}`,
   // Marked has no damage amount (the card data gives only a duration); the text used to print "+undefined damage taken".
   [EffectKind.ApplyMarked]: ({ duration }) => `Marked for ${duration ?? 1} Resolution${duration === 1 || duration === undefined ? "" : "s"}`,
-  [EffectKind.DestroyHalfCover]: () => "destroys Half Cover",
-  [EffectKind.DestroyAnyCover]: () => "destroys any Cover",
+  [EffectKind.DestroyAnyCover]: () => "destroys all Cover in the area",
+  [EffectKind.AreaDamage]: ({ amount, size }) => `${amount} damage to every Hero in a ${size}x${size} area, allies too`,
+  [EffectKind.ScrapField]: ({ size, duration, amount }) => `${size}x${size} Scrap Field for ${duration} Resolutions: Heroes that Move in it are Slowed and take ${amount} damage per Move`,
   [EffectKind.IgnoreHalfCover]: () => "ignores Half Cover",
   [EffectKind.PiercingDamage]: () => "Piercing Damage: ignores Shield",
   [EffectKind.GainShield]: ({ amount }) => `Shield ${amount}`,
@@ -65,15 +66,16 @@ const EFFECT_TEXT: Record<EffectKind, (effect: CardEffect) => string> = {
   [EffectKind.PlaceCover]: ({ cover }) => `places ${cover === CoverKind.Full ? "Full" : "Half"} Cover until it is destroyed`,
   [EffectKind.BecomeHidden]: () => "become Hidden",
   [EffectKind.TargetGhost]: () => "shoots a Ghost's last known position",
-  [EffectKind.RemoveHalfCoverReduction]: () => "Half Cover does not reduce the damage",
   [EffectKind.Pull]: ({ amount }) => `Pull ${amount}: the enemy moves up to ${amount} tiles toward this Hero`,
   [EffectKind.Charge]: ({ amount, shield }) => `Shield ${shield}, then moves up to ${amount} tiles toward the enemy and ends next to it`,
   [EffectKind.CloseRangeBonus]: ({ amount }) => `+${amount} damage at Range 1`,
   [EffectKind.AttackTwice]: () => "attacks twice",
 };
 
+/** The card text of an effect; with a Scrap change it adds what the effect becomes while the Hero has Scrap. */
 function describeEffect(effect: CardEffect): string {
-  return EFFECT_TEXT[effect.kind](effect);
+  const plain = EFFECT_TEXT[effect.kind](effect);
+  return effect.scrap ? `${plain} (Scrap: ${EFFECT_TEXT[effect.kind]({ ...effect, ...effect.scrap })})` : plain;
 }
 
 /** One line of card text for a mode of a card: its effects in order, `undefined` for a card without that mode. */
@@ -155,21 +157,19 @@ export const CARD_USE_LABELS: Record<CardUse, string> = {
 
 export interface AimState {
   card: CardDefinition;
-  /** The card needs a highlighted tile (Breach Charge). */
+  /** The card needs a highlighted tile (Urban Renewal). */
   aimsAtTile: boolean;
-  aimsAtAlly: boolean;
   /** An enemy is to be picked but none can be: for an Attack, no enemy is Visible. */
   noEnemyInRange?: boolean;
 }
 
 /** The one-line instruction on the floating card: what to tap next while a card is aimed. */
-export function pickInstruction({ card, aimsAtTile, aimsAtAlly, noEnemyInRange }: AimState): string {
+export function pickInstruction({ card, aimsAtTile, noEnemyInRange }: AimState): string {
   if (noEnemyInRange) return "No enemy in sight";
   if (card.target === CardTarget.Area || card.target === CardTarget.EmptyTile || aimsAtTile) return "Tap a lit tile";
   if (card.target === CardTarget.SelfHero) return "Tap your Hero";
   if (card.target === CardTarget.GhostEnemy) return "Tap a Ghost";
   if (card.target === CardTarget.VisibleOrGhostEnemy) return "Tap an enemy or a Ghost";
-  if (aimsAtAlly) return "Tap an ally";
   return "Tap an enemy";
 }
 

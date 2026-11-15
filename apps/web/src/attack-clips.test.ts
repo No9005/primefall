@@ -9,7 +9,8 @@ describe("the attack clips", () => {
     expect(attackClipName("Time for Coffee")).toBe("attack");
     expect(attackClipName("Ghost Shot")).toBe("attack");
     expect(attackClipName("Long Shot")).toBe("longShot");
-    expect(attackClipName("Tag Round")).toBe("tagRound");
+    expect(attackClipName("Price Tag")).toBe("tagRound");
+    expect(attackClipName("Urban Renewal")).toBe("demolish");
     expect(clipOf(HeroClass.Bruiser, "longShot")).toBe(clipOf(HeroClass.Bruiser, "attack"));
   });
 });

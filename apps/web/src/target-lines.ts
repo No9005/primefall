@@ -31,7 +31,6 @@ export enum LineKind {
   /** A shot at an enemy Hero or a Ghost, drawn like the line of fire of an Attack. */
   Attack = "attack",
   /** A card effect on an allied Hero: teal, with an arrow head. */
-  Ally = "ally",
   /** A card effect on a tile (Breach Charge, Scout Drone, Deploy Cover, Barricade): ends in a ring. */
   Tile = "tile",
 }
@@ -71,7 +70,6 @@ export interface TargetLine {
 const NO_RANGE_LIMIT = Number.MAX_SAFE_INTEGER;
 
 const ENEMY_TARGETS = [CardTarget.VisibleEnemy, CardTarget.GhostEnemy, CardTarget.VisibleOrGhostEnemy];
-const ALLY_TARGETS = [CardTarget.AllyHero, CardTarget.AllyHeroTile];
 const TILE_TARGETS = [CardTarget.Tile, CardTarget.EmptyTile, CardTarget.Area];
 
 /** The enemy Hero a line may end on: Visible, or a Ghost at its last known tile; never an Unknown one. */
@@ -114,14 +112,13 @@ function pathTargetOf(enemies: readonly EnemyView[], id: string, card: CardDefin
   return enemy?.visibility === Visibility.Ghost && card.target === CardTarget.VisibleOrGhostEnemy ? enemy : undefined;
 }
 
-function linesOfAction({ grid, heroes, enemies }: LineContext, hero: HeroView, from: GridPosition, action: QueuedAction, tick: number): TargetLine[] {
+function linesOfAction({ grid, enemies }: LineContext, hero: HeroView, from: GridPosition, action: QueuedAction, tick: number): TargetLine[] {
   if (action.kind !== ActionKind.Primary) return [];
   const card: CardDefinition = HERO_DECKS[hero.heroClass][action.card]!;
   const base = { heroId: hero.id, own: true, tick };
   if (ENEMY_TARGETS.includes(card.target)) {
     return attackLines(grid, enemies, { base, from, action, range: card.range ?? NO_RANGE_LIMIT, minRange: card.minRange ?? 0 });
   }
-  if (ALLY_TARGETS.includes(card.target)) return allyLines(heroes, hero, base, from, action);
   if (TILE_TARGETS.includes(card.target) && action.tile) return [tileLine(base, from, action.tile)];
   return [];
 }
@@ -135,12 +132,6 @@ function attackLines(grid: Grid, enemies: readonly EnemyView[], shotAt: { base: 
   const clear = !tooClose && shot.segments.every((segment) => segment.style === SegmentStyle.Clear) && shot.ringed;
   const missHint = clear ? undefined : mayMissHint(from, target.position, range, minRange);
   return [{ ...base, kind: LineKind.Attack, tone: clear ? LineTone.Clear : LineTone.Red, targetId: target.id, from, to: target.position, shot, unreachable: !clear, missHint }];
-}
-
-function allyLines(heroes: readonly HeroView[], hero: HeroView, base: LineBase, from: GridPosition, action: PrimaryAction): TargetLine[] {
-  const ally = heroes.find((candidate) => candidate.id === action.target);
-  if (!ally || ally.id === hero.id) return [];
-  return [{ ...base, kind: LineKind.Ally, tone: LineTone.Clear, from, to: ally.position }];
 }
 
 function tileLine(base: Pick<TargetLine, "heroId" | "own" | "tick">, from: GridPosition, to: GridPosition): TargetLine {

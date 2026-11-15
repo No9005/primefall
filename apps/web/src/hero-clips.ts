@@ -15,6 +15,10 @@ export type ClipName =
   | "scoutDrone"
   | "aegis"
   | "deploy"
+  | "deployFull"
+  | "demolish"
+  | "scrapField"
+  | "scrapGain"
   | "hidden"
   | "block"
   | "hit"
@@ -83,6 +87,11 @@ const CLIPS: Record<HeroClass, Partial<Record<ClipName, Clip>>> = {
     scoutDrone: once("scoutDrone", 3600, 3380),
     aegis: once("aegis", 3200, 2560),
     deploy: once("deploy", 3400, 2720),
+    deployFull: once("deployFull", 3400, 2720),
+    // The bomb and the Scrap Field leave at 820 ms; the Scrap gain presses the pieces into the core at 2040 ms.
+    demolish: once("demolish", 3400, 2700, 820),
+    scrapField: once("scrapField", 3400, 2700, 820),
+    scrapGain: once("scrapGain", 3400, 2800),
     exhausted: EXHAUSTED,
   },
   [HeroClass.Assassin]: {
@@ -110,9 +119,10 @@ export function clipOf(heroClass: HeroClass, name: ClipName): Clip {
   return clips[name] ?? clips.attack!;
 }
 
-/** The attack clip for a card: Long Shot and Tag Round have their own, every other card uses its class's basic attack. */
+/** The attack clip for a card: Long Shot, Price Tag and Urban Renewal have their own, every other card uses its class's basic attack. */
 export function attackClipName(card: string | undefined): ClipName {
   if (card === "Long Shot") return "longShot";
-  if (card === "Tag Round") return "tagRound";
+  if (card === "Price Tag") return "tagRound";
+  if (card === "Urban Renewal") return "demolish";
   return "attack";
 }

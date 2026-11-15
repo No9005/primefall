@@ -92,15 +92,8 @@ describe("plannedTargetLines", () => {
     expect(line).toMatchObject({ kind: LineKind.Attack, to: { col: 4, row: 1 } });
   });
 
-  it("draws an ally effect as an Ally line to the allied Hero", () => {
-    const overwatch: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Controller, "Overwatch Uplink"), target: "b" };
-    expect(plannedTargetLines(grid, heroes, [], [plan("c", [overwatch])])).toMatchObject([
-      { kind: LineKind.Ally, tone: LineTone.Clear, tick: 1, from: controller.position, to: bruiser.position },
-    ]);
-  });
-
   it("draws a tile effect as a Tile line ending on the tile", () => {
-    const breach: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Controller, "Breach Charge"), target: "c", tile: { col: 4, row: 2 } };
+    const breach: QueuedAction = { kind: ActionKind.Primary, card: cardIndex(HeroClass.Controller, "Urban Renewal"), target: "c", tile: { col: 4, row: 2 } };
     expect(plannedTargetLines(grid, heroes, [], [plan("c", [breach])])).toMatchObject([
       { kind: LineKind.Tile, tick: 1, to: { col: 4, row: 2 } },
     ]);
@@ -292,7 +285,7 @@ describe("plannedEffectPaths", () => {
 describe("plannedCoverPlan", () => {
   const controller = hero("c", HeroClass.Controller, { col: 1, row: 1 });
   const own: GridPosition[] = [{ col: 2, row: 1 }, { col: 3, row: 1 }, { col: 4, row: 1 }];
-  const placeAt = (tile: GridPosition): QueuedAction => ({ kind: ActionKind.Primary, card: cardIndex(HeroClass.Controller, "Deploy Cover"), target: "c", tile });
+  const placeAt = (tile: GridPosition): QueuedAction => ({ kind: ActionKind.Primary, card: cardIndex(HeroClass.Controller, "Temporary Solution"), target: "c", tile });
   const plansOf = (...tiles: GridPosition[]) => [plan("c", tiles.map(placeAt))];
 
   it("takes nothing while the Squad has room, and lists the tile of the new Cover", () => {

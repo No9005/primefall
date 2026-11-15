@@ -3,6 +3,7 @@ import { Container, Graphics, Text } from "pixi.js";
 import { CLIP_SPEED } from "./clip-player";
 import { rubyPieces, shieldBubble } from "./hero-figure";
 import { HERO_STYLE } from "./hero-style";
+import { PIXEL_SCALE } from "./pixel-heroes";
 import { drawCoverLook } from "./cover-look";
 import { coverLook, type CoverLook, TILE_HEIGHT } from "./terrain";
 import {
@@ -24,6 +25,8 @@ import {
   flightProgress,
   type BonusTone,
   CHARGE_STREAK_MS,
+  SCRAP_PIECES,
+  SCRAP_PULL_MS,
   PULL_ECHO_LAGS,
   PULL_MS,
   slideProgress,
@@ -71,7 +74,7 @@ const LOOK: Readonly<Record<Weapon, WeaponLook>> = {
   tag: { color: 0xff8fb0, flash: 0xff8fb0, flashRadius: 3.5, impact: 0.5, sparks: 2, rings: 0 },
 };
 const GOLD = 0xffd24a;
-const NUMBER_COLOR: Readonly<Record<NumberStyle, number>> = { damage: 0xff6b6b, bonus: 0xffb000, shield: 0x4da3ff, failed: 0x8a99a8 };
+const NUMBER_COLOR: Readonly<Record<NumberStyle, number>> = { damage: 0xff6b6b, bonus: 0xffb000, shield: 0x4da3ff, failed: 0x8a99a8, scrap: 0xff8a3d };
 const MARKED_RED = 0xff6b6b;
 const SLOW_VIOLET = 0xc18bff;
 const OUTLINE = 0x0b1016;
@@ -82,7 +85,7 @@ const CROSSFIRE_FONT = 9;
 const SPARK_ANGLES = [0.6, 2.2, 3.7, 5.3];
 /** The Pull is teal when the player's Squad pulls, enemy red when the player's Hero is pulled (docs/design/role-visuals/380/pull.png). */
 /** CLOSE +1 is orange like the shot of Handle With Care. */
-const BONUS_COLOR: Readonly<Record<BonusTone, number>> = { close: 0xff8a3d };
+const BONUS_COLOR: Readonly<Record<BonusTone, number>> = { close: 0xff8a3d, marked: 0xff5fb0 };
 const PULL_OWN = 0x2ec4b6;
 const PULL_ENEMY = 0xe5484d;
 
@@ -544,6 +547,7 @@ export class EffectsLayer {
     else if (cue.kind === "breach") this.drawBreach(this.shapeAt(i), cue, ms);
     else if (cue.kind === "coverPlaced") this.drawCoverPlaced(this.shapeAt(i), cue, ms);
     else if (cue.kind === "coverCrumble") this.drawCoverCrumble(this.shapeAt(i), cue, ms);
+    else if (cue.kind === "scrapPull") this.drawScrapPull(this.shapeAt(i), cue, ms);
   }
 
   /** A shot: drawn, and the screen shake it causes (a Long Shot) in world pixels. */
@@ -647,7 +651,10 @@ export class EffectsLayer {
     });
   }
 
-  /** The charge arcs to the tile (26 px high), a fireball and smoke, the Cover breaks into four chunks and a scorch stays. */
+  /**
+   * The bomb arcs to the tile (26 px high), the area blows up in a fireball per tile with smoke, the Cover breaks into
+   * four chunks and a scorch stays on every tile of the blast.
+   */
   private drawBreach(g: Graphics, cue: Extract<EffectCue, { kind: "breach" }>, ms: number): void {
     g.clear();
     const from = this.place(cue.casterId);
@@ -657,17 +664,67 @@ export class EffectsLayer {
     if (s >= 0 && s < cue.flightMs) drawCharge(g, { x: from.x, y: from.y - CHEST_LIFT }, { x: centre.x, y: centre.y - 4 * F }, chargeAt(s));
     const t = s - cue.flightMs;
     if (t < 0) return;
-    const scorch = scorchAt(t);
-    if (scorch > 0) {
-      diamond(g, centre, 23 * F, 12 * F);
-      g.fill({ color: 0x1a1f26, alpha: scorch * 0.85 });
-    }
-    drawFireball(g, centre, fireballAt(t));
-    for (const [dx, dy, radius] of [[-4, -8, 7], [10, -4, 6]] as const) {
-      const smoke = smokeAt(t);
-      if (smoke.alpha > 0) g.circle(centre.x + dx * F, centre.y + dy * F - smoke.rise * F, radius * F * smoke.scale).fill({ color: SMOKE, alpha: smoke.alpha });
+    const reach = Math.floor(cue.size / 2);
+    for (let row = -reach; row <= reach; row++) {
+      for (let col = -reach; col <= reach; col++) {
+        const at = this.world.tile({ col: cue.tile.col + col, row: cue.tile.row + row });
+        // The outer tiles blow a little later and a little smaller than the middle.
+        const late = Math.max(Math.abs(col), Math.abs(row)) * 70;
+        const local = t - late;
+        if (local < 0) continue;
+        const scorch = scorchAt(local);
+        if (scorch > 0) {
+          diamond(g, at, 23 * F, 12 * F);
+          g.fill({ color: 0x1a1f26, alpha: scorch * 0.85 });
+        }
+        const fire = fireballAt(local);
+        drawFireball(g, at, late === 0 ? fire : { scale: fire.scale * 0.7, alpha: fire.alpha });
+        const smoke = smokeAt(local);
+        if (smoke.alpha > 0 && late === 0) {
+          for (const [dx, dy, radius] of [[-4, -8, 7], [10, -4, 6]] as const) {
+            g.circle(at.x + dx * F, at.y + dy * F - smoke.rise * F, radius * F * smoke.scale).fill({ color: SMOKE, alpha: smoke.alpha });
+          }
+        }
+      }
     }
     if (cue.cover) drawCoverChunks(g, centre, t);
+  }
+
+  /**
+   * Scrap (docs/design/cards, the Force grip): the rubble of the blast shakes and lifts off the tile, flies in an arc into the
+   * open hand of the caster, circles there, and is gone when the fist closes. The hand is where the Scrap clip holds it.
+   */
+  private drawScrapPull(g: Graphics, cue: Extract<EffectCue, { kind: "scrapPull" }>, ms: number): void {
+    g.clear();
+    const caster = this.place(cue.casterId);
+    const t = ms - cue.startMs;
+    if (this.reduced || !caster || t < 0 || t >= SCRAP_PULL_MS) return;
+    const source = this.world.tile(cue.tile);
+    // The Hero turns to the blast: its hand is on that side.
+    const side = source.x >= caster.x ? 1 : -1;
+    const hand = { x: caster.x + side * 40 * PIXEL_SCALE, y: caster.y - 38 * PIXEL_SCALE };
+    const colors = [0x8a5a30, 0x9aa6b2, 0x59636e, 0xd0873a];
+    for (let piece = 0; piece < SCRAP_PIECES; piece++) {
+      const start = { x: source.x + (((piece * 37) % 40) - 20) * PIXEL_SCALE * 0.6, y: source.y + (((piece * 53) % 12) - 6) * PIXEL_SCALE * 0.6 };
+      const arrives = 1100 + piece * 70;
+      let at: Point;
+      if (t < 600) at = start;
+      else if (t < arrives) {
+        const lift = Math.min(1, (t - 600 - piece * 30) / 300);
+        at = { x: start.x + Math.round(Math.sin(t / 35 + piece * 2)) * (lift > 0 ? 2 : 0), y: start.y - Math.max(0, lift) * 9 * PIXEL_SCALE };
+      } else if (t < arrives + 450) {
+        const u = (t - arrives) / 450, q = u * u * (3 - 2 * u), top = { x: start.x, y: start.y - 9 * PIXEL_SCALE };
+        const control = { x: (top.x + hand.x) / 2, y: Math.min(top.y, hand.y) - 22 * PIXEL_SCALE };
+        at = {
+          x: (1 - q) * (1 - q) * top.x + 2 * (1 - q) * q * control.x + q * q * hand.x,
+          y: (1 - q) * (1 - q) * top.y + 2 * (1 - q) * q * control.y + q * q * hand.y,
+        };
+      } else {
+        const angle = t / 120 + piece * 0.8, radius = (6 + (piece % 3) * 2) * PIXEL_SCALE;
+        at = { x: hand.x + Math.cos(angle) * radius, y: hand.y + Math.sin(angle) * radius * 0.6 };
+      }
+      g.rect(at.x, at.y, (3 - (piece % 2)) * PIXEL_SCALE, (2 + (piece % 2)) * PIXEL_SCALE).fill({ color: colors[piece % 4]! }).stroke({ width: 1, color: 0x0b0f15 });
+    }
   }
 
   /** The oldest Placed Cover crumbles into four chunks, with no fireball and no scorch (docs/design/role-visuals/380/placed-cover.png). */
