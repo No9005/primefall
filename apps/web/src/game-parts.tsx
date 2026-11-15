@@ -1,25 +1,38 @@
-import type { CardDefinition } from "game-core";
+import { type CardDefinition, type HeroClass } from "game-core";
 import { type ReactNode, type Ref, useState } from "react";
 import type { Point } from "./card-drag";
 import { DesignedCard } from "./card-design";
-import { type Face, type FaceView, REVEAL_SPAN } from "./card-pull";
-import { cardFace } from "./planning-selection";
+import { type Face, type FaceView } from "./card-pull";
+import { HERO_BASICS } from "./hero-basics";
+import { CardUse, cardFace } from "./planning-selection";
 import { pullOffset, ReleaseOutcome, releaseOutcome } from "./target-pick";
 
 // The card face and the drop targets of the game, shared by the screens so that a change to one
 // changes the other.
 
-/** The width of the pulled card (it must fit the free board area at 844 x 390) and of the card parked below the faces. */
+/** The width of the card while it is pressed, of the floating card under the finger, and of each face in the row of uses. */
 export const PULLED_CARD_WIDTH = 184;
-export const PARKED_CARD_WIDTH = 100;
+export const FLOATING_CARD_WIDTH = 100;
+export const FACE_CARD_WIDTH = 150;
+
+/** The face of a use as a designed card: the card itself for its Primary effect, the Hero's own Pitch and Move card for the others. */
+function FaceCard({ card, face, heroClass }: { card: CardDefinition; face: FaceView; heroClass: HeroClass }) {
+  const basics = HERO_BASICS[heroClass];
+  if (face.face === CardUse.Primary) return <DesignedCard card={card} width={FACE_CARD_WIDTH} />;
+  const look = face.face === CardUse.Pitch ? basics.pitch : basics.move;
+  const standard = { name: look.name, type: card.type, energyCost: 0, effects: [] };
+  return <DesignedCard card={standard} width={FACE_CARD_WIDTH} standard={face.face === CardUse.Pitch ? "Pitch" : "Move"} cost={face.face === CardUse.Pitch ? "+1" : 0} art={look.art} />;
+}
 
 /**
- * A card pressed or pulled out of the Hand: shown large in the middle of the free board area, with the faces of its
- * uses above it once they are shown. A face is chosen by tap or by dropping the card on it (`data-face` is how the
- * drop finds it); tapping anywhere else puts the card back.
+ * A card pressed or pulled out of the Hand. Pressed, it is shown big in the middle of the free board area. Pulled or
+ * opened, the uses of the card show in a row of designed cards: its own effect (it costs Energy) on the left, then Pitch,
+ * then Move. A use is chosen by tap or by dropping the card on it (`data-face` is how the drop finds it); tapping
+ * anywhere else puts the card back.
  */
 export function PulledCard({
   card,
+  heroClass,
   faces,
   floatingAt,
   reveal,
@@ -27,42 +40,29 @@ export function PulledCard({
   onOutside,
 }: {
   card: CardDefinition;
+  heroClass: HeroClass;
   faces: FaceView[] | undefined;
   /** Where the finger is while the card is dragged: the small card floats there. */
   floatingAt: Point | undefined;
   /** How much of the faces shows (0 to 1) while the card is dragged. */
   reveal: number;
   onFace: (face: Face) => void;
-  /** The card goes back into the Hand: a tap outside the faces, a tap on the parked card, or a pull down. */
+  /** The card goes back into the Hand: a tap outside the faces. */
   onOutside: () => void;
 }) {
-  const [drag, setDrag] = useState<{ startY: number; offset: number } | undefined>(undefined);
-  // Pulling the parked card down fades the faces out like the pull up faded them in.
-  const faceOpacity = drag ? 1 - Math.min(1, drag.offset / REVEAL_SPAN) : reveal;
-  const floating = floatingAt ? { left: floatingAt.x - 50, top: floatingAt.y - 70, transform: "none" } : undefined;
+  const floating = floatingAt ? { left: floatingAt.x - FLOATING_CARD_WIDTH / 2, top: floatingAt.y - 70 } : undefined;
+  // With the faces open and the finger up, the row is all there is: the card itself is one of its faces.
+  const showsCard = faces === undefined || floating !== undefined;
   return (
     <div className="pull" data-testid="pulled-card">
       <div className="pull-backdrop" onClick={onOutside} />
-      <div
-        className={`pull-card card${faces ? " parked" : ""}${floating ? " floating" : ""}`}
-        aria-label={`${card.name} held`}
-        style={floating ?? (drag ? { transform: `translateY(${drag.offset}px)`, transition: "none" } : undefined)}
-        onPointerDown={(event) => {
-          if (floating) return;
-          event.currentTarget.setPointerCapture(event.pointerId);
-          setDrag({ startY: event.clientY, offset: 0 });
-        }}
-        onPointerMove={(event) => drag && setDrag({ ...drag, offset: pullOffset(drag.startY, event.clientY) })}
-        onPointerUp={() => {
-          if (drag && releaseOutcome(drag.offset) === ReleaseOutcome.Cancel) onOutside();
-          else setDrag(undefined);
-        }}
-        onPointerCancel={() => setDrag(undefined)}
-      >
-        <DesignedCard card={card} width={faces ? PARKED_CARD_WIDTH : PULLED_CARD_WIDTH} />
-      </div>
+      {showsCard && (
+        <div className={`pull-card card${floating ? " floating" : ""}`} aria-label={`${card.name} held`} style={floating}>
+          <DesignedCard card={card} width={floating ? FLOATING_CARD_WIDTH : PULLED_CARD_WIDTH} />
+        </div>
+      )}
       {faces && (
-        <div className="pull-faces" role="group" aria-label="Use card as" style={{ opacity: faceOpacity }}>
+        <div className="pull-faces" role="group" aria-label="Use card as" style={{ opacity: reveal }}>
           {faces.map((face) => (
             <button
               key={face.face}
@@ -73,14 +73,11 @@ export function PulledCard({
               aria-label={face.title}
               onClick={() => face.reason === undefined && onFace(face.face)}
             >
-              <span className="face-title">
-                {face.title}
-                {face.cost !== undefined && <span className="face-cost">{face.cost}</span>}
-              </span>
-              <span className="face-effect">{face.effect}</span>
+              <FaceCard card={card} face={face} heroClass={heroClass} />
               {face.reason && <span className="face-reason">{face.reason}</span>}
             </button>
           ))}
+          <span className="pull-hint">Tap outside to put the card back</span>
         </div>
       )}
     </div>

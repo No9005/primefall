@@ -93,15 +93,12 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .pull-backdrop { position: absolute; inset: 0; pointer-events: auto; }
 .pull-card.card { position: absolute; left: 96px; top: 30px; width: auto; height: auto; padding: 0; border: 0; background: none; line-height: 0; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6)); pointer-events: none; animation: pull-lift var(--dur-fast) ease-out; }
 /* Pulled out: the card is parked small below the faces. */
-.pull-card.parked.card { left: calc((100% - 136px) / 2 - 50px); top: 168px; width: 100px; height: 140px; }
-.pull-faces { position: absolute; left: calc((100% - 136px) / 2); top: 52px; transform: translateX(-50%); display: flex; gap: 6px; }
-.pull-face { width: 128px; min-height: 112px; box-sizing: border-box; padding: 8px 9px; display: flex; flex-direction: column; gap: 4px; background: var(--graphite); color: var(--text); border: 2px solid var(--teal); border-radius: var(--radius-m); text-align: left; cursor: pointer; pointer-events: auto; animation: pull-lift var(--dur-fast) ease-out; }
-.pull-face[aria-disabled="true"] { opacity: 0.7; border-color: var(--steel); cursor: default; }
-.face-title { display: flex; flex: none; justify-content: space-between; align-items: flex-start; gap: 4px; font: 700 12px/1.2 var(--font-label); letter-spacing: 0.06em; text-transform: uppercase; }
-.pull-face > * { flex: none; }
-.face-cost { font: 500 12px/1 var(--font-number); color: var(--orange); }
-.face-effect { font: 12px/1.18 var(--font-label); color: var(--text-soft); }
-.face-reason { font: 700 12px/1.1 var(--font-label); color: var(--red-text); }
+/* The uses of a pulled card: a row of designed cards, the card's own effect first, then Pitch, then Move; nothing below them. */
+.pull-faces { position: absolute; left: calc((100% - 136px) / 2); top: 66px; transform: translateX(-50%); display: flex; gap: 10px; align-items: flex-start; }
+.pull-face { position: relative; width: 150px; height: 210px; padding: 0; border: 0; background: none; line-height: 0; text-align: left; cursor: pointer; pointer-events: auto; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55)); animation: pull-lift var(--dur-fast) ease-out; }
+.pull-face[aria-disabled="true"] { cursor: default; filter: grayscale(0.7) brightness(0.55) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55)); }
+.face-reason { position: absolute; left: 8px; right: 8px; top: 84px; padding: 3px 4px; background: color-mix(in srgb, var(--graphite) 90%, transparent); border: 1px solid var(--red-text); border-radius: 3px; text-align: center; font: 700 12px/1.1 var(--font-label); letter-spacing: 0.06em; text-transform: uppercase; color: var(--red-text); }
+.pull-hint { position: absolute; left: 0; right: 0; top: 218px; text-align: right; font: 600 12px/1 var(--font-label); letter-spacing: 0.06em; color: var(--text-soft); pointer-events: none; text-shadow: 0 1px 2px #000; }
 @keyframes pull-lift { from { opacity: 0; } to { opacity: 1; } }
 
 /* A target is being picked: the HUD shrinks to what hud-layout.ts keeps out of the free board area. */
@@ -319,7 +316,6 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .hand-bar, .hand-bar * { user-select: none; -webkit-user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; }
 .hand { touch-action: none; }
 /* The parked card can be tapped or pulled down to put it back; while it floats under the finger it ignores the pointer. */
-.pull-card.parked:not(.floating) { pointer-events: auto; cursor: grab; touch-action: none; }
 .queue-column { display: flex; flex-direction: column; gap: 3px; }
 .energy.drop-lit { box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 40%, transparent); }
 .energy.drop-lit.active { background: var(--orange); }

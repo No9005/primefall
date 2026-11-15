@@ -18,8 +18,10 @@ interface DesignedCardProps {
   card: Pick<CardDefinition, "name" | "type" | "energyCost" | "effects">;
   /** The width in CSS px the card is shown at. */
   width: number;
-  /** A standard card (Wait): shown in steel grey with this label as its type, and without a cost. */
+  /** A standard use (Move, Pitch, Wait): shown in steel grey with this label as its type. */
   standard?: string;
+  /** The number in the cost orb of a standard card (0 for Move and Wait, +1 for Pitch). */
+  cost?: string | number;
   /** The picture file of a standard card, which is not in the Deck list. */
   art?: string;
 }
@@ -33,14 +35,14 @@ function Runs({ runs }: { runs: readonly TextRun[] }) {
 }
 
 /** The designed card. Decorative: the button or the pulled card around it carries the name for assistive technology. */
-export function DesignedCard({ card, width, standard, art }: DesignedCardProps) {
+export function DesignedCard({ card, width, standard, cost, art }: DesignedCardProps) {
   const kind = standard ? "action" : card.type === CardType.Attack ? "attack" : "utility";
   const picture = art ?? cardArtUrl(card.name);
   const { runs, flavor } = cardTextOf(card);
   return (
     <span className="cd-box" aria-hidden="true" style={{ width, height: cardHeightFor(width) }}>
       <span className={`cd cd-${kind}`} style={{ "--cd-scale": width / CARD_DESIGN_WIDTH } as CSSProperties}>
-        <span className="cd-cost">{standard ? 0 : card.energyCost}</span>
+        <span className="cd-cost">{standard ? (cost ?? 0) : card.energyCost}</span>
         <span className="cd-title"><span>{card.name}</span></span>
         <span className="cd-art">
           {picture ? <img src={picture} alt="" draggable={false} /> : <span className="cd-rays" />}
