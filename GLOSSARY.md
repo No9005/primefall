@@ -83,12 +83,20 @@ Terrain a Hero can stand on that changes incoming attacks and visibility. Agains
 _Avoid_: Obstacle, wall, terrain
 
 **Hidden**:
-A Hero state granted by certain Assassin Utility cards. A hidden Hero remains concealed for up to two rounds unless it attacks or is revealed. A Scout Drone area shows a Hidden enemy without ending Hidden.
+A Hero state granted by certain Assassin Utility cards. A hidden Hero remains concealed for up to two rounds unless it attacks or is revealed. A Scout Drone area (Site Survey) shows a Hidden enemy without ending Hidden.
 _Avoid_: Stealth, invisible, camouflage
 
 **Marked**:
-A target state that makes an enemy visible to the marking Hero’s squad until the end of the next round.
+A target state that makes an enemy visible to the marking Hero’s squad until the end of the next Resolution; every hit on a Marked Hero deals 1 more damage.
 _Avoid_: Tagged, revealed, spotted
+
+**Scrap**:
+A Hero state of Tilly: one of her cards destroyed Cover earlier this Round. Her cards with a Scrap text work the stronger way until the end of the Round.
+_Avoid_: Combo, charge
+
+**Scrap Field**:
+A 3 x 3 area made by Heavy Metal until the end of the next Resolution. A Move that starts in it is Slowed; every Move that starts in, passes or ends in it costs the Hero 1 damage.
+_Avoid_: Trap, mine, Field
 
 **Slow**:
 A status effect that makes the affected Hero’s next Move cover half the distance, rounded down (a Move 3 becomes a Move 1). It lasts until the end of the next Resolution.
