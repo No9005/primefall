@@ -11,7 +11,6 @@ import {
   HERO_DECKS,
   effectFor,
   isAreaAttack,
-  isGhostAttack,
   isPlayableUtility,
   type PLAYABLE_UTILITY_EFFECTS,
 } from "./cards";
@@ -151,6 +150,8 @@ function dealDamage(
     events.push({ kind: EventKind.DeckShuffled, tick, heroId: target.id, amount: refillDeck(match, target) });
   }
   reportHit();
+  // Damage ends Hidden at once (Vanish).
+  if (incoming > 0) endHidden(tick, target, events);
 }
 
 /** Names the extra damage of the hit that starts at `first` (the close-range effect), so the playback can label it. */
@@ -267,10 +268,6 @@ interface Attack {
   hero: HeroState;
   card: CardDefinition;
   targetId: string;
-  /** For a Ghost Shot: the last known position of the targeted Ghost, as remembered when the Resolution began. */
-  ghostTile?: GridPosition;
-  /** Set when a Ghost Shot found nobody on its tile. */
-  missed?: boolean;
   /** For an area Attack (Urban Renewal): the tile at the centre. */
   tile?: GridPosition;
 }
@@ -336,36 +333,34 @@ function scrapFieldsAt(match: MatchState, tile: GridPosition): ActiveField[] {
  */
 function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], events: MatchEvent[]): void {
   // The first check an Attack on `target` fails, in the order of ADR 0013; visibility is only asked of a Declared Target.
-  const missReason = (hero: HeroState, card: CardDefinition, target: HeroState, needsSight: boolean) => {
+  // A Hidden Hero that attacks stops being Hidden, but its Hidden state counts for this very Attack (sight, Range, bonus).
+  const hiddenAttackers = new Set(attacks.filter(({ hero }) => hero.hidden > 0).map(({ hero }) => hero.id));
+  const missReason = (hero: HeroState, card: CardDefinition, target: HeroState) => {
     if (target.squad === hero.squad) return AttackFailReason.NotVisible;
-    if (needsSight && !canSquadSeeHero(match, hero.squad, target)) return AttackFailReason.NotVisible;
+    if (!canSquadSeeHero(match, hero.squad, target)) return AttackFailReason.NotVisible;
     if (target.exhausted) return AttackFailReason.TargetExhausted;
     const distance = chebyshevDistance(hero.position, target.position);
     if (distance > (card.range ?? 0)) return AttackFailReason.OutOfRange;
+    const far = card.effects.find(({ kind }) => kind === EffectKind.FarShot);
+    if (far && distance > (far.amount ?? 0) && !hiddenAttackers.has(hero.id) && target.marked === 0) return AttackFailReason.OutOfRange;
     if (distance < (card.minRange ?? 0)) return AttackFailReason.TooClose;
-    if (!hasLineOfSight(match.grid, hero.position, target.position)) return AttackFailReason.NoLineOfSight;
-    if (coverAgainst(match.grid, hero.position, target.position) === CoverKind.Full) return AttackFailReason.FullCover;
+    const ignoresCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreCover);
+    if (!hasLineOfSight(match.grid, hero.position, target.position, ignoresCover)) return AttackFailReason.NoLineOfSight;
+    if (!ignoresCover && coverAgainst(match.grid, hero.position, target.position) === CoverKind.Full) return AttackFailReason.FullCover;
     return undefined;
   };
-  // A Ghost Shot goes to a tile: it hits the enemy standing there when it resolves, or nobody.
   const areaAttacks = attacks.filter(({ card }) => isAreaAttack(card));
-  const aimed = attacks.filter(({ card }) => !isAreaAttack(card)).flatMap((attack) => {
-    if (!isGhostAttack(attack.card)) return attack.card.effects.some(({ kind }) => kind === EffectKind.AttackTwice) ? [attack, attack] : [attack];
-    const occupant = match.heroes.find(
-      (other) =>
-        other.squad !== attack.hero.squad &&
-        !other.exhausted &&
-        attack.ghostTile !== undefined &&
-        samePosition(other.position, attack.ghostTile),
-    );
-    return [{ ...attack, targetId: occupant?.id ?? attack.targetId, missed: occupant === undefined }];
+  const aimed = attacks.filter(({ card }) => !isAreaAttack(card)).flatMap((attack) =>
+    attack.card.effects.some(({ kind }) => kind === EffectKind.AttackTwice) ? [attack, attack] : [attack],
+  );
+  const reasons = aimed.map(({ hero, card, targetId }) => {
+    const target = match.heroes.find((candidate) => candidate.id === targetId);
+    return target ? missReason(hero, card, target) : AttackFailReason.NotVisible;
   });
   // Attacking gives away a Hidden Hero, whether or not the Attack lands.
   for (const { hero } of attacks) endHidden(tick, hero, events);
-  const landed = aimed.filter(({ hero, card, targetId, missed }) => {
-    const target = match.heroes.find((candidate) => candidate.id === targetId);
-    let reason = target ? missReason(hero, card, target, !isGhostAttack(card)) : AttackFailReason.NotVisible;
-    if (missed) reason = AttackFailReason.EmptyTile;
+  const landed = aimed.filter(({ hero, card, targetId }, index) => {
+    const reason = reasons[index];
     if (reason) {
       const first = events.length;
       events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId, reason });
@@ -377,13 +372,16 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const first = events.length;
     const target = match.heroes.find((candidate) => candidate.id === targetId)!;
     const distance = chebyshevDistance(hero.position, target.position);
-    const ignoresHalfCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreHalfCover);
+    const ignoresCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreCover);
     const halfCover =
-      coverAgainst(match.grid, hero.position, target.position) === CoverKind.Half && !ignoresHalfCover;
+      coverAgainst(match.grid, hero.position, target.position) === CoverKind.Half && !ignoresCover;
     const damageEffect = effectFor(card.effects.find(({ kind }) => kind === EffectKind.Damage)!, hero.scrap);
     const closeRange = card.effects.find(({ kind }) => kind === EffectKind.CloseRangeBonus);
     const closeBonus = distance === 1 ? (closeRange?.amount ?? 0) : 0;
-    const damage = (damageEffect.amount ?? 0) + closeBonus;
+    // A Hidden Hero that shoots beyond the normal Range deals +1 damage.
+    const far = card.effects.find(({ kind }) => kind === EffectKind.FarShot);
+    const farBonus = far && distance > (far.amount ?? 0) && hiddenAttackers.has(hero.id) ? 1 : 0;
+    const damage = (damageEffect.amount ?? 0) + closeBonus + farBonus;
     const incoming = Math.max(0, damage - (halfCover ? HALF_COVER_REDUCTION : 0));
     const piercing = card.effects.some(({ kind }) => kind === EffectKind.PiercingDamage);
     dealDamage(match, tick, hero, target, incoming, events, { piercing });
@@ -394,6 +392,9 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     }
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplyMarked)) {
       applyMarked(tick, hero, target, effect, events);
+    }
+    for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.Knockback)) {
+      pushAway(match, tick, hero, target, effect.amount ?? 0, events);
     }
     tagCardEvents(match, events, first, hero, card);
   }
@@ -462,6 +463,13 @@ function slideHero(
     events.push({ kind: EventKind.Pull, tick, heroId: target.id, from: { ...target.position }, to, casterId });
     target.position = to;
   }
+}
+
+/** Knockback: `target` is pushed up to `distance` tiles directly away from `caster`, and stops like a pulled Hero does. */
+function pushAway(match: MatchState, tick: number, caster: HeroState, target: HeroState, distance: number, events: MatchEvent[]): void {
+  if (target.exhausted) return;
+  const direction = { col: Math.sign(target.position.col - caster.position.col), row: Math.sign(target.position.row - caster.position.row) };
+  slideHero(match, tick, target, direction, distance, events, caster.id);
 }
 
 /** Charge: the caster walks up to `distance` tiles toward `target` and stops next to it, or earlier at an obstacle (Step events, like a Move). */
@@ -564,17 +572,10 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
     }
     chargeAt(match, tick, caster, target, effect.amount ?? 0, events);
   },
-  // Hidden needs Cover where the Hero stands.
-  [EffectKind.BecomeHidden]: ({ match, tick, effect, caster, events }) => {
-    if (coverAt(match.grid, caster.position) === CoverKind.None) {
-      events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
-      return;
-    }
+  // Vanish: Hidden wherever the Hero stands.
+  [EffectKind.BecomeHidden]: ({ tick, effect, caster, events }) => {
     caster.hidden = effect.duration ?? 1;
     events.push({ kind: EventKind.HiddenGained, tick, heroId: caster.id });
-  },
-  [EffectKind.ExtendMove]: ({ effect, caster }) => {
-    caster.extendedMove = effect.amount;
   },
 };
 
@@ -827,7 +828,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     recordSightings(match);
   };
 
-  // A Ghost Shot aims at what the Squad remembered when the Resolution began, not at later sightings.
+  // Cargo Hook can name a Ghost: it aims at what the Squad remembered when the Resolution began, not at later sightings.
   const ghostTiles = structuredClone(match.ghosts);
   const ticks = Math.max(0, ...queues.map(({ queue }) => queue.length));
   for (let tick = 1; tick <= ticks; tick++) {
@@ -853,9 +854,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     const movers = actions.flatMap(({ hero, action }) => {
       if (action.kind !== ActionKind.Move) return [];
       // Reposition stretches the next Move of the Queue only.
-      const distance = hero.extendedMove ?? MOVE_DISTANCE;
-      delete hero.extendedMove;
-      return [{ heroId: hero.id, destination: action.destination, distance }];
+      return [{ heroId: hero.id, destination: action.destination, distance: MOVE_DISTANCE }];
     });
     resolveMoves(match, tick, movers, events);
     const attacks: Attack[] = actions.flatMap(({ hero, action }) =>
@@ -864,7 +863,6 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
             hero,
             card: playedCard(hero, action),
             targetId: action.target,
-            ghostTile: ghostTiles[hero.squad][action.target]?.position,
             tile: action.tile,
           }]
         : [],
@@ -888,7 +886,6 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     hero.hidden = Math.max(0, hero.hidden - 1);
     hero.marked = Math.max(0, hero.marked - 1);
     hero.scrap = false;
-    delete hero.extendedMove;
   }
   expireTemporaryEffects(match);
   // An empty Deck is refilled from the Discard right now. Exhaustion takes effect only after that, when no

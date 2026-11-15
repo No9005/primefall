@@ -339,8 +339,6 @@ export enum AttackFailReason {
   TooClose = "tooClose",
   NoLineOfSight = "noLineOfSight",
   FullCover = "fullCover",
-  /** A Ghost Shot found nobody on the remembered tile. */
-  EmptyTile = "emptyTile",
 }
 
 /** Something that happened during a Resolution, for playback. Events of the same Tick play together. */

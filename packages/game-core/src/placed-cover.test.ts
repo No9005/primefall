@@ -14,7 +14,7 @@ const RIGHT_BRUISER = "right-bruiser";
 const TEMPORARY_SOLUTION = cardIndex(HeroClass.Controller, "Temporary Solution");
 const URBAN_RENEWAL = cardIndex(HeroClass.Controller, "Urban Renewal");
 const LEFT_ASSASSIN = "left-assassin";
-const PRECISION_SHOT = 0; // Assassin card 0: damage 2, Range 2 to 5
+const LONG_SHOT = 0; // Assassin card 0: damage 3, Range 3 to 7
 const BRUISER_SLAM_SHOT = 2; // Pitch fodder
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
@@ -108,18 +108,18 @@ describe("Placed Cover", () => {
     expect(coverAt(placed.grid, tileOf(0))).toBe(cover);
     const next = startRound(placed);
     hero(next, LEFT_ASSASSIN).position = { col: 5, row: 3 };
-    hero(next, LEFT_ASSASSIN).hand = [PRECISION_SHOT, 1, 2, 3];
+    hero(next, LEFT_ASSASSIN).hand = [LONG_SHOT, 1, 2, 3];
     hero(next, RIGHT_BRUISER).position = tileOf(0);
     const plan: SquadPlan = {
       squad: SquadId.Left,
-      heroes: [{ heroId: LEFT_ASSASSIN, queue: [{ kind: ActionKind.Primary, card: PRECISION_SHOT, target: RIGHT_BRUISER }], pitched: [1] }],
+      heroes: [{ heroId: LEFT_ASSASSIN, queue: [{ kind: ActionKind.Primary, card: LONG_SHOT, target: RIGHT_BRUISER }], pitched: [1] }],
     };
     return resolveRound(next, [plan]);
   }
 
   it("is not destroyed by a normal Attack, and Half Cover reduces it by 1", () => {
     const { match, events } = attackOnCoveredTile(CoverKind.Half);
-    expect(events.find(({ kind }) => kind === EventKind.AttackHit)).toMatchObject({ damage: 1 });
+    expect(events.find(({ kind }) => kind === EventKind.AttackHit)).toMatchObject({ damage: 2 });
     expect(events.some(({ kind }) => kind === EventKind.CoverDestroyed)).toBe(false);
     expect(coverAt(match.grid, tileOf(0))).toBe(CoverKind.Half);
   });

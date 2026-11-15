@@ -88,8 +88,6 @@ export interface HeroState {
   marked: number;
   /** Scrap (Tilly): a card of this Hero destroyed Cover this Round; her Scrap cards are stronger until the end of the Round. */
   scrap: boolean;
-  /** Reposition: the Hero's next Move action covers this many tiles; absent when none is pending. */
-  extendedMove?: number;
   /** Set after a Resolution that leaves the Deck and the Discard empty; an Exhausted Hero is out of the match (ADR 0006). */
   exhausted: boolean;
 }

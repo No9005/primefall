@@ -8,7 +8,7 @@ import { withFullCover } from "./full-cover-fixture";
 
 const LEFT_BRUISER = "left-bruiser";
 const RIGHT_BRUISER = "right-bruiser";
-// Cards: the Assassin's Precision Shot (card 0, damage 2, Range 2 to 5) shoots from Range 2 or more; the Bruiser's
+// Cards: the Assassin's Long Shot (card 0, damage 3, Range 3 to 7) shoots from Range 3 or more; the Bruiser's
 // Handle With Care (card 0, damage 2, 3 at Range 1) from Range 1.
 const LEFT_ASSASSIN = "left-assassin";
 
@@ -35,15 +35,15 @@ describe("Cover against Attacks", () => {
   // The Reactor Deck has Half Cover at (18,8).
   const halfCover = { col: 18, row: 8 };
 
-  it("reduces damage by 1 for a target on Half Cover attacked from Range 2 or more", () => {
-    expect(attackFrom({ col: 21, row: 8 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 1 });
-    expect(attackFrom({ col: 20, row: 8 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 1 });
+  it("reduces damage by 1 for a target on Half Cover attacked from Range 3 or more", () => {
+    expect(attackFrom({ col: 21, row: 8 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
+    expect(attackFrom({ col: 22, row: 8 }, halfCover)).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
   });
 
   it("flags the hit that Half Cover reduced, so the playback can show the wall taking it", () => {
     expect(attackFrom({ col: 21, row: 8 }, halfCover)).toMatchObject({ halfCover: true });
     expect(attackFrom({ col: 19, row: 8 }, halfCover)).not.toHaveProperty("halfCover");
-    expect(attackFrom({ col: 21, row: 8 }, { col: 23, row: 8 })).not.toHaveProperty("halfCover");
+    expect(attackFrom({ col: 21, row: 8 }, { col: 25, row: 8 })).not.toHaveProperty("halfCover");
   });
 
   it("ignores Half Cover for an attacker at Range 1", () => {
@@ -52,14 +52,14 @@ describe("Cover against Attacks", () => {
   });
 
   it("has no facing: Half Cover protects from every side", () => {
-    expect(attackFrom({ col: 18, row: 11 }, halfCover)).toMatchObject({ damage: 1 });
-    expect(attackFrom({ col: 18, row: 6 }, halfCover)).toMatchObject({ damage: 1 });
+    expect(attackFrom({ col: 18, row: 11 }, halfCover)).toMatchObject({ damage: 2 });
+    expect(attackFrom({ col: 18, row: 5 }, halfCover)).toMatchObject({ damage: 2 });
   });
 
   it("blocks Attacks from Range 2 or more against a Hero on Full Cover", () => {
-    expect(attackFrom({ col: 15, row: 3 }, FULL_COVER).kind).toBe(EventKind.AttackFailed);
     expect(attackFrom({ col: 15, row: 4 }, FULL_COVER).kind).toBe(EventKind.AttackFailed);
-    expect(attackFrom({ col: 17, row: 3 }, FULL_COVER).kind).toBe(EventKind.AttackFailed);
+    expect(attackFrom({ col: 15, row: 5 }, FULL_COVER).kind).toBe(EventKind.AttackFailed);
+    expect(attackFrom({ col: 18, row: 4 }, FULL_COVER).kind).toBe(EventKind.AttackFailed);
   });
 
   it("lets an attacker at Range 1 hit a Hero on Full Cover", () => {

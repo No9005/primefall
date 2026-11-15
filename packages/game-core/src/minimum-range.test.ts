@@ -8,10 +8,10 @@ import { resolveRound } from "./resolution";
 
 const ASSASSIN = "left-assassin";
 const ENEMY = "right-bruiser";
-// Assassin cards: 0 Precision Shot (Minimum Range 2), Long Shot (Minimum Range 3); Cover Breaker serves as Pitch.
-const PRECISION_SHOT = 0;
+// Assassin cards: Shield Breaker (Minimum Range 2), Long Shot (Minimum Range 3); a second Long Shot serves as Pitch.
+const SHIELD_BREAKER = cardIndex(HeroClass.Assassin, "Shield Breaker");
 const LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot");
-const PITCH = cardIndex(HeroClass.Assassin, "Cover Breaker");
+const PITCH = cardIndex(HeroClass.Assassin, "Long Shot", 1);
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 
@@ -19,7 +19,7 @@ const hero = (match: MatchState, id: string) => match.heroes.find((candidate) =>
 function sceneAt(distance: number): MatchState {
   const match = startRound(createMatch(5));
   hero(match, ASSASSIN).position = { col: 2, row: 1 };
-  hero(match, ASSASSIN).hand = [PITCH, PRECISION_SHOT, LONG_SHOT, 4];
+  hero(match, ASSASSIN).hand = [PITCH, SHIELD_BREAKER, LONG_SHOT, 4];
   hero(match, ENEMY).position = { col: 2 + distance, row: 1 };
   recordSightings(match);
   return match;
@@ -36,9 +36,9 @@ function fire(match: MatchState, card: number) {
 }
 
 describe("Minimum Range", () => {
-  it("makes a Precision Shot at Range 1 miss with TooClose and at Range 2 hit", () => {
-    expect(fire(sceneAt(1), PRECISION_SHOT)).toMatchObject({ kind: EventKind.AttackFailed, reason: AttackFailReason.TooClose });
-    expect(fire(sceneAt(2), PRECISION_SHOT)).toMatchObject({ kind: EventKind.AttackHit });
+  it("makes a Shield Breaker at Range 1 miss with TooClose and at Range 2 hit", () => {
+    expect(fire(sceneAt(1), SHIELD_BREAKER)).toMatchObject({ kind: EventKind.AttackFailed, reason: AttackFailReason.TooClose });
+    expect(fire(sceneAt(2), SHIELD_BREAKER)).toMatchObject({ kind: EventKind.AttackHit });
   });
 
   it("makes a Long Shot at Range 2 miss with TooClose and at Range 3 hit", () => {
@@ -47,7 +47,7 @@ describe("Minimum Range", () => {
   });
 
   it("checks Range before TooClose: beyond the Range is OutOfRange", () => {
-    expect(fire(sceneAt(6), PRECISION_SHOT)).toMatchObject({ reason: AttackFailReason.OutOfRange });
+    expect(fire(sceneAt(5), SHIELD_BREAKER)).toMatchObject({ reason: AttackFailReason.OutOfRange });
   });
 
   it("checks TooClose before Line of Sight", () => {

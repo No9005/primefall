@@ -21,7 +21,7 @@ import { getSquadEvents, resolveRound } from "./resolution";
 
 const LEFT_BRUISER = "left-controller"; // Tilly breaks Cover (docs/design/decks.md)
 const LEFT_ASSASSIN = "left-assassin";
-const PRECISION_SHOT = 0; // Assassin card 0: 2 damage, Range 2 to 5
+const LONG_SHOT = 0; // Assassin card 0: 3 damage, Range 3 to 7
 const RIGHT_BRUISER = "right-bruiser";
 // Urban Renewal (Tilly): Range 4, 2 damage to every Hero in the 3 x 3 area, destroys all Cover in it. The other cards are Pitch fodder.
 const URBAN_RENEWAL = cardIndex(HeroClass.Controller, "Urban Renewal");
@@ -96,13 +96,13 @@ describe("Urban Renewal", () => {
     const destroyed = resolveRound(match, [renewalPlan(HALF_COVER_TILE)]).match;
     expect(coverAgainst(destroyed.grid, { col: 18, row: 11 }, HALF_COVER_TILE)).toBe(CoverKind.None);
     const next = startRound(destroyed);
-    hero(next, LEFT_ASSASSIN).hand = [PRECISION_SHOT, 1, 2, 3];
-    hero(next, LEFT_ASSASSIN).position = { col: 18, row: 10 };
+    hero(next, LEFT_ASSASSIN).hand = [LONG_SHOT, 1, 2, 3];
+    hero(next, LEFT_ASSASSIN).position = { col: 18, row: 11 };
     const slam: SquadPlan = {
       squad: SquadId.Left,
-      heroes: [{ heroId: LEFT_ASSASSIN, queue: [{ kind: ActionKind.Primary, card: PRECISION_SHOT, target: RIGHT_BRUISER }], pitched: [1] }],
+      heroes: [{ heroId: LEFT_ASSASSIN, queue: [{ kind: ActionKind.Primary, card: LONG_SHOT, target: RIGHT_BRUISER }], pitched: [1] }],
     };
-    expect(resolveRound(next, [slam]).events[0]).toMatchObject({ kind: EventKind.AttackHit, damage: 2 });
+    expect(resolveRound(next, [slam]).events[0]).toMatchObject({ kind: EventKind.AttackHit, damage: 3 });
   });
 });
 

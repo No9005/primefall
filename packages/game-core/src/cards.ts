@@ -20,8 +20,6 @@ export enum CardTarget {
   Tile = "tile",
   EmptyTile = "emptyTile",
   Area = "area",
-  /** An enemy Hero that is a Ghost for the Squad: the shot goes to its last known position (ADR 0005). */
-  GhostEnemy = "ghostEnemy",
   /** A Visible enemy Hero, or a Ghost: the effect works if the Hero still stands on the Ghost's last known tile (Cargo Hook). */
   VisibleOrGhostEnemy = "visibleOrGhostEnemy",
 }
@@ -36,17 +34,19 @@ export enum EffectKind {
   AreaDamage = "areaDamage",
   /** A square of tiles that Slows the Heroes in it and hurts them when they Move (Heavy Metal). */
   ScrapField = "scrapField",
-  IgnoreHalfCover = "ignoreHalfCover",
+  /** The Attack ignores all Cover: Half Cover does not reduce it, Full Cover does not block it or the Line of Sight (Shield Breaker). */
+  IgnoreCover = "ignoreCover",
   /** The card's damage is Piercing Damage: it does not use up Shield and goes straight into Deck Damage. */
   PiercingDamage = "piercingDamage",
   GainShield = "gainShield",
-  /** The Hero's next Move action in the Queue covers `amount` tiles instead of 2 (ADR 0020). */
-  ExtendMove = "extendMove",
   RevealArea = "revealArea",
   /** Placed Cover: stays until destroyed; `cover` picks the kind (Half unless stated). */
   PlaceCover = "placeCover",
   BecomeHidden = "becomeHidden",
-  TargetGhost = "targetGhost",
+  /** The Attack reaches beyond `amount` tiles (the normal Range) only for a Hidden caster or a Marked target; a Hidden caster deals +1 damage there (Long Shot). */
+  FarShot = "farShot",
+  /** Knockback: the Attack's target is pushed up to `amount` tiles directly away from the caster; it stops at a Wall, Full Cover or a Hero. */
+  Knockback = "knockback",
   /** Pull: the named enemy moves up to `amount` tiles directly toward the caster; it stops at a Wall, Full Cover or a Hero. */
   Pull = "pull",
   /** Charge (Express Delivery): the caster first gains Shield `shield`, then moves up to `amount` tiles toward the named enemy and ends next to it. */
@@ -71,6 +71,11 @@ export interface CardEffect {
   cover?: CoverKind.Half | CoverKind.Full;
   /** Scrap (Tilly): the fields of this effect that change while the casting Hero has Scrap, for example a longer duration. */
   scrap?: Pick<CardEffect, "amount" | "duration" | "size" | "cover">;
+}
+
+/** The Range a card reaches without help: Long Shot reaches beyond its normal Range only for a Hidden Hero or a Marked target. */
+export function normalRange(card: Pick<CardDefinition, "range" | "effects">): number {
+  return card.effects.find(({ kind }) => kind === EffectKind.FarShot)?.amount ?? card.range ?? 0;
 }
 
 /** The effect as it works for a Hero: with Scrap its `scrap` fields replace the plain ones. */
@@ -109,24 +114,14 @@ export function isSimpleAttack(card: CardDefinition): boolean {
     rest.every(
       (effect) =>
         effect.kind === EffectKind.ApplySlow ||
-        effect.kind === EffectKind.IgnoreHalfCover ||
+        effect.kind === EffectKind.IgnoreCover ||
         effect.kind === EffectKind.PiercingDamage ||
         effect.kind === EffectKind.CloseRangeBonus ||
         effect.kind === EffectKind.AttackTwice ||
+        effect.kind === EffectKind.FarShot ||
+        effect.kind === EffectKind.Knockback ||
         effect.kind === EffectKind.ApplyMarked,
     )
-  );
-}
-
-/** Ghost Shot: an Attack on a Ghost's last known position that deals damage to whoever stands there. */
-export function isGhostAttack(card: CardDefinition): boolean {
-  const [first, second, ...rest] = card.effects;
-  return (
-    card.type === CardType.Attack &&
-    card.target === CardTarget.GhostEnemy &&
-    first?.kind === EffectKind.TargetGhost &&
-    second?.kind === EffectKind.Damage &&
-    rest.length === 0
   );
 }
 
@@ -135,7 +130,6 @@ export const PLAYABLE_UTILITY_EFFECTS = [
   EffectKind.GainShield,
   EffectKind.ScrapField,
   EffectKind.BecomeHidden,
-  EffectKind.ExtendMove,
   EffectKind.RevealArea,
   EffectKind.PlaceCover,
   EffectKind.Pull,
@@ -174,7 +168,7 @@ export function isAreaAttack(card: CardDefinition): boolean {
 
 /** Whether a card's Primary effect can be planned and resolved so far. */
 export function isPlayableCard(card: CardDefinition): boolean {
-  return isSimpleAttack(card) || isGhostAttack(card) || isAreaAttack(card) || isPlayableUtility(card);
+  return isSimpleAttack(card) || isAreaAttack(card) || isPlayableUtility(card);
 }
 
 const slow: CardEffect = { kind: EffectKind.ApplySlow, duration: 1 };
@@ -184,7 +178,6 @@ const shield = (amount: number): CardEffect => ({ kind: EffectKind.GainShield, a
 
 // Hero ranges (ADR 0009); attack cards without an explicit range use their Hero's range.
 const BRUISER_RANGE = 3;
-const ASSASSIN_RANGE = 5;
 
 // Max Overload: up close and personal (docs/design/decks.md). Every card costs 1 Energy.
 // Range 1 to 2: 2 damage, 3 at Range 1.
@@ -241,38 +234,26 @@ const priceTag: CardDefinition = {
   target: CardTarget.VisibleEnemy, effects: [{ kind: EffectKind.Damage, amount: 1, scrap: { amount: 2 } }, marked],
 };
 
-const precisionShot: CardDefinition = {
-  name: "Precision Shot", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE, minRange: 2,
-  target: CardTarget.VisibleEnemy, effects: [damage(2)],
-};
-const coverBreaker: CardDefinition = {
-  name: "Cover Breaker", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE, minRange: 2,
-  target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.IgnoreHalfCover }],
-};
-const shieldBreaker: CardDefinition = {
-  name: "Shield Breaker", type: CardType.Attack, energyCost: 1, range: 4, minRange: 2,
-  target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.PiercingDamage }],
-};
+// Kit Crosshair is the sniper, a glass cannon (docs/design/decks.md). Every card costs 1 Energy.
+// Range 3 to 7, 3 damage; a Hidden Kit or a Marked target is reached up to Range 9, and a Hidden Kit deals +1 beyond Range 7.
 const longShot: CardDefinition = {
-  name: "Long Shot", type: CardType.Attack, energyCost: 1, range: 7, minRange: 3,
-  target: CardTarget.VisibleEnemy, effects: [damage(2)],
+  name: "Long Shot", type: CardType.Attack, energyCost: 1, range: 9, minRange: 3,
+  target: CardTarget.VisibleEnemy, effects: [damage(3), { kind: EffectKind.FarShot, amount: 7 }],
 };
-const ghostShot: CardDefinition = {
-  name: "Ghost Shot", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE, minRange: 2,
-  // Ghost Shot fires at the last known position of a Ghost.
-  target: CardTarget.GhostEnemy, effects: [{ kind: EffectKind.TargetGhost }, damage(2)],
-};
-const executionRound: CardDefinition = {
-  name: "Execution Round", type: CardType.Attack, energyCost: 1, range: ASSASSIN_RANGE, minRange: 2,
-  target: CardTarget.VisibleEnemy, effects: [damage(3), { kind: EffectKind.IgnoreHalfCover }],
-};
+// Hidden for 2 Resolutions wherever Kit stands; damage or an Attack ends it.
 const vanish: CardDefinition = {
   name: "Vanish", type: CardType.Utility, energyCost: 1,
   target: CardTarget.SelfHero, effects: [{ kind: EffectKind.BecomeHidden, duration: 2 }],
 };
-const reposition: CardDefinition = {
-  name: "Reposition", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.SelfHero, effects: [{ kind: EffectKind.ExtendMove, amount: 5 }],
+// 1 damage and the target is pushed 3 tiles away: out of Kit's minimum Range, where Long Shot hits.
+const personalSpace: CardDefinition = {
+  name: "Personal Space", type: CardType.Attack, energyCost: 1, range: 2,
+  target: CardTarget.VisibleEnemy, effects: [damage(1), { kind: EffectKind.Knockback, amount: 3 }],
+};
+// 2 damage that goes through Shield and all Cover.
+const shieldBreaker: CardDefinition = {
+  name: "Shield Breaker", type: CardType.Attack, energyCost: 1, range: 4, minRange: 2,
+  target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.PiercingDamage }, { kind: EffectKind.IgnoreCover }],
 };
 
 /**
@@ -289,8 +270,8 @@ export const HERO_DECKS: Record<HeroClass, readonly CardDefinition[]> = {
     urbanRenewal, temporarySolution, temporarySolution, heavyMetal, heavyMetal,
   ],
   [HeroClass.Assassin]: [
-    precisionShot, longShot, longShot, coverBreaker, shieldBreaker,
-    ghostShot, executionRound, vanish, reposition,
+    longShot, longShot, longShot, vanish, vanish,
+    personalSpace, personalSpace, shieldBreaker, shieldBreaker,
   ],
 };
 

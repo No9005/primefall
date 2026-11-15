@@ -1,7 +1,7 @@
 // AI planning (ADR 0017, ADR 0018). A pure, deterministic function from a Squad View to a Squad Plan.
 // It only ever sees the Squad View, so it cannot read enemy Hands or unseen Heroes: no cheating.
 
-import { type CardIndex, HeroClass, HERO_DECKS, isSimpleAttack } from "./cards";
+import { type CardIndex, HeroClass, HERO_DECKS, isSimpleAttack, normalRange } from "./cards";
 import { buildSquadView, type HeroState, matchFromSquadView, type MatchState, seededHash, ZONES } from "./match";
 import { resolveRound, cardsNotExiled } from "./resolution";
 import { type GhostEnemyView, type HeroView, SquadId, type SquadView, Visibility, type VisibleEnemyView } from "./host";
@@ -338,7 +338,7 @@ const ghostThreats = (view: SquadView): GhostThreat[] =>
 const WEAPON_RANGE = Object.fromEntries(
   Object.entries(HERO_DECKS).map(([heroClass, deck]) => [
     heroClass,
-    Math.max(...deck.filter(isSimpleAttack).map((card) => card.range ?? 0)),
+    Math.max(...deck.filter(isSimpleAttack).map(normalRange)),
   ]),
 );
 
@@ -463,7 +463,7 @@ function planHero(
     (enemy): enemy is VisibleEnemyView => enemy.visibility === Visibility.Visible && !enemy.exhausted,
   );
   const inRangeTargets = (position: GridPosition, card: CardIndex) =>
-    targets.filter((enemy) => chebyshevDistance(position, enemy.position) <= (deck[card]!.range ?? 0));
+    targets.filter((enemy) => chebyshevDistance(position, enemy.position) <= normalRange(deck[card]!));
 
   // Two Heroes that would end a Move on the same tile both stop short. Mirrored Squads plan mirrored Moves, so
   // without a tie-break they would block each other for ever: the Squads take turns, one per Round, at keeping
@@ -478,7 +478,7 @@ function planHero(
     }
   }
 
-  const weapon = Math.max(0, ...deck.filter(isSimpleAttack).map((card) => card.range ?? 0));
+  const weapon = Math.max(0, ...deck.filter(isSimpleAttack).map(normalRange));
   const ghosts = ghostThreats(view);
   const queue: QueuedAction[] = [];
   let position = hero.position;
