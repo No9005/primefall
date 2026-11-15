@@ -18,7 +18,10 @@ const page = join(here, '..', 'reference', 'card-faces.html');
 // The key of a card in the reference page and the file name the game uses (the card's name in kebab case).
 const FILES = {
   double: 'buy-one-get-two', close: 'handle-with-care', coffee: 'time-for-coffee', rush: 'express-delivery', hat: 'hard-hat', hook: 'cargo-hook',
-  move: 'walk-it-off', pitch: 'overtime', wait: 'smoke-break', 'back-a': 'back'
+  move: 'walk-it-off', pitch: 'overtime', wait: 'smoke-break', 'back-a': 'back',
+  // Tilly Turnover
+  temp: 'temporary-solution', survey: 'site-survey', demo: 'urban-renewal', heap: 'heavy-metal', price: 'price-tag',
+  tmove: 'walk-it-off-tilly', tpitch: 'cannibalize', twait: 'idle-hands'
 };
 
 function loadChromium() {
@@ -47,8 +50,11 @@ try {
     }
     const card = tab.locator('.card[data-card="' + key + '"]').first();
     // The cost orb and the ribbon reach out of the card, so the picture takes a margin.
+    await card.scrollIntoViewIfNeeded();
     const box = await card.boundingBox();
-    await tab.screenshot({ path: join(overview, file + '.png'), fullPage: true, clip: { x: box.x - 18, y: box.y - 18, width: box.width + 36, height: box.height + 36 } });
+    // The clip of a full-page screenshot is in page coordinates, the box is in the viewport's.
+    const scrolled = await tab.evaluate(() => window.scrollY);
+    await tab.screenshot({ path: join(overview, file + '.png'), fullPage: true, clip: { x: box.x - 18, y: box.y + scrolled - 18, width: box.width + 36, height: box.height + 36 } });
     seen.add(file);
   }
   console.log('cards: ' + seen.size + ' pictures and ' + seen.size + ' overview images');
