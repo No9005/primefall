@@ -54,10 +54,11 @@ describe("Urban Renewal", () => {
   it("damages the enemy on Half Cover through the Cover and destroys it", () => {
     const match = setup({ [LEFT_BRUISER]: { col: 18, row: 11 }, [RIGHT_BRUISER]: HALF_COVER_TILE });
     const { match: after, events } = resolveRound(match, [renewalPlan(HALF_COVER_TILE)]);
-    expect(events.map(({ kind }) => kind)).toEqual([EventKind.AttackHit, EventKind.CoverDestroyed, EventKind.ScrapGained]);
+    expect(events.map(({ kind }) => kind)).toEqual([EventKind.AreaBlasted, EventKind.AttackHit, EventKind.CoverDestroyed, EventKind.ScrapGained]);
     // The blast ignores Cover for its damage.
-    expect(events[0]).toMatchObject({ heroId: LEFT_BRUISER, targetId: RIGHT_BRUISER, damage: 2 });
-    expect(events[1]).toMatchObject({ heroId: LEFT_BRUISER, to: HALF_COVER_TILE });
+    expect(events[0]).toMatchObject({ kind: EventKind.AreaBlasted, to: HALF_COVER_TILE, amount: 3 });
+    expect(events[1]).toMatchObject({ heroId: LEFT_BRUISER, targetId: RIGHT_BRUISER, damage: 2 });
+    expect(events[2]).toMatchObject({ heroId: LEFT_BRUISER, to: HALF_COVER_TILE });
     expect(coverAt(after.grid, HALF_COVER_TILE)).toBe(CoverKind.None);
     expect(hero(after, RIGHT_BRUISER).position).toEqual(HALF_COVER_TILE);
   });
@@ -65,7 +66,7 @@ describe("Urban Renewal", () => {
   it("destroys Full Cover too, and hurts a Hero on it", () => {
     const match = withFullCover(setup({ [LEFT_BRUISER]: { col: 15, row: 4 }, [RIGHT_BRUISER]: FULL_COVER_TILE }), FULL_COVER_TILE);
     const { match: after, events } = resolveRound(match, [renewalPlan(FULL_COVER_TILE)]);
-    expect(events[0]).toMatchObject({ kind: EventKind.AttackHit, targetId: RIGHT_BRUISER, damage: 2 });
+    expect(events[1]).toMatchObject({ kind: EventKind.AttackHit, targetId: RIGHT_BRUISER, damage: 2 });
     expect(events).toContainEqual(expect.objectContaining({ kind: EventKind.CoverDestroyed, to: FULL_COVER_TILE }));
     expect(coverAt(after.grid, FULL_COVER_TILE)).toBe(CoverKind.None);
     expect(hero(after, RIGHT_BRUISER).deck).toHaveLength(hero(match, RIGHT_BRUISER).deck.length - 2);
@@ -76,8 +77,8 @@ describe("Urban Renewal", () => {
     const match = setup({ [LEFT_BRUISER]: { col: 15, row: 3 }, [RIGHT_BRUISER]: target });
     for (const tile of areaTiles(match.grid, target, 3)) match.grid = withTile(match.grid, tile, TileKind.Floor);
     const { match: after, events } = resolveRound(match, [renewalPlan(target)]);
-    expect(events.map(({ kind }) => kind)).toEqual([EventKind.AttackHit]);
-    expect(events[0]).toMatchObject({ damage: 2 });
+    expect(events.map(({ kind }) => kind)).toEqual([EventKind.AreaBlasted, EventKind.AttackHit]);
+    expect(events[1]).toMatchObject({ damage: 2 });
     expect(after.grid).toEqual(match.grid);
   });
 
@@ -146,7 +147,7 @@ describe("destroyed Cover and the Fog of War", () => {
   it("only sends the CoverDestroyed event to Squads that see the tile", () => {
     const match = setup({ [LEFT_BRUISER]: { col: 18, row: 11 } });
     const result = resolveRound(match, [renewalPlan(HALF_COVER_TILE)]);
-    expect(getSquadEvents(SquadId.Left, result).map(({ kind }) => kind)).toEqual([EventKind.CoverDestroyed, EventKind.ScrapGained]);
+    expect(getSquadEvents(SquadId.Left, result).map(({ kind }) => kind)).toEqual([EventKind.AreaBlasted, EventKind.CoverDestroyed, EventKind.ScrapGained]);
     expect(getSquadEvents(SquadId.Right, result)).toEqual([]);
   });
 });

@@ -263,7 +263,7 @@ describe("Urban Renewal", () => {
 
   it("gives Scrap when it destroyed Cover, until the end of the Round, and not otherwise", () => {
     const { match: after, events } = resolveRound(areaFight(), [throwAt(CENTER)]);
-    expect(events.filter(({ kind }) => kind === EventKind.ScrapGained)).toEqual([{ kind: EventKind.ScrapGained, tick: 1, heroId: CONTROLLER }]);
+    expect(events.filter(({ kind }) => kind === EventKind.ScrapGained)).toEqual([{ kind: EventKind.ScrapGained, tick: 1, heroId: CONTROLLER, to: CENTER }]);
     // Scrap lasts to the end of the Round only.
     expect(hero(after, CONTROLLER).scrap).toBe(false);
     expect(buildSquadView(after, SquadId.Left).heroes.find((h) => h.id === CONTROLLER)!.scrap).toBe(false);

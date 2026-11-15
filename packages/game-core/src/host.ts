@@ -310,13 +310,15 @@ export enum EventKind {
   Charged = "charged",
   /** `heroId` destroyed the Cover on the tile `to` (Urban Renewal, or the oldest Placed Cover going). */
   CoverDestroyed = "coverDestroyed",
-  /** `heroId` placed temporary Half Cover on the tile `to`. */
+  /** `heroId` placed Cover on the tile `to` (Full when `full` is set). */
   CoverPlaced = "coverPlaced",
   /** `heroId` sent a Site Survey drone to reveal the area of `amount` by `amount` tiles centred on `to`. */
   AreaRevealed = "areaRevealed",
   /** `heroId` made a Scrap Field of `amount` by `amount` tiles centred on `to` (Heavy Metal). */
   FieldPlaced = "fieldPlaced",
-  /** `heroId` has Scrap: one of its cards destroyed Cover this Round. */
+  /** `heroId` blasted the area of `amount` by `amount` tiles centred on `to` (Urban Renewal); its hits and destroyed Cover follow. */
+  AreaBlasted = "areaBlasted",
+  /** `heroId` has Scrap: one of its cards destroyed Cover this Round (on the area centred on `to`). */
   ScrapGained = "scrapGained",
   /** The Discard of `heroId` was shuffled into its empty Deck; `amount` is the number of cards shuffled. */
   DeckShuffled = "deckShuffled",
@@ -366,6 +368,8 @@ export interface MatchEvent {
   damage?: number;
   /** Damage the Marked state of the target added to this hit (1), for `AttackHit`; absent when none. */
   marked?: number;
+  /** True when the Cover that was placed is Full Cover, for `CoverPlaced`. */
+  full?: boolean;
   /** True when Half Cover on the target's tile reduced the damage, for `AttackHit`. */
   halfCover?: boolean;
   /** Damage a close-range effect added to this hit (the "CLOSE +1" of Handle With Care at Range 1), for `AttackHit`; absent when none. */
