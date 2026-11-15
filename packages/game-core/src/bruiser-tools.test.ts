@@ -4,13 +4,12 @@ import { withFullCover } from "./full-cover-fixture";
 import { AttackFailReason, EventKind, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, PlanIssueKind, type QueuedAction, type SquadPlan, validatePlan } from "./plan";
-import { CoverKind, coverAt, type GridPosition, TileKind, tileAt } from "./reactor-deck";
+import { type GridPosition, TileKind, tileAt } from "./reactor-deck";
 import { getSquadEvents, resolveRound } from "./resolution";
 
 const BRUISER = "left-bruiser";
 const ENEMY = "right-bruiser";
 const BLOCKER = "right-controller";
-const CONTROLLER = "left-controller";
 const CHARGE = cardIndex(HeroClass.Bruiser, "Express Delivery");
 const PULL = cardIndex(HeroClass.Bruiser, "Cargo Hook");
 const SLAM_SHOT = 0;
@@ -30,12 +29,6 @@ function setup(bruiser: GridPosition, enemy: GridPosition): MatchState {
 function bruiserPlan(match: MatchState, cards: number[], queue: QueuedAction[]): SquadPlan {
   hero(match, BRUISER).hand = [...cards, ...PITCH];
   return { squad: SquadId.Left, heroes: [{ heroId: BRUISER, queue, pitched: PITCH.slice(0, queue.length) }] };
-}
-
-/** Tilly plays one card, paying with the pitched first card of her Hand. */
-function controllerPlan(match: MatchState, card: number): SquadPlan {
-  hero(match, CONTROLLER).hand = [card, 0, 1, 2];
-  return { squad: SquadId.Left, heroes: [{ heroId: CONTROLLER, queue: [use(card)], pitched: [0] }] };
 }
 
 const use = (card: number, target = ENEMY): QueuedAction => ({ kind: ActionKind.Primary, card, target });
