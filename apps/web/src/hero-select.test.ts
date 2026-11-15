@@ -12,10 +12,10 @@ describe("the card list", () => {
   });
 
   it("writes duplicates as x2 and takes the text from the card data", () => {
-    const scoutDrone = cardRows(HeroClass.Controller).find((row) => row.name === "Scout Drone");
-    expect(cardRowName(scoutDrone!)).toBe("Scout Drone x2");
-    expect(scoutDrone).toMatchObject({ type: "Utility", cost: 1 });
-    expect(scoutDrone!.effect).not.toContain("Range");
+    const siteSurvey = cardRows(HeroClass.Controller).find((row) => row.name === "Site Survey");
+    expect(cardRowName(siteSurvey!)).toBe("Site Survey x2");
+    expect(siteSurvey).toMatchObject({ type: "Utility", cost: 1 });
+    expect(siteSurvey!.effect).not.toContain("Range");
     expect(cardRows(HeroClass.Controller).map((row) => row.effect).join(" ")).not.toContain("undefined");
   });
 
@@ -43,7 +43,7 @@ describe("the Hero Names", () => {
     expect(new Set(SELECTABLE_HEROES.map((heroClass) => HERO_CLOSE_UP[heroClass])).size).toBe(3);
   });
 
-  it("keeps the bio free of the other Heroes' kit: nothing about the Scout Drone on the sheet of Tilly", () => {
-    expect(HERO_PROFILES[HeroClass.Controller].bio).not.toContain("Scout Drone");
+  it("keeps the bio free of the other Heroes' kit: nothing about the Site Survey on the sheet of Tilly", () => {
+    expect(HERO_PROFILES[HeroClass.Controller].bio).not.toContain("Site Survey");
   });
 });

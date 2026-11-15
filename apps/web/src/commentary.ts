@@ -97,10 +97,16 @@ export function buildCommentary(events: readonly MatchEvent[], { nameOf, sideOf 
         add(heroId, "Place Cover", "Half Cover appears on the marked tile");
         break;
       case EventKind.CoverDestroyed:
-        add(heroId, "Breach", "The Cover on the marked tile is destroyed");
+        add(heroId, "Urban Renewal", "The Cover on the marked tile is destroyed");
         break;
       case EventKind.AreaRevealed:
-        add(heroId, "Scout Drone", "The marked area is revealed");
+        add(heroId, "Site Survey", "The marked area is revealed");
+        break;
+      case EventKind.FieldPlaced:
+        add(heroId, "Heavy Metal", "A Scrap Field covers the marked area");
+        break;
+      case EventKind.ScrapGained:
+        add(heroId, "Scrap", "Scrap: her cards are stronger this Round");
         break;
       case EventKind.Pull:
         add(heroId, "Pull", "Is pulled one tile toward the Bruiser");

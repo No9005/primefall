@@ -1,7 +1,7 @@
 import { CoverKind, type EnemyView, EventKind, type GridPosition, type HeroClass, type MatchEvent, Visibility, type VisibleEnemyView } from "game-core";
 import type { TokenHero } from "./Board";
 import { attackClipName, type ClipName, clipOf, takeCoverClipName } from "./hero-clips";
-import { type CoverEdit, coverEditsOf, cueEndMs, type EffectCue, effectCuesOf, impactMs } from "./weapon-effects";
+import { BREACH_CARD, type CoverEdit, coverEditsOf, cueEndMs, type EffectCue, effectCuesOf, FIELD_CARD, impactMs } from "./weapon-effects";
 
 /** How long the playback shows one step (one frame) at least; slow enough to follow who does what. The animation never changes it. */
 export const STEP_MS = 650;
@@ -101,12 +101,13 @@ type ClassOf = ((heroId: string) => HeroClass | undefined) | undefined;
 /** The frames of one Tick: its n-th event of every Hero lands in its n-th frame. */
 function buildTickFrames(tickEvents: readonly MatchEvent[], tick: number, classOf: ClassOf, coverOf: ((tile: GridPosition) => CoverKind) | undefined): PlaybackFrame[] {
   const seen = new Map<string, number>();
+  /** The frame of each Hero's Urban Renewal: the blast, its hits and the Cover it destroys are one picture. */
+  const blastFrame = new Map<string, number>();
   const tickFrames: PlaybackFrame[] = [];
   /** The last Step of each Hero in the Tick: where its Move ends. */
   const lastStep = new Map<string, { frame: PlaybackFrame; to: GridPosition }>();
   for (const event of tickEvents) {
-    const occurrence = seen.get(event.heroId) ?? 0;
-    seen.set(event.heroId, occurrence + 1);
+    const occurrence = frameIndexOf(event, seen, blastFrame);
     tickFrames[occurrence] ??= emptyFrame(tick);
     const frame = tickFrames[occurrence];
     addEventToFrame(frame, event);
@@ -122,6 +123,28 @@ function buildTickFrames(tickEvents: readonly MatchEvent[], tick: number, classO
   for (const frame of tickFrames) frame.holdMs = holdOf(frame, classOf);
   return tickFrames;
 }
+
+/**
+ * The frame an event lands in: the n-th event of a Hero lands in its n-th frame. The damage of a Scrap Field belongs to the
+ * Hero that took it, and the events of one Urban Renewal share a frame.
+ */
+function frameIndexOf(event: MatchEvent, seen: Map<string, number>, blastFrame: Map<string, number>): number {
+  const owner = isFieldDamage(event) ? event.targetId! : event.heroId;
+  const blast = isBlastEvent(event);
+  const joined = blast ? blastFrame.get(owner) : undefined;
+  const occurrence = joined ?? seen.get(owner) ?? 0;
+  if (joined === undefined) seen.set(owner, occurrence + 1);
+  if (blast) blastFrame.set(owner, occurrence);
+  return occurrence;
+}
+
+/** An event of an Urban Renewal: the blast, the Heroes it hurts and the Cover it destroys. */
+const isBlastEvent = (event: MatchEvent) =>
+  event.card === BREACH_CARD &&
+  (event.kind === EventKind.AreaBlasted || event.kind === EventKind.AttackHit || event.kind === EventKind.AttackFailed || event.kind === EventKind.CoverDestroyed);
+
+/** The damage a Hero takes when it Moves through a Scrap Field. */
+const isFieldDamage = (event: MatchEvent) => event.card === FIELD_CARD && event.kind === EventKind.AttackHit && event.targetId !== undefined;
 
 /** A Move that ends on Cover takes cover (the Hero has walked there in this frame). */
 function takeCoverAtMoveEnd(lastStep: ReadonlyMap<string, { frame: PlaybackFrame; to: GridPosition }>, coverOf: ((tile: GridPosition) => CoverKind) | undefined): void {
@@ -170,7 +193,8 @@ function clipOfEvent(event: MatchEvent): { heroId: string; clip: ClipName } | un
       return { heroId: event.heroId, clip: "walk" };
     case EventKind.AttackHit:
     case EventKind.AttackFailed:
-      return { heroId: event.heroId, clip: attackClipName(event.card) };
+      // The caster of a Scrap Field does nothing when it hurts a Hero.
+      return isFieldDamage(event) ? undefined : { heroId: event.heroId, clip: attackClipName(event.card) };
     default:
       return undefined;
   }
@@ -195,7 +219,7 @@ function addEffects(frame: PlaybackFrame, classOf: ClassOf): void {
 /** An Attack at one chosen Hero: the attacker turns to it. A tile Attack has no one target. */
 function isAimedAtOneHero(event: MatchEvent): boolean {
   if (event.kind !== EventKind.AttackHit && event.kind !== EventKind.AttackFailed) return false;
-  if (event.targetId === undefined || event.tile !== undefined) return false;
+  if (event.targetId === undefined || event.tile !== undefined || isFieldDamage(event)) return false;
   return true;
 }
 
@@ -203,8 +227,8 @@ function reactToHit(frame: PlaybackFrame, event: MatchEvent, targetId: string, c
   const attackerClass = classOf?.(event.heroId);
   const fire = attackerClass === undefined ? undefined : clipOf(attackerClass, attackClipName(event.card)).fireMs;
   const absorbed = (event.absorbed ?? 0) > 0 && (event.damage ?? 0) === 0;
-  // The target reacts when the projectile arrives.
-  const arrival = impactMs(event.card, event.distance, fire ?? DEFAULT_FIRE_MS);
+  // The target reacts when the projectile arrives; a Hero hurt by a Scrap Field reacts at once.
+  const arrival = isFieldDamage(event) ? 0 : impactMs(event.card, event.distance, fire ?? DEFAULT_FIRE_MS);
   if (frame.clips[targetId] === "exhausted") {
     // The Exhausted clip has its own hit flash: it starts early enough for the flash to land with the impact.
     frame.delays[targetId] = Math.max(0, arrival - EXHAUSTED_HIT_FLASH_MS);
@@ -233,7 +257,11 @@ export function utilityClipName(event: MatchEvent): { heroId: string; clip: Clip
     case EventKind.AreaRevealed:
       return { heroId: event.heroId, clip: "scoutDrone" };
     case EventKind.CoverPlaced:
-      return { heroId: event.heroId, clip: "deploy" };
+      return { heroId: event.heroId, clip: event.full ? "deployFull" : "deploy" };
+    case EventKind.FieldPlaced:
+      return { heroId: event.heroId, clip: "scrapField" };
+    case EventKind.ScrapGained:
+      return { heroId: event.heroId, clip: "scrapGain" };
     case EventKind.HiddenGained:
       return { heroId: event.heroId, clip: "hidden" };
     case EventKind.ShieldGained:
@@ -250,7 +278,7 @@ export function enemyIsDrawn(clip: ClipName | undefined): boolean {
 }
 
 /** Events whose `to` names a tile they act on, not the Hero's destination. */
-const TILE_EVENTS = [EventKind.CoverDestroyed, EventKind.CoverPlaced, EventKind.AreaRevealed];
+const TILE_EVENTS = [EventKind.CoverDestroyed, EventKind.CoverPlaced, EventKind.AreaRevealed, EventKind.AreaBlasted, EventKind.FieldPlaced];
 
 /** The highest Tick of the Resolution, shown as the total in the Tick indicator. */
 export function tickCountOf(events: readonly MatchEvent[]): number {

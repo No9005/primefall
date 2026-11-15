@@ -5,6 +5,7 @@ import {
   type HeroClass,
   type RangeTile,
   type RevealedArea,
+  type ScrapFieldView,
   findTiles,
   REACTOR_DECK,
   TileKind,
@@ -12,7 +13,7 @@ import {
 } from "game-core";
 import { Application, Assets, Container, Graphics, Text } from "pixi.js";
 import { LASER_FLICKER_MS, laserWallAlpha } from "./prime-zone";
-import { areaColorOf, COVER_OWN, coverTag, dashedTileOutline, drawLaserWalls, drawScoutArea, drawTerrain, drawZone, ghostMark, scannedMark, scoutDroneMark } from "./board-drawing";
+import { areaColorOf, COVER_OWN, coverTag, dashedTileOutline, drawLaserWalls, drawScoutArea, drawScrapField, drawTerrain, drawZone, ghostMark, scannedMark, scoutDroneMark } from "./board-drawing";
 import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPick, Point } from "./card-drag";
 import {
@@ -263,16 +264,9 @@ function targetLineGraphics(line: TargetLine): Container {
     container.addChild(shotGraphics(shot));
   } else {
     const graphics = new Graphics().moveTo(from.x, from.y).lineTo(to.x, to.y).stroke({ width: SHOT_STYLE.width, color, cap: "round" });
-    if (line.kind === LineKind.Ally) {
-      const direction = Math.atan2(to.y - from.y, to.x - from.x);
-      for (const side of [-1, 1]) {
-        graphics.moveTo(to.x, to.y).lineTo(to.x - 18 * Math.cos(direction + side * 0.5), to.y - 18 * Math.sin(direction + side * 0.5));
-      }
-      graphics.stroke({ width: SHOT_STYLE.width, color, cap: "round" });
-    }
     container.addChild(graphics);
   }
-  if (line.kind !== LineKind.Ally && (line.tone === LineTone.Clear || line.kind === LineKind.Tile)) {
+  if (line.tone === LineTone.Clear || line.kind === LineKind.Tile) {
     const { x, y } = gridToWorld(line.to);
     const ring = new Graphics().poly(floorOutline().map((value, index) => value + (index % 2 === 0 ? x : y))).stroke({ width: 4, color });
     container.addChild(ring);
@@ -366,6 +360,8 @@ interface BoardProps {
   wreckCover: readonly GridPosition[];
   /** Areas a Scout Drone reveals: tinted yellow. */
   revealedAreas: readonly RevealedArea[];
+  /** Scrap Fields the Squad knows: violet tiles with scrap and wire, and the Resolutions left. */
+  scrapFields?: readonly ScrapFieldView[];
   /** Areas the enemy's Scout Drones scan: a red outline, nothing about what is in them. */
   scannedAreas?: readonly Pick<RevealedArea, "center" | "size" | "remaining">[];
   /** Tiles the Squad sees; every other tile is drawn dark. */
@@ -498,6 +494,7 @@ function animateFadeOut(shape: Graphics, ms: number): () => void {
 const FRAME_MS = 250;
 
 const NO_SCANNED_AREAS: readonly Pick<RevealedArea, "center" | "size" | "remaining">[] = [];
+const NO_SCRAP_FIELDS: readonly ScrapFieldView[] = [];
 /** Red outline of an area the enemy scans. */
 
 export function Board({
@@ -508,6 +505,7 @@ export function Board({
   wreckCover,
   revealedAreas,
   scannedAreas = NO_SCANNED_AREAS,
+  scrapFields = NO_SCRAP_FIELDS,
   visibleTiles,
   heroes,
   enemies,
@@ -1181,6 +1179,8 @@ export function Board({
         });
       }
     }
+    // Scrap Fields: violet tiles with scrap and wire.
+    for (const field of scrapFields) created.push(...drawScrapField(planning, grid, field));
     // Areas the enemy scans: a dashed amber outline with a sweep and the Resolutions left.
     for (const { center, size, remaining } of scannedAreas) {
       const mark = scannedMark(center, size, remaining, reducedMotion);
@@ -1226,7 +1226,7 @@ export function Board({
       cancelAnimationFrame(effectFrame);
       created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [terrain, strokeScale, aiming, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
+  }, [terrain, strokeScale, aiming, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scannedAreas, scrapFields, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
 
   // The laser walls of the Prime Zone: closed while it is inactive (they show through the fog), a short flicker when it opens.
   useEffect(() => {

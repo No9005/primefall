@@ -7,8 +7,11 @@ describe("the playback plays the gestures from the events", () => {
   const classOf = (id: string) => (id === "assassin" ? HeroClass.Assassin : HeroClass.Controller);
 
   it("maps the events to the clips of the Hero that played the card", () => {
-    expect(utilityClipName(event(EventKind.AreaRevealed, "c", { card: "Scout Drone" }))).toEqual({ heroId: "c", clip: "scoutDrone" });
-    expect(utilityClipName(event(EventKind.CoverPlaced, "c", { card: "Fortify" }))).toEqual({ heroId: "c", clip: "deploy" });
+    expect(utilityClipName(event(EventKind.AreaRevealed, "c", { card: "Site Survey" }))).toEqual({ heroId: "c", clip: "scoutDrone" });
+    expect(utilityClipName(event(EventKind.CoverPlaced, "c", { card: "Temporary Solution" }))).toEqual({ heroId: "c", clip: "deploy" });
+    expect(utilityClipName(event(EventKind.CoverPlaced, "c", { card: "Temporary Solution", full: true }))).toEqual({ heroId: "c", clip: "deployFull" });
+    expect(utilityClipName(event(EventKind.FieldPlaced, "c", { card: "Heavy Metal" }))).toEqual({ heroId: "c", clip: "scrapField" });
+    expect(utilityClipName(event(EventKind.ScrapGained, "c"))).toEqual({ heroId: "c", clip: "scrapGain" });
     expect(utilityClipName(event(EventKind.HiddenGained, "a", { card: "Hidden" }))).toEqual({ heroId: "a", clip: "hidden" });
     expect(utilityClipName(event(EventKind.ShieldGained, "ally", { card: "Hard Hat", casterId: "ally" }))).toEqual({ heroId: "ally", clip: "block" });
   });

@@ -23,7 +23,7 @@ describe("the flight of a projectile", () => {
   });
 
   it("maps the cards of a class to its weapon", () => {
-    expect(["Time for Coffee", "Ghost Shot", "Tag Round", "Breach Charge"].map(weaponOf)).toEqual(["slam", "precision", "tag", undefined]);
+    expect(["Time for Coffee", "Ghost Shot", "Price Tag", "Urban Renewal"].map(weaponOf)).toEqual(["slam", "precision", "tag", undefined]);
   });
 
   it("moves the projectile in proportion to the time since the fire beat", () => {
@@ -43,7 +43,7 @@ describe("the cues of the events", () => {
   });
 
   it("shows the Shield that absorbed in blue, before the Deck Damage", () => {
-    const numbers = effectCuesOf([hit({ card: "Tag Round", damage: 1, absorbed: 1, distance: 2 })], fireOf).filter((cue) => cue.kind === "number");
+    const numbers = effectCuesOf([hit({ card: "Price Tag", damage: 1, absorbed: 1, distance: 2 })], fireOf).filter((cue) => cue.kind === "number");
     expect(numbers.map((cue) => (cue.kind === "number" ? [cue.text, cue.style] : []))).toEqual([["Shield -1", "shield"], ["-1", "damage"]]);
   });
 
@@ -65,7 +65,7 @@ describe("the cues of the events", () => {
 
   it("locks Marked on when the dart lands and Slow at the field beat", () => {
     const cues = effectCuesOf(
-      [hit({ card: "Tag Round", damage: 1, distance: 2 }), { kind: EventKind.MarkedApplied, tick: 1, heroId: "a", targetId: "t" }, { kind: EventKind.SlowApplied, tick: 1, heroId: "a", targetId: "t" }],
+      [hit({ card: "Price Tag", damage: 1, distance: 2 }), { kind: EventKind.MarkedApplied, tick: 1, heroId: "a", targetId: "t" }, { kind: EventKind.SlowApplied, tick: 1, heroId: "a", targetId: "t" }],
       fireOf,
     );
     expect(cues.filter((cue) => cue.kind === "marked" || cue.kind === "slow")).toEqual([
@@ -140,20 +140,20 @@ describe("the cues of Placed Cover", () => {
   const destroyed = (extra: Partial<MatchEvent>): MatchEvent => ({ kind: EventKind.CoverDestroyed, tick: 1, heroId: "controller", to: { col: 8, row: 3 }, ...extra });
 
   it("crumbles the oldest Placed Cover that goes for a fourth, with no blast and no scorch", () => {
-    const cues = effectCuesOf([destroyed({ card: "Deploy Cover" })], fireOf);
+    const cues = effectCuesOf([destroyed({ card: "Temporary Solution" })], fireOf);
     expect(cues).toEqual([{ kind: "coverCrumble", tile: { col: 8, row: 3 }, startMs: expect.any(Number) }]);
     expect(cueEndMs(cues[0]!)).toBe(cues[0]!.kind === "coverCrumble" ? cues[0]!.startMs + COVER_CRUMBLE_MS : -1);
     expect(coverEditsOf(cues)).toEqual([{ kind: "destroyed", tile: { col: 8, row: 3 }, atMs: expect.any(Number), scorch: false }]);
   });
 
-  it("still blasts the Cover that Breach Charge or Wrecking Blow destroys, and leaves its scorch", () => {
-    const cues = effectCuesOf([destroyed({ card: "Wrecking Blow" })], fireOf);
+  it("still blasts the Cover that Urban Renewal destroys, and leaves its scorch", () => {
+    const cues = effectCuesOf([destroyed({ card: "Urban Renewal" })], fireOf);
     expect(cues.some((cue) => cue.kind === "breach")).toBe(true);
     expect(coverEditsOf(cues).every((edit) => edit.scorch !== false)).toBe(true);
   });
 
   it("names the Hero that placed Cover, so the playback tells ours from the enemy's", () => {
-    const cues = effectCuesOf([{ kind: EventKind.CoverPlaced, tick: 1, heroId: "left-controller", to: { col: 9, row: 3 }, card: "Deploy Cover" }], fireOf);
+    const cues = effectCuesOf([{ kind: EventKind.CoverPlaced, tick: 1, heroId: "left-controller", to: { col: 9, row: 3 }, card: "Temporary Solution" }], fireOf);
     expect(coverEditsOf(cues)).toEqual([expect.objectContaining({ kind: "placed", tile: { col: 9, row: 3 }, casterId: "left-controller" })]);
   });
 });

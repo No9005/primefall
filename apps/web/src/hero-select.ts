@@ -15,7 +15,7 @@ export const HERO_NAMES: Record<HeroClass, string> = {
 /** The main task of each Hero, the owner's texts (two lines at 560 px wide, Barlow 500 14 px). */
 export const HERO_TASKS: Record<HeroClass, string> = {
   [HeroClass.Bruiser]: "Tank and enabler. +1 damage at Range 1.",
-  [HeroClass.Controller]: "Support. Builds lasting Cover, shields allies and sends the Scout Drone anywhere on the map. One weak attack.",
+  [HeroClass.Controller]: "Controller. Builds and blows up Cover, turns the rubble into Scrap, marks targets and sends the Site Survey drone anywhere on the map.",
   [HeroClass.Assassin]: "Glass cannon. Deals damage from range and hides with Vanish. Cannot hit what stands next to it.",
 };
 

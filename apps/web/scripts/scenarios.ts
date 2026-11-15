@@ -12,7 +12,7 @@ export type StepUse = "primary" | "pitch" | "move";
 export type PlanStep =
   /**
    * A card of the Hand, by its position (0 = leftmost), used in a role. A Move needs the destination `tile`; a
-   * primary use of a card aimed at a tile or area (Breach Charge, Scout Drone, Deploy Cover) needs the
+   * primary use of a card aimed at a tile or area (Urban Renewal, Site Survey, Temporary Solution) needs the
    * tile that is tapped.
    */
   | { slot: number; use: StepUse; tile?: GridPosition; target?: string }
@@ -68,9 +68,9 @@ function arrange(hero: HeroState, position: GridPosition, cards: { hand: CardInd
 }
 
 /**
- * The state Deploy Cover leaves behind, written the way the rules write it: Half Cover on an empty tile for the
- * Left Squad. Only the Bruiser is played in the UI, and the AI never plays Deploy Cover
- * or Scout Drone, so these effects cannot be played in a scenario; they start in place.
+ * The state Temporary Solution leaves behind, written the way the rules write it: Half Cover on an empty tile for the
+ * Left Squad. Only the Bruiser is played in the UI, and the AI never plays Temporary Solution
+ * or Site Survey, so these effects cannot be played in a scenario; they start in place.
  */
 function placeHalfCover(match: MatchState, position: GridPosition): void {
   match.placedCover.push({ squad: SquadId.Left, position: { ...position } });
@@ -106,12 +106,12 @@ const BRUISER_HARD_HAT = cardIndex(HeroClass.Bruiser, "Hard Hat");
 // Controller cards. These scenarios keep the Bruiser as the Player Hero, so the Controller's card is played by the allied
 // AI, which plays only simple Attacks (isSimpleAttack in cards.ts). A scenario with `playerHero` set can play the other
 // cards itself.
-const CONTROLLER_TAG_ROUND = cardIndex(HeroClass.Controller, "Tag Round");
+const CONTROLLER_PRICE_TAG = cardIndex(HeroClass.Controller, "Price Tag");
 /** The rest of the Controller's Hand: Utility cards only, so the AI plays the Attack under test (it plays the first Attack in the Hand that is in Range). */
-const CONTROLLER_FILLER_CARDS: readonly CardIndex[] = [cardIndex(HeroClass.Controller, "Overwatch Uplink"), cardIndex(HeroClass.Controller, "Gravity Snare"), cardIndex(HeroClass.Controller, "Fortify")];
+const CONTROLLER_FILLER_CARDS: readonly CardIndex[] = [cardIndex(HeroClass.Controller, "Site Survey"), cardIndex(HeroClass.Controller, "Temporary Solution"), cardIndex(HeroClass.Controller, "Heavy Metal")];
 
 /**
- * The allied Controller stands on open floor two tiles from an enemy Bruiser (Controller Range is 2): the AI plans an
+ * The allied Controller stands on open floor two tiles from an enemy Bruiser (Price Tag has Range 3): the AI plans an
  * Attack with the card under test. The player's Bruiser just waits.
  */
 function controllerAttack(name: string, description: string, seed: number, card: CardIndex): Scenario {
@@ -135,8 +135,9 @@ const BRUISER_TIME_FOR_COFFEE = cardIndex(HeroClass.Bruiser, "Time for Coffee");
 const BRUISER_BUY_ONE_GET_TWO = cardIndex(HeroClass.Bruiser, "Buy One, Get Two");
 const BRUISER_EXPRESS_DELIVERY = cardIndex(HeroClass.Bruiser, "Express Delivery");
 const BRUISER_CARGO_HOOK = cardIndex(HeroClass.Bruiser, "Cargo Hook");
-const CONTROLLER_BREACH_CHARGE = cardIndex(HeroClass.Controller, "Breach Charge");
-const CONTROLLER_WRECKING_BLOW = cardIndex(HeroClass.Controller, "Wrecking Blow");
+const CONTROLLER_URBAN_RENEWAL = cardIndex(HeroClass.Controller, "Urban Renewal");
+const CONTROLLER_TEMPORARY_SOLUTION = cardIndex(HeroClass.Controller, "Temporary Solution");
+const CONTROLLER_HEAVY_METAL = cardIndex(HeroClass.Controller, "Heavy Metal");
 
 const ENEMY_BRUISER = `${SquadId.Right}-bruiser`;
 
@@ -313,11 +314,11 @@ export const SCENARIOS: readonly Scenario[] = [
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
   }),
   {
-    name: "breach-charge",
-    description: "Tilly plays Breach Charge on a Half Cover tile in front of an enemy Bruiser: the Cover is destroyed, the enemy behind it is not hurt.",
+    name: "urban-renewal",
+    description: "Tilly plays Urban Renewal on a Half Cover tile next to an enemy Bruiser: the bomb lands, the 3 x 3 area blows up, the Bruiser takes 2 damage, the Cover is destroyed, and Tilly pulls the rubble into her hand: Scrap.",
     buildMatch: () =>
       stage(33, (hero, match) => {
-        arrange(hero(`${SquadId.Left}-controller`), { col: 12, row: 3 }, { hand: [CONTROLLER_BREACH_CHARGE, 0, 1, 2] });
+        arrange(hero(`${SquadId.Left}-controller`), { col: 12, row: 3 }, { hand: [CONTROLLER_URBAN_RENEWAL, 0, 1, 2] });
         arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
         placeHalfCover(match, { col: 14, row: 4 });
       }),
@@ -327,7 +328,7 @@ export const SCENARIOS: readonly Scenario[] = [
       { slot: 1, use: "pitch" },
       { slot: 0, use: "primary", tile: { col: 14, row: 4 } },
     ],
-    resolutionShotsMs: [600, 1300, 2000, 3000, 4500],
+    resolutionShotsMs: [700, 1000, 1300, 1700, 2600, 3300, 4200, 5000],
   },
   bruiserCard("buy-one-get-two", "A Bruiser plays Buy One, Get Two on an enemy Bruiser two tiles away: two shots, 2 damage each.", 34, BRUISER_BUY_ONE_GET_TWO, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
@@ -360,7 +361,7 @@ export const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "hidden-seen",
-    description: "An enemy Assassin is Hidden inside a Scout Drone area of the Squad: shown translucent with a cyan ring, an eye and the tag HIDDEN · SEEN, not unmasked.",
+    description: "An enemy Assassin is Hidden inside a Site Survey area of the Squad: shown translucent with a cyan ring, an eye and the tag HIDDEN · SEEN, not unmasked.",
     buildMatch: () =>
       stage(45, (hero, match) => {
         arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
@@ -371,23 +372,6 @@ export const SCENARIOS: readonly Scenario[] = [
     heroId: PLAYER_BRUISER,
     steps: [{ wait: true }],
     resolutionShotsMs: [400, 1500],
-  },
-  {
-    name: "wrecking-blow",
-    description: "Tilly plays Wrecking Blow on an enemy Bruiser behind Half Cover two tiles away: 2 damage, and the Cover is destroyed.",
-    buildMatch: () =>
-      stage(44, (hero, match) => {
-        arrange(hero(`${SquadId.Left}-controller`), { col: 12, row: 3 }, { hand: [CONTROLLER_WRECKING_BLOW, 0, 1, 2] });
-        arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
-        placeHalfCover(match, { col: 14, row: 3 });
-      }),
-    playerHero: HeroClass.Controller,
-    heroId: `${SquadId.Left}-controller`,
-    steps: [
-      { slot: 1, use: "pitch" },
-      { slot: 0, use: "primary", target: ENEMY_BRUISER },
-    ],
-    resolutionShotsMs: [600, 1300, 2000, 3000, 4500],
   },
   {
     name: "exhaustion",
@@ -412,10 +396,10 @@ export const SCENARIOS: readonly Scenario[] = [
     steps: [{ slot: 0, use: "move", tile: { col: 6, row: 1 } }],
     resolutionShotsMs: [800, 2500],
   },
-  controllerAttack("tag-round", "The allied Controller fires Tag Round at an enemy Bruiser two tiles away: 1 damage and Marked; the player's Bruiser waits.", 22, CONTROLLER_TAG_ROUND),
+  controllerAttack("price-tag", "The allied Controller fires Price Tag at an enemy Bruiser two tiles away: 1 damage and Marked; the player's Bruiser waits.", 22, CONTROLLER_PRICE_TAG),
   {
     name: "cover-placed-stays",
-    description: "Half Cover placed by Deploy Cover stands through Resolution 1 and is still there after Resolution 2.",
+    description: "Half Cover placed by Temporary Solution stands through Resolution 1 and is still there after Resolution 2.",
     buildMatch: () =>
       stage(21, (hero, match) => {
         arrange(hero(PLAYER_BRUISER), { col: 8, row: 3 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
@@ -428,10 +412,10 @@ export const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "cover-drop",
-    description: "The Controller plays Deploy Cover: the crate drops onto the tile, lands and unfolds into the striped bars, which stay.",
+    description: "The Controller plays Temporary Solution: the crate drops onto the tile, lands and unfolds into the striped bars, which stay.",
     buildMatch: () =>
       stage(25, (hero) => {
-        arrange(hero(`${SquadId.Left}-controller`), { col: 11, row: 3 }, { hand: [cardIndex(HeroClass.Controller, "Deploy Cover"), 0, 1, 2] });
+        arrange(hero(`${SquadId.Left}-controller`), { col: 11, row: 3 }, { hand: [CONTROLLER_TEMPORARY_SOLUTION, 0, 1, 2] });
       }),
     playerHero: HeroClass.Controller,
     heroId: `${SquadId.Left}-controller`,
@@ -442,9 +426,26 @@ export const SCENARIOS: readonly Scenario[] = [
     resolutionShotsMs: [260, 330, 400, 460, 520, 580, 640, 700],
   },
   {
+    name: "heavy-metal",
+    description: "Tilly plays Heavy Metal on a tile in front of an enemy Bruiser: scrap rains on the 3 x 3 area, which stays violet with wire and the tag SCRAP FIELD; in the next Resolution it is still there.",
+    buildMatch: () =>
+      stage(46, (hero) => {
+        arrange(hero(`${SquadId.Left}-controller`), { col: 11, row: 3 }, { hand: [CONTROLLER_HEAVY_METAL, 0, 1, 2] });
+        arrange(hero(ENEMY_BRUISER), { col: 17, row: 3 }, ENEMIES_WITH_ATTACKS);
+      }),
+    playerHero: HeroClass.Controller,
+    heroId: `${SquadId.Left}-controller`,
+    steps: [
+      { slot: 1, use: "pitch" },
+      { slot: 0, use: "primary", tile: { col: 14, row: 3 } },
+    ],
+    resolutionShotsMs: [700, 1200, 2000, 3000],
+    secondRound: { steps: [{ wait: true }], resolutionShotsMs: [400, 1500] },
+  },
+  {
     name: "placed-cover-marks",
     description: "Three Placed Cover tiles of the Squad carry four teal corner marks and the chip COVER ●●● 3 / 3; an enemy Placed Cover in sight is not marked.",
-    buildMatch: () => stage(26, (hero, match) => controllerWithThreeCovers(match, hero, [cardIndex(HeroClass.Controller, "Deploy Cover"), 0, 1, 2])),
+    buildMatch: () => stage(26, (hero, match) => controllerWithThreeCovers(match, hero, [CONTROLLER_TEMPORARY_SOLUTION, 0, 1, 2])),
     playerHero: HeroClass.Controller,
     heroId: `${SquadId.Left}-controller`,
     steps: [{ wait: true }],
@@ -452,8 +453,8 @@ export const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "placed-cover-fourth",
-    description: "The Controller plans Deploy Cover for a fourth tile: the oldest gets a dashed amber outline (OLDEST · GOES), the new tile a dashed teal one, the chip reads ●●● → 3 / 3; in the Resolution the oldest crumbles and the new Cover drops.",
-    buildMatch: () => stage(27, (hero, match) => controllerWithThreeCovers(match, hero, [cardIndex(HeroClass.Controller, "Deploy Cover"), 0, 1, 2])),
+    description: "The Controller plans Temporary Solution for a fourth tile: the oldest gets a dashed amber outline (OLDEST · GOES), the new tile a dashed teal one, the chip reads ●●● → 3 / 3; in the Resolution the oldest crumbles and the new Cover drops.",
+    buildMatch: () => stage(27, (hero, match) => controllerWithThreeCovers(match, hero, [CONTROLLER_TEMPORARY_SOLUTION, 0, 1, 2])),
     playerHero: HeroClass.Controller,
     heroId: `${SquadId.Left}-controller`,
     steps: [
@@ -464,7 +465,7 @@ export const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "scanned-by-enemy",
-    description: "The enemy's Scout Drone scans the area round the player's Hero: a dashed amber outline with an amber sweep and the tag SCANNED · 2 (not who looks, not what is seen).",
+    description: "The enemy's Site Survey scans the area round the player's Hero: a dashed amber outline with an amber sweep and the tag SCANNED · 2 (not who looks, not what is seen).",
     buildMatch: () =>
       stage(28, (hero, match) => {
         arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
@@ -487,10 +488,10 @@ export const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "cover-destroyed",
-    description: "Tilly plays Breach Charge on a Half Cover tile; the Cover is destroyed and the scorch tile stays.",
+    description: "Tilly plays Urban Renewal on a Half Cover tile; the Cover is destroyed and the scorch tile stays.",
     buildMatch: () =>
       stage(22, (hero) => {
-        arrange(hero(`${SquadId.Left}-controller`), { col: 6, row: 3 }, { hand: [CONTROLLER_BREACH_CHARGE, 0, 1, 2] });
+        arrange(hero(`${SquadId.Left}-controller`), { col: 6, row: 3 }, { hand: [CONTROLLER_URBAN_RENEWAL, 0, 1, 2] });
       }),
     playerHero: HeroClass.Controller,
     heroId: `${SquadId.Left}-controller`,
@@ -502,7 +503,7 @@ export const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "scout-drone-area-over-time",
-    description: "A Scout Drone area (3 x 3, 2 Resolutions left) shows an enemy Hero behind a wall in Resolutions 1 and 2; then the fog closes.",
+    description: "A Site Survey area (3 x 3, 2 Resolutions left) shows an enemy Hero behind a wall in Resolutions 1 and 2; then the fog closes.",
     buildMatch: () =>
       stage(23, (hero, match) => {
         arrange(hero(PLAYER_BRUISER), { col: 12, row: 3 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
@@ -570,11 +571,11 @@ export const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "crossfire-ring",
-    description: "Planning: the Bruiser and the allied Controller (Tag Round) both plan an Attack on the same enemy, so the Tick ring shows a possible Crossfire (orange segments, +1 ? chip).",
+    description: "Planning: the Bruiser and the allied Controller (Price Tag) both plan an Attack on the same enemy, so the Tick ring shows a possible Crossfire (orange segments, +1 ? chip).",
     buildMatch: () =>
       stage(31, (hero) => {
         arrange(hero(PLAYER_BRUISER), { col: 4, row: 1 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
-        arrange(hero("left-controller"), { col: 4, row: 2 }, { hand: [CONTROLLER_TAG_ROUND, ...CONTROLLER_FILLER_CARDS] });
+        arrange(hero("left-controller"), { col: 4, row: 2 }, { hand: [CONTROLLER_PRICE_TAG, ...CONTROLLER_FILLER_CARDS] });
         arrange(hero("right-bruiser"), { col: 6, row: 1 }, ENEMIES_WITH_ATTACKS);
         arrange(hero("right-assassin"), { col: 20, row: 6 }, ENEMIES_WITH_ATTACKS);
       }),

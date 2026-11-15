@@ -13,7 +13,7 @@ const world: EffectsWorld = {
 const tile = { col: 2, row: 1 };
 
 const CUES: EffectCue[] = [
-  { kind: "breach", casterId: "a", tile, fireMs: 100, flightMs: 480, cover: true },
+  { kind: "breach", casterId: "a", tile, fireMs: 100, flightMs: 340, cover: true, size: 3 },
   { kind: "coverPlaced", casterId: "a", tile, startMs: 100 },
   { kind: "shot", weapon: "slam", fromId: "a", toId: "t", fireMs: 100, flightMs: 300, halfCover: true },
   { kind: "number", toId: "t", startMs: 400, text: "Half Cover", style: "failed", drop: 9 },

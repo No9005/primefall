@@ -7,11 +7,10 @@ const LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot");
 
 describe("pickInstruction", () => {
   const card = HERO_DECKS[HeroClass.Assassin][0]!;
-  const base = { card, aimsAtTile: false, aimsAtAlly: false };
+  const base = { card, aimsAtTile: false };
 
-  it("tells the player to pick an enemy by default and an ally for ally cards", () => {
+  it("tells the player to pick an enemy by default", () => {
     expect(pickInstruction(base)).toBe("Tap an enemy");
-    expect(pickInstruction({ ...base, aimsAtAlly: true })).toBe("Tap an ally");
   });
 
   it("says to move closer when no enemy is inside the Range", () => {
@@ -68,7 +67,7 @@ describe("selectHero", () => {
 });
 
 describe("energyReadout and cardUseReasons", () => {
-  // Bruiser card 4 is Breach Charge (cost 2), card 0 is Handle With Care (cost 1).
+  // Bruiser card 0 is Handle With Care (cost 1).
   it("shows pitched, spent and available Energy", () => {
     const spending: QueuedAction[] = [{ kind: ActionKind.Primary, card: 0, target: "enemy" }];
     expect(energyReadout(HeroClass.Bruiser, spending, [1, 2, 3])).toEqual({ pitched: 3, spent: 1, available: 2 });
@@ -81,7 +80,7 @@ describe("energyReadout and cardUseReasons", () => {
 
   it("allows the Primary effect of an affordable Attack or Utility card", () => {
     expect(cardUseReasons(HeroClass.Bruiser, 0, [], [1])[CardUse.Primary]).toBeUndefined();
-    // Bruiser card 5 is Hard Hat; Controller card 5 is Fortify and card 6 is Deploy Cover.
+    // Bruiser card 5 is Hard Hat; Controller card 5 is Urban Renewal and card 6 is Temporary Solution.
     expect(cardUseReasons(HeroClass.Bruiser, 5, [], [1])[CardUse.Primary]).toBeUndefined();
     expect(cardUseReasons(HeroClass.Controller, 5, [], [1])[CardUse.Primary]).toBeUndefined();
     expect(cardUseReasons(HeroClass.Controller, 6, [], [1])[CardUse.Primary]).toBeUndefined();

@@ -616,15 +616,15 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   }, [view.heroes, view.enemies, squadPlans, playback, playing, playerHeroId]);
   const aimedCard = aiming === undefined ? undefined : HERO_DECKS[selected.heroClass][aiming]!;
   const aimedModes = aimedCard === undefined ? [] : [aimedCard];
-  // Tile cards (Breach Charge), area cards (Scout Drone) and Deploy Cover are confirmed by tapping a tile.
+  // Cards aimed at a tile or an area (Urban Renewal, Site Survey, Temporary Solution, Heavy Metal) are confirmed by tapping a tile.
   const aimsAtTile =
     aimedCard?.target === CardTarget.Tile ||
     aimedCard?.target === CardTarget.Area ||
     aimedCard?.target === CardTarget.EmptyTile;
-  /** The tiles a card with a tile target (Breach Charge, Scout Drone, Deploy Cover) can be aimed at. */
+  /** The tiles a card with a tile target can be aimed at. */
   function tileTargetsOf(card: CardDefinition | undefined): GridPosition[] {
     if (card?.target !== CardTarget.Tile && card?.target !== CardTarget.Area && card?.target !== CardTarget.EmptyTile) return [];
-    // Any tile within the Range can be aimed at; Line of Sight is checked in the Resolution. Deploy Cover needs an
+    // Any tile within the Range can be aimed at; Line of Sight is checked in the Resolution. Temporary Solution needs an
     // empty tile, so Cover and Heroes known to the Squad are left out.
     const reachable = moveDestinations(planningFrom, REACTOR_DECK, card.range ?? Math.max(REACTOR_DECK.width, REACTOR_DECK.height));
     if (card.target !== CardTarget.EmptyTile) return reachable;
@@ -677,16 +677,9 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const countdown = zoneList && primeCountdown(zoneList, zonesAfter ? view.round + 1 : view.round);
   const enemySquad = view.squad === SquadId.Left ? SquadId.Right : SquadId.Left;
   const role = roleOf(view);
-  const aimsAtAlly =
-    aimedCard?.type === CardType.Utility &&
-    (aimedCard.target === CardTarget.AllyHero || aimedCard.target === CardTarget.AllyHeroTile);
   /** The Heroes a card in one mode can be aimed at. */
   function heroTargetsOf(mode: CardDefinition): string[] {
     if (mode.target === CardTarget.SelfHero) return [selected.id];
-    const modeAimsAtAlly = mode.type === CardType.Utility && (mode.target === CardTarget.AllyHero || mode.target === CardTarget.AllyHeroTile);
-    if (modeAimsAtAlly) {
-      return view.heroes.filter((hero) => hero.id !== selected.id && !hero.exhausted).map((hero) => hero.id);
-    }
     return enemyTargetsOf(mode);
   }
   const candidateIds = useMemo(() => {
@@ -761,7 +754,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     () => (aimsAtOtherHero && !playing && aimedCard ? cardRangeArea(knownGrid, planningFrom, aimedCard) : NO_RANGE),
     [aimsAtOtherHero, playing, knownGrid, planningFrom, aimedCard],
   );
-  const noEnemyInRange = aimsAtOtherHero && !aimsAtAlly && targetableIds.length === 0;
+  const noEnemyInRange = aimsAtOtherHero && targetableIds.length === 0;
   // The aiming sheet says so when the shot at an enemy cannot hit from where the Hero will stand.
   const aimHint = useMemo(() => {
     if (!namesDeclaredTarget || !aimedCard || aimedCard.range === undefined) return undefined;
@@ -1147,6 +1140,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         wreckCover={view.wreckCover}
         revealedAreas={view.revealedAreas}
         scannedAreas={view.scannedAreas}
+        scrapFields={view.scrapFields}
         visibleTiles={view.visibleTiles}
         heroes={boardHeroes}
         enemies={boardEnemies}
@@ -1366,7 +1360,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
           instruction={
             aimedCard === undefined
               ? "Tap a lit tile"
-              : pickInstruction({ card: aimedCard, aimsAtTile, aimsAtAlly, noEnemyInRange }) +
+              : pickInstruction({ card: aimedCard, aimsAtTile, noEnemyInRange }) +
                 (aimHint ? ` · ${aimHint}` : "")
           }
           onCancel={cancelUse}
