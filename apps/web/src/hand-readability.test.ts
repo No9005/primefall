@@ -3,13 +3,13 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { loadRules } from "./css-rules";
-import { MIN_STRIP } from "./hand-fan";
+import { CARD_WIDTH } from "./hand-fan";
 import { energyRect, handRect, pilesRect, waitCardRect } from "./hud-layout";
 import { QueueColumn } from "./PlanningScreen";
 
 // The Hand, its cost badges, the Energy pill, the locked cards and the Queue slots stay readable and tidy (issue 273).
 
-const rules = loadRules(["styles.css"]);
+const rules = loadRules(["styles.css", "card-design.css"]);
 const decls = (selector: string) => {
   const found = rules.filter((rule) => rule.selectors.includes(selector));
   if (found.length === 0) throw new Error(`No rule for ${selector}`);
@@ -33,28 +33,31 @@ const contrast = (a: Rgb, b: Rgb) => {
 };
 const over = (fg: Rgb, bg: Rgb, opacity: number) => fg.map((c, k) => c * opacity + bg[k]! * (1 - opacity)) as Rgb;
 
-describe("the cost badge of a Hand card", () => {
-  const badge = decls(".hand .card-cost");
+describe("the designed card in the Hand", () => {
+  const orb = decls(".cd-cost");
+  const card = decls(".cd");
 
-  it("sits inside the top left corner of the card, where the strip of every card shows it", () => {
-    expect(px(badge.get("top"))).toBe(5);
-    expect(px(badge.get("left"))).toBe(5);
-    expect(badge.has("right")).toBe(false);
-    expect(px(badge.get("width"))).toBe(22);
-    expect(px(badge.get("height"))).toBe(22);
+  it("is the 300 x 420 px card of docs/design/cards, scaled to the strip width", () => {
+    expect([px(card.get("width")), px(card.get("height"))]).toEqual([300, 420]);
+    expect(card.get("transform")).toBe("scale(var(--cd-scale, 1))");
   });
 
-  it("stays fully visible in the narrowest strip and inside the card, and the title does not run under it", () => {
-    expect(px(badge.get("left")) + px(badge.get("width"))).toBeLessThanOrEqual(MIN_STRIP);
-    expect(px(decls(".hand .card-name").get("padding-left"))).toBeGreaterThanOrEqual(30);
+  it("has the cost orb at the top left corner, 48 px at design size,, and on a full-width card it is 15 px or more across", () => {
+    expect([px(orb.get("top")), px(orb.get("left"))]).toEqual([-14, -14]);
+    expect(px(orb.get("width"))).toBe(48);
+    expect((px(orb.get("width")) * CARD_WIDTH) / 300).toBeGreaterThanOrEqual(15);
+  });
+
+  it("shows the Hand card with its top out of the bottom edge: the card is 1.4 times as high as it is wide", () => {
+    expect(decls(".hand li").get("bottom")).toBe("calc(62px - var(--card-w) * 1.4)");
   });
 });
 
-describe("the type stripe of a Hand card", () => {
-  it("is 3 px along the top edge in the type colour", () => {
-    expect(px(decls(".hand .card::before").get("height"))).toBe(3);
-    expect(decls(".hand .card.attack::before").get("background")).toBe("var(--orange)");
-    expect(decls(".hand .card.utility::before").get("background")).toBe("var(--teal)");
+describe("the frame of a designed card", () => {
+  it("is red for an Attack, teal for a Utility card and steel for a standard card", () => {
+    expect(decls(".cd").get("--frame")).toBe("#b53a3f");
+    expect(decls(".cd-utility").get("--frame")).toBe("#23988d");
+    expect(decls(".cd-action").get("--frame")).toBe("#5b6b78");
   });
 });
 
@@ -67,10 +70,11 @@ describe("contrast of the Hand, Energy and Queue texts", () => {
     expect(contrast(colour(decls(".energy-label").get("color")!), panel)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("is at least 4.5:1 for the card name and the type texts on the card", () => {
-    expect(contrast(colour("--text"), graphite)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(colour("--orange"), graphite)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(colour("--teal"), graphite)).toBeGreaterThanOrEqual(4.5);
+  it("is at least 4.5:1 for the text of a card on its text box", () => {
+    const box = decls(".cd-body").get("background")!;
+    const hex = (value: string): Rgb => [0, 2, 4].map((k) => parseInt(value.replace("#", "").slice(k, k + 2), 16)) as Rgb;
+    expect(contrast(hex(decls(".cd-text").get("color")!), hex(box))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(hex(decls(".cd-flavor").get("color")!), hex(box))).toBeGreaterThanOrEqual(4.5);
   });
 
   it("keeps the name of a locked card at least 4.5:1 at its reduced opacity over every board colour", () => {
@@ -97,13 +101,10 @@ describe("the Energy orbs", () => {
 });
 
 describe("the Wait card", () => {
-  it("has the size, top edge and title of the centre Hand card", () => {
-    const card = decls(".card");
+  it("has the width of the centre Hand card and its top edge", () => {
     const wait = decls(".wait-card");
-    expect(px(wait.get("width"))).toBe(px(card.get("width")?.replace(/^var\(--card-w, (\d+px)\)$/, "$1")));
-    expect(px(card.get("height"))).toBe(134);
-    expect(px(wait.get("margin-bottom"))).toBe(px(decls(".hand li").get("bottom")));
-    expect(decls(".wait-card .card-name").get("font-size")).toBe(decls(".hand .card-name").get("font-size"));
+    expect(px(wait.get("width"))).toBe(108);
+    expect(wait.get("margin-bottom")).toBe("calc(62px - 108px * 1.4)");
   });
 
   for (const view of [{ width: 844, height: 390 }, { width: 667, height: 375 }, { width: 932, height: 430 }]) {

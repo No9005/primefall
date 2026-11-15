@@ -1,7 +1,7 @@
 import type { CardDefinition } from "game-core";
 import { type ReactNode, type Ref, useState } from "react";
 import type { Point } from "./card-drag";
-import { cardArtUrl } from "./card-art";
+import { DesignedCard } from "./card-design";
 import { type Face, type FaceView, REVEAL_SPAN } from "./card-pull";
 import { cardFace } from "./planning-selection";
 import { pullOffset, ReleaseOutcome, releaseOutcome } from "./target-pick";
@@ -9,21 +9,9 @@ import { pullOffset, ReleaseOutcome, releaseOutcome } from "./target-pick";
 // The card face and the drop targets of the game, shared by the screens so that a change to one
 // changes the other.
 
-/** The inside of a Hand card: name, cost, type and effect text, and optionally how the card is used right now. */
-export function CardFace({ card, use }: { card: CardDefinition; use?: string }) {
-  const face = cardFace(card);
-  const art = cardArtUrl(card.name);
-  return (
-    <>
-      <span className="card-name">{card.name}</span>
-      <span className="card-cost">{card.energyCost}</span>
-      {art && <img className="card-art" src={art} alt="" draggable={false} />}
-      <span className="card-type">{face.type}</span>
-      <span className="card-text">{face.effectText}</span>
-      {use && <span className="card-use">{use}</span>}
-    </>
-  );
-}
+/** The width of the pulled card (it must fit the free board area at 844 x 390) and of the card parked below the faces. */
+export const PULLED_CARD_WIDTH = 184;
+export const PARKED_CARD_WIDTH = 100;
 
 /**
  * A card pressed or pulled out of the Hand: shown large in the middle of the free board area, with the faces of its
@@ -51,7 +39,7 @@ export function PulledCard({
   const [drag, setDrag] = useState<{ startY: number; offset: number } | undefined>(undefined);
   // Pulling the parked card down fades the faces out like the pull up faded them in.
   const faceOpacity = drag ? 1 - Math.min(1, drag.offset / REVEAL_SPAN) : reveal;
-  const floating = floatingAt ? { left: floatingAt.x - 50, top: floatingAt.y - 59, transform: "none" } : undefined;
+  const floating = floatingAt ? { left: floatingAt.x - 50, top: floatingAt.y - 70, transform: "none" } : undefined;
   return (
     <div className="pull" data-testid="pulled-card">
       <div className="pull-backdrop" onClick={onOutside} />
@@ -71,7 +59,7 @@ export function PulledCard({
         }}
         onPointerCancel={() => setDrag(undefined)}
       >
-        <CardFace card={card} />
+        <DesignedCard card={card} width={faces ? PARKED_CARD_WIDTH : PULLED_CARD_WIDTH} />
       </div>
       {faces && (
         <div className="pull-faces" role="group" aria-label="Use card as" style={{ opacity: faceOpacity }}>
