@@ -4,7 +4,7 @@ import type { Point } from "./card-drag";
 import { DesignedCard } from "./card-design";
 import { type Face, type FaceView } from "./card-pull";
 import { HERO_BASICS } from "./hero-basics";
-import { CardUse, cardFace } from "./planning-selection";
+import { CardUse } from "./planning-selection";
 import { pullOffset, ReleaseOutcome, releaseOutcome } from "./target-pick";
 
 // The card face and the drop targets of the game, shared by the screens so that a change to one
@@ -13,6 +13,8 @@ import { pullOffset, ReleaseOutcome, releaseOutcome } from "./target-pick";
 /** The width of the card while it is pressed, of the floating card under the finger, and of each face in the row of uses. */
 export const PULLED_CARD_WIDTH = 184;
 export const FLOATING_CARD_WIDTH = 100;
+/** The designed card while its target is picked. */
+const FLOATING_PICK_WIDTH = 96;
 export const FACE_CARD_WIDTH = 138;
 
 /** The face of a use as a designed card: the card itself for its Primary effect, the Hero's own Pitch and Move card for the others. */
@@ -90,7 +92,6 @@ export function PulledCard({
  */
 export function FloatingCard({ card, instruction, onCancel }: { card: CardDefinition; instruction: string; onCancel: () => void }) {
   const [drag, setDrag] = useState<{ startY: number; offset: number } | undefined>(undefined);
-  const face = cardFace(card);
   return (
     <div
       className="floating-card"
@@ -98,7 +99,7 @@ export function FloatingCard({ card, instruction, onCancel }: { card: CardDefini
       role="button"
       tabIndex={0}
       aria-label={`${card.name}: ${instruction}. Pull down or tap to cancel`}
-      style={{ transform: `translateX(-50%) translateY(${drag?.offset ?? 0}px)`, transition: drag ? "none" : undefined }}
+      style={{ transform: `translateY(calc(-50% + ${drag?.offset ?? 0}px))`, transition: drag ? "none" : undefined }}
       onPointerDown={(event) => {
         event.currentTarget.setPointerCapture(event.pointerId);
         setDrag({ startY: event.clientY, offset: 0 });
@@ -111,8 +112,7 @@ export function FloatingCard({ card, instruction, onCancel }: { card: CardDefini
       onPointerCancel={() => setDrag(undefined)}
       onKeyDown={(event) => (event.key === "Enter" || event.key === " " || event.key === "Escape") && onCancel()}
     >
-      <span className="floating-name">{card.name}</span>
-      <span className="floating-type">{face.type}</span>
+      <DesignedCard card={card} width={FLOATING_PICK_WIDTH} />
       <span className="floating-instruction">{instruction}</span>
       <span className="floating-cancel">pull down to cancel</span>
     </div>
