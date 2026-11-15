@@ -8,7 +8,7 @@ The look of the cards, worked out with the product owner in a chat session for i
 
 | Path | Content |
 |---|---|
-| `apps/web/public/assets/cards/<card>.png` | The picture of each card, 136 x 104 px, drawn with the Bruiser sprite of `docs/design/pixel-heroes/`. `back.png` is the whole card back with its text (300 x 420 CSS px at 2 x) |
+| `apps/web/public/assets/cards/<card>.png` | The picture of each card, 136 x 104 px, drawn with the Bruiser and Controller sprites of `docs/design/pixel-heroes/`. `back.png` is the whole card back with its text (300 x 420 CSS px at 2 x) |
 | `overview/<card>.png` | The finished card (frame, picture and text) at 2 x, to look at |
 | `reference/card-faces.html` | The live page: the frames, the backs and all cards. It draws the pictures pixel by pixel; its texts are German where they are notes to the product owner |
 | `tools/export.mjs` | Renders the pictures and the overview images from the reference page: `node docs/design/cards/tools/export.mjs` |
@@ -26,6 +26,14 @@ The look of the cards, worked out with the product owner in a chat session for i
 | Move | Walk It Off | Max walks; an arrow with a 3 on the floor |
 | Pitch | Overtime | Max puts a card into a time clock; "+1" |
 | Wait | Smoke Break | Max leans against a wall and smokes a cigar under a no-smoking sign |
+| Attack | Price Tag | Tilly tags the target with a +1 price label |
+| Utility | Site Survey | Tilly's drone scans an area; survey flags on the floor |
+| Attack | Urban Renewal | the bomb lands, the 3 x 3 area blows up; "-2" |
+| Utility | Heavy Metal | scrap rains on a 3 x 3 field; the target is slowed and takes "-1" |
+| Utility | Temporary Solution | Tilly rams a striped barrier into the floor; a "TEMP" sign on it |
+| Move / Pitch / Wait (Tilly) | Walk It Off / Cannibalize / Idle Hands | Tilly walks; shreds a card in her third arm for "+1"; waits at the workshop wall |
+
+The files of Tilly's standard cards are `walk-it-off-tilly.png`, `cannibalize.png` and `idle-hands.png`; her five cards are `price-tag.png`, `site-survey.png`, `urban-renewal.png`, `heavy-metal.png` and `temporary-solution.png`. The keyword **Scrap** is orange in the text.
 
 ## The frame
 
