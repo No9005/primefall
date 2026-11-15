@@ -260,7 +260,7 @@ function perceivers(match: MatchState, events: readonly MatchEvent[], first: num
 interface Mover {
   heroId: string;
   destination: GridPosition;
-  /** Tiles the Move covers at most: 2, or more after Reposition. */
+  /** Tiles the Move covers at most: the Move distance. */
   distance: number;
 }
 
@@ -853,7 +853,6 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     }
     const movers = actions.flatMap(({ hero, action }) => {
       if (action.kind !== ActionKind.Move) return [];
-      // Reposition stretches the next Move of the Queue only.
       return [{ heroId: hero.id, destination: action.destination, distance: MOVE_DISTANCE }];
     });
     resolveMoves(match, tick, movers, events);

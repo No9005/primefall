@@ -10,7 +10,7 @@ describe("the flight of a projectile", () => {
   it("flies at the speed of its weapon over the tiles of the Range", () => {
     // 4 tiles of 24 px: the slug at 0.10 px/ms, the tracer at 0.30.
     expect(flightMs("Handle With Care", 4)).toBe(960);
-    expect(flightMs("Precision Shot", 4)).toBe(320);
+    expect(flightMs("Shield Breaker", 4)).toBe(320);
   });
 
   it("has no flight for the Long Shot: the line is there at once", () => {
@@ -23,7 +23,7 @@ describe("the flight of a projectile", () => {
   });
 
   it("maps the cards of a class to its weapon", () => {
-    expect(["Time for Coffee", "Ghost Shot", "Price Tag", "Urban Renewal"].map(weaponOf)).toEqual(["slam", "precision", "tag", undefined]);
+    expect(["Time for Coffee", "Shield Breaker", "Price Tag", "Urban Renewal", "Personal Space"].map(weaponOf)).toEqual(["slam", "precision", "tag", undefined, undefined]);
   });
 
   it("moves the projectile in proportion to the time since the fire beat", () => {

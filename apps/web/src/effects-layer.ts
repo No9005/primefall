@@ -7,7 +7,6 @@ import { PIXEL_SCALE } from "./pixel-heroes";
 import { drawCoverLook } from "./cover-look";
 import { coverLook, type CoverLook, TILE_HEIGHT } from "./terrain";
 import {
-  puffAt,
   chargeAt,
   chunkAt,
   COVER_WALL_UP_MS,
@@ -780,11 +779,7 @@ export class EffectsLayer {
     const arrived = s - cue.flightMs;
     if (arrived < 0) return true;
     const impact: Impact = { color, target: to, look, boost: 1 };
-    if (cue.miss) {
-      // A Ghost Shot at a tile with nobody on it: a grey puff.
-      const puff = puffAt(arrived);
-      if (puff) blob(g, { x: to.x, y: to.y - 8 * F }, 12 * F * puff.scale, 0x8a99a8, puff.alpha);
-    } else if (cue.halfCover) this.drawWallHit(g, { ...impact, target: path.wallFoot }, arrived);
+    if (cue.halfCover) this.drawWallHit(g, { ...impact, target: path.wallFoot }, arrived);
     else this.drawImpact(g, impact, arrived, CHEST_LIFT);
     return true;
   }

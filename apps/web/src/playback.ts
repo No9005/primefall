@@ -101,6 +101,8 @@ type ClassOf = ((heroId: string) => HeroClass | undefined) | undefined;
 /** The frames of one Tick: its n-th event of every Hero lands in its n-th frame. */
 function buildTickFrames(tickEvents: readonly MatchEvent[], tick: number, classOf: ClassOf, coverOf: ((tile: GridPosition) => CoverKind) | undefined): PlaybackFrame[] {
   const seen = new Map<string, number>();
+  /** The Heroes whose Hidden ended in this Tick (they attacked, or took damage): their clip shows it. */
+  const hiddenEnded = new Set(tickEvents.filter((event) => event.kind === EventKind.HiddenEnded).map((event) => event.heroId));
   /** The frame of each Hero's Urban Renewal: the blast, its hits and the Cover it destroys are one picture. */
   const blastFrame = new Map<string, number>();
   const tickFrames: PlaybackFrame[] = [];
@@ -110,11 +112,11 @@ function buildTickFrames(tickEvents: readonly MatchEvent[], tick: number, classO
     const occurrence = frameIndexOf(event, seen, blastFrame);
     tickFrames[occurrence] ??= emptyFrame(tick);
     const frame = tickFrames[occurrence];
-    addEventToFrame(frame, event);
+    addEventToFrame(frame, event, hiddenEnded);
     if (event.kind === EventKind.Step && event.to) lastStep.set(event.heroId, { frame, to: event.to });
   }
   takeCoverAtMoveEnd(lastStep, coverOf);
-  for (const frame of tickFrames) addEffects(frame, classOf);
+  for (const frame of tickFrames) addEffects(frame, classOf, hiddenEnded);
   // A Wait lasts the whole Tick; a Step in the same frame wins over it.
   for (const event of tickEvents) {
     if (event.kind !== EventKind.Wait) continue;
@@ -130,12 +132,19 @@ function buildTickFrames(tickEvents: readonly MatchEvent[], tick: number, classO
  */
 function frameIndexOf(event: MatchEvent, seen: Map<string, number>, blastFrame: Map<string, number>): number {
   const owner = isFieldDamage(event) ? event.targetId! : event.heroId;
+  // The end of Hidden is part of the next picture of its Hero (the shot, or the hit), not a frame of its own.
+  if (event.kind === EventKind.HiddenEnded) return seen.get(owner) ?? 0;
   const blast = isBlastEvent(event);
   const joined = blast ? blastFrame.get(owner) : undefined;
   const occurrence = joined ?? seen.get(owner) ?? 0;
   if (joined === undefined) seen.set(owner, occurrence + 1);
   if (blast) blastFrame.set(owner, occurrence);
   return occurrence;
+}
+
+/** The attack clip of a card: a Long Shot fired by a Hero whose Hidden ends with the shot is the shot from Hidden. */
+function attackClipFor({ heroId, card }: { heroId: string; card?: string }, hiddenEnded: ReadonlySet<string>): ClipName {
+  return card === "Long Shot" && hiddenEnded.has(heroId) ? "longHidden" : attackClipName(card);
 }
 
 /** An event of an Urban Renewal: the blast, the Heroes it hurts and the Cover it destroys. */
@@ -159,7 +168,7 @@ function emptyFrame(tick: number): PlaybackFrame {
 }
 
 /** Records what one event changes in its frame: moves, Shield, hits, Exhaustion and the clip of the Hero. */
-function addEventToFrame(frame: PlaybackFrame, event: MatchEvent): void {
+function addEventToFrame(frame: PlaybackFrame, event: MatchEvent, hiddenEnded: ReadonlySet<string>): void {
   frame.events.push(event);
   // `to` of a Cover or area event is a tile of the board, not a place the Hero moves to.
   if (event.to && !TILE_EVENTS.includes(event.kind)) frame.moves[event.heroId] = event.to;
@@ -167,7 +176,7 @@ function addEventToFrame(frame: PlaybackFrame, event: MatchEvent): void {
   if (event.kind === EventKind.ShieldGained) frame.shields[event.heroId] = event.amount ?? 0;
   if (event.kind === EventKind.AttackHit) frame.hits.push(hitOf(event));
   if (event.kind === EventKind.Exhausted) frame.exhausted.push(event.heroId);
-  const clip = clipOfEvent(event);
+  const clip = clipOfEvent(event, hiddenEnded);
   if (clip) frame.clips[clip.heroId] = clip.clip;
   // The Utility gestures belong to the Hero that played the card; the Shield of a card played on an ally is on that ally.
   const gesture = utilityClipName(event);
@@ -185,7 +194,7 @@ function hitOf(event: MatchEvent): PlaybackHit {
 }
 
 /** The clip of the acting Hero for the events that have one of their own, before the Utility gestures. */
-function clipOfEvent(event: MatchEvent): { heroId: string; clip: ClipName } | undefined {
+function clipOfEvent(event: MatchEvent, hiddenEnded: ReadonlySet<string>): { heroId: string; clip: ClipName } | undefined {
   switch (event.kind) {
     case EventKind.Exhausted:
       return { heroId: event.heroId, clip: "exhausted" };
@@ -194,23 +203,23 @@ function clipOfEvent(event: MatchEvent): { heroId: string; clip: ClipName } | un
     case EventKind.AttackHit:
     case EventKind.AttackFailed:
       // The caster of a Scrap Field does nothing when it hurts a Hero.
-      return isFieldDamage(event) ? undefined : { heroId: event.heroId, clip: attackClipName(event.card) };
+      return isFieldDamage(event) ? undefined : { heroId: event.heroId, clip: attackClipFor(event, hiddenEnded) };
     default:
       return undefined;
   }
 }
 
 /** The targets react at the impact beat of the attacker's clip, unless they do something of their own in the frame; then the effects. */
-function addEffects(frame: PlaybackFrame, classOf: ClassOf): void {
+function addEffects(frame: PlaybackFrame, classOf: ClassOf, hiddenEnded: ReadonlySet<string>): void {
   for (const event of frame.events) {
     if (isAimedAtOneHero(event)) frame.aims[event.heroId] = event.targetId!;
   }
   for (const event of frame.events) {
-    if (event.kind === EventKind.AttackHit && event.targetId !== undefined) reactToHit(frame, event, event.targetId, classOf);
+    if (event.kind === EventKind.AttackHit && event.targetId !== undefined) reactToHit(frame, event, event.targetId, classOf, hiddenEnded);
   }
   const fireOf = (heroId: string, card: string | undefined) => {
     const heroClass = classOf?.(heroId);
-    return heroClass === undefined ? DEFAULT_FIRE_MS : clipOf(heroClass, attackClipName(card)).fireMs ?? DEFAULT_FIRE_MS;
+    return heroClass === undefined ? DEFAULT_FIRE_MS : clipOf(heroClass, attackClipFor({ heroId, card }, hiddenEnded)).fireMs ?? DEFAULT_FIRE_MS;
   };
   frame.effects = effectCuesOf(frame.events, fireOf);
   frame.coverEdits = coverEditsOf(frame.effects);
@@ -223,9 +232,9 @@ function isAimedAtOneHero(event: MatchEvent): boolean {
   return true;
 }
 
-function reactToHit(frame: PlaybackFrame, event: MatchEvent, targetId: string, classOf: ClassOf): void {
+function reactToHit(frame: PlaybackFrame, event: MatchEvent, targetId: string, classOf: ClassOf, hiddenEnded: ReadonlySet<string>): void {
   const attackerClass = classOf?.(event.heroId);
-  const fire = attackerClass === undefined ? undefined : clipOf(attackerClass, attackClipName(event.card)).fireMs;
+  const fire = attackerClass === undefined ? undefined : clipOf(attackerClass, attackClipFor(event, hiddenEnded)).fireMs;
   const absorbed = (event.absorbed ?? 0) > 0 && (event.damage ?? 0) === 0;
   // The target reacts when the projectile arrives; a Hero hurt by a Scrap Field reacts at once.
   const arrival = isFieldDamage(event) ? 0 : impactMs(event.card, event.distance, fire ?? DEFAULT_FIRE_MS);
@@ -235,9 +244,12 @@ function reactToHit(frame: PlaybackFrame, event: MatchEvent, targetId: string, c
     return;
   }
   if (frame.clips[targetId] !== undefined) return;
-  frame.clips[targetId] = absorbed ? "absorb" : "hit";
+  // A Hero whose Hidden ends under the hit flickers out of its after-image.
+  frame.clips[targetId] = absorbed ? "absorb" : hitClipFor(hiddenEnded.has(targetId));
   frame.delays[targetId] = arrival;
 }
+
+const hitClipFor = (hiddenEnded: boolean): ClipName => (hiddenEnded ? "hitHidden" : "hit");
 
 /** A frame lasts until its slowest one-shot clip has reached its active end (looping Walk and Wait clips run per step). */
 function holdOf(frame: PlaybackFrame, classOf: ((heroId: string) => HeroClass | undefined) | undefined): number {

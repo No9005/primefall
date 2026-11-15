@@ -11,10 +11,10 @@ describe("the pictures of the cards", () => {
     for (const file of Object.values(CARD_ART_FILES)) expect(existsSync(path.join(FOLDER, `${file}.png`)), file).toBe(true);
   });
 
-  it("gives every card of Max and Tilly a picture, and a card without one none", () => {
-    for (const heroClass of [HeroClass.Bruiser, HeroClass.Controller]) {
+  it("gives every card of every Hero a picture, and a card that does not exist none", () => {
+    for (const heroClass of Object.values(HeroClass)) {
       for (const card of HERO_DECKS[heroClass]) expect(cardArtUrl(card.name), card.name).toMatch(/assets\/cards\/.+\.png$/);
     }
-    expect(cardArtUrl("Long Shot")).toBeUndefined();
+    expect(cardArtUrl("Precision Shot")).toBeUndefined();
   });
 });

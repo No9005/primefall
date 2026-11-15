@@ -78,6 +78,14 @@ export function normalRange(card: Pick<CardDefinition, "range" | "effects">): nu
   return card.effects.find(({ kind }) => kind === EffectKind.FarShot)?.amount ?? card.range ?? 0;
 }
 
+/** The card as a Hero can aim it: a Hero that is not Hidden has the normal Range of a Long Shot (a Marked target beyond it is still allowed by the Resolution). */
+export function withReach<T extends Pick<CardDefinition, "range" | "effects">>(card: T, hidden: boolean): T {
+  return hidden || card.range === undefined ? card : { ...card, range: normalRange(card) };
+}
+
+/** Whether the Attack ignores Shield and all Cover when it lands: Full Cover does not stop its line of fire. */
+export const ignoresCover = (card: Pick<CardDefinition, "effects">): boolean => card.effects.some(({ kind }) => kind === EffectKind.IgnoreCover);
+
 /** The effect as it works for a Hero: with Scrap its `scrap` fields replace the plain ones. */
 export function effectFor(effect: CardEffect, hasScrap: boolean): CardEffect {
   return hasScrap && effect.scrap ? { ...effect, ...effect.scrap } : effect;

@@ -34,7 +34,6 @@ const MISS_REASONS: Record<AttackFailReason, string> = {
   [AttackFailReason.TooClose]: "target is closer than the Minimum Range",
   [AttackFailReason.NoLineOfSight]: "no Line of Sight to the target",
   [AttackFailReason.FullCover]: "target is behind Full Cover",
-  [AttackFailReason.EmptyTile]: "nobody stands on the tile",
 };
 
 /** A missed Attack with its reason; an event without one (an old replay) falls back to the general sentence. */
@@ -109,7 +108,7 @@ export function buildCommentary(events: readonly MatchEvent[], { nameOf, sideOf 
         add(heroId, "Scrap", "Scrap: her cards are stronger this Round");
         break;
       case EventKind.Pull:
-        add(heroId, "Pull", "Is pulled one tile toward the Bruiser");
+        add(heroId, event.card === "Personal Space" ? "Push" : "Pull", event.card === "Personal Space" ? "Is pushed one tile away" : "Is pulled one tile toward the Bruiser");
         break;
       case EventKind.Charged:
         add(heroId, "Express Delivery", "Rushes at the enemy");

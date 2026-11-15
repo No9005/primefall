@@ -58,14 +58,14 @@ const EFFECT_TEXT: Record<EffectKind, (effect: CardEffect) => string> = {
   [EffectKind.DestroyAnyCover]: () => "destroys all Cover in the area",
   [EffectKind.AreaDamage]: ({ amount, size }) => `${amount} damage to every Hero in a ${size}x${size} area, allies too`,
   [EffectKind.ScrapField]: ({ size, duration, amount }) => `${size}x${size} Scrap Field for ${duration} Resolutions: Heroes that Move in it are Slowed and take ${amount} damage per Move`,
-  [EffectKind.IgnoreHalfCover]: () => "ignores Half Cover",
+  [EffectKind.IgnoreCover]: () => "ignores all Cover",
+  [EffectKind.FarShot]: ({ amount }) => `beyond Range ${amount}: only as a Hidden Hero or against a Marked target; a Hidden Hero deals +1 damage there`,
+  [EffectKind.Knockback]: ({ amount }) => `pushes the target up to ${amount} tiles away`,
   [EffectKind.PiercingDamage]: () => "Piercing Damage: ignores Shield",
   [EffectKind.GainShield]: ({ amount }) => `Shield ${amount}`,
-  [EffectKind.ExtendMove]: ({ amount }) => `next Move covers ${amount} tiles`,
   [EffectKind.RevealArea]: ({ size }) => `reveals a ${size}x${size} area`,
   [EffectKind.PlaceCover]: ({ cover }) => `places ${cover === CoverKind.Full ? "Full" : "Half"} Cover until it is destroyed`,
   [EffectKind.BecomeHidden]: () => "become Hidden",
-  [EffectKind.TargetGhost]: () => "shoots a Ghost's last known position",
   [EffectKind.Pull]: ({ amount }) => `Pull ${amount}: the enemy moves up to ${amount} tiles toward this Hero`,
   [EffectKind.Charge]: ({ amount, shield }) => `Shield ${shield}, then moves up to ${amount} tiles toward the enemy and ends next to it`,
   [EffectKind.CloseRangeBonus]: ({ amount }) => `+${amount} damage at Range 1`,
@@ -168,7 +168,6 @@ export function pickInstruction({ card, aimsAtTile, noEnemyInRange }: AimState):
   if (noEnemyInRange) return "No enemy in sight";
   if (card.target === CardTarget.Area || card.target === CardTarget.EmptyTile || aimsAtTile) return "Tap a lit tile";
   if (card.target === CardTarget.SelfHero) return "Tap your Hero";
-  if (card.target === CardTarget.GhostEnemy) return "Tap a Ghost";
   if (card.target === CardTarget.VisibleOrGhostEnemy) return "Tap an enemy or a Ghost";
   return "Tap an enemy";
 }

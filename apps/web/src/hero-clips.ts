@@ -10,6 +10,10 @@ export type ClipName =
   | "wait"
   | "attack"
   | "longShot"
+  | "longHidden"
+  | "knockback"
+  | "shieldBreaker"
+  | "hitHidden"
   | "tagRound"
   | "slowPulse"
   | "scoutDrone"
@@ -98,6 +102,12 @@ const CLIPS: Record<HeroClass, Partial<Record<ClipName, Clip>>> = {
     ...LIGHT,
     attack: once("attack", 2200, 1450, 570),
     longShot: once("longShot", 3600, 3170, 1650),
+    // From Hidden the shot leaves at 2000 ms; the blow of Personal Space lands at 700 ms; Shield Breaker stands like the plain attack.
+    longHidden: once("longHidden", 4200, 3300, 2000),
+    knockback: once("knockback", 2800, 2000, 700),
+    shieldBreaker: once("shieldBreaker", 2200, 1450, 570),
+    // Damage ends Hidden: the figure flickers out of the after-image at 1500 ms.
+    hitHidden: once("hitHidden", 3400, 2500),
     hidden: once("hidden", 4200, 4200),
     exhausted: EXHAUSTED,
   },
@@ -119,9 +129,11 @@ export function clipOf(heroClass: HeroClass, name: ClipName): Clip {
   return clips[name] ?? clips.attack!;
 }
 
-/** The attack clip for a card: Long Shot, Price Tag and Urban Renewal have their own, every other card uses its class's basic attack. */
+/** The attack clip for a card: Long Shot, Personal Space, Shield Breaker, Price Tag and Urban Renewal have their own, every other card uses its class's basic attack. */
 export function attackClipName(card: string | undefined): ClipName {
   if (card === "Long Shot") return "longShot";
+  if (card === "Personal Space") return "knockback";
+  if (card === "Shield Breaker") return "shieldBreaker";
   if (card === "Price Tag") return "tagRound";
   if (card === "Urban Renewal") return "demolish";
   return "attack";

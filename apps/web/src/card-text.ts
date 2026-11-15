@@ -5,7 +5,7 @@ import { describeEffects } from "./planning-selection";
 // Written as in the reference page; a card without a designed text shows the text built from its effects, and no flavour.
 
 /** A keyword colour of the text box: `dmg`, `shield`, `slow`, `ghost`, `energy`, `scrap`, `cover`, `marked`. */
-export type KeywordKind = "dmg" | "shield" | "slow" | "ghost" | "energy" | "scrap" | "cover" | "marked";
+export type KeywordKind = "dmg" | "shield" | "slow" | "ghost" | "energy" | "scrap" | "cover" | "marked" | "hid";
 
 export type TextRun = string | { keyword: KeywordKind; text: string };
 
@@ -30,15 +30,19 @@ const DESIGNED: Readonly<Record<string, DesignedText>> = {
     flavor: "Mosh pit rules: don't move.",
   },
   "Price Tag": { text: 'Range 3. Deal <b class="dmg">1 damage</b>. <b class="marked">Marked:</b> hits on it deal +1 damage until the end of the next Resolution. <b class="scrap">Scrap:</b> +1 damage.', flavor: "Everything has one." },
+  "Long Shot": { text: 'Range 3 to 7. Deal <b class="dmg">3 damage</b>.<br><b class="hid">Hidden</b> or <b class="marked">Marked</b>: up to Range 9. <b class="hid">Hidden</b>: <b class="dmg">+1 damage</b> beyond 7.', flavor: "Distance is a feature." },
+  Vanish: { text: 'Become <b class="hid">Hidden</b> for 2 Resolutions, wherever you stand. Taking damage or shooting ends it.', flavor: "Last seen: never." },
+  "Personal Space": { text: 'Range 1 to 2. Deal <b class="dmg">1 damage</b>. Push the target up to <b class="energy">3 tiles</b> away from you.', flavor: "Keep your distance. Or the rifle will keep it for you." },
+  "Shield Breaker": { text: 'Range 2 to 4. Deal <b class="dmg">2 damage</b> through <b class="shield">Shield</b> and all Cover.', flavor: "Read the fine print. The bullet did." },
   // The standard uses of every card: Move, Pitch and Wait.
   "Walk It Off": { text: 'Move up to <b class="energy">3 tiles</b>. Any card can be used this way.', flavor: "Mind the gap." },
   Overtime: { text: 'Discard a card. Gain <b class="energy">1 Energy</b>. Any card can be used this way.', flavor: "Time and a half. In theory." },
   Cannibalize: { text: 'Discard a card. Gain <b class="energy">1 Energy</b>. Any card can be used this way.', flavor: "Parts is parts." },
-  Pitch: { text: 'Discard a card. Gain <b class="energy">1 Energy</b>. Any card can be used this way.', flavor: "" },
+  "Trade-In": { text: 'Discard a card. Gain <b class="energy">1 Energy</b>. Any card can be used this way.', flavor: "Cards, organs, no questions asked." },
+  Stakeout: { text: "Do nothing for one Tick. Needs no card.", flavor: "Patience is a firearm." },
 
   "Smoke Break": { text: "Do nothing for one Tick. Needs no card.", flavor: "Union rules." },
   "Idle Hands": { text: "Do nothing for one Tick. Needs no card.", flavor: "The workshop is never closed." },
-  Wait: { text: "Do nothing for one Tick. Needs no card.", flavor: "" },
 };
 
 const KEYWORD = /<b class="(\w+)">(.*?)<\/b>/g;
