@@ -2,7 +2,7 @@
 
 The look of the cards, worked out with the product owner in a chat session for issue #415. It follows the build of Slay the Spire (cost orb at the top left, name ribbon, picture window, type tag, text box) in the colours and the pixel style of Primefall.
 
-**Status: assets and reference only. The app does not use them yet.** The Hand still shows the cards as before. Wiring the frame and the pictures into `apps/web` needs a ticket.
+**Status: the app shows the cards in this look** (`apps/web/src/card-design.tsx`, `card-design.css`, `card-text.ts`, `card-art.ts`): the Hand, the pulled card and the Wait card. The card is drawn at 300 x 420 px and scaled; the texts and flavour lines are the ones of the reference page. A card without a picture yet (Kit's) shows the rays of its frame colour. The fonts come from Google Fonts (`index.html`).
 
 ## What is here
 

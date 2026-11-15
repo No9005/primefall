@@ -36,7 +36,9 @@ import {
 import { type ComponentProps, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
 import { Board } from "./Board";
-import { CardFace, EnergyPill, FloatingCard, PulledCard } from "./game-parts";
+import { EnergyPill, FloatingCard, PulledCard } from "./game-parts";
+import { cardArtFile } from "./card-art";
+import { DesignedCard } from "./card-design";
 import { cancel as cancelPull, type Face, faceReveal, faceViews, heldCard, IDLE, MIDDLE_LINE, move as movePull, openCard, press as pressCard, type PullState, release as releasePull, showsFaces, tap as tapPull } from "./card-pull";
 import { CardUseStage, hudFocus } from "./hud-focus";
 import { drawShots, SegmentStyle, type ShotDrawing } from "./shot-lines";
@@ -215,14 +217,23 @@ export function QueueColumn({
 }
 
 /** Right of the Hand: the Wait action as a card. */
-function WaitCard({ dimmed, disabled, locked, onWait }: { dimmed: boolean; disabled: boolean; locked: boolean; onWait: () => void }) {
+function WaitCard({ heroClass, dimmed, disabled, locked, onWait }: { heroClass: HeroClass; dimmed: boolean; disabled: boolean; locked: boolean; onWait: () => void }) {
+  const look = WAIT_LOOK[heroClass];
   return (
-    <button type="button" className={`card wait-card${locked ? " locked" : ""}`} disabled={disabled || dimmed} title={locked ? LOCKED_TITLE : undefined} onClick={onWait}>
-      <span className="card-name">Wait</span>
+    <button type="button" className={`card designed wait-card${locked ? " locked" : ""}`} aria-label="Wait" disabled={disabled || dimmed} title={locked ? LOCKED_TITLE : undefined} onClick={onWait}>
+      <DesignedCard card={{ name: look.name, type: CardType.Utility, energyCost: 0, effects: [] }} width={WAIT_CARD_WIDTH} standard="Wait" art={look.art} />
       {locked && <LockedMark used={false} />}
     </button>
   );
 }
+
+/** The Wait card of each Hero (docs/design/cards/): its own name and picture; Kit's has no picture yet. */
+const WAIT_LOOK: Record<HeroClass, { name: string; art?: string }> = {
+  [HeroClass.Bruiser]: { name: "Smoke Break", art: cardArtFile("smoke-break") },
+  [HeroClass.Controller]: { name: "Idle Hands", art: cardArtFile("idle-hands") },
+  [HeroClass.Assassin]: { name: "Wait" },
+};
+const WAIT_CARD_WIDTH = 108;
 
 const LOCKED_TITLE = "locked during the Resolution";
 const USED_TITLE = "already used this Round";
@@ -372,14 +383,16 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
           >
             <button
               type="button"
-              className={`card ${card.type}${queued || isPitched ? " used" : ""}${locked ? " locked" : ""}${cardIndex === held ? " lifted" : ""}`}
+              className={`card designed ${card.type}${queued || isPitched ? " used" : ""}${locked ? " locked" : ""}${cardIndex === held ? " lifted" : ""}`}
+              aria-label={card.name}
               title={locked ? (queued || isPitched ? USED_TITLE : LOCKED_TITLE) : undefined}
               aria-pressed={cardIndex === armed || cardIndex === held || queuedAt >= 0 || isPitched}
               disabled={disabled}
               onClick={(event) => onCardClick(event.detail === 0 ? cardIndex : pressedCard(event, cardIndex), event)}
               onPointerDown={(event) => onCardPointerDown(pressedCard(event, cardIndex), event)}
             >
-              <CardFace card={card} use={use} />
+              <DesignedCard card={card} width={spacing.cardWidth} />
+              {use && <span className="card-use">{use}</span>}
               {locked && <LockedMark used={Boolean(queued || isPitched)} />}
               {arrivalOrder >= 0 && <span className="card-back" aria-hidden="true" />}
             </button>
@@ -1345,6 +1358,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
             dimmed={queue.length >= MAX_QUEUE_LENGTH}
             disabled={playing || drawing || exhaustion.greyed}
             locked={playing}
+            heroClass={selected.heroClass}
             onWait={() => {
               setQueue(addWaitAction(queue));
               setArmed(undefined);

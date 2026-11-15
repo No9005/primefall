@@ -18,6 +18,9 @@ export const CARD_ART_FILES: Readonly<Record<string, string>> = {
   "Heavy Metal": "heavy-metal",
 };
 
+/** The address of a picture by its file name (for the cards that are not in a Deck list, like the Wait card). */
+export const cardArtFile = (file: string): string => `${CARD_ART}${file}.png`;
+
 /** The address of the picture of a card, or `undefined` for a card that has none yet. */
 export function cardArtUrl(cardName: string): string | undefined {
   const file = CARD_ART_FILES[cardName];
