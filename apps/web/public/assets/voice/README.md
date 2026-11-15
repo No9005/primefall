@@ -6,7 +6,7 @@ Source: ElevenLabs (v3). Kit: voice "Oxley - Evil Character". Tilly: voice "Bell
 
 `<hero>/<hero>_<occasion>_<n>.mp3`, mono, 44.1 kHz, MP3 128 kbit/s, about -16 LUFS. Leading silence cut, pauses inside a line shortened, no effects.
 
-Limits: Attack and Hit at most 1.2 s (Hit 2 may take 2 s), the other occasions at most 4 s. Tilly's Attack lines and Hit 1 are not here yet: they run 2.6 to 3.4 s and are being recorded again.
+Limits: Attack and Hit at most 3.5 s (raised from 1.2 s, because Tilly's lines run 2.6 to 3.4 s), the other occasions at most 4 s. To be checked once in the game; if the lines overlap the next event, they are shortened.
 
 ## Kit Crosshair
 
@@ -30,6 +30,10 @@ Limits: Attack and Hit at most 1.2 s (Hit 2 may take 2 s), the other occasions a
 | File | Line | Length |
 |---|---|---|
 | `tilly_select_1` | Everything is a spare part if you squint hard enough. | 3.57 s |
+| `tilly_attack_1` | Calibrating. | 2.61 s |
+| `tilly_attack_2` | This should not work. | 2.56 s |
+| `tilly_attack_3` | Fire in the hole. Probably. | 3.10 s |
+| `tilly_hit_1` | Okay. Ow. | 3.42 s |
 | `tilly_hit_2` | That was a load-bearing arm. | 1.90 s |
 | `tilly_hit_3` | Warranty void! | 1.35 s |
 | `tilly_exhausted` | Somebody get a wrench. | 2.84 s |
