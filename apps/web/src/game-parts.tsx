@@ -1,6 +1,7 @@
 import type { CardDefinition } from "game-core";
 import { type ReactNode, type Ref, useState } from "react";
 import type { Point } from "./card-drag";
+import { cardArtUrl } from "./card-art";
 import { type Face, type FaceView, REVEAL_SPAN } from "./card-pull";
 import { cardFace } from "./planning-selection";
 import { pullOffset, ReleaseOutcome, releaseOutcome } from "./target-pick";
@@ -11,10 +12,12 @@ import { pullOffset, ReleaseOutcome, releaseOutcome } from "./target-pick";
 /** The inside of a Hand card: name, cost, type and effect text, and optionally how the card is used right now. */
 export function CardFace({ card, use }: { card: CardDefinition; use?: string }) {
   const face = cardFace(card);
+  const art = cardArtUrl(card.name);
   return (
     <>
       <span className="card-name">{card.name}</span>
       <span className="card-cost">{card.energyCost}</span>
+      {art && <img className="card-art" src={art} alt="" draggable={false} />}
       <span className="card-type">{face.type}</span>
       <span className="card-text">{face.effectText}</span>
       {use && <span className="card-use">{use}</span>}

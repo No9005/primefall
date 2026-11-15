@@ -223,6 +223,12 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   .card-back { display: none; }
 }
 .hand .card-name { display: block; padding-left: 30px; padding-right: 2px; font-weight: 700; font-size: 14px; line-height: 1; overflow-wrap: normal; word-break: normal; hyphens: none; }
+/* The picture of the card (docs/design/cards/): a pixel-art window under the name, cropped to the Hero and what it does. */
+.card-art { display: block; width: 100%; image-rendering: pixelated; border-radius: 3px; background: var(--panel); pointer-events: none; }
+.hand .card-art { height: 38px; margin-top: 3px; object-fit: cover; object-position: 50% 70%; }
+.hand .card { overflow: hidden; }
+.pull-card .card-art { height: 64px; margin-top: 6px; object-fit: cover; object-position: 50% 65%; }
+.pull-card.parked .card-art { display: none; }
 .hand .card-type { display: block; margin-top: 3px; font-size: 12px; letter-spacing: 0.08em; font-weight: 700; text-transform: uppercase; }
 .card.attack .card-type { color: var(--orange); }
 .card.utility .card-type { color: var(--teal); }
