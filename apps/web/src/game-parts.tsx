@@ -13,7 +13,7 @@ import { pullOffset, ReleaseOutcome, releaseOutcome } from "./target-pick";
 /** The width of the card while it is pressed, of the floating card under the finger, and of each face in the row of uses. */
 export const PULLED_CARD_WIDTH = 184;
 export const FLOATING_CARD_WIDTH = 100;
-export const FACE_CARD_WIDTH = 150;
+export const FACE_CARD_WIDTH = 138;
 
 /** The face of a use as a designed card: the card itself for its Primary effect, the Hero's own Pitch and Move card for the others. */
 function FaceCard({ card, face, heroClass }: { card: CardDefinition; face: FaceView; heroClass: HeroClass }) {
