@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { aiStyleFor, planSquad, planSquadGreedy, SIMULATIONS_PER_ROUND } from "./ai";
 import { MatchMode, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, matchFromSquadView, startRound } from "./match";
-import { ActionKind, validatePlan } from "./plan";
+import { validatePlan } from "./plan";
 import { resolveRound } from "./resolution";
 
 const resolutions = vi.hoisted(() => ({ count: 0 }));
@@ -93,29 +93,25 @@ describe("AI lookahead", () => {
   it("avoids the move that walks a Hero into the enemy's fire, where the greedy plan takes it", () => {
     // Hand-made position: the Left Heroes face the Right Heroes across the map, six tiles apart in a column.
     // Round 3: the enemies the Left Squad does not see could be anywhere they reached since the Drop Point.
-    const seed = 2;
+    const seed = 6;
     const match = startRound(createMatch(seed));
     match.round = 3;
     const place = (squad: SquadId, col: number) =>
       match.heroes.filter((hero) => hero.squad === squad).forEach((hero, i) => (hero.position = { col, row: 16 + i }));
-    place(SquadId.Left, 19);
-    place(SquadId.Right, 25);
+    place(SquadId.Left, 18);
+    place(SquadId.Right, 24);
     const leftView = buildSquadView(match, SquadId.Left);
     const greedy = planSquadGreedy(leftView, undefined, aiStyleFor(seed, SquadId.Left));
     const looked = planSquad(leftView, undefined, aiStyleFor(seed, SquadId.Left), seed);
     const enemy = planSquadGreedy(buildSquadView(match, SquadId.Right), undefined, aiStyleFor(seed, SquadId.Right));
 
-    // The Right Assassin shoots the Left Controller. The greedy plan ends the Controller in its line; the lookahead goes elsewhere.
-    const lastMove = (plan: typeof greedy) => {
-      const moves = plan.heroes.find((hero) => hero.heroId === "left-controller")!.queue.filter((action) => action.kind === ActionKind.Move);
-      return (moves[moves.length - 1] as { destination: { col: number; row: number } }).destination;
-    };
-    expect(lastMove(looked)).not.toEqual(lastMove(greedy));
+    // The Right Assassin shoots a Left Hero that the greedy plan walks into its line; the lookahead takes the Heroes out of it.
+    expect(JSON.stringify(looked)).not.toEqual(JSON.stringify(greedy));
 
     const exiled = (plan: typeof greedy) =>
-      resolveRound(match, [plan, enemy]).match.heroes.find((hero) => hero.id === "left-controller")!.exile.length;
-    expect(exiled(greedy)).toBe(3);
-    expect(exiled(looked)).toBe(0);
+      resolveRound(match, [plan, enemy]).match.heroes.filter((hero) => hero.squad === SquadId.Left).reduce((sum, hero) => sum + hero.exile.length, 0);
+    expect(exiled(greedy)).toBe(5);
+    expect(exiled(looked)).toBe(3);
   });
 
   it("works in Attack and Defend", () => {

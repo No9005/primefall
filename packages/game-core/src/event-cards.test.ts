@@ -9,7 +9,7 @@ import { resolveRound } from "./resolution";
 const ASSASSIN = "left-assassin";
 const BRUISER = "left-bruiser";
 const ENEMY = "right-bruiser";
-// Assassin: Precision Shot (0), Long Shot. Bruiser: Handle With Care, Hard Hat.
+// Assassin: Long Shot (0 to 2). Bruiser: Handle With Care, Hard Hat.
 const LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot", 1);
 const SLAM_SHOT = cardIndex(HeroClass.Bruiser, "Handle With Care");
 const BULWARK = cardIndex(HeroClass.Bruiser, "Hard Hat");
@@ -34,7 +34,7 @@ describe("Events carry the card that caused them", () => {
     const match = scene({ [ASSASSIN]: { col: 2, row: 1 }, [ENEMY]: { col: 8, row: 1 } });
     const { events } = resolveRound(match, [plan(ASSASSIN, { kind: ActionKind.Primary, card: LONG_SHOT, target: ENEMY }, [0])]);
     expect(events).toEqual([
-      { kind: EventKind.AttackHit, tick: 1, heroId: ASSASSIN, targetId: ENEMY, absorbed: 0, damage: 2, crossfire: 0, card: "Long Shot", distance: 6 },
+      { kind: EventKind.AttackHit, tick: 1, heroId: ASSASSIN, targetId: ENEMY, absorbed: 0, damage: 3, crossfire: 0, card: "Long Shot", distance: 6 },
     ]);
   });
 

@@ -170,12 +170,12 @@ export function coverAgainst(grid: Grid, attacker: GridPosition, target: GridPos
  * Full Cover tile between them (the end tiles never block). Half Cover and Heroes never block it.
  * The line is traced from the same end for both directions, so it is symmetric.
  */
-export function hasLineOfSight(grid: Grid, a: GridPosition, b: GridPosition): boolean {
-  return sightBlockers(grid, a, b).length === 0;
+export function hasLineOfSight(grid: Grid, a: GridPosition, b: GridPosition, ignoreCover = false): boolean {
+  return sightBlockers(grid, a, b, ignoreCover).length === 0;
 }
 
 /** The tiles between `a` and `b` that block Line of Sight. */
-function sightBlockers(grid: Grid, a: GridPosition, b: GridPosition): GridPosition[] {
+function sightBlockers(grid: Grid, a: GridPosition, b: GridPosition, ignoreCover = false): GridPosition[] {
   const [from, to] = a.col < b.col || (a.col === b.col && a.row <= b.row) ? [a, b] : [b, a];
   const steps = Math.max(Math.abs(to.col - from.col), Math.abs(to.row - from.row));
   const blockers: GridPosition[] = [];
@@ -183,7 +183,7 @@ function sightBlockers(grid: Grid, a: GridPosition, b: GridPosition): GridPositi
     const col = Math.round(from.col + ((to.col - from.col) * i) / steps);
     const row = Math.round(from.row + ((to.row - from.row) * i) / steps);
     const tile = { col, row };
-    if (tileAt(grid, tile) === TileKind.Wall || coverAt(grid, tile) === CoverKind.Full) blockers.push(tile);
+    if (tileAt(grid, tile) === TileKind.Wall || (!ignoreCover && coverAt(grid, tile) === CoverKind.Full)) blockers.push(tile);
   }
   return blockers;
 }
@@ -206,13 +206,13 @@ export interface ShotLine {
   canHit: boolean;
 }
 
-/** The straight line of fire from `from` to `to` for an attack of `range`, decided by the functions the Resolution uses. */
-export function shotLine(grid: Grid, from: GridPosition, to: GridPosition, range: number): ShotLine {
+/** The straight line of fire from `from` to `to` for an attack of `range`, decided by the functions the Resolution uses; an attack that ignores Cover is not stopped by Full Cover. */
+export function shotLine(grid: Grid, from: GridPosition, to: GridPosition, range: number, ignoreCover = false): ShotLine {
   const distance = distanceBetween(from, to);
   const inRange = distance <= range;
-  const lineOfSight = hasLineOfSight(grid, from, to);
-  const cover = coverAgainst(grid, from, to);
-  const blockedAt = sightBlockers(grid, from, to).sort((x, y) => distanceBetween(from, x) - distanceBetween(from, y))[0];
+  const lineOfSight = hasLineOfSight(grid, from, to, ignoreCover);
+  const cover = ignoreCover ? CoverKind.None : coverAgainst(grid, from, to);
+  const blockedAt = sightBlockers(grid, from, to, ignoreCover).sort((x, y) => distanceBetween(from, x) - distanceBetween(from, y))[0];
   const line: ShotLine = { from, to, inRange, lineOfSight, cover, canHit: inRange && lineOfSight && cover !== CoverKind.Full };
   if (blockedAt) line.blockedAt = blockedAt;
   if (!inRange) {

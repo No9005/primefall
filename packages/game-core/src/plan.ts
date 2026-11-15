@@ -1,7 +1,7 @@
 // Squad Plans and planning-time validation (ADR 0013, ADR 0020). Shared with clients: a plan is plain
 // data, and `validatePlan` lets the UI explain why a plan cannot be committed. The host validates again.
 
-import { type CardDefinition, type CardIndex, CardTarget, EffectKind, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
+import { type CardDefinition, type CardIndex, CardTarget, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type HeroView, type SquadId, type SquadView, Visibility } from "./host";
 import { CoverKind, coverAt, type Grid, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind, tileAt } from "./reactor-deck";
 
@@ -197,18 +197,10 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
       });
     }
     let position = hero.position;
-    // Reposition stretches the next Move of the Queue to the distance on its card.
-    let moveDistance = MOVE_DISTANCE;
     for (const [slot, action] of queue.entries()) {
       const report = (issue: PlanIssue) => issues.push({ ...issue, slot });
       if (action.kind === ActionKind.Wait) continue;
       useCard(action.card);
-      if (action.kind === ActionKind.Primary) {
-        const extend = HERO_DECKS[hero.heroClass][action.card]!.effects.find(
-          ({ kind }) => kind === EffectKind.ExtendMove,
-        );
-        if (extend) moveDistance = extend.amount ?? MOVE_DISTANCE;
-      }
       if (action.kind === ActionKind.Primary) {
         const card = HERO_DECKS[hero.heroClass][action.card];
         if (!card || !isPlayableCard(card)) {
@@ -217,10 +209,6 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
           const named = view.enemies.find((enemy) => enemy.id === action.target);
           if (named?.visibility !== Visibility.Ghost && !(named?.visibility === Visibility.Visible && !named.exhausted)) {
             report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Visible enemy Hero or a Ghost as its target.` });
-          }
-        } else if (card.target === CardTarget.GhostEnemy) {
-          if (!view.enemies.some((enemy) => enemy.id === action.target && enemy.visibility === Visibility.Ghost)) {
-            report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Ghost as its target.` });
           }
         } else if (card.target === CardTarget.Tile || card.target === CardTarget.EmptyTile || card.target === CardTarget.Area) {
           // Range, Line of Sight and whether the tile is empty are checked when the card resolves.
@@ -240,14 +228,13 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
         }
       }
       if (action.kind !== ActionKind.Move) continue;
-      const reachable = moveDestinations(position, view.grid, moveDistance).some(
+      const reachable = moveDestinations(position, view.grid).some(
         (tile) => tile.col === action.destination.col && tile.row === action.destination.row,
       );
       if (!reachable) {
         report({ kind: PlanIssueKind.BadDestination, heroId, message: "Move 3 needs a free destination 1 to 3 tiles away." });
       }
       position = action.destination;
-      moveDistance = MOVE_DISTANCE;
     }
   }
   return issues;
@@ -389,7 +376,6 @@ export interface MoveCollision {
 export function findMoveCollisions(heroes: readonly HeroView[], plans: readonly SquadPlan[]): MoveCollision[] {
   const positions = new Map(heroes.filter((hero) => !hero.exhausted).map((hero) => [hero.id, { ...hero.position }]));
   const slowed = new Set(heroes.filter((hero) => hero.slowed).map((hero) => hero.id));
-  const extended = new Map<string, number>();
   const queues = plans.flatMap((plan) => plan.heroes).filter(({ heroId }) => positions.has(heroId));
   const collisions: MoveCollision[] = [];
   const ticks = Math.max(0, ...queues.map(({ queue }) => queue.length));
@@ -399,14 +385,8 @@ export function findMoveCollisions(heroes: readonly HeroView[], plans: readonly 
       const hero = heroes.find((candidate) => candidate.id === heroId)!;
       const action = queue[tick - 1];
       if (!action || hero.exhausted) return [];
-      if (action.kind === ActionKind.Primary) {
-        const card = HERO_DECKS[hero.heroClass][action.card];
-        const extend = card?.effects.find(({ kind }) => kind === EffectKind.ExtendMove);
-        if (extend) extended.set(heroId, extend.amount ?? MOVE_DISTANCE);
-      }
       if (action.kind !== ActionKind.Move) return [];
-      let distance = extended.get(heroId) ?? MOVE_DISTANCE;
-      extended.delete(heroId);
+      let distance = MOVE_DISTANCE;
       if (slowed.delete(heroId)) distance = slowedDistance(distance);
       return [{ heroId, destination: action.destination, distance }];
     });

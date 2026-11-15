@@ -79,11 +79,11 @@ describe("validatePlan: Pitch, Energy and Block", () => {
     const assassin = view.heroes.find((hero) => hero.heroClass === HeroClass.Assassin)!;
     const withHand: SquadView = {
       ...view,
-      heroes: view.heroes.map((hero) => (hero === assassin ? { ...hero, hand: [6, 4, 0, 1] } : hero)),
+      heroes: view.heroes.map((hero) => (hero === assassin ? { ...hero, hand: [6, 7, 0, 1] } : hero)),
     };
     const actions: QueuedAction[] = [
       { kind: ActionKind.Primary, card: 6, target: enemy.id },
-      { kind: ActionKind.Primary, card: 4, target: enemy.id },
+      { kind: ActionKind.Primary, card: 7, target: enemy.id },
     ];
     const kindsFor = (pitched: number[]) =>
       validatePlan(withHand, { squad: SquadId.Left, heroes: [{ heroId: assassin.id, queue: actions, pitched }] }).map((issue) => issue.kind);
