@@ -107,10 +107,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .hand.collapsed { position: absolute; left: 0; bottom: 0; pointer-events: none; visibility: hidden; transition: visibility 0s 150ms; }
 .hand.collapsed li { transform: translateX(-160px); opacity: 0; transition: transform 150ms, opacity 150ms; }
 /* The used card while its target is picked (issue 208): lower middle of the free board area, pulled down to cancel. */
-.floating-card { position: absolute; left: calc(50% + 48px); bottom: 10px; z-index: var(--z-hand); width: 104px; height: 98px; box-sizing: border-box; padding: 6px 8px; display: flex; flex-direction: column; align-items: center; text-align: center; background: color-mix(in srgb, var(--ink) 93%, transparent); border: 1.5px solid var(--teal); border-radius: var(--radius-m); touch-action: none; cursor: grab; transition: transform 200ms ease-out; }
-.floating-name { font: 700 15px/1 var(--font-label); }
-.floating-type { margin-top: 2px; font: 700 12px/1 var(--font-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-light); }
-.floating-instruction { margin: auto 0; font: 700 14px/1.1 var(--font-label); color: var(--teal); }
+.floating-card { position: absolute; left: 8px; top: 50%; z-index: var(--z-hand); width: 120px; height: 190px; justify-content: center; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; touch-action: none; cursor: grab; transition: transform 200ms ease-out; }
+.floating-instruction { padding: 3px 6px; font: 700 13px/1.1 var(--font-label); color: var(--teal); background: color-mix(in srgb, var(--ink) 93%, transparent); border: 1.5px solid var(--teal); border-radius: var(--radius-m); }
 .floating-cancel { font: 12px/1 var(--font-label); color: var(--muted); }
 @media (prefers-reduced-motion: reduce) {
   .floating-card { transition: none; }
