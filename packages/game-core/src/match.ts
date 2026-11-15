@@ -1,7 +1,7 @@
 // Match setup and the card economy of a Round (ADR 0007, ADR 0017). Pure and deterministic:
 // every function returns a new Match State and all randomness comes from the seeded PRNG in it.
 
-import { type CardIndex, HAND_SIZE, HERO_DECKS, HeroClass } from "./cards";
+import { type CardIndex, EffectKind, HAND_SIZE, HERO_DECKS, HeroClass } from "./cards";
 import {
   type EnemyView,
   type MatchResult,
@@ -86,8 +86,8 @@ export interface HeroState {
   hidden: number;
   /** Resolution ends left before Marked expires (0: not Marked); a Marked Hero is Visible to the enemy Squad. */
   marked: number;
-  /** Overwatch Uplink: this Hero's Attacks ignore the Half Cover damage reduction until the end of the Round. */
-  ignoresHalfCover: boolean;
+  /** Scrap (Tilly): a card of this Hero destroyed Cover this Round; her Scrap cards are stronger until the end of the Round. */
+  scrap: boolean;
   /** Reposition: the Hero's next Move action covers this many tiles; absent when none is pending. */
   extendedMove?: number;
   /** Set after a Resolution that leaves the Deck and the Discard empty; an Exhausted Hero is out of the match (ADR 0006). */
@@ -122,11 +122,33 @@ export interface PlacedCover {
 // A Squad has at most this many Placed Cover tiles; placing another removes its oldest (the constant is in host.ts, which a client may import).
 export { MAX_PLACED_COVER_PER_SQUAD };
 
+/** A Scrap Field (Heavy Metal): Heroes that Move through its area are Slowed and take `damage` once per Move. */
+export interface ActiveField extends RevealedArea {
+  squad: SquadId;
+  /** The Hero that made the field: the source of its damage. */
+  casterId: string;
+  /** The card, named in the events of its damage. */
+  card: string;
+  damage: number;
+}
+
 /** An area a Squad's Scout Drone reveals. */
 export interface ActiveReveal extends RevealedArea {
   squad: SquadId;
   /** Resolution ends left before the area is hidden again. */
   remaining: number;
+}
+
+/** The tiles of the Grid in a square `size` wide round `center`. */
+export function areaTiles(grid: Grid, center: GridPosition, size: number): GridPosition[] {
+  const reach = Math.floor(size / 2);
+  const tiles: GridPosition[] = [];
+  for (let row = center.row - reach; row <= center.row + reach; row++) {
+    for (let col = center.col - reach; col <= center.col + reach; col++) {
+      if (tileAt(grid, { col, row }) !== undefined) tiles.push({ col, row });
+    }
+  }
+  return tiles;
 }
 
 /** Plain serializable data: it survives `JSON.stringify` / `JSON.parse` unchanged. */
@@ -146,6 +168,7 @@ export interface MatchState {
   knownWrecks: Record<SquadId, GridPosition[]>;
   placedCover: PlacedCover[];
   revealedAreas: ActiveReveal[];
+  scrapFields: ActiveField[];
   /** Attack and Defend only: the Squad that controls the Prime Zone and for how many consecutive Resolutions (ADR 0010, ADR 0022). Unused in the classic mode. */
   primeZone: { controller?: SquadId; progress: number };
   /** Classic: Credits of each Squad. */
@@ -192,6 +215,7 @@ export function createMatch(seed: number, mode: MatchModeSetting = { kind: Match
     knownWrecks: { [SquadId.Left]: [], [SquadId.Right]: [] },
     placedCover: [],
     revealedAreas: [],
+    scrapFields: [],
     primeZone: { progress: 0 },
     scores: { [SquadId.Left]: 0, [SquadId.Right]: 0 },
     zoneControl: ZONES.map(() => ({ contested: false })),
@@ -217,7 +241,7 @@ export function createMatch(seed: number, mode: MatchModeSetting = { kind: Match
         slow: 0,
         hidden: 0,
         marked: 0,
-        ignoresHalfCover: false,
+        scrap: false,
         exhausted: false,
       });
     });
@@ -344,6 +368,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
       slowed: hero.slow > 0,
       hidden: hero.hidden > 0,
       marked: hero.marked > 0,
+      scrap: hero.scrap,
     }));
   const enemies: EnemyView[] = match.heroes
     .filter((hero) => hero.squad !== squad)
@@ -362,6 +387,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
           hidden: hero.hidden > 0,
           slowed: hero.slow > 0,
           marked: hero.marked > 0,
+          scrap: hero.scrap,
         };
       }
       const ghost = match.ghosts[squad][hero.id];
@@ -387,6 +413,10 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   const revealedAreas = match.revealedAreas
     .filter((area) => area.squad === squad)
     .map(({ center, size, remaining }) => ({ center: { ...center }, size, remaining }));
+  // A Scrap Field is known to its Squad, and to the other Squad while it sees a tile of it.
+  const scrapFields = match.scrapFields
+    .filter((field) => field.squad === squad || areaTiles(match.grid, field.center, field.size).some((tile) => canSquadSee(match, squad, tile)))
+    .map(({ center, size, remaining, squad: owner }) => ({ center: { ...center }, size, remaining, own: owner === squad }));
   // The enemy learns which area was scanned and for how long more: no contents, no Hero, not who looks.
   const scannedAreas = match.revealedAreas
     .filter((area) => area.squad !== squad)
@@ -416,7 +446,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   }));
   const points = classic ? { scores: { ...match.scores }, zones } : {};
   return {
-    squad, round: match.round, grid: REACTOR_DECK, ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scannedAreas, visibleTiles, heroes, enemies,
+    squad, round: match.round, grid: REACTOR_DECK, ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scrapFields, scannedAreas, visibleTiles, heroes, enemies,
   };
 }
 
@@ -466,7 +496,7 @@ export function matchFromSquadView(view: SquadView, seed: number, imagined: Read
     return {
       id, squad, heroClass, position: { ...position },
       deck: exhausted ? [] : deck, hand: exhausted ? [] : hand, discard: exhausted ? [] : discard, exile: exhausted ? [] : exile,
-      shield: 0, slow: 0, hidden: 0, marked: 0, ignoresHalfCover: false, exhausted,
+      shield: 0, slow: 0, hidden: 0, marked: 0, scrap: false, exhausted,
     };
   };
 
@@ -475,6 +505,7 @@ export function matchFromSquadView(view: SquadView, seed: number, imagined: Read
     slow: own.slowed ? 1 : 0,
     hidden: own.hidden ? 1 : 0,
     marked: own.marked ? 1 : 0,
+    scrap: own.scrap,
   }));
   const ghosts: MatchState["ghosts"] = { [SquadId.Left]: {}, [SquadId.Right]: {} };
   for (const enemy of view.enemies) {
@@ -489,13 +520,15 @@ export function matchFromSquadView(view: SquadView, seed: number, imagined: Read
     const where = enemy.visibility === Visibility.Ghost && guess ? guess : enemy.position;
     const state = heroState(enemy.id, enemySquad, enemy.heroClass, where, counts, undefined, enemy.visibility === Visibility.Visible && enemy.exhausted);
     if (enemy.visibility === Visibility.Visible) {
-      Object.assign(state, { shield: enemy.shield, slow: enemy.slowed ? 1 : 0, marked: enemy.marked ? 1 : 0 });
+      Object.assign(state, { shield: enemy.shield, slow: enemy.slowed ? 1 : 0, marked: enemy.marked ? 1 : 0, scrap: enemy.scrap });
     } else {
       ghosts[view.squad][enemy.id] = { deckCount: enemy.deckCount, discardCount: enemy.discardCount, exileCount: enemy.exileCount, position: { ...enemy.position }, lastSeenRound: enemy.lastSeenRound };
     }
     heroes.push(state);
   }
 
+  const fieldCard = HERO_DECKS[HeroClass.Controller].find((card) => card.effects.some(({ kind }) => kind === EffectKind.ScrapField))!;
+  const fieldEffect = fieldCard.effects.find(({ kind }) => kind === EffectKind.ScrapField)!;
   const { primeProgress } = view;
   const primeController = primeProgress[SquadId.Left] > 0 ? SquadId.Left : primeProgress[SquadId.Right] > 0 ? SquadId.Right : undefined;
   const match: MatchState = {
@@ -509,6 +542,12 @@ export function matchFromSquadView(view: SquadView, seed: number, imagined: Read
     knownWrecks: { [SquadId.Left]: view.wreckCover.map((t) => ({ ...t })), [SquadId.Right]: view.wreckCover.map((t) => ({ ...t })) },
     placedCover: view.placedCover.map((position) => ({ squad: view.squad, position: { ...position } })),
     revealedAreas: view.revealedAreas.map((area) => ({ ...structuredClone(area), squad: view.squad })),
+    scrapFields: view.scrapFields.map((field) => ({
+      center: { ...field.center }, size: field.size, remaining: field.remaining, squad: field.own ? view.squad : enemySquad,
+      // The caster of an enemy field is not known; the Controller of that Squad is the Hero that makes them.
+      casterId: heroes.find((hero) => hero.squad === (field.own ? view.squad : enemySquad) && hero.heroClass === HeroClass.Controller)?.id ?? "",
+      card: fieldCard.name, damage: fieldEffect.amount ?? 0,
+    })),
     primeZone: primeController === undefined ? { progress: 0 } : { controller: primeController, progress: primeProgress[primeController] },
     scores: view.scores ? { ...view.scores } : { [SquadId.Left]: 0, [SquadId.Right]: 0 },
     zoneControl: ZONES.map((_, i) => ({ controller: view.zones?.[i]?.controller, contested: view.zones?.[i]?.contested ?? false })),

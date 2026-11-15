@@ -168,11 +168,12 @@ describe("the classic mode", () => {
   // from three zones (#357) and after the Block change (#352, #358); re-recorded for the new decks (#371: Bruiser 12, Controller 10, Assassin 9 cards, ADR 0025), because every Deck and the plans of the AI changed;
   // re-recorded for the Crossroads map of 45 by 25 tiles (#361);
   // re-recorded without Overdrive and with every card at 1 Energy (#415 test), and for the new Bruiser and Controller decks and the Move 3 (#415);
+  // re-recorded for Tilly's new deck (#415: Price Tag, Site Survey, Urban Renewal, Temporary Solution, Heavy Metal);
   // re-recorded for the one-Round lookahead (#395), which changes every plan of the AI, and for the Fog of War worlds (#396), which change the replies it plays against.
   const recorded = [
-    { seed: 3, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 14, right: 21 }, deckTotals: { left: 8, right: 7 }, positions: "20,10:0 26,20:4 21,20:4 20,10:3 23,2:0 24,12:4", rng: 3072508256 },
-    { seed: 11, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 20, right: 12 }, deckTotals: { left: 10, right: 10 }, positions: "21,21:4 20,10:2 21,2:4 23,4:4 21,4:2 23,20:4", rng: 1929143018 },
-    { seed: 42, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 20, right: 11 }, deckTotals: { left: 8, right: 7 }, positions: "21,2:4 24,10:3 20,10:1 23,20:3 24,10:0 23,2:4", rng: 2376731428 },
+    { seed: 3, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 7, right: 5 }, deckTotals: { left: 11, right: 10 }, positions: "20,10:2 21,11:4 21,14:5 21,12:4 24,10:2 20,13:4", rng: 1929143010 },
+    { seed: 11, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 23, right: 4 }, deckTotals: { left: 8, right: 8 }, positions: "24,12:2 23,22:2 21,2:4 23,12:0 23,2:4 26,20:4", rng: 161518402 },
+    { seed: 42, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 22, right: 14 }, deckTotals: { left: 13, right: 6 }, positions: "21,2:4 20,11:4 20,10:5 23,20:2 21,4:0 23,2:4", rng: 1680954561 },
   ];
 
   it.each(recorded)("plays seed $seed exactly as recorded", ({ seed, round, winner, reason, scores, deckTotals, positions, rng }) => {

@@ -6,13 +6,11 @@ import { ActionKind, type QueuedAction, type SquadPlan } from "./plan";
 import { resolveRound } from "./resolution";
 
 const BRUISER = "left-bruiser";
-const CONTROLLER = "left-controller";
 const RIGHT_BRUISER = "right-bruiser";
-// Bruiser cards: 0 Handle With Care (Attack), Hard Hat (Shield 2 on self). Controller card: Overwatch Uplink (an ally card).
+const CONTROLLER_ID = "left-controller";
+// Bruiser cards: 0 Handle With Care (Attack), Hard Hat (Shield 2 on self).
 const SLAM_SHOT = 0;
 const BULWARK = cardIndex(HeroClass.Bruiser, "Hard Hat");
-const OVERWATCH = cardIndex(HeroClass.Controller, "Overwatch Uplink");
-const CONTROLLER_PITCH = 0;
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 const use = (card: number, target: string): QueuedAction => ({ kind: ActionKind.Primary, card, target });
@@ -26,7 +24,6 @@ function duel(): MatchState {
   hero(match, BRUISER).position = { col: 8, row: 5 };
   hero(match, RIGHT_BRUISER).position = { col: 10, row: 5 };
   hero(match, BRUISER).hand = [SLAM_SHOT, BULWARK, 1, 2];
-  hero(match, CONTROLLER).hand = [OVERWATCH, CONTROLLER_PITCH, 1, 2];
   hero(match, RIGHT_BRUISER).hand = [0, 1, 2, 3];
   return match;
 }
@@ -46,17 +43,8 @@ describe("Utility cards: Shield", () => {
     expect(hero(after, BRUISER).discard).toEqual([SLAM_SHOT, BULWARK]);
   });
 
-  it("Overwatch Uplink works on an allied Hero", () => {
-    const { events } = resolveRound(duel(), [planOf(CONTROLLER, [use(OVERWATCH, BRUISER)], [CONTROLLER_PITCH])]);
-    expect(events).toEqual([{ kind: EventKind.CoverReductionIgnored, tick: 1, heroId: CONTROLLER, targetId: BRUISER, card: "Overwatch Uplink" }]);
-  });
-
-  it("fails when the target is not an allowed Hero", () => {
-    const failed = (heroId: string, card: number, target: string) =>
-      resolveRound(duel(), [planOf(heroId, [use(card, target)], [heroId === BRUISER ? SLAM_SHOT : CONTROLLER_PITCH])]).events;
-    const action = (heroId: string) => [{ kind: EventKind.ActionFailed, tick: 1, heroId }];
-    expect(failed(BRUISER, BULWARK, CONTROLLER)).toEqual(action(BRUISER));
-    expect(failed(CONTROLLER, OVERWATCH, CONTROLLER)).toEqual(action(CONTROLLER));
-    expect(failed(CONTROLLER, OVERWATCH, RIGHT_BRUISER)).toEqual(action(CONTROLLER));
+  it("fails when the target is not the casting Hero", () => {
+    const failed = resolveRound(duel(), [planOf(BRUISER, [use(BULWARK, CONTROLLER_ID)], [SLAM_SHOT])]).events;
+    expect(failed).toEqual([{ kind: EventKind.ActionFailed, tick: 1, heroId: BRUISER }]);
   });
 });

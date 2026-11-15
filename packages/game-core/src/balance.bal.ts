@@ -906,7 +906,7 @@ function printDamageShare(seeds: number, offset: number): void {
       return [`${name} from the Controller (total ${sumOf(byClass)})`, sumOf(byClass) === 0 ? "no data !" : `${value.toFixed(0)}%${miss(value >= ROLE_TARGETS.controllerSupportMinPercent)}`, `>= ${ROLE_TARGETS.controllerSupportMinPercent}%`];
     }),
   ]);
-  console.log("  The AI plays only simple Attacks and moves (#363): it plays no Shield, Cover, Scout Drone, Charge, Pull, Breach Charge or Shockwave card, so the support rows read 0 or no data.");
+  console.log("  The AI plays only simple Attacks and moves (#363): it plays no Shield, Cover, Site Survey, Charge, Pull, Urban Renewal or Heavy Metal card, so the support rows read 0 or no data.");
 }
 
 function printComposition(seeds: number, offset: number): void {

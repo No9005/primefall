@@ -7,11 +7,10 @@ import { resolveRound } from "./resolution";
 
 const BRUISER = "left-bruiser";
 const RIGHT_BRUISER = "right-bruiser";
-// Bruiser cards: 0 Handle With Care, Time for Coffee (2 damage, Slow). Controller: Gravity Snare (2 Energy, Slow on a visible enemy).
+// Bruiser cards: 0 Handle With Care, Time for Coffee (1 damage, Slow).
 const SLAM_SHOT = 0;
 const CONCUSSION_ROUND = cardIndex(HeroClass.Bruiser, "Time for Coffee");
 const CONTROLLER = "left-controller";
-const GRAVITY_SNARE = cardIndex(HeroClass.Controller, "Gravity Snare");
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 const use = (card: number, target: string): QueuedAction => ({ kind: ActionKind.Primary, card, target });
@@ -29,18 +28,13 @@ const leftPlan = (queue: QueuedAction[], pitched: number[] = []): SquadPlan => (
   heroes: [{ heroId: BRUISER, queue, pitched }],
 });
 
-const snarePlan = (target: string): SquadPlan => ({
-  squad: SquadId.Left,
-  heroes: [{ heroId: CONTROLLER, queue: [use(GRAVITY_SNARE, target)], pitched: [0, 1] }],
-});
-
 function duel(): MatchState {
   const match = startRound(createMatch(5));
   hero(match, BRUISER).position = { col: 8, row: 3 };
   hero(match, RIGHT_BRUISER).position = { col: 11, row: 3 };
   hero(match, BRUISER).hand = [CONCUSSION_ROUND, SLAM_SHOT, 1, 3];
   hero(match, CONTROLLER).position = { col: 8, row: 4 };
-  hero(match, CONTROLLER).hand = [GRAVITY_SNARE, 0, 1, 2];
+  hero(match, CONTROLLER).hand = [0, 1, 2, 3];
   hero(match, RIGHT_BRUISER).hand = [0, 1, 2, 3];
   return match;
 }
@@ -68,20 +62,6 @@ describe("Slow", () => {
     expect(hero(after, RIGHT_BRUISER).slow).toBe(0);
   });
 
-  it("Gravity Snare Slows a visible enemy", () => {
-    const { match: after, events } = resolveRound(duel(), [snarePlan(RIGHT_BRUISER)]);
-    expect(events).toEqual([{ kind: EventKind.SlowApplied, tick: 1, heroId: CONTROLLER, targetId: RIGHT_BRUISER, card: "Gravity Snare" }]);
-    expect(buildSquadView(after, SquadId.Right).heroes.find(({ id }) => id === RIGHT_BRUISER)?.slowed).toBe(true);
-  });
-
-  it("Gravity Snare fails against an enemy that is not visible or an ally", () => {
-    const hidden = duel();
-    hero(hidden, RIGHT_BRUISER).position = { col: 19, row: 3 };
-    const failed = [{ kind: EventKind.ActionFailed, tick: 1, heroId: CONTROLLER }];
-    expect(resolveRound(hidden, [snarePlan(RIGHT_BRUISER)]).events).toEqual(failed);
-    expect(resolveRound(duel(), [snarePlan(BRUISER)]).events).toEqual(failed);
-  });
-
   it("a Slowed Hero's Move 3 becomes a Move 1 (half, rounded down) and uses the Slow up", () => {
     // The first Move covers 1 tile (3 / 2 rounded down) to col 12, the second one the full 3 tiles to col 15.
     const { match: after, events } = resolveRound(slowedByConcussion(), [rightPlan([move(0, 14, 3), move(1, 15, 3)])]);
@@ -94,7 +74,7 @@ describe("Slow", () => {
 
   it("Slow also applies to a Move planned in the Resolution that Slows, after the Slow", () => {
     const { match: after } = resolveRound(duel(), [
-      snarePlan(RIGHT_BRUISER),
+      leftPlan([use(CONCUSSION_ROUND, RIGHT_BRUISER)], [SLAM_SHOT]),
       rightPlan([{ kind: ActionKind.Wait }, move(1, 13, 3)]),
     ]);
     expect(hero(after, RIGHT_BRUISER).position).toEqual({ col: 12, row: 3 });

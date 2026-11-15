@@ -122,7 +122,7 @@ describe("validatePlan: Pitch, Energy and Block", () => {
     expect(validatePlan(farAway, plan)).toEqual([]);
   });
 
-  it("plans Utility cards at this Hero or an allied Hero only", () => {
+  it("plans a self Utility card on this Hero only", () => {
     const controller = view.heroes.find((hero) => hero.heroClass === HeroClass.Controller)!;
     const withHand: SquadView = {
       ...view,
@@ -131,12 +131,10 @@ describe("validatePlan: Pitch, Energy and Block", () => {
     const use = (card: number, target: string): QueuedAction => ({ kind: ActionKind.Primary, card, target });
     const check = (heroId: string, queue: QueuedAction[], pitched: number[] = [0, 1]) =>
       validatePlan(withHand, { squad: SquadId.Left, heroes: [{ heroId, queue, pitched }] }).map((issue) => issue.kind);
-    // Hard Hat (Bruiser 5) is self only, Overwatch Uplink (Controller 9) allied only.
+    // Hard Hat (Bruiser 5) is self only.
     expect(check(bruiser.id, [use(5, bruiser.id)])).toEqual([]);
     expect(check(bruiser.id, [use(5, controller.id)])).toEqual([PlanIssueKind.BadTarget]);
-    expect(check(controller.id, [use(9, bruiser.id)])).toEqual([]);
-    expect(check(controller.id, [use(9, controller.id)])).toEqual([PlanIssueKind.BadTarget]);
-    expect(check(controller.id, [use(9, enemy.id)])).toEqual([PlanIssueKind.BadTarget]);
+    expect(check(bruiser.id, [use(5, enemy.id)])).toEqual([PlanIssueKind.BadTarget]);
     // Utility cards cost Energy like Attacks.
     expect(check(bruiser.id, [use(5, bruiser.id)], [])).toEqual([PlanIssueKind.NotEnoughEnergy]);
   });

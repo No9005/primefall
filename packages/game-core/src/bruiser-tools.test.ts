@@ -13,7 +13,6 @@ const BLOCKER = "right-controller";
 const CONTROLLER = "left-controller";
 const CHARGE = cardIndex(HeroClass.Bruiser, "Express Delivery");
 const PULL = cardIndex(HeroClass.Bruiser, "Cargo Hook");
-const WRECKING_BLOW = cardIndex(HeroClass.Controller, "Wrecking Blow");
 const SLAM_SHOT = 0;
 const PITCH = [2, 3, 6];
 
@@ -204,41 +203,6 @@ describe("Handle With Care at Range 1 to 2", () => {
   });
 });
 
-describe("Wrecking Blow", () => {
-  /** Tilly stands at `from`, the enemy at `to`. */
-  function tillyAt(from: GridPosition, to: GridPosition): MatchState {
-    const match = setup(from, to);
-    hero(match, CONTROLLER).position = from;
-    return match;
-  }
-
-  it("deals 2 damage and destroys Half Cover on the target tile", () => {
-    // (7,2) is Half Cover on the Reactor Deck.
-    const match = tillyAt({ col: 5, row: 2 }, { col: 7, row: 2 });
-    expect(coverAt(match.grid, { col: 7, row: 2 })).toBe(CoverKind.Half);
-    const { match: after, events } = resolveRound(match, [controllerPlan(match, WRECKING_BLOW)]);
-    // The Cover protected against the damage in its Tick (2 - 1).
-    expect(damageTaken(match, after)).toBe(1);
-    expect(coverAt(after.grid, { col: 7, row: 2 })).toBe(CoverKind.None);
-    expect(events.find(({ kind }) => kind === EventKind.CoverDestroyed)).toMatchObject({ to: { col: 7, row: 2 }, card: "Wrecking Blow" });
-  });
-
-  it("destroys Full Cover on the target tile", () => {
-    const match = withFullCover(tillyAt({ col: 3, row: 1 }, { col: 4, row: 1 }), { col: 4, row: 1 });
-    const { match: after } = resolveRound(match, [controllerPlan(match, WRECKING_BLOW)]);
-    expect(damageTaken(match, after)).toBe(2);
-    expect(coverAt(after.grid, { col: 4, row: 1 })).toBe(CoverKind.None);
-  });
-
-  it("destroys Placed Cover and frees its place for the Squad", () => {
-    const match = tillyAt({ col: 2, row: 1 }, { col: 4, row: 1 });
-    match.grid = { ...match.grid, tiles: match.grid.tiles.map((line, row) => line.map((tile, col) => (row === 1 && col === 4 ? TileKind.HalfCover : tile))) };
-    match.placedCover.push({ squad: SquadId.Right, position: { col: 4, row: 1 } });
-    const { match: after } = resolveRound(match, [controllerPlan(match, WRECKING_BLOW)]);
-    expect(after.placedCover).toHaveLength(0);
-  });
-});
-
 describe("What the events of a Cargo Hook, an Express Delivery and a hit tell a Squad", () => {
   const pulls = (squad: SquadId, resolution: ReturnType<typeof resolveRound>) => getSquadEvents(squad, resolution).filter(({ kind }) => kind === EventKind.Pull);
 
@@ -256,7 +220,7 @@ describe("What the events of a Cargo Hook, an Express Delivery and a hit tell a 
 
   it("does not tell the Squad of the pulled Hero who pulled it when it cannot see that Hero, but still shows the slide", () => {
     const match = setup({ col: 2, row: 1 }, { col: 6, row: 1 });
-    // A Hidden Bruiser is not seen on a tile in sight (it is only shown inside a Scout Drone area).
+    // A Hidden Bruiser is not seen on a tile in sight (it is only shown inside a Site Survey area).
     hero(match, BRUISER).hidden = 2;
     const resolution = resolveRound(match, [bruiserPlan(match, [PULL], [use(PULL)])]);
     expect(hero(resolution.match, BRUISER).hidden).toBeGreaterThan(0);
@@ -285,7 +249,7 @@ describe("What the events of a Cargo Hook, an Express Delivery and a hit tell a 
     expect(hit?.closeBonus).toBeUndefined();
   });
 
-  it("marks a Hidden enemy that a Scout Drone area shows as Hidden in the Squad View, and a normal one as not", () => {
+  it("marks a Hidden enemy that a Site Survey area shows as Hidden in the Squad View, and a normal one as not", () => {
     const match = setup({ col: 16, row: 6 }, { col: 18, row: 6 });
     const seen = () => buildSquadView(match, SquadId.Left).enemies.find(({ id }) => id === ENEMY);
     expect(seen()).toEqual(expect.objectContaining({ visibility: Visibility.Visible, hidden: false }));
