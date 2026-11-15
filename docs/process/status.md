@@ -39,6 +39,8 @@ Values as last seen in run logs; check the settings page, this table can be stal
 - **Look at the design canvas before asking the owner how something should behave.** Evidence: the owner was asked three times about the "tap-tap" card pull, which board O and board V already define (#267).
 - **Subagents do not know the owner's decisions.** Tell them to read `docs/design/decisions.md` first, and filter their proposals against it. Evidence: a visual review proposed Hero chips and a Squad panel that the owner had removed on purpose (#244).
 - **Reproduce a bug report in the running game before writing a fix or a ticket.** If the state cannot be staged yet, say so in the ticket ("not reproduced") and use the scenarios of the screenshot tool once they exist (#263). Evidence: the Fog of War crash stayed open over several rounds.
+- **An agreed design is the standard for every later change, not a suggestion.** When the owner says "change the cards" (or similar) and a design was agreed earlier in the chat or in `docs/design/`, name that design first and check the finished change against it element by element. Do not make the owner repeat it. Evidence: in #415 "adjust the cards" first changed only the pictures; the agreed frame, orb and ribbon were missing.
+- **Show new animations and card faces in an artifact before building them in code.** Publish a canvas, decide there (names, flavour lines, timing), then build. Evidence: Tilly's and Kit's sheets and card pictures in #415 were tuned in the artifact, so the code change was a straight copy.
 - Anything that only exists in a chat is lost when the chat ends: put decisions into an issue, a pull request or these docs.
 
 ## Tried and dropped
