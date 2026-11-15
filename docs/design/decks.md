@@ -108,18 +108,25 @@ Notes:
 - Not built: Kit's card that names a Marked Hero without sight.
 - Sprite sheets: `demolish`, `scrapfield`, `scrapforce`, `deployfull` (the Hero only; the game draws the bomb, the blast, the field and the flying rubble).
 
-### Kit Crosshair (Assassin), 9 cards: unseen, at range, on one target
+### Kit Crosshair (Assassin), 9 cards: the sniper, a glass cannon (decided, not built)
 
-| # | Card | Energy | Effect (proposal) | Status |
-|---|---|---|---|---|
-| 1-2 | **Long Shot** x2 | 1 | Attack, Range 3 to 7: deal 2 damage. (The +1 at Range 6 and 7 would be written on the card.) | changed |
-| 3 | **Recoil Shot** | 1 | Attack, Range 2 to 5: deal 2 damage and apply Knockback 1 (the tester's wish: the Assassin keeps his distance). | **new** |
-| 4 | **Shield Breaker** | 1 | Attack, Range 2 to 4: deal 2 Piercing Damage; Shield is not reduced; Half Cover still reduces it by 1, Full Cover blocks. | existing |
-| 5 | **Execution Round** | 1 | Attack, Range 2 to 5: deal 3 damage; ignores Half Cover. | existing |
-| 6 | **Ghost Shot** | 1 | Attack, Range 2 to 5: fire at the last known position of a Ghost; deal 2 damage to the enemy that stands there. | **changed** (this was its Overdrive; without Overdrive it is the card) |
-| 7 | **Vanish** | 1 | Utility: this Hero becomes Hidden for up to two Resolutions, provided it ends its movement in Cover. | existing |
-| 8 | **Silent Entry** | 1 | Utility: move up to 3 tiles; this Hero stays Hidden and is not shown by a drone area on the way. The weapon for Sabotage and for cutting off a carrier. | **new** (replaces Reposition) |
-| 9 | **Snatch** | 1 | Utility: pick up a dropped object within 2 tiles of this Hero (Carry and extract). Without a mission: Pitch, Move or Block. | **new** (mission card) |
+Kit is the **Flankierer-Sniper**: he shoots from a distance, hides, and keeps enemies off him. The cards are mostly shots. Decided in chat for #415:
+
+| # | Card | Energy | Effect |
+|---|---|---|---|
+| 1-3 | **Long Shot** x3 | 1 | Attack, Range 3 to 7: 3 damage. **Hidden** Kit or a **Marked** target: up to Range 9 (a Marked target needs no sight, Line of Sight stays). Beyond Range 7 a Hidden Kit deals +1 damage. |
+| 4-5 | **Vanish** x2 | 1 | Utility: this Hero is Hidden for 2 Resolutions, **wherever it stands** (no Cover needed). Taking damage or shooting ends it at once. |
+| 6-7 | **Knockback** (name proposal: Personal Space) x2 | 1 | Attack, Range 1 to 2: 1 damage and push the target up to 3 tiles away from Kit. 3 tiles is where Long Shot hits (Range 3). |
+| 8-9 | **Shield Breaker** x2 | 1 | Attack, Range 2 to 4: 2 damage that ignores **Shield and all Cover** (it is Piercing and ignores Cover; one rule instead of two). |
+
+Notes:
+
+- Changes compared with the old deck: Precision Shot, Cover Breaker, Ghost Shot, Execution Round and Reposition leave; Long Shot becomes the main card (3 damage, 3 copies); Vanish loses its Cover requirement and keeps Hidden for 2 Resolutions wherever Kit stands (Hidden still ends when Kit attacks or is Marked, and now also when he takes damage).
+- Move & Shoot (one card, two actions) was considered and dropped: it would break "one card, one action".
+- Why this works: a Hidden Hero sees 9 tiles, so the 9 tiles of the extra Range are what Hidden buys; Hook (Range 7) pulls Kit next to Max, Personal Space answers it. Long Shot (3 damage) and Marked (+1) can reach 5 damage on a Marked Hero beyond Range 7: not measured.
+- Names Personal Space, Trade-In (Pitch) and Stakeout (Wait) are proposals. Pictures: `docs/design/cards/`; animations: the Revenant sheet (`knockback`, `longhidden`, `shieldbreaker`, `hithidden`).
+- The AI plays Long Shot and Shield Breaker (simple Attacks); it does not play Vanish or Personal Space.
+- New rules to build: Long Shot range and bonus rules, Marked without sight, Knockback with damage (reuses the slide of the Pull), Vanish without Cover and ended by damage.
 
 ## The system: Pitch, Overdrive and synergy (ideas, not decided)
 
