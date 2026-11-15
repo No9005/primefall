@@ -10,10 +10,10 @@ What is in the code and in `docs/specs/mvp-card-set.md` today:
 
 - **Overdrive, Block and the passives are gone.** Every card costs 1 Energy; a card is played, pitched or used as Move 3 (Slow halves it, rounded down).
 - **Max Overload's deck** is the table under _Max Overload_ below, with the names of the cards: Buy One, Get Two (Double Shot), Express Delivery (Rush), Hard Hat (Shield 2), Cargo Hook (Grappling Hook, also on a Ghost), Handle With Care (Close Attack) and Time for Coffee (Concussion Round).
-- **Tilly creates and destroys Cover.** Her Shield cards (Aegis Protocol, Reinforce) are replaced by Breach Charge and Wrecking Blow. The rest of her deck is unchanged; the plan of the Field and the drone below is not built yet.
+- **Tilly's deck is built** (see _Tilly Turnover_ below): Price Tag, Site Survey, Urban Renewal, Temporary Solution and Heavy Metal, two of each, with the keyword Scrap and Marked as +1 damage on every hit. Breach Charge, Wrecking Blow, Tag Round, Scout Drone, Fortify, Deploy Cover, Barricade, Gravity Snare and Overwatch Uplink are gone (the ideas stay in this file).
 - **Removed with Max' old cards:** Shockwave and Knockback, Adrenal Surge (the permanent Attack bonus), the Range 1 bonus of the old Charge.
 - **Move 3 is built:** every card can be used as Move 3 and Slow halves the next Move, rounded down (a Move 3 becomes a Move 1). Reposition (Kit) is now Move 5 this round, because Move 3 is the default; its place in his deck is still open.
-- **Not built yet:** the decks of Tilly (beyond the two cards) and Kit, the Marked and Slow ideas, the card faces in the app (`docs/design/cards/`).
+- **Not built yet:** Kit's deck, Kit's card for Marked Heroes without sight, the card faces in the app (the pictures are in `apps/web/public/assets/cards/`).
 
 ## Why a redesign
 
@@ -88,18 +88,25 @@ Notes:
 - Missing on purpose: no Knockback, no Cover breaking (Tilly does that).
 - Pictures, animations and frame: `docs/design/cards/` and `docs/design/pixel-heroes/` (the sprite sheets `double`, `rush`, `hook`, `concussion`).
 
-### Tilly Turnover (Controller), 10 cards: the Field and the sight
+### Tilly Turnover (Controller), 10 cards: Cover, Scrap and the sight (implemented)
 
-| # | Card | Energy | Effect (proposal) | Status |
+**Scrap** is the keyword: it is active once a card of Tilly's destroyed Cover earlier in the Round (it lasts to the end of the Round). A card with a Scrap text works the stronger way while it is active. Every card exists twice.
+
+| # | Card | Energy | Effect | Scrap |
 |---|---|---|---|---|
-| 1 | **Tag Round** | 1 | Attack, Range 2: deal 1 damage and apply Marked until the end of the next Resolution. | existing |
-| 2-3 | **Scout Drone** x2 | 1 | Utility: reveal a 3 by 3 area anywhere on the map, also in the Fog, for two Resolutions; a Hidden enemy inside is shown and stays Hidden. The enemy sees which area was scanned, not who looks. | existing |
-| 4 | **Barricade** | 1 | Utility, Range 3: place Full Cover on an empty tile (Placed Cover). | existing |
-| 5 | **Scrap Wall** | 1 | Utility, Range 3: place Half Cover on an empty tile or on the tile of an allied Hero (Placed Cover). It merges Fortify and Deploy Cover. | changed (Fortify + Deploy Cover) |
-| 6-7 | **Arc Field** x2 | 1 | Utility, Range 4: place a Field on a tile for two Resolutions. An enemy Hero that stands on it at the end of a Tick takes 1 damage. | **new** |
-| 8 | **Gravity Snare** | 1 | Utility: a visible enemy Hero gains Slow until the end of the next Resolution. | existing |
-| 9 | **Overwatch Uplink** | 1 | Utility: an allied Hero may attack an enemy in Half Cover this round without the Half Cover damage reduction. | existing |
-| 10 | **Rig Charge** | 1 | Utility: prepare a mission target next to this Hero; the next Attack on it deals +2 damage (Sabotage). Without a mission it can be used as Pitch, Move or Block like every card. | **new** (mission card) |
+| 1-2 | **Price Tag** | 1 | Attack, Range 3: 1 damage and Marked until the end of the next Resolution: every hit on the Marked Hero deals +1 damage. | 2 damage |
+| 3-4 | **Site Survey** | 1 | Utility, anywhere on the map: reveal a 3 x 3 area for 3 Resolutions (a Hidden enemy is shown, not unmasked). | 5 x 5 |
+| 5-6 | **Urban Renewal** | 1 | Attack on a tile, Range 4: 2 damage to every Hero in the 3 x 3 area, allies included, whatever Cover they stand behind; all Cover in the area is destroyed. Destroying Cover gives Scrap. | |
+| 7-8 | **Temporary Solution** | 1 | Utility on an empty tile, Range 5: Half Cover (Placed Cover, at most 3 per Squad). | Full Cover |
+| 9-10 | **Heavy Metal** | 1 | Utility on a tile, Range 4: a 3 x 3 Scrap Field until the end of the next Resolution. A Move that starts in it is Slowed (half the distance, rounded down); every Move that starts in, passes or ends in it costs 1 damage. It hurts every Hero, Tilly's own too. | one Resolution longer |
+
+Notes:
+
+- Names and flavour lines are in `docs/design/cards/`: Urban Renewal ("Out with the old. Along with the tenants."), Heavy Metal ("Mosh pit rules: don't move."), Cannibalize for her Pitch ("Parts is parts."), Idle Hands for her Wait.
+- Scrap is collected from a distance: after Urban Renewal she lifts the rubble of the blast with her third arm (the Force grip) and presses it into the core; she does not walk to it.
+- The Marked bonus applies to every hit, so Buy One, Get Two on a Marked Hero at Range 1 deals 4 + 4. Not measured; the balance harness has not been run for the new deck.
+- Not built: Kit's card that names a Marked Hero without sight.
+- Sprite sheets: `demolish`, `scrapfield`, `scrapforce`, `deployfull` (the Hero only; the game draws the bomb, the blast, the field and the flying rubble).
 
 ### Kit Crosshair (Assassin), 9 cards: unseen, at range, on one target
 
