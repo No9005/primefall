@@ -74,7 +74,7 @@ describe("energyReadout and cardUseReasons", () => {
   });
 
   it("explains a Primary effect the Hero cannot afford", () => {
-    // Assassin card 6 is Execution Round (every card costs 1 Energy).
+    // Every card costs 1 Energy.
     expect(cardUseReasons(HeroClass.Assassin, 6, [], [])[CardUse.Primary]).toBe("needs 1 Energy");
   });
 
@@ -152,7 +152,6 @@ describe("Queue window", () => {
 
 describe("unpitchCard", () => {
   const assassin = HeroClass.Assassin;
-  // Execution Round (Assassin card 7) costs 2 Energy.
   const executionRound: QueuedAction = { kind: ActionKind.Primary, card: 6, target: "right-bruiser" };
   const queue = [executionRound];
 

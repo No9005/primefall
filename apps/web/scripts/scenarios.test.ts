@@ -106,26 +106,16 @@ describe("Assassin scenarios stage what their names say", () => {
   const hit = (damage: number) => expect.objectContaining({ kind: "attackHit", damage });
 
   it.each([
-    ["precision-shot", 2],
-    ["cover-breaker", 2],
+    ["long-shot", 3],
+    ["long-shot-hidden", 4],
+    ["personal-space", 1],
     ["assassin-shield-breaker", 2],
-    ["long-shot", 2],
-    ["ghost-shot", 2],
-    ["execution-round", 3],
   ])("%s hits for %i", async (name, damage) => {
-    expect(await assassinEvents(name)).toEqual([hit(damage)]);
-  });
-
-  it("ghost-shot-miss finds nobody on the remembered tile", async () => {
-    expect(await assassinEvents("ghost-shot-miss")).toEqual([expect.objectContaining({ kind: "attackFailed", reason: "emptyTile" })]);
+    expect(await assassinEvents(name)).toContainEqual(hit(damage));
   });
 
   it("vanish ends the Resolution Hidden", async () => {
-    expect((await assassinEvents("vanish")).map((event) => event.kind)).toEqual(["step", "step", "hiddenGained"]);
-  });
-
-  it("reposition moves three tiles with one Move", async () => {
-    expect((await assassinEvents("reposition")).filter((event) => event.kind === EventKind.Step)).toHaveLength(3);
+    expect((await assassinEvents("vanish")).map((event) => event.kind)).toEqual(["hiddenGained"]);
   });
 });
 

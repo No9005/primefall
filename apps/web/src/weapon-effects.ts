@@ -10,14 +10,13 @@ const WEAPON_OF_CARD: Readonly<Record<string, Weapon>> = {
   "Handle With Care": "slam",
   "Buy One, Get Two": "slam",
   "Time for Coffee": "slam",
-  "Precision Shot": "precision",
-  "Cover Breaker": "precision",
   "Shield Breaker": "precision",
-  "Execution Round": "precision",
-  "Ghost Shot": "precision",
   "Long Shot": "long",
   "Price Tag": "tag",
 };
+
+/** Cards that strike the target themselves: the target reacts at the beat of the blow, nothing flies. */
+const MELEE_CARDS: ReadonlySet<string> = new Set(["Personal Space"]);
 
 /** The weapon a card fires; cards without a projectile of their own (Urban Renewal) have none. */
 export function weaponOf(card: string | undefined): Weapon | undefined {
@@ -59,6 +58,7 @@ export const STATUS_INTRO_MS = 300;
 
 /** Milliseconds a projectile flies over `distance` tiles. */
 export function flightMs(card: string | undefined, distance: number | undefined): number {
+  if (card !== undefined && MELEE_CARDS.has(card)) return 0;
   const weapon = weaponOf(card);
   if (weapon === undefined) return UNARMED_FLIGHT_MS;
   return Math.round(((distance ?? 0) * TILE_PX) / PROJECTILE_SPEED[weapon]);
@@ -73,7 +73,7 @@ export type NumberStyle = "damage" | "bonus" | "shield" | "failed" | "scrap";
 
 export type EffectCue =
   /** `halfCover`: Half Cover on the target's tile reduced the damage, so the projectile hits the wall in front of the target. */
-  | { kind: "shot"; weapon: Weapon; fromId: string; toId: string; fireMs: number; flightMs: number; halfCover?: true; miss?: true }
+  | { kind: "shot"; weapon: Weapon; fromId: string; toId: string; fireMs: number; flightMs: number; halfCover?: true }
   /** `drop`: design px the label sits below the usual place (a tag under a number). */
   | { kind: "number"; toId: string; startMs: number; text: string; style: NumberStyle; drop?: number }
   /** Marked and Slow lock on at `startMs` and last (as state) until the end of the next Resolution. */
@@ -186,12 +186,6 @@ export function sampleTrack(track: Track, ms: number): number {
     }
   }
   return track[track.length - 1]![1];
-}
-
-/** The puff of a Ghost Shot that found nobody: 0.3 to 1 to 2 x while it fades. */
-export function puffAt(ms: number): { scale: number; alpha: number } | undefined {
-  if (ms < 0 || ms >= 720) return undefined;
-  return { scale: sampleTrack([[0, 0.3], [120, 1], [720, 2]], ms), alpha: sampleTrack([[0, 0], [120, 0.8], [720, 0]], ms) };
 }
 
 /** How far a slide has come (0 to 1), `ms` after it starts: it eases out over 300 ms. */
@@ -340,13 +334,15 @@ export function coverEditsOf(cues: readonly EffectCue[]): CoverEdit[] {
   });
 }
 
-/** The tiles of Pull a card names (the `2` of `PULL 2`). */
-function pullOf(card: string | undefined): number {
-  const definition = Object.values(HERO_DECKS)
-    .flat()
-    .find((candidate) => candidate.name === card);
-  return definition?.effects.find((effect) => effect.kind === EffectKind.Pull)?.amount ?? 1;
+/** The tag of a forced slide: `PULL 2` for a Pull, `PUSH 3` for a Knockback. */
+function slideTag(card: string | undefined): string {
+  const effects = Object.values(HERO_DECKS).flat().find((candidate) => candidate.name === card)?.effects ?? [];
+  const push = effects.find((effect) => effect.kind === EffectKind.Knockback);
+  return push ? `PUSH ${push.amount ?? 1}` : `PULL ${effects.find((effect) => effect.kind === EffectKind.Pull)?.amount ?? 1}`;
 }
+
+/** Whether a slide is a Knockback: the pushed Hero is not tethered to the caster. */
+const isPush = (card: string | undefined) => slideTag(card).startsWith("PUSH");
 
 /** The number a hit puts above the target, in the order shown: Shield first, then Deck Damage. */
 function hitNumbers(event: MatchEvent, startMs: number): EffectCue[] {
@@ -393,13 +389,6 @@ function hitBefore(event: MatchEvent, events: readonly MatchEvent[]): MatchEvent
 
 function failedAttackCues(event: MatchEvent, toId: string, frame: CueFrame): void {
   const fire = frame.fireOf(event.heroId, event.card);
-  if (event.card === GHOST_SHOT_CARD) {
-    // A Ghost Shot at a tile with nobody on it: the bolt flies there and a grey puff answers.
-    const flight = flightMs(event.card, event.distance);
-    frame.cues.push({ kind: "shot", weapon: "precision", fromId: event.heroId, toId, fireMs: fire, flightMs: flight, miss: true });
-    frame.cues.push({ kind: "number", toId, startMs: fire + flight + NUMBER_DELAY_MS, text: NOBODY_THERE, style: "failed" });
-    return;
-  }
   frame.cues.push({ kind: "number", toId, startMs: fire + NUMBER_DELAY_MS, text: failureText(event), style: "failed" });
 }
 
@@ -463,8 +452,8 @@ function pullCues(event: MatchEvent, frame: CueFrame): void {
     ...(event.from && { from: event.from }),
     to: event.to,
     startMs: 0,
-    ...(event.casterId !== undefined && { casterId: event.casterId }),
-    tag: `PULL ${pullOf(event.card)}`,
+    ...(event.casterId !== undefined && !isPush(event.card) && { casterId: event.casterId }),
+    tag: slideTag(event.card),
   });
 }
 
@@ -554,8 +543,6 @@ const CUE_BUILDERS: Partial<Record<EventKind, (event: MatchEvent, frame: CueFram
 };
 
 export const LONG_SHOT_CARD = "Long Shot";
-export const GHOST_SHOT_CARD = "Ghost Shot";
-export const NOBODY_THERE = "nobody there";
 
 type BreachCue = Extract<EffectCue, { kind: "breach" }>;
 

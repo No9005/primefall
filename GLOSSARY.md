@@ -83,7 +83,7 @@ Terrain a Hero can stand on that changes incoming attacks and visibility. Agains
 _Avoid_: Obstacle, wall, terrain
 
 **Hidden**:
-A Hero state granted by certain Assassin Utility cards. A hidden Hero remains concealed for up to two rounds unless it attacks or is revealed. A Scout Drone area (Site Survey) shows a Hidden enemy without ending Hidden.
+A Hero state granted by certain Assassin Utility cards. A Hidden Hero stays concealed wherever it stands for two Resolutions, unless it attacks, takes damage or is Marked. A Scout Drone area (Site Survey) shows a Hidden enemy without ending Hidden.
 _Avoid_: Stealth, invisible, camouflage
 
 **Marked**:
@@ -105,6 +105,10 @@ _Avoid_: Hinder, debuff
 **Pull**:
 A forced movement effect that moves the target directly toward the caster. The target stops at a wall, Full Cover, or another Hero.
 _Avoid_: Hook, drag, grab
+
+**Knockback**:
+A forced movement effect that moves the target directly away from the caster, up to the stated number of tiles. The target stops at a wall, Full Cover, or another Hero.
+_Avoid_: Shove, bump
 
 **Minimum Range**:
 The shortest distance at which an Attack can hit; closer targets cannot be hit by it. Some Assassin Attacks have a Minimum Range of 2 or 3.

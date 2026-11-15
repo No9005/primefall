@@ -1,6 +1,8 @@
 import {
   ActionKind,
   cardRangeArea,
+  ignoresCover,
+  withReach,
   type RangeTile,
   type CardIndex,
   type CardDefinition,
@@ -621,7 +623,8 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     ]);
     return Object.fromEntries([...own, ...enemies]);
   }, [view.heroes, view.enemies, squadPlans, playback, playing, playerHeroId]);
-  const aimedCard = aiming === undefined ? undefined : HERO_DECKS[selected.heroClass][aiming]!;
+  // A Long Shot reaches only its normal Range unless the Hero is Hidden (a Marked target is checked by the Resolution).
+  const aimedCard = aiming === undefined ? undefined : withReach(HERO_DECKS[selected.heroClass][aiming]!, selected.hidden);
   const aimedModes = aimedCard === undefined ? [] : [aimedCard];
   // Cards aimed at a tile or an area (Urban Renewal, Site Survey, Temporary Solution, Heavy Metal) are confirmed by tapping a tile.
   const aimsAtTile =
@@ -643,11 +646,8 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         !occupied.some((position) => position.col === tile.col && position.row === tile.row),
     );
   }
-  /** The Heroes a single-target card can be aimed at: Ghosts for a Ghost shot, Visible enemies or Ghosts for a Cargo Hook, otherwise Visible enemies that are not Exhausted. */
+  /** The Heroes a single-target card can be aimed at: Visible enemies or Ghosts for a Cargo Hook, otherwise Visible enemies that are not Exhausted. */
   function enemyTargetsOf(card: CardDefinition | undefined): string[] {
-    if (card?.target === CardTarget.GhostEnemy) {
-      return view.enemies.filter((enemy) => enemy.visibility === Visibility.Ghost).map((enemy) => enemy.id);
-    }
     const ghostsToo = card?.target === CardTarget.VisibleOrGhostEnemy;
     return view.enemies.filter((enemy) => (enemy.visibility === Visibility.Visible && !enemy.exhausted) || (ghostsToo && enemy.visibility === Visibility.Ghost)).map((enemy) => enemy.id);
   }
@@ -740,7 +740,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const shotLines = useMemo(
     () =>
       aimedCard?.type === CardType.Attack && aimedCard.range !== undefined && !playing
-        ? drawShots(knownGrid, planningFrom, aimedCard.range, view.enemies, candidateIds)
+        ? drawShots(knownGrid, planningFrom, aimedCard.range, view.enemies, candidateIds, ignoresCover(aimedCard))
         : NO_SHOTS,
     [aimedCard, playing, knownGrid, planningFrom, view.enemies, candidateIds],
   );
@@ -774,13 +774,13 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const pulling = !playing && pull.phase === "pulled";
   const dragPlaces = useMemo<DropPlaces | undefined>(() => {
     if (!pulling || heldInHand === undefined) return undefined;
-    const card = HERO_DECKS[selected.heroClass][heldInHand]!;
+    const card = withReach(HERO_DECKS[selected.heroClass][heldInHand]!, selected.hidden);
     const targetsSelf = card.target === CardTarget.SelfHero;
     let heroIds: string[] = [];
     if (!targetsSelf) {
       const candidates = heroTargetsOf(card);
       const ranged = card.type === CardType.Attack && card.range !== undefined;
-      const shots = ranged ? drawShots(knownGrid, planningFrom, card.range!, view.enemies, candidates) : NO_SHOTS;
+      const shots = ranged ? drawShots(knownGrid, planningFrom, card.range!, view.enemies, candidates, ignoresCover(card)) : NO_SHOTS;
       const positioned = [...view.heroes, ...view.enemies].flatMap((unit) => (candidates.includes(unit.id) && "position" in unit ? [{ id: unit.id, position: unit.position }] : []));
       heroIds =
         card.type === CardType.Attack && card.target === CardTarget.VisibleEnemy

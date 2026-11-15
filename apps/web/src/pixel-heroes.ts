@@ -63,7 +63,7 @@ const SHEETS: Record<HeroClass, Partial<Record<ClipName, string>>> = {
     inCoverFull: "full",
     exhausted: "exhausted",
   },
-  [HeroClass.Assassin]: { idle: "idle", walk: "walk", wait: "wait", attack: "precision", longShot: "long", hidden: "hidden", block: "block", hit: "hit", takeCover: "half", takeCoverFull: "full", inCover: "half", inCoverFull: "full", exhausted: "exhausted" },
+  [HeroClass.Assassin]: { idle: "idle", walk: "walk", wait: "wait", attack: "precision", longShot: "long", longHidden: "longhidden", knockback: "knockback", shieldBreaker: "shieldbreaker", hitHidden: "hithidden", hidden: "hidden", block: "block", hit: "hit", takeCover: "half", takeCoverFull: "full", inCover: "half", inCoverFull: "full", exhausted: "exhausted" },
 };
 
 /**

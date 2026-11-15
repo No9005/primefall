@@ -16,7 +16,7 @@ export const HERO_NAMES: Record<HeroClass, string> = {
 export const HERO_TASKS: Record<HeroClass, string> = {
   [HeroClass.Bruiser]: "Tank and enabler. +1 damage at Range 1.",
   [HeroClass.Controller]: "Controller. Builds and blows up Cover, turns the rubble into Scrap, marks targets and sends the Site Survey drone anywhere on the map.",
-  [HeroClass.Assassin]: "Glass cannon. Deals damage from range and hides with Vanish. Cannot hit what stands next to it.",
+  [HeroClass.Assassin]: "Sniper and glass cannon. Shoots far, hides with Vanish and pushes enemies away. Cannot hit what stands next to it.",
 };
 
 /** Who a Hero is, besides its class: the Hero Name, the line of the Hero Select, the bio of the BIO sheet (docs/design/world). */

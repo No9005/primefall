@@ -12,9 +12,11 @@ import {
   type GridPosition,
   HERO_DECKS,
   type HeroView,
+  ignoresCover,
   isStepAllowed,
   MAX_PLACED_COVER_PER_SQUAD,
   type MatchEvent,
+  withReach,
   type QueuedAction,
   type SquadPlan,
   stepTowards,
@@ -69,7 +71,7 @@ export interface TargetLine {
 
 const NO_RANGE_LIMIT = Number.MAX_SAFE_INTEGER;
 
-const ENEMY_TARGETS = [CardTarget.VisibleEnemy, CardTarget.GhostEnemy, CardTarget.VisibleOrGhostEnemy];
+const ENEMY_TARGETS = [CardTarget.VisibleEnemy, CardTarget.VisibleOrGhostEnemy];
 const TILE_TARGETS = [CardTarget.Tile, CardTarget.EmptyTile, CardTarget.Area];
 
 /** The enemy Hero a line may end on: Visible, or a Ghost at its last known tile; never an Unknown one. */
@@ -117,17 +119,21 @@ function linesOfAction({ grid, enemies }: LineContext, hero: HeroView, from: Gri
   const card: CardDefinition = HERO_DECKS[hero.heroClass][action.card]!;
   const base = { heroId: hero.id, own: true, tick };
   if (ENEMY_TARGETS.includes(card.target)) {
-    return attackLines(grid, enemies, { base, from, action, range: card.range ?? NO_RANGE_LIMIT, minRange: card.minRange ?? 0 });
+    return attackLines(grid, enemies, { base, from, action, card, hidden: hero.hidden });
   }
   if (TILE_TARGETS.includes(card.target) && action.tile) return [tileLine(base, from, action.tile)];
   return [];
 }
 
-function attackLines(grid: Grid, enemies: readonly EnemyView[], shotAt: { base: LineBase; from: GridPosition; action: PrimaryAction; range: number; minRange: number }): TargetLine[] {
-  const { base, from, action, range, minRange } = shotAt;
+function attackLines(grid: Grid, enemies: readonly EnemyView[], shotAt: { base: LineBase; from: GridPosition; action: PrimaryAction; card: CardDefinition; hidden: boolean }): TargetLine[] {
+  const { base, from, action, card, hidden } = shotAt;
   const target = knownEnemy(enemies, action.target);
   if (!target) return [];
-  const shot = drawShot(grid, from, target, range);
+  // A Long Shot reaches further for a Hidden Hero or at a Marked target.
+  const marked = enemies.some((enemy) => enemy.id === target.id && enemy.visibility === Visibility.Visible && enemy.marked);
+  const range = withReach(card, hidden || marked).range ?? NO_RANGE_LIMIT;
+  const minRange = card.minRange ?? 0;
+  const shot = drawShot(grid, from, target, range, ignoresCover(card));
   const tooClose = chebyshevDistance(from, target.position) < minRange;
   const clear = !tooClose && shot.segments.every((segment) => segment.style === SegmentStyle.Clear) && shot.ringed;
   const missHint = clear ? undefined : mayMissHint(from, target.position, range, minRange);

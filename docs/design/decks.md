@@ -108,7 +108,7 @@ Notes:
 - Not built: Kit's card that names a Marked Hero without sight.
 - Sprite sheets: `demolish`, `scrapfield`, `scrapforce`, `deployfull` (the Hero only; the game draws the bomb, the blast, the field and the flying rubble).
 
-### Kit Crosshair (Assassin), 9 cards: the sniper, a glass cannon (decided, not built)
+### Kit Crosshair (Assassin), 9 cards: the sniper, a glass cannon (built)
 
 Kit is the **Flankierer-Sniper**: he shoots from a distance, hides, and keeps enemies off him. The cards are mostly shots. Decided in chat for #415:
 
@@ -116,7 +116,7 @@ Kit is the **Flankierer-Sniper**: he shoots from a distance, hides, and keeps en
 |---|---|---|---|
 | 1-3 | **Long Shot** x3 | 1 | Attack, Range 3 to 7: 3 damage. **Hidden** Kit or a **Marked** target: up to Range 9 (a Marked target needs no sight, Line of Sight stays). Beyond Range 7 a Hidden Kit deals +1 damage. |
 | 4-5 | **Vanish** x2 | 1 | Utility: this Hero is Hidden for 2 Resolutions, **wherever it stands** (no Cover needed). Taking damage or shooting ends it at once. |
-| 6-7 | **Knockback** (name proposal: Personal Space) x2 | 1 | Attack, Range 1 to 2: 1 damage and push the target up to 3 tiles away from Kit. 3 tiles is where Long Shot hits (Range 3). |
+| 6-7 | **Personal Space** (Knockback) x2 | 1 | Attack, Range 1 to 2: 1 damage and push the target up to 3 tiles away from Kit. 3 tiles is where Long Shot hits (Range 3). |
 | 8-9 | **Shield Breaker** x2 | 1 | Attack, Range 2 to 4: 2 damage that ignores **Shield and all Cover** (it is Piercing and ignores Cover; one rule instead of two). |
 
 Notes:
@@ -125,8 +125,8 @@ Notes:
 - Move & Shoot (one card, two actions) was considered and dropped: it would break "one card, one action".
 - Why this works: a Hidden Hero sees 9 tiles, so the 9 tiles of the extra Range are what Hidden buys; Hook (Range 7) pulls Kit next to Max, Personal Space answers it. Long Shot (3 damage) and Marked (+1) can reach 5 damage on a Marked Hero beyond Range 7: not measured.
 - Names Personal Space, Trade-In (Pitch) and Stakeout (Wait) are proposals. Pictures: `docs/design/cards/`; animations: the Revenant sheet (`knockback`, `longhidden`, `shieldbreaker`, `hithidden`).
-- The AI plays Long Shot and Shield Breaker (simple Attacks); it does not play Vanish or Personal Space.
-- New rules to build: Long Shot range and bonus rules, Marked without sight, Knockback with damage (reuses the slide of the Pull), Vanish without Cover and ended by damage.
+- The AI plays Long Shot, Shield Breaker and Personal Space (simple Attacks); it does not play Vanish.
+- Built in #415: the Long Shot range and bonus rules, Marked without sight, Knockback with damage (reuses the slide of the Pull; the web shows it as PUSH), Vanish without Cover, ended by damage.
 
 ## The system: Pitch, Overdrive and synergy (ideas, not decided)
 

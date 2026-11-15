@@ -50,8 +50,8 @@ export function chestOf(tile: GridPosition): Point {
 }
 
 /** The drawing of one shot. Pure: no state, same input gives the same lines. */
-export function drawShot(grid: Grid, attacker: GridPosition, target: { id: string; position: GridPosition }, range: number): ShotDrawing {
-  const line = shotLine(grid, attacker, target.position, range);
+export function drawShot(grid: Grid, attacker: GridPosition, target: { id: string; position: GridPosition }, range: number, ignoreCover = false): ShotDrawing {
+  const line = shotLine(grid, attacker, target.position, range, ignoreCover);
   const base = { targetId: target.id, coverKind: line.cover, ringed: line.canHit && line.cover !== CoverKind.Full };
   const cover = line.cover === CoverKind.None ? {} : { coverTile: target.position };
   const stop = line.blockedAt ?? line.rangeEnd;
@@ -94,8 +94,9 @@ export function drawShots(
   range: number,
   enemies: readonly EnemyView[],
   targetIds: readonly string[],
+  ignoreCover = false,
 ): ShotDrawing[] {
   return enemies.flatMap((enemy) =>
-    enemy.visibility === Visibility.Visible && targetIds.includes(enemy.id) ? [drawShot(grid, attacker, enemy, range)] : [],
+    enemy.visibility === Visibility.Visible && targetIds.includes(enemy.id) ? [drawShot(grid, attacker, enemy, range, ignoreCover)] : [],
   );
 }

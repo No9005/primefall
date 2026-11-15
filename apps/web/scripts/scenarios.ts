@@ -175,29 +175,13 @@ const ENEMIES_WITH_ATTACKS = { hand: [0, 1, 2, 3] };
 
 // Assassin cards: the Player Hero is the Assassin, so the player plays them in the UI (?hero=assassin).
 const PLAYER_ASSASSIN = `${SquadId.Left}-assassin`;
-// Assassin Deck list indices (the first copy of each card).
-const PRECISION_SHOT = 0;
-const COVER_BREAKER = cardIndex(HeroClass.Assassin, "Cover Breaker");
-const SHIELD_BREAKER = cardIndex(HeroClass.Assassin, "Shield Breaker");
+// Kit's Deck list indices (the first copy of each card).
 const LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot");
-const GHOST_SHOT = cardIndex(HeroClass.Assassin, "Ghost Shot");
-const EXECUTION_ROUND = cardIndex(HeroClass.Assassin, "Execution Round");
+const SHIELD_BREAKER = cardIndex(HeroClass.Assassin, "Shield Breaker");
 const VANISH = cardIndex(HeroClass.Assassin, "Vanish");
-const REPOSITION = cardIndex(HeroClass.Assassin, "Reposition");
-/** Cards that fill the rest of an Assassin's Hand (the card under test is left out); the ones in slots 1 and 2 are the Pitch for Energy. */
-const ASSASSIN_FILLERS: readonly CardIndex[] = [REPOSITION, cardIndex(HeroClass.Assassin, "Long Shot", 1), VANISH, COVER_BREAKER];
-
-/** The Squad remembers an enemy Hero at a tile it can no longer see (a Ghost). */
-function remember(match: MatchState, enemyId: string, position: GridPosition): void {
-  const enemy = heroOf(match, enemyId);
-  match.ghosts[SquadId.Left][enemyId] = {
-    position: { ...position },
-    deckCount: enemy.deck.length,
-    discardCount: enemy.discard.length,
-    exileCount: enemy.exile.length,
-    lastSeenRound: match.round,
-  };
-}
+const PERSONAL_SPACE = cardIndex(HeroClass.Assassin, "Personal Space");
+/** Cards that fill the rest of Kit's Hand (the card under test is left out); the ones in slots 1 and 2 are the Pitch for Energy. */
+const ASSASSIN_FILLERS: readonly CardIndex[] = [PERSONAL_SPACE, cardIndex(HeroClass.Assassin, "Long Shot", 1), VANISH, SHIELD_BREAKER];
 
 interface AssassinSetup {
   name: string;
@@ -209,9 +193,9 @@ interface AssassinSetup {
   enemies?: Record<string, GridPosition>;
   /** Enemy Heroes that are Hidden on their tile, so the Squad does not see them. */
   hidden?: string[];
-  /** Ghost memories of the Left Squad: enemy id and the tile it was last seen on. */
-  ghosts?: Record<string, GridPosition>;
-  /** Energy from Pitch: one card is enough for every card but Execution Round. */
+  /** Kit is Hidden when the Round starts. */
+  selfHidden?: boolean;
+  /** Energy from Pitch: one card is enough, as every card costs 1. */
   pitch?: number;
   /** The Assassin's steps after the Pitch. */
   use: Extract<PlanStep, { slot: number }>[];
@@ -225,12 +209,12 @@ function assassinScenario(setup: AssassinSetup): Scenario {
     name: setup.name,
     description: setup.description,
     buildMatch: () =>
-      stage(setup.seed, (hero, match) => {
+      stage(setup.seed, (hero) => {
         arrange(hero(PLAYER_ASSASSIN), setup.at, { hand: [setup.card, ...ASSASSIN_FILLERS.filter((index) => index !== setup.card).slice(0, 3)] });
         // An enemy placed for the shot has an empty Hand, so the AI leaves it where it stands (it would walk out of Range or sight).
         for (const [id, position] of Object.entries(setup.enemies ?? {})) arrange(hero(id), position, { hand: [] });
         for (const id of setup.hidden ?? []) hero(id).hidden = 2;
-        for (const [id, position] of Object.entries(setup.ghosts ?? {})) remember(match, id, position);
+        if (setup.selfHidden) hero(PLAYER_ASSASSIN).hidden = 2;
       }),
     playerHero: HeroClass.Assassin,
     heroId: PLAYER_ASSASSIN,
@@ -240,65 +224,40 @@ function assassinScenario(setup: AssassinSetup): Scenario {
 }
 
 const RIGHT_BRUISER = "right-bruiser";
-const RIGHT_ASSASSIN = "right-assassin";
 const SHOOT_AT_BRUISER = { slot: 0, use: "primary", target: RIGHT_BRUISER } as const;
 
 const ASSASSIN_SCENARIOS: readonly Scenario[] = [
   assassinScenario({
-    name: "precision-shot",
-    description: "An Assassin fires Precision Shot at an enemy Bruiser in the open at Range 4.",
-    seed: 21, at: { col: 10, row: 3 }, card: PRECISION_SHOT, enemies: { [RIGHT_BRUISER]: { col: 14, row: 3 } },
-    use: [SHOOT_AT_BRUISER],
-  }),
-  assassinScenario({
-    name: "cover-breaker",
-    description: "An Assassin fires Cover Breaker at an enemy Bruiser standing on Half Cover, which the shot ignores.",
-    seed: 22, at: { col: 9, row: 3 }, card: COVER_BREAKER, enemies: { [RIGHT_BRUISER]: { col: 13, row: 2 } },
-    use: [SHOOT_AT_BRUISER],
-  }),
-  assassinScenario({
     name: "long-shot",
-    description: "An Assassin fires Long Shot at an enemy Bruiser at Range 6.",
+    description: "Kit fires Long Shot (3 damage) at an enemy Bruiser at Range 6.",
     seed: 23, at: { col: 8, row: 3 }, card: LONG_SHOT, enemies: { [RIGHT_BRUISER]: { col: 14, row: 3 } },
     use: [SHOOT_AT_BRUISER],
   }),
   assassinScenario({
-    name: "ghost-shot",
-    description: "An Assassin fires Ghost Shot at the last known position of a Ghost; the enemy Assassin is still Hidden there, so the shot hits.",
-    seed: 26, at: { col: 10, row: 3 }, card: GHOST_SHOT, enemies: { [RIGHT_ASSASSIN]: { col: 13, row: 3 } },
-    hidden: [RIGHT_ASSASSIN], ghosts: { [RIGHT_ASSASSIN]: { col: 13, row: 3 } },
-    use: [{ slot: 0, use: "primary", target: RIGHT_ASSASSIN }],
+    name: "long-shot-hidden",
+    description: "Kit is Hidden and fires Long Shot at an enemy Bruiser at Range 9: beyond 7 a Hidden Kit hits for 1 more, and the shot reveals Kit.",
+    seed: 24, at: { col: 4, row: 3 }, card: LONG_SHOT, enemies: { [RIGHT_BRUISER]: { col: 13, row: 3 } },
+    selfHidden: true, use: [SHOOT_AT_BRUISER],
+    shots: [500, 1200, 2200, 3200],
   }),
   assassinScenario({
-    name: "ghost-shot-miss",
-    description: "An Assassin fires Ghost Shot at the last known position of a Ghost that has left the tile: the shot hits nobody.",
-    seed: 27, at: { col: 10, row: 3 }, card: GHOST_SHOT, ghosts: { [RIGHT_BRUISER]: { col: 13, row: 3 } },
-    use: [{ slot: 0, use: "primary", target: RIGHT_BRUISER }],
+    name: "personal-space",
+    description: "Kit fires Personal Space (1 damage, Knockback) at an enemy Bruiser two tiles away and pushes it three tiles away.",
+    seed: 25, at: { col: 10, row: 3 }, card: PERSONAL_SPACE, enemies: { [RIGHT_BRUISER]: { col: 12, row: 3 } },
+    use: [SHOOT_AT_BRUISER],
+    shots: [500, 1200, 2200, 3200],
   }),
   assassinScenario({
     name: "assassin-shield-breaker",
-    description: "An Assassin fires Shield Breaker (2 Piercing Damage) at an enemy Bruiser at Range 4.",
-    seed: 29, at: { col: 10, row: 3 }, card: SHIELD_BREAKER, enemies: { [RIGHT_BRUISER]: { col: 14, row: 3 } },
-    pitch: 2, use: [SHOOT_AT_BRUISER],
-  }),
-  assassinScenario({
-    name: "execution-round",
-    description: "An Assassin fires Execution Round (3 damage) at an enemy Bruiser at Range 4.",
-    seed: 28, at: { col: 10, row: 3 }, card: EXECUTION_ROUND, enemies: { [RIGHT_BRUISER]: { col: 14, row: 3 } },
-    pitch: 2, use: [SHOOT_AT_BRUISER],
+    description: "Kit fires Shield Breaker (2 Piercing Damage, ignores Cover) at an enemy Bruiser on Half Cover at Range 4.",
+    seed: 29, at: { col: 9, row: 3 }, card: SHIELD_BREAKER, enemies: { [RIGHT_BRUISER]: { col: 13, row: 2 } },
+    use: [SHOOT_AT_BRUISER],
   }),
   assassinScenario({
     name: "vanish",
-    description: "An Assassin moves two tiles onto Half Cover and plays Vanish there (Hidden needs Cover under the Hero), so it ends the Resolution Hidden.",
-    seed: 29, at: { col: 6, row: 2 }, card: VANISH,
-    use: [{ slot: 3, use: "move", tile: { col: 8, row: 2 } }, { slot: 0, use: "primary" }],
-    shots: [500, 1200, 2000, 3000],
-  }),
-  assassinScenario({
-    name: "reposition",
-    description: "An Assassin plays Reposition and then moves three tiles with one Move.",
-    seed: 32, at: { col: 6, row: 3 }, card: REPOSITION,
-    use: [{ slot: 0, use: "primary" }, { slot: 3, use: "move", tile: { col: 9, row: 3 } }],
+    description: "Kit plays Vanish where it stands and ends the Resolution Hidden.",
+    seed: 30, at: { col: 6, row: 3 }, card: VANISH,
+    use: [{ slot: 0, use: "primary" }],
     shots: [500, 1200, 2000, 3000],
   }),
 ];

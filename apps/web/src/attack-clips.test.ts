@@ -7,10 +7,12 @@ import { buildPlaybackFrames, STEP_MS } from "./playback";
 describe("the attack clips", () => {
   it("gives every card without a clip of its own the basic attack of its class", () => {
     expect(attackClipName("Time for Coffee")).toBe("attack");
-    expect(attackClipName("Ghost Shot")).toBe("attack");
+    expect(attackClipName("Hard Hat")).toBe("attack");
     expect(attackClipName("Long Shot")).toBe("longShot");
     expect(attackClipName("Price Tag")).toBe("tagRound");
     expect(attackClipName("Urban Renewal")).toBe("demolish");
+    expect(attackClipName("Personal Space")).toBe("knockback");
+    expect(attackClipName("Shield Breaker")).toBe("shieldBreaker");
     expect(clipOf(HeroClass.Bruiser, "longShot")).toBe(clipOf(HeroClass.Bruiser, "attack"));
   });
 });

@@ -60,7 +60,7 @@ const CLASSIC_VARIANTS: Record<string, Tweaks> = {
   "Deck 9": { deckCut: 3 },
   "Pitch exiles": { pitchExile: true },
   "Deck 9 + Pitch exiles": { deckCut: 3, pitchExile: true },
-  "attacks cost 2": { cardCost: { "Slam Shot": 2, "Precision Shot": 2 } },
+  "attacks cost 2": { cardCost: { "Slam Shot": 2, "Long Shot": 2 } },
 };
 
 const DATA_TWEAKS: Record<string, Tweaks> = {

@@ -16,6 +16,10 @@ export const CARD_ART_FILES: Readonly<Record<string, string>> = {
   "Urban Renewal": "urban-renewal",
   "Temporary Solution": "temporary-solution",
   "Heavy Metal": "heavy-metal",
+  "Long Shot": "long-shot",
+  Vanish: "vanish",
+  "Personal Space": "personal-space",
+  "Shield Breaker": "shield-breaker",
 };
 
 /** The address of a picture by its file name (for the cards that are not in a Deck list, like the Wait card). */

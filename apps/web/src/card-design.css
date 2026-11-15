@@ -28,4 +28,4 @@
 .cd-text b { font-weight: 600; }
 .cd-flavor { display: block; font-size: 13px; font-style: italic; color: #93a19f; }
 .cd-dmg { color: #ff7a7e; } .cd-shield { color: #6db2ff; } .cd-slow { color: #c9a0ff; } .cd-ghost { color: #ff9a9a; }
-.cd-energy { color: #f2b632; } .cd-scrap { color: #ff8a3d; } .cd-cover { color: #c8d0d8; } .cd-marked { color: #ff7a7e; }
+.cd-energy { color: #f2b632; } .cd-scrap { color: #ff8a3d; } .cd-cover { color: #c8d0d8; } .cd-marked { color: #ff7a7e; } .cd-hid { color: #e0b0ff; }
