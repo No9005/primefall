@@ -182,7 +182,7 @@ function applyMarked(tick: number, source: HeroState, target: HeroState, effect:
 const CARD_EVENT_KINDS: ReadonlySet<EventKind> = new Set([
   EventKind.AttackHit, EventKind.AttackFailed, EventKind.SlowApplied, EventKind.MarkedApplied, EventKind.HiddenGained,
   EventKind.CoverPlaced, EventKind.CoverDestroyed, EventKind.AreaRevealed,
-  EventKind.FieldPlaced, EventKind.ShieldGained, EventKind.Pull, EventKind.Charged,
+  EventKind.FieldPlaced, EventKind.AreaBlasted, EventKind.ShieldGained, EventKind.Pull, EventKind.Charged,
 ]);
 
 /**
@@ -417,6 +417,7 @@ function resolveAreaAttack(match: MatchState, tick: number, { hero, card, tile }
   }
   const blast = card.effects.find(({ kind }) => kind === EffectKind.AreaDamage)!;
   const tiles = areaTiles(match.grid, tile, blast.size ?? 1);
+  events.push({ kind: EventKind.AreaBlasted, tick, heroId: hero.id, to: { ...tile }, amount: blast.size ?? 1 });
   for (const target of match.heroes) {
     if (target.exhausted || !tiles.some((covered) => samePosition(covered, target.position))) continue;
     dealDamage(match, tick, hero, target, blast.amount ?? 0, events);
@@ -429,7 +430,7 @@ function resolveAreaAttack(match: MatchState, tick: number, { hero, card, tile }
   }
   if (destroyed > 0 && !hero.scrap) {
     hero.scrap = true;
-    events.push({ kind: EventKind.ScrapGained, tick, heroId: hero.id });
+    events.push({ kind: EventKind.ScrapGained, tick, heroId: hero.id, to: { ...tile } });
   }
 }
 
@@ -512,7 +513,7 @@ function placeCover(use: UtilityUse, position: GridPosition, requireEmpty: boole
   }
   match.placedCover.push({ squad: caster.squad, position: { ...position } });
   match.grid = withTile(match.grid, position, effect.cover === CoverKind.Full ? TileKind.FullCover : TileKind.HalfCover);
-  events.push({ kind: EventKind.CoverPlaced, tick, heroId: caster.id, to: { ...position } });
+  events.push({ kind: EventKind.CoverPlaced, tick, heroId: caster.id, to: { ...position }, ...(effect.cover === CoverKind.Full ? { full: true } : {}) });
 }
 
 /** One interpreter per Utility effect kind (ADR 0018); new Utility effects add an entry here. */
