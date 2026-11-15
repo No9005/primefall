@@ -388,10 +388,96 @@ const CLIPS = [
 ];
 
 
+/* ====== Kits neues Deck (#415): Knockback, Long Shot aus Hidden, Shield Breaker, Treffer in Hidden ====== */
+// Only the Hero is in the sheets: the game draws targets, projectiles, the bracket of the Range and the numbers.
+const hiddenPose = (p, t, until) => { p.capeFront = t < until ? 1 : 0; if (t < until) p.alpha = Math.floor(t / FRAME) % 4 === 0 ? .42 : .26; };
+const scanLines = (S, t, until) => { if (t < until) { const y = -52 + (t % 900) / 900 * 52; S.rect(-14, y, 28, 1, V + '.5)'); S.rect(-10, y + 2, 20, 1, V + '.25)'); } };
+
+CLIPS.push(
+  {
+    id: 'knockback', name: 'Knockback: Personal Space', meta: 'Einmal 2,8 s · Schlag bei 700 ms', dur: 2800, still: 780,
+    text: 'Der Gegner steht zu nah: Kit holt mit dem Gewehr aus wie mit einem Schläger und drischt den Lauf in ihn. Danach schultert er die Waffe wieder.',
+    tracks: {
+      armF: K([0, -30], [300, -214, 'back'], [600, -218], [700, -76, 'in'], [800, -60, 'out'], [1500, -90], [2000, -30]),
+      armB: K([0, 6], [300, 40], [600, 52], [700, -30, 'in'], [1500, 6]), lean: K([0, 0], [300, -10, 'out'], [600, -12], [700, 20, 'in'], [1000, 8], [2000, 0]),
+      crouch: K([0, 0], [300, 1], [600, 1], [700, 4, 'in'], [1000, 2], [2000, 0]), dx: K([0, 0], [600, 0], [700, 5, 'in'], [1000, 2], [2000, 0]),
+      head: K([0, 0], [300, -6], [700, 10, 'in'], [1500, 0]), legL: K([0, 0], [600, 0], [700, 18, 'in'], [1000, 0]), legR: K([0, 0], [600, 0], [700, -22, 'in'], [1000, 0]),
+      cape: K([0, 8], [300, 30, 'out'], [600, 40], [700, -10, 'in'], [1000, 24], [1500, 8]), sash: K([0, 0], [600, 0], [700, -36, 'in'], [1000, 18], [1500, 0])
+    },
+    pose(t, p) { p.armFront = t > 650 && t < 1100 ? 1 : 0; },
+    shake: t => shakeAt(t, 700, 200, 3)
+  },
+  {
+    id: 'longhidden', name: 'Long Shot aus Hidden', meta: 'Einmal 4,2 s · Schuss bei 2000 ms', dur: 4200, still: 2150, trail: t => t > 1990 && t < 2250,
+    text: 'Kit liegt als flimmerndes Nachbild unter dem Umhang, schlägt ihn zurück, geht ins Knie und schießt weit. Mit dem Schuss ist er sichtbar: ein violetter Ring springt auf.',
+    tracks: {
+      hood: K([0, 1], [3400, 1], [3410, .5, 'step'], [3530, 0, 'step']),
+      capeX: K([0, 7], [900, 7], [1100, 0, 'out']), capeW: K([0, 1.4], [900, 1.4], [1100, 1, 'out']), capeLen: K([0, 1.06], [900, 1.06], [1100, 1, 'out']),
+      crouch: K([0, 6], [900, 6], [1300, 9, 'back'], [2400, 9], [3100, 0, 'back']),
+      legL: K([0, 0], [900, 0], [1300, 44, 'back'], [2900, 44], [3300, 0]), legR: K([0, 0], [900, 0], [1300, -52, 'back'], [2900, -52], [3300, 0]),
+      lean: K([0, 16], [900, 16], [1300, 18, 'back'], [2000, 18], [2070, -8, 'out'], [2400, 16], [3100, 0]),
+      armF: K([0, -12], [900, -12], [1300, -93, 'back'], [2000, -90], [2070, -116, 'out'], [2350, -90], [2900, -90], [3300, -30]),
+      armB: K([0, -58], [900, -58], [1300, -66, 'back'], [2000, -66], [2070, -20, 'out'], [2350, -66], [2900, -66], [3300, 6]),
+      head: K([0, 10], [1300, 12], [2000, 12], [2070, -8, 'out'], [2350, 12], [2900, 12], [3300, 0]), dx: K([0, 0], [2000, 0], [2100, -9, 'out'], [2900, -9], [3300, 0]),
+      cape: K([0, -5], [900, -5], [1100, 50, 'out'], [1500, 4], [2000, 4], [2100, 104, 'out'], [2500, -16], [2800, 12], [3300, 8]), sash: K([0, 0], [2000, 0], [2100, 60, 'out'], [2500, -16], [2800, 0]),
+      ghost: K([0, 1], [1900, 1], [2000, 0]), alpha: K([0, .3], [1990, .3], [2000, 1]), flash: K([0, 0], [1995, 0], [2000, .9, 'step'], [2100, 0])
+    },
+    pose(t, p) { hiddenPose(p, t, 1000); if (t >= 1000 && t < 2000) p.alpha = Math.floor(t / FRAME) % 4 === 0 ? .42 : .26; },
+    shake: t => shakeAt(t, 2000, 320, 4),
+    back(S, t) { scanLines(S, t, 1000); },
+    front(S, t, info, clip) {
+      const m = clip.fire.muzzle, a = t - 2000;
+      glint(S, info.scope, t - 1750);
+      if (a >= 0 && a < 160) { const r = a < 60 ? 9 : 6; S.disc(m.x + 3, m.y, r, 'rgba(197,139,255,.85)'); S.disc(m.x + 3, m.y, r - 3, '#ffffff'); S.line(m.x + 3, m.y - r - 5, m.x + 3, m.y + r + 5, '#e9d6ff'); }
+      if (a >= 0 && a < 360) { const u = a / 360; S.ell(0, -24, 14 + 24 * u, 18 + 24 * u, V + (1 - u).toFixed(2) + ')'); }
+      sparks(S, 0, -26, a, '#e9d6ff', 7);
+    }
+  },
+  {
+    id: 'shieldbreaker', name: 'Shield Breaker', meta: 'Einmal 2,2 s · Schuss bei 570 ms', dur: 2200, still: 800, trail: t => t > 560 && t < 800,
+    text: 'Dieselbe harte Haltung wie beim Precision Shot, aber der Lauf glüht orange: eine Patrone, die durch Shield und Deckung geht.',
+    tracks: CLIPS.find(c => c.id === 'precision').tracks,
+    pose(t, p) { p.armFront = t > 900 && t < 1400 ? 1 : 0; },
+    shake: t => shakeAt(t, 570, 120, 1),
+    front(S, t, info, clip) {
+      const m = clip.fire.muzzle, a = t - 570;
+      if (a >= 0 && a < 110) { S.disc(m.x + 2, m.y, 4, '#ffb070'); S.disc(m.x + 2, m.y, 2, '#ffffff'); }
+      if (t < 570) S.rect(m.x - 2, m.y - 2, 3, 2, 'rgba(255,138,61,' + (.5 + .4 * Math.sin(t / 60)).toFixed(2) + ')');
+    }
+  },
+  {
+    id: 'hithidden', name: 'Treffer in Hidden', meta: 'Einmal 3,4 s · Einschlag bei 1500 ms', dur: 3400, still: 1620, trail: t => t > 1490 && t < 1800,
+    text: 'Ein Schuss trifft Kit unter dem Umhang: Blitz, die Tarnung platzt in violette Splitter und einen Ring, er wird sichtbar und nach hinten geworfen. Schaden beendet Vanish sofort.',
+    tracks: {
+      hood: K([0, 1], [3000, 1], [3010, .5, 'step'], [3130, 0, 'step']),
+      crouch: K([0, 6], [1500, 6], [1600, 0, 'out'], [2000, 0]), lean: K([0, 16], [1500, 16], [1600, -36, 'out'], [1900, 16], [2100, -8], [2500, 3], [3000, 0]),
+      head: K([0, 10], [1500, 10], [1580, -30, 'out'], [1900, 18], [2200, -8], [3000, 0]), armF: K([0, -12], [1500, -12], [1600, -134, 'out'], [2000, 10], [3000, -30]),
+      armB: K([0, -58], [1500, -58], [1600, 116, 'out'], [2000, -12], [3000, 6]), dx: K([0, 0], [1500, 0], [1600, -12, 'out'], [2000, -6], [2500, 0]),
+      stretch: K([0, 1], [1500, 1], [1580, 1.18, 'out'], [1900, .9], [2200, 1.03], [2500, 1]), legL: K([0, 0], [1500, 0], [1600, 26, 'out'], [2000, 0]), legR: K([0, 0], [1500, 0], [1600, -34, 'out'], [2000, 0]),
+      cape: K([0, -5], [1500, -5], [1620, 98, 'out'], [1950, -8], [2200, 34], [2500, 2], [2800, 8]), capeX: K([0, 7], [1500, 7], [1510, 0, 'step']), capeW: K([0, 1.4], [1500, 1.4], [1510, 1, 'step']),
+      capeLen: K([0, 1.06], [1500, 1.06], [1620, 1.2, 'out'], [1950, 1]), sash: K([0, 0], [1500, 0], [1620, -80, 'out'], [1950, 40], [2200, -16], [2500, 0]),
+      ghost: K([0, 1], [1500, 1], [1700, 0]), alpha: K([0, .3], [1500, .3], [1620, 1]), flash: K([0, 0], [1495, 0], [1500, 1, 'step'], [1640, 0]),
+      ringRed: K([0, 0], [1490, 0], [1500, 1, 'step'], [2200, 0])
+    },
+    pose(t, p) { hiddenPose(p, t, 1500); },
+    shake: t => shakeAt(t, 1500, 240, 3),
+    back(S, t) { scanLines(S, t, 1500); },
+    front(S, t) {
+      const a = t - 1500;
+      if (a >= 0 && a < 330) { const r = 3 + a * .03; S.disc(9, -28, r, 'rgba(255,140,60,' + (1 - a / 330).toFixed(2) + ')'); S.disc(9, -28, Math.max(1, r - 3), 'rgba(255,255,255,' + (1 - a / 330).toFixed(2) + ')'); }
+      if (a >= 0 && a < 420) { const u = a / 420; S.ell(0, -24, 12 + 26 * u, 16 + 26 * u, V + (1 - u).toFixed(2) + ')'); for (let i = 0; i < 10; i++) { const ang = i * .65, d = 8 + 34 * u; S.rect(Math.cos(ang) * d, -26 + Math.sin(ang) * d * 1.2, 2, 2, V + (1 - u).toFixed(2) + ')'); } }
+      sparks(S, 9, -28, a, '#ffd24a', 5);
+    }
+  }
+);
+
+
 // Points that a clip's effects start from, taken from the pose at the moment of the shot or the throw.
 const clipById = id => CLIPS.find(c => c.id === id);
 clipById('precision').fire = drawFigure(poseAt(clipById('precision'), 570));
 clipById('long').fire = drawFigure(poseAt(clipById('long'), 1650));
+clipById('longhidden').fire = drawFigure(poseAt(clipById('longhidden'), 2000));
+clipById('shieldbreaker').fire = drawFigure(poseAt(clipById('shieldbreaker'), 570));
 
 /* ---------- Hero Select: shared renderer for one Hero stage ---------- */
 const selTile = document.createElement('canvas'); selTile.width = SW; selTile.height = SH;
