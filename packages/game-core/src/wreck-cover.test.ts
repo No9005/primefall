@@ -12,9 +12,9 @@ const LEFT_BRUISER = "left-bruiser";
 const LEFT_CONTROLLER = "left-controller";
 const RIGHT_BRUISER = "right-bruiser";
 const RIGHT_ASSASSIN = "right-assassin";
-// Bruiser card 2 is Time for Coffee; Tilly's Breach Charge destroys Half Cover.
+// Bruiser card 2 is Time for Coffee; Tilly's Urban Renewal destroys Cover.
 const SLAM_SHOT = 2; // Time for Coffee: Range 3 (Handle With Care is Range 1 to 2 since ADR 0025)
-const BREACH_CHARGE = cardIndex(HeroClass.Controller, "Breach Charge");
+const URBAN_RENEWAL = cardIndex(HeroClass.Controller, "Urban Renewal");
 
 const WRECK_TILE: GridPosition = { col: 8, row: 3 };
 const OPEN_TILE: GridPosition = { col: 8, row: 5 };
@@ -76,13 +76,13 @@ describe("Half Cover left by an Exhausted Hero", () => {
     expect(coverAt(match.grid, zone)).toBe(CoverKind.Half);
   });
 
-  it("is destroyed by Breach Charge, and the tile is plain floor afterwards", () => {
+  it("is destroyed by Urban Renewal, and the tile is plain floor afterwards", () => {
     const match = matchWithWreck(WRECK_TILE);
     hero(match, LEFT_CONTROLLER).position = ATTACKER;
-    hero(match, LEFT_CONTROLLER).hand = [BREACH_CHARGE, SLAM_SHOT, 1, 2];
+    hero(match, LEFT_CONTROLLER).hand = [URBAN_RENEWAL, SLAM_SHOT, 1, 2];
     const plan: SquadPlan = {
       squad: SquadId.Left,
-      heroes: [{ heroId: LEFT_CONTROLLER, queue: [{ kind: ActionKind.Primary, card: BREACH_CHARGE, target: LEFT_CONTROLLER, tile: WRECK_TILE }], pitched: [SLAM_SHOT] }],
+      heroes: [{ heroId: LEFT_CONTROLLER, queue: [{ kind: ActionKind.Primary, card: URBAN_RENEWAL, target: LEFT_CONTROLLER, tile: WRECK_TILE }], pitched: [SLAM_SHOT] }],
     };
     const { match: after, events } = resolveRound(match, [plan]);
     expect(events.map(({ kind }) => kind)).toContain(EventKind.CoverDestroyed);

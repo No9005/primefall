@@ -9,9 +9,10 @@ import {
   CardType,
   EffectKind,
   HERO_DECKS,
+  effectFor,
+  isAreaAttack,
   isGhostAttack,
   isPlayableUtility,
-  isTileAttack,
   type PLAYABLE_UTILITY_EFFECTS,
 } from "./cards";
 import {
@@ -31,7 +32,7 @@ import {
   ZONE_DECAY_CARDS,
   ZoneTie,
 } from "./host";
-import { canSquadSee, canSquadSeeHero, type HeroState, MAX_PLACED_COVER_PER_SQUAD, type MatchState, recordSightings, refillDeck, ZONES } from "./match";
+import { type ActiveField, areaTiles, canSquadSee, canSquadSeeHero, type HeroState, MAX_PLACED_COVER_PER_SQUAD, type MatchState, recordSightings, refillDeck, ZONES } from "./match";
 import {
   ActionKind,
   chebyshevDistance,
@@ -87,6 +88,9 @@ function applySlow(tick: number, source: HeroState, target: HeroState, effect: C
   events.push({ kind: EventKind.SlowApplied, tick, heroId: source.id, targetId: target.id });
 }
 
+/** Extra damage of every hit on a Marked Hero. */
+const MARKED_DAMAGE_BONUS = 1;
+
 /** Per Resolution, per target: the Tick of the last hit by each attacker. Crossfire needs no state between Rounds. */
 const hitTicks = new WeakMap<MatchState, Map<string, Map<string, number>>>();
 
@@ -106,14 +110,24 @@ function crossfireBonus(match: MatchState, tick: number, source: HeroState, targ
 }
 
 /**
- * Crossfire raises the incoming damage before Shield absorbs. Piercing Damage skips the Shield.
+ * Crossfire and Marked raise the incoming damage before Shield absorbs. Piercing Damage skips the Shield.
  * Shield absorbs first; the rest is Deck Damage: the top cards, one per point, leave the cycle (Exile) so the
  * damage lasts. When the Deck runs out on the way, the Discard is shuffled into it and the damage goes on.
  * Then the events read: AttackHit (cards burned so far), DeckShuffled, AttackHit (the rest).
  */
-function dealDamage(match: MatchState, tick: number, source: HeroState, target: HeroState, baseDamage: number, events: MatchEvent[], piercing = false): void {
-  let crossfire = crossfireBonus(match, tick, source, target);
-  const incoming = baseDamage + crossfire;
+function dealDamage(
+  match: MatchState,
+  tick: number,
+  source: HeroState,
+  target: HeroState,
+  baseDamage: number,
+  events: MatchEvent[],
+  { piercing = false, crossfire: joinsCrossfire = true }: { piercing?: boolean; crossfire?: boolean } = {},
+): void {
+  let crossfire = joinsCrossfire ? crossfireBonus(match, tick, source, target) : 0;
+  // Marked: every hit on the Hero deals 1 more damage (Price Tag).
+  let marked = target.marked > 0 ? MARKED_DAMAGE_BONUS : 0;
+  const incoming = baseDamage + crossfire + marked;
   // Piercing Damage (Crossfire bonus included) leaves the Shield untouched.
   const absorbed = piercing ? 0 : Math.min(target.shield, incoming);
   target.shield -= absorbed;
@@ -121,8 +135,9 @@ function dealDamage(match: MatchState, tick: number, source: HeroState, target: 
   let burned = 0;
   let alreadyAbsorbed = absorbed;
   const reportHit = () => {
-    events.push({ kind: EventKind.AttackHit, tick, heroId: source.id, targetId: target.id, absorbed: alreadyAbsorbed, damage: burned, crossfire });
+    events.push({ kind: EventKind.AttackHit, tick, heroId: source.id, targetId: target.id, absorbed: alreadyAbsorbed, damage: burned, crossfire, ...(marked > 0 ? { marked } : {}) });
     crossfire = 0;
+    marked = 0;
     alreadyAbsorbed = 0;
     burned = 0;
   };
@@ -167,7 +182,7 @@ function applyMarked(tick: number, source: HeroState, target: HeroState, effect:
 const CARD_EVENT_KINDS: ReadonlySet<EventKind> = new Set([
   EventKind.AttackHit, EventKind.AttackFailed, EventKind.SlowApplied, EventKind.MarkedApplied, EventKind.HiddenGained,
   EventKind.CoverPlaced, EventKind.CoverDestroyed, EventKind.AreaRevealed,
-  EventKind.CoverReductionIgnored, EventKind.ShieldGained, EventKind.Pull, EventKind.Charged,
+  EventKind.FieldPlaced, EventKind.ShieldGained, EventKind.Pull, EventKind.Charged,
 ]);
 
 /**
@@ -256,7 +271,7 @@ interface Attack {
   ghostTile?: GridPosition;
   /** Set when a Ghost Shot found nobody on its tile. */
   missed?: boolean;
-  /** For a tile Attack (Breach Charge): the targeted tile. */
+  /** For an area Attack (Urban Renewal): the tile at the centre. */
   tile?: GridPosition;
 }
 
@@ -267,12 +282,14 @@ const samePosition = (a: GridPosition, b: GridPosition) => a.col === b.col && a.
  * it stops is decided by `resolveWalks` (ADR 0013). Positions change only after the whole Tick is decided.
  */
 function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: MatchEvent[]): void {
-  // A Slowed Hero's Move covers half the distance, rounded down, and that uses the Slow up.
+  // A Slowed Hero's Move covers half the distance, rounded down, and that uses the Slow up. A Hero that starts the
+  // Move in a Scrap Field is Slowed for it too, without using up a Slow of its own.
   const slowedIds = new Set<string>();
   for (const { heroId } of movers) {
     const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
-    if (hero.slow === 0) continue;
-    hero.slow = 0;
+    const inField = scrapFieldsAt(match, hero.position).length > 0;
+    if (hero.slow === 0 && !inField) continue;
+    if (hero.slow > 0) hero.slow = 0;
     slowedIds.add(heroId);
     events.push({ kind: EventKind.SlowUsed, tick, heroId });
   }
@@ -291,9 +308,25 @@ function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: 
       }
     }
   }
+  // A Move that starts in, passes or ends in a Scrap Field hurts the Hero once.
+  for (const { heroId } of movers) {
+    const { path } = outcomes.get(heroId)!;
+    if (path.length < 2) continue;
+    const field = path.flatMap((tile) => scrapFieldsAt(match, tile))[0];
+    const caster = field && match.heroes.find((hero) => hero.id === field.casterId);
+    if (!field || !caster) continue;
+    const first = events.length;
+    dealDamage(match, tick, caster, match.heroes.find((hero) => hero.id === heroId)!, field.damage, events, { crossfire: false });
+    for (const event of events.slice(first)) if (event.kind === EventKind.AttackHit) event.card = field.card;
+  }
   for (const { heroId } of movers) {
     match.heroes.find((hero) => hero.id === heroId)!.position = { ...outcomes.get(heroId)!.path.at(-1)! };
   }
+}
+
+/** The Scrap Fields that cover a tile. */
+function scrapFieldsAt(match: MatchState, tile: GridPosition): ActiveField[] {
+  return match.scrapFields.filter((field) => areaTiles(match.grid, field.center, field.size).some((covered) => samePosition(covered, tile)));
 }
 
 /**
@@ -315,8 +348,8 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     return undefined;
   };
   // A Ghost Shot goes to a tile: it hits the enemy standing there when it resolves, or nobody.
-  const tileAttacks = attacks.filter(({ card }) => isTileAttack(card));
-  const aimed = attacks.filter(({ card }) => !isTileAttack(card)).flatMap((attack) => {
+  const areaAttacks = attacks.filter(({ card }) => isAreaAttack(card));
+  const aimed = attacks.filter(({ card }) => !isAreaAttack(card)).flatMap((attack) => {
     if (!isGhostAttack(attack.card)) return attack.card.effects.some(({ kind }) => kind === EffectKind.AttackTwice) ? [attack, attack] : [attack];
     const occupant = match.heroes.find(
       (other) =>
@@ -346,14 +379,14 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const distance = chebyshevDistance(hero.position, target.position);
     const ignoresHalfCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreHalfCover);
     const halfCover =
-      coverAgainst(match.grid, hero.position, target.position) === CoverKind.Half && !ignoresHalfCover && !hero.ignoresHalfCover;
-    const damageEffect = card.effects.find(({ kind }) => kind === EffectKind.Damage)!;
+      coverAgainst(match.grid, hero.position, target.position) === CoverKind.Half && !ignoresHalfCover;
+    const damageEffect = effectFor(card.effects.find(({ kind }) => kind === EffectKind.Damage)!, hero.scrap);
     const closeRange = card.effects.find(({ kind }) => kind === EffectKind.CloseRangeBonus);
     const closeBonus = distance === 1 ? (closeRange?.amount ?? 0) : 0;
     const damage = (damageEffect.amount ?? 0) + closeBonus;
     const incoming = Math.max(0, damage - (halfCover ? HALF_COVER_REDUCTION : 0));
     const piercing = card.effects.some(({ kind }) => kind === EffectKind.PiercingDamage);
-    dealDamage(match, tick, hero, target, incoming, events, piercing);
+    dealDamage(match, tick, hero, target, incoming, events, { piercing });
     if (halfCover && damage > 0) flagHalfCover(events, first);
     flagCloseBonus(events, first, closeBonus);
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplySlow)) {
@@ -364,47 +397,40 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     }
     tagCardEvents(match, events, first, hero, card);
   }
-  // Tile Attacks come after the other damage of the Tick, so Cover they destroy still protected against it.
-  for (const attack of tileAttacks) {
+  // Area Attacks come after the other damage of the Tick, so Cover they destroy still protected against it.
+  for (const attack of areaAttacks) {
     const first = events.length;
-    resolveTileAttack(match, tick, attack, events);
+    resolveAreaAttack(match, tick, attack, events);
     tagCardEvents(match, events, first, attack.hero, attack.card, attack.tile);
-  }
-  // Wrecking Blow destroys the Cover on its target's tile after the damage of the Tick, like a tile Attack.
-  for (const { hero, card, targetId } of landed) {
-    if (!card.effects.some(({ kind }) => kind === EffectKind.DestroyAnyCover)) continue;
-    const first = events.length;
-    destroyCoverAt(match, tick, hero, match.heroes.find((candidate) => candidate.id === targetId)!.position, events);
-    tagCardEvents(match, events, first, hero, card);
   }
 }
 
 /**
- * Breach Charge on a tile: needs Range and Line of Sight to the tile, otherwise it fails. It damages the
- * enemy Hero standing there, with Cover applying as it does for any Attack (Full Cover blocks the damage,
- * Half Cover reduces it), and then destroys Half Cover on the tile. Full Cover stays.
+ * Urban Renewal on a tile: needs Range, no Line of Sight (it is thrown). Every Hero in the area takes the damage, allies
+ * and the caster included, whatever Cover it stands behind; then all Cover in the area is destroyed. A card that
+ * destroyed Cover gives its Hero Scrap for the rest of the Round.
  */
-function resolveTileAttack(match: MatchState, tick: number, { hero, card, tile }: Attack, events: MatchEvent[]): void {
+function resolveAreaAttack(match: MatchState, tick: number, { hero, card, tile }: Attack, events: MatchEvent[]): void {
   if (!tile || chebyshevDistance(hero.position, tile) > (card.range ?? 0)) {
     events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, reason: AttackFailReason.OutOfRange });
     return;
   }
-  if (!hasLineOfSight(match.grid, hero.position, tile)) {
-    events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, reason: AttackFailReason.NoLineOfSight });
-    return;
+  const blast = card.effects.find(({ kind }) => kind === EffectKind.AreaDamage)!;
+  const tiles = areaTiles(match.grid, tile, blast.size ?? 1);
+  for (const target of match.heroes) {
+    if (target.exhausted || !tiles.some((covered) => samePosition(covered, target.position))) continue;
+    dealDamage(match, tick, hero, target, blast.amount ?? 0, events);
   }
-  const occupant = match.heroes.find((other) => other.squad !== hero.squad && !other.exhausted && samePosition(other.position, tile));
-  const cover = coverAgainst(match.grid, hero.position, tile);
-  if (occupant && cover === CoverKind.Full) {
-    events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId: occupant.id, reason: AttackFailReason.FullCover });
-  } else if (occupant) {
-    const amount = card.effects.find(({ kind }) => kind === EffectKind.Damage)?.amount ?? 0;
-    const reduced = cover === CoverKind.Half && !hero.ignoresHalfCover;
-    const first = events.length;
-    dealDamage(match, tick, hero, occupant, Math.max(0, amount - (reduced ? HALF_COVER_REDUCTION : 0)), events);
-    if (reduced && amount > 0) flagHalfCover(events, first);
+  let destroyed = 0;
+  for (const covered of tiles) {
+    if (coverAt(match.grid, covered) === CoverKind.None) continue;
+    destroyCoverAt(match, tick, hero, covered, events);
+    destroyed++;
   }
-  if (coverAt(match.grid, tile) === CoverKind.Half) destroyCoverAt(match, tick, hero, tile, events);
+  if (destroyed > 0 && !hero.scrap) {
+    hero.scrap = true;
+    events.push({ kind: EventKind.ScrapGained, tick, heroId: hero.id });
+  }
 }
 
 /** Destroys the Cover (Half or Full, Placed or original) on a tile; does nothing on a tile without Cover. */
@@ -459,9 +485,9 @@ interface UtilityUse {
   effect: CardEffect;
   /** The Hero that plays the card. */
   caster: HeroState;
-  /** The Hero the card is aimed at: the caster itself, an allied Hero or a visible enemy. */
+  /** The Hero the card is aimed at: the caster itself or a visible enemy. */
   target: HeroState;
-  /** For Scout Drone, Deploy Cover and Barricade: the tile aimed at. */
+  /** For Site Survey, Temporary Solution and Heavy Metal: the tile aimed at. */
   tile?: GridPosition;
   events: MatchEvent[];
 }
@@ -496,7 +522,7 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
     target.shield += amount;
     events.push({ kind: EventKind.ShieldGained, tick, heroId: target.id, amount, casterId: caster.id });
   },
-  // Scout Drone: the Squad sees the area for `duration` Resolutions, this one included; range was checked with the target.
+  // Site Survey: the Squad sees the area for `duration` Resolutions, this one included; range was checked with the target.
   [EffectKind.RevealArea]: ({ match, tick, effect, caster, tile, events }) => {
     const size = effect.size ?? 1;
     if (!tile || tileAt(match.grid, tile) === undefined) {
@@ -506,17 +532,20 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
     match.revealedAreas.push({ squad: caster.squad, center: { ...tile }, size, remaining: effect.duration ?? 1 });
     events.push({ kind: EventKind.AreaRevealed, tick, heroId: caster.id, to: { ...tile }, amount: size });
   },
-  // Deploy Cover needs an empty tile; Fortify covers the tile the allied Hero stands on.
+  // Temporary Solution needs an empty tile.
   [EffectKind.PlaceCover]: (use) => {
-    const fortify = use.card.target === CardTarget.AllyHeroTile;
-    const position = fortify ? use.target.position : use.tile;
-    if (position) placeCover(use, position, !fortify);
+    if (use.tile) placeCover(use, use.tile, true);
     else use.events.push({ kind: EventKind.ActionFailed, tick: use.tick, heroId: use.caster.id });
   },
-  // From this Tick on, so Attacks resolved in earlier Ticks of the Round keep the reduction.
-  [EffectKind.RemoveHalfCoverReduction]: ({ tick, caster, target, events }) => {
-    target.ignoresHalfCover = true;
-    events.push({ kind: EventKind.CoverReductionIgnored, tick, heroId: caster.id, targetId: target.id });
+  // Heavy Metal: the Scrap Field lasts `duration` Resolutions, this one included; range was checked with the target.
+  [EffectKind.ScrapField]: ({ match, tick, card, effect, caster, tile, events }) => {
+    const size = effect.size ?? 1;
+    if (!tile || tileAt(match.grid, tile) === undefined) {
+      events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
+      return;
+    }
+    match.scrapFields.push({ squad: caster.squad, casterId: caster.id, card: card.name, center: { ...tile }, size, remaining: effect.duration ?? 1, damage: effect.amount ?? 0 });
+    events.push({ kind: EventKind.FieldPlaced, tick, heroId: caster.id, to: { ...tile }, amount: size });
   },
   // Pull: the enemy slides toward the caster. Charge: the caster gains its Shield first, then closes in.
   [EffectKind.Pull]: ({ match, tick, effect, caster, target, events }) => {
@@ -534,7 +563,6 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
     }
     chargeAt(match, tick, caster, target, effect.amount ?? 0, events);
   },
-  [EffectKind.ApplySlow]: ({ tick, effect, caster, target, events }) => applySlow(tick, caster, target, effect, events),
   // Hidden needs Cover where the Hero stands.
   [EffectKind.BecomeHidden]: ({ match, tick, effect, caster, events }) => {
     if (coverAt(match.grid, caster.position) === CoverKind.None) {
@@ -564,8 +592,7 @@ function resolveUtility(
   events: MatchEvent[],
 ): void {
   const target = match.heroes.find((candidate) => candidate.id === targetId);
-  const isAlly = (hero: HeroState | undefined) => hero !== undefined && !hero.exhausted && hero.squad === caster.squad && hero !== caster;
-  // Scout Drone, Fortify and Barricade reach as far as the card's Range (no Line of Sight needed).
+  // Site Survey, Temporary Solution and Heavy Metal reach as far as the card's Range (no Line of Sight needed).
   const inCardRange = (position: GridPosition | undefined) =>
     position !== undefined && chebyshevDistance(caster.position, position) <= (card.range ?? Infinity);
   let validTarget: boolean;
@@ -585,17 +612,9 @@ function resolveUtility(
     case CardTarget.SelfHero:
       validTarget = target === caster;
       break;
-    case CardTarget.Area:
-      validTarget = target === caster && inCardRange(tile);
-      break;
-    case CardTarget.EmptyTile:
-      validTarget = target === caster && inCardRange(tile);
-      break;
-    case CardTarget.AllyHeroTile:
-      validTarget = isAlly(target) && inCardRange(target!.position);
-      break;
+    // A card aimed at a tile or an area is confirmed on the caster itself.
     default:
-      validTarget = isAlly(target);
+      validTarget = target === caster && inCardRange(tile);
   }
   if (!validTarget || !isPlayableUtility(card)) {
     events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
@@ -603,15 +622,17 @@ function resolveUtility(
   }
   for (const effect of card.effects) {
     UTILITY_EFFECTS[effect.kind as (typeof PLAYABLE_UTILITY_EFFECTS)[number]]({
-      match, tick, card, effect, caster, target: target!, tile, events,
+      match, tick, card, effect: effectFor(effect, caster.scrap), caster, target: target!, tile, events,
     });
   }
 }
 
-/** Ends one Resolution for revealed areas (Placed Cover does not expire). */
+/** Ends one Resolution for revealed areas and Scrap Fields (Placed Cover does not expire). */
 function expireTemporaryEffects(match: MatchState): void {
   for (const area of match.revealedAreas) area.remaining -= 1;
   match.revealedAreas = match.revealedAreas.filter((area) => area.remaining > 0);
+  for (const field of match.scrapFields) field.remaining -= 1;
+  match.scrapFields = match.scrapFields.filter((field) => field.remaining > 0);
 }
 
 const otherSquad = (squad: SquadId) => (squad === SquadId.Left ? SquadId.Right : SquadId.Left);
@@ -865,7 +886,7 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
     hero.slow = Math.max(0, hero.slow - 1);
     hero.hidden = Math.max(0, hero.hidden - 1);
     hero.marked = Math.max(0, hero.marked - 1);
-    hero.ignoresHalfCover = false;
+    hero.scrap = false;
     delete hero.extendedMove;
   }
   expireTemporaryEffects(match);

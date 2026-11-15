@@ -10,10 +10,9 @@ const LEFT_CONTROLLER = "left-controller";
 const RIGHT_CONTROLLER = "right-controller";
 const RIGHT_BRUISER = "right-bruiser";
 
-// Reinforce (card 4) is Pitch fodder.
-const DEPLOY_COVER = cardIndex(HeroClass.Controller, "Deploy Cover");
-const BARRICADE = cardIndex(HeroClass.Controller, "Barricade");
-const BREACH_CHARGE = cardIndex(HeroClass.Controller, "Breach Charge");
+// Urban Renewal (card 4) is Pitch fodder where Temporary Solution is played; Scrap makes its Cover Full.
+const TEMPORARY_SOLUTION = cardIndex(HeroClass.Controller, "Temporary Solution");
+const URBAN_RENEWAL = cardIndex(HeroClass.Controller, "Urban Renewal");
 const LEFT_ASSASSIN = "left-assassin";
 const PRECISION_SHOT = 0; // Assassin card 0: damage 2, Range 2 to 5
 const BRUISER_SLAM_SHOT = 2; // Pitch fodder
@@ -21,12 +20,13 @@ const BRUISER_SLAM_SHOT = 2; // Pitch fodder
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 const tileOf = (index: number): GridPosition => ({ col: 8 + index, row: 3 });
 
-/** Plays `card` (Deploy Cover or Barricade) with the Controller of `squad` onto `tile`, in a new Round. */
-function place(match: MatchState, squad: SquadId, card: number, tile: GridPosition) {
+/** Plays Temporary Solution with the Controller of `squad` onto `tile`, in a new Round; with `scrap` it makes Full Cover. */
+function place(match: MatchState, squad: SquadId, card: number, tile: GridPosition, scrap = false) {
   const next = startRound(match);
   const id = squad === SquadId.Left ? LEFT_CONTROLLER : RIGHT_CONTROLLER;
   hero(next, id).position = { col: tile.col, row: tile.row + 1 };
   hero(next, id).hand = [card, 4, 1, 5];
+  hero(next, id).scrap = scrap;
   const plan: SquadPlan = {
     squad,
     heroes: [{ heroId: id, queue: [{ kind: ActionKind.Primary, card, target: id, tile }], pitched: [4] }],
@@ -36,7 +36,7 @@ function place(match: MatchState, squad: SquadId, card: number, tile: GridPositi
 
 describe("Placed Cover", () => {
   it("is still there after many Rounds", () => {
-    let { match } = place(startRound(createMatch(5)), SquadId.Left, DEPLOY_COVER, tileOf(0));
+    let { match } = place(startRound(createMatch(5)), SquadId.Left, TEMPORARY_SOLUTION, tileOf(0));
     for (let round = 0; round < 5; round += 1) match = resolveRound(startRound(match), []).match;
     expect(coverAt(match.grid, tileOf(0))).toBe(CoverKind.Half);
   });
@@ -44,10 +44,10 @@ describe("Placed Cover", () => {
   it("removes the oldest tile of the Squad when a fourth is placed, and says so with a destroyed-Cover event", () => {
     let match = startRound(createMatch(5));
     for (let index = 0; index < MAX_PLACED_COVER_PER_SQUAD; index += 1) {
-      match = place(match, SquadId.Left, DEPLOY_COVER, tileOf(index)).match;
+      match = place(match, SquadId.Left, TEMPORARY_SOLUTION, tileOf(index)).match;
     }
     expect(match.placedCover).toHaveLength(MAX_PLACED_COVER_PER_SQUAD);
-    const fourth = place(match, SquadId.Left, DEPLOY_COVER, tileOf(3));
+    const fourth = place(match, SquadId.Left, TEMPORARY_SOLUTION, tileOf(3));
     expect(fourth.events).toContainEqual(expect.objectContaining({ kind: EventKind.CoverDestroyed, to: tileOf(0) }));
     expect(coverAt(fourth.match.grid, tileOf(0))).toBe(CoverKind.None);
     for (const index of [1, 2, 3]) expect(coverAt(fourth.match.grid, tileOf(index))).toBe(CoverKind.Half);
@@ -57,9 +57,9 @@ describe("Placed Cover", () => {
   it("counts per Squad", () => {
     let match = startRound(createMatch(5));
     for (let index = 0; index < MAX_PLACED_COVER_PER_SQUAD; index += 1) {
-      match = place(match, SquadId.Left, DEPLOY_COVER, tileOf(index)).match;
+      match = place(match, SquadId.Left, TEMPORARY_SOLUTION, tileOf(index)).match;
     }
-    const right = place(match, SquadId.Right, DEPLOY_COVER, tileOf(5));
+    const right = place(match, SquadId.Right, TEMPORARY_SOLUTION, tileOf(5));
     expect(right.events.some(({ kind }) => kind === EventKind.CoverDestroyed)).toBe(false);
     expect(right.match.placedCover).toHaveLength(MAX_PLACED_COVER_PER_SQUAD + 1);
     expect(coverAt(right.match.grid, tileOf(0))).toBe(CoverKind.Half);
@@ -68,15 +68,15 @@ describe("Placed Cover", () => {
   it("lists the own Placed Cover in the order of placing, and the oldest goes first when a fourth is placed", () => {
     let match = startRound(createMatch(5));
     for (let index = 0; index < MAX_PLACED_COVER_PER_SQUAD; index += 1) {
-      match = place(match, SquadId.Left, DEPLOY_COVER, tileOf(index)).match;
+      match = place(match, SquadId.Left, TEMPORARY_SOLUTION, tileOf(index)).match;
     }
     expect(buildSquadView(match, SquadId.Left).ownPlacedCover).toEqual([tileOf(0), tileOf(1), tileOf(2)]);
-    const fourth = place(match, SquadId.Left, DEPLOY_COVER, tileOf(3));
+    const fourth = place(match, SquadId.Left, TEMPORARY_SOLUTION, tileOf(3));
     expect(buildSquadView(fourth.match, SquadId.Left).ownPlacedCover).toEqual([tileOf(1), tileOf(2), tileOf(3)]);
   });
 
   it("shows the enemy Placed Cover it sees as not its own, and none it has not seen", () => {
-    const placed = place(startRound(createMatch(5)), SquadId.Left, DEPLOY_COVER, tileOf(0)).match;
+    const placed = place(startRound(createMatch(5)), SquadId.Left, TEMPORARY_SOLUTION, tileOf(0)).match;
     // Out of sight: the Right Squad knows nothing of it.
     const unseen = buildSquadView(placed, SquadId.Right);
     expect([unseen.placedCover, unseen.ownPlacedCover]).toEqual([[], []]);
@@ -96,15 +96,15 @@ describe("Placed Cover", () => {
     expect(hero(match, RIGHT_BRUISER).exhausted).toBe(true);
     expect(match.placedCover).toEqual([]);
     for (let index = 0; index < MAX_PLACED_COVER_PER_SQUAD; index += 1) {
-      match = place(match, SquadId.Right, DEPLOY_COVER, tileOf(index)).match;
+      match = place(match, SquadId.Right, TEMPORARY_SOLUTION, tileOf(index)).match;
     }
     expect(coverAt(match.grid, { col: 12, row: 8 })).toBe(CoverKind.Half);
     expect(match.placedCover).toHaveLength(MAX_PLACED_COVER_PER_SQUAD);
   });
 
   /** The Left Assassin at (5,3) attacks the Right Bruiser on (8,3), where Cover was placed. */
-  function attackOnCoveredTile(card: number, cover: CoverKind) {
-    const placed = place(startRound(createMatch(5)), SquadId.Left, card, tileOf(0)).match;
+  function attackOnCoveredTile(cover: CoverKind) {
+    const placed = place(startRound(createMatch(5)), SquadId.Left, TEMPORARY_SOLUTION, tileOf(0), cover === CoverKind.Full).match;
     expect(coverAt(placed.grid, tileOf(0))).toBe(cover);
     const next = startRound(placed);
     hero(next, LEFT_ASSASSIN).position = { col: 5, row: 3 };
@@ -118,30 +118,30 @@ describe("Placed Cover", () => {
   }
 
   it("is not destroyed by a normal Attack, and Half Cover reduces it by 1", () => {
-    const { match, events } = attackOnCoveredTile(DEPLOY_COVER, CoverKind.Half);
+    const { match, events } = attackOnCoveredTile(CoverKind.Half);
     expect(events.find(({ kind }) => kind === EventKind.AttackHit)).toMatchObject({ damage: 1 });
     expect(events.some(({ kind }) => kind === EventKind.CoverDestroyed)).toBe(false);
     expect(coverAt(match.grid, tileOf(0))).toBe(CoverKind.Half);
   });
 
   it("Full Cover blocks an Attack", () => {
-    const { match, events } = attackOnCoveredTile(BARRICADE, CoverKind.Full);
+    const { match, events } = attackOnCoveredTile(CoverKind.Full);
     expect(coverAgainst(match.grid, { col: 5, row: 3 }, tileOf(0))).toBe(CoverKind.Full);
     expect(events.some(({ kind }) => kind === EventKind.AttackHit)).toBe(false);
     expect(events.some(({ kind }) => kind === EventKind.AttackFailed)).toBe(true);
     expect(coverAt(match.grid, tileOf(0))).toBe(CoverKind.Full);
   });
 
-  it("is destroyed by Breach Charge and then no longer counts", () => {
-    const placed = place(startRound(createMatch(5)), SquadId.Left, DEPLOY_COVER, tileOf(0)).match;
+  it("is destroyed by Urban Renewal and then no longer counts", () => {
+    const placed = place(startRound(createMatch(5)), SquadId.Left, TEMPORARY_SOLUTION, tileOf(0)).match;
     const next = startRound(placed);
     hero(next, LEFT_CONTROLLER).position = { col: 5, row: 3 };
-    hero(next, LEFT_CONTROLLER).hand = [BREACH_CHARGE, BRUISER_SLAM_SHOT, 1, 5];
+    hero(next, LEFT_CONTROLLER).hand = [URBAN_RENEWAL, BRUISER_SLAM_SHOT, 1, 5];
     const plan: SquadPlan = {
       squad: SquadId.Left,
       heroes: [{
         heroId: LEFT_CONTROLLER,
-        queue: [{ kind: ActionKind.Primary, card: BREACH_CHARGE, target: LEFT_CONTROLLER, tile: tileOf(0) }],
+        queue: [{ kind: ActionKind.Primary, card: URBAN_RENEWAL, target: LEFT_CONTROLLER, tile: tileOf(0) }],
         pitched: [BRUISER_SLAM_SHOT, 1],
       }],
     };
@@ -154,17 +154,17 @@ describe("Placed Cover", () => {
   describe("on a Prime Zone tile", () => {
     const primeTile: GridPosition = { col: 22, row: 12 };
 
-    it("gives the Prime Zone tile back when a Breach Charge destroys the Cover", () => {
-      const placed = place(startRound(createMatch(5)), SquadId.Left, DEPLOY_COVER, primeTile).match;
+    it("gives the Prime Zone tile back when a Urban Renewal destroys the Cover", () => {
+      const placed = place(startRound(createMatch(5)), SquadId.Left, TEMPORARY_SOLUTION, primeTile).match;
       expect(tileAt(placed.grid, primeTile)).toBe(TileKind.HalfCover);
       const next = startRound(placed);
       hero(next, LEFT_CONTROLLER).position = { col: 19, row: 12 };
-      hero(next, LEFT_CONTROLLER).hand = [BREACH_CHARGE, BRUISER_SLAM_SHOT, 1, 5];
+      hero(next, LEFT_CONTROLLER).hand = [URBAN_RENEWAL, BRUISER_SLAM_SHOT, 1, 5];
       const plan: SquadPlan = {
         squad: SquadId.Left,
         heroes: [{
           heroId: LEFT_CONTROLLER,
-          queue: [{ kind: ActionKind.Primary, card: BREACH_CHARGE, target: LEFT_CONTROLLER, tile: primeTile }],
+          queue: [{ kind: ActionKind.Primary, card: URBAN_RENEWAL, target: LEFT_CONTROLLER, tile: primeTile }],
           pitched: [BRUISER_SLAM_SHOT, 1],
         }],
       };
@@ -173,9 +173,9 @@ describe("Placed Cover", () => {
     });
 
     it("gives the Prime Zone tile back when a fourth placement removes the oldest Cover", () => {
-      let match = place(startRound(createMatch(5)), SquadId.Left, DEPLOY_COVER, primeTile).match;
+      let match = place(startRound(createMatch(5)), SquadId.Left, TEMPORARY_SOLUTION, primeTile).match;
       for (let index = 0; index < MAX_PLACED_COVER_PER_SQUAD; index += 1) {
-        match = place(match, SquadId.Left, DEPLOY_COVER, tileOf(index)).match;
+        match = place(match, SquadId.Left, TEMPORARY_SOLUTION, tileOf(index)).match;
       }
       expect(tileAt(match.grid, primeTile)).toBe(TileKind.PrimeZone);
     });

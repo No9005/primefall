@@ -17,8 +17,6 @@ export enum CardType {
 export enum CardTarget {
   VisibleEnemy = "visibleEnemy",
   SelfHero = "selfHero",
-  AllyHero = "allyHero",
-  AllyHeroTile = "allyHeroTile",
   Tile = "tile",
   EmptyTile = "emptyTile",
   Area = "area",
@@ -32,8 +30,12 @@ export enum EffectKind {
   Damage = "damage",
   ApplySlow = "applySlow",
   ApplyMarked = "applyMarked",
-  DestroyHalfCover = "destroyHalfCover",
+  /** Destroys every Cover tile (Half or Full) of the area the Attack hits (Urban Renewal). */
   DestroyAnyCover = "destroyAnyCover",
+  /** Damage to every Hero in a square of tiles round the aimed tile, allies included (Urban Renewal). */
+  AreaDamage = "areaDamage",
+  /** A square of tiles that Slows the Heroes in it and hurts them when they Move (Heavy Metal). */
+  ScrapField = "scrapField",
   IgnoreHalfCover = "ignoreHalfCover",
   /** The card's damage is Piercing Damage: it does not use up Shield and goes straight into Deck Damage. */
   PiercingDamage = "piercingDamage",
@@ -45,7 +47,6 @@ export enum EffectKind {
   PlaceCover = "placeCover",
   BecomeHidden = "becomeHidden",
   TargetGhost = "targetGhost",
-  RemoveHalfCoverReduction = "removeHalfCoverReduction",
   /** Pull: the named enemy moves up to `amount` tiles directly toward the caster; it stops at a Wall, Full Cover or a Hero. */
   Pull = "pull",
   /** Charge (Express Delivery): the caster first gains Shield `shield`, then moves up to `amount` tiles toward the named enemy and ends next to it. */
@@ -68,6 +69,13 @@ export interface CardEffect {
   size?: number;
   /** For Placed Cover: Full instead of the default Half. */
   cover?: CoverKind.Half | CoverKind.Full;
+  /** Scrap (Tilly): the fields of this effect that change while the casting Hero has Scrap, for example a longer duration. */
+  scrap?: Pick<CardEffect, "amount" | "duration" | "size" | "cover">;
+}
+
+/** The effect as it works for a Hero: with Scrap its `scrap` fields replace the plain ones. */
+export function effectFor(effect: CardEffect, hasScrap: boolean): CardEffect {
+  return hasScrap && effect.scrap ? { ...effect, ...effect.scrap } : effect;
 }
 
 export interface CardDefinition {
@@ -105,7 +113,6 @@ export function isSimpleAttack(card: CardDefinition): boolean {
         effect.kind === EffectKind.PiercingDamage ||
         effect.kind === EffectKind.CloseRangeBonus ||
         effect.kind === EffectKind.AttackTwice ||
-        effect.kind === EffectKind.DestroyAnyCover ||
         effect.kind === EffectKind.ApplyMarked,
     )
   );
@@ -126,26 +133,22 @@ export function isGhostAttack(card: CardDefinition): boolean {
 /** Utility effect kinds the resolution has an interpreter for; later Utility effects are added here. */
 export const PLAYABLE_UTILITY_EFFECTS = [
   EffectKind.GainShield,
-  EffectKind.ApplySlow,
+  EffectKind.ScrapField,
   EffectKind.BecomeHidden,
   EffectKind.ExtendMove,
   EffectKind.RevealArea,
   EffectKind.PlaceCover,
-  EffectKind.RemoveHalfCoverReduction,
   EffectKind.Pull,
   EffectKind.Charge,
 ] as const;
 
 /**
- * Utility cards whose effects all have an interpreter and that are aimed at this Hero, an allied Hero (or its
- * tile), a visible enemy, a tile or an area. Tile and area cards are confirmed on this Hero.
+ * Utility cards whose effects all have an interpreter and that are aimed at this Hero, a visible enemy, a tile or an area. Tile and area cards are confirmed on this Hero.
  */
 export function isPlayableUtility(card: CardDefinition): boolean {
   return (
     card.type === CardType.Utility &&
     (card.target === CardTarget.SelfHero ||
-      card.target === CardTarget.AllyHero ||
-      card.target === CardTarget.AllyHeroTile ||
       card.target === CardTarget.EmptyTile ||
       card.target === CardTarget.Area ||
       card.target === CardTarget.VisibleEnemy ||
@@ -155,23 +158,23 @@ export function isPlayableUtility(card: CardDefinition): boolean {
 }
 
 /**
- * Breach Charge: an Attack on a tile that damages the enemy Hero standing there and
- * destroys Half Cover on it. The action carries the tile; its target is the casting Hero.
+ * Urban Renewal: an Attack on a tile that hurts every Hero in the area round it and destroys the Cover there. The
+ * action carries the tile; its target is the casting Hero.
  */
-export function isTileAttack(card: CardDefinition): boolean {
+export function isAreaAttack(card: CardDefinition): boolean {
   const [first, second, ...rest] = card.effects;
   return (
     card.type === CardType.Attack &&
     card.target === CardTarget.Tile &&
-    first?.kind === EffectKind.Damage &&
-    second?.kind === EffectKind.DestroyHalfCover &&
+    first?.kind === EffectKind.AreaDamage &&
+    second?.kind === EffectKind.DestroyAnyCover &&
     rest.length === 0
   );
 }
 
 /** Whether a card's Primary effect can be planned and resolved so far. */
 export function isPlayableCard(card: CardDefinition): boolean {
-  return isSimpleAttack(card) || isGhostAttack(card) || isTileAttack(card) || isPlayableUtility(card);
+  return isSimpleAttack(card) || isGhostAttack(card) || isAreaAttack(card) || isPlayableUtility(card);
 }
 
 const slow: CardEffect = { kind: EffectKind.ApplySlow, duration: 1 };
@@ -181,7 +184,6 @@ const shield = (amount: number): CardEffect => ({ kind: EffectKind.GainShield, a
 
 // Hero ranges (ADR 0009); attack cards without an explicit range use their Hero's range.
 const BRUISER_RANGE = 3;
-const CONTROLLER_RANGE = 2;
 const ASSASSIN_RANGE = 5;
 
 // Max Overload: up close and personal (docs/design/decks.md). Every card costs 1 Energy.
@@ -213,43 +215,30 @@ const cargoHook: CardDefinition = {
   target: CardTarget.VisibleOrGhostEnemy, effects: [{ kind: EffectKind.Pull, amount: 6 }],
 };
 
-// Tilly Turnover creates and destroys Cover (docs/design/decks.md).
-const breachCharge: CardDefinition = {
-  name: "Breach Charge", type: CardType.Attack, energyCost: 1, range: 3,
-  target: CardTarget.Tile,
-  effects: [damage(2), { kind: EffectKind.DestroyHalfCover }],
+// Tilly Turnover creates and destroys Cover, and makes Scrap of it (docs/design/decks.md).
+// Scrap: active once a card of hers destroyed Cover this Round; `scrap` on an effect is what it becomes then.
+const temporarySolution: CardDefinition = {
+  name: "Temporary Solution", type: CardType.Utility, energyCost: 1, range: 5,
+  target: CardTarget.EmptyTile, effects: [{ kind: EffectKind.PlaceCover, scrap: { cover: CoverKind.Full } }],
 };
-const wreckingBlow: CardDefinition = {
-  name: "Wrecking Blow", type: CardType.Attack, energyCost: 1, range: 2,
-  target: CardTarget.VisibleEnemy, effects: [damage(2), { kind: EffectKind.DestroyAnyCover }],
+// No Range: any tile of the map. Shown for 3 Resolutions.
+const siteSurvey: CardDefinition = {
+  name: "Site Survey", type: CardType.Utility, energyCost: 1, target: CardTarget.Area,
+  effects: [{ kind: EffectKind.RevealArea, size: 3, duration: 3, scrap: { size: 5 } }],
 };
-
-const tagRound: CardDefinition = {
-  name: "Tag Round", type: CardType.Attack, energyCost: 1, range: CONTROLLER_RANGE,
-  target: CardTarget.VisibleEnemy, effects: [damage(1), marked],
+// 2 damage to every Hero in the 3 x 3 area, allies too; all Cover in it is destroyed.
+const urbanRenewal: CardDefinition = {
+  name: "Urban Renewal", type: CardType.Attack, energyCost: 1, range: 4,
+  target: CardTarget.Tile, effects: [{ kind: EffectKind.AreaDamage, amount: 2, size: 3 }, { kind: EffectKind.DestroyAnyCover }],
 };
-const scoutDrone: CardDefinition = {
-  name: "Scout Drone", type: CardType.Utility, energyCost: 1, target: CardTarget.Area, // no Range: any tile of the map
-  effects: [{ kind: EffectKind.RevealArea, size: 3, duration: 2 }],
+// Until the end of the next Resolution; a Move of a Hero that starts in it is Slowed, each Move through it costs 1 damage.
+const heavyMetal: CardDefinition = {
+  name: "Heavy Metal", type: CardType.Utility, energyCost: 1, range: 4,
+  target: CardTarget.Area, effects: [{ kind: EffectKind.ScrapField, size: 3, duration: 2, amount: 1, scrap: { duration: 3 } }],
 };
-const fortify: CardDefinition = {
-  name: "Fortify", type: CardType.Utility, energyCost: 1, range: 3,
-  target: CardTarget.AllyHeroTile, effects: [{ kind: EffectKind.PlaceCover }],
-};
-const deployCover: CardDefinition = {
-  name: "Deploy Cover", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.EmptyTile, effects: [{ kind: EffectKind.PlaceCover }],
-};
-const barricade: CardDefinition = {
-  name: "Barricade", type: CardType.Utility, energyCost: 1, range: 3,
-  target: CardTarget.EmptyTile, effects: [{ kind: EffectKind.PlaceCover, cover: CoverKind.Full }],
-};
-const gravitySnare: CardDefinition = {
-  name: "Gravity Snare", type: CardType.Utility, energyCost: 1, target: CardTarget.VisibleEnemy, effects: [slow],
-};
-const overwatchUplink: CardDefinition = {
-  name: "Overwatch Uplink", type: CardType.Utility, energyCost: 1,
-  target: CardTarget.AllyHero, effects: [{ kind: EffectKind.RemoveHalfCoverReduction }],
+const priceTag: CardDefinition = {
+  name: "Price Tag", type: CardType.Attack, energyCost: 1, range: 3,
+  target: CardTarget.VisibleEnemy, effects: [{ kind: EffectKind.Damage, amount: 1, scrap: { amount: 2 } }, marked],
 };
 
 const precisionShot: CardDefinition = {
@@ -287,7 +276,7 @@ const reposition: CardDefinition = {
 };
 
 /**
- * The fixed Hero Decks (ADR 0025): Bruiser 12, Controller 10, Assassin 9 cards, in the order of the MVP card set. A
+ * The fixed Hero Decks (ADR 0025): Bruiser 12, Controller 10, Assassin 9 cards. A
  * card is identified within its Hero by its index in this list, so identical cards stay distinct (for example in Hand or Exile).
  */
 export const HERO_DECKS: Record<HeroClass, readonly CardDefinition[]> = {
@@ -296,8 +285,8 @@ export const HERO_DECKS: Record<HeroClass, readonly CardDefinition[]> = {
     hardHat, expressDelivery, expressDelivery, cargoHook, cargoHook, timeForCoffee,
   ],
   [HeroClass.Controller]: [
-    tagRound, scoutDrone, scoutDrone, breachCharge, wreckingBlow,
-    fortify, deployCover, barricade, gravitySnare, overwatchUplink,
+    priceTag, priceTag, siteSurvey, siteSurvey, urbanRenewal,
+    urbanRenewal, temporarySolution, temporarySolution, heavyMetal, heavyMetal,
   ],
   [HeroClass.Assassin]: [
     precisionShot, longShot, longShot, coverBreaker, shieldBreaker,

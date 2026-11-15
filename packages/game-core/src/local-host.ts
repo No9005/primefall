@@ -66,6 +66,8 @@ function upgradeSavedMatch(match: MatchState): MatchState {
   // Matches saved before the Credits start with none.
   if (match.scores === undefined) match = { ...match, scores: { [SquadId.Left]: 0, [SquadId.Right]: 0 }, zoneControl: ZONES.map(() => ({ contested: false })) };
   if (match.takeoverCooldown === undefined) match = { ...match, takeoverCooldown: ZONES.map(() => 0) };
+  // Matches saved before Tilly's Scrap have no Scrap Fields and no Scrap.
+  if (match.scrapFields === undefined) match = { ...match, scrapFields: [], heroes: match.heroes.map((hero) => ({ ...hero, scrap: false })) };
   if (match.knownWrecks !== undefined) return match;
   const grid = match.heroes.filter((hero) => hero.exhausted).reduce((current, hero) => withWreck(current, hero.position), match.grid);
   const upgraded: MatchState = { ...match, grid, knownWrecks: { [SquadId.Left]: [], [SquadId.Right]: [] } };

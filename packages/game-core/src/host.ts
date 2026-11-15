@@ -148,9 +148,11 @@ export interface HeroView {
   hidden: boolean;
   /** Marked: the enemy Squad sees this Hero until the end of the next Resolution. */
   marked: boolean;
+  /** Scrap: a card of this Hero destroyed Cover this Round (Tilly); her Scrap cards are stronger until the end of the Round. */
+  scrap: boolean;
 }
 
-/** A square of tiles a Scout Drone shows the Squad for a while, regardless of walls and Cover. */
+/** A square of tiles a Site Survey shows the Squad for a while, regardless of walls and Cover. */
 /** A Squad has at most this many Placed Cover tiles; placing another removes its oldest. */
 export const MAX_PLACED_COVER_PER_SQUAD = 3;
 
@@ -161,6 +163,12 @@ export interface RevealedArea {
   size: number;
   /** Resolution ends left before the area is hidden again. */
   remaining: number;
+}
+
+/** A Scrap Field a Squad knows about: its own, or one with a tile the Squad sees right now. */
+export interface ScrapFieldView extends RevealedArea {
+  /** Made by this Squad. */
+  own: boolean;
 }
 
 /** How much a Squad knows about one enemy Hero (Fog of War, ADR 0005). */
@@ -197,6 +205,8 @@ export interface VisibleEnemyView extends EnemyIdentity {
   slowed: boolean;
   /** Marked: shown only while the enemy is Visible, which a Marked Hero always is. */
   marked: boolean;
+  /** Scrap: shown only while the enemy is Visible. */
+  scrap: boolean;
 }
 
 /** The last known position and counts of an enemy Hero that is no longer Visible. */
@@ -252,12 +262,14 @@ export interface SquadView {
    * Used like other Half Cover; a wreck the Squad has not seen is not listed (Fog of War).
    */
   wreckCover: readonly GridPosition[];
-  /** Cover built with a card (Deploy Cover, Fortify, Barricade) that this Squad placed or currently sees; it stays until destroyed. */
+  /** Cover built with a card (Temporary Solution) that this Squad placed or currently sees; it stays until destroyed. */
   placedCover: readonly GridPosition[];
   /** The Placed Cover tiles of this Squad itself, in the order of placing (the oldest goes first when a fourth is placed). The enemy's are the rest of `placedCover`. */
   ownPlacedCover: readonly GridPosition[];
   /** The areas this Squad's Scout Drones still reveal. */
   revealedAreas: readonly RevealedArea[];
+  /** The Scrap Fields (Heavy Metal) this Squad made, and the enemy's that it sees a tile of; `remaining` counts the Resolution ends left. */
+  scrapFields: readonly ScrapFieldView[];
   /** Areas the enemy Squad's Scout Drones scan right now: where, how big and for how many more Resolutions, never what is in them. */
   scannedAreas: readonly Pick<RevealedArea, "center" | "size" | "remaining">[];
   /**
@@ -296,14 +308,16 @@ export enum EventKind {
   Pull = "pull",
   /** `heroId` charged at `targetId`: its steps are `Step` events, this one follows them (also when it could not move). */
   Charged = "charged",
-  /** `heroId` destroyed the Cover on the tile `to` (Breach Charge, Wrecking Blow). */
+  /** `heroId` destroyed the Cover on the tile `to` (Urban Renewal, or the oldest Placed Cover going). */
   CoverDestroyed = "coverDestroyed",
   /** `heroId` placed temporary Half Cover on the tile `to`. */
   CoverPlaced = "coverPlaced",
-  /** `heroId` sent a Scout Drone to reveal the area of `amount` by `amount` tiles centred on `to`. */
+  /** `heroId` sent a Site Survey drone to reveal the area of `amount` by `amount` tiles centred on `to`. */
   AreaRevealed = "areaRevealed",
-  /** `targetId` ignores the Half Cover damage reduction until the end of the Round (Overwatch Uplink). */
-  CoverReductionIgnored = "coverReductionIgnored",
+  /** `heroId` made a Scrap Field of `amount` by `amount` tiles centred on `to` (Heavy Metal). */
+  FieldPlaced = "fieldPlaced",
+  /** `heroId` has Scrap: one of its cards destroyed Cover this Round. */
+  ScrapGained = "scrapGained",
   /** The Discard of `heroId` was shuffled into its empty Deck; `amount` is the number of cards shuffled. */
   DeckShuffled = "deckShuffled",
   /** A Hero waited: it did nothing in this Tick (`ActionKind.Wait`). */
@@ -350,6 +364,8 @@ export interface MatchEvent {
    * gives AttackHit, DeckShuffled, AttackHit: the damage is the sum, the order is the order of the piles.
    */
   damage?: number;
+  /** Damage the Marked state of the target added to this hit (1), for `AttackHit`; absent when none. */
+  marked?: number;
   /** True when Half Cover on the target's tile reduced the damage, for `AttackHit`. */
   halfCover?: boolean;
   /** Damage a close-range effect added to this hit (the "CLOSE +1" of Handle With Care at Range 1), for `AttackHit`; absent when none. */
@@ -365,7 +381,7 @@ export interface MatchEvent {
   reason?: AttackFailReason;
   /** Range in tiles (Chebyshev) between attacker and target, for `AttackHit` and `AttackFailed` (not for `NotVisible`). */
   distance?: number;
-  /** The tile a tile Attack (Breach Charge) was aimed at, for its `AttackHit` and `AttackFailed`. */
+  /** The tile an area Attack (Urban Renewal) was aimed at, for its `AttackHit` and `AttackFailed`. */
   tile?: GridPosition;
   /** The Squad that took the zone, for `ZoneTakenOver`. */
   squad?: SquadId;

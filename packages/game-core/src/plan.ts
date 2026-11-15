@@ -38,11 +38,11 @@ export interface PrimaryAction {
   card: CardIndex;
   /**
    * Id of the Hero the card is aimed at: an enemy Hero for an Attack (Range and Line of Sight are checked
-   * when it resolves), this Hero or an allied Hero for a Utility card.
+   * when it resolves), this Hero for a Utility card.
    */
   target: string;
   /**
-   * For a card aimed at a tile or area (Breach Charge, Scout Drone, Deploy Cover, Barricade): the tile (the centre of
+   * For a card aimed at a tile or area (Urban Renewal, Site Survey, Temporary Solution, Heavy Metal): the tile (the centre of
    * an area); `target` is then the casting Hero.
    */
   tile?: GridPosition;
@@ -228,18 +228,10 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
           if (action.target !== heroId || kind === undefined || kind === TileKind.Wall) {
             report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a tile that is not a Wall as its target.` });
           }
-        } else if (card.target !== CardTarget.VisibleEnemy) {
-          // Self cards are confirmed on this Hero; ally cards need another Hero.
-          const isSelfCard = card.target === CardTarget.SelfHero;
-          const validTarget = isSelfCard
-            ? action.target === heroId
-            : view.heroes.some((ally) => ally.id === action.target && ally.id !== heroId && !ally.exhausted);
-          if (!validTarget) {
-            report({
-              kind: PlanIssueKind.BadTarget,
-              heroId,
-              message: isSelfCard ? `${card.name} can only target this Hero.` : `${card.name} needs an allied Hero as its target.`,
-            });
+        } else if (card.target === CardTarget.SelfHero) {
+          // Self cards are confirmed on this Hero.
+          if (action.target !== heroId) {
+            report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} can only target this Hero.` });
           }
         } else if (!view.enemies.some(
             (enemy) => enemy.id === action.target && enemy.visibility === Visibility.Visible && !enemy.exhausted,
