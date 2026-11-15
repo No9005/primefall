@@ -46,7 +46,9 @@ test("a drag up from the first card opens the faces, a release in the middle par
   const hand = await startPlanning(page);
   await mouseDrag(page, await fanPoint(hand, 0.08, 30), { x: 780, y: 215 });
   await expect(faces(page)).toBeVisible();
-  await expect(page.locator(".pull-card.parked")).toBeVisible();
+  // The row of faces is all there is: no card is parked under it.
+  await expect(page.locator(".pull-card")).toHaveCount(0);
+  await expect(faces(page).getByRole("button")).toHaveCount(3);
   await expect(faces(page)).toHaveCSS("opacity", "1");
   await faces(page).getByRole("button", { name: /^Pitch/ }).click();
   await expect(faces(page)).toHaveCount(0);
@@ -88,11 +90,11 @@ test("a release low in the Hand area puts the card back", async ({ page }) => {
   await expect(page.getByTestId("pulled-card")).toHaveCount(0);
 });
 
-test("the parked card goes back when it is tapped", async ({ page }) => {
+test("a tap outside the faces puts the card back", async ({ page }) => {
   const hand = await startPlanning(page);
   await mouseDrag(page, await fanPoint(hand, 0.08, 30), { x: 780, y: 215 });
   await expect(faces(page)).toBeVisible();
-  await page.locator(".pull-card.parked").click();
+  await page.mouse.click(760, 330);
   await expect(faces(page)).toHaveCount(0);
 });
 

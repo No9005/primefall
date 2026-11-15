@@ -30,7 +30,12 @@ const DESIGNED: Readonly<Record<string, DesignedText>> = {
     flavor: "Mosh pit rules: don't move.",
   },
   "Price Tag": { text: 'Range 3. Deal <b class="dmg">1 damage</b>. <b class="marked">Marked:</b> hits on it deal +1 damage until the end of the next Resolution. <b class="scrap">Scrap:</b> +1 damage.', flavor: "Everything has one." },
-  // The Wait card of each Hero.
+  // The standard uses of every card: Move, Pitch and Wait.
+  "Walk It Off": { text: 'Move up to <b class="energy">3 tiles</b>. Any card can be used this way.', flavor: "Mind the gap." },
+  Overtime: { text: 'Discard a card. Gain <b class="energy">1 Energy</b>. Any card can be used this way.', flavor: "Time and a half. In theory." },
+  Cannibalize: { text: 'Discard a card. Gain <b class="energy">1 Energy</b>. Any card can be used this way.', flavor: "Parts is parts." },
+  Pitch: { text: 'Discard a card. Gain <b class="energy">1 Energy</b>. Any card can be used this way.', flavor: "" },
+
   "Smoke Break": { text: "Do nothing for one Tick. Needs no card.", flavor: "Union rules." },
   "Idle Hands": { text: "Do nothing for one Tick. Needs no card.", flavor: "The workshop is never closed." },
   Wait: { text: "Do nothing for one Tick. Needs no card.", flavor: "" },

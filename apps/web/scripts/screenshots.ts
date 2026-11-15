@@ -25,6 +25,7 @@ export const SCREENSHOT_NAMES = [
   "08-card-pulled.png",
   "09-card-parked.png",
   "10-card-back-in-hand.png",
+  "11-faces-affordable.png",
 ] as const;
 
 export type ScreenshotName = (typeof SCREENSHOT_NAMES)[number];
@@ -313,10 +314,19 @@ async function playStandardPath(page: Page, hero?: HeroClass): Promise<void> {
   await page.mouse.move(grab.x + 140, grab.y - 100, { steps: 4 });
   await page.waitForTimeout(300);
   await shoot("08-card-pulled.png");
-  await page.mouse.move(400, 215, { steps: 4 });
+  await page.mouse.move(780, 215, { steps: 4 }); // not over a face: the card is parked and the faces stay open
   await page.mouse.up();
   await page.waitForTimeout(400);
   await shoot("09-card-parked.png");
+  // Pitch this card for 1 Energy, then pull another one: its own effect is affordable now.
+  await page.getByRole("button", { name: /^Pitch/ }).click();
+  await page.waitForTimeout(300);
+  await page.mouse.move(grab.x + 60, grab.y);
+  await page.mouse.down();
+  await page.mouse.move(780, 215, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  await shoot("11-faces-affordable.png");
   await page.mouse.click(700, 60); // outside the faces: the card goes back
   await page.mouse.move(grab.x, grab.y);
   await page.mouse.down();

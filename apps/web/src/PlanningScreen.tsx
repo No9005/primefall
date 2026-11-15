@@ -37,7 +37,7 @@ import { type ComponentProps, type CSSProperties, type MouseEvent as ReactMouseE
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
 import { Board } from "./Board";
 import { EnergyPill, FloatingCard, PulledCard } from "./game-parts";
-import { cardArtFile } from "./card-art";
+import { HERO_BASICS } from "./hero-basics";
 import { DesignedCard } from "./card-design";
 import { cancel as cancelPull, type Face, faceReveal, faceViews, heldCard, IDLE, MIDDLE_LINE, move as movePull, openCard, press as pressCard, type PullState, release as releasePull, showsFaces, tap as tapPull } from "./card-pull";
 import { CardUseStage, hudFocus } from "./hud-focus";
@@ -218,7 +218,7 @@ export function QueueColumn({
 
 /** Right of the Hand: the Wait action as a card. */
 function WaitCard({ heroClass, dimmed, disabled, locked, onWait }: { heroClass: HeroClass; dimmed: boolean; disabled: boolean; locked: boolean; onWait: () => void }) {
-  const look = WAIT_LOOK[heroClass];
+  const look = HERO_BASICS[heroClass].wait;
   return (
     <button type="button" className={`card designed wait-card${locked ? " locked" : ""}`} aria-label="Wait" disabled={disabled || dimmed} title={locked ? LOCKED_TITLE : undefined} onClick={onWait}>
       <DesignedCard card={{ name: look.name, type: CardType.Utility, energyCost: 0, effects: [] }} width={WAIT_CARD_WIDTH} standard="Wait" art={look.art} />
@@ -227,12 +227,6 @@ function WaitCard({ heroClass, dimmed, disabled, locked, onWait }: { heroClass: 
   );
 }
 
-/** The Wait card of each Hero (docs/design/cards/): its own name and picture; Kit's has no picture yet. */
-const WAIT_LOOK: Record<HeroClass, { name: string; art?: string }> = {
-  [HeroClass.Bruiser]: { name: "Smoke Break", art: cardArtFile("smoke-break") },
-  [HeroClass.Controller]: { name: "Idle Hands", art: cardArtFile("idle-hands") },
-  [HeroClass.Assassin]: { name: "Wait" },
-};
 const WAIT_CARD_WIDTH = 108;
 
 const LOCKED_TITLE = "locked during the Resolution";
@@ -1265,6 +1259,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
       {pulledCard && (
         <PulledCard
           card={pulledCard}
+          heroClass={selected.heroClass}
           faces={showsFaces(pull) ? pulledFaces : undefined}
           floatingAt={pull.phase === "pulled" ? pull.point : undefined}
           reveal={pull.phase === "pulled" ? faceReveal(pull.point.y, document.querySelector(".hand")?.getBoundingClientRect().top ?? Infinity) : 1}
