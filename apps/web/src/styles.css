@@ -20,6 +20,8 @@
   --muted-light: #aebccb;
 
   --font-label: Rajdhani, sans-serif;
+  /* The back of a card (docs/design/cards/): the Deck pile, the burning top card and the cards that fly in. */
+  --card-back: url("/assets/cards/back.png");
   --font-number: "IBM Plex Mono", monospace;
 
   --radius-s: 6px;
@@ -94,11 +96,11 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .pull-card.card { position: absolute; left: 96px; top: 30px; width: auto; height: auto; padding: 0; border: 0; background: none; line-height: 0; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6)); pointer-events: none; animation: pull-lift var(--dur-fast) ease-out; }
 /* Pulled out: the card is parked small below the faces. */
 /* The uses of a pulled card: a row of designed cards, the card's own effect first, then Pitch, then Move; nothing below them. */
-.pull-faces { position: absolute; left: calc((100% - 136px) / 2); top: 66px; transform: translateX(-50%); display: flex; gap: 10px; align-items: flex-start; }
-.pull-face { position: relative; width: 150px; height: 210px; padding: 0; border: 0; background: none; line-height: 0; text-align: left; cursor: pointer; pointer-events: auto; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55)); animation: pull-lift var(--dur-fast) ease-out; }
+.pull-faces { position: absolute; left: 50%; top: 66px; transform: translateX(-50%); display: flex; gap: 10px; align-items: flex-start; }
+.pull-face { position: relative; width: 138px; height: 193px; padding: 0; border: 0; background: none; line-height: 0; text-align: left; cursor: pointer; pointer-events: auto; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55)); animation: pull-lift var(--dur-fast) ease-out; }
 .pull-face[aria-disabled="true"] { cursor: default; filter: grayscale(0.7) brightness(0.55) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55)); }
-.face-reason { position: absolute; left: 8px; right: 8px; top: 84px; padding: 3px 4px; background: color-mix(in srgb, var(--graphite) 90%, transparent); border: 1px solid var(--red-text); border-radius: 3px; text-align: center; font: 700 12px/1.1 var(--font-label); letter-spacing: 0.06em; text-transform: uppercase; color: var(--red-text); }
-.pull-hint { position: absolute; left: 0; right: 0; top: 218px; text-align: right; font: 600 12px/1 var(--font-label); letter-spacing: 0.06em; color: var(--text-soft); pointer-events: none; text-shadow: 0 1px 2px #000; }
+.face-reason { position: absolute; left: 8px; right: 8px; top: 78px; padding: 3px 4px; background: color-mix(in srgb, var(--graphite) 90%, transparent); border: 1px solid var(--red-text); border-radius: 3px; text-align: center; font: 700 12px/1.1 var(--font-label); letter-spacing: 0.06em; text-transform: uppercase; color: var(--red-text); }
+.pull-hint { position: absolute; left: 0; right: 0; top: 201px; text-align: right; font: 600 12px/1 var(--font-label); letter-spacing: 0.06em; color: var(--text-soft); pointer-events: none; text-shadow: 0 1px 2px #000; }
 @keyframes pull-lift { from { opacity: 0; } to { opacity: 1; } }
 
 /* A target is being picked: the HUD shrinks to what hud-layout.ts keeps out of the free board area. */
@@ -121,11 +123,11 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .hand-bar { z-index: var(--z-hand); background: none; border: 0; bottom: 0; left: 6px; display: flex; align-items: flex-end; gap: 6px; }
 .piles { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .pile-minor { display: flex; flex-direction: column; font: 600 12px/1 var(--font-label); letter-spacing: 0.04em; color: var(--muted); }
-.deck-pile { position: relative; width: 60px; height: 84px; box-sizing: border-box; background: var(--panel); border: 2px solid var(--teal); border-radius: var(--radius-s); box-shadow: 3px 3px 0 0 var(--graphite), 3px 3px 0 2px var(--teal); margin-right: 3px; margin-bottom: 3px; display: flex; align-items: center; justify-content: center; }
+.deck-pile { position: relative; width: 60px; height: 84px; box-sizing: border-box; background: var(--panel) var(--card-back) center / cover no-repeat; border: 2px solid var(--teal); border-radius: var(--radius-s); box-shadow: 3px 3px 0 0 var(--graphite), 3px 3px 0 2px var(--teal); margin-right: 3px; margin-bottom: 3px; display: flex; align-items: center; justify-content: center; }
 .hand-bar.collapsed .piles { display: none; }
 /* The Deck Damage animation (issue 203): the top card lifts off the pile, burns and dissolves; a red -1 floats up. */
 .deck-burn, .burn-card { position: absolute; inset: 0; pointer-events: none; }
-.burn-card { border-radius: var(--radius-s); background: var(--panel) repeating-linear-gradient(45deg, var(--panel) 0 6px, var(--graphite) 6px 12px); border: 2px solid var(--teal); box-sizing: border-box; opacity: 0; animation: burn-card 900ms ease-in forwards; }
+.burn-card { border-radius: var(--radius-s); background: var(--panel) var(--card-back) center / cover no-repeat; border: 2px solid var(--teal); box-sizing: border-box; opacity: 0; animation: burn-card 900ms ease-in forwards; }
 .burn-flame { position: absolute; left: 0; right: 0; bottom: 0; height: 70%; border-radius: inherit; background: linear-gradient(to top, var(--orange), transparent); opacity: 0; animation: burn-flame 900ms ease-in forwards; }
 .burn-ember { position: absolute; bottom: 20%; width: 4px; height: 4px; border-radius: 50%; background: var(--orange); opacity: 0; animation: burn-ember 500ms ease-out forwards; }
 .burn-minus { position: absolute; left: 50%; top: 0; font: 500 20px/1 var(--font-number); color: var(--red); opacity: 0; animation: burn-minus 900ms ease-out forwards; }
@@ -173,7 +175,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 @media (prefers-reduced-motion: reduce) {
   .deck-skull { animation: none; }
 }
-.deck-count { font: 500 24px/1 var(--font-number); color: var(--text); }
+.deck-count { padding: 2px 7px; border-radius: 4px; background: color-mix(in srgb, var(--graphite) 85%, transparent); font: 500 24px/1 var(--font-number); color: var(--text); }
 .hand { margin: 0; padding: 0; list-style: none; display: flex; height: 62px; position: relative; }
 /* --step and --card-w come from fanSpacing (hand-fan.ts). */
 .hand li { position: absolute; bottom: calc(62px - var(--card-w) * 1.4); left: calc(var(--position) * var(--step)); transform-origin: 50% 100%; opacity: var(--dim, 1); transition: transform 80ms, opacity 150ms; transform: translateY(calc(var(--offset) * var(--offset) * 3px)) rotate(calc(var(--offset) * 7deg)); }
@@ -191,7 +193,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .hand li.arriving { animation: draw-fly 450ms ease-out var(--draw-delay) backwards; }
 .hand li.arriving .card { animation: draw-flip 450ms linear var(--draw-delay) backwards; }
 .hand.drawing .card:disabled { opacity: 1; }
-.card-back { position: absolute; inset: 0; border-radius: inherit; background: repeating-linear-gradient(45deg, var(--panel) 0 6px, var(--graphite) 6px 12px); border: 1.5px solid var(--teal); animation: draw-back 450ms steps(1, end) var(--draw-delay) forwards; }
+.card-back { position: absolute; inset: 0; border-radius: inherit; background: var(--panel) var(--card-back) center / cover no-repeat; border: 1.5px solid var(--teal); animation: draw-back 450ms steps(1, end) var(--draw-delay) forwards; }
 @keyframes draw-fly {
   0% { transform: translate(var(--from-x), var(--from-y)) scale(0.6) rotate(0deg); }
   50% { transform: translate(calc(var(--from-x) / 2), -46px) scale(0.85) rotate(0deg); }
