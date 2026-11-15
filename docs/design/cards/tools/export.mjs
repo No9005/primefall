@@ -21,7 +21,10 @@ const FILES = {
   move: 'walk-it-off', pitch: 'overtime', wait: 'smoke-break', 'back-a': 'back',
   // Tilly Turnover
   temp: 'temporary-solution', survey: 'site-survey', demo: 'urban-renewal', heap: 'heavy-metal', price: 'price-tag',
-  tmove: 'walk-it-off-tilly', tpitch: 'cannibalize', twait: 'idle-hands'
+  tmove: 'walk-it-off-tilly', tpitch: 'cannibalize', twait: 'idle-hands',
+  // Kit Crosshair
+  kl: 'long-shot', kv: 'vanish', kk: 'personal-space', kb: 'shield-breaker',
+  kmove: 'walk-it-off-kit', kpitch: 'trade-in', kwait: 'stakeout'
 };
 
 function loadChromium() {
