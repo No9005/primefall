@@ -4,24 +4,15 @@ import { distanceGain, SfxLimiter, VoiceDirector } from "./audio-mix";
 import { planMoment, type PlanContext, type SoundRequest, type Source } from "./audio-cues";
 
 // The player of the game sound: it loads the Heroes' sounds, starts the sounds the cues ask for through the rules of the
-// mix (`audio-mix.ts`) on two buses (voice and effects) and has the mute switch. It uses the Web Audio API of the browser,
-// no library. A browser lets a page make sound only after a tap, so the sound is armed on the first one (`armUnlock`).
+// mix (`audio-mix.ts`) on two buses (voice and effects). It uses the Web Audio API of the browser,
+// no library. There is no mute switch yet; it comes with the menu (issue #446). A browser lets a page make sound only after a tap, so the sound is armed on the first one (`armUnlock`).
 
-const MUTE_KEY = "primefall-sound-muted";
 /** A voice that is cut by a more important one fades out this fast. */
 const CUT_FADE_S = 0.08;
 
 interface Playing {
   source: AudioBufferSourceNode;
   gain: GainNode;
-}
-
-function readMuted(): boolean {
-  try {
-    return window.localStorage.getItem(MUTE_KEY) === "1";
-  } catch {
-    return false;
-  }
 }
 
 export class GameAudio {
@@ -35,29 +26,6 @@ export class GameAudio {
   private readonly director = new VoiceDirector();
   private readonly limiter = new SfxLimiter();
   private readonly lastPick = new Map<string, string>();
-  private readonly listeners = new Set<() => void>();
-  private muted = readMuted();
-
-  get isMuted(): boolean {
-    return this.muted;
-  }
-
-  setMuted(muted: boolean): void {
-    this.muted = muted;
-    try {
-      window.localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
-    } catch {
-      // Private mode: the switch works for this visit only.
-    }
-    if (muted) this.stopAll();
-    for (const listener of this.listeners) listener();
-  }
-
-  /** For `useSyncExternalStore`: the switch changed. */
-  subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener);
-    return () => void this.listeners.delete(listener);
-  };
 
   /** Arms the sound on the first tap or key press of the page. Returns the function that takes it back. */
   armUnlock(): () => void {
@@ -121,7 +89,7 @@ export class GameAudio {
   play(requests: readonly SoundRequest[], listener?: GridPosition): void {
     const context = this.context;
     // A context that is not running yet (the first tap is still arming it) queues the sounds and plays them once it runs.
-    if (this.muted || !context || context.state === "closed") return;
+    if (!context || context.state === "closed") return;
     if (context.state === "suspended") void context.resume().catch(() => undefined);
     const nowMs = context.currentTime * 1000;
     for (const request of requests) this.start(context, request, nowMs, listener);
@@ -161,7 +129,7 @@ export class GameAudio {
     sound.source.stop(at + CUT_FADE_S + 0.02);
   }
 
-  /** Silences everything that plays or waits to play (a Hero Select tap, mute, the end of the screen). */
+  /** Silences everything that plays or waits to play (a Hero Select tap, the end of the screen). */
   stopAll(): void {
     for (const { source } of this.playing.values()) {
       try {

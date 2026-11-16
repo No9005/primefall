@@ -17,7 +17,7 @@ Final sounds of the Heroes, ready for the web app. One folder per Hero: `audio/<
 
 ## How the game plays it (`apps/web/src/audio*.ts`)
 
-The Web Audio API of the browser, no library: two buses (voice and effects), a mute switch in the top bar (kept in the browser), and the sound is armed on the first tap, because a browser plays sound only after one. The sounds of the Heroes in the match load while the player plans. A Hero Select tap plays the Hero's line and its effects; a Pitch, a frame of the Resolution and the end of the match follow the cues.
+The Web Audio API of the browser, no library: two buses (voice and effects); the sound is armed on the first tap, because a browser plays sound only after one. There is no mute switch yet: it comes with the menu with the burger button (issue #446). The sounds of the Heroes in the match load while the player plans. A Hero Select tap plays the Hero's line and its effects; a Pitch, a frame of the Resolution and the end of the match follow the cues.
 
 **What may be heard (Fog of War).** Own Heroes always. An enemy only while the Squad sees it and it is drawn; the sound of a Hidden or unseen enemy would give away its position.
 
