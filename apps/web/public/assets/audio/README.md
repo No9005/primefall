@@ -34,8 +34,9 @@ Rules to decide in #422 before building:
 |---|---|---|
 | Tilly Turnover | `audio/tilly/` | Bella, Professional Bright Warm |
 | Kit Crosshair | `audio/kit/` | Oxley, Evil Character |
+| Max Overload | `audio/max/` | Morgan, Deep, Powerful |
 
-Max's sounds follow. Kit uses Tilly's `hit-flesh` effect (`kit/manifest.json` points to it with `shared: true`); the Shield sounds are shared the same way and are in `tilly/sfx/`.
+Kit and Max use Tilly's `hit-flesh` effect, Max also the Shield sounds (`shield-pop`, `shield-hit`): their manifests point to `tilly/sfx/` with `shared: true`. Max's Select line is an earlier take (4.4 s, over the 4 s limit) and his heavy hit line `hit-heavy-2` is 4.0 s (limit 3.5 s); check both in the game.
 
 ## Licence
 
