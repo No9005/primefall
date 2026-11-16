@@ -393,7 +393,6 @@
      "voice.attack-2",
      "voice.attack-3"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -420,7 +419,6 @@
      "voice.handle-1",
      "voice.handle-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -448,7 +446,6 @@
      "voice.buy2-1",
      "voice.buy2-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -482,7 +479,6 @@
      "voice.coffee-1",
      "voice.coffee-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -504,7 +500,6 @@
      "voice.express-1",
      "voice.express-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -526,7 +521,6 @@
      "voice.hook-1",
      "voice.hook-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -555,7 +549,6 @@
      "voice.hardhat-1",
      "voice.hardhat-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -581,8 +574,8 @@
      "voice.pitch-1",
      "voice.pitch-2"
     ],
-    "mode": "inTurn",
-    "atMs": 0
+    "atMs": 0,
+    "chance": 0.6
    }
   },
   {
@@ -593,7 +586,6 @@
      "voice.wait-1",
      "voice.wait-2"
     ],
-    "mode": "inTurn",
     "atMs": 0
    }
   },
@@ -610,7 +602,6 @@
      "voice.hit-light-1",
      "voice.hit-light-2"
     ],
-    "mode": "inTurn",
     "atMs": 150
    },
    "sfx": [
@@ -619,7 +610,6 @@
       "sfx.ricochet-1",
       "sfx.ricochet-2"
      ],
-     "mode": "inTurn",
      "atMs": 0
     }
    ]
@@ -637,7 +627,6 @@
      "voice.hit-heavy-1",
      "voice.hit-heavy-2"
     ],
-    "mode": "inTurn",
     "atMs": 200
    },
    "sfx": [
@@ -646,7 +635,6 @@
       "sfx.steel-tear-1",
       "sfx.steel-tear-2"
      ],
-     "mode": "inTurn",
      "atMs": 0
     },
     {
@@ -670,7 +658,6 @@
      "voice.hit-shield-1",
      "voice.hit-shield-2"
     ],
-    "mode": "inTurn",
     "atMs": 150
    },
    "sfx": [
@@ -679,7 +666,6 @@
       "sfx.ricochet-1",
       "sfx.ricochet-2"
      ],
-     "mode": "inTurn",
      "atMs": 0
     },
     {
@@ -710,9 +696,8 @@
      "voice.cover-1",
      "voice.cover-2"
     ],
-    "mode": "inTurn",
     "atMs": -200,
-    "chance": "sometimes"
+    "chance": 0.5
    },
    "sfx": [
     {
@@ -740,7 +725,6 @@
      "voice.full-cover-1",
      "voice.full-cover-2"
     ],
-    "mode": "inTurn",
     "atMs": 0
    },
    "sfx": [
@@ -769,7 +753,6 @@
       "sfx.step-2",
       "sfx.step-3"
      ],
-     "mode": "inTurn",
      "atMs": 160,
      "everyMs": 320,
      "note": "one stomp per half cycle of the Walk clip"
@@ -810,7 +793,6 @@
      "voice.victory-2",
      "voice.victory-3"
     ],
-    "mode": "inTurn",
     "atMs": 0
    }
   },
@@ -822,7 +804,6 @@
      "voice.defeat-1",
      "voice.defeat-2"
     ],
-    "mode": "inTurn",
     "atMs": 0
    }
   }

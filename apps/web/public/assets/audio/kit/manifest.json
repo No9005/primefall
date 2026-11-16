@@ -343,7 +343,6 @@
      "voice.attack-2",
      "voice.attack-3"
     ],
-    "mode": "inTurn",
     "atMs": 0
    }
   },
@@ -356,7 +355,6 @@
      "voice.long-shot-1",
      "voice.long-shot-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -384,7 +382,6 @@
      "voice.long-shot-1",
      "voice.long-shot-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -418,7 +415,6 @@
      "voice.vanish-1",
      "voice.vanish-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -439,7 +435,6 @@
      "voice.personal-space-1",
      "voice.personal-space-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -468,7 +463,6 @@
      "voice.shield-breaker-2",
      "voice.shield-breaker-3"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -495,8 +489,8 @@
      "voice.pitch-2",
      "voice.pitch-3"
     ],
-    "mode": "inTurn",
-    "atMs": 0
+    "atMs": 0,
+    "chance": 0.6
    }
   },
   {
@@ -509,7 +503,6 @@
      "voice.wait-2",
      "voice.wait-3"
     ],
-    "mode": "inTurn",
     "atMs": 0
    }
   },
@@ -525,7 +518,6 @@
      "voice.hit-light-1",
      "voice.hit-light-2"
     ],
-    "mode": "inTurn",
     "atMs": 0
    },
    "sfx": [
@@ -549,7 +541,6 @@
      "voice.hit-heavy-1",
      "voice.hit-heavy-2"
     ],
-    "mode": "inTurn",
     "atMs": 0
    },
    "sfx": [
@@ -572,7 +563,6 @@
      "voice.hit-hidden-1",
      "voice.hit-hidden-2"
     ],
-    "mode": "inTurn",
     "atMs": 1700
    },
    "sfx": [
@@ -599,7 +589,6 @@
      "voice.hidden-ends-1",
      "voice.hidden-ends-2"
     ],
-    "mode": "inTurn",
     "atMs": 500
    },
    "sfx": [
@@ -620,9 +609,8 @@
      "voice.cover-1",
      "voice.cover-2"
     ],
-    "mode": "inTurn",
     "atMs": -200,
-    "chance": "sometimes"
+    "chance": 0.5
    },
    "sfx": [
     {
@@ -644,7 +632,6 @@
      "voice.full-cover-1",
      "voice.full-cover-2"
     ],
-    "mode": "inTurn",
     "atMs": 0
    },
    "sfx": [
@@ -667,7 +654,6 @@
       "sfx.step-2",
       "sfx.step-3"
      ],
-     "mode": "inTurn",
      "atMs": 125,
      "everyMs": 250,
      "note": "one step per half cycle of the Walk clip"
@@ -707,7 +693,6 @@
      "voice.victory-2",
      "voice.victory-3"
     ],
-    "mode": "inTurn",
     "atMs": 0
    }
   },
@@ -719,7 +704,6 @@
      "voice.defeat-1",
      "voice.defeat-2"
     ],
-    "mode": "inTurn",
     "atMs": 0
    }
   }

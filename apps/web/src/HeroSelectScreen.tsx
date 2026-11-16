@@ -1,6 +1,7 @@
 import { HeroClass } from "game-core";
 import { Application, Container, Graphics, Text } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
+import { gameAudio } from "./audio";
 import { cardListTitle, cardRowName, cardRows, feetX, HERO_CLOSE_UP, HERO_NAMES, HERO_PROFILES, HERO_TASKS, MODE_LABELS, type SelectMode, SELECTABLE_HEROES } from "./hero-select";
 import { HERO_STYLE } from "./hero-style";
 import { loadPixelHeroes, PixelHero } from "./pixel-heroes";
@@ -214,6 +215,12 @@ export function HeroSelectScreen({ mode, initial, onBack, onStart }: HeroSelectS
   const [scale, setScale] = useState(fitScale);
 
   useEffect(() => {
+    // The sounds of the three Heroes load while the player looks at them; leaving the screen silences a line that still runs.
+    void gameAudio.load(SELECTABLE_HEROES);
+    return () => gameAudio.stopAll();
+  }, []);
+
+  useEffect(() => {
     const onResize = () => setScale(fitScale());
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -242,7 +249,11 @@ export function HeroSelectScreen({ mode, initial, onBack, onStart }: HeroSelectS
             style={{ left: AREA.lefts[index], top: AREA.top, width: AREA.width, height: AREA.height }}
             aria-pressed={hero === heroClass}
             data-testid={`hero-${heroClass}`}
-            onClick={() => setChoice((current) => ({ hero: heroClass, tap: current.tap + 1 }))}
+            onClick={() => {
+              setChoice((current) => ({ hero: heroClass, tap: current.tap + 1 }));
+              gameAudio.stopAll();
+              gameAudio.playMoment("heroSelected", { heroId: `select-${heroClass}`, heroClass, tile: undefined });
+            }}
           >
             <span className="hs-name">{HERO_PROFILES[heroClass].name.toUpperCase()}</span>
             <span className="hs-class">{HERO_NAMES[heroClass].toUpperCase()}</span>
