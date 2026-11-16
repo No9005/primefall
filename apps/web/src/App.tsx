@@ -9,6 +9,8 @@ import { clearSavedMatch, loadSavedMatch, loadSavedPlayerHero, parsePlayerHero, 
 import { HeroSelectScreen } from "./HeroSelectScreen";
 import { PlanningScreen } from "./PlanningScreen";
 import { GlossaryScreen } from "./GlossaryScreen";
+import { gameAudio } from "./audio";
+import { SoundToggle } from "./SoundToggle";
 
 /** The player's Squad in the offline prototype. */
 const PLAYER_SQUAD = SquadId.Left;
@@ -125,6 +127,8 @@ export function App() {
   // The Player Hero: set by the start parameter (?hero=controller); Resume restores the saved match's one.
   const [playerHero, setPlayerHero] = useState(() => parsePlayerHero(startParameters.get("hero")));
   const [view, setView] = useMatchView(host, started, playerHero);
+  // A browser plays sound only after a tap: the first one arms it.
+  useEffect(() => gameAudio.armUnlock(), []);
 
   /** Starts a match of the mode: the host of the start screen is replaced by one with the same seed in the mode of the role. */
   function beginMatch(side: Role | undefined) {
@@ -194,6 +198,7 @@ export function App() {
   return (
     <main className="app">
       <div className="rotate-notice">Rotate your device</div>
+      <SoundToggle />
       {renderScreen()}
     </main>
   );

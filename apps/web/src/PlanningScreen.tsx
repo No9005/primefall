@@ -37,6 +37,8 @@ import {
 } from "game-core";
 import { type ComponentProps, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
+import { gameAudio } from "./audio";
+import { planFrame } from "./audio-cues";
 import { Board } from "./Board";
 import { EnergyPill, FloatingCard, PulledCard } from "./game-parts";
 import { HERO_BASICS } from "./hero-basics";
@@ -64,7 +66,7 @@ import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionSt
 import { buildCommentary, type CommentaryEntry, type CommentarySide, MAX_COMMENTARY_ENTRIES } from "./commentary";
 import { CLIP_SPEED } from "./clip-player";
 import { coverGridOf } from "./terrain";
-import { buildPlaybackFrames, enemyTokens, STEP_MS, tickCountOf } from "./playback";
+import { buildPlaybackFrames, enemyIsDrawn, enemyTokens, STEP_MS, tickCountOf } from "./playback";
 import type { ClipName } from "./hero-clips";
 import type { EffectCue } from "./weapon-effects";
 import { actionUsesCard, addWaitAction, CARD_USE_LABELS, CardUse, cardUseReasons, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,removeQueueAction, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
@@ -464,8 +466,11 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const unmounted = useRef(false);
   useEffect(() => {
     unmounted.current = false;
+    // The sounds of the Heroes in this match load while the player plans.
+    void gameAudio.load([...new Set([...view.heroes, ...view.enemies].map((unit) => unit.heroClass))]);
     return () => {
       unmounted.current = true;
+      gameAudio.stopAll();
     };
   }, []);
 
@@ -818,7 +823,10 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   function useCard(card: CardIndex, face: Face) {
     setArmed(undefined);
     setAiming(undefined);
-    if (face === CardUse.Pitch) setPitched([...pitched, card]);
+    if (face === CardUse.Pitch) {
+      setPitched([...pitched, card]);
+      gameAudio.playMoment("cardPitched", { heroId: selected.id, heroClass: selected.heroClass, tile: selected.position });
+    }
     else if (face === CardUse.Move) setArmed(card);
     else {
       const { target } = HERO_DECKS[selected.heroClass][card]!;
@@ -994,6 +1002,8 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     const deckDamage: Record<string, number> = {};
     const shuffled: Record<string, number> = {};
     const playerHero = view.heroes.find((hero) => hero.heroClass === playerHeroClass)!;
+    // The enemies the Squad sees at the start or at the end of the Resolution may be heard; the rest stay silent (Fog of War).
+    const heardEnemies = new Set([...view.enemies, ...result.view.enemies].filter((enemy) => enemy.visibility === Visibility.Visible).map((enemy) => enemy.id));
     const exhausted: string[] = [];
     const tickCount = tickCountOf(result.events);
     let commentary: CommentaryEntry[] = [];
@@ -1073,6 +1083,19 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         coverPlacedOwn,
         coverNoScorch,
       });
+      gameAudio.play(
+        planFrame(
+          frame,
+          gameAudio.contextFor({
+            classOf: (heroId) => classes.get(heroId),
+            isOwn: (heroId) => ownHeroIds.has(heroId),
+            isHeard: (heroId) => ownHeroIds.has(heroId) || (heardEnemies.has(heroId) && enemyIsDrawn(frame.clips[heroId])),
+            tileOf: (heroId) => positions[heroId] ?? startPositions[heroId],
+            immediate: reducedMotion,
+          }),
+        ),
+        positions[playerHero.id] ?? startPositions[playerHero.id],
+      );
       // Cover that is placed or destroyed changes the board at the moment its effect shows it (at once with reduced motion).
       const hold = reducedMotion ? STEP_MS : Math.max(STEP_MS, frame.holdMs / CLIP_SPEED);
       let waited = 0;
@@ -1103,6 +1126,9 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     // The Prime Zone counts after the Resolution: pips fill and the callouts play one after the other.
     const zoneResult = view.zones && result.view.zones;
     if (zoneResult) setZonesAfter(zoneResult);
+    if (result.view.result?.winner !== undefined) {
+      gameAudio.playMoment("matchEnd", { heroId: playerHero.id, heroClass: playerHero.heroClass, tile: positions[playerHero.id] ?? startPositions[playerHero.id] }, result.view.result.winner === view.squad);
+    }
     const callouts = zoneResult
       ? [...zoneCallouts(view.zones!, zoneResult, view.squad), ...matchEndCallouts(result.view.result, view.squad)]
       : primeCallouts(view.primeProgress, result.view.primeProgress, view.squad);

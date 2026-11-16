@@ -1,6 +1,6 @@
 # Game audio
 
-Final sounds of the Heroes, ready for the web app. One folder per Hero: `audio/<hero>/voice/`, `audio/<hero>/sfx/` and a `manifest.json`. Nothing here is played yet; the game has no audio code (issue #422 asks whether sound is in scope).
+Final sounds of the Heroes, ready for the web app. One folder per Hero: `audio/<hero>/voice/`, `audio/<hero>/sfx/` and a `manifest.json`. The game plays them (see below).
 
 ## Files
 
@@ -13,20 +13,36 @@ Final sounds of the Heroes, ready for the web app. One folder per Hero: `audio/<
 `manifest.json` has two parts:
 
 - `assets`: every file with its id, the spoken text or what the sound is, and its length.
-- `cues`: when to play what. `on` is the game event (`cardPlayed`, `attackHit`, `moveEndedOnCover`, `exhausted`, `matchEnd`, ...), `clip` the Hero clip, `atMs` the time in ms from the start of that clip (negative: before it). `mode: "inTurn"` means the variants play one after the other, never the same twice in a row. `guess: true` marks times the code does not give exactly.
+- `cues`: when to play what. `on` is the game event (`cardPlayed`, `attackHit`, `moveEndedOnCover`, `exhausted`, `matchEnd`, ...), `card` the card, `atMs` the time in ms from the start of that Hero's clip (negative: before it), `atImpact` the moment the shot arrives, on the tile of its target. `play` lists variants: one is picked at random, never the same twice in a row. `chance` (0 to 1) is the chance that the Hero says anything at all: a Pitch has 0.6, going into cover 0.5. `guess: true` marks times the code does not give exactly.
 
-The cues are proposals made in the review of the animations with the product owner, not a decision about the sound system.
+## How the game plays it (`apps/web/src/audio*.ts`)
 
-## Playing it with PixiJS
+The Web Audio API of the browser, no library: two buses (voice and effects), a mute switch in the top bar (kept in the browser), and the sound is armed on the first tap, because a browser plays sound only after one. The sounds of the Heroes in the match load while the player plans. A Hero Select tap plays the Hero's line and its effects; a Pitch, a frame of the Resolution and the end of the match follow the cues.
 
-PixiJS has no audio engine of its own. Use the Web Audio API of the browser (no new dependency): decode the files once, start every cue at `clipStart + atMs`, keep three buses (voice, effects, music) so each can be turned down or muted. A browser only plays sound after a touch of the player, so start the audio context on the first tap.
+**What may be heard (Fog of War).** Own Heroes always. An enemy only while the Squad sees it and it is drawn; the sound of a Hidden or unseen enemy would give away its position.
 
-Rules to decide in #422 before building:
+**How important a sound is** (`CUE_PRIORITY` in `audio-mix.ts`; the own Squad's Heroes get one tier more):
 
-- A Squad may only hear what it sees. The sound of a Hidden or unseen enemy would give away its position. Play a cue only for events the Squad's view contains.
-- Limit the voices that run at once (one or two), give each Hero a pause between two lines, and let a hit win against a card line.
-- Duck the music a few dB while a voice runs.
-- A mute switch.
+| Tier | Voice | Effects |
+|---|---|---|
+| 5 Critical | Hero Select, Exhausted, the end of the match | the same |
+| 4 Important | a Hero is hit (the cry) | the shots, the impacts, a hit |
+| 3 Normal | the line of a card, a Shield, the end of Hidden | a Shield, the end of Hidden |
+| 2 Minor | taking cover | taking cover, Cover that crumbles |
+| 1 Ambient | a Wait, a Pitch | steps |
+
+**Voice rules** (`DEFAULT_VOICE_RULES`):
+
+- One line at a time per Hero. A more important line cuts the one that runs; a weaker one is dropped.
+- Cooldown: after a line ended, the Hero is silent for 4 s. Only a Critical line, or one two tiers above the last line, breaks it.
+- At most two Heroes speak at once within 6 tiles of each other. A third waits (is dropped) unless it is more important than the quietest speaker, which then fades out.
+- A Pitch speaks only some of the time (`chance`), and a random variant when it does.
+
+**Effect rules** (`DEFAULT_SFX_RULES`): at most 10 at once (the least important makes room for a more important one), the same effect never twice within 70 ms (six Heroes taking the same step), and a sound is quieter the further it is from the player's Hero (full within 4 tiles, down to 35 % at 14).
+
+With reduced motion the clips do not play, so all sounds of a frame start with the frame.
+
+The values are first proposals; tune them by playing.
 
 ## Heroes
 

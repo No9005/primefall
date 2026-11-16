@@ -153,7 +153,7 @@ const isBlastEvent = (event: MatchEvent) =>
   (event.kind === EventKind.AreaBlasted || event.kind === EventKind.AttackHit || event.kind === EventKind.AttackFailed || event.kind === EventKind.CoverDestroyed);
 
 /** The damage a Hero takes when it Moves through a Scrap Field. */
-const isFieldDamage = (event: MatchEvent) => event.card === FIELD_CARD && event.kind === EventKind.AttackHit && event.targetId !== undefined;
+export const isFieldDamage = (event: MatchEvent) => event.card === FIELD_CARD && event.kind === EventKind.AttackHit && event.targetId !== undefined;
 
 /** A Move that ends on Cover takes cover (the Hero has walked there in this frame). */
 function takeCoverAtMoveEnd(lastStep: ReadonlyMap<string, { frame: PlaybackFrame; to: GridPosition }>, coverOf: ((tile: GridPosition) => CoverKind) | undefined): void {

@@ -349,7 +349,6 @@
      "voice.attack-3",
      "voice.attack-4"
     ],
-    "mode": "inTurn",
     "atMs": 0
    },
    "sfx": [
@@ -372,7 +371,6 @@
      "voice.price-tag-1",
      "voice.price-tag-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -400,7 +398,6 @@
      "voice.site-survey-1",
      "voice.site-survey-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -421,7 +418,6 @@
      "voice.urban-renewal-1",
      "voice.urban-renewal-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -455,7 +451,6 @@
      "voice.temporary-solution-1",
      "voice.temporary-solution-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -495,7 +490,6 @@
      "voice.heavy-metal-1",
      "voice.heavy-metal-2"
     ],
-    "mode": "inTurn",
     "atMs": -200
    },
    "sfx": [
@@ -514,8 +508,8 @@
      "voice.pitch-1",
      "voice.pitch-2"
     ],
-    "mode": "inTurn",
-    "atMs": 0
+    "atMs": 0,
+    "chance": 0.6
    }
   },
   {
@@ -529,7 +523,6 @@
      "voice.hit-light-1",
      "voice.hit-light-2"
     ],
-    "mode": "inTurn",
     "atMs": 0
    },
    "sfx": [
@@ -552,7 +545,6 @@
      "voice.hit-heavy-1",
      "voice.hit-heavy-2"
     ],
-    "mode": "inTurn",
     "atMs": 0
    },
    "sfx": [
@@ -578,7 +570,6 @@
      "voice.hit-shield-1",
      "voice.hit-shield-2"
     ],
-    "mode": "inTurn",
     "atMs": 0
    },
    "sfx": [
@@ -610,9 +601,8 @@
      "voice.cover-1",
      "voice.cover-2"
     ],
-    "mode": "inTurn",
     "atMs": -200,
-    "chance": "sometimes"
+    "chance": 0.5
    },
    "sfx": [
     {
@@ -633,7 +623,6 @@
      "voice.full-cover-1",
      "voice.full-cover-2"
     ],
-    "mode": "inTurn",
     "atMs": 0
    },
    "sfx": [
@@ -656,7 +645,6 @@
       "sfx.step-2",
       "sfx.step-3"
      ],
-     "mode": "inTurn",
      "atMs": 145,
      "everyMs": 290,
      "note": "one step per half cycle of the Walk clip"
@@ -696,7 +684,6 @@
      "voice.victory-2",
      "voice.victory-3"
     ],
-    "mode": "inTurn",
     "atMs": 0
    }
   },
@@ -708,7 +695,6 @@
      "voice.defeat-1",
      "voice.defeat-2"
     ],
-    "mode": "inTurn",
     "atMs": 0
    }
   }
