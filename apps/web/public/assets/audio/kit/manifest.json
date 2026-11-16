@@ -1,0 +1,709 @@
+{
+ "hero": "assassin",
+ "name": "Kit Crosshair",
+ "format": "mp3, mono",
+ "note": "Cues are proposals from the review of the Kit animations; times are in ms from the start of the clip of that card or event. 'guess' marks times the code does not give exactly. The game decides what a Squad may hear: play a cue only for what its Squad sees.",
+ "assets": {
+  "voice.attack-1": {
+   "file": "voice/attack-1.mp3",
+   "kind": "voice",
+   "text": "Quiet.",
+   "durationMs": 758
+  },
+  "voice.attack-2": {
+   "file": "voice/attack-2.mp3",
+   "kind": "voice",
+   "text": "Clean.",
+   "durationMs": 784
+  },
+  "voice.attack-3": {
+   "file": "voice/attack-3.mp3",
+   "kind": "voice",
+   "text": "Noted.",
+   "durationMs": 705
+  },
+  "voice.select": {
+   "file": "voice/select.mp3",
+   "kind": "voice",
+   "text": "Nobody asked for my real name. Nobody will.",
+   "durationMs": 3135
+  },
+  "voice.long-shot-1": {
+   "file": "voice/long-shot-1.mp3",
+   "kind": "voice",
+   "text": "Breathe out. It helps.",
+   "durationMs": 2064
+  },
+  "voice.long-shot-2": {
+   "file": "voice/long-shot-2.mp3",
+   "kind": "voice",
+   "text": "Dead centre. As usual.",
+   "durationMs": 2038
+  },
+  "voice.vanish-1": {
+   "file": "voice/vanish-1.mp3",
+   "kind": "voice",
+   "text": "I was never here.",
+   "durationMs": 1332
+  },
+  "voice.vanish-2": {
+   "file": "voice/vanish-2.mp3",
+   "kind": "voice",
+   "text": "Don't look for me.",
+   "durationMs": 1123
+  },
+  "voice.personal-space-1": {
+   "file": "voice/personal-space-1.mp3",
+   "kind": "voice",
+   "text": "Personal space. Look it up.",
+   "durationMs": 2011
+  },
+  "voice.personal-space-2": {
+   "file": "voice/personal-space-2.mp3",
+   "kind": "voice",
+   "text": "Too close. Let's fix that.",
+   "durationMs": 2168
+  },
+  "voice.shield-breaker-1": {
+   "file": "voice/shield-breaker-1.mp3",
+   "kind": "voice",
+   "text": "Armour is a suggestion.",
+   "durationMs": 2116
+  },
+  "voice.shield-breaker-2": {
+   "file": "voice/shield-breaker-2.mp3",
+   "kind": "voice",
+   "text": "Hard shell. Soft centre.",
+   "durationMs": 2194
+  },
+  "voice.shield-breaker-3": {
+   "file": "voice/shield-breaker-3.mp3",
+   "kind": "voice",
+   "text": "Let's see what's underneath.",
+   "durationMs": 1672
+  },
+  "voice.pitch-1": {
+   "file": "voice/pitch-1.mp3",
+   "kind": "voice",
+   "text": "Everything has a price.",
+   "durationMs": 1620
+  },
+  "voice.pitch-2": {
+   "file": "voice/pitch-2.mp3",
+   "kind": "voice",
+   "text": "No questions asked.",
+   "durationMs": 1489
+  },
+  "voice.pitch-3": {
+   "file": "voice/pitch-3.mp3",
+   "kind": "voice",
+   "text": "Cards. Organs. Doesn't matter.",
+   "durationMs": 2795
+  },
+  "voice.wait-1": {
+   "file": "voice/wait-1.mp3",
+   "kind": "voice",
+   "text": "Patience.",
+   "durationMs": 914
+  },
+  "voice.wait-2": {
+   "file": "voice/wait-2.mp3",
+   "kind": "voice",
+   "text": "I can wait.",
+   "durationMs": 914
+  },
+  "voice.wait-3": {
+   "file": "voice/wait-3.mp3",
+   "kind": "voice",
+   "text": "Patience is a firearm.",
+   "durationMs": 2220
+  },
+  "voice.hit-light-1": {
+   "file": "voice/hit-light-1.mp3",
+   "kind": "voice",
+   "text": "Hm.",
+   "durationMs": 522
+  },
+  "voice.hit-light-2": {
+   "file": "voice/hit-light-2.mp3",
+   "kind": "voice",
+   "text": "Noted.",
+   "durationMs": 888
+  },
+  "voice.hit-heavy-1": {
+   "file": "voice/hit-heavy-1.mp3",
+   "kind": "voice",
+   "text": "Sloppy. My mistake.",
+   "durationMs": 2090
+  },
+  "voice.hit-heavy-2": {
+   "file": "voice/hit-heavy-2.mp3",
+   "kind": "voice",
+   "text": "That will cost you.",
+   "durationMs": 1567
+  },
+  "voice.hit-hidden-1": {
+   "file": "voice/hit-hidden-1.mp3",
+   "kind": "voice",
+   "text": "So much for subtle.",
+   "durationMs": 1515
+  },
+  "voice.hit-hidden-2": {
+   "file": "voice/hit-hidden-2.mp3",
+   "kind": "voice",
+   "text": "Well. That's one way to be seen.",
+   "durationMs": 2403
+  },
+  "voice.hidden-ends-1": {
+   "file": "voice/hidden-ends-1.mp3",
+   "kind": "voice",
+   "text": "Spotted. Fine.",
+   "durationMs": 1463
+  },
+  "voice.hidden-ends-2": {
+   "file": "voice/hidden-ends-2.mp3",
+   "kind": "voice",
+   "text": "Hello.",
+   "durationMs": 601
+  },
+  "voice.cover-1": {
+   "file": "voice/cover-1.mp3",
+   "kind": "voice",
+   "text": "Better.",
+   "durationMs": 627
+  },
+  "voice.cover-2": {
+   "file": "voice/cover-2.mp3",
+   "kind": "voice",
+   "text": "Cosy.",
+   "durationMs": 914
+  },
+  "voice.full-cover-1": {
+   "file": "voice/full-cover-1.mp3",
+   "kind": "voice",
+   "text": "Try again.",
+   "durationMs": 993
+  },
+  "voice.full-cover-2": {
+   "file": "voice/full-cover-2.mp3",
+   "kind": "voice",
+   "text": "They always miss.",
+   "durationMs": 1672
+  },
+  "voice.exhausted-1": {
+   "file": "voice/exhausted-1.mp3",
+   "kind": "voice",
+   "text": "Contract terminated.",
+   "durationMs": 1541
+  },
+  "voice.exhausted-2": {
+   "file": "voice/exhausted-2.mp3",
+   "kind": "voice",
+   "text": "Tell them I was never here.",
+   "durationMs": 1855
+  },
+  "voice.victory-1": {
+   "file": "voice/victory-1.mp3",
+   "kind": "voice",
+   "text": "Paid in full.",
+   "durationMs": 1071
+  },
+  "voice.victory-2": {
+   "file": "voice/victory-2.mp3",
+   "kind": "voice",
+   "text": "Nothing personal. Everything billable.",
+   "durationMs": 2847
+  },
+  "voice.victory-3": {
+   "file": "voice/victory-3.mp3",
+   "kind": "voice",
+   "text": "Satisfied customers. Mostly.",
+   "durationMs": 2612
+  },
+  "voice.defeat-1": {
+   "file": "voice/defeat-1.mp3",
+   "kind": "voice",
+   "text": "Bad debt.",
+   "durationMs": 1724
+  },
+  "voice.defeat-2": {
+   "file": "voice/defeat-2.mp3",
+   "kind": "voice",
+   "text": "That is a bonus I will not be collecting.",
+   "durationMs": 3318
+  },
+  "sfx.lightning": {
+   "file": "sfx/lightning.mp3",
+   "kind": "sfx",
+   "what": "Long Shot and Shield Breaker lead: a bolt of lightning",
+   "durationMs": 522
+  },
+  "sfx.impact-body": {
+   "file": "sfx/impact-body.mp3",
+   "kind": "sfx",
+   "what": "Long Shot impact with a bass body",
+   "durationMs": 549
+  },
+  "sfx.shield-breaker": {
+   "file": "sfx/shield-breaker.mp3",
+   "kind": "sfx",
+   "what": "Shield Breaker shot",
+   "durationMs": 836
+  },
+  "sfx.personal-space": {
+   "file": "sfx/personal-space.mp3",
+   "kind": "sfx",
+   "what": "Personal Space: the blow with weight",
+   "durationMs": 627
+  },
+  "sfx.vanish": {
+   "file": "sfx/vanish.mp3",
+   "kind": "sfx",
+   "what": "Hidden begins: the Hero fades",
+   "durationMs": 1045
+  },
+  "sfx.hidden-ends": {
+   "file": "sfx/hidden-ends.mp3",
+   "kind": "sfx",
+   "what": "Hidden ends: the shimmer",
+   "durationMs": 522
+  },
+  "sfx.cover-brush": {
+   "file": "sfx/cover-brush.mp3",
+   "kind": "sfx",
+   "what": "cloth brushes the wall in cover",
+   "durationMs": 522
+  },
+  "sfx.step-1": {
+   "file": "sfx/step-1.mp3",
+   "kind": "sfx",
+   "what": "cat-like step",
+   "durationMs": 522
+  },
+  "sfx.step-2": {
+   "file": "sfx/step-2.mp3",
+   "kind": "sfx",
+   "what": "cat-like step",
+   "durationMs": 522
+  },
+  "sfx.step-3": {
+   "file": "sfx/step-3.mp3",
+   "kind": "sfx",
+   "what": "cat-like step",
+   "durationMs": 522
+  },
+  "sfx.exhausted-collapse": {
+   "file": "sfx/exhausted-collapse.mp3",
+   "kind": "sfx",
+   "what": "Exhausted: light armour and cape collapse",
+   "durationMs": 2038
+  },
+  "sfx.hit-flesh": {
+   "file": "../tilly/sfx/hit-flesh.mp3",
+   "kind": "sfx",
+   "what": "impact on a Hero that is hit (shared with Tilly's folder)",
+   "durationMs": 522,
+   "shared": true
+  }
+ },
+ "cues": [
+  {
+   "on": "heroSelected",
+   "voice": {
+    "play": [
+     "voice.select"
+    ],
+    "atMs": 0
+   }
+  },
+  {
+   "on": "attack",
+   "note": "the basic attack, a card without its own cue; no effect of its own yet",
+   "voice": {
+    "play": [
+     "voice.attack-1",
+     "voice.attack-2",
+     "voice.attack-3"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   }
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Long Shot",
+   "clip": "long",
+   "voice": {
+    "play": [
+     "voice.long-shot-1",
+     "voice.long-shot-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.lightning"
+     ],
+     "atMs": 1650
+    },
+    {
+     "play": [
+      "sfx.impact-body"
+     ],
+     "atMs": 1680
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Long Shot",
+   "clip": "longhidden",
+   "note": "from Hidden; Hidden ends right after the shot",
+   "voice": {
+    "play": [
+     "voice.long-shot-1",
+     "voice.long-shot-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.lightning"
+     ],
+     "atMs": 2000
+    },
+    {
+     "play": [
+      "sfx.impact-body"
+     ],
+     "atMs": 2030
+    },
+    {
+     "play": [
+      "sfx.hidden-ends"
+     ],
+     "atMs": 2100
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Vanish",
+   "clip": "hidden",
+   "guess": true,
+   "voice": {
+    "play": [
+     "voice.vanish-1",
+     "voice.vanish-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.vanish"
+     ],
+     "atMs": 600
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Personal Space",
+   "clip": "knockback",
+   "voice": {
+    "play": [
+     "voice.personal-space-1",
+     "voice.personal-space-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.personal-space"
+     ],
+     "atMs": 700
+    },
+    {
+     "play": [
+      "sfx.hit-flesh"
+     ],
+     "atMs": 720
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Shield Breaker",
+   "clip": "shieldbreaker",
+   "note": "three lines; pick with the animation",
+   "voice": {
+    "play": [
+     "voice.shield-breaker-1",
+     "voice.shield-breaker-2",
+     "voice.shield-breaker-3"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.shield-breaker"
+     ],
+     "atMs": 570
+    },
+    {
+     "play": [
+      "sfx.hit-flesh"
+     ],
+     "atMs": 620
+    }
+   ]
+  },
+  {
+   "on": "cardPitched",
+   "note": "no animation of its own yet",
+   "voice": {
+    "play": [
+     "voice.pitch-1",
+     "voice.pitch-2",
+     "voice.pitch-3"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   }
+  },
+  {
+   "on": "waitPlayed",
+   "note": "Wait (Stakeout)",
+   "clip": "wait",
+   "voice": {
+    "play": [
+     "voice.wait-1",
+     "voice.wait-2",
+     "voice.wait-3"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   }
+  },
+  {
+   "on": "attackHit",
+   "when": {
+    "damage": 1
+   },
+   "asTarget": true,
+   "clip": "hit",
+   "voice": {
+    "play": [
+     "voice.hit-light-1",
+     "voice.hit-light-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.hit-flesh"
+     ],
+     "atMs": 0
+    }
+   ]
+  },
+  {
+   "on": "attackHit",
+   "when": {
+    "damage": ">=2"
+   },
+   "asTarget": true,
+   "clip": "hit",
+   "voice": {
+    "play": [
+     "voice.hit-heavy-1",
+     "voice.hit-heavy-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.hit-flesh"
+     ],
+     "atMs": 0
+    }
+   ]
+  },
+  {
+   "on": "attackHit",
+   "asTarget": true,
+   "whileHidden": true,
+   "clip": "hithidden",
+   "note": "damage ends Hidden at 1500 ms; he speaks after that",
+   "voice": {
+    "play": [
+     "voice.hit-hidden-1",
+     "voice.hit-hidden-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 1700
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.hit-flesh"
+     ],
+     "atMs": 0
+    },
+    {
+     "play": [
+      "sfx.hidden-ends"
+     ],
+     "atMs": 1500
+    }
+   ]
+  },
+  {
+   "on": "hiddenEnded",
+   "note": "he attacked or is Marked; no clip of its own",
+   "guess": true,
+   "voice": {
+    "play": [
+     "voice.hidden-ends-1",
+     "voice.hidden-ends-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 500
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.hidden-ends"
+     ],
+     "atMs": 0
+    }
+   ]
+  },
+  {
+   "on": "moveEndedOnCover",
+   "clip": "takeCover",
+   "guess": true,
+   "voice": {
+    "play": [
+     "voice.cover-1",
+     "voice.cover-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200,
+    "chance": "sometimes"
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.cover-brush"
+     ],
+     "atMs": 850
+    }
+   ]
+  },
+  {
+   "on": "attackFailed",
+   "reason": "fullCover",
+   "asTarget": true,
+   "guess": true,
+   "clip": "full",
+   "voice": {
+    "play": [
+     "voice.full-cover-1",
+     "voice.full-cover-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.cover-brush"
+     ],
+     "atMs": 850
+    }
+   ]
+  },
+  {
+   "on": "step",
+   "clip": "walk",
+   "guess": true,
+   "sfx": [
+    {
+     "play": [
+      "sfx.step-1",
+      "sfx.step-2",
+      "sfx.step-3"
+     ],
+     "mode": "inTurn",
+     "atMs": 125,
+     "everyMs": 250,
+     "note": "one step per half cycle of the Walk clip"
+    }
+   ]
+  },
+  {
+   "on": "exhausted",
+   "clip": "exhausted",
+   "voice": {
+    "play": [
+     "voice.exhausted-1"
+    ],
+    "atMs": 0
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.exhausted-collapse"
+     ],
+     "atMs": 1700
+    }
+   ],
+   "voiceLater": {
+    "play": [
+     "voice.exhausted-2"
+    ],
+    "atMs": 3500
+   }
+  },
+  {
+   "on": "matchEnd",
+   "won": true,
+   "voice": {
+    "play": [
+     "voice.victory-1",
+     "voice.victory-2",
+     "voice.victory-3"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   }
+  },
+  {
+   "on": "matchEnd",
+   "won": false,
+   "voice": {
+    "play": [
+     "voice.defeat-1",
+     "voice.defeat-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   }
+  }
+ ]
+}

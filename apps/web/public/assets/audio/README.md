@@ -33,8 +33,9 @@ Rules to decide in #422 before building:
 | Hero | Folder | Voice (ElevenLabs) |
 |---|---|---|
 | Tilly Turnover | `audio/tilly/` | Bella, Professional Bright Warm |
+| Kit Crosshair | `audio/kit/` | Oxley, Evil Character |
 
-Kit's and Max's sounds follow. Kit's earlier voice takes are in `voice/kit/` (see `voice/README.md`).
+Max's sounds follow. Kit uses Tilly's `hit-flesh` effect (`kit/manifest.json` points to it with `shared: true`); the Shield sounds are shared the same way and are in `tilly/sfx/`.
 
 ## Licence
 
