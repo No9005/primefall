@@ -325,7 +325,18 @@
      "voice.select"
     ],
     "atMs": 0
-   }
+   },
+   "clip": "select_ready",
+   "sfx": [
+    {
+     "play": [
+      "sfx.scout-drone"
+     ],
+     "atMs": 900,
+     "guess": true,
+     "note": "she releases the drone; the time is read from the frames"
+    }
+   ]
   },
   {
    "on": "attack",

@@ -314,7 +314,25 @@
      "voice.select"
     ],
     "atMs": 0
-   }
+   },
+   "clip": "select_ready",
+   "sfx": [
+    {
+     "play": [
+      "sfx.cover-brush"
+     ],
+     "atMs": 1300,
+     "guess": true,
+     "note": "the cape swirls"
+    },
+    {
+     "play": [
+      "sfx.vanish"
+     ],
+     "atMs": 1800,
+     "note": "the flash: he turns invisible"
+    }
+   ]
   },
   {
    "on": "attack",
