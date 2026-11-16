@@ -1,0 +1,830 @@
+{
+ "hero": "bruiser",
+ "name": "Max Overload",
+ "format": "mp3, mono",
+ "note": "Cues are proposals from the review of the Max animations; times are in ms from the start of the clip of that card or event. 'guess' marks times the code does not give exactly. The game decides what a Squad may hear: play a cue only for what its Squad sees.",
+ "assets": {
+  "voice.select": {
+   "file": "voice/select.mp3",
+   "kind": "voice",
+   "text": "I came here to move cargo and kick ass. The cargo is optional.",
+   "durationMs": 4389
+  },
+  "voice.attack-1": {
+   "file": "voice/attack-1.mp3",
+   "kind": "voice",
+   "text": "Weapons free!",
+   "durationMs": 1071
+  },
+  "voice.attack-2": {
+   "file": "voice/attack-2.mp3",
+   "kind": "voice",
+   "text": "Engaging, as per the manual!",
+   "durationMs": 2064
+  },
+  "voice.attack-3": {
+   "file": "voice/attack-3.mp3",
+   "kind": "voice",
+   "text": "Consider it filed!",
+   "durationMs": 2273
+  },
+  "voice.handle-1": {
+   "file": "voice/handle-1.mp3",
+   "kind": "voice",
+   "text": "Fragile, sir!",
+   "durationMs": 1045
+  },
+  "voice.handle-2": {
+   "file": "voice/handle-2.mp3",
+   "kind": "voice",
+   "text": "Sign here!",
+   "durationMs": 1045
+  },
+  "voice.buy2-1": {
+   "file": "voice/buy2-1.mp3",
+   "kind": "voice",
+   "text": "Double order! No refunds!",
+   "durationMs": 2038
+  },
+  "voice.buy2-2": {
+   "file": "voice/buy2-2.mp3",
+   "kind": "voice",
+   "text": "Bulk delivery!",
+   "durationMs": 1228
+  },
+  "voice.coffee-1": {
+   "file": "voice/coffee-1.mp3",
+   "kind": "voice",
+   "text": "Take five, soldier!",
+   "durationMs": 1306
+  },
+  "voice.coffee-2": {
+   "file": "voice/coffee-2.mp3",
+   "kind": "voice",
+   "text": "Speed limit is zero!",
+   "durationMs": 1254
+  },
+  "voice.hardhat-1": {
+   "file": "voice/hardhat-1.mp3",
+   "kind": "voice",
+   "text": "Helmet on! Regulation twelve!",
+   "durationMs": 2064
+  },
+  "voice.hardhat-2": {
+   "file": "voice/hardhat-2.mp3",
+   "kind": "voice",
+   "text": "Safety first. Then violence.",
+   "durationMs": 2873
+  },
+  "voice.express-1": {
+   "file": "voice/express-1.mp3",
+   "kind": "voice",
+   "text": "Incoming!",
+   "durationMs": 862
+  },
+  "voice.express-2": {
+   "file": "voice/express-2.mp3",
+   "kind": "voice",
+   "text": "Coming through!",
+   "durationMs": 2064
+  },
+  "voice.hook-1": {
+   "file": "voice/hook-1.mp3",
+   "kind": "voice",
+   "text": "Fall in, soldier!",
+   "durationMs": 1176
+  },
+  "voice.hook-2": {
+   "file": "voice/hook-2.mp3",
+   "kind": "voice",
+   "text": "Report to me! NOW!",
+   "durationMs": 1724
+  },
+  "voice.pitch-1": {
+   "file": "voice/pitch-1.mp3",
+   "kind": "voice",
+   "text": "Requisition approved!",
+   "durationMs": 1437
+  },
+  "voice.pitch-2": {
+   "file": "voice/pitch-2.mp3",
+   "kind": "voice",
+   "text": "Surplus. Discarded.",
+   "durationMs": 2194
+  },
+  "voice.wait-1": {
+   "file": "voice/wait-1.mp3",
+   "kind": "voice",
+   "text": "Standing by.",
+   "durationMs": 914
+  },
+  "voice.wait-2": {
+   "file": "voice/wait-2.mp3",
+   "kind": "voice",
+   "text": "Awaiting orders.",
+   "durationMs": 1097
+  },
+  "voice.hit-light-1": {
+   "file": "voice/hit-light-1.mp3",
+   "kind": "voice",
+   "text": "That tickled.",
+   "durationMs": 2952
+  },
+  "voice.hit-light-2": {
+   "file": "voice/hit-light-2.mp3",
+   "kind": "voice",
+   "text": "Is that all?",
+   "durationMs": 862
+  },
+  "voice.hit-heavy-1": {
+   "file": "voice/hit-heavy-1.mp3",
+   "kind": "voice",
+   "text": "Is that ALL you've got?!",
+   "durationMs": 1384
+  },
+  "voice.hit-heavy-2": {
+   "file": "voice/hit-heavy-2.mp3",
+   "kind": "voice",
+   "text": "Pain is temporary! Paperwork is forever!",
+   "durationMs": 4023
+  },
+  "voice.hit-shield-1": {
+   "file": "voice/hit-shield-1.mp3",
+   "kind": "voice",
+   "text": "Request denied!",
+   "durationMs": 1358
+  },
+  "voice.hit-shield-2": {
+   "file": "voice/hit-shield-2.mp3",
+   "kind": "voice",
+   "text": "Nice try, soldier!",
+   "durationMs": 2273
+  },
+  "voice.cover-1": {
+   "file": "voice/cover-1.mp3",
+   "kind": "voice",
+   "text": "In position!",
+   "durationMs": 862
+  },
+  "voice.cover-2": {
+   "file": "voice/cover-2.mp3",
+   "kind": "voice",
+   "text": "Taking cover, sir.",
+   "durationMs": 1358
+  },
+  "voice.full-cover-1": {
+   "file": "voice/full-cover-1.mp3",
+   "kind": "voice",
+   "text": "Fortification holds!",
+   "durationMs": 1463
+  },
+  "voice.full-cover-2": {
+   "file": "voice/full-cover-2.mp3",
+   "kind": "voice",
+   "text": "Not today!",
+   "durationMs": 1280
+  },
+  "voice.exhausted-1": {
+   "file": "voice/exhausted-1.mp3",
+   "kind": "voice",
+   "text": "Suit power... at zero.",
+   "durationMs": 2978
+  },
+  "voice.exhausted-2": {
+   "file": "voice/exhausted-2.mp3",
+   "kind": "voice",
+   "text": "Tell them... I never stopped shooting.",
+   "durationMs": 2560
+  },
+  "voice.victory-1": {
+   "file": "voice/victory-1.mp3",
+   "kind": "voice",
+   "text": "Mission accomplished! File the report!",
+   "durationMs": 2351
+  },
+  "voice.victory-2": {
+   "file": "voice/victory-2.mp3",
+   "kind": "voice",
+   "text": "Target neutralised. Dismissed!",
+   "durationMs": 1985
+  },
+  "voice.victory-3": {
+   "file": "voice/victory-3.mp3",
+   "kind": "voice",
+   "text": "Invoice is in the mail, sir!",
+   "durationMs": 1959
+  },
+  "voice.defeat-1": {
+   "file": "voice/defeat-1.mp3",
+   "kind": "voice",
+   "text": "Requesting early retirement.",
+   "durationMs": 1985
+  },
+  "voice.defeat-2": {
+   "file": "voice/defeat-2.mp3",
+   "kind": "voice",
+   "text": "Retreat is not in the manual!",
+   "durationMs": 2377
+  },
+  "sfx.slam": {
+   "file": "sfx/slam.mp3",
+   "kind": "sfx",
+   "what": "Slam Shot: heavy arm cannon (basic attack, Handle With Care, Select)",
+   "durationMs": 1228
+  },
+  "sfx.double": {
+   "file": "sfx/double.mp3",
+   "kind": "sfx",
+   "what": "Buy One, Get Two: two blasts",
+   "durationMs": 1515
+  },
+  "sfx.concussion": {
+   "file": "sfx/concussion.mp3",
+   "kind": "sfx",
+   "what": "Time for Coffee: concussive pulse",
+   "durationMs": 1515
+  },
+  "sfx.rush": {
+   "file": "sfx/rush.mp3",
+   "kind": "sfx",
+   "what": "Express Delivery: exosuit charge",
+   "durationMs": 1515
+  },
+  "sfx.hook-fire": {
+   "file": "sfx/hook-fire.mp3",
+   "kind": "sfx",
+   "what": "Cargo Hook: heavy chain launched",
+   "durationMs": 1515
+  },
+  "sfx.hook-pull": {
+   "file": "sfx/hook-pull.mp3",
+   "kind": "sfx",
+   "what": "Cargo Hook: chain reeled in",
+   "durationMs": 1045
+  },
+  "sfx.hardhat": {
+   "file": "sfx/hardhat.mp3",
+   "kind": "sfx",
+   "what": "Hard Hat: helmet locks on",
+   "durationMs": 836
+  },
+  "sfx.cover-thump": {
+   "file": "sfx/cover-thump.mp3",
+   "kind": "sfx",
+   "what": "steel body meets the wall in cover",
+   "durationMs": 836
+  },
+  "sfx.cover-scrape": {
+   "file": "sfx/cover-scrape.mp3",
+   "kind": "sfx",
+   "what": "armour scrapes along the wall when taking cover",
+   "durationMs": 1515
+  },
+  "sfx.ricochet-1": {
+   "file": "sfx/ricochet-1.mp3",
+   "kind": "sfx",
+   "what": "light hit: bullet ricochets off the steel",
+   "durationMs": 836
+  },
+  "sfx.ricochet-2": {
+   "file": "sfx/ricochet-2.mp3",
+   "kind": "sfx",
+   "what": "light hit: bullet ricochets off the steel",
+   "durationMs": 836
+  },
+  "sfx.steel-tear-1": {
+   "file": "sfx/steel-tear-1.mp3",
+   "kind": "sfx",
+   "what": "heavy hit: steel tears",
+   "durationMs": 1045
+  },
+  "sfx.steel-tear-2": {
+   "file": "sfx/steel-tear-2.mp3",
+   "kind": "sfx",
+   "what": "heavy hit: steel tears",
+   "durationMs": 1045
+  },
+  "sfx.step-1": {
+   "file": "sfx/step-1.mp3",
+   "kind": "sfx",
+   "what": "heavy metal step",
+   "durationMs": 627
+  },
+  "sfx.step-2": {
+   "file": "sfx/step-2.mp3",
+   "kind": "sfx",
+   "what": "heavy metal step",
+   "durationMs": 627
+  },
+  "sfx.step-3": {
+   "file": "sfx/step-3.mp3",
+   "kind": "sfx",
+   "what": "heavy metal step",
+   "durationMs": 627
+  },
+  "sfx.exhausted-collapse": {
+   "file": "sfx/exhausted-collapse.mp3",
+   "kind": "sfx",
+   "what": "Exhausted: servo winds down, steel collapses",
+   "durationMs": 3030
+  },
+  "sfx.hit-flesh": {
+   "file": "../tilly/sfx/hit-flesh.mp3",
+   "kind": "sfx",
+   "what": "impact on a Hero that is hit (shared with Tilly's folder)",
+   "durationMs": 522,
+   "shared": true
+  },
+  "sfx.shield-pop": {
+   "file": "../tilly/sfx/shield-pop.mp3",
+   "kind": "sfx",
+   "what": "Shield forms (shared with Tilly's folder)",
+   "durationMs": 1045,
+   "shared": true
+  },
+  "sfx.shield-hit": {
+   "file": "../tilly/sfx/shield-hit.mp3",
+   "kind": "sfx",
+   "what": "Shield absorbs a hit (shared with Tilly's folder)",
+   "durationMs": 836,
+   "shared": true
+  }
+ },
+ "cues": [
+  {
+   "on": "heroSelected",
+   "clip": "select_ready",
+   "guess": true,
+   "note": "he fires three shots; the times are read from the frames",
+   "voice": {
+    "play": [
+     "voice.select"
+    ],
+    "atMs": 0
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.slam"
+     ],
+     "atMs": 1400
+    },
+    {
+     "play": [
+      "sfx.slam"
+     ],
+     "atMs": 2200
+    },
+    {
+     "play": [
+      "sfx.slam"
+     ],
+     "atMs": 3000
+    }
+   ]
+  },
+  {
+   "on": "attack",
+   "note": "the basic attack, a card without its own cue",
+   "clip": "attack",
+   "voice": {
+    "play": [
+     "voice.attack-1",
+     "voice.attack-2",
+     "voice.attack-3"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.slam"
+     ],
+     "atMs": 620
+    },
+    {
+     "play": [
+      "sfx.hit-flesh"
+     ],
+     "atImpact": true
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Handle With Care",
+   "clip": "attack",
+   "voice": {
+    "play": [
+     "voice.handle-1",
+     "voice.handle-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.slam"
+     ],
+     "atMs": 620
+    },
+    {
+     "play": [
+      "sfx.hit-flesh"
+     ],
+     "atImpact": true
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Buy One, Get Two",
+   "clip": "double",
+   "guess": true,
+   "voice": {
+    "play": [
+     "voice.buy2-1",
+     "voice.buy2-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.double"
+     ],
+     "atMs": 600
+    },
+    {
+     "play": [
+      "sfx.hit-flesh"
+     ],
+     "atMs": 650
+    },
+    {
+     "play": [
+      "sfx.hit-flesh"
+     ],
+     "atMs": 1000
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Time for Coffee",
+   "clip": "concussion",
+   "guess": true,
+   "voice": {
+    "play": [
+     "voice.coffee-1",
+     "voice.coffee-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.concussion"
+     ],
+     "atMs": 700
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Express Delivery",
+   "clip": "rush",
+   "guess": true,
+   "voice": {
+    "play": [
+     "voice.express-1",
+     "voice.express-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.rush"
+     ],
+     "atMs": 200
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Cargo Hook",
+   "clip": "hook",
+   "guess": true,
+   "voice": {
+    "play": [
+     "voice.hook-1",
+     "voice.hook-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.hook-fire"
+     ],
+     "atMs": 800
+    },
+    {
+     "play": [
+      "sfx.hook-pull"
+     ],
+     "atMs": 1900
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Hard Hat",
+   "clip": "block",
+   "guess": true,
+   "note": "the Block clip stands in for the Shield",
+   "voice": {
+    "play": [
+     "voice.hardhat-1",
+     "voice.hardhat-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.hardhat"
+     ],
+     "atMs": 700
+    },
+    {
+     "play": [
+      "sfx.shield-pop"
+     ],
+     "atMs": 900
+    }
+   ]
+  },
+  {
+   "on": "cardPitched",
+   "note": "no animation of its own yet",
+   "voice": {
+    "play": [
+     "voice.pitch-1",
+     "voice.pitch-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   }
+  },
+  {
+   "on": "waitPlayed",
+   "clip": "wait",
+   "voice": {
+    "play": [
+     "voice.wait-1",
+     "voice.wait-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   }
+  },
+  {
+   "on": "attackHit",
+   "when": {
+    "damage": 1
+   },
+   "asTarget": true,
+   "clip": "hit",
+   "note": "steel first: a ricochet",
+   "voice": {
+    "play": [
+     "voice.hit-light-1",
+     "voice.hit-light-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 150
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.ricochet-1",
+      "sfx.ricochet-2"
+     ],
+     "mode": "inTurn",
+     "atMs": 0
+    }
+   ]
+  },
+  {
+   "on": "attackHit",
+   "when": {
+    "damage": ">=2"
+   },
+   "asTarget": true,
+   "clip": "hit",
+   "note": "steel first, then flesh",
+   "voice": {
+    "play": [
+     "voice.hit-heavy-1",
+     "voice.hit-heavy-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.steel-tear-1",
+      "sfx.steel-tear-2"
+     ],
+     "mode": "inTurn",
+     "atMs": 0
+    },
+    {
+     "play": [
+      "sfx.hit-flesh"
+     ],
+     "atMs": 80
+    }
+   ]
+  },
+  {
+   "on": "attackHit",
+   "when": {
+    "damage": 0,
+    "absorbed": ">0"
+   },
+   "asTarget": true,
+   "clip": "absorb",
+   "voice": {
+    "play": [
+     "voice.hit-shield-1",
+     "voice.hit-shield-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 150
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.ricochet-1",
+      "sfx.ricochet-2"
+     ],
+     "mode": "inTurn",
+     "atMs": 0
+    },
+    {
+     "play": [
+      "sfx.shield-hit"
+     ],
+     "atMs": 0
+    }
+   ]
+  },
+  {
+   "on": "shieldGained",
+   "sfx": [
+    {
+     "play": [
+      "sfx.shield-pop"
+     ],
+     "atMs": 900
+    }
+   ]
+  },
+  {
+   "on": "moveEndedOnCover",
+   "clip": "takeCover",
+   "guess": true,
+   "voice": {
+    "play": [
+     "voice.cover-1",
+     "voice.cover-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200,
+    "chance": "sometimes"
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.cover-scrape"
+     ],
+     "atMs": 350
+    },
+    {
+     "play": [
+      "sfx.cover-thump"
+     ],
+     "atMs": 1050
+    }
+   ]
+  },
+  {
+   "on": "attackFailed",
+   "reason": "fullCover",
+   "asTarget": true,
+   "clip": "full",
+   "guess": true,
+   "voice": {
+    "play": [
+     "voice.full-cover-1",
+     "voice.full-cover-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.cover-scrape"
+     ],
+     "atMs": 350
+    },
+    {
+     "play": [
+      "sfx.cover-thump"
+     ],
+     "atMs": 1050
+    }
+   ]
+  },
+  {
+   "on": "step",
+   "clip": "walk",
+   "guess": true,
+   "sfx": [
+    {
+     "play": [
+      "sfx.step-1",
+      "sfx.step-2",
+      "sfx.step-3"
+     ],
+     "mode": "inTurn",
+     "atMs": 160,
+     "everyMs": 320,
+     "note": "one stomp per half cycle of the Walk clip"
+    }
+   ]
+  },
+  {
+   "on": "exhausted",
+   "clip": "exhausted",
+   "guess": true,
+   "voice": {
+    "play": [
+     "voice.exhausted-1"
+    ],
+    "atMs": 0
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.exhausted-collapse"
+     ],
+     "atMs": 1200
+    }
+   ],
+   "voiceLater": {
+    "play": [
+     "voice.exhausted-2"
+    ],
+    "atMs": 4300
+   }
+  },
+  {
+   "on": "matchEnd",
+   "won": true,
+   "voice": {
+    "play": [
+     "voice.victory-1",
+     "voice.victory-2",
+     "voice.victory-3"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   }
+  },
+  {
+   "on": "matchEnd",
+   "won": false,
+   "voice": {
+    "play": [
+     "voice.defeat-1",
+     "voice.defeat-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   }
+  }
+ ]
+}
