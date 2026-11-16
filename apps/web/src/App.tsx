@@ -10,7 +10,6 @@ import { HeroSelectScreen } from "./HeroSelectScreen";
 import { PlanningScreen } from "./PlanningScreen";
 import { GlossaryScreen } from "./GlossaryScreen";
 import { gameAudio } from "./audio";
-import { SoundToggle } from "./SoundToggle";
 
 /** The player's Squad in the offline prototype. */
 const PLAYER_SQUAD = SquadId.Left;
@@ -198,7 +197,6 @@ export function App() {
   return (
     <main className="app">
       <div className="rotate-notice">Rotate your device</div>
-      <SoundToggle />
       {renderScreen()}
     </main>
   );

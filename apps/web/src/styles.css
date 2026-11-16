@@ -361,28 +361,3 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   @keyframes callout-number { 0% { opacity: 0; } 15%, 70% { opacity: 1; } 100% { opacity: 0; } }
   @keyframes slide-in { from { opacity: 0; } to { opacity: 1; } }
 }
-
-/* The mute switch: small, at the top between the score pill and the timer (both stay free), above the HUD but under the callouts. */
-.sound-toggle {
-  position: fixed;
-  top: 6px;
-  left: calc(50% + 150px);
-  z-index: var(--z-floating);
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--steel);
-  border-radius: var(--radius-s);
-  background: var(--panel);
-  color: var(--text);
-  cursor: pointer;
-}
-.sound-toggle[aria-pressed="true"] {
-  color: var(--muted);
-}
-.sound-toggle:focus-visible {
-  outline: 2px solid var(--teal);
-  outline-offset: 2px;
-}

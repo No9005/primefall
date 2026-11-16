@@ -91,7 +91,6 @@ const SURFACES: [RegExp, string][] = [
   [/^\.energy\.drop-lit\.active/, "--orange"],
   [/^\.commit\.resolving:disabled$|^\.commit:disabled$|^\.commentary-entry|^\.energy|^\.pitch-undo|^\.queue-|^\.deck-count$|^\.drop-chip/, "--panel"],
   [/^\.resolution-bar$|^\.prime-|^\.zone-dot|^\.zone-note|^\.timer-|^\.cover-chip|^\.floating-|^\.callout|^\.burn-minus$/, "--ink"],
-  [/^\.sound-toggle/, "--panel"],
   [/^body$|^\.end-screen|^\.rotate-notice|^\.pile-minor$|^\.piles\.resolving \.pile-minor$|^\.pull-|^\.face-|^\.use-reason$|^\.card|^\.hand|^\.wait-card$|^\.deck-skull$/, "--graphite"],
 ];
 
