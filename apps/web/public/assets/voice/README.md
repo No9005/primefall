@@ -27,19 +27,6 @@ Limits: Attack and Hit at most 3.5 s (raised from 1.2 s, because Tilly's lines r
 
 ## Tilly Turnover
 
-| File | Line | Length |
-|---|---|---|
-| `tilly_select_1` | Everything is a spare part if you squint hard enough. | 3.57 s |
-| `tilly_attack_1` | Calibrating. | 2.61 s |
-| `tilly_attack_2` | This should not work. | 2.56 s |
-| `tilly_attack_3` | Fire in the hole. Probably. | 3.10 s |
-| `tilly_hit_1` | Okay. Ow. | 3.42 s |
-| `tilly_hit_2` | That was a load-bearing arm. | 1.90 s |
-| `tilly_hit_3` | Warranty void! | 1.35 s |
-| `tilly_exhausted` | Somebody get a wrench. | 2.84 s |
-| `tilly_victory` | Four screws left over. Perfect. | 3.05 s |
-| `tilly_victory_2` | Reassembled. Ahead of schedule. | 2.87 s |
-| `tilly_defeat` | I can fix this. Give me an hour. | 3.86 s |
-| `tilly_defeat_2` | It was fine when I started. | 2.03 s |
+Tilly's final sounds (voice and effects) moved to `audio/tilly/`, see `audio/README.md`. The earlier takes that were here were replaced.
 
 Not built yet: playing the lines in the game. Max follows.

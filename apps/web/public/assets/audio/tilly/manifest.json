@@ -1,0 +1,705 @@
+{
+ "hero": "controller",
+ "name": "Tilly Turnover",
+ "format": "mp3, mono",
+ "note": "Cues are proposals from the review of the Tilly animations; times are in ms from the start of the clip of that card or event. 'guess' marks times the code does not give exactly. The game decides what Squad may hear: play a cue only for what its Squad sees.",
+ "assets": {
+  "voice.select": {
+   "file": "voice/select.mp3",
+   "kind": "voice",
+   "text": "Everything is a spare part! If you squint hard enough!",
+   "durationMs": 4049
+  },
+  "voice.attack-1": {
+   "file": "voice/attack-1.mp3",
+   "kind": "voice",
+   "text": "Ooh, let's see what THIS one does!",
+   "durationMs": 2586
+  },
+  "voice.attack-2": {
+   "file": "voice/attack-2.mp3",
+   "kind": "voice",
+   "text": "Ooh, I wonder what this button does!",
+   "durationMs": 2560
+  },
+  "voice.attack-3": {
+   "file": "voice/attack-3.mp3",
+   "kind": "voice",
+   "text": "Fire in the hole! Probably!",
+   "durationMs": 3318
+  },
+  "voice.attack-4": {
+   "file": "voice/attack-4.mp3",
+   "kind": "voice",
+   "text": "This should not work... It's working! It's WORKING!",
+   "durationMs": 4258
+  },
+  "voice.price-tag-1": {
+   "file": "voice/price-tag-1.mp3",
+   "kind": "voice",
+   "text": "Everything must go!",
+   "durationMs": 1829
+  },
+  "voice.price-tag-2": {
+   "file": "voice/price-tag-2.mp3",
+   "kind": "voice",
+   "text": "Marked down!",
+   "durationMs": 1437
+  },
+  "voice.site-survey-1": {
+   "file": "voice/site-survey-1.mp3",
+   "kind": "voice",
+   "text": "Go fetch!",
+   "durationMs": 1071
+  },
+  "voice.site-survey-2": {
+   "file": "voice/site-survey-2.mp3",
+   "kind": "voice",
+   "text": "Eyes up, buddy!",
+   "durationMs": 1123
+  },
+  "voice.urban-renewal-1": {
+   "file": "voice/urban-renewal-1.mp3",
+   "kind": "voice",
+   "text": "Fresh START!",
+   "durationMs": 1515
+  },
+  "voice.urban-renewal-2": {
+   "file": "voice/urban-renewal-2.mp3",
+   "kind": "voice",
+   "text": "Redecorating!",
+   "durationMs": 1593
+  },
+  "voice.temporary-solution-1": {
+   "file": "voice/temporary-solution-1.mp3",
+   "kind": "voice",
+   "text": "Good enough!",
+   "durationMs": 1228
+  },
+  "voice.temporary-solution-2": {
+   "file": "voice/temporary-solution-2.mp3",
+   "kind": "voice",
+   "text": "Instant wall!",
+   "durationMs": 1306
+  },
+  "voice.heavy-metal-1": {
+   "file": "voice/heavy-metal-1.mp3",
+   "kind": "voice",
+   "text": "Turn it up!",
+   "durationMs": 1071
+  },
+  "voice.heavy-metal-2": {
+   "file": "voice/heavy-metal-2.mp3",
+   "kind": "voice",
+   "text": "Scrap party!",
+   "durationMs": 1515
+  },
+  "voice.pitch-1": {
+   "file": "voice/pitch-1.mp3",
+   "kind": "voice",
+   "text": "Parts is parts!",
+   "durationMs": 1358
+  },
+  "voice.pitch-2": {
+   "file": "voice/pitch-2.mp3",
+   "kind": "voice",
+   "text": "Waste not!",
+   "durationMs": 1254
+  },
+  "voice.hit-light-1": {
+   "file": "voice/hit-light-1.mp3",
+   "kind": "voice",
+   "text": "Ouchie!",
+   "durationMs": 1149
+  },
+  "voice.hit-light-2": {
+   "file": "voice/hit-light-2.mp3",
+   "kind": "voice",
+   "text": "Hey!",
+   "durationMs": 627
+  },
+  "voice.hit-heavy-1": {
+   "file": "voice/hit-heavy-1.mp3",
+   "kind": "voice",
+   "text": "That hurt!",
+   "durationMs": 1176
+  },
+  "voice.hit-heavy-2": {
+   "file": "voice/hit-heavy-2.mp3",
+   "kind": "voice",
+   "text": "Ow, ow, ow!",
+   "durationMs": 2090
+  },
+  "voice.hit-shield-1": {
+   "file": "voice/hit-shield-1.mp3",
+   "kind": "voice",
+   "text": "Ha, nope!",
+   "durationMs": 1019
+  },
+  "voice.hit-shield-2": {
+   "file": "voice/hit-shield-2.mp3",
+   "kind": "voice",
+   "text": "Nice try!",
+   "durationMs": 1593
+  },
+  "voice.cover-1": {
+   "file": "voice/cover-1.mp3",
+   "kind": "voice",
+   "text": "Duck and cover!",
+   "durationMs": 1149
+  },
+  "voice.cover-2": {
+   "file": "voice/cover-2.mp3",
+   "kind": "voice",
+   "text": "Hiding spot!",
+   "durationMs": 1097
+  },
+  "voice.full-cover-1": {
+   "file": "voice/full-cover-1.mp3",
+   "kind": "voice",
+   "text": "Built it myself!",
+   "durationMs": 1567
+  },
+  "voice.full-cover-2": {
+   "file": "voice/full-cover-2.mp3",
+   "kind": "voice",
+   "text": "Can't touch this!",
+   "durationMs": 1437
+  },
+  "voice.exhausted-1": {
+   "file": "voice/exhausted-1.mp3",
+   "kind": "voice",
+   "text": "I need... a new body.",
+   "durationMs": 2351
+  },
+  "voice.exhausted-2": {
+   "file": "voice/exhausted-2.mp3",
+   "kind": "voice",
+   "text": "And a hug.",
+   "durationMs": 1149
+  },
+  "voice.victory-1": {
+   "file": "voice/victory-1.mp3",
+   "kind": "voice",
+   "text": "Four screws left over. Perfect.",
+   "durationMs": 3056
+  },
+  "voice.victory-2": {
+   "file": "voice/victory-2.mp3",
+   "kind": "voice",
+   "text": "It worked! IT WORKED! I can't believe it worked!",
+   "durationMs": 4180
+  },
+  "voice.victory-3": {
+   "file": "voice/victory-3.mp3",
+   "kind": "voice",
+   "text": "Reassembled! Ahead of schedule!",
+   "durationMs": 3291
+  },
+  "voice.defeat-1": {
+   "file": "voice/defeat-1.mp3",
+   "kind": "voice",
+   "text": "It's fine... it's fine... I can fix this. Probably.",
+   "durationMs": 4127
+  },
+  "voice.defeat-2": {
+   "file": "voice/defeat-2.mp3",
+   "kind": "voice",
+   "text": "I'll build a bigger one! Next time!",
+   "durationMs": 2795
+  },
+  "sfx.tag-fire": {
+   "file": "sfx/tag-fire.mp3",
+   "kind": "sfx",
+   "what": "Price Tag launch",
+   "durationMs": 679
+  },
+  "sfx.tag-hit": {
+   "file": "sfx/tag-hit.mp3",
+   "kind": "sfx",
+   "what": "Price Tag impact",
+   "durationMs": 679
+  },
+  "sfx.bomb-swoosh": {
+   "file": "sfx/bomb-swoosh.mp3",
+   "kind": "sfx",
+   "what": "Urban Renewal bomb flight",
+   "durationMs": 758
+  },
+  "sfx.bomb-blast": {
+   "file": "sfx/bomb-blast.mp3",
+   "kind": "sfx",
+   "what": "Urban Renewal blast",
+   "durationMs": 2090
+  },
+  "sfx.scrap-gain": {
+   "file": "sfx/scrap-gain.mp3",
+   "kind": "sfx",
+   "what": "Scrap gain; the heavy clunk is about 900 ms into the file",
+   "durationMs": 2482
+  },
+  "sfx.cover-slam": {
+   "file": "sfx/cover-slam.mp3",
+   "kind": "sfx",
+   "what": "Temporary Solution: crate slams down",
+   "durationMs": 888
+  },
+  "sfx.cover-wall": {
+   "file": "sfx/cover-wall.mp3",
+   "kind": "sfx",
+   "what": "Temporary Solution: wall goes up",
+   "durationMs": 679
+  },
+  "sfx.cover-crumble": {
+   "file": "sfx/cover-crumble.mp3",
+   "kind": "sfx",
+   "what": "oldest Placed Cover crumbles",
+   "durationMs": 1567
+  },
+  "sfx.scrap-field": {
+   "file": "sfx/scrap-field.mp3",
+   "kind": "sfx",
+   "what": "Heavy Metal: Scrap Field spreads",
+   "durationMs": 1567
+  },
+  "sfx.scout-drone": {
+   "file": "sfx/scout-drone.mp3",
+   "kind": "sfx",
+   "what": "Site Survey: drone",
+   "durationMs": 2090
+  },
+  "sfx.hit-flesh": {
+   "file": "sfx/hit-flesh.mp3",
+   "kind": "sfx",
+   "what": "impact on a Hero that is hit (shared by all Heroes)",
+   "durationMs": 522
+  },
+  "sfx.shield-pop": {
+   "file": "sfx/shield-pop.mp3",
+   "kind": "sfx",
+   "what": "Shield forms, with bass thump (shared)",
+   "durationMs": 1045
+  },
+  "sfx.shield-hit": {
+   "file": "sfx/shield-hit.mp3",
+   "kind": "sfx",
+   "what": "Shield absorbs a hit, with bass thump (shared)",
+   "durationMs": 836
+  },
+  "sfx.cover-thump": {
+   "file": "sfx/cover-thump.mp3",
+   "kind": "sfx",
+   "what": "body meets the wall in cover",
+   "durationMs": 522
+  },
+  "sfx.step-1": {
+   "file": "sfx/step-1.mp3",
+   "kind": "sfx",
+   "what": "leather boot step",
+   "durationMs": 522
+  },
+  "sfx.step-2": {
+   "file": "sfx/step-2.mp3",
+   "kind": "sfx",
+   "what": "leather boot step",
+   "durationMs": 522
+  },
+  "sfx.step-3": {
+   "file": "sfx/step-3.mp3",
+   "kind": "sfx",
+   "what": "leather boot step",
+   "durationMs": 522
+  },
+  "sfx.exhausted-collapse": {
+   "file": "sfx/exhausted-collapse.mp3",
+   "kind": "sfx",
+   "what": "Exhausted: armour collapses",
+   "durationMs": 3082
+  }
+ },
+ "cues": [
+  {
+   "on": "heroSelected",
+   "voice": {
+    "play": [
+     "voice.select"
+    ],
+    "atMs": 0
+   }
+  },
+  {
+   "on": "attack",
+   "note": "the basic attack, a card without its own cue",
+   "clip": "attack",
+   "voice": {
+    "play": [
+     "voice.attack-1",
+     "voice.attack-2",
+     "voice.attack-3",
+     "voice.attack-4"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.tag-fire"
+     ],
+     "atMs": 620,
+     "guess": true,
+     "note": "stand-in until the basic shot has its own sound"
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Price Tag",
+   "clip": "tag",
+   "voice": {
+    "play": [
+     "voice.price-tag-1",
+     "voice.price-tag-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.tag-fire"
+     ],
+     "atMs": 730
+    },
+    {
+     "play": [
+      "sfx.tag-hit"
+     ],
+     "atImpact": true
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Site Survey",
+   "clip": "drone",
+   "guess": true,
+   "voice": {
+    "play": [
+     "voice.site-survey-1",
+     "voice.site-survey-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.scout-drone"
+     ],
+     "atMs": 600
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Urban Renewal",
+   "clip": "demolish",
+   "voice": {
+    "play": [
+     "voice.urban-renewal-1",
+     "voice.urban-renewal-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.bomb-swoosh"
+     ],
+     "atMs": 820
+    },
+    {
+     "play": [
+      "sfx.bomb-blast"
+     ],
+     "atMs": 1160
+    },
+    {
+     "play": [
+      "sfx.scrap-gain"
+     ],
+     "atMs": 4520,
+     "note": "the Scrap clip (scrapforce) starts at 3400 ms; the clunk lands at 2020 ms of it"
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Temporary Solution",
+   "clip": "deploy",
+   "voice": {
+    "play": [
+     "voice.temporary-solution-1",
+     "voice.temporary-solution-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.cover-slam"
+     ],
+     "atMs": 950
+    },
+    {
+     "play": [
+      "sfx.cover-wall"
+     ],
+     "atMs": 1170
+    }
+   ]
+  },
+  {
+   "on": "coverCrumbled",
+   "note": "the oldest Placed Cover goes when a fourth is placed",
+   "sfx": [
+    {
+     "play": [
+      "sfx.cover-crumble"
+     ],
+     "atMs": 1400,
+     "note": "0.45 s after the slam"
+    }
+   ]
+  },
+  {
+   "on": "cardPlayed",
+   "card": "Heavy Metal",
+   "clip": "scrapfield",
+   "voice": {
+    "play": [
+     "voice.heavy-metal-1",
+     "voice.heavy-metal-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.scrap-field"
+     ],
+     "atMs": 820
+    }
+   ]
+  },
+  {
+   "on": "cardPitched",
+   "voice": {
+    "play": [
+     "voice.pitch-1",
+     "voice.pitch-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   }
+  },
+  {
+   "on": "attackHit",
+   "when": {
+    "damage": 1
+   },
+   "asTarget": true,
+   "voice": {
+    "play": [
+     "voice.hit-light-1",
+     "voice.hit-light-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.hit-flesh"
+     ],
+     "atMs": 0
+    }
+   ]
+  },
+  {
+   "on": "attackHit",
+   "when": {
+    "damage": ">=2"
+   },
+   "asTarget": true,
+   "voice": {
+    "play": [
+     "voice.hit-heavy-1",
+     "voice.hit-heavy-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.hit-flesh"
+     ],
+     "atMs": 0
+    }
+   ]
+  },
+  {
+   "on": "attackHit",
+   "when": {
+    "damage": 0,
+    "absorbed": ">0"
+   },
+   "asTarget": true,
+   "guess": true,
+   "note": "Tilly has no Shield clip of her own",
+   "voice": {
+    "play": [
+     "voice.hit-shield-1",
+     "voice.hit-shield-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.shield-hit"
+     ],
+     "atMs": 0
+    }
+   ]
+  },
+  {
+   "on": "shieldGained",
+   "sfx": [
+    {
+     "play": [
+      "sfx.shield-pop"
+     ],
+     "atMs": 900
+    }
+   ]
+  },
+  {
+   "on": "moveEndedOnCover",
+   "clip": "takeCover",
+   "guess": true,
+   "voice": {
+    "play": [
+     "voice.cover-1",
+     "voice.cover-2"
+    ],
+    "mode": "inTurn",
+    "atMs": -200,
+    "chance": "sometimes"
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.cover-thump"
+     ],
+     "atMs": 850
+    }
+   ]
+  },
+  {
+   "on": "attackFailed",
+   "reason": "fullCover",
+   "asTarget": true,
+   "guess": true,
+   "voice": {
+    "play": [
+     "voice.full-cover-1",
+     "voice.full-cover-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.cover-thump"
+     ],
+     "atMs": 850
+    }
+   ]
+  },
+  {
+   "on": "step",
+   "clip": "walk",
+   "guess": true,
+   "sfx": [
+    {
+     "play": [
+      "sfx.step-1",
+      "sfx.step-2",
+      "sfx.step-3"
+     ],
+     "mode": "inTurn",
+     "atMs": 145,
+     "everyMs": 290,
+     "note": "one step per half cycle of the Walk clip"
+    }
+   ]
+  },
+  {
+   "on": "exhausted",
+   "clip": "exhausted",
+   "voice": {
+    "play": [
+     "voice.exhausted-1"
+    ],
+    "atMs": 0
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.exhausted-collapse"
+     ],
+     "atMs": 1860
+    }
+   ],
+   "voiceLater": {
+    "play": [
+     "voice.exhausted-2"
+    ],
+    "atMs": 4300
+   }
+  },
+  {
+   "on": "matchEnd",
+   "won": true,
+   "voice": {
+    "play": [
+     "voice.victory-1",
+     "voice.victory-2",
+     "voice.victory-3"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   }
+  },
+  {
+   "on": "matchEnd",
+   "won": false,
+   "voice": {
+    "play": [
+     "voice.defeat-1",
+     "voice.defeat-2"
+    ],
+    "mode": "inTurn",
+    "atMs": 0
+   }
+  }
+ ]
+}
