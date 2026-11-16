@@ -50,4 +50,4 @@ Dark tactical HUD. Colours: graphite `#12161c` (ground), panel `#1b222b`, steel 
 - Camera: the full 45 x 25 Grid is about 4480 px wide at 128 px tiles, so the phone view scales it down a lot; check tile and sprite readability once real assets exist.
 - Art direction and the open question about pixel art for eight view angles: ADR 0021.
 - Final card artwork and iconography (placeholders use text only).
-- Sound and haptics are out of scope for the MVP.
+- Sound is in scope (issue #422): Hero voice lines and effects, the sound of the map and of the cards, with priorities, voice rules and the Fog of War rule in `apps/web/public/assets/audio/README.md`. A mute switch comes with the menu (#446). Haptics are out of scope for the MVP.
