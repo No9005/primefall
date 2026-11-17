@@ -26,8 +26,8 @@ interface Ambience {
 const MUSIC_BUS_GAIN = 1;
 const MUSIC_FADE_TIME_CONSTANT_S = 0.4;
 const MUSIC_FADE_OUT_S = 1.5;
-/** `?music=off` in the address plays the game without the music, to compare. */
-const MUSIC_OFF = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("music") === "off";
+/** The music is muted by default until it is reworked (loops audible, hard transitions, clicks): `?music=on` in the address plays it. */
+const MUSIC_ON = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("music") === "on";
 
 /** The music while a match runs: all layers start together and loop in sync. */
 interface Music {
@@ -294,7 +294,7 @@ export class GameAudio {
   startMusic(): void {
     const context = this.context;
     const manifest = this.musicManifest;
-    if (MUSIC_OFF || this.music || !context || !manifest || !this.musicBus) return;
+    if (!MUSIC_ON || this.music || !context || !manifest || !this.musicBus) return;
     const startedAt = context.currentTime + 0.1;
     const layers: Record<string, GainNode> = {};
     const sources: AudioBufferSourceNode[] = [];
