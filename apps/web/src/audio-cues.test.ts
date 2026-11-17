@@ -56,6 +56,12 @@ describe("the map manifest", () => {
     for (const [name, asset] of Object.entries(map.assets)) expect(existsSync(path.join(AUDIO_DIR, "map", asset.file)), name).toBe(true);
   });
 
+  it("has the laser barrier: a hum in WAV and the sound of its dissolving", () => {
+    expect(map.assets[map.ambience.barrier.loop]!.file).toMatch(/\.wav$/);
+    expect(map.assets[map.ambience.barrier.dissolve]).toBeDefined();
+    expect(map.ui.laserOff.play).toContain(map.ambience.barrier.dissolve);
+  });
+
   it("keeps the loops in WAV (an MP3 leaves a gap at the seam) and puts a riffle on each beat of the shuffle animation", () => {
     for (const loop of map.ambience.loops) expect(map.assets[loop.play]!.file).toMatch(/\.wav$/);
     expect(map.ui.shuffle.atMs).toEqual(SHUFFLE_TIMELINE.riffles.map((riffle) => riffle.split));

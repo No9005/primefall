@@ -77,6 +77,36 @@
    "file": "ui/card-burn.mp3",
    "what": "a card burns into the Exile (Deck Damage): once per hit, however many cards burn",
    "durationMs": 392
+  },
+  "loop.laser-hum": {
+   "file": "loops/laser-hum.wav",
+   "what": "the laser barrier around the inactive Prime Zone: a low hum like a laser sword, seamless loop (WAV)",
+   "durationMs": 6500
+  },
+  "ui.laser-off": {
+   "file": "ui/laser-off.mp3",
+   "what": "the laser barrier flickers and powers down when the Prime Zone becomes active",
+   "durationMs": 2038
+  },
+  "ui.zone-taken": {
+   "file": "ui/zone-taken.mp3",
+   "what": "the player's Squad takes a zone: a short capture stinger",
+   "durationMs": 1463
+  },
+  "ui.score": {
+   "file": "ui/score.mp3",
+   "what": "the Squad earns Credits: a cash register ka-ching",
+   "durationMs": 1515
+  },
+  "ui.countdown-tick": {
+   "file": "ui/countdown-tick.mp3",
+   "what": "a big number of the planning countdown appears (10, 5, 4, 3, 2): a low wumpf",
+   "durationMs": 627
+  },
+  "ui.countdown-final": {
+   "file": "ui/countdown-final.mp3",
+   "what": "the last big number (1): a long low duud",
+   "durationMs": 1045
   }
  },
  "ambience": {
@@ -104,6 +134,12 @@
     10000,
     25000
    ]
+  },
+  "barrier": {
+   "loop": "loop.laser-hum",
+   "gain": 0.8,
+   "dissolve": "ui.laser-off",
+   "note": "hums while the Prime Zone is inactive (the red laser walls stand), louder the nearer the player's Hero; the dissolve sounds when the walls flicker out"
   }
  },
  "ui": {
@@ -144,6 +180,31 @@
     "ui.card-burn"
    ],
    "note": "starts when the glowing edge appears, 14 % into the 900 ms of the first card's burn (burn-glimmer.ts)"
+  },
+  "laserOff": {
+   "play": [
+    "ui.laser-off"
+   ]
+  },
+  "zoneTaken": {
+   "play": [
+    "ui.zone-taken"
+   ]
+  },
+  "score": {
+   "play": [
+    "ui.score"
+   ]
+  },
+  "countdownTick": {
+   "play": [
+    "ui.countdown-tick"
+   ]
+  },
+  "countdownFinal": {
+   "play": [
+    "ui.countdown-final"
+   ]
   }
  }
 }

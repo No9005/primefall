@@ -53,6 +53,9 @@ Not tied to a Hero; `map/manifest.json` has its own shape (`ambience` and `ui`).
 - **The cards:** a card is drawn (`cardDraw`, one per card as it leaves the Deck pile, none with reduced motion), a card goes into the Queue (`cardPlayed`), a card comes back (`cardBack`, also when a Pitch is undone), Energy is gained (`energyUp`, a Pitch) and the shuffle (the same riffle twice, on the two riffles of the animation in `deck-shuffle.ts`; none with reduced motion). The sounds follow the counts of the plan, so a tap, a drop and an undo sound the same, and a switch to another Hero or a new Round makes none.
 - A card burns into the Exile (`cardBurn`, Deck Damage): once for the whole hit however many cards burn, as the glowing edge of the glimmer appears (`burnSoundMs()` in `deck-burn.ts`); none with reduced motion, and none when the player is looking at another Hero's pile.
 - Spending Energy has no sound of its own.
+- **The laser barrier of the Prime Zone** (`loops/laser-hum.wav`): a low hum like a laser sword while the red laser walls stand (the Prime Zone is inactive), louder the nearer the player's Hero is to the Prime Zone, with fades. When the walls flicker out, `laserOff` (flicker and power-down) plays once.
+- **A zone taken and Credits** (`zoneTaken`, `score`, a cash register "ka-ching"): with the callout of the player's own Squad. A zone that changes hands to the player's Squad sounds `zoneTaken` and, 450 ms later, `score`; a zone it holds only `score` (it earns Credits every Resolution). The enemy's callouts make no sound; the classic mode's Prime Zone count does the same with its Resolution count.
+- **The countdown of the planning timer** (`countdownTick`, `countdownFinal`): a low "wumpf" with every big number (10, 5, 4, 3, 2) and a longer, lower tone with the last (1).
 
 ## Heroes
 

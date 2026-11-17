@@ -28,12 +28,14 @@ export function formatTimer(secondsLeft: number): string {
 export interface CountdownCallout {
   text: string;
   tone: "amber" | "red";
+  /** The sound of the number: a low thump for every number, a longer low tone for the last one. */
+  sound: "countdownTick" | "countdownFinal";
 }
 
 /** The big number due at this many seconds left: once the 10, then 5 down to 1; nothing at any other second (also at 0). */
 export function countdownCallout(secondsLeft: number): CountdownCallout | undefined {
-  if (secondsLeft === TIMER_AMBER_SECONDS) return { text: String(secondsLeft), tone: "amber" };
-  if (secondsLeft >= 1 && secondsLeft <= TIMER_RED_SECONDS) return { text: String(secondsLeft), tone: "red" };
+  if (secondsLeft === TIMER_AMBER_SECONDS) return { text: String(secondsLeft), tone: "amber", sound: "countdownTick" };
+  if (secondsLeft >= 1 && secondsLeft <= TIMER_RED_SECONDS) return { text: String(secondsLeft), tone: "red", sound: secondsLeft === 1 ? "countdownFinal" : "countdownTick" };
   return undefined;
 }
 
