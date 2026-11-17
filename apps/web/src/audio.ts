@@ -1,6 +1,6 @@
 import { findTiles, type GridPosition, type HeroClass, REACTOR_DECK, TileKind } from "game-core";
 import { AUDIO_FOLDER, type AudioManifest, assetUrl, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl, MUSIC_MANIFEST_URL, type MusicManifest, musicFileUrl, type UiSound } from "./audio-manifest";
-import { distanceGain, nextAmbienceGapMs, pickVariant, Priority, SfxLimiter, VoiceDirector } from "./audio-mix";
+import { distanceGain, MUSIC_DUCK, nextAmbienceGapMs, pickVariant, Priority, SfxLimiter, VoiceDirector } from "./audio-mix";
 import { planMoment, type PlanContext, type SoundRequest, type Source } from "./audio-cues";
 import { type MusicLevel, nextBarTime } from "./music";
 
@@ -23,7 +23,7 @@ interface Ambience {
 }
 
 /** The music: how loud its bus is, how long a layer takes to fade (a time constant: about three of them make the change), how long it fades out. */
-const MUSIC_BUS_GAIN = 0.8;
+const MUSIC_BUS_GAIN = 1;
 const MUSIC_FADE_TIME_CONSTANT_S = 0.4;
 const MUSIC_FADE_OUT_S = 1.5;
 /** `?music=off` in the address plays the game without the music, to compare. */
@@ -49,6 +49,9 @@ const PRIME_ZONE_CENTRE: GridPosition = (() => {
 })();
 
 export class GameAudio {
+  /** `createContext` is for tests and for rendering the mix to a file (an `OfflineAudioContext`); the game uses the default. */
+  constructor(private readonly createContext: () => AudioContext = () => new AudioContext()) {}
+
   private context: AudioContext | undefined;
   private voiceBus: GainNode | undefined;
   private sfxBus: GainNode | undefined;
@@ -66,6 +69,9 @@ export class GameAudio {
   private musicLoading: Promise<void> | undefined;
   private music: Music | undefined;
   private musicBus: GainNode | undefined;
+  /** The music steps back under the voices and the heavy effects (`MUSIC_DUCK`). */
+  private duckNode: GainNode | undefined;
+  private duckedUntilS = 0;
   private musicLevel: MusicLevel = 0;
   /** The laser barrier: wanted while the Prime Zone is inactive, heard while the ambience runs. */
   private barrierWanted = false;
@@ -87,11 +93,19 @@ export class GameAudio {
   private ensureContext(): AudioContext | undefined {
     if (this.context) return this.context;
     if (typeof AudioContext === "undefined") return undefined;
-    const context = new AudioContext();
+    const context = this.createContext();
     this.voiceBus = context.createGain();
     this.sfxBus = context.createGain();
-    this.voiceBus.connect(context.destination);
-    this.sfxBus.connect(context.destination);
+    // Everything ends in one limiter: the sum of the music, the voices and the effects must not clip.
+    const master = context.createDynamicsCompressor();
+    master.threshold.value = -6;
+    master.knee.value = 3;
+    master.ratio.value = 20;
+    master.attack.value = 0.002;
+    master.release.value = 0.12;
+    master.connect(context.destination);
+    this.voiceBus.connect(master);
+    this.sfxBus.connect(master);
     // The music has a bus of its own, with a limiter: the sum of the layers must not clip.
     this.musicBus = context.createGain();
     this.musicBus.gain.value = MUSIC_BUS_GAIN;
@@ -101,7 +115,8 @@ export class GameAudio {
     limiter.ratio.value = 12;
     limiter.attack.value = 0.003;
     limiter.release.value = 0.15;
-    this.musicBus.connect(limiter).connect(context.destination);
+    this.duckNode = context.createGain();
+    this.musicBus.connect(this.duckNode).connect(limiter).connect(master);
     this.context = context;
     return context;
   }
@@ -418,10 +433,27 @@ export class GameAudio {
     const gain = context.createGain();
     gain.gain.value = listener && request.tile ? distanceGain(listener, request.tile) : 1;
     source.connect(gain).connect(bus);
+    this.duckMusicFor(request, startMs / 1000, durationMs / 1000);
     const key = `${request.kind}${decision.id}`;
     this.playing.set(key, { source, gain });
     source.onended = () => this.playing.delete(key);
     source.start(Math.max(context.currentTime, startMs / 1000));
+  }
+
+  /** The music steps back while a voice speaks or a heavy effect hits, and comes back slowly. */
+  private duckMusicFor(request: SoundRequest, startS: number, durationS: number): void {
+    const gain = this.duckNode?.gain;
+    if (!gain) return;
+    const heavySfx = request.kind === "sfx" && request.priority >= MUSIC_DUCK.minSfxPriority;
+    if (request.kind === "sfx" && !heavySfx) return;
+    const duck = heavySfx ? MUSIC_DUCK.sfx : MUSIC_DUCK.voice;
+    const from = Math.max(startS, this.context?.currentTime ?? 0);
+    const until = from + Math.min(durationS, duck.maxS);
+    if (until <= this.duckedUntilS) return;
+    if (from < this.duckedUntilS) gain.cancelScheduledValues(this.duckedUntilS);
+    else gain.setTargetAtTime(duck.gain, from, MUSIC_DUCK.attackS);
+    gain.setTargetAtTime(1, until, MUSIC_DUCK.releaseS);
+    this.duckedUntilS = until;
   }
 
   private fadeOut(key: string, atSeconds: number): void {
