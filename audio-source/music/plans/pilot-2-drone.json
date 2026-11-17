@@ -1,0 +1,40 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "text": "[Chor-Drone]\n{deep male chest voices, one long sustained chord}\n(aah... ooh...)",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "72 BPM, 4/4",
+     "D minor",
+     "static harmony, pedal point on D, no chord changes",
+     "dark sci-fi",
+     "analog synthesizer, 1970s and 1980s sci-fi horror atmosphere",
+     "exactly 8 bars, steady, loopable",
+     "great production quality",
+     "deep male chest voices only, open throat, one sustained drone chord",
+     "extremely sparse, very low energy, calm, almost motionless",
+     "slow evolving, no rhythm, no pulse, long notes only",
+     "dark and ancient"
+    ],
+    "negative_styles": [
+     "drums",
+     "percussion",
+     "bass line",
+     "melody",
+     "female voice",
+     "rhythm",
+     "pulse",
+     "fast",
+     "bright",
+     "high frequencies",
+     "synth arpeggio",
+     "ticking"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true
+}

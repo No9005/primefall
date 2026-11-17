@@ -1,0 +1,37 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "text": "[Herzschlag-Puls]",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "72 BPM, 4/4",
+     "D minor",
+     "static harmony, pedal point on D, no chord changes",
+     "dark sci-fi",
+     "analog synthesizer, 1970s and 1980s sci-fi horror atmosphere",
+     "exactly 8 bars, steady, loopable",
+     "great production quality",
+     "a single low synth bass note D, pulsing like a heartbeat, two soft thumps per bar, lub-dub",
+     "sub bass only, minimal, quiet, subtle rhythmic tension",
+     "nothing else, almost no other sound"
+    ],
+    "negative_styles": [
+     "drums",
+     "percussion",
+     "melody",
+     "pads",
+     "voices",
+     "choir",
+     "high frequencies",
+     "hi-hat",
+     "synth arpeggio",
+     "strings"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true
+}

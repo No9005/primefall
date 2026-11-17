@@ -1,0 +1,307 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "text": "[Intro]\n{deep male chest voices drone, open throat, long held notes}\n(aah... ooh...)\n{heartbeat bass enters on the last bar}\nNot... strom...",
+    "duration_ms": 20000,
+    "positive_styles": [
+     "D minor",
+     "deep male chest voices, open throat, droning chant, very low",
+     "slow low heartbeat pulse, quiet",
+     "emergency lamp flicker pumping pads",
+     "mysterious, ancient, alien opening",
+     "sparse, no drums",
+     "ends on the downbeat",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "drums",
+     "loud",
+     "female lead"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Strophe 1]\nDas Licht ist aus, das Herz noch warm,\nein Schiff, das tr\u00e4umt von fremder Hand.\nWir kamen her f\u00fcr Pflicht und Sold,\ndoch etwas ruft uns bei dem Namen.",
+    "duration_ms": 40000,
+    "positive_styles": [
+     "D minor",
+     "driving heartbeat bass enters, steady sixteenth-note pulse",
+     "tight mechanical drums, controlled",
+     "cold sequencer arpeggio",
+     "female lead voice, quiet, breathy, alien, close",
+     "choir only as a soft pad under the lead",
+     "tense and building slowly",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "72 BPM, 4/4",
+     "constant tempo, exact bars",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare",
+     "huge layered choir",
+     "female lead voice, otherworldly and alien, dominant, the strongest voice in the mix",
+     "German lyrics sung with a slight foreign accent, rolled r, stretched vowels",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "dense wall of sound, powerful and pressing",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "loud",
+     "full choir"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Aufbau]\n{choir whispers, getting louder and denser}\nHalt es. Halt es. Halt es fest.",
+    "duration_ms": 13333,
+    "positive_styles": [
+     "D minor",
+     "rising tension, snare roll building",
+     "choir whispering in rhythm, getting denser",
+     "bass drives harder",
+     "riser into the chorus",
+     "ends on a drum hit before the downbeat",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "72 BPM, 4/4",
+     "constant tempo, exact bars",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare",
+     "huge layered choir",
+     "female lead voice, otherworldly and alien, dominant, the strongest voice in the mix",
+     "German lyrics sung with a slight foreign accent, rolled r, stretched vowels",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "dense wall of sound, powerful and pressing",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "quiet"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Refrain 1]\nNOTstrom, NOTstrom, das Licht kehrt zur\u00fcck!\nDie Ersten fielen, wir halten die Zone.\nNOTstrom, NOTstrom, nicht von dieser Welt!\nWer es ber\u00fchrt, vergisst sich selbst.",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "D minor",
+     "full power chorus, maximum energy",
+     "female lead soaring and powerful, dominant over the choir",
+     "huge choir chanting the word Notstrom with a strong accent on the first syllable",
+     "heavy driving bass, hard drums",
+     "wall of synths and strings",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "72 BPM, 4/4",
+     "constant tempo, exact bars",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare",
+     "huge layered choir",
+     "female lead voice, otherworldly and alien, dominant, the strongest voice in the mix",
+     "German lyrics sung with a slight foreign accent, rolled r, stretched vowels",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "dense wall of sound, powerful and pressing",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "quiet",
+     "sparse"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Strophe 2]\nDrei Herren zahlen unser Blut,\njeder will, was keiner kennt.\nDie W\u00e4nde singen Ersten-Sprache,\nund tief im Kiel schl\u00e4gt etwas mit.",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "D minor",
+     "variation of the first verse, new counter-melody in the strings",
+     "driving heartbeat bass, hard drums",
+     "female lead voice firmer and stronger than in the first verse",
+     "choir swells softly between lines",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "72 BPM, 4/4",
+     "constant tempo, exact bars",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare",
+     "huge layered choir",
+     "female lead voice, otherworldly and alien, dominant, the strongest voice in the mix",
+     "German lyrics sung with a slight foreign accent, rolled r, stretched vowels",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "dense wall of sound, powerful and pressing",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "quiet"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Refrain 2]\nNOTstrom! NOTstrom! Brenne, brenne!\nFremdes Feuer, erste Stimme,\nNOTstrom! NOTstrom! Halt das Licht!\nWas wir tragen, tr\u00e4gt uns fort.",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "E minor, one whole tone higher than the previous chorus",
+     "hymn-like chant, big and soaring",
+     "female lead dominant, full power",
+     "huge choir, mixed and male voices",
+     "heavy driving bass, hard drums, more energy than the first chorus",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "72 BPM, 4/4",
+     "constant tempo, exact bars",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare",
+     "huge layered choir",
+     "female lead voice, otherworldly and alien, dominant, the strongest voice in the mix",
+     "German lyrics sung with a slight foreign accent, rolled r, stretched vowels",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "dense wall of sound, powerful and pressing",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "quiet",
+     "sparse"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Bridge]\n{almost silent, only a slow heartbeat and the voice}\nH\u00f6rst du's schlagen? Tief im Kiel...\n(ooh) ... nicht von uns, nicht f\u00fcr uns.",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "E minor",
+     "almost silent, sparse",
+     "slow deep heartbeat bass pulse only",
+     "female lead whispering, alien, with a faint choir hum",
+     "no drums, no synth wall",
+     "voice and bass fall away at the end, ends on the downbeat, no held notes across the last bar line",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "72 BPM, 4/4",
+     "German lyrics sung with a slight foreign accent, rolled r, stretched vowels"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "drums",
+     "loud",
+     "full choir",
+     "wall of sound"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Finale]\nNOTstrom! Wir halten! NOTstrom! Wir fallen nicht!\nDie Zone geh\u00f6rt dem, der bleibt.\nNOTstrom! Halt das Licht!\nNicht von uns, nicht f\u00fcr uns.\nWer es ber\u00fchrt, vergisst sich selbst.",
+    "duration_ms": 40000,
+    "positive_styles": [
+     "F-sharp minor, one whole tone higher than the previous chorus",
+     "maximum energy, the biggest moment of the piece",
+     "female lead dominant, soaring, full power",
+     "huge choir shouting, hard and commanding like an order",
+     "heavy driving bass, hardest drums, layered orchestra and synths",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "72 BPM, 4/4",
+     "constant tempo, exact bars",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare",
+     "huge layered choir",
+     "female lead voice, otherworldly and alien, dominant, the strongest voice in the mix",
+     "German lyrics sung with a slight foreign accent, rolled r, stretched vowels",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "dense wall of sound, powerful and pressing",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "quiet",
+     "sparse",
+     "fade out"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Ende]\n{final choir hit, then a sustained chord that dies away}\n(Der Fall war erst der Anfang.)",
+    "duration_ms": 13333,
+    "positive_styles": [
+     "F-sharp minor",
+     "ending, final chord, drums stop",
+     "lead whispers the last line, quiet",
+     "choir holds a last chord, then silence",
+     "slow ringing out",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "72 BPM, 4/4",
+     "German lyrics sung with a slight foreign accent, rolled r, stretched vowels"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "drums continue",
+     "loud"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5"
+}
