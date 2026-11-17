@@ -39,6 +39,7 @@ import { type ComponentProps, type CSSProperties, type MouseEvent as ReactMouseE
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
 import { gameAudio } from "./audio";
 import { planFrame } from "./audio-cues";
+import { musicLevelFor, musicPhaseOf } from "./music";
 import { useCardSounds } from "./card-sounds";
 import { Board } from "./Board";
 import { EnergyPill, FloatingCard, PulledCard } from "./game-parts";
@@ -60,7 +61,7 @@ import { applyDrop, type BoardPick, type DropLayout, type DropPlaces, type DropU
 import { Callout } from "./Callout";
 import { defenderZone, ROLE_LABELS, roleOf, roundPillText } from "./attack-defend";
 import { AttackerPill, DefenderPill, RoleBanner, RoleLabel } from "./RoleHud";
-import { COUNTDOWN_CALLOUT_MS, countdownCallout, formatTimer, timerTone } from "./callout";
+import { COUNTDOWN_CALLOUT_MS, countdownCallout, formatTimer, TIMER_AMBER_SECONDS, timerTone } from "./callout";
 import { matchEndCallouts, type PrimeCallout, primeCallouts, primeCountdown, type PrimeProgress, pointsZoneScore, primeScore, zoneCallouts, zoneDots, zoneOccupancy, zoneTint } from "./prime-zone";
 import { targetsInReach } from "./target-pick";
 import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionBarText, resolutionCommitLabel } from "./resolution-hud";
@@ -473,10 +474,13 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     void gameAudio.load([...new Set([...view.heroes, ...view.enemies].map((unit) => unit.heroClass))]);
     // The map's own sounds: its ambience runs for the match.
     void gameAudio.loadMap().then(() => gameAudio.startAmbience());
+    // The music of the match: a loop in layers; its level follows the phase of the round (see the effect below).
+    void gameAudio.loadMusic().then(() => gameAudio.startMusic());
     return () => {
       unmounted.current = true;
       gameAudio.stopAll();
       gameAudio.stopAmbience();
+      gameAudio.stopMusic();
     };
   }, []);
 
@@ -966,6 +970,11 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
 
   // Planning ends early on Commit, or when the timer runs out; a timeout leaves the player's Queues empty.
   const [secondsLeft, setSecondsLeft] = useState(PLANNING_TIMER_SECONDS);
+  // The music steps up with the round: planning, the last seconds of it, the Resolution; a contested Prime Zone is the climax.
+  const musicLevel = musicLevelFor(musicPhaseOf(playing, secondsLeft, TIMER_AMBER_SECONDS), contestedNow);
+  useEffect(() => {
+    gameAudio.setMusicLevel(musicLevel);
+  }, [musicLevel]);
   // Every big number of the countdown thumps; the last one has a longer, lower tone.
   useEffect(() => {
     const due = playing ? undefined : countdownCallout(secondsLeft);

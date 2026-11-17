@@ -122,3 +122,16 @@ export function meets(value: number, spec: Amount | undefined): boolean {
       return value < limit;
   }
 }
+
+/** The music: `assets/audio/music/manifest.json`. One loop of `bars` bars in layers that run in sync; a level says how loud each layer is. */
+export interface MusicManifest {
+  bpm: number;
+  bars: number;
+  layers: Record<string, string>;
+  levels: { name: string; gains: Record<string, number> }[];
+}
+
+export const MUSIC_FOLDER = "music";
+export const MUSIC_MANIFEST_URL = `${AUDIO_BASE}${MUSIC_FOLDER}/manifest.json`;
+
+export const musicFileUrl = (file: string) => new URL(`${AUDIO_BASE}${MUSIC_FOLDER}/${file}`, "http://localhost/").pathname;
