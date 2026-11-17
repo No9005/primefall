@@ -24,6 +24,11 @@ interface Ambience {
 
 /** The music: how loud its bus is, how long a layer takes to fade (a time constant: about three of them make the change), how long it fades out. */
 const MUSIC_BUS_GAIN = 1;
+/** Gain of every bus together (-6 dB), before the safety limiter. */
+const MASTER_HEADROOM = 0.5;
+/** Every one-shot fades in and out this fast, so a file that starts or ends mid-wave does not click. */
+const DECLICK_IN_S = 0.003;
+const DECLICK_OUT_S = 0.012;
 const MUSIC_FADE_TIME_CONSTANT_S = 0.4;
 const MUSIC_FADE_OUT_S = 1.5;
 /** The music is muted by default until it is reworked (loops audible, hard transitions, clicks): `?music=on` in the address plays it. */
@@ -97,13 +102,16 @@ export class GameAudio {
     this.voiceBus = context.createGain();
     this.sfxBus = context.createGain();
     // Everything ends in one limiter: the sum of the music, the voices and the effects must not clip.
-    const master = context.createDynamicsCompressor();
-    master.threshold.value = -6;
-    master.knee.value = 3;
-    master.ratio.value = 20;
-    master.attack.value = 0.002;
-    master.release.value = 0.12;
-    master.connect(context.destination);
+    // The files are mastered hot (many reach 0 dBFS), so the buses first make headroom: the limiter then only catches the rare sum of many loud sounds.
+    const master = context.createGain();
+    master.gain.value = MASTER_HEADROOM;
+    const safety = context.createDynamicsCompressor();
+    safety.threshold.value = -3;
+    safety.knee.value = 0;
+    safety.ratio.value = 20;
+    safety.attack.value = 0.001;
+    safety.release.value = 0.25;
+    master.connect(safety).connect(context.destination);
     this.voiceBus.connect(master);
     this.sfxBus.connect(master);
     // The music has a bus of its own, with a limiter: the sum of the layers must not clip.
@@ -386,18 +394,31 @@ export class GameAudio {
     for (const atMs of manifest.ui.shuffle.atMs) this.startBuffer(context, buffer, this.sfxBus, { delayS: atMs / 1000 });
   }
 
+  /** A node that fades a one-shot in and out at its edges; `source` is connected to the returned node. */
+  private declick(context: AudioContext, source: AudioBufferSourceNode, startS: number, durationS: number): GainNode {
+    const envelope = context.createGain();
+    const fadeOut = Math.min(DECLICK_OUT_S, durationS / 2);
+    envelope.gain.setValueAtTime(0, startS);
+    envelope.gain.linearRampToValueAtTime(1, startS + DECLICK_IN_S);
+    envelope.gain.setValueAtTime(1, startS + durationS - fadeOut);
+    envelope.gain.linearRampToValueAtTime(0, startS + durationS);
+    source.connect(envelope);
+    return envelope;
+  }
+
   private startBuffer(context: AudioContext, buffer: AudioBuffer, bus: GainNode, { level = 1, delayS = 0, panner }: { level?: number; delayS?: number; panner?: StereoPannerNode } = {}): void {
     if (context.state === "suspended") void context.resume().catch(() => undefined);
     const source = context.createBufferSource();
     source.buffer = buffer;
     const gain = context.createGain();
     gain.gain.value = level;
-    source.connect(gain);
+    const startS = context.currentTime + delayS;
+    this.declick(context, source, startS, buffer.duration).connect(gain);
     if (panner) {
       panner.pan.value = Math.random() * 1.2 - 0.6;
       gain.connect(panner).connect(bus);
     } else gain.connect(bus);
-    source.start(context.currentTime + delayS);
+    source.start(startS);
   }
 
   /** The context the cue planner needs; `parts` is what only the screen knows. */
@@ -432,12 +453,14 @@ export class GameAudio {
     source.buffer = buffer;
     const gain = context.createGain();
     gain.gain.value = listener && request.tile ? distanceGain(listener, request.tile) : 1;
-    source.connect(gain).connect(bus);
+    const playAt = Math.max(context.currentTime, startMs / 1000);
+    this.declick(context, source, playAt, buffer.duration).connect(gain);
+    gain.connect(bus);
     this.duckMusicFor(request, startMs / 1000, durationMs / 1000);
     const key = `${request.kind}${decision.id}`;
     this.playing.set(key, { source, gain });
     source.onended = () => this.playing.delete(key);
-    source.start(Math.max(context.currentTime, startMs / 1000));
+    source.start(playAt);
   }
 
   /** The music steps back while a voice speaks or a heavy effect hits, and comes back slowly. */
