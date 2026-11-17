@@ -41,17 +41,17 @@ export interface VoiceRules {
   cooldownMs: number;
   /** A new line may break the cooldown when it is at least this many tiers above the last line of the Hero. */
   outranks: number;
-  /** At most this many Heroes speak at once within `nearTiles` of each other. */
-  maxNear: number;
-  /** Heroes closer than this (in tiles, Chebyshev) hear each other and so count against `maxNear`. */
-  nearTiles: number;
+  /**
+   * At most this many Heroes speak at once, wherever they stand: the player hears every voice from the same speaker, so
+   * Heroes far apart on the map would still make a cacophony.
+   */
+  maxAtOnce: number;
 }
 
-export const DEFAULT_VOICE_RULES: VoiceRules = { cooldownMs: 4000, outranks: 2, maxNear: 2, nearTiles: 6 };
+export const DEFAULT_VOICE_RULES: VoiceRules = { cooldownMs: 4000, outranks: 2, maxAtOnce: 2 };
 
 export interface VoiceRequest {
   heroId: string;
-  tile: GridPosition;
   startMs: number;
   durationMs: number;
   priority: number;
@@ -74,7 +74,7 @@ const chebyshev = (a: GridPosition, b: GridPosition) => Math.max(Math.abs(a.col 
 
 /**
  * Decides which voice lines play. A Hero speaks one line at a time and not again before its cooldown is over; no more than
- * `maxNear` Heroes speak at once near each other. A more important line cuts a less important one instead of being dropped.
+ * `maxAtOnce` Heroes speak at once. A more important line cuts a less important one instead of being dropped.
  */
 export class VoiceDirector {
   private nextId = 1;
@@ -98,20 +98,13 @@ export class VoiceDirector {
       return DROP;
     }
 
-    const near = this.voices.filter(
-      (voice) =>
-        voice.heroId !== request.heroId &&
-        !cut.includes(voice.id) &&
-        voice.startMs < endMs &&
-        voice.endMs > request.startMs &&
-        chebyshev(voice.tile, request.tile) <= this.rules.nearTiles,
-    );
-    const speakers = new Set(near.map((voice) => voice.heroId));
-    if (speakers.size >= this.rules.maxNear) {
-      // Too many voices near each other: the least important one makes room if this line is more important, else this one waits.
-      const quietest = near.reduce((low, voice) => (voice.priority < low.priority ? voice : low));
+    const others = this.voices.filter((voice) => voice.heroId !== request.heroId && !cut.includes(voice.id) && voice.startMs < endMs && voice.endMs > request.startMs);
+    const speakers = new Set(others.map((voice) => voice.heroId));
+    if (speakers.size >= this.rules.maxAtOnce) {
+      // Too many voices at once: the least important one makes room if this line is more important, else this one is dropped.
+      const quietest = others.reduce((low, voice) => (voice.priority < low.priority ? voice : low));
       if (request.priority <= quietest.priority) return DROP;
-      cut.push(...near.filter((voice) => voice.heroId === quietest.heroId).map((voice) => voice.id));
+      cut.push(...others.filter((voice) => voice.heroId === quietest.heroId).map((voice) => voice.id));
     }
 
     const id = this.nextId++;

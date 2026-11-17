@@ -3,7 +3,6 @@ import { AMBIENCE_GAP_MS, CUE_PRIORITY, distanceGain, FAR_GAIN, nextAmbienceGapM
 
 const line = (heroId: string, startMs: number, patch: Partial<VoiceRequest> = {}): VoiceRequest => ({
   heroId,
-  tile: { col: 5, row: 5 },
   startMs,
   durationMs: 1000,
   priority: Priority.Normal,
@@ -54,27 +53,21 @@ describe("a Hero's voice", () => {
     expect(cutting.cut).toEqual([first.id]);
   });
 
-  it("lets at most two Heroes speak at once near each other", () => {
+  it("lets at most two Heroes speak at once, wherever they stand", () => {
     const director = new VoiceDirector();
     expect(director.request(line("kit", 0)).play).toBe(true);
     expect(director.request(line("max", 100)).play).toBe(true);
     expect(director.request(line("tilly", 200)).play).toBe(false);
+    expect(director.request(line("enemy-kit", 300)).play).toBe(false);
   });
 
-  it("makes room for a more important line by cutting the quietest near speaker", () => {
+  it("makes room for a more important line by cutting the quietest speaker", () => {
     const director = new VoiceDirector();
     director.request(line("kit", 0, { priority: Priority.Important }));
     const quiet = director.request(line("max", 100, { priority: Priority.Minor }));
     const decision = director.request(line("tilly", 200, { priority: Priority.Important }));
     expect(decision.play).toBe(true);
     expect(decision.cut).toEqual([quiet.id]);
-  });
-
-  it("does not count Heroes that are far apart", () => {
-    const director = new VoiceDirector();
-    director.request(line("kit", 0, { tile: { col: 0, row: 0 } }));
-    director.request(line("max", 0, { tile: { col: 1, row: 0 } }));
-    expect(director.request(line("tilly", 100, { tile: { col: 12, row: 0 } })).play).toBe(true);
   });
 
   it("counts a line only while it runs", () => {

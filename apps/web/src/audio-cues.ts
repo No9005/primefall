@@ -68,6 +68,8 @@ function paceOf(heroClass: HeroClass, clip: ClipName | undefined): number {
 }
 
 const DEFAULT_FIRE_MS = 620;
+/** The pause between the first line of a Hero and its second. */
+const AFTER_FIRST_LINE_MS = 250;
 
 export interface Source {
   heroId: string;
@@ -97,11 +99,15 @@ class Planner {
       return chosen;
     };
     const voices = options.voice === false ? [] : [cue.voice, cue.voiceLater];
+    // A second line of a Hero (the last words) never starts before its first line has ended.
+    let firstEndsMs = 0;
     voices.forEach((voice, index) => {
       if (!voice || (voice.chance !== undefined && this.ctx.random() >= voice.chance)) return;
       const assetId = pick(voice.play, `voice${index}`);
       if (assetId === undefined) return;
-      this.requests.push({ kind: "voice", heroClass: who.heroClass, heroId: who.heroId, assetId, startMs: at(voice.atMs ?? 0), priority: CUE_PRIORITY[cue.on].voice + bonus, ...(who.tile && { tile: who.tile }) });
+      const startMs = Math.max(at(voice.atMs ?? 0), index === 0 ? 0 : firstEndsMs + AFTER_FIRST_LINE_MS);
+      if (index === 0) firstEndsMs = startMs + (manifest.assets[assetId]?.durationMs ?? 0);
+      this.requests.push({ kind: "voice", heroClass: who.heroClass, heroId: who.heroId, assetId, startMs, priority: CUE_PRIORITY[cue.on].voice + bonus, ...(who.tile && { tile: who.tile }) });
     });
     (cue.sfx ?? []).forEach((sfx, index) => {
       if (sfx.atImpact && !options.impact) return;
