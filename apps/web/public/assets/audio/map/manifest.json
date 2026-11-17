@@ -1,0 +1,128 @@
+{
+ "name": "Notstrom and the cards",
+ "format": "WAV for the loops, mono MP3 for the rest",
+ "note": "The map ambience and the sounds of the cards and of Energy. Not tied to a Hero. 'ambience.loops' run for the whole match; 'oneShots' play at random now and then, quietly. 'ui' sounds answer the player's own actions.",
+ "assets": {
+  "loop.bed": {
+   "file": "loops/bed.wav",
+   "what": "Notstrom ground bed: a huge slow ventilation fan, seamless loop (WAV: MP3 leaves a gap at the seam)",
+   "durationMs": 10500
+  },
+  "loop.core": {
+   "file": "loops/core.wav",
+   "what": "plasma core hum, seamless loop (WAV)",
+   "durationMs": 6500
+  },
+  "sfx.vent": {
+   "file": "sfx/vent.mp3",
+   "what": "ventilation duct releases a burst of air",
+   "durationMs": 2011
+  },
+  "sfx.creak": {
+   "file": "sfx/creak.mp3",
+   "what": "the hull creaks and groans",
+   "durationMs": 2508
+  },
+  "sfx.spark": {
+   "file": "sfx/spark.mp3",
+   "what": "a distant electrical crackle",
+   "durationMs": 914
+  },
+  "sfx.steam": {
+   "file": "sfx/steam.mp3",
+   "what": "a pipe leaks steam",
+   "durationMs": 2038
+  },
+  "sfx.debris": {
+   "file": "sfx/debris.mp3",
+   "what": "distant debris settles",
+   "durationMs": 2038
+  },
+  "ui.shuffle": {
+   "file": "ui/shuffle.mp3",
+   "what": "one riffle of a shuffle; two of them make the shuffle",
+   "durationMs": 470
+  },
+  "ui.card-played-1": {
+   "file": "ui/card-played-1.mp3",
+   "what": "a card goes into the Queue",
+   "durationMs": 131
+  },
+  "ui.card-played-2": {
+   "file": "ui/card-played-2.mp3",
+   "what": "a card goes into the Queue",
+   "durationMs": 157
+  },
+  "ui.card-back-1": {
+   "file": "ui/card-back-1.mp3",
+   "what": "a card is taken back",
+   "durationMs": 340
+  },
+  "ui.card-back-2": {
+   "file": "ui/card-back-2.mp3",
+   "what": "a card is taken back",
+   "durationMs": 340
+  },
+  "ui.energy-up": {
+   "file": "ui/energy-up.mp3",
+   "what": "Energy +1 (a Pitch)",
+   "durationMs": 313
+  }
+ },
+ "ambience": {
+  "loops": [
+   {
+    "play": "loop.bed",
+    "gain": 1
+   },
+   {
+    "play": "loop.core",
+    "gain": 0.7,
+    "nearPrimeZone": true,
+    "note": "louder the nearer the player's Hero is to the Prime Zone"
+   }
+  ],
+  "oneShots": {
+   "play": [
+    "sfx.vent",
+    "sfx.creak",
+    "sfx.spark",
+    "sfx.steam",
+    "sfx.debris"
+   ],
+   "everyMs": [
+    10000,
+    25000
+   ]
+  }
+ },
+ "ui": {
+  "cardPlayed": {
+   "play": [
+    "ui.card-played-1",
+    "ui.card-played-2"
+   ]
+  },
+  "cardBack": {
+   "play": [
+    "ui.card-back-1",
+    "ui.card-back-2"
+   ]
+  },
+  "energyUp": {
+   "play": [
+    "ui.energy-up"
+   ]
+  },
+  "shuffle": {
+   "play": [
+    "ui.shuffle"
+   ],
+   "atMs": [
+    850,
+    1550
+   ],
+   "note": "the two riffles of the shuffle animation (deck-shuffle.ts)"
+  }
+ }
+}

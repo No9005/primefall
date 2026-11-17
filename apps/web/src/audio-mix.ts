@@ -5,7 +5,7 @@ import type { CueOn } from "./audio-manifest";
 // Web Audio in it, so the rules are tested. Times are milliseconds on one clock (the audio clock).
 
 /** How important a sound is. A louder tier wins when the mix is full: it cuts a quieter one, a quieter one is dropped. */
-export const Priority = { Ambient: 1, Minor: 2, Normal: 3, Important: 4, Critical: 5 } as const;
+export const Priority = { Background: 0, Ambient: 1, Minor: 2, Normal: 3, Important: 4, Critical: 5 } as const;
 
 /**
  * The importance of the voice and of the effects of every cue. A Hero's own Squad hears its sounds one tier higher
@@ -194,6 +194,13 @@ export class SfxLimiter {
 export function pickVariant(variants: readonly string[], last: string | undefined, random: () => number): string | undefined {
   const choices = variants.length > 1 ? variants.filter((variant) => variant !== last) : variants;
   return choices[Math.min(choices.length - 1, Math.floor(random() * choices.length))];
+}
+
+/** The ambience of the map: a quiet sound at random every 10 to 25 s. */
+export const AMBIENCE_GAP_MS = { min: 10_000, max: 25_000 };
+
+export function nextAmbienceGapMs(random: () => number, { min, max } = AMBIENCE_GAP_MS): number {
+  return min + random() * (max - min);
 }
 
 /** Within this many tiles of the listener a sound has full volume. */

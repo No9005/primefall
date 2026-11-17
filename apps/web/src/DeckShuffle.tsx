@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { gameAudio } from "./audio";
 import { riffleSide, SHUFFLE_CALM_MS, SHUFFLE_MS, shuffleStackSize } from "./deck-shuffle";
 
 interface DeckShuffleProps {
@@ -22,6 +23,8 @@ export function DeckShuffle({ cards, visible, reducedMotion, onStart, onDone }: 
   callbacks.current = { onStart, onDone };
   useEffect(() => {
     callbacks.current.onStart();
+    // The riffles of the animation; with reduced motion there are none.
+    if (visible && !reducedMotion) gameAudio.playShuffle();
     const timer = setTimeout(() => callbacks.current.onDone(), reducedMotion ? SHUFFLE_CALM_MS : SHUFFLE_MS);
     return () => clearTimeout(timer);
   }, [reducedMotion]);
