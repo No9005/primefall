@@ -67,6 +67,11 @@
    "file": "ui/energy-up.mp3",
    "what": "Energy +1 (a Pitch)",
    "durationMs": 313
+  },
+  "ui.card-draw": {
+   "file": "ui/card-draw.mp3",
+   "what": "a card is drawn into the Hand (one per card, as it leaves the Deck pile)",
+   "durationMs": 392
   }
  },
  "ambience": {
@@ -123,6 +128,11 @@
     1550
    ],
    "note": "the two riffles of the shuffle animation (deck-shuffle.ts)"
+  },
+  "cardDraw": {
+   "play": [
+    "ui.card-draw"
+   ]
   }
  }
 }
