@@ -72,6 +72,11 @@
    "file": "ui/card-draw.mp3",
    "what": "a card is drawn into the Hand (one per card, as it leaves the Deck pile)",
    "durationMs": 392
+  },
+  "ui.card-burn": {
+   "file": "ui/card-burn.mp3",
+   "what": "a card burns into the Exile (Deck Damage): once per hit, however many cards burn",
+   "durationMs": 392
   }
  },
  "ambience": {
@@ -133,6 +138,12 @@
    "play": [
     "ui.card-draw"
    ]
+  },
+  "cardBurn": {
+   "play": [
+    "ui.card-burn"
+   ],
+   "note": "starts when the glowing edge appears, 14 % into the 900 ms of the first card's burn (burn-glimmer.ts)"
   }
  }
 }
