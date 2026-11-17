@@ -96,7 +96,7 @@ export interface MapManifest {
     /** Quiet sounds at random now and then, `everyMs` apart (from, to). */
     oneShots: { play: string[]; everyMs: [number, number] };
   };
-  ui: Record<"cardPlayed" | "cardBack" | "cardDraw" | "energyUp", { play: string[] }> & { shuffle: { play: string[]; atMs: number[] } };
+  ui: Record<"cardPlayed" | "cardBack" | "cardDraw" | "cardBurn" | "energyUp", { play: string[] }> & { shuffle: { play: string[]; atMs: number[] } };
 }
 
 /** True when `value` meets `spec`: a number matches exactly, a string is a comparison (">=2", ">0"). */

@@ -1,3 +1,5 @@
+import { GLIMMER } from "./burn-glimmer";
+
 // The Deck Damage animation (issue 203): each card that leaves the Deck lifts off the pile and burns away into the Exile.
 
 /** One card burns for 900 ms; the cards of one hit follow each other 400 ms apart, after the Hero's hit reaction. */
@@ -9,6 +11,14 @@ export const BURN_START_DELAY_MS = 300;
 export function burnSchedule(order: number): { lift: number; burned: number } {
   const lift = BURN_START_DELAY_MS + order * BURN_STAGGER_MS;
   return { lift, burned: lift + BURN_MS };
+}
+
+/**
+ * When the burn sounds, in ms from the hit: once for the whole hit (the first card's), as its glowing edge appears. A hit
+ * that burns two cards does not sound twice.
+ */
+export function burnSoundMs(): number {
+  return burnSchedule(0).lift + GLIMMER.burnStart * BURN_MS;
 }
 
 /** A hit that removes `cards` cards from the Deck of a Hero; batches wait in line so one burn starts after the other. */
