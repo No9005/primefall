@@ -1,4 +1,5 @@
 import { findTiles, type GridPosition, PRIME_ZONE_WIN_RESOLUTIONS, REACTOR_DECK, SquadId, TileKind, ZoneKind, type ZoneView } from "game-core";
+import type { UiSound } from "./audio-manifest";
 import type { CalloutTone } from "./callout";
 import { type ZoneLook, zoneLook } from "./vision-effects";
 
@@ -37,6 +38,8 @@ export interface PrimeCallout {
   detail?: string;
   tone: CalloutTone;
   durationMs: number;
+  /** Sounds that play when it shows, one after the other: a zone taken, Credits earned. Only for the player's own Squad. */
+  sounds?: readonly UiSound[];
 }
 
 const PRIME_ZONE_TILES = findTiles(REACTOR_DECK, TileKind.PrimeZone);
@@ -49,7 +52,8 @@ export function primeCallouts(before: PrimeProgress, after: PrimeProgress, you: 
   for (const squad of [SquadId.Left, SquadId.Right]) {
     if (after[squad] <= before[squad]) continue;
     const own = squad === you;
-    callouts.push({ text: `PRIME ZONE ${after[squad]} / ${PRIME_ZONE_WIN_RESOLUTIONS}`, tone: own ? "teal" : "red", durationMs: PRIME_ZONE_CALLOUT_MS });
+    const sounds: UiSound[] = before[squad] === 0 ? ["zoneTaken", "score"] : ["score"];
+    callouts.push({ text: `PRIME ZONE ${after[squad]} / ${PRIME_ZONE_WIN_RESOLUTIONS}`, tone: own ? "teal" : "red", durationMs: PRIME_ZONE_CALLOUT_MS, ...(own && { sounds }) });
     if (after[squad] >= PRIME_ZONE_WIN_RESOLUTIONS) {
       callouts.push({ text: own ? "VICTORY" : "DEFEAT", tone: own ? "gold" : "red", durationMs: PRIME_ZONE_END_CALLOUT_MS });
     }
@@ -134,7 +138,9 @@ export function zoneCallouts(before: readonly ZoneView[], after: readonly ZoneVi
     else if (zone.controller !== undefined) {
       const own = zone.controller === you;
       const name = own ? zoneName(zone) : `ENEMY ${zoneName(zone)}`;
-      callouts.push({ text: `${name} +${zone.value}`, tone: own ? "teal" : "red", durationMs: PRIME_ZONE_CALLOUT_MS });
+      // The zone changed hands to the player's Squad: taken, then Credits.
+      const sounds: UiSound[] = before[i]?.controller === zone.controller ? ["score"] : ["zoneTaken", "score"];
+      callouts.push({ text: `${name} +${zone.value}`, tone: own ? "teal" : "red", durationMs: PRIME_ZONE_CALLOUT_MS, ...(own && { sounds }) });
     }
   });
   return callouts;

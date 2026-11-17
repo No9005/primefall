@@ -1,5 +1,5 @@
 import { findTiles, type GridPosition, type HeroClass, REACTOR_DECK, TileKind } from "game-core";
-import { AUDIO_FOLDER, type AudioManifest, assetUrl, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl } from "./audio-manifest";
+import { AUDIO_FOLDER, type AudioManifest, assetUrl, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl, type UiSound } from "./audio-manifest";
 import { distanceGain, nextAmbienceGapMs, pickVariant, Priority, SfxLimiter, VoiceDirector } from "./audio-mix";
 import { planMoment, type PlanContext, type SoundRequest, type Source } from "./audio-cues";
 
@@ -46,6 +46,9 @@ export class GameAudio {
   private mapManifest: MapManifest | undefined;
   private mapLoading: Promise<void> | undefined;
   private ambience: Ambience | undefined;
+  /** The laser barrier: wanted while the Prime Zone is inactive, heard while the ambience runs. */
+  private barrierWanted = false;
+  private barrier: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
   private listener: GridPosition | undefined;
 
   /** Arms the sound on the first tap or key press of the page. Returns the function that takes it back. */
@@ -131,6 +134,51 @@ export class GameAudio {
     for (const loop of this.ambience.loops) {
       if (loop.nearPrimeZone) loop.gain.gain.setTargetAtTime(loop.base * distanceGain(tile, PRIME_ZONE_CENTRE), context.currentTime, 0.5);
     }
+    if (this.barrier && this.mapManifest) this.barrier.gain.gain.setTargetAtTime(this.mapManifest.ambience.barrier.gain * distanceGain(tile, PRIME_ZONE_CENTRE), context.currentTime, 0.5);
+  }
+
+  /**
+   * The laser barrier around the Prime Zone: it hums while the walls stand (`on`), and the sound of its dissolving plays when
+   * it goes while the ambience runs. The hum is louder the nearer the player's Hero is to the Prime Zone.
+   */
+  setBarrier(on: boolean): void {
+    const wasOn = this.barrierWanted;
+    this.barrierWanted = on;
+    this.applyBarrier(wasOn && !on);
+  }
+
+  private applyBarrier(dissolve: boolean): void {
+    const context = this.context;
+    const manifest = this.mapManifest;
+    if (!context || !manifest || !this.ambience || !this.sfxBus) return;
+    if (this.barrierWanted && !this.barrier) {
+      const buffer = this.buffers.get(`${MAP_FOLDER}:${manifest.ambience.barrier.loop}`);
+      if (!buffer) return;
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const gain = context.createGain();
+      const level = manifest.ambience.barrier.gain * (this.listener ? distanceGain(this.listener, PRIME_ZONE_CENTRE) : 1);
+      gain.gain.setValueAtTime(0, context.currentTime);
+      gain.gain.linearRampToValueAtTime(level, context.currentTime + AMBIENCE_FADE_S / 2);
+      source.connect(gain).connect(this.sfxBus);
+      source.start();
+      this.barrier = { source, gain };
+    } else if (!this.barrierWanted && this.barrier) {
+      this.fadeOutBarrier();
+      if (dissolve) this.playUi("laserOff");
+    }
+  }
+
+  private fadeOutBarrier(): void {
+    const context = this.context;
+    const barrier = this.barrier;
+    this.barrier = undefined;
+    if (!barrier || !context) return;
+    barrier.gain.gain.cancelScheduledValues(context.currentTime);
+    barrier.gain.gain.setValueAtTime(barrier.gain.gain.value, context.currentTime);
+    barrier.gain.gain.linearRampToValueAtTime(0, context.currentTime + AMBIENCE_FADE_S / 2);
+    barrier.source.stop(context.currentTime + AMBIENCE_FADE_S / 2 + 0.05);
   }
 
   /** Starts the ambience of the map: the loops fade in, and a quiet sound now and then. Runs until `stopAmbience`. */
@@ -154,6 +202,7 @@ export class GameAudio {
     });
     this.ambience = { loops, timer: undefined };
     this.scheduleOneShot(manifest.ambience.oneShots);
+    this.applyBarrier(false);
   }
 
   private scheduleOneShot(oneShots: MapManifest["ambience"]["oneShots"]): void {
@@ -180,6 +229,7 @@ export class GameAudio {
     this.ambience = undefined;
     if (!ambience || !context) return;
     clearTimeout(ambience.timer);
+    this.fadeOutBarrier();
     for (const { source, gain } of ambience.loops) {
       gain.gain.cancelScheduledValues(context.currentTime);
       gain.gain.setValueAtTime(gain.gain.value, context.currentTime);
@@ -188,8 +238,8 @@ export class GameAudio {
     }
   }
 
-  /** A sound of the player's own action: a card goes in or comes back or is drawn, Energy is gained. */
-  playUi(name: "cardPlayed" | "cardBack" | "cardDraw" | "cardBurn" | "energyUp"): void {
+  /** A sound of the player's own action or of a moment of the match: a card goes in, a zone is taken, a number counts down. */
+  playUi(name: UiSound, delayMs = 0): void {
     const manifest = this.mapManifest;
     const context = this.context;
     if (!manifest || !context || context.state === "closed" || !this.sfxBus) return;
@@ -197,7 +247,7 @@ export class GameAudio {
     const buffer = id === undefined ? undefined : this.buffers.get(`${MAP_FOLDER}:${id}`);
     if (id === undefined || !buffer) return;
     this.lastPick.set(name, id);
-    this.startBuffer(context, buffer, this.sfxBus);
+    this.startBuffer(context, buffer, this.sfxBus, { delayS: delayMs / 1000 });
   }
 
   /** The two riffles of the shuffle animation. */

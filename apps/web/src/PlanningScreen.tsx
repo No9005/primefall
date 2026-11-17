@@ -233,6 +233,8 @@ function WaitCard({ heroClass, dimmed, disabled, locked, onWait }: { heroClass: 
 }
 
 const WAIT_CARD_WIDTH = 108;
+/** Two sounds of one callout (a zone taken, then Credits) follow each other this far apart. */
+const SOUND_GAP_MS = 450;
 
 const LOCKED_TITLE = "locked during the Resolution";
 const USED_TITLE = "already used this Round";
@@ -700,6 +702,11 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const zoneList = zonesAfter ?? view.zones;
   // The zones after the Resolution belong to the next Round.
   const countdown = zoneList && primeCountdown(zoneList, zonesAfter ? view.round + 1 : view.round);
+  // The laser walls around the inactive Prime Zone hum; when they flicker out, their dissolving sounds.
+  const wallsUp = countdown !== undefined;
+  useEffect(() => {
+    gameAudio.setBarrier(wallsUp);
+  }, [wallsUp]);
   const enemySquad = view.squad === SquadId.Left ? SquadId.Right : SquadId.Left;
   const role = roleOf(view);
   /** The Heroes a card in one mode can be aimed at. */
@@ -959,6 +966,11 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
 
   // Planning ends early on Commit, or when the timer runs out; a timeout leaves the player's Queues empty.
   const [secondsLeft, setSecondsLeft] = useState(PLANNING_TIMER_SECONDS);
+  // Every big number of the countdown thumps; the last one has a longer, lower tone.
+  useEffect(() => {
+    const due = playing ? undefined : countdownCallout(secondsLeft);
+    if (due) gameAudio.playUi(due.sound);
+  }, [secondsLeft, playing]);
   const commitRef = useRef<((toSubmit: SquadPlan) => Promise<void>) | undefined>(undefined);
   commitRef.current = commit;
   const committingRef = useRef(false);
@@ -1152,6 +1164,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
       setPrimeCallout(undefined);
       await new Promise((resolve) => setTimeout(resolve, 0));
       setPrimeCallout(callout);
+      callout.sounds?.forEach((sound, index) => gameAudio.playUi(sound, index * SOUND_GAP_MS));
       await new Promise((resolve) => setTimeout(resolve, callout.durationMs));
       if (unmounted.current) return;
     }

@@ -3,8 +3,9 @@ import { calloutClassName, calloutStyleVars, countdownCallout, formatTimer, time
 
 describe("countdownCallout", () => {
   it("shows the 10 once in amber and 5 to 1 in red", () => {
-    expect(countdownCallout(10)).toEqual({ text: "10", tone: "amber" });
-    for (const n of [5, 4, 3, 2, 1]) expect(countdownCallout(n)).toEqual({ text: String(n), tone: "red" });
+    expect(countdownCallout(10)).toEqual({ text: "10", tone: "amber", sound: "countdownTick" });
+    for (const n of [5, 4, 3, 2]) expect(countdownCallout(n)).toEqual({ text: String(n), tone: "red", sound: "countdownTick" });
+    expect(countdownCallout(1)).toEqual({ text: "1", tone: "red", sound: "countdownFinal" });
   });
 
   it("shows nothing at the other seconds, whatever the total time", () => {

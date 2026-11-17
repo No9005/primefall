@@ -1,6 +1,6 @@
-import { findTiles, REACTOR_DECK, SquadId, TileKind } from "game-core";
+import { findTiles, REACTOR_DECK, SquadId, TileKind, ZoneKind, type ZoneView } from "game-core";
 import { describe, expect, it } from "vitest";
-import { LASER_FLICKER_MS, laserWallAlpha, primeCallouts, primeScore, zoneOccupancy, zoneTint } from "./prime-zone";
+import { LASER_FLICKER_MS, laserWallAlpha, primeCallouts, primeScore, zoneCallouts, zoneOccupancy, zoneTint } from "./prime-zone";
 
 const L = SquadId.Left;
 const R = SquadId.Right;
@@ -93,5 +93,27 @@ describe("laser walls", () => {
 
   it("flickers the same way every time", () => {
     expect(laserWallAlpha(400, 7)).toBe(laserWallAlpha(400, 7));
+  });
+});
+
+describe("the sounds of the callouts", () => {
+  it("plays a zone taken and Credits for the player's Squad when the zone changes hands, only Credits when it holds it", () => {
+    const zone = (controller: SquadId | undefined) => ({ kind: ZoneKind.PrimeZone, active: true, controller, value: 2, tiles: [] }) as unknown as ZoneView;
+    const taken = zoneCallouts([zone(undefined)], [zone(SquadId.Left)], SquadId.Left);
+    expect(taken[0]!.sounds).toEqual(["zoneTaken", "score"]);
+    const held = zoneCallouts([zone(SquadId.Left)], [zone(SquadId.Left)], SquadId.Left);
+    expect(held[0]!.sounds).toEqual(["score"]);
+  });
+
+  it("makes no sound for the enemy taking the zone", () => {
+    const zone = (controller: SquadId | undefined) => ({ kind: ZoneKind.PrimeZone, active: true, controller, value: 2, tiles: [] }) as unknown as ZoneView;
+    expect(zoneCallouts([zone(undefined)], [zone(SquadId.Right)], SquadId.Left)[0]!.sounds).toBeUndefined();
+  });
+
+  it("plays Credits when the player's own count of Resolutions in the classic mode rises", () => {
+    const own = primeCallouts(counts(0, 0), counts(1, 0), L);
+    expect(own[0]!.sounds).toEqual(["zoneTaken", "score"]);
+    expect(primeCallouts(counts(1, 0), counts(2, 0), L)[0]!.sounds).toEqual(["score"]);
+    expect(primeCallouts(counts(0, 0), counts(0, 1), L)[0]!.sounds).toBeUndefined();
   });
 });

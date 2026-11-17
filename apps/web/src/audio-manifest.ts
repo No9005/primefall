@@ -88,6 +88,9 @@ export function assetUrl(folder: string, asset: Pick<AudioAsset, "file">): strin
 export const MAP_FOLDER = "map";
 export const MAP_MANIFEST_URL = `${AUDIO_BASE}${MAP_FOLDER}/manifest.json`;
 
+/** The sounds of the player's own actions and of the moments of the match; `ui` in the map manifest. */
+export type UiSound = "cardPlayed" | "cardBack" | "cardDraw" | "cardBurn" | "energyUp" | "laserOff" | "zoneTaken" | "score" | "countdownTick" | "countdownFinal";
+
 export interface MapManifest {
   assets: Record<string, Pick<AudioAsset, "file" | "durationMs">>;
   ambience: {
@@ -95,8 +98,10 @@ export interface MapManifest {
     loops: { play: string; gain: number; nearPrimeZone?: boolean }[];
     /** Quiet sounds at random now and then, `everyMs` apart (from, to). */
     oneShots: { play: string[]; everyMs: [number, number] };
+    /** The laser barrier around the inactive Prime Zone: a loop that hums while the walls stand; `dissolve` is the sound in `ui` when they go. */
+    barrier: { loop: string; gain: number; dissolve: string };
   };
-  ui: Record<"cardPlayed" | "cardBack" | "cardDraw" | "cardBurn" | "energyUp", { play: string[] }> & { shuffle: { play: string[]; atMs: number[] } };
+  ui: Record<UiSound, { play: string[] }> & { shuffle: { play: string[]; atMs: number[] } };
 }
 
 /** True when `value` meets `spec`: a number matches exactly, a string is a comparison (">=2", ">0"). */
