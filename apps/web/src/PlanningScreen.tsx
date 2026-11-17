@@ -39,6 +39,7 @@ import { type ComponentProps, type CSSProperties, type MouseEvent as ReactMouseE
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
 import { gameAudio } from "./audio";
 import { planFrame } from "./audio-cues";
+import { useCardSounds } from "./card-sounds";
 import { Board } from "./Board";
 import { EnergyPill, FloatingCard, PulledCard } from "./game-parts";
 import { HERO_BASICS } from "./hero-basics";
@@ -468,9 +469,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     unmounted.current = false;
     // The sounds of the Heroes in this match load while the player plans.
     void gameAudio.load([...new Set([...view.heroes, ...view.enemies].map((unit) => unit.heroClass))]);
+    // The map's own sounds: its ambience runs for the match.
+    void gameAudio.loadMap().then(() => gameAudio.startAmbience());
     return () => {
       unmounted.current = true;
       gameAudio.stopAll();
+      gameAudio.stopAmbience();
     };
   }, []);
 
@@ -488,6 +492,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const [zonesAfter, setZonesAfter] = useState<readonly ZoneView[]>();
   const [primeCallout, setPrimeCallout] = useState<PrimeCallout>();
   const playing = resolutionStage !== undefined;
+  useCardSounds({ key: `${selected.id}:${view.round}`, queue: queue.length, pitched: pitched.length }, playing);
+  // The core hum of the map is louder the nearer the player's Hero is to the Prime Zone.
+  const playerTile = view.heroes.find((hero) => hero.heroClass === playerHeroClass)?.position;
+  useEffect(() => {
+    if (playerTile) gameAudio.setListener(playerTile);
+  }, [playerTile?.col, playerTile?.row]);
 
   // The draw animation: the cards new in the player's Hand fly in one after the other (hand-draw.ts). The state is
   // derived while rendering the first time a view is seen, so no card shows face up before it has flown.
@@ -1083,6 +1093,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         coverPlacedOwn,
         coverNoScorch,
       });
+      gameAudio.setListener(positions[playerHero.id] ?? startPositions[playerHero.id]!);
       gameAudio.play(
         planFrame(
           frame,

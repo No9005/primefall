@@ -79,9 +79,24 @@ const AUDIO_BASE = `${import.meta.env.BASE_URL}assets/audio/`;
 
 export const manifestUrl = (heroClass: HeroClass) => `${AUDIO_BASE}${AUDIO_FOLDER[heroClass]}/manifest.json`;
 
-/** The URL of an asset of a Hero; `file` may climb out of the Hero's folder (a shared effect). */
-export function assetUrl(heroClass: HeroClass, asset: AudioAsset): string {
-  return new URL(`${AUDIO_BASE}${AUDIO_FOLDER[heroClass]}/${asset.file}`, "http://localhost/").pathname;
+/** The URL of an asset in a folder of `assets/audio`; `file` may climb out of it (a shared effect). */
+export function assetUrl(folder: string, asset: Pick<AudioAsset, "file">): string {
+  return new URL(`${AUDIO_BASE}${folder}/${asset.file}`, "http://localhost/").pathname;
+}
+
+/** The map and the cards: `assets/audio/map/manifest.json`. Not tied to a Hero. */
+export const MAP_FOLDER = "map";
+export const MAP_MANIFEST_URL = `${AUDIO_BASE}${MAP_FOLDER}/manifest.json`;
+
+export interface MapManifest {
+  assets: Record<string, Pick<AudioAsset, "file" | "durationMs">>;
+  ambience: {
+    /** Run for the whole match; the one marked `nearPrimeZone` is louder the nearer the player's Hero is to the Prime Zone. */
+    loops: { play: string; gain: number; nearPrimeZone?: boolean }[];
+    /** Quiet sounds at random now and then, `everyMs` apart (from, to). */
+    oneShots: { play: string[]; everyMs: [number, number] };
+  };
+  ui: Record<"cardPlayed" | "cardBack" | "energyUp", { play: string[] }> & { shuffle: { play: string[]; atMs: number[] } };
 }
 
 /** True when `value` meets `spec`: a number matches exactly, a string is a comparison (">=2", ">0"). */

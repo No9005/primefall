@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CUE_PRIORITY, distanceGain, FAR_GAIN, Priority, pickVariant, SfxLimiter, VoiceDirector, type VoiceRequest } from "./audio-mix";
+import { AMBIENCE_GAP_MS, CUE_PRIORITY, distanceGain, FAR_GAIN, nextAmbienceGapMs, Priority, pickVariant, SfxLimiter, VoiceDirector, type VoiceRequest } from "./audio-mix";
 
 const line = (heroId: string, startMs: number, patch: Partial<VoiceRequest> = {}): VoiceRequest => ({
   heroId,
@@ -103,6 +103,21 @@ describe("the effects", () => {
     const hit = limiter.request(effect("hit", 100, Priority.Important));
     expect(hit.play).toBe(true);
     expect(hit.cut).toEqual([step.id]);
+  });
+});
+
+describe("the ambience", () => {
+  it("lets a quiet sound come every 10 to 25 s, at random", () => {
+    expect(nextAmbienceGapMs(() => 0)).toBe(AMBIENCE_GAP_MS.min);
+    expect(nextAmbienceGapMs(() => 0.5)).toBe(17_500);
+    expect(nextAmbienceGapMs(() => 1)).toBe(AMBIENCE_GAP_MS.max);
+  });
+
+  it("is the least important sound: it never takes the place of anything else", () => {
+    expect(Priority.Background).toBeLessThan(Priority.Ambient);
+    const limiter = new SfxLimiter({ maxAtOnce: 1, minRepeatMs: 0 });
+    limiter.request({ assetId: "step", startMs: 0, durationMs: 500, priority: Priority.Ambient });
+    expect(limiter.request({ assetId: "vent", startMs: 100, durationMs: 500, priority: Priority.Background }).play).toBe(false);
   });
 });
 

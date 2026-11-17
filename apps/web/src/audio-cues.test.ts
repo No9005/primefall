@@ -2,9 +2,10 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { EventKind, HeroClass, type MatchEvent } from "game-core";
 import { describe, expect, it } from "vitest";
-import { type AudioManifest } from "./audio-manifest";
+import { type AudioManifest, type MapManifest } from "./audio-manifest";
 import { planFrame, planMoment, type PlanContext, type SoundRequest } from "./audio-cues";
 import { Priority } from "./audio-mix";
+import { SHUFFLE_TIMELINE } from "./deck-shuffle";
 import { buildPlaybackFrames } from "./playback";
 
 const AUDIO_DIR = path.resolve(__dirname, "../public/assets/audio");
@@ -44,6 +45,21 @@ describe("the manifests", () => {
       }
     });
   }
+});
+
+describe("the map manifest", () => {
+  const map = JSON.parse(readFileSync(path.join(AUDIO_DIR, "map", "manifest.json"), "utf8")) as MapManifest;
+
+  it("names only assets it has, and every asset file exists", () => {
+    const names = [...map.ambience.loops.map((loop) => loop.play), ...map.ambience.oneShots.play, ...Object.values(map.ui).flatMap((ui) => ui.play)];
+    for (const name of names) expect(map.assets[name], name).toBeDefined();
+    for (const [name, asset] of Object.entries(map.assets)) expect(existsSync(path.join(AUDIO_DIR, "map", asset.file)), name).toBe(true);
+  });
+
+  it("keeps the loops in WAV (an MP3 leaves a gap at the seam) and puts a riffle on each beat of the shuffle animation", () => {
+    for (const loop of map.ambience.loops) expect(map.assets[loop.play]!.file).toMatch(/\.wav$/);
+    expect(map.ui.shuffle.atMs).toEqual(SHUFFLE_TIMELINE.riffles.map((riffle) => riffle.split));
+  });
 });
 
 describe("the sounds of a frame", () => {

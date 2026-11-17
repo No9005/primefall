@@ -1,6 +1,6 @@
-import type { GridPosition, HeroClass } from "game-core";
-import { AUDIO_FOLDER, type AudioManifest, assetUrl, manifestUrl } from "./audio-manifest";
-import { distanceGain, SfxLimiter, VoiceDirector } from "./audio-mix";
+import { findTiles, type GridPosition, type HeroClass, REACTOR_DECK, TileKind } from "game-core";
+import { AUDIO_FOLDER, type AudioManifest, assetUrl, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl } from "./audio-manifest";
+import { distanceGain, nextAmbienceGapMs, pickVariant, Priority, SfxLimiter, VoiceDirector } from "./audio-mix";
 import { planMoment, type PlanContext, type SoundRequest, type Source } from "./audio-cues";
 
 // The player of the game sound: it loads the Heroes' sounds, starts the sounds the cues ask for through the rules of the
@@ -15,6 +15,23 @@ interface Playing {
   gain: GainNode;
 }
 
+/** The ambience of the map while a match runs. */
+interface Ambience {
+  loops: { source: AudioBufferSourceNode; gain: GainNode; base: number; nearPrimeZone: boolean }[];
+  timer: ReturnType<typeof setTimeout> | undefined;
+}
+
+/** The ambience fades in and out this slowly. */
+const AMBIENCE_FADE_S = 2;
+/** The one-shots of the ambience are quieter than the effects of the Heroes. */
+const ONE_SHOT_GAIN = 0.6;
+
+/** The middle of the Prime Zone: the core hum is loudest near it. */
+const PRIME_ZONE_CENTRE: GridPosition = (() => {
+  const tiles = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+  return { col: Math.round(tiles.reduce((sum, tile) => sum + tile.col, 0) / tiles.length), row: Math.round(tiles.reduce((sum, tile) => sum + tile.row, 0) / tiles.length) };
+})();
+
 export class GameAudio {
   private context: AudioContext | undefined;
   private voiceBus: GainNode | undefined;
@@ -26,6 +43,10 @@ export class GameAudio {
   private readonly director = new VoiceDirector();
   private readonly limiter = new SfxLimiter();
   private readonly lastPick = new Map<string, string>();
+  private mapManifest: MapManifest | undefined;
+  private mapLoading: Promise<void> | undefined;
+  private ambience: Ambience | undefined;
+  private listener: GridPosition | undefined;
 
   /** Arms the sound on the first tap or key press of the page. Returns the function that takes it back. */
   armUnlock(): () => void {
@@ -73,11 +94,133 @@ export class GameAudio {
     const manifest = (await (await fetch(manifestUrl(heroClass))).json()) as AudioManifest;
     await Promise.all(
       Object.entries(manifest.assets).map(async ([id, asset]) => {
-        const data = await (await fetch(assetUrl(heroClass, asset))).arrayBuffer();
+        const data = await (await fetch(assetUrl(AUDIO_FOLDER[heroClass], asset))).arrayBuffer();
         this.buffers.set(`${AUDIO_FOLDER[heroClass]}:${id}`, await context.decodeAudioData(data));
       }),
     );
     this.manifests.set(heroClass, manifest);
+  }
+
+  /** Loads the sounds of the map and of the cards, once. */
+  loadMap(): Promise<void> {
+    this.mapLoading ??= this.fetchMap().catch(() => {
+      // A missing sound must never break the game; try again at the next load.
+      this.mapLoading = undefined;
+    });
+    return this.mapLoading;
+  }
+
+  private async fetchMap(): Promise<void> {
+    const context = this.ensureContext();
+    if (!context) return;
+    const manifest = (await (await fetch(MAP_MANIFEST_URL)).json()) as MapManifest;
+    await Promise.all(
+      Object.entries(manifest.assets).map(async ([id, asset]) => {
+        const data = await (await fetch(assetUrl(MAP_FOLDER, asset))).arrayBuffer();
+        this.buffers.set(`${MAP_FOLDER}:${id}`, await context.decodeAudioData(data));
+      }),
+    );
+    this.mapManifest = manifest;
+  }
+
+  /** Where the player's Hero stands: the core hum of the map follows it. */
+  setListener(tile: GridPosition): void {
+    this.listener = tile;
+    const context = this.context;
+    if (!this.ambience || !context) return;
+    for (const loop of this.ambience.loops) {
+      if (loop.nearPrimeZone) loop.gain.gain.setTargetAtTime(loop.base * distanceGain(tile, PRIME_ZONE_CENTRE), context.currentTime, 0.5);
+    }
+  }
+
+  /** Starts the ambience of the map: the loops fade in, and a quiet sound now and then. Runs until `stopAmbience`. */
+  startAmbience(): void {
+    const context = this.context;
+    const manifest = this.mapManifest;
+    if (this.ambience || !context || !manifest) return;
+    const loops = manifest.ambience.loops.flatMap(({ play, gain: base, nearPrimeZone }) => {
+      const buffer = this.buffers.get(`${MAP_FOLDER}:${play}`);
+      if (!buffer || !this.sfxBus) return [];
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const gain = context.createGain();
+      const level = nearPrimeZone && this.listener ? base * distanceGain(this.listener, PRIME_ZONE_CENTRE) : base;
+      gain.gain.setValueAtTime(0, context.currentTime);
+      gain.gain.linearRampToValueAtTime(level, context.currentTime + AMBIENCE_FADE_S);
+      source.connect(gain).connect(this.sfxBus);
+      source.start();
+      return [{ source, gain, base, nearPrimeZone: nearPrimeZone === true }];
+    });
+    this.ambience = { loops, timer: undefined };
+    this.scheduleOneShot(manifest.ambience.oneShots);
+  }
+
+  private scheduleOneShot(oneShots: MapManifest["ambience"]["oneShots"]): void {
+    const [min, max] = oneShots.everyMs;
+    const timer = setTimeout(() => {
+      if (!this.ambience) return;
+      const id = pickVariant(oneShots.play, this.lastPick.get("ambience"), Math.random);
+      const context = this.context;
+      const buffer = id === undefined ? undefined : this.buffers.get(`${MAP_FOLDER}:${id}`);
+      if (id !== undefined && context && buffer && this.sfxBus) {
+        this.lastPick.set("ambience", id);
+        const decision = this.limiter.request({ assetId: `${MAP_FOLDER}:${id}`, startMs: context.currentTime * 1000, durationMs: buffer.duration * 1000, priority: Priority.Background });
+        if (decision.play) this.startBuffer(context, buffer, this.sfxBus, { level: ONE_SHOT_GAIN, panner: context.createStereoPanner?.() });
+      }
+      this.scheduleOneShot(oneShots);
+    }, nextAmbienceGapMs(Math.random, { min, max }));
+    if (this.ambience) this.ambience.timer = timer;
+  }
+
+  /** Fades the ambience out (the end of the match, leaving the screen). */
+  stopAmbience(): void {
+    const ambience = this.ambience;
+    const context = this.context;
+    this.ambience = undefined;
+    if (!ambience || !context) return;
+    clearTimeout(ambience.timer);
+    for (const { source, gain } of ambience.loops) {
+      gain.gain.cancelScheduledValues(context.currentTime);
+      gain.gain.setValueAtTime(gain.gain.value, context.currentTime);
+      gain.gain.linearRampToValueAtTime(0, context.currentTime + AMBIENCE_FADE_S / 2);
+      source.stop(context.currentTime + AMBIENCE_FADE_S / 2 + 0.05);
+    }
+  }
+
+  /** A sound of the player's own action: a card goes in or comes back, Energy is gained. */
+  playUi(name: "cardPlayed" | "cardBack" | "energyUp"): void {
+    const manifest = this.mapManifest;
+    const context = this.context;
+    if (!manifest || !context || context.state === "closed" || !this.sfxBus) return;
+    const id = pickVariant(manifest.ui[name].play, this.lastPick.get(name), Math.random);
+    const buffer = id === undefined ? undefined : this.buffers.get(`${MAP_FOLDER}:${id}`);
+    if (id === undefined || !buffer) return;
+    this.lastPick.set(name, id);
+    this.startBuffer(context, buffer, this.sfxBus);
+  }
+
+  /** The two riffles of the shuffle animation. */
+  playShuffle(): void {
+    const manifest = this.mapManifest;
+    const context = this.context;
+    const buffer = manifest && this.buffers.get(`${MAP_FOLDER}:${manifest.ui.shuffle.play[0]}`);
+    if (!manifest || !context || !buffer || !this.sfxBus) return;
+    for (const atMs of manifest.ui.shuffle.atMs) this.startBuffer(context, buffer, this.sfxBus, { delayS: atMs / 1000 });
+  }
+
+  private startBuffer(context: AudioContext, buffer: AudioBuffer, bus: GainNode, { level = 1, delayS = 0, panner }: { level?: number; delayS?: number; panner?: StereoPannerNode } = {}): void {
+    if (context.state === "suspended") void context.resume().catch(() => undefined);
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    const gain = context.createGain();
+    gain.gain.value = level;
+    source.connect(gain);
+    if (panner) {
+      panner.pan.value = Math.random() * 1.2 - 0.6;
+      gain.connect(panner).connect(bus);
+    } else gain.connect(bus);
+    source.start(context.currentTime + delayS);
   }
 
   /** The context the cue planner needs; `parts` is what only the screen knows. */
