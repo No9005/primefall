@@ -246,7 +246,7 @@ export class GameAudio {
     const durationMs = buffer.duration * 1000;
     const decision =
       request.kind === "voice"
-        ? this.director.request({ heroId: request.heroId, tile: request.tile ?? { col: 0, row: 0 }, startMs, durationMs, priority: request.priority })
+        ? this.director.request({ heroId: request.heroId, startMs, durationMs, priority: request.priority })
         : this.limiter.request({ assetId: `${request.heroClass}:${request.assetId}`, startMs, durationMs, priority: request.priority });
     if (!decision.play || decision.id === undefined) return;
     for (const id of decision.cut) this.fadeOut(`${request.kind}${id}`, startMs / 1000);

@@ -116,6 +116,15 @@ describe("the sounds of a frame", () => {
     expect(requests.find((request) => request.assetId === "voice.exhausted-2")!.startMs).toBeGreaterThan(2000);
   });
 
+  it("starts the last words of an Exhausted Hero only after its first line has ended", () => {
+    for (const [heroId, heroClass] of [["max", HeroClass.Bruiser], ["tilly", HeroClass.Controller], ["kit", HeroClass.Assassin]] as const) {
+      const requests = planFrame(frameOf([{ kind: EventKind.Exhausted, tick: 1, heroId }]), context());
+      const [first, last] = requests.filter((request) => request.kind === "voice");
+      const firstEnd = first!.startMs + manifests.get(heroClass)!.assets[first!.assetId]!.durationMs;
+      expect(last!.startMs, heroId).toBeGreaterThanOrEqual(firstEnd);
+    }
+  });
+
   it("starts every sound with the frame when the clips do not play (reduced motion)", () => {
     const requests = planFrame(frameOf([hit("kit", "max", { card: "Long Shot", damage: 2, distance: 6 })]), context({ immediate: true }));
     expect(requests.every((request) => request.startMs === 0)).toBe(true);

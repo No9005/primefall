@@ -35,7 +35,8 @@ The Web Audio API of the browser, no library: two buses (voice and effects); the
 
 - One line at a time per Hero. A more important line cuts the one that runs; a weaker one is dropped.
 - Cooldown: after a line ended, the Hero is silent for 4 s. Only a Critical line, or one two tiers above the last line, breaks it.
-- At most two Heroes speak at once within 6 tiles of each other. A third waits (is dropped) unless it is more important than the quietest speaker, which then fades out.
+- At most two Heroes speak at once, wherever they stand (the player hears all voices from the same speaker). A third is dropped unless it is more important than the quietest speaker, which then fades out.
+- The last words of an Exhausted Hero start only after its first line has ended.
 - A Pitch speaks only some of the time (`chance`), and a random variant when it does.
 
 **Effect rules** (`DEFAULT_SFX_RULES`): at most 10 at once (the least important makes room for a more important one), the same effect never twice within 70 ms (six Heroes taking the same step), and a sound is quieter the further it is from the player's Hero (full within 4 tiles, down to 35 % at 14).
