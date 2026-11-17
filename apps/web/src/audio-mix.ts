@@ -209,3 +209,15 @@ export function distanceGain(listener: GridPosition, source: GridPosition): numb
   if (distance >= FAR_TILES) return FAR_GAIN;
   return 1 - ((distance - FULL_VOLUME_TILES) / (FAR_TILES - FULL_VOLUME_TILES)) * (1 - FAR_GAIN);
 }
+
+/**
+ * The music steps back under the sounds that must be heard (a gain on the music: 0.5 is 6 dB down). A voice ducks it for as long
+ * as it speaks, a hit or shot of the `minSfxPriority` tier or above only for a moment. It comes back over `releaseS`.
+ */
+export const MUSIC_DUCK = {
+  voice: { gain: 0.5, maxS: 8 },
+  sfx: { gain: 0.7, maxS: 0.8 },
+  minSfxPriority: Priority.Important,
+  attackS: 0.05,
+  releaseS: 0.35,
+} as const;

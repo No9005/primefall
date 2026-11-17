@@ -3,7 +3,7 @@
  "format": "AAC (.m4a), stereo, 96 kbit/s; an MP3 would leave a gap at the seam of the loop",
  "bpm": 72,
  "bars": 8,
- "note": "One loop of 8 bars (26.667 s) in four layers that start together and loop in sync. A layer file is stored 6 dB down; the gains of a level bring it back. The levels are cut by the game on the next bar line. See audio-source/music/README.md for where the layers come from.",
+ "note": "One loop of 8 bars (26.667 s) in four layers that start together and loop in sync. A layer file is stored 6 dB down. The gains of a level set the loudness: about -34, -32, -30 and -27 dB (mean power, `npm run render-mix`), which keeps the music well under the voices and effects. The levels are cut by the game on the next bar line. See audio-source/music/README.md for where the layers come from.",
  "layers": {
   "drone": "drone.m4a",
   "pulse": "pulse.m4a",
@@ -15,32 +15,32 @@
    "name": "planning",
    "note": "the drone alone",
    "gains": {
-    "drone": 0.717
+    "drone": 0.368
    }
   },
   {
    "name": "countdown",
    "note": "the last 10 seconds of planning: + the heartbeat pulse",
    "gains": {
-    "drone": 0.659,
-    "pulse": 0.741
+    "drone": 0.312,
+    "pulse": 0.351
    }
   },
   {
    "name": "resolution",
    "note": "+ drums",
    "gains": {
-    "drone": 0.653,
-    "pulse": 0.98,
-    "drums": 1.852
+    "drone": 0.257,
+    "pulse": 0.386,
+    "drums": 0.729
    }
   },
   {
    "name": "contested",
-   "note": "the Prime Zone is contested: the finished refrain over the drone, clearly louder (about 5 dB over the resolution)",
+   "note": "the Prime Zone is contested: the finished refrain over the drone, the loudest level (about 3 dB over the resolution)",
    "gains": {
-    "drone": 0.863,
-    "refrain": 2.157
+    "drone": 0.317,
+    "refrain": 0.793
    }
   }
  ]
