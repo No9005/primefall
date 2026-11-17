@@ -181,7 +181,7 @@ async function main(): Promise<void> {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ["--autoplay-policy=no-user-gesture-required"] });
   try {
     const page = await browser.newPage();
-    await page.goto("http://localhost:5197/");
+    await page.goto("http://localhost:5197/?music=on");
     // The engine is loaded by the page itself (a dynamic import in this script would be rewritten by vite-node).
     await page.addScriptTag({ type: "module", content: 'import { GameAudio } from "/src/audio.ts"; window.GameAudio = GameAudio;' });
     await page.waitForFunction(() => "GameAudio" in window);
