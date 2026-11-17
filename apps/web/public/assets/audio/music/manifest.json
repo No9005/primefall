@@ -1,0 +1,47 @@
+{
+ "name": "Notstrom, a rough first version for the look and feel test",
+ "format": "AAC (.m4a), stereo, 96 kbit/s; an MP3 would leave a gap at the seam of the loop",
+ "bpm": 72,
+ "bars": 8,
+ "note": "One loop of 8 bars (26.667 s) in four layers that start together and loop in sync. A layer file is stored 6 dB down; the gains of a level bring it back. The levels are cut by the game on the next bar line. See audio-source/music/README.md for where the layers come from.",
+ "layers": {
+  "drone": "drone.m4a",
+  "pulse": "pulse.m4a",
+  "drums": "drums.m4a",
+  "refrain": "refrain.m4a"
+ },
+ "levels": [
+  {
+   "name": "planning",
+   "note": "the drone alone",
+   "gains": {
+    "drone": 0.717
+   }
+  },
+  {
+   "name": "countdown",
+   "note": "the last 10 seconds of planning: + the heartbeat pulse",
+   "gains": {
+    "drone": 0.659,
+    "pulse": 0.741
+   }
+  },
+  {
+   "name": "resolution",
+   "note": "+ drums",
+   "gains": {
+    "drone": 0.653,
+    "pulse": 0.98,
+    "drums": 1.852
+   }
+  },
+  {
+   "name": "contested",
+   "note": "the Prime Zone is contested: the finished refrain over the drone, clearly louder (about 5 dB over the resolution)",
+   "gains": {
+    "drone": 0.863,
+    "refrain": 2.157
+   }
+  }
+ ]
+}

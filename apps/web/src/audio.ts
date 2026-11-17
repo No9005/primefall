@@ -1,7 +1,8 @@
 import { findTiles, type GridPosition, type HeroClass, REACTOR_DECK, TileKind } from "game-core";
-import { AUDIO_FOLDER, type AudioManifest, assetUrl, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl, type UiSound } from "./audio-manifest";
+import { AUDIO_FOLDER, type AudioManifest, assetUrl, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl, MUSIC_MANIFEST_URL, type MusicManifest, musicFileUrl, type UiSound } from "./audio-manifest";
 import { distanceGain, nextAmbienceGapMs, pickVariant, Priority, SfxLimiter, VoiceDirector } from "./audio-mix";
 import { planMoment, type PlanContext, type SoundRequest, type Source } from "./audio-cues";
+import { type MusicLevel, nextBarTime } from "./music";
 
 // The player of the game sound: it loads the Heroes' sounds, starts the sounds the cues ask for through the rules of the
 // mix (`audio-mix.ts`) on two buses (voice and effects). It uses the Web Audio API of the browser,
@@ -19,6 +20,21 @@ interface Playing {
 interface Ambience {
   loops: { source: AudioBufferSourceNode; gain: GainNode; base: number; nearPrimeZone: boolean }[];
   timer: ReturnType<typeof setTimeout> | undefined;
+}
+
+/** The music: how loud its bus is, how long a layer takes to fade (a time constant: about three of them make the change), how long it fades out. */
+const MUSIC_BUS_GAIN = 0.8;
+const MUSIC_FADE_TIME_CONSTANT_S = 0.4;
+const MUSIC_FADE_OUT_S = 1.5;
+/** `?music=off` in the address plays the game without the music, to compare. */
+const MUSIC_OFF = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("music") === "off";
+
+/** The music while a match runs: all layers start together and loop in sync. */
+interface Music {
+  startedAt: number;
+  loopSeconds: number;
+  layers: Record<string, GainNode>;
+  sources: AudioBufferSourceNode[];
 }
 
 /** The ambience fades in and out this slowly. */
@@ -46,6 +62,11 @@ export class GameAudio {
   private mapManifest: MapManifest | undefined;
   private mapLoading: Promise<void> | undefined;
   private ambience: Ambience | undefined;
+  private musicManifest: MusicManifest | undefined;
+  private musicLoading: Promise<void> | undefined;
+  private music: Music | undefined;
+  private musicBus: GainNode | undefined;
+  private musicLevel: MusicLevel = 0;
   /** The laser barrier: wanted while the Prime Zone is inactive, heard while the ambience runs. */
   private barrierWanted = false;
   private barrier: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
@@ -71,6 +92,16 @@ export class GameAudio {
     this.sfxBus = context.createGain();
     this.voiceBus.connect(context.destination);
     this.sfxBus.connect(context.destination);
+    // The music has a bus of its own, with a limiter: the sum of the layers must not clip.
+    this.musicBus = context.createGain();
+    this.musicBus.gain.value = MUSIC_BUS_GAIN;
+    const limiter = context.createDynamicsCompressor();
+    limiter.threshold.value = -8;
+    limiter.knee.value = 6;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.15;
+    this.musicBus.connect(limiter).connect(context.destination);
     this.context = context;
     return context;
   }
@@ -220,6 +251,87 @@ export class GameAudio {
       this.scheduleOneShot(oneShots);
     }, nextAmbienceGapMs(Math.random, { min, max }));
     if (this.ambience) this.ambience.timer = timer;
+  }
+
+  /** Loads the layers of the music, once. */
+  loadMusic(): Promise<void> {
+    this.musicLoading ??= this.fetchMusic().catch(() => {
+      // A missing sound must never break the game; try again at the next load.
+      this.musicLoading = undefined;
+    });
+    return this.musicLoading;
+  }
+
+  private async fetchMusic(): Promise<void> {
+    const context = this.ensureContext();
+    if (!context) return;
+    const manifest = (await (await fetch(MUSIC_MANIFEST_URL)).json()) as MusicManifest;
+    await Promise.all(
+      Object.entries(manifest.layers).map(async ([layer, file]) => {
+        const data = await (await fetch(musicFileUrl(file))).arrayBuffer();
+        this.buffers.set(`music:${layer}`, await context.decodeAudioData(data));
+      }),
+    );
+    this.musicManifest = manifest;
+  }
+
+  /** Starts the music: every layer at the same moment, looping, at the gains of the level that is wanted now. */
+  startMusic(): void {
+    const context = this.context;
+    const manifest = this.musicManifest;
+    if (MUSIC_OFF || this.music || !context || !manifest || !this.musicBus) return;
+    const startedAt = context.currentTime + 0.1;
+    const layers: Record<string, GainNode> = {};
+    const sources: AudioBufferSourceNode[] = [];
+    let loopSeconds = 0;
+    for (const layer of Object.keys(manifest.layers)) {
+      const buffer = this.buffers.get(`music:${layer}`);
+      if (!buffer) continue;
+      loopSeconds = buffer.duration;
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const gain = context.createGain();
+      gain.gain.value = 0;
+      gain.gain.linearRampToValueAtTime(manifest.levels[this.musicLevel]?.gains[layer] ?? 0, startedAt + MUSIC_FADE_OUT_S);
+      source.connect(gain).connect(this.musicBus);
+      source.start(startedAt);
+      layers[layer] = gain;
+      sources.push(source);
+    }
+    if (sources.length > 0) this.music = { startedAt, loopSeconds, layers, sources };
+  }
+
+  /**
+   * The level the game wants. The layers fade to its gains starting on the next bar line, so a change lands on the beat.
+   * Before the music runs, the level is only remembered.
+   */
+  setMusicLevel(level: MusicLevel): void {
+    this.musicLevel = level;
+    const context = this.context;
+    const manifest = this.musicManifest;
+    const music = this.music;
+    if (!context || !manifest || !music) return;
+    const gains = manifest.levels[level]?.gains ?? {};
+    const at = nextBarTime(context.currentTime, music.startedAt, music.loopSeconds, manifest.bars);
+    for (const [layer, gain] of Object.entries(music.layers)) {
+      gain.gain.cancelScheduledValues(context.currentTime);
+      gain.gain.setTargetAtTime(gains[layer] ?? 0, at, MUSIC_FADE_TIME_CONSTANT_S);
+    }
+  }
+
+  /** Fades the music out (the end of the match, leaving the screen). */
+  stopMusic(): void {
+    const music = this.music;
+    const context = this.context;
+    this.music = undefined;
+    if (!music || !context) return;
+    for (const gain of Object.values(music.layers)) {
+      gain.gain.cancelScheduledValues(context.currentTime);
+      gain.gain.setValueAtTime(gain.gain.value, context.currentTime);
+      gain.gain.linearRampToValueAtTime(0, context.currentTime + MUSIC_FADE_OUT_S);
+    }
+    for (const source of music.sources) source.stop(context.currentTime + MUSIC_FADE_OUT_S + 0.05);
   }
 
   /** Fades the ambience out (the end of the match, leaving the screen). */

@@ -57,6 +57,21 @@ Not tied to a Hero; `map/manifest.json` has its own shape (`ambience` and `ui`).
 - **A zone taken and Credits** (`zoneTaken`, `score`, a cash register "ka-ching"): with the callout of the player's own Squad. A zone that changes hands to the player's Squad sounds `zoneTaken` and, 450 ms later, `score`; a zone it holds only `score` (it earns Credits every Resolution). The enemy's callouts make no sound; the classic mode's Prime Zone count does the same with its Resolution count.
 - **The countdown of the planning timer** (`countdownTick`, `countdownFinal`): a low "wumpf" with every big number (10, 5, 4, 3, 2) and a longer, lower tone with the last (1).
 
+## The music (`audio/music/`, a rough first version, #451)
+
+One loop of 8 bars (72 BPM, 26.667 s) in four layers (`drone`, `pulse`, `drums`, `refrain`) that start together and loop in sync, AAC (`.m4a`) because an MP3 leaves a gap at the seam of a loop. It plays only during a match; there is no music on the start screen, Hero Select or the end screen yet.
+
+The game only says which level it wants (`musicLevelFor` in `music.ts`); the music changes on the **next bar line** (`nextBarTime`), the layers fading to the gains of that level (`manifest.json`):
+
+| Level | When | Layers |
+|---|---|---|
+| 0 | planning | the drone |
+| 1 | the last 10 seconds of planning | + the heartbeat pulse |
+| 2 | Resolution | + drums |
+| 3 | the Prime Zone is contested (any phase) | the finished refrain over the drone, about 5 dB louder than level 2 |
+
+The input is only what the player's own view shows (the timer, the Resolution, the zone as the board draws it), so the music gives away nothing about hidden enemies. For comparing: `?music=off` in the address plays without it, `?prime=contested` forces the contested zone (the same test hook the pill uses). It has its own bus with a limiter. Not built: ducking under voices, a volume or mute setting (#446), a finale and an ending, variants and more layers, a longer loop. The layers and where they come from are in `audio-source/music/` (#450).
+
 ## Heroes
 
 | Hero | Folder | Voice (ElevenLabs) |
