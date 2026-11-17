@@ -49,7 +49,7 @@ The values are first proposals; tune them by playing.
 Not tied to a Hero; `map/manifest.json` has its own shape (`ambience` and `ui`).
 
 - **Ambience of Notstrom:** two loops that run for the whole match, a huge slow ventilation fan (`loops/bed.wav`) and the hum of the plasma core (`loops/core.wav`, louder the nearer the player's Hero is to the Prime Zone), and every 10 to 25 s a quiet sound at random (ventilation burst, hull creak, sparks, steam, debris) with a random left or right placement. The loops are **WAV**: an MP3 puts a short silence at its end, which is a gap at the seam of a loop. They fade in and out over 2 s. The ambience is the least important sound (`Priority.Background`): it never takes the place of a voice or an effect.
-- **The cards:** a card goes into the Queue (`cardPlayed`), a card comes back (`cardBack`, also when a Pitch is undone), Energy is gained (`energyUp`, a Pitch) and the shuffle (the same riffle twice, on the two riffles of the animation in `deck-shuffle.ts`; none with reduced motion). The sounds follow the counts of the plan, so a tap, a drop and an undo sound the same, and a switch to another Hero or a new Round makes none.
+- **The cards:** a card is drawn (`cardDraw`, one per card as it leaves the Deck pile, none with reduced motion), a card goes into the Queue (`cardPlayed`), a card comes back (`cardBack`, also when a Pitch is undone), Energy is gained (`energyUp`, a Pitch) and the shuffle (the same riffle twice, on the two riffles of the animation in `deck-shuffle.ts`; none with reduced motion). The sounds follow the counts of the plan, so a tap, a drop and an undo sound the same, and a switch to another Hero or a new Round makes none.
 - Spending Energy has no sound of its own.
 
 ## Heroes

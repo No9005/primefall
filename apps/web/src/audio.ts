@@ -188,8 +188,8 @@ export class GameAudio {
     }
   }
 
-  /** A sound of the player's own action: a card goes in or comes back, Energy is gained. */
-  playUi(name: "cardPlayed" | "cardBack" | "energyUp"): void {
+  /** A sound of the player's own action: a card goes in or comes back or is drawn, Energy is gained. */
+  playUi(name: "cardPlayed" | "cardBack" | "cardDraw" | "energyUp"): void {
     const manifest = this.mapManifest;
     const context = this.context;
     if (!manifest || !context || context.state === "closed" || !this.sfxBus) return;

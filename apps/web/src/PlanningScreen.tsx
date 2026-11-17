@@ -512,7 +512,10 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     // The cards fly only after a shuffle that the draw needed has ended.
     const wait = draw.shuffled > 0 ? SHUFFLE_MS : 0;
     const timers = draw.cards.map((_, order) =>
-      setTimeout(() => setDraw(forThisView((state) => ({ ...state, departed: Math.max(state.departed, order + 1) }))), wait + drawSchedule(order).start),
+      setTimeout(() => {
+        gameAudio.playUi("cardDraw");
+        setDraw(forThisView((state) => ({ ...state, departed: Math.max(state.departed, order + 1) })));
+      }, wait + drawSchedule(order).start),
     );
     timers.push(setTimeout(() => setDraw(forThisView((state) => ({ ...state, shuffleDone: true }))), wait));
     timers.push(setTimeout(() => setDraw(forThisView((state) => ({ ...state, done: true }))), wait + drawSchedule(draw.cards.length - 1).landed));
