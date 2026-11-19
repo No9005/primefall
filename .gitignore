@@ -6,3 +6,5 @@ dist/
 e2e-results/
 apps/web/screenshots/
 playwright-report/
+__pycache__/
+*.pyc
