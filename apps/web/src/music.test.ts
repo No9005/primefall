@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { MusicManifest } from "./audio-manifest";
-import { CONTESTED_LEVEL, musicLevelFor, musicPhaseOf, nextBarTime } from "./music";
+import { CONTESTED_LEVEL, levelChange, musicLevelFor, musicPhaseOf, nextBarTime } from "./music";
 
 describe("the level of the music", () => {
   it("steps up from planning to the countdown to the Resolution", () => {
@@ -22,6 +22,32 @@ describe("the level of the music", () => {
     expect(musicPhaseOf(false, 1, 10)).toBe("countdown");
     expect(musicPhaseOf(false, 0, 10)).toBe("planning");
     expect(musicPhaseOf(true, 7, 10)).toBe("resolution");
+  });
+});
+
+describe("how the music changes level", () => {
+  it("steps into the Resolution and into the climax with a stinger, at once", () => {
+    expect(levelChange(0, 2)).toEqual({ stinger: "mid", at: "now" });
+    expect(levelChange(1, 2)).toEqual({ stinger: "mid", at: "now" });
+    expect(levelChange(2, CONTESTED_LEVEL)).toEqual({ stinger: "high", at: "now" });
+    expect(levelChange(0, CONTESTED_LEVEL)).toEqual({ stinger: "high", at: "now" });
+  });
+
+  it("returns to planning with a low stinger, at once", () => {
+    expect(levelChange(2, 0)).toEqual({ stinger: "low", at: "now" });
+    expect(levelChange(CONTESTED_LEVEL, 0)).toEqual({ stinger: "low", at: "now" });
+  });
+
+  it("changes at once, without a stinger, into the countdown (its number makes the sound)", () => {
+    expect(levelChange(0, 1)).toEqual({ at: "now" });
+  });
+
+  it("waits for the bar line when nothing makes a sound: from the climax back to the Resolution", () => {
+    expect(levelChange(CONTESTED_LEVEL, 2)).toEqual({ at: "bar" });
+  });
+
+  it("does nothing when the level stays", () => {
+    for (const level of [0, 1, 2, 3] as const) expect(levelChange(level, level)).toBeUndefined();
   });
 });
 
