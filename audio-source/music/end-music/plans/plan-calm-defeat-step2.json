@@ -1,0 +1,64 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "song_id": "WHw2wDdM1W5PSIXUW79I",
+    "range": {
+     "start_ms": 3333,
+     "end_ms": 13667
+    }
+   },
+   {
+    "text": "[Loop]\n{instrumental, no singing: the same cold distant choir, low cello and soft arpeggio continue and flow straight back into the start, no drums}\n{same tempo, same key, the level stays the same, no ending, no outro, no fade out}",
+    "duration_ms": 3000,
+    "positive_styles": [
+     "calm somber ambient, hollow and weary",
+     "constant volume from start to end, sustained, no decay",
+     "hybrid orchestral and analog synthesizer",
+     "distant layered choir on open vowels, cold, sustained",
+     "low cello and synth pad",
+     "slow soft arpeggio, a slow low heartbeat",
+     "steady and spacious, loopable",
+     "72 BPM",
+     "D minor",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "drums",
+     "percussion",
+     "kick",
+     "snare",
+     "vocals",
+     "singing",
+     "solo voice",
+     "lyrics",
+     "spoken words",
+     "loud",
+     "dense",
+     "ending",
+     "outro",
+     "fade out",
+     "decay",
+     "dying away",
+     "intro",
+     "rap",
+     "pop",
+     "major key",
+     "happy",
+     "heroic"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "song_id": "WHw2wDdM1W5PSIXUW79I",
+    "range": {
+     "start_ms": 3333,
+     "end_ms": 10000
+    }
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true,
+ "seed": 42
+}

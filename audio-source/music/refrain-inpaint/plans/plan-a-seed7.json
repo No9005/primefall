@@ -1,0 +1,51 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "song_id": "fZDeTVYfbJujEraIqfiL_upload",
+    "range": {
+     "start_ms": 0,
+     "end_ms": 20000
+    }
+   },
+   {
+    "text": "[Refrain]\n{two bars, instrumental turnaround: the male choir holds a wide open 'ahh' on a power chord, the drums play a short fill, and the music falls straight back into the first beat of the refrain; same tempo, same key, no ending, no fade out}",
+    "duration_ms": 6667,
+    "positive_styles": [
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "72 BPM",
+     "D minor",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare, a short drum fill",
+     "huge layered male choir on open vowels, power chords",
+     "dense wall of sound, maximum energy, powerful and pressing",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "quiet",
+     "sparse",
+     "intro",
+     "fade out",
+     "ending",
+     "silence",
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "song_id": "fZDeTVYfbJujEraIqfiL_upload",
+    "range": {
+     "start_ms": 0,
+     "end_ms": 6667
+    }
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true,
+ "seed": 7
+}

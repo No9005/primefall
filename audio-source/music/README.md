@@ -15,7 +15,7 @@ Made with ElevenLabs Music v2.5 (`music_v2_5`). Check that the licence of the pl
 
 ## Summary of all experiments (2026-11-16 to 2026-11-18) and where we stand
 
-**Status.** What plays in the game on `main` is the first approach: four independently made layers (drone, pulse, drums from pilot 2, plus the refrain cut from the whole piece), D minor, 72 BPM, 8-bar loops, faded by game state. It is **muted by default** (`?music=on` plays it) because of audible loops and hard transitions. Every attempt to make the layers *follow chords* failed (F minor tests, path 1). Credits spent on the music: about 23,000, estimated from the seconds generated (price: about 31 credits per second of new audio; the stem separations are not counted).
+**Status.** What plays in the game on `main` is the first approach: four independently made layers (drone, pulse, drums from pilot 2, plus the refrain cut from the whole piece), D minor, 72 BPM, 8-bar loops, faded by game state. It is **muted by default** (`?music=on` plays it) because of audible loops and hard transitions. Every attempt to make the layers *follow chords* failed (F minor tests, path 1). Credits spent on the music: about 23,000 until 2026-11-18 and about 4,000 more on 2026-11-19 (see `refrain-inpaint/` and `end-music/`), estimated from the seconds generated (price: about 31 credits per second of new audio; the stem separations are not counted).
 
 | # | Experiment | Idea | Result | Folder |
 |---|---|---|---|---|
@@ -91,6 +91,13 @@ Made with ElevenLabs Music v2.5 (`music_v2_5`). Check that the licence of the pl
 - **Stem separation of the whole piece is not clean enough for layers:** a lot of bleed (the owner's judgement after listening). Lead and choir are one stem. The `guitar` stem is nearly silent (-57 dB) and `piano` is empty.
 - **The pulse layer's key cannot be read from its chroma** (its notes lie under 50 Hz).
 
+## Later work (2026-11-19): the refrain loop and the end music
+
+- **The refrain loops cleanly now** through inpainting: the end was regenerated so that it flows into the start. See `refrain-inpaint/README.md` (also the list of everything that did not remove the edge). It is the `refrain.m4a` on the branch `agent/music-intro-opening`.
+- **The end screen has music**: a jingle for victory and one for defeat, each followed by a quiet loop, with the Hero's line over it. See `end-music/README.md` (prompts, song ids, what failed, the credits). The loop scripts are in `tools/loops/`.
+- **The intro and the opening of a match** come from the whole piece (`pieces/notstrom-stage-3-whole-piece.mp3`): the intro (0 to 20 s) loops under the Hero Select, and the first 20 s of the bridge (153.333 to 173.333 s, 6 bars) play when a match starts, hard from the first beat, while the planning layers fade in over the last 4 bars. Cut with `ffmpeg -ss ... -t ... -af volume=...` into AAC.
+- **The layers were repaired** (drone start, a dropout in the pulse at 26.16 s, the groove of drums and refrain slowed to 72.000 BPM, the seams); the method is in `tools/loops/README.md`.
+
 ## What we learned about the API (read from the OpenAPI file and the docs)
 
 - `POST /v1/music` with `composition_plan` (`chunks`) and `model_id: music_v2_5`. A chunk: `text` (`[Section]`, lyrics, `{inline directions}`, `(sounds)`), `duration_ms` (3,000 to 120,000, always enforced for v2 and v2.5), `positive_styles` and `negative_styles` (up to 50 each, English), `context_adherence`, optional `conditioning_ref` (`song_id` + `range`, at most 30 s) and `condition_strength` (`low`, `medium`, `high`, `xhigh`). The first chunk sets the tone of the whole piece.
@@ -114,6 +121,11 @@ Made with ElevenLabs Music v2.5 (`music_v2_5`). Check that the licence of the pl
 | Stage 2 (+ Strophe 2, Refrain 2, Bridge; 180 s) | `hF6hdmMPuJ6jScDiPnYJ` | yes |
 | Stage 3 (+ Finale, Ende; 233 s) | `hjh5gOEmDzH7mGlK8jjz` | yes |
 | Pilot 1: drone / pulse / drums | `oiOxLRYS8cJp76lAsc72` / `SzrMaDCMGTvu1s99zKaB` / `YIcL4Ebk4bx5hKioLAFM` | yes |
+| Inpainted refrain (33.4 s; 3 s new at the end, the refrain again behind) | `iTJCfxy6V6HzoZg1k0O8` | yes |
+| End music: victory jingle / defeat jingle (first attempts, used) | `AuuN6BNO6ftvCwQwF7uN` / `PInQ2YB932scGAbI9oau` | yes |
+| End music: victory jingle with a sound reference (rejected) / way A | `x7IDZhvNKy8j7Qx5dpc4` / `va4nKKAACcuqd91tnyEM` | yes |
+| Quiet loop, victory: step 1 (failed, fades out) / step 1 (used) / step 2 (used) | `NBR4XNtnlNjy3acIEMij` / `NPJGouN0bFjqxxBbYVrj` / `fHK7ylpoIEzp6r1zULR3` | yes |
+| Quiet loop, defeat: step 1 / step 2 (both used) | `WHw2wDdM1W5PSIXUW79I` / `YiT0wAVG1Bl3Etb2xm0S` | yes |
 | Pilot 2: drone / pulse / drums | `EApJsWvdVFSaff1delmD` / `6xO88kT7BCVefiqy0fUy` / `Fm6rNKPbOojkvRDXZRaE` | yes |
 
 Seeds used: stages 1 to 3 `424242`; pilot 1 `7200`; everything else none.
