@@ -68,6 +68,15 @@ describe("the music manifest", () => {
     }
   });
 
+  it("names the end music of both outcomes, which exists", () => {
+    for (const outcome of ["victory", "defeat"] as const) {
+      const track = manifest.ending?.[outcome];
+      expect(track, outcome).toBeDefined();
+      for (const part of [track?.jingle, track?.loop]) expect(existsSync(path.join(dir, part?.file ?? "missing")), `${outcome} ${part?.file}`).toBe(true);
+      expect(track?.crossfadeSeconds).toBeGreaterThan(0);
+    }
+  });
+
   it("has the four levels of the game, and only the contested one plays the finished refrain", () => {
     expect(manifest.levels.map((level) => level.name)).toEqual(["planning", "countdown", "resolution", "contested"]);
     expect(manifest.levels.map((level) => "refrain" in level.gains)).toEqual([false, false, false, true]);

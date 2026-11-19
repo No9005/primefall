@@ -132,6 +132,8 @@ export interface MusicManifest {
   intro?: { file: string; gain: number };
   /** Plays once when a match starts, hard from the first beat, and fades into the layers over its last bar. */
   opening?: { file: string; gain: number };
+  /** The end screen: a jingle that plays once, then a quiet loop over its last `crossfadeSeconds`. */
+  ending?: Record<"victory" | "defeat", { jingle: { file: string; gain: number }; loop: { file: string; gain: number }; crossfadeSeconds: number }>;
   levels: { name: string; gains: Record<string, number> }[];
 }
 

@@ -18,6 +18,30 @@
   "file": "opening.m4a",
   "gain": 1.65
  },
+ "ending": {
+  "victory": {
+   "jingle": {
+    "file": "victory.m4a",
+    "gain": 0.35
+   },
+   "loop": {
+    "file": "victory-loop.m4a",
+    "gain": 1
+   },
+   "crossfadeSeconds": 4.5
+  },
+  "defeat": {
+   "jingle": {
+    "file": "defeat.m4a",
+    "gain": 0.35
+   },
+   "loop": {
+    "file": "defeat-loop.m4a",
+    "gain": 1
+   },
+   "crossfadeSeconds": 4.5
+  }
+ },
  "levels": [
   {
    "name": "planning",

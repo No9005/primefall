@@ -101,6 +101,8 @@ export class GameAudio {
   private musicBus: GainNode | undefined;
   /** The intro of the Hero Select: a loop that runs until the player leaves the screen. */
   private intro: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
+  /** The music of the end screen: a jingle that gives way to a quiet loop. */
+  private ending: { sources: AudioBufferSourceNode[]; gains: GainNode[] } | undefined;
   /** The music steps back under the voices and the heavy effects (`MUSIC_DUCK`). */
   private duckNode: GainNode | undefined;
   private duckedUntilS = 0;
@@ -319,6 +321,10 @@ export class GameAudio {
     const files: Record<string, string> = { ...manifest.layers };
     if (manifest.intro) files.intro = manifest.intro.file;
     if (manifest.opening) files.opening = manifest.opening.file;
+    for (const [outcome, track] of Object.entries(manifest.ending ?? {})) {
+      files[`ending:${outcome}:jingle`] = track.jingle.file;
+      files[`ending:${outcome}:loop`] = track.loop.file;
+    }
     await Promise.all(
       Object.entries(files).map(async ([name, file]) => {
         const data = await (await fetch(musicFileUrl(file))).arrayBuffer();
@@ -355,6 +361,58 @@ export class GameAudio {
     intro.gain.gain.setValueAtTime(intro.gain.gain.value, context.currentTime);
     intro.gain.gain.linearRampToValueAtTime(0, context.currentTime + INTRO_FADE_OUT_S);
     intro.source.stop(context.currentTime + INTRO_FADE_OUT_S + 0.05);
+  }
+
+  /**
+   * The music of the end screen: the jingle plays once, and over its last `crossfadeSeconds` a quiet loop takes over and runs
+   * until `stopEnding`. A voice line ducks it (`MUSIC_DUCK.endingVoice`).
+   */
+  startEnding(won: boolean): void {
+    const context = this.context;
+    const track = this.musicManifest?.ending?.[won ? "victory" : "defeat"];
+    const outcome = won ? "victory" : "defeat";
+    const jingle = this.buffers.get(`music:ending:${outcome}:jingle`);
+    const loop = this.buffers.get(`music:ending:${outcome}:loop`);
+    if (!MUSIC_ON || this.ending || !context || !track || !jingle || !loop || !this.musicBus) return;
+    const start = context.currentTime + 0.05;
+    const fadeSeconds = track.crossfadeSeconds;
+    const fadeFrom = start + Math.max(0, jingle.duration - fadeSeconds);
+    const jingleSource = context.createBufferSource();
+    jingleSource.buffer = jingle;
+    const jingleGain = context.createGain();
+    jingleGain.gain.setValueAtTime(track.jingle.gain, start);
+    shapedRamp(jingleGain.gain, track.jingle.gain, 0, fadeFrom, fadeSeconds, (t) => 1 - Math.cos((t * Math.PI) / 2));
+    const loopSource = context.createBufferSource();
+    loopSource.buffer = loop;
+    loopSource.loop = true;
+    const loopGain = context.createGain();
+    loopGain.gain.setValueAtTime(0, start);
+    shapedRamp(loopGain.gain, 0, track.loop.gain, fadeFrom, fadeSeconds, (t) => Math.sin((t * Math.PI) / 2));
+    jingleSource.connect(jingleGain).connect(this.musicBus);
+    loopSource.connect(loopGain).connect(this.musicBus);
+    jingleSource.start(start);
+    loopSource.start(fadeFrom);
+    this.ending = { sources: [jingleSource, loopSource], gains: [jingleGain, loopGain] };
+  }
+
+  /** Fades the end music out (leaving the end screen). */
+  stopEnding(): void {
+    const ending = this.ending;
+    const context = this.context;
+    this.ending = undefined;
+    if (!ending || !context) return;
+    for (const gain of ending.gains) {
+      gain.gain.cancelScheduledValues(context.currentTime);
+      gain.gain.setValueAtTime(gain.gain.value, context.currentTime);
+      gain.gain.linearRampToValueAtTime(0, context.currentTime + INTRO_FADE_OUT_S);
+    }
+    for (const source of ending.sources) {
+      try {
+        source.stop(context.currentTime + INTRO_FADE_OUT_S + 0.05);
+      } catch {
+        // The loop has not started yet: there is nothing to stop.
+      }
+    }
   }
 
   /**
@@ -566,13 +624,14 @@ export class GameAudio {
     if (!gain) return;
     const heavySfx = request.kind === "sfx" && request.priority >= MUSIC_DUCK.minSfxPriority;
     if (request.kind === "sfx" && !heavySfx) return;
-    const duck = heavySfx ? MUSIC_DUCK.sfx : MUSIC_DUCK.voice;
+    const voiceDuck = this.ending ? MUSIC_DUCK.endingVoice : MUSIC_DUCK.voice;
+    const duck = heavySfx ? MUSIC_DUCK.sfx : voiceDuck;
     const from = Math.max(startS, this.context?.currentTime ?? 0);
     const until = from + Math.min(durationS, duck.maxS);
     if (until <= this.duckedUntilS) return;
     if (from < this.duckedUntilS) gain.cancelScheduledValues(this.duckedUntilS);
     else gain.setTargetAtTime(duck.gain, from, MUSIC_DUCK.attackS);
-    gain.setTargetAtTime(1, until, MUSIC_DUCK.releaseS);
+    gain.setTargetAtTime(1, until, "releaseS" in duck ? duck.releaseS : MUSIC_DUCK.releaseS);
     this.duckedUntilS = until;
   }
 

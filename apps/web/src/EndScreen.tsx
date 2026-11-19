@@ -1,5 +1,17 @@
-import { MatchEndReason, type MatchResult, PRIME_ZONE_WIN_RESOLUTIONS, SquadId, CREDITS_TO_WIN } from "game-core";
+import { useEffect, useRef } from "react";
+import { CREDITS_TO_WIN, type GridPosition, type HeroClass, MatchEndReason, type MatchResult, PRIME_ZONE_WIN_RESOLUTIONS, SquadId } from "game-core";
+import { gameAudio } from "./audio";
 import { endTexts, type Role } from "./attack-defend";
+
+/** The Hero of the player who speaks when the end music has played for a moment. */
+export interface EndHero {
+  heroId: string;
+  heroClass: HeroClass;
+  tile: GridPosition | undefined;
+}
+
+/** The voice line comes this long after the end music starts; the music steps back for it. */
+const END_VOICE_DELAY_MS = 4000;
 
 interface EndScreenProps {
   result: MatchResult;
@@ -10,6 +22,8 @@ interface EndScreenProps {
   role?: Role;
   /** The Round limit of the match's mode. */
   roundLimit: number;
+  /** Whose voice line plays over the end music. */
+  hero?: EndHero;
   onPlayAgain: () => void;
 }
 
@@ -44,7 +58,22 @@ function scoreText(result: MatchResult, squad: SquadId): string {
   return result.scores ? `Credits: you ${result.scores[squad]}, enemy ${result.scores[enemy]}.` : "";
 }
 
-export function EndScreen({ result, squad, seed, role, roundLimit, onPlayAgain }: EndScreenProps) {
+export function EndScreen({ result, squad, seed, role, roundLimit, hero, onPlayAgain }: EndScreenProps) {
+  const heroRef = useRef(hero);
+  heroRef.current = hero;
+  // The end music: a jingle, then a quiet loop; a draw has none. The Hero's line follows a few seconds in.
+  useEffect(() => {
+    if (result.winner === undefined) return;
+    const won = result.winner === squad;
+    void gameAudio.loadMusic().then(() => gameAudio.startEnding(won));
+    const timer = setTimeout(() => {
+      if (heroRef.current) gameAudio.playMoment("matchEnd", heroRef.current, won);
+    }, END_VOICE_DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+      gameAudio.stopEnding();
+    };
+  }, [result.winner, squad]);
   if (role) {
     const texts = endTexts(result, role, roundLimit);
     return (
