@@ -1,0 +1,141 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "song_id": "l0CGzRMzAFDAFQezPg1s",
+    "range": {
+     "start_ms": 0,
+     "end_ms": 100000
+    }
+   },
+   {
+    "text": "[Strophe 2]\nDrei Herren zahlen unser Blut,\njeder will, was keiner kennt.\nDie W\u00e4nde singen Ersten-Sprache,\nund tief im Kiel schl\u00e4gt etwas mit.",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "variation of the first verse, counter-melody in the strings",
+     "male choir and female voices trading lines",
+     "female lead firm but inside the choir, not above it",
+     "driving heartbeat bass, hard drums",
+     "slow heavy 72 BPM, 4/4",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "D minor",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare",
+     "huge layered mixed choir with deep male chest voices and women together",
+     "female lead voice, otherworldly and alien, breathy, sits inside the choir",
+     "the female lead is a Japanese singer singing German: strong Japanese accent in the German words, soft consonants, r and l blended, flat pure vowels, syllable-timed rhythm, expressive rather than precise diction",
+     "dense wall of sound, maximum energy, powerful and pressing",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "clear precise pronunciation",
+     "native German diction",
+     "solo vocalist dominating the mix",
+     "female voice alone",
+     "quiet",
+     "native German speaker",
+     "correct German pronunciation"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Refrain 2]\nNOTstrom! NOTstrom! Brenne, brenne!\nFremdes Feuer, erste Stimme,\nNOTstrom! NOTstrom! Halt das Licht!\nWas wir tragen, tr\u00e4gt uns fort.",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "E minor, one whole tone higher than the previous chorus",
+     "hymn-like chant, big and soaring",
+     "huge mixed choir, deep male voices carry the chant, women on top",
+     "female lead equal in volume to the choir",
+     "heavy driving bass, hard drums, more energy than the first chorus",
+     "slow heavy 72 BPM, 4/4",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "D minor",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare",
+     "huge layered mixed choir with deep male chest voices and women together",
+     "female lead voice, otherworldly and alien, breathy, sits inside the choir",
+     "the female lead is a Japanese singer singing German: strong Japanese accent in the German words, soft consonants, r and l blended, flat pure vowels, syllable-timed rhythm, expressive rather than precise diction",
+     "dense wall of sound, maximum energy, powerful and pressing",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "clear precise pronunciation",
+     "native German diction",
+     "solo vocalist dominating the mix",
+     "female voice alone",
+     "quiet",
+     "sparse",
+     "native German speaker",
+     "correct German pronunciation"
+    ],
+    "context_adherence": "high",
+    "conditioning_ref": {
+     "song_id": "l0CGzRMzAFDAFQezPg1s",
+     "range": {
+      "start_ms": 73333,
+      "end_ms": 100000
+     }
+    },
+    "condition_strength": "medium"
+   },
+   {
+    "text": "[Bridge]\n{very quiet, long pauses between the lines}\nH\u00f6rst du's schlagen? Tief im Kiel...\n(ooh) ... nicht von uns, nicht f\u00fcr uns.",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "E minor",
+     "very quiet and sparse, at least 10 dB softer than the chorus",
+     "one slow deep heartbeat kick and a low drone only",
+     "one soft whispering voice and a faint male choir hum",
+     "no drums, no synth wall, no high frequencies",
+     "ends on the downbeat, no held notes across the last bar line",
+     "slow heavy 72 BPM, 4/4",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "the female lead is a Japanese singer singing German: strong Japanese accent in the German words, soft consonants, r and l blended, flat pure vowels, syllable-timed rhythm, expressive rather than precise diction"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "clear precise pronunciation",
+     "native German diction",
+     "solo vocalist dominating the mix",
+     "female voice alone",
+     "drums",
+     "loud",
+     "full choir",
+     "wall of sound",
+     "bright",
+     "native German speaker",
+     "correct German pronunciation"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true,
+ "seed": 424242
+}

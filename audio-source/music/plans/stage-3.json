@@ -1,0 +1,105 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "song_id": "hF6hdmMPuJ6jScDiPnYJ",
+    "range": {
+     "start_ms": 0,
+     "end_ms": 90000
+    }
+   },
+   {
+    "song_id": "hF6hdmMPuJ6jScDiPnYJ",
+    "range": {
+     "start_ms": 90000,
+     "end_ms": 180000
+    }
+   },
+   {
+    "text": "[Finale]\nNOTstrom! Wir halten! NOTstrom! Wir fallen nicht!\nDie Zone geh\u00f6rt dem, der bleibt.\nNOTstrom! Halt das Licht!\nNicht von uns, nicht f\u00fcr uns.\nWer es ber\u00fchrt, vergisst sich selbst.",
+    "duration_ms": 40000,
+    "positive_styles": [
+     "F-sharp minor, one whole tone higher than the previous chorus",
+     "maximum energy, the biggest moment of the piece",
+     "huge mixed choir shouting like an order, deep male voices in front, women above",
+     "female lead soaring but equal to the choir",
+     "heavy driving bass, hardest drums, layered orchestra and synths",
+     "slow heavy 72 BPM, 4/4",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "D minor",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare",
+     "huge layered mixed choir with deep male chest voices and women together",
+     "female lead voice, otherworldly and alien, breathy, sits inside the choir",
+     "the female lead is a Japanese singer singing German: strong Japanese accent in the German words, soft consonants, r and l blended, flat pure vowels, syllable-timed rhythm, expressive rather than precise diction",
+     "dense wall of sound, maximum energy, powerful and pressing",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "clear precise pronunciation",
+     "native German diction",
+     "solo vocalist dominating the mix",
+     "female voice alone",
+     "quiet",
+     "sparse",
+     "fade out",
+     "native German speaker",
+     "correct German pronunciation"
+    ],
+    "context_adherence": "high",
+    "conditioning_ref": {
+     "song_id": "hF6hdmMPuJ6jScDiPnYJ",
+     "range": {
+      "start_ms": 126667,
+      "end_ms": 153333
+     }
+    },
+    "condition_strength": "medium"
+   },
+   {
+    "text": "[Ende]\n{final choir hit, then a sustained chord that dies away}\n(Der Fall war erst der Anfang.)",
+    "duration_ms": 13333,
+    "positive_styles": [
+     "F-sharp minor",
+     "ending, final chord, drums stop",
+     "the last line whispered by the male choir and one female voice, quiet",
+     "choir holds a last chord, then silence",
+     "slow heavy 72 BPM, 4/4",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "the female lead is a Japanese singer singing German: strong Japanese accent in the German words, soft consonants, r and l blended, flat pure vowels, syllable-timed rhythm, expressive rather than precise diction"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "clear precise pronunciation",
+     "native German diction",
+     "solo vocalist dominating the mix",
+     "female voice alone",
+     "drums continue",
+     "loud",
+     "native German speaker",
+     "correct German pronunciation"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true,
+ "seed": 424242
+}

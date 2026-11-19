@@ -1,0 +1,186 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "text": "[Intro]\n{deep male chest voices drone, open throat, long held notes}\n(aah... ooh...)\n{heartbeat bass enters on the last bar}\nNot... strom...",
+    "duration_ms": 20000,
+    "positive_styles": [
+     "deep male chest voices, open throat, droning chant, very low",
+     "slow low heartbeat pulse, quiet",
+     "emergency lamp flicker pumping pads",
+     "mysterious, ancient, alien opening, sparse, no drums",
+     "slow heavy 72 BPM, 4/4",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "D minor",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare",
+     "huge layered mixed choir with deep male chest voices and women together",
+     "female lead voice, otherworldly and alien, breathy, sits inside the choir",
+     "the female lead is a Japanese singer singing German: strong Japanese accent in the German words, soft consonants, r and l blended, flat pure vowels, syllable-timed rhythm, expressive rather than precise diction",
+     "dense wall of sound, maximum energy, powerful and pressing",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "clear precise pronunciation",
+     "native German diction",
+     "solo vocalist dominating the mix",
+     "female voice alone",
+     "drums",
+     "female lead",
+     "native German speaker",
+     "correct German pronunciation"
+    ],
+    "context_adherence": "high",
+    "conditioning_ref": {
+     "song_id": "fZDeTVYfbJujEraIqfiL_upload",
+     "range": {
+      "start_ms": 0,
+      "end_ms": 26667
+     }
+    },
+    "condition_strength": "low"
+   },
+   {
+    "text": "[Strophe 1]\nDas Licht ist aus, das Herz noch warm,\nein Schiff, das tr\u00e4umt von fremder Hand.\nWir kamen her f\u00fcr Pflicht und Sold,\ndoch etwas ruft uns bei dem Namen.",
+    "duration_ms": 40000,
+    "positive_styles": [
+     "restrained, about half the energy of the chorus",
+     "male chest voice drone and soft male choir under the lead",
+     "female lead voice quiet, breathy, close, as one voice of the choir",
+     "driving heartbeat bass, steady sixteenth-note pulse, tight mechanical drums",
+     "cold sequencer arpeggio",
+     "slow heavy 72 BPM, 4/4",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "D minor",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare",
+     "huge layered mixed choir with deep male chest voices and women together",
+     "female lead voice, otherworldly and alien, breathy, sits inside the choir",
+     "the female lead is a Japanese singer singing German: strong Japanese accent in the German words, soft consonants, r and l blended, flat pure vowels, syllable-timed rhythm, expressive rather than precise diction",
+     "dense wall of sound, maximum energy, powerful and pressing",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "clear precise pronunciation",
+     "native German diction",
+     "solo vocalist dominating the mix",
+     "female voice alone",
+     "loud",
+     "female lead alone",
+     "native German speaker",
+     "correct German pronunciation"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Aufbau]\n{choir of men and women whispers, getting louder and denser}\nHalt es. Halt es. Halt es fest.",
+    "duration_ms": 13333,
+    "positive_styles": [
+     "rising tension, snare roll building",
+     "mixed choir whispering in rhythm, men and women, getting denser",
+     "bass drives harder",
+     "riser into the chorus",
+     "slow heavy 72 BPM, 4/4",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "D minor",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare",
+     "huge layered mixed choir with deep male chest voices and women together",
+     "female lead voice, otherworldly and alien, breathy, sits inside the choir",
+     "the female lead is a Japanese singer singing German: strong Japanese accent in the German words, soft consonants, r and l blended, flat pure vowels, syllable-timed rhythm, expressive rather than precise diction",
+     "dense wall of sound, maximum energy, powerful and pressing",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "clear precise pronunciation",
+     "native German diction",
+     "solo vocalist dominating the mix",
+     "female voice alone",
+     "quiet",
+     "native German speaker",
+     "correct German pronunciation"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Refrain 1]\nNOTstrom, NOTstrom, das Licht kehrt zur\u00fcck!\nDie Ersten fielen, wir halten die Zone.\nNOTstrom, NOTstrom, nicht von dieser Welt!\nWer es ber\u00fchrt, vergisst sich selbst.",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "full power chorus, maximum energy",
+     "huge mixed choir shouting and chanting in unison, men and women, deep male voices very present",
+     "female lead soaring on the high notes only, equal in volume to the choir",
+     "the word Notstrom chanted by the whole choir with a hard accent on the first syllable",
+     "heavy driving bass, hard drums, wall of synths and strings",
+     "slow heavy 72 BPM, 4/4",
+     "dramatic dark sci-fi anime action score",
+     "hybrid orchestral and analog synthesizer",
+     "D minor",
+     "powerful driving synth bass, loud and clearly audible, pulsing like a heartbeat",
+     "hard punchy drums with heavy kick and snare",
+     "huge layered mixed choir with deep male chest voices and women together",
+     "female lead voice, otherworldly and alien, breathy, sits inside the choir",
+     "the female lead is a Japanese singer singing German: strong Japanese accent in the German words, soft consonants, r and l blended, flat pure vowels, syllable-timed rhythm, expressive rather than precise diction",
+     "dense wall of sound, maximum energy, powerful and pressing",
+     "1970s and 1980s analog synthesizer sci-fi horror atmosphere",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "happy",
+     "pop",
+     "english lyrics",
+     "rap",
+     "children's voice",
+     "fade out",
+     "tempo change",
+     "clear precise pronunciation",
+     "native German diction",
+     "solo vocalist dominating the mix",
+     "female voice alone",
+     "quiet",
+     "sparse",
+     "native German speaker",
+     "correct German pronunciation"
+    ],
+    "context_adherence": "high",
+    "conditioning_ref": {
+     "song_id": "fZDeTVYfbJujEraIqfiL_upload",
+     "range": {
+      "start_ms": 0,
+      "end_ms": 26667
+     }
+    },
+    "condition_strength": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true,
+ "seed": 424242
+}
