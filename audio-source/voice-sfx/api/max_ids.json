@@ -1,0 +1,362 @@
+{
+ "select": {
+  "text": "[barks] I move cargo and kick ass. Cargo is optional!",
+  "cost": [
+   "23"
+  ],
+  "id": [
+   "h97zdumwwdzrf1rpcd4h"
+  ],
+  "ok": true
+ },
+ "attack_1": {
+  "text": "[shouting] Weapons free!",
+  "cost": [
+   "11"
+  ],
+  "id": [
+   "kn5hcf0z0bhxnwx4ycd1"
+  ],
+  "ok": true
+ },
+ "attack_2": {
+  "text": "[barks] Engaging, as per the manual!",
+  "cost": [
+   "16"
+  ],
+  "id": [
+   "pnofxyf7omyz7tgikcl3"
+  ],
+  "ok": true
+ },
+ "attack_3": {
+  "text": "[grunts] Consider it filed!",
+  "cost": [
+   "12"
+  ],
+  "id": [
+   "uglzutla3cqutt1et5i5"
+  ],
+  "ok": true
+ },
+ "handle_1": {
+  "text": "[barks] Fragile, sir!",
+  "cost": [
+   "9"
+  ],
+  "id": [
+   "1vfq7cl9qjquiqfzuuub"
+  ],
+  "ok": true
+ },
+ "handle_2": {
+  "text": "[shouting] Sign here!",
+  "cost": [
+   "9"
+  ],
+  "id": [
+   "aky1zoqmv2a8padokwyf"
+  ],
+  "ok": true
+ },
+ "buy2_1": {
+  "text": "[barks] Double order! No refunds!",
+  "cost": [
+   "15"
+  ],
+  "id": [
+   "3qq9ptshhwjci08ros3b"
+  ],
+  "ok": true
+ },
+ "buy2_2": {
+  "text": "[shouting] Bulk delivery!",
+  "cost": [
+   "11"
+  ],
+  "id": [
+   "ypwpc52mub1syho6lqpd"
+  ],
+  "ok": true
+ },
+ "coffee_1": {
+  "text": "[barks] Take five, soldier!",
+  "cost": [
+   "12"
+  ],
+  "id": [
+   "s6ntzc6rsnwiak0sisek"
+  ],
+  "ok": true
+ },
+ "coffee_2": {
+  "text": "[flat, then barks] Speed limit is zero!",
+  "cost": [
+   "17"
+  ],
+  "id": [
+   "jvse1qdnoel6izft7tk0"
+  ],
+  "ok": true
+ },
+ "hardhat_1": {
+  "text": "[barks] Helmet on! Regulation twelve!",
+  "cost": [
+   "16"
+  ],
+  "id": [
+   "ecsnb4jtcd93bmwrurtp"
+  ],
+  "ok": true
+ },
+ "hardhat_2": {
+  "text": "[deadpan] Safety first. Then violence.",
+  "cost": [
+   "17"
+  ],
+  "id": [
+   "1lf0m6un7epmgtcaafvb"
+  ],
+  "ok": true
+ },
+ "express_1": {
+  "text": "[shouting] Incoming!",
+  "cost": [
+   "9"
+  ],
+  "id": [
+   "86hqaj92rxiwxaxlaemd"
+  ],
+  "ok": true
+ },
+ "express_2": {
+  "text": "[roars] Coming through!",
+  "cost": [
+   "10"
+  ],
+  "id": [
+   "acisxs5bhelsrugxswqo"
+  ],
+  "ok": true
+ },
+ "hook_1": {
+  "text": "[barks] Fall in, soldier!",
+  "cost": [
+   "11"
+  ],
+  "id": [
+   "0rprte8xevnd4ykgjlu6"
+  ],
+  "ok": true
+ },
+ "hook_2": {
+  "text": "[shouting] Report to me! NOW!",
+  "cost": [
+   "13"
+  ],
+  "id": [
+   "tzuwtadhb0ymgrrngp7x"
+  ],
+  "ok": true
+ },
+ "pitch_1": {
+  "text": "[barks] Requisition approved!",
+  "cost": [
+   "13"
+  ],
+  "id": [
+   "4zzepjeuyt3appkoy6ud"
+  ],
+  "ok": true
+ },
+ "pitch_2": {
+  "text": "[deadpan] Surplus. Discarded.",
+  "cost": [
+   "13"
+  ],
+  "id": [
+   "eza1ndcjl0tuqlkqdlzt"
+  ],
+  "ok": true
+ },
+ "wait_1": {
+  "text": "[flat] Standing by.",
+  "cost": [
+   "8"
+  ],
+  "id": [
+   "90qblv5qtsjhpl4t4vlb"
+  ],
+  "ok": true
+ },
+ "wait_2": {
+  "text": "[flat] Awaiting orders.",
+  "cost": [
+   "10"
+  ],
+  "id": [
+   "bjozyikupj6ea4ubwu69"
+  ],
+  "ok": true
+ },
+ "light_2": {
+  "text": "[deadpan] Is that all?",
+  "cost": [
+   "10"
+  ],
+  "id": [
+   "ckphwftxvxr3yztxsfgz"
+  ],
+  "ok": true
+ },
+ "heavy_1": {
+  "text": "[shouting] Is that ALL you've got?!",
+  "cost": [
+   "15"
+  ],
+  "id": [
+   "q34uhbdetxi0x1zq4dyb"
+  ],
+  "ok": true
+ },
+ "heavy_2": {
+  "text": "[roars] Pain is temporary! Paperwork is forever!",
+  "cost": [
+   "21"
+  ],
+  "id": [
+   "nlabkwenkytsbx6jgvsa"
+  ],
+  "ok": true
+ },
+ "shield_1": {
+  "text": "[barks] Request denied!",
+  "cost": [
+   "10"
+  ],
+  "id": [
+   "ju4gnpb78gtaasy8nvf9"
+  ],
+  "ok": true
+ },
+ "shield_2": {
+  "text": "[laughs] Nice try, soldier!",
+  "cost": [
+   "12"
+  ],
+  "id": [
+   "oykpfkpleac4igjpt6ib"
+  ],
+  "ok": true
+ },
+ "cover_1": {
+  "text": "[barks] In position!",
+  "cost": [
+   "9"
+  ],
+  "id": [
+   "nltypsttphk97dpesd74"
+  ],
+  "ok": true
+ },
+ "cover_2": {
+  "text": "[flat] Taking cover, sir.",
+  "cost": [
+   "11"
+  ],
+  "id": [
+   "misrrgpeevgv9fynxl3e"
+  ],
+  "ok": true
+ },
+ "full_1": {
+  "text": "[barks] Fortification holds!",
+  "cost": [
+   "12"
+  ],
+  "id": [
+   "eu68fmzckij8lxktkq3b"
+  ],
+  "ok": true
+ },
+ "full_2": {
+  "text": "[shouting] Not today!",
+  "cost": [
+   "9"
+  ],
+  "id": [
+   "jvobftf6gakjyzyvmaaf"
+  ],
+  "ok": true
+ },
+ "exh_1": {
+  "text": "[strained, wheezing] Suit power... at zero.",
+  "cost": [
+   "19"
+  ],
+  "id": [
+   "hdraeqrkehgqppxpc0qo"
+  ],
+  "ok": true
+ },
+ "exh_2": {
+  "text": "[quietly, exhausted] Tell them... I never stopped shooting.",
+  "cost": [
+   "26"
+  ],
+  "id": [
+   "9k66mgb8iji1pdox4pul"
+  ],
+  "ok": true
+ },
+ "vic_1": {
+  "text": "[shouting] Mission accomplished! File the report!",
+  "cost": [
+   "22"
+  ],
+  "id": [
+   "eeiwuks4pbndaeyz28qx"
+  ],
+  "ok": true
+ },
+ "vic_2": {
+  "text": "[barks] Target neutralised. Dismissed!",
+  "cost": [
+   "17"
+  ],
+  "id": [
+   "517gsnkv2yuwrjfhecom"
+  ],
+  "ok": true
+ },
+ "vic_3": {
+  "text": "[laughs, barks] Invoice is in the mail, sir!",
+  "cost": [
+   "19"
+  ],
+  "id": [
+   "kdd2twxzslzkdsl4l91u"
+  ],
+  "ok": true
+ },
+ "def_1": {
+  "text": "[deadpan, tired] Requesting early retirement.",
+  "cost": [
+   "20"
+  ],
+  "id": [
+   "4kd2k76hpkogiixv3j0v"
+  ],
+  "ok": true
+ },
+ "def_2": {
+  "text": "[shouting] Retreat is not in the manual!",
+  "cost": [
+   "18"
+  ],
+  "id": [
+   "bwoejouft9h07vhdylzs"
+  ],
+  "ok": true
+ }
+}

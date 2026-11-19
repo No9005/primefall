@@ -1,0 +1,28 @@
+HTTP/1.1 200 Connection Established
+
+HTTP/1.1 200 OK
+Connection: close
+Content-Length: 65244
+Access-Control-Allow-Headers: *
+Access-Control-Allow-Methods: POST, PATCH, OPTIONS, DELETE, GET, PUT
+Access-Control-Allow-Origin: *
+Access-Control-Expose-Headers: request-id, history-item-id, character-cost, regeneration-count, generation-info, current-concurrent-requests, maximum-concurrent-requests, collect-preference
+Access-Control-Max-Age: 600
+Alt-Svc: h3=":443"; ma=2592000
+Character-Cost: 70
+Collect-Preference: True
+Content-Type: audio/mpeg
+Current-Concurrent-Requests: 1
+Date: Mon, 16 Nov 2026 10:43:38 GMT
+History-Item-Id: ZpxWgfHgpJTaMrcSRsy0
+Maximum-Concurrent-Requests: 2
+Request-Id: fjOg6td852T0933ShU4O
+Server: uvicorn
+Strict-Transport-Security: max-age=1800;
+Tts-Latency-Ms: 559
+Vary: Accept-Language
+Via: 1.1 google
+Workspace-Concurrent-Requests: 1
+X-Region: us-central1
+X-Trace-Id: 587b8c884ae8c1a42a71a81ff1b44bc8
+
