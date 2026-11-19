@@ -128,6 +128,10 @@ export interface MusicManifest {
   bpm: number;
   bars: number;
   layers: Record<string, string>;
+  /** The loop under the Hero Select. */
+  intro?: { file: string; gain: number };
+  /** Plays once when a match starts, hard from the first beat, and fades into the layers over its last bar. */
+  opening?: { file: string; gain: number };
   levels: { name: string; gains: Record<string, number> }[];
 }
 

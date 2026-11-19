@@ -217,7 +217,12 @@ export function HeroSelectScreen({ mode, initial, onBack, onStart }: HeroSelectS
   useEffect(() => {
     // The sounds of the three Heroes load while the player looks at them; leaving the screen silences a line that still runs.
     void gameAudio.load(SELECTABLE_HEROES);
-    return () => gameAudio.stopAll();
+    // The intro of the music plays under the Hero Select.
+    void gameAudio.loadMusic().then(() => gameAudio.startIntro());
+    return () => {
+      gameAudio.stopAll();
+      gameAudio.stopIntro();
+    };
   }, []);
 
   useEffect(() => {
