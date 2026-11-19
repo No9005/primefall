@@ -1,0 +1,54 @@
+<main>
+<h1>Ende-Musik Abnahme</h1>
+<p>Sieg oder Niederlage: erst der Jingle (26,7 s, einmal), dann blendet der ruhige Loop ein und läuft weiter. Eine Heldenzeile kommt nach ein paar Sekunden, die Musik geht dafür zurück. Der Loop ist aus dem Ausklang des Jingles gebaut: nur die Töne des Akkords (ohne Rauschen), zeitgedehnt, ohne Credits.</p>
+<div class="item">
+ <div class="opt"><span class="lab">Ausgang</span><div class="chips" id="kind"></div></div>
+ <div class="opt"><span class="lab">Ruhiger Loop</span><div class="chips" id="lvar"></div><p id="lvarText"></p></div>
+ <div class="opt"><span class="lab">Heldenzeile</span><div class="chips" id="hero"></div><p id="lineText"></p></div>
+ <div class="row"><label for="after">Zeile nach</label><input id="after" type="range" min="1" max="12" step="0.5" value="4"><span class="t" id="afterV">4,0 s</span></div>
+ <div class="row"><label for="duck">Musik geht zurück um</label><input id="duck" type="range" min="2" max="16" step="1" value="9"><span class="t" id="duckV">9 dB</span></div>
+</div>
+<div class="item"><div class="bar" id="bar"><div class="fill" id="fill"></div><div class="mark" id="mVoice"></div><div class="mark2" id="mLoop"></div></div>
+<div class="row"><button class="go" id="play" disabled>Lade …</button><button id="skip" disabled>Zum Loop springen</button><span class="t" id="pos"></span></div>
+<p id="phase"></p></div>
+</main>
+<script>
+const D=__DATA__;const TXT=__TXT__;
+const $=id=>document.getElementById(id);
+const b2a=s=>{const b=atob(s),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a.buffer};
+const ctx=new (window.AudioContext||window.webkitAudioContext)();const master=ctx.createGain();master.gain.value=.8;master.connect(ctx.destination);
+const buf={};let kind='victory',hero='max',lvar='eleven',run=null,line=null;
+const LVARS=[['pad19','Fläche aus 19 bis 20 s'],['direct','Direkt 19 bis 20 s (1 s Schleife)'],['eleven','Neu erzeugt (ElevenLabs)']],LDESC={pad19:'Die Töne der Sekunde vor dem Trommelwirbel, zeitgedehnt zu einer Fläche (4 Takte).',direct:'Genau diese Sekunde als Schleife, das Ende in den Anlauf überblendet.',eleven:'Vier Takte, neu erzeugt (Chor auf offenen Vokalen, Pad, langsames Arpeggio), die Naht von ElevenLabs selbst geschlossen und mit 250 ms überblendet.',tail:'Die Fläche aus dem Ausklang nach dem Trommelwirbel (die, die nach Ventilator klang, jetzt ohne Rauschen).'};
+const JING_GAIN=.35,LOOP_FADE=4.5;
+const KINDS=[['victory','Sieg'],['defeat','Niederlage']],HEROES=[['max','Max'],['tilly','Tilly'],['kit','Kit'],['none','Ohne Zeile']];
+function chips(id,list,get,set){const box=$(id);list.forEach(([k,n])=>{const b=document.createElement('button');b.textContent=n;b.setAttribute('aria-pressed',get()===k);b.onclick=()=>{set(k);box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));refresh()};box.appendChild(b)})}
+chips('kind',KINDS,()=>kind,k=>kind=k);chips('lvar',LVARS,()=>lvar,k=>lvar=k);chips('hero',HEROES,()=>hero,k=>hero=k);
+function pickLine(){if(hero==='none')return null;const ks=Object.keys(D.voice).filter(k=>k.startsWith(hero+':'+kind+'-'));return ks[Math.floor(Math.random()*ks.length)]}
+function refresh(){if(run)stop();$('lvarText').textContent=LDESC[lvar];line=pickLine();$('lineText').textContent=line?'„'+TXT[line]+'“':'Keine Heldenzeile.'}
+$('after').oninput=e=>$('afterV').textContent=(+e.target.value).toFixed(1).replace('.',',')+' s';
+$('duck').oninput=e=>$('duckV').textContent=e.target.value+' dB';
+function stop(){if(!run)return;run.srcs.forEach(s=>{try{s.stop()}catch(e){}});run=null;$('play').textContent='Start';$('phase').textContent=''}
+function start(skipToLoop){stop();if(ctx.state==='suspended')ctx.resume();line=line||pickLine();
+ const t0=ctx.currentTime+.1,J=buf['j'+kind],Lp=buf['l'+kind+':'+lvar]||buf['l'+kind+':pad19'],tl=J.duration-LOOP_FADE,N=24;
+ const duck=ctx.createGain();duck.connect(master);const srcs=[];
+ const ls=ctx.createBufferSource();ls.buffer=Lp;ls.loop=true;const lg=ctx.createGain();ls.connect(lg).connect(duck);
+ let off=0;
+ if(!skipToLoop){
+  const js=ctx.createBufferSource();js.buffer=J;const jg=ctx.createGain();js.connect(jg).connect(duck);js.start(t0);srcs.push(js);
+  jg.gain.setValueAtTime(JING_GAIN,t0);jg.gain.setValueAtTime(JING_GAIN,t0+tl);
+  lg.gain.setValueAtTime(0,t0);lg.gain.setValueAtTime(0,t0+tl);
+  for(let i=1;i<=N;i++){const t=i/N;jg.gain.linearRampToValueAtTime(JING_GAIN*Math.cos(t*Math.PI/2),t0+tl+LOOP_FADE*t);lg.gain.linearRampToValueAtTime(Math.sin(t*Math.PI/2),t0+tl+LOOP_FADE*t)}
+  ls.start(t0+tl);srcs.push(ls)}
+ else{lg.gain.setValueAtTime(0,t0);lg.gain.linearRampToValueAtTime(1,t0+1.5);ls.start(t0);srcs.push(ls);off=tl}
+ let tv=null;
+ if(line&&buf['v'+line]){const vb=buf['v'+line],vd=vb.duration;tv=t0+(skipToLoop?1:+$('after').value);
+  const vs=ctx.createBufferSource();vs.buffer=vb;vs.connect(master);vs.start(tv);srcs.push(vs);
+  const g=Math.pow(10,-(+$('duck').value)/20);duck.gain.setValueAtTime(1,tv-.1);duck.gain.linearRampToValueAtTime(g,tv-.05);duck.gain.setValueAtTime(g,tv+vd);duck.gain.linearRampToValueAtTime(1,tv+vd+.6)}
+ run={srcs,t0:t0-off,tl,J:J.duration};$('play').textContent='Stopp';
+ const tot=J.duration+8;$('mVoice').style.left=tv?(((tv-t0+off)/tot*100)+'%'):'-5%';$('mLoop').style.left=(tl/tot*100)+'%'}
+$('play').onclick=()=>run?stop():start(false);$('skip').onclick=()=>start(true);
+(function tick(){if(run){const t=ctx.currentTime-run.t0,tot=run.J+8;$('fill').style.width=Math.min(100,Math.max(0,t/tot*100))+'%';$('pos').textContent=Math.max(0,t).toFixed(1).replace('.',',')+' s';$('phase').textContent=t<run.tl?'Jingle':(t<run.J?'Übergang in den Loop':'Loop')}requestAnimationFrame(tick)})();
+const jobs=[];['victory','defeat'].forEach(k=>{jobs.push(ctx.decodeAudioData(b2a(D.jingle[k])).then(b=>buf['j'+k]=b));});Object.keys(D.loop).forEach(k=>jobs.push(ctx.decodeAudioData(b2a(D.loop[k])).then(b=>buf['l'+k]=b)));
+Object.keys(D.voice).forEach(k=>jobs.push(ctx.decodeAudioData(b2a(D.voice[k])).then(b=>buf['v'+k]=b)));
+Promise.all(jobs).then(()=>{$('play').disabled=$('skip').disabled=false;$('play').textContent='Start';refresh()}).catch(()=>{$('play').textContent='Fehler'});
+</script>

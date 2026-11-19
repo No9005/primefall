@@ -1,0 +1,85 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "song_id": "iTJCfxy6V6HzoZg1k0O8",
+    "range": {
+     "start_ms": 20000,
+     "end_ms": 26667
+    }
+   },
+   {
+    "text": "[Sieg]\n{the refrain's tension is released; the key turns from D minor to D major, a bright open choir chord}\n{one solo female voice sings, soaring and warm}\nDie Zone gehalten, die Nacht ist vorbei,\nDas Licht ist zurück, und wir sind frei.",
+    "duration_ms": 13333,
+    "positive_styles": [
+     "heroic uplifting triumphant anthem",
+     "D major, the key turns bright after the dark D minor refrain",
+     "huge layered choir on open vowels, bright and warm",
+     "warm synth bass",
+     "soft driving drums, light kick, no heavy snare",
+     "tension released, the light returns",
+     "hybrid orchestral and analog synthesizer",
+     "72 BPM",
+     "great production quality",
+     "female lead voice, otherworldly and alien, soaring and breathy",
+     "German lyrics sung with a slight foreign accent, rolled r, stretched vowels"
+    ],
+    "negative_styles": [
+     "minor key",
+     "dark",
+     "sad",
+     "quiet",
+     "sparse",
+     "intro",
+     "fade out",
+     "rap",
+     "pop"
+    ],
+    "context_adherence": "high",
+    "conditioning_ref": {
+     "song_id": "iTJCfxy6V6HzoZg1k0O8",
+     "range": {
+      "start_ms": 0,
+      "end_ms": 26667
+     }
+    },
+    "condition_strength": "medium"
+   },
+   {
+    "text": "[Sieg]\n{instrumental, no singing: the choir swells to one long glowing chord on open vowels, strings and synth rise}\n{a short drum roll, then the music rings out and ends}",
+    "duration_ms": 6667,
+    "positive_styles": [
+     "heroic uplifting triumphant anthem",
+     "D major, the key turns bright after the dark D minor refrain",
+     "huge layered choir on open vowels, bright and warm",
+     "warm synth bass",
+     "soft driving drums, light kick, no heavy snare",
+     "tension released, the light returns",
+     "hybrid orchestral and analog synthesizer",
+     "72 BPM",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "minor key",
+     "dark",
+     "sad",
+     "quiet",
+     "sparse",
+     "intro",
+     "fade out",
+     "rap",
+     "pop",
+     "vocals",
+     "singing",
+     "solo voice",
+     "lyrics",
+     "spoken words"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true,
+ "seed": 2024
+}

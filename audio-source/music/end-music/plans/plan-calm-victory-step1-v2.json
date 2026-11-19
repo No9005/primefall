@@ -1,0 +1,54 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "song_id": "AuuN6BNO6ftvCwQwF7uN",
+    "range": {
+     "start_ms": 16667,
+     "end_ms": 20000
+    }
+   },
+   {
+    "text": "[Loop]\n{instrumental, no singing: the choir holds soft open vowels, a warm synth pad and a slow gentle arpeggio, no drums}\n{same tempo, same key, the level stays the same from start to end, no ending, no outro, no fade out}",
+    "duration_ms": 13333,
+    "positive_styles": [
+     "calm gentle hopeful ambient",
+     "constant volume from start to end, sustained, no decay",
+     "hybrid orchestral and analog synthesizer",
+     "soft layered choir on open vowels, sustained",
+     "warm synth pad",
+     "slow gentle arpeggio",
+     "steady and spacious, loopable",
+     "72 BPM",
+     "D minor",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "drums",
+     "percussion",
+     "kick",
+     "snare",
+     "vocals",
+     "singing",
+     "solo voice",
+     "lyrics",
+     "spoken words",
+     "loud",
+     "dense",
+     "ending",
+     "outro",
+     "fade out",
+     "decay",
+     "dying away",
+     "intro",
+     "rap",
+     "pop"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true,
+ "seed": 32
+}

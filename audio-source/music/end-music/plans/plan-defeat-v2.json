@@ -1,0 +1,83 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "song_id": "iTJCfxy6V6HzoZg1k0O8",
+    "range": {
+     "start_ms": 20000,
+     "end_ms": 26667
+    }
+   },
+   {
+    "text": "[Niederlage]\n{the tension collapses; the key sinks, the choir thins out to one low chord}\n{one solo female voice sings low and weary}\nDie Zone ist gefallen, die Nacht bricht herein,\nDer Strom ist erloschen, wir sind allein.",
+    "duration_ms": 13333,
+    "positive_styles": [
+     "somber defeated lament",
+     "D minor, falling, the key sinks even darker",
+     "distant layered choir on open vowels, cold",
+     "low cello and synth pad, a slow heartbeat",
+     "no drums, no kick",
+     "hybrid orchestral and analog synthesizer",
+     "72 BPM",
+     "great production quality",
+     "female lead voice, otherworldly and alien, low and weary, breathy",
+     "German lyrics sung with a slight foreign accent, rolled r, stretched vowels"
+    ],
+    "negative_styles": [
+     "major key",
+     "happy",
+     "heroic",
+     "bright",
+     "uplifting",
+     "loud drums",
+     "intro",
+     "rap",
+     "pop"
+    ],
+    "context_adherence": "high",
+    "conditioning_ref": {
+     "song_id": "iTJCfxy6V6HzoZg1k0O8",
+     "range": {
+      "start_ms": 0,
+      "end_ms": 26667
+     }
+    },
+    "condition_strength": "medium"
+   },
+   {
+    "text": "[Niederlage]\n{instrumental, no singing: the choir fades to one soft chord, a single low heartbeat}\n{then the music rings out and ends}",
+    "duration_ms": 6667,
+    "positive_styles": [
+     "somber defeated lament",
+     "D minor, falling, the key sinks even darker",
+     "distant layered choir on open vowels, cold",
+     "low cello and synth pad, a slow heartbeat",
+     "no drums, no kick",
+     "hybrid orchestral and analog synthesizer",
+     "72 BPM",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "major key",
+     "happy",
+     "heroic",
+     "bright",
+     "uplifting",
+     "loud drums",
+     "intro",
+     "rap",
+     "pop",
+     "vocals",
+     "singing",
+     "solo voice",
+     "lyrics",
+     "spoken words"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true,
+ "seed": 2025
+}

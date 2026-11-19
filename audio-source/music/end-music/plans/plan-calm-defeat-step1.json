@@ -1,0 +1,57 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "song_id": "PInQ2YB932scGAbI9oau",
+    "range": {
+     "start_ms": 16667,
+     "end_ms": 20000
+    }
+   },
+   {
+    "text": "[Loop]\n{instrumental, no singing: a cold distant choir holds open vowels, a low cello and synth pad and a slow soft arpeggio, no drums}\n{same tempo, same key, the level stays the same from start to end, no ending, no outro, no fade out}",
+    "duration_ms": 13333,
+    "positive_styles": [
+     "calm somber ambient, hollow and weary",
+     "constant volume from start to end, sustained, no decay",
+     "hybrid orchestral and analog synthesizer",
+     "distant layered choir on open vowels, cold, sustained",
+     "low cello and synth pad",
+     "slow soft arpeggio, a slow low heartbeat",
+     "steady and spacious, loopable",
+     "72 BPM",
+     "D minor",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "drums",
+     "percussion",
+     "kick",
+     "snare",
+     "vocals",
+     "singing",
+     "solo voice",
+     "lyrics",
+     "spoken words",
+     "loud",
+     "dense",
+     "ending",
+     "outro",
+     "fade out",
+     "decay",
+     "dying away",
+     "intro",
+     "rap",
+     "pop",
+     "major key",
+     "happy",
+     "heroic"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true,
+ "seed": 41
+}
