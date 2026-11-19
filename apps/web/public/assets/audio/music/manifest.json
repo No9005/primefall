@@ -10,6 +10,14 @@
   "drums": "drums.m4a",
   "refrain": "refrain.m4a"
  },
+ "intro": {
+  "file": "intro.m4a",
+  "gain": 0.5
+ },
+ "opening": {
+  "file": "opening.m4a",
+  "gain": 1.65
+ },
  "levels": [
   {
    "name": "planning",

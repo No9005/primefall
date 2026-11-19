@@ -61,6 +61,13 @@ describe("the music manifest", () => {
     for (const level of manifest.levels) for (const layer of Object.keys(level.gains)) expect(manifest.layers[layer], `${level.name}: ${layer}`).toBeDefined();
   });
 
+  it("names the intro and the opening files, which exist", () => {
+    for (const part of [manifest.intro, manifest.opening]) {
+      expect(part).toBeDefined();
+      expect(existsSync(path.join(dir, part?.file ?? "missing")), part?.file).toBe(true);
+    }
+  });
+
   it("has the four levels of the game, and only the contested one plays the finished refrain", () => {
     expect(manifest.levels.map((level) => level.name)).toEqual(["planning", "countdown", "resolution", "contested"]);
     expect(manifest.levels.map((level) => "refrain" in level.gains)).toEqual([false, false, false, true]);

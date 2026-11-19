@@ -31,14 +31,22 @@ const DECLICK_IN_S = 0.003;
 const DECLICK_OUT_S = 0.012;
 const MUSIC_FADE_TIME_CONSTANT_S = 0.4;
 const MUSIC_FADE_OUT_S = 1.5;
+/** The intro of the Hero Select fades in softly and out quickly (the opening of the match comes in hard). */
+const INTRO_FADE_IN_S = 0.5;
+const INTRO_FADE_OUT_S = 0.4;
 /** The music is muted by default until it is reworked (loops audible, hard transitions, clicks): `?music=on` in the address plays it. */
 const MUSIC_ON = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("music") === "on";
 
 /** The music while a match runs: all layers start together and loop in sync. */
 interface Music {
+  /** When the layers start (after the opening, minus the bar it fades out over). */
   startedAt: number;
+  /** How long the layers take to fade in at the start. */
+  fadeInSeconds: number;
   loopSeconds: number;
   layers: Record<string, GainNode>;
+  /** The opening (the bridge) that plays first and fades out under the layers; it has no level of its own. */
+  opening: GainNode | undefined;
   sources: AudioBufferSourceNode[];
 }
 
@@ -74,6 +82,8 @@ export class GameAudio {
   private musicLoading: Promise<void> | undefined;
   private music: Music | undefined;
   private musicBus: GainNode | undefined;
+  /** The intro of the Hero Select: a loop that runs until the player leaves the screen. */
+  private intro: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
   /** The music steps back under the voices and the heavy effects (`MUSIC_DUCK`). */
   private duckNode: GainNode | undefined;
   private duckedUntilS = 0;
@@ -289,23 +299,78 @@ export class GameAudio {
     const context = this.ensureContext();
     if (!context) return;
     const manifest = (await (await fetch(MUSIC_MANIFEST_URL)).json()) as MusicManifest;
+    const files: Record<string, string> = { ...manifest.layers };
+    if (manifest.intro) files.intro = manifest.intro.file;
+    if (manifest.opening) files.opening = manifest.opening.file;
     await Promise.all(
-      Object.entries(manifest.layers).map(async ([layer, file]) => {
+      Object.entries(files).map(async ([name, file]) => {
         const data = await (await fetch(musicFileUrl(file))).arrayBuffer();
-        this.buffers.set(`music:${layer}`, await context.decodeAudioData(data));
+        this.buffers.set(`music:${name}`, await context.decodeAudioData(data));
       }),
     );
     this.musicManifest = manifest;
   }
 
-  /** Starts the music: every layer at the same moment, looping, at the gains of the level that is wanted now. */
+  /** The intro of the Hero Select: it loops until `stopIntro`. */
+  startIntro(): void {
+    const context = this.context;
+    const manifest = this.musicManifest;
+    const buffer = this.buffers.get("music:intro");
+    if (!MUSIC_ON || this.intro || !context || !manifest?.intro || !buffer || !this.musicBus) return;
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0, context.currentTime);
+    gain.gain.linearRampToValueAtTime(manifest.intro.gain, context.currentTime + INTRO_FADE_IN_S);
+    source.connect(gain).connect(this.musicBus);
+    source.start();
+    this.intro = { source, gain };
+  }
+
+  /** Fades the intro out quickly, so the opening of the match can come in hard. */
+  stopIntro(): void {
+    const intro = this.intro;
+    const context = this.context;
+    this.intro = undefined;
+    if (!intro || !context) return;
+    intro.gain.gain.cancelScheduledValues(context.currentTime);
+    intro.gain.gain.setValueAtTime(intro.gain.gain.value, context.currentTime);
+    intro.gain.gain.linearRampToValueAtTime(0, context.currentTime + INTRO_FADE_OUT_S);
+    intro.source.stop(context.currentTime + INTRO_FADE_OUT_S + 0.05);
+  }
+
+  /**
+   * Starts the music of a match. The opening (a bridge of four bars) plays first, hard from its first beat; its last bar fades
+   * out while the layers start, a whole bar early so their bar lines stay on the bar lines of the opening. Then the layers loop in
+   * sync, at the gains of the level that is wanted now. Without an opening the layers start at once.
+   */
   startMusic(): void {
     const context = this.context;
     const manifest = this.musicManifest;
     if (!MUSIC_ON || this.music || !context || !manifest || !this.musicBus) return;
-    const startedAt = context.currentTime + 0.1;
-    const layers: Record<string, GainNode> = {};
+    const now = context.currentTime + 0.1;
+    const barSeconds = (60 / manifest.bpm) * 4;
+    const openingBuffer = manifest.opening ? this.buffers.get("music:opening") : undefined;
+    let opening: GainNode | undefined;
     const sources: AudioBufferSourceNode[] = [];
+    let startedAt = now;
+    let fadeInSeconds = MUSIC_FADE_OUT_S;
+    if (manifest.opening && openingBuffer) {
+      const source = context.createBufferSource();
+      source.buffer = openingBuffer;
+      opening = context.createGain();
+      const fadeFrom = now + Math.max(0, openingBuffer.duration - barSeconds);
+      opening.gain.setValueAtTime(manifest.opening.gain, now);
+      opening.gain.setValueAtTime(manifest.opening.gain, fadeFrom);
+      opening.gain.linearRampToValueAtTime(0, fadeFrom + barSeconds);
+      source.connect(opening).connect(this.musicBus);
+      source.start(now);
+      sources.push(source);
+      startedAt = fadeFrom;
+      fadeInSeconds = barSeconds;
+    }
+    const layers: Record<string, GainNode> = {};
     let loopSeconds = 0;
     for (const layer of Object.keys(manifest.layers)) {
       const buffer = this.buffers.get(`music:${layer}`);
@@ -315,14 +380,15 @@ export class GameAudio {
       source.buffer = buffer;
       source.loop = true;
       const gain = context.createGain();
-      gain.gain.value = 0;
-      gain.gain.linearRampToValueAtTime(manifest.levels[this.musicLevel]?.gains[layer] ?? 0, startedAt + MUSIC_FADE_OUT_S);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.setValueAtTime(0, startedAt);
+      gain.gain.linearRampToValueAtTime(manifest.levels[this.musicLevel]?.gains[layer] ?? 0, startedAt + fadeInSeconds);
       source.connect(gain).connect(this.musicBus);
       source.start(startedAt);
       layers[layer] = gain;
       sources.push(source);
     }
-    if (sources.length > 0) this.music = { startedAt, loopSeconds, layers, sources };
+    if (sources.length > 0) this.music = { startedAt, fadeInSeconds, loopSeconds, layers, opening, sources };
   }
 
   /**
@@ -336,6 +402,15 @@ export class GameAudio {
     const music = this.music;
     if (!context || !manifest || !music) return;
     const gains = manifest.levels[level]?.gains ?? {};
+    if (context.currentTime < music.startedAt + music.fadeInSeconds) {
+      // The layers are still fading in under the opening: they fade in to the new level instead.
+      for (const [layer, gain] of Object.entries(music.layers)) {
+        gain.gain.cancelScheduledValues(context.currentTime);
+        gain.gain.setValueAtTime(gain.gain.value, context.currentTime);
+        gain.gain.linearRampToValueAtTime(gains[layer] ?? 0, music.startedAt + music.fadeInSeconds);
+      }
+      return;
+    }
     const at = nextBarTime(context.currentTime, music.startedAt, music.loopSeconds, manifest.bars);
     for (const [layer, gain] of Object.entries(music.layers)) {
       gain.gain.cancelScheduledValues(context.currentTime);
@@ -349,7 +424,7 @@ export class GameAudio {
     const context = this.context;
     this.music = undefined;
     if (!music || !context) return;
-    for (const gain of Object.values(music.layers)) {
+    for (const gain of [...Object.values(music.layers), ...(music.opening ? [music.opening] : [])]) {
       gain.gain.cancelScheduledValues(context.currentTime);
       gain.gain.setValueAtTime(gain.gain.value, context.currentTime);
       gain.gain.linearRampToValueAtTime(0, context.currentTime + MUSIC_FADE_OUT_S);
