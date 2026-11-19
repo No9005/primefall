@@ -99,7 +99,9 @@ interface MatchScreenProps {
 function MatchScreen({ view, host, playerHero, onResolved, onPlayAgain }: MatchScreenProps) {
   if (view.result) {
     const side = roleOf(view);
-    return <EndScreen result={view.result} squad={PLAYER_SQUAD} seed={host.seed} role={side} roundLimit={view.roundLimit} onPlayAgain={() => onPlayAgain(side)} />;
+    const unit = view.heroes.find((candidate) => candidate.heroClass === playerHero);
+    const hero = unit && { heroId: unit.id, heroClass: unit.heroClass, tile: unit.position };
+    return <EndScreen result={view.result} squad={PLAYER_SQUAD} seed={host.seed} role={side} roundLimit={view.roundLimit} hero={hero} onPlayAgain={() => onPlayAgain(side)} />;
   }
   return (
     <PlanningScreen

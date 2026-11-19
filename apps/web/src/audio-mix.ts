@@ -216,6 +216,8 @@ export function distanceGain(listener: GridPosition, source: GridPosition): numb
  */
 export const MUSIC_DUCK = {
   voice: { gain: 0.5, maxS: 8 },
+  /** The Hero speaks over the end music: it steps back further (-9 dB) and comes back more slowly. */
+  endingVoice: { gain: 0.35, maxS: 8, releaseS: 0.6 },
   sfx: { gain: 0.7, maxS: 0.8 },
   minSfxPriority: Priority.Important,
   attackS: 0.05,

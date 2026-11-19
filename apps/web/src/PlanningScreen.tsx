@@ -1161,9 +1161,6 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     // The Prime Zone counts after the Resolution: pips fill and the callouts play one after the other.
     const zoneResult = view.zones && result.view.zones;
     if (zoneResult) setZonesAfter(zoneResult);
-    if (result.view.result?.winner !== undefined) {
-      gameAudio.playMoment("matchEnd", { heroId: playerHero.id, heroClass: playerHero.heroClass, tile: positions[playerHero.id] ?? startPositions[playerHero.id] }, result.view.result.winner === view.squad);
-    }
     const callouts = zoneResult
       ? [...zoneCallouts(view.zones!, zoneResult, view.squad), ...matchEndCallouts(result.view.result, view.squad)]
       : primeCallouts(view.primeProgress, result.view.primeProgress, view.squad);
