@@ -1,0 +1,38 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "text": "[Kampf-Drums]",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "72 BPM, 4/4",
+     "D minor",
+     "static harmony, pedal point on D, no chord changes",
+     "dark sci-fi",
+     "analog synthesizer, 1970s and 1980s sci-fi horror atmosphere",
+     "exactly 8 bars, steady, loopable",
+     "great production quality",
+     "drums only, a drum kit played alone",
+     "powerful driving drums, heavy kick and snare, tight and hard",
+     "kick on every beat, snare on 2 and 4, steady groove, no fills"
+    ],
+    "negative_styles": [
+     "melody",
+     "bass",
+     "bass line",
+     "voices",
+     "choir",
+     "pads",
+     "synth",
+     "strings",
+     "drone",
+     "tonal instruments",
+     "harmony"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true
+}

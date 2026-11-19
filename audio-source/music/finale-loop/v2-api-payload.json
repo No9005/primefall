@@ -1,0 +1,70 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "text": "[Refrain]\n{one powerful female lead voice, clearly in front, sings every line}\n{deep male chest voices in powerchords with open vowels underneath, entering on the first beat}\nNOTstrom, NOTstrom!\nDrei Herren zahlen für unser Blut,\njeder will, was keiner kennt.\nNOTstrom, NOTstrom!",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "72 BPM, 4/4",
+     "D minor",
+     "exactly 16 bars",
+     "the grand finale of a dark heroic sci-fi score, maximum energy, urgent, relentless, climactic, wall of sound",
+     "grim but resolute, defiant, machine and human mixed",
+     "1970s and 1980s analog synthesizers",
+     "driving eighth-note bass, hard punchy drums with snare on 2 and 4",
+     "syncopated off-beat elements: off-beat synth stabs, off-beat hi-hats, rhythmic pushes between the beats, driving and urgent",
+     "deep male chest-voice choir as a wall of sustained open vowels in powerchords (parallel fifths), giving the energy",
+     "one powerful female lead voice, clearly audible and in front of the choir, soaring, otherworldly, singing the German lyrics with a slight foreign accent, rolled r, stretched vowels",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "pop",
+     "rap",
+     "English lyrics",
+     "quiet",
+     "sparse",
+     "fade out",
+     "intro",
+     "calm",
+     "several female voices",
+     "female choir",
+     "clean tenor"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Refrain]\n{the same energy, the female lead and the male choir together}\nDie Zone gehört dem, der bleibt.\nNicht von uns, nicht für uns.\nNOTstrom, NOTstrom!\nDer Fall war erst der Anfang.\n{the last beat is a short pause}",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "72 BPM, 4/4",
+     "D minor",
+     "exactly 16 bars",
+     "the grand finale of a dark heroic sci-fi score, maximum energy, urgent, relentless, climactic, wall of sound",
+     "grim but resolute, defiant, machine and human mixed",
+     "1970s and 1980s analog synthesizers",
+     "driving eighth-note bass, hard punchy drums with snare on 2 and 4",
+     "syncopated off-beat elements: off-beat synth stabs, off-beat hi-hats, rhythmic pushes between the beats, driving and urgent",
+     "deep male chest-voice choir as a wall of sustained open vowels in powerchords (parallel fifths), giving the energy",
+     "one powerful female lead voice, clearly audible and in front of the choir, soaring, otherworldly, singing the German lyrics with a slight foreign accent, rolled r, stretched vowels",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "pop",
+     "rap",
+     "English lyrics",
+     "quiet",
+     "sparse",
+     "fade out",
+     "intro",
+     "calm",
+     "several female voices",
+     "female choir",
+     "clean tenor"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true
+}

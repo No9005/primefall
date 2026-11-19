@@ -1,0 +1,34 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "text": "[Refrain]\n{deep male chest voices hold open vowels (oh, ah) as a powerful background, entering on the first beat}\n{a single female voice sings the lyrics}\nNOTstrom, NOTstrom!\nDrei Herren zahlen für unser Blut,\njeder will, was keiner kennt.\nNOTstrom, NOTstrom!",
+    "duration_ms": 26667,
+    "positive_styles": [
+     "72 BPM, 4/4",
+     "D minor",
+     "exactly 8 bars",
+     "dark heroic sci-fi, grim but resolute, defiant, machine and human mixed, steady and building",
+     "1970s and 1980s analog synthesizers",
+     "deep male chest-voice choir as a wall of sustained open vowels in powerchords (parallel fifths), felt more than heard, giving the energy",
+     "one single female lead voice singing the German lyrics, otherworldly, clear but not dominant, slight foreign accent, rolled r, stretched vowels",
+     "driving bass like a heartbeat, hard punchy drums",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "pop",
+     "rap",
+     "English lyrics",
+     "quiet",
+     "fade out",
+     "female choir",
+     "several female voices",
+     "clean tenor"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true
+}

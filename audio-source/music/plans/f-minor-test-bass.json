@@ -1,0 +1,36 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "text": "[Bass]",
+    "duration_ms": 13333,
+    "positive_styles": [
+     "72 BPM, 4/4",
+     "F minor",
+     "chord progression Fm, E-flat, D-flat, C, one chord per bar, four bars, the root note of each chord changes every bar",
+     "dark sci-fi",
+     "analog synthesizer, 1970s and 1980s sci-fi horror atmosphere",
+     "exactly 4 bars, steady",
+     "great production quality",
+     "instrumental, only a synth bass, no other instruments",
+     "driving eighth-note ostinato on the root of each chord",
+     "dark analog saw bass, tight and mechanical, heavy, no melody on top"
+    ],
+    "negative_styles": [
+     "drums",
+     "percussion",
+     "vocals",
+     "voices",
+     "choir",
+     "melody",
+     "pads",
+     "strings",
+     "high frequencies"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "store_for_inpainting": true
+}

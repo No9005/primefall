@@ -1,0 +1,16 @@
+{
+ "drums": {
+  "measured_bpm": 71.835,
+  "start_s": 0.025,
+  "length_s": 26.6667
+ },
+ "pulse": {
+  "measured_bpm": 71.84,
+  "start_s": 0.48,
+  "length_s": 26.6667
+ },
+ "drone": {
+  "start_s": 0.0,
+  "length_s": 26.6667
+ }
+}
