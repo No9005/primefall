@@ -31,8 +31,12 @@ const DECLICK_IN_S = 0.003;
 const DECLICK_OUT_S = 0.012;
 const MUSIC_FADE_TIME_CONSTANT_S = 0.4;
 const MUSIC_FADE_OUT_S = 1.5;
-/** The opening of a match gives way to the layers over its last two bars: it fades along a cosine, the layers come in slowly at first. */
+/**
+ * The opening of a match gives way to the layers: it fades out along a cosine over its last two bars; the layers start earlier,
+ * over four bars, so the first sounds of the planning are heard under the singer.
+ */
 const OPENING_FADE_BARS = 2;
+const LAYERS_FADE_IN_BARS = 4;
 const FADE_STEPS = 24;
 
 /** Ramps a parameter from `from` to `to` along `shape` (0 to 1 in, 0 to 1 out) as short straight pieces, which a later `cancelScheduledValues` can still cut. */
@@ -355,7 +359,7 @@ export class GameAudio {
 
   /**
    * Starts the music of a match. The opening (a bridge of six bars) plays first, hard from its first beat; its last two bars fade
-   * out along a cosine while the layers start, whole bars early so their bar lines stay on the bar lines of the opening. Then the layers loop in
+   * out along a cosine; the layers start four bars before its end, whole bars early so their bar lines stay on the bar lines of the opening. Then the layers loop in
    * sync, at the gains of the level that is wanted now. Without an opening the layers start at once.
    */
   startMusic(): void {
@@ -364,7 +368,8 @@ export class GameAudio {
     if (!MUSIC_ON || this.music || !context || !manifest || !this.musicBus) return;
     const now = context.currentTime + 0.1;
     const barSeconds = (60 / manifest.bpm) * 4;
-    const crossfadeSeconds = barSeconds * OPENING_FADE_BARS;
+    const openingFadeSeconds = barSeconds * OPENING_FADE_BARS;
+    const layersFadeInSeconds = barSeconds * LAYERS_FADE_IN_BARS;
     const openingBuffer = manifest.opening ? this.buffers.get("music:opening") : undefined;
     let opening: GainNode | undefined;
     const sources: AudioBufferSourceNode[] = [];
@@ -374,14 +379,14 @@ export class GameAudio {
       const source = context.createBufferSource();
       source.buffer = openingBuffer;
       opening = context.createGain();
-      const fadeFrom = now + Math.max(0, openingBuffer.duration - crossfadeSeconds);
+      const fadeFrom = now + Math.max(0, openingBuffer.duration - openingFadeSeconds);
       opening.gain.setValueAtTime(manifest.opening.gain, now);
-      shapedRamp(opening.gain, manifest.opening.gain, 0, fadeFrom, crossfadeSeconds, (t) => 1 - Math.cos((t * Math.PI) / 2));
+      shapedRamp(opening.gain, manifest.opening.gain, 0, fadeFrom, openingFadeSeconds, (t) => 1 - Math.cos((t * Math.PI) / 2));
       source.connect(opening).connect(this.musicBus);
       source.start(now);
       sources.push(source);
-      startedAt = fadeFrom;
-      fadeInSeconds = crossfadeSeconds;
+      startedAt = now + Math.max(0, openingBuffer.duration - layersFadeInSeconds);
+      fadeInSeconds = layersFadeInSeconds;
     }
     const layers: Record<string, GainNode> = {};
     let loopSeconds = 0;
@@ -395,7 +400,7 @@ export class GameAudio {
       const gain = context.createGain();
       gain.gain.setValueAtTime(0, now);
       const target = manifest.levels[this.musicLevel]?.gains[layer] ?? 0;
-      if (opening) shapedRamp(gain.gain, 0, target, startedAt, fadeInSeconds, (t) => t ** 3);
+      if (opening) shapedRamp(gain.gain, 0, target, startedAt, fadeInSeconds, (t) => t ** 2);
       else {
         gain.gain.setValueAtTime(0, startedAt);
         gain.gain.linearRampToValueAtTime(target, startedAt + fadeInSeconds);
