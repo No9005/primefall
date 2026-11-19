@@ -31,6 +31,19 @@ const DECLICK_IN_S = 0.003;
 const DECLICK_OUT_S = 0.012;
 const MUSIC_FADE_TIME_CONSTANT_S = 0.4;
 const MUSIC_FADE_OUT_S = 1.5;
+/** The opening of a match gives way to the layers over its last two bars: it fades along a cosine, the layers come in slowly at first. */
+const OPENING_FADE_BARS = 2;
+const FADE_STEPS = 24;
+
+/** Ramps a parameter from `from` to `to` along `shape` (0 to 1 in, 0 to 1 out) as short straight pieces, which a later `cancelScheduledValues` can still cut. */
+function shapedRamp(param: AudioParam, from: number, to: number, start: number, seconds: number, shape: (t: number) => number): void {
+  param.setValueAtTime(from, start);
+  for (let step = 1; step <= FADE_STEPS; step++) {
+    const t = step / FADE_STEPS;
+    param.linearRampToValueAtTime(from + (to - from) * shape(t), start + seconds * t);
+  }
+}
+
 /** The intro of the Hero Select fades in softly and out quickly (the opening of the match comes in hard). */
 const INTRO_FADE_IN_S = 0.5;
 const INTRO_FADE_OUT_S = 0.4;
@@ -341,8 +354,8 @@ export class GameAudio {
   }
 
   /**
-   * Starts the music of a match. The opening (a bridge of four bars) plays first, hard from its first beat; its last bar fades
-   * out while the layers start, a whole bar early so their bar lines stay on the bar lines of the opening. Then the layers loop in
+   * Starts the music of a match. The opening (a bridge of six bars) plays first, hard from its first beat; its last two bars fade
+   * out along a cosine while the layers start, whole bars early so their bar lines stay on the bar lines of the opening. Then the layers loop in
    * sync, at the gains of the level that is wanted now. Without an opening the layers start at once.
    */
   startMusic(): void {
@@ -351,6 +364,7 @@ export class GameAudio {
     if (!MUSIC_ON || this.music || !context || !manifest || !this.musicBus) return;
     const now = context.currentTime + 0.1;
     const barSeconds = (60 / manifest.bpm) * 4;
+    const crossfadeSeconds = barSeconds * OPENING_FADE_BARS;
     const openingBuffer = manifest.opening ? this.buffers.get("music:opening") : undefined;
     let opening: GainNode | undefined;
     const sources: AudioBufferSourceNode[] = [];
@@ -360,15 +374,14 @@ export class GameAudio {
       const source = context.createBufferSource();
       source.buffer = openingBuffer;
       opening = context.createGain();
-      const fadeFrom = now + Math.max(0, openingBuffer.duration - barSeconds);
+      const fadeFrom = now + Math.max(0, openingBuffer.duration - crossfadeSeconds);
       opening.gain.setValueAtTime(manifest.opening.gain, now);
-      opening.gain.setValueAtTime(manifest.opening.gain, fadeFrom);
-      opening.gain.linearRampToValueAtTime(0, fadeFrom + barSeconds);
+      shapedRamp(opening.gain, manifest.opening.gain, 0, fadeFrom, crossfadeSeconds, (t) => 1 - Math.cos((t * Math.PI) / 2));
       source.connect(opening).connect(this.musicBus);
       source.start(now);
       sources.push(source);
       startedAt = fadeFrom;
-      fadeInSeconds = barSeconds;
+      fadeInSeconds = crossfadeSeconds;
     }
     const layers: Record<string, GainNode> = {};
     let loopSeconds = 0;
@@ -381,8 +394,12 @@ export class GameAudio {
       source.loop = true;
       const gain = context.createGain();
       gain.gain.setValueAtTime(0, now);
-      gain.gain.setValueAtTime(0, startedAt);
-      gain.gain.linearRampToValueAtTime(manifest.levels[this.musicLevel]?.gains[layer] ?? 0, startedAt + fadeInSeconds);
+      const target = manifest.levels[this.musicLevel]?.gains[layer] ?? 0;
+      if (opening) shapedRamp(gain.gain, 0, target, startedAt, fadeInSeconds, (t) => t ** 3);
+      else {
+        gain.gain.setValueAtTime(0, startedAt);
+        gain.gain.linearRampToValueAtTime(target, startedAt + fadeInSeconds);
+      }
       source.connect(gain).connect(this.musicBus);
       source.start(startedAt);
       layers[layer] = gain;
