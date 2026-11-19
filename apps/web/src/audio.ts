@@ -2,7 +2,7 @@ import { findTiles, type GridPosition, type HeroClass, REACTOR_DECK, TileKind } 
 import { AUDIO_FOLDER, type AudioManifest, assetUrl, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl, MUSIC_MANIFEST_URL, type MusicManifest, musicFileUrl, type UiSound } from "./audio-manifest";
 import { distanceGain, MUSIC_DUCK, nextAmbienceGapMs, pickVariant, Priority, SfxLimiter, VoiceDirector } from "./audio-mix";
 import { planMoment, type PlanContext, type SoundRequest, type Source } from "./audio-cues";
-import { type MusicLevel, nextBarTime } from "./music";
+import { type MusicLevel, nextBarTime, type Stinger } from "./music";
 
 // The player of the game sound: it loads the Heroes' sounds, starts the sounds the cues ask for through the rules of the
 // mix (`audio-mix.ts`) on two buses (voice and effects). It uses the Web Audio API of the browser,
@@ -30,6 +30,12 @@ const MASTER_HEADROOM = 0.5;
 const DECLICK_IN_S = 0.003;
 const DECLICK_OUT_S = 0.012;
 const MUSIC_FADE_TIME_CONSTANT_S = 0.4;
+/** A change that a stinger covers is quick: about three of these make it (0.18 s). */
+const MUSIC_NOW_TIME_CONSTANT_S = 0.06;
+/** The stinger is the sound of a zone taken, in three pitches; the music steps back for it so that it cuts through. */
+const STINGER_SOUND: UiSound = "zoneTaken";
+const STINGER_RATE: Record<Stinger, number> = { low: 0.7, mid: 1, high: 1.35 };
+const STINGER_DUCK_S = 0.6;
 const MUSIC_FADE_OUT_S = 1.5;
 /**
  * The opening of a match gives way to the layers: it fades out along a cosine over its last two bars; the layers start earlier,
@@ -472,10 +478,11 @@ export class GameAudio {
   }
 
   /**
-   * The level the game wants. The layers fade to its gains starting on the next bar line, so a change lands on the beat.
+   * The level the game wants. The layers fade to its gains starting on the next bar line, so a change lands on the beat; `now` is for a
+   * change that a sound covers (`playStinger`): it starts at once.
    * Before the music runs, the level is only remembered.
    */
-  setMusicLevel(level: MusicLevel): void {
+  setMusicLevel(level: MusicLevel, at: "now" | "bar" = "bar"): void {
     this.musicLevel = level;
     const context = this.context;
     const manifest = this.musicManifest;
@@ -491,10 +498,11 @@ export class GameAudio {
       }
       return;
     }
-    const at = nextBarTime(context.currentTime, music.startedAt, music.loopSeconds, manifest.bars);
+    const from = at === "now" ? context.currentTime : nextBarTime(context.currentTime, music.startedAt, music.loopSeconds, manifest.bars);
+    const timeConstant = at === "now" ? MUSIC_NOW_TIME_CONSTANT_S : MUSIC_FADE_TIME_CONSTANT_S;
     for (const [layer, gain] of Object.entries(music.layers)) {
       gain.gain.cancelScheduledValues(context.currentTime);
-      gain.gain.setTargetAtTime(gains[layer] ?? 0, at, MUSIC_FADE_TIME_CONSTANT_S);
+      gain.gain.setTargetAtTime(gains[layer] ?? 0, from, timeConstant);
     }
   }
 
@@ -540,6 +548,17 @@ export class GameAudio {
     this.startBuffer(context, buffer, this.sfxBus, { delayS: delayMs / 1000 });
   }
 
+  /** The sound that covers a change of the music: the zone-taken sound in the pitch of the stinger, with the music stepping back for it. */
+  playStinger(kind: Stinger): void {
+    const manifest = this.mapManifest;
+    const context = this.context;
+    const id = manifest?.ui[STINGER_SOUND].play[0];
+    const buffer = id === undefined ? undefined : this.buffers.get(`${MAP_FOLDER}:${id}`);
+    if (!context || context.state === "closed" || !this.sfxBus || !buffer) return;
+    this.startBuffer(context, buffer, this.sfxBus, { rate: STINGER_RATE[kind] });
+    this.duckMusic(MUSIC_DUCK.sfx, context.currentTime, STINGER_DUCK_S);
+  }
+
   /** The two riffles of the shuffle animation. */
   playShuffle(): void {
     const manifest = this.mapManifest;
@@ -561,14 +580,15 @@ export class GameAudio {
     return envelope;
   }
 
-  private startBuffer(context: AudioContext, buffer: AudioBuffer, bus: GainNode, { level = 1, delayS = 0, panner }: { level?: number; delayS?: number; panner?: StereoPannerNode } = {}): void {
+  private startBuffer(context: AudioContext, buffer: AudioBuffer, bus: GainNode, { level = 1, delayS = 0, rate = 1, panner }: { level?: number; delayS?: number; rate?: number; panner?: StereoPannerNode } = {}): void {
     if (context.state === "suspended") void context.resume().catch(() => undefined);
     const source = context.createBufferSource();
     source.buffer = buffer;
+    source.playbackRate.value = rate;
     const gain = context.createGain();
     gain.gain.value = level;
     const startS = context.currentTime + delayS;
-    this.declick(context, source, startS, buffer.duration).connect(gain);
+    this.declick(context, source, startS, buffer.duration / rate).connect(gain);
     if (panner) {
       panner.pan.value = Math.random() * 1.2 - 0.6;
       gain.connect(panner).connect(bus);
@@ -625,7 +645,12 @@ export class GameAudio {
     const heavySfx = request.kind === "sfx" && request.priority >= MUSIC_DUCK.minSfxPriority;
     if (request.kind === "sfx" && !heavySfx) return;
     const voiceDuck = this.ending ? MUSIC_DUCK.endingVoice : MUSIC_DUCK.voice;
-    const duck = heavySfx ? MUSIC_DUCK.sfx : voiceDuck;
+    this.duckMusic(heavySfx ? MUSIC_DUCK.sfx : voiceDuck, startS, durationS);
+  }
+
+  private duckMusic(duck: { gain: number; maxS: number } | { gain: number; maxS: number; releaseS: number }, startS: number, durationS: number): void {
+    const gain = this.duckNode?.gain;
+    if (!gain) return;
     const from = Math.max(startS, this.context?.currentTime ?? 0);
     const until = from + Math.min(durationS, duck.maxS);
     if (until <= this.duckedUntilS) return;
