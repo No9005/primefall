@@ -19,7 +19,7 @@
 | **Red** | British: **The Albion Office of Recovered Property** | dry and bureaucratic: a ministry rather than a firm; a man in a bowler hat |
 | **Blue** | American, military: **Liberty Forward Command** | brash; a general, a flag pin |
 
-Decided: the three names above. Logo drafts: `images/intro-company-logos.png`. The satire sits in the logos' small print: *Your future. Our terms. (See Appendix 9)* for Tsukuyomi, *Triplicate since 1707, Form 27B applies* and a crest with a rubber stamp and red tape for the Albion Office, *Freedom. (Terms apply) Entering is consent* for Liberty Forward Command. Two of the three hire the two Squads of a match; which two changes with the match.
+Decided: the three names above. Logo drafts (several versions each, nothing chosen yet): `images/intro-logos-tsukuyomi.png`, `images/intro-logos-albion.png`, `images/intro-logos-liberty.png`. The satire sits in the logos' small print: *Your future. Our terms. (See Appendix 9)* for Tsukuyomi, *Triplicate since 1707, Form 27B applies* and a crest with a rubber stamp and red tape for the Albion Office, *Freedom. (Terms apply) Entering is consent* for Liberty Forward Command. Two of the three hire the two Squads of a match; which two changes with the match.
 
 ## Beats
 
@@ -31,6 +31,10 @@ Decided: the three names above. Logo drafts: `images/intro-company-logos.png`. T
 | 4 | 0:22 - 0:30 | The satire. A city in the grey of an office: towers of files, queues at counters, a stamp coming down again and again (APPROVED, DENIED, PENDING), red tape round a street lamp, a sign "PLEASE TAKE A NUMBER". | "They never conquered anyone. They issued forms. A permit to stand here. A licence to look there. Oppression, in triplicate." |
 | 5 | 0:30 - 0:38 | A single hand signs a contract (close up; a pen scratches). The pen lifts. Cut to a hangar door from behind: three silhouettes side by side, one broad with a load on the back, one with an extra arm, one thin with a long rifle. | "And when the paperwork fails, there are mercenaries. Three of them. They sign on with the corporations for one reason: to make a living. Money." |
 | 6 | 0:38 - 0:45 | An Artifact falls, slowly, into a dark hauler's reactor bay; red lamps flicker, the impact turns white. The crystal is the logo: it settles in the middle of the frame and the word **PRIMEFALL** forms around it, lit from below. It holds, then dissolves into the menu. | "Every Prime is a contract." |
+
+## Stills
+
+A first set of stills for every beat (5 and 6 have two shots each): `images/intro-storyboard.png`. Rough drafts in the pixel look to judge composition, not final art.
 
 ## Voice-over in one piece (about 95 words)
 
@@ -48,7 +52,7 @@ Every Prime is a contract.
 
 ## Notes and open points
 
-- **Why "Primefall":** the Artifacts of the Primes fell; the logo is **PRIME + crystal as the A + LL**, over the curve of the planet with thin clouds (concept: `images/intro-logo-concept.png`); the claim line is "Every Prime is a contract". The title is the last picture.
+- **Why "Primefall":** the Artifacts of the Primes fell; the logo is **PRIMEF + crystal as the A + LL**, over the curve of the planet; the clouds are our Fog of War with oceans and continents faintly beneath (concept: `images/intro-logo-concept.png`); the claim line is "Every Prime is a contract". The title is the last picture.
 - **Mystery stays in the pictures:** the Primes are never explained, only shown (beat 2). The satire sits in the voice and in beat 4.
 - **Reduced motion:** the film needs a skip button; with reduced motion it should be skippable from the first frame.
 - **Pipeline (nothing is generated yet):** storyboard and voice-over agreed, then the voice (ElevenLabs, only with the owner's explicit go and a cost estimate), then I render the frames in the pixel style, then the music under the finished film (ElevenLabs, again only with the owner's go).
