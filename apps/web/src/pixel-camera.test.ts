@@ -1,6 +1,6 @@
 import { findTiles, REACTOR_DECK, TileKind } from "game-core";
 import { describe, expect, it } from "vitest";
-import { boardBounds, clampCamera, fitCamera, frameMoveCamera, frameSquadCamera, gridToWorld, PIXEL_MAX_SCALE, PIXEL_WORLD_SCALE, PIXEL_ZOOMS, pixelStepScale, zoomAt, zoomOnPoint } from "./board-layout";
+import { boardBounds, clampCamera, fitCamera, frameMoveCamera, frameSquadCamera, gridToWorld, nearestPixelStepScale, PIXEL_STEPS_IN, PIXEL_WORLD_SCALE, PIXEL_ZOOMS, pixelMaxScale, pixelStepBy, pixelStepScale, zoomAt, zoomOnPoint } from "./board-layout";
 
 const PHONE = { width: 844, height: 390, pixel: true };
 const ART_ZOOMS = PIXEL_ZOOMS.map((zoom) => zoom * PIXEL_WORLD_SCALE);
@@ -25,7 +25,8 @@ describe("the camera of the Pixel art style", () => {
   it("rounds a zoom down to a whole step", () => {
     expect(pixelStepScale(0.3 * PIXEL_WORLD_SCALE)).toBe(0.5 * PIXEL_WORLD_SCALE);
     expect(pixelStepScale(1.7 * PIXEL_WORLD_SCALE)).toBe(1 * PIXEL_WORLD_SCALE);
-    expect(pixelStepScale(9 * PIXEL_WORLD_SCALE)).toBe(2 * PIXEL_WORLD_SCALE);
+    expect(pixelStepScale(2.9 * PIXEL_WORLD_SCALE)).toBe(2 * PIXEL_WORLD_SCALE);
+    expect(pixelStepScale(9 * PIXEL_WORLD_SCALE)).toBe(6 * PIXEL_WORLD_SCALE);
   });
 
   it("clamps every camera to a step, so zooming never lands between two", () => {
@@ -47,9 +48,35 @@ describe("the camera of the Pixel art style", () => {
   });
 
   it("zooms on a Hero at 2x and frames a Move on a whole step", () => {
-    expect(zoomOnPoint(gridToWorld({ col: 20, row: 12 }), PHONE).scale).toBe(PIXEL_MAX_SCALE);
+    expect(zoomOnPoint(gridToWorld({ col: 20, row: 12 }), PHONE).scale).toBe(2 * PIXEL_WORLD_SCALE);
     const framed = frameMoveCamera({ col: 10, row: 10 }, [{ col: 11, row: 10 }, { col: 12, row: 10 }], PHONE);
     expect(ART_ZOOMS).toContain(framed.scale);
+  });
+
+  it("lets the player zoom in three steps past the start framing", () => {
+    expect(PIXEL_STEPS_IN).toBe(3);
+    // The start is 1x on a phone: 2x, 3x and 4x are the three steps in.
+    expect(pixelMaxScale(fitCamera(PHONE).scale)).toBe(4 * PIXEL_WORLD_SCALE);
+    // A large view that fits the board at 2x starts there, and still has three steps in.
+    const big = { width: 4000, height: 2400, pixel: true };
+    expect(pixelMaxScale(fitCamera(big).scale)).toBe(5 * PIXEL_WORLD_SCALE);
+    const start = { ...fitCamera(PHONE), scale: 1 * PIXEL_WORLD_SCALE };
+    let camera = start;
+    for (let step = 0; step < 6; step++) camera = zoomAt(camera, pixelStepBy(camera.scale, 1), 400, 200, PHONE);
+    expect(camera.scale).toBe(4 * PIXEL_WORLD_SCALE);
+  });
+
+  it("moves one step in or out, and stops at the first and the last step", () => {
+    expect(pixelStepBy(1 * PIXEL_WORLD_SCALE, 1)).toBe(2 * PIXEL_WORLD_SCALE);
+    expect(pixelStepBy(2 * PIXEL_WORLD_SCALE, -1)).toBe(1 * PIXEL_WORLD_SCALE);
+    expect(pixelStepBy(0.5 * PIXEL_WORLD_SCALE, -1)).toBe(0.5 * PIXEL_WORLD_SCALE);
+    expect(pixelStepBy(6 * PIXEL_WORLD_SCALE, 1)).toBe(6 * PIXEL_WORLD_SCALE);
+  });
+
+  it("takes the nearest step on a logarithmic scale, so a small pinch lands on a step", () => {
+    expect(nearestPixelStepScale(1.2 * PIXEL_WORLD_SCALE)).toBe(1 * PIXEL_WORLD_SCALE);
+    expect(nearestPixelStepScale(1.5 * PIXEL_WORLD_SCALE)).toBe(2 * PIXEL_WORLD_SCALE);
+    expect(nearestPixelStepScale(0.1 * PIXEL_WORLD_SCALE)).toBe(0.5 * PIXEL_WORLD_SCALE);
   });
 
   it("leaves the camera of the Original style continuous", () => {

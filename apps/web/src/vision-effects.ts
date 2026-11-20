@@ -93,3 +93,12 @@ export function zoneRingAt(ms: number): { scale: number; alpha: number } {
   const u = Math.min(1, Math.max(0, (ms * CLIP_SPEED) / ZONE_RING_MS));
   return { scale: 0.4 + u, alpha: 0.8 * (1 - u) };
 }
+
+/**
+ * Whether a token may glide (a Step) or slide (a Pull) from another tile. A Ghost never does, and an enemy that was not on the board
+ * as a real figure in the last redraw does not either: it has just come into sight and fades in where it stands.
+ */
+export function canMove(hero: { ghost?: boolean }, enemy: boolean, wasSeenBefore: boolean): boolean {
+  if (hero.ghost) return false;
+  return !enemy || wasSeenBefore;
+}
