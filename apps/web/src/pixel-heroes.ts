@@ -8,8 +8,8 @@ import { HERO_STYLE } from "./hero-style";
 // The Heroes of the Pixel art style: sprite sheets (apps/web/public/assets/pixel-heroes, docs/design/pixel-heroes) played
 // instead of the shape rig. Which clip plays when stays with `playback.ts` and `hero-clips.ts`; this module only decides
 // which sheet a clip name is, and draws the frame. The sheets carry no team colour, so the ring under the feet stays the
-// renderer's. Only the `figure` layer is used on the board: the game draws the Shield bubble, the numbers, the Wait mark,
-// the Cover, the Scout Drone and the shots itself. The Hero Select, which draws none of these, also shows the effect layers.
+// renderer's. Only the `figure` layer is used on the board (the effect layers of a Wait too): the game draws the Shield bubble,
+// the numbers, the planned Wait mark, the Cover, the Scout Drone and the shots itself. The Hero Select, which draws none of these, also shows the effect layers.
 
 /** What a sheet's `clips.json` says about one clip. */
 interface ClipInfo {
@@ -89,6 +89,32 @@ const SELECT_SHEETS = ["select_idle", "select_ready", "select_hold"] as const;
 
 /** In a rest clip that is the loop of a Take Cover, the loop starts after the taking (the rig's `activeEndMs`: 24 % and 22 %). */
 const COVER_LOOP_FROM: Partial<Record<ClipName, number>> = { inCover: 0.24, inCoverFull: 0.22 };
+
+/**
+ * ... and ends where the figure is back in the pose it starts the loop in. The sheets end with the Hero standing up (to run into
+ * their first frame, which stands), so a loop that ran to the end showed a rise and then a jump back to crouching, every cycle: the
+ * taking of cover again and again. The ends are the frames that lead back to the loop's start with the smallest jump (found by
+ * comparing the frames; the jump from the last frame is 8 to 10 times a normal step, from these about 2.5 to 4).
+ */
+const COVER_LOOP_TO: Record<HeroClass, Partial<Record<ClipName, number>>> = {
+  [HeroClass.Bruiser]: { inCover: 0.841, inCoverFull: 0.771 },
+  [HeroClass.Assassin]: { inCover: 0.739, inCoverFull: 0.792 },
+  [HeroClass.Controller]: { inCover: 0.841, inCoverFull: 0.833 },
+};
+
+/** Where in a sheet a rest clip is `progress` of the way through a cycle (the cycles wrap inside the loop of the Cover rest, not over the rise at the end of the sheet). */
+export function restLoopProgress(heroClass: HeroClass, name: ClipName, progress: number): number {
+  const from = COVER_LOOP_FROM[name];
+  if (from === undefined) return progress;
+  const to = COVER_LOOP_TO[heroClass][name] ?? 1;
+  return from + (((progress % 1) + 1) % 1) * (to - from);
+}
+
+/**
+ * The clips whose effect layers the board draws as well. The pause mark and the puff of smoke of a Wait are in the sheet and nowhere
+ * else (the game draws the shots, the Shield and the Cover itself, which is why the other clips show their figure only).
+ */
+const EFFECT_CLIPS: readonly ClipName[] = ["wait"];
 
 const loaded = new Map<HeroClass, Map<string, PixelClip>>();
 let loading: Promise<void> | undefined;
@@ -197,10 +223,11 @@ export class PixelHero {
   }
 
   /** Shows a clip of a sheet by name at a frame; the ring flash, the ring fade and the shake of that frame go with it. */
-  private draw(clip: PixelClip, frame: number): void {
+  /** `withEffects`: the effect layers of the sheet are drawn too, whatever layers this Hero draws. */
+  private draw(clip: PixelClip, frame: number, withEffects = false): void {
     for (const layer of ["fx_back", "figure", "fx_front"] as const) {
       const sprite = this.sprites[layer];
-      const textures = this.layers.includes(layer) ? clip.layers[layer] : undefined;
+      const textures = withEffects || this.layers.includes(layer) ? clip.layers[layer] : undefined;
       sprite.visible = textures !== undefined;
       if (textures) sprite.texture = textures[Math.min(frame, textures.length - 1)]!;
     }
@@ -217,10 +244,8 @@ export class PixelHero {
   show(name: ClipName, clipMs: number): void {
     const clip = clipOfSheet(this.heroClass, pixelSheetOf(this.heroClass, name));
     const progress = clipMs / clipOf(this.heroClass, name).durationMs;
-    const from = COVER_LOOP_FROM[name];
-    const looped = from === undefined ? progress : from + (progress % 1) * (1 - from);
-    const frame = frameAt(clip.frames, clip.loop, looped);
-    this.draw(clip, frame);
+    const frame = frameAt(clip.frames, clip.loop, restLoopProgress(this.heroClass, name, progress));
+    this.draw(clip, frame, EFFECT_CLIPS.includes(name));
     // A Hero that goes Hidden fades to the translucent look it keeps (the sheet's figure stays opaque).
     if (name === "hidden") this.body.alpha = 1 - 0.45 * Math.min(1, Math.max(0, (progress - 0.2) / 0.2));
     else this.body.alpha = 1;
@@ -235,7 +260,7 @@ export class PixelHero {
       return;
     }
     const clip = clipOfSheet(this.heroClass, pixelSheetOf(this.heroClass, name));
-    this.draw(clip, name === "exhausted" ? clip.frames - 1 : frameAt(clip.frames, clip.loop, COVER_LOOP_FROM[name] ?? 0));
+    this.draw(clip, name === "exhausted" ? clip.frames - 1 : frameAt(clip.frames, clip.loop, COVER_LOOP_FROM[name] ?? 0), EFFECT_CLIPS.includes(name));
   }
 
   /** The Hero Select: idle loops; a chosen Hero plays its ready clip once and then holds. `sinceMs` is the time in the state. */

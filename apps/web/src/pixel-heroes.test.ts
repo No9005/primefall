@@ -3,7 +3,7 @@ import path from "node:path";
 import { HeroClass } from "game-core";
 import { describe, expect, it } from "vitest";
 import type { ClipName } from "./hero-clips";
-import { frameAt, PIXEL_SCALE, pixelSheetOf } from "./pixel-heroes";
+import { frameAt, PIXEL_SCALE, pixelSheetOf, restLoopProgress } from "./pixel-heroes";
 
 const FOLDER = path.join(import.meta.dirname, "../public/assets/pixel-heroes");
 const FOLDERS: Record<HeroClass, string> = { [HeroClass.Bruiser]: "bruiser", [HeroClass.Controller]: "controller", [HeroClass.Assassin]: "assassin" };
@@ -74,5 +74,29 @@ describe("Pixel Hero sheets", () => {
 
   it("scales by whole numbers", () => {
     expect(Number.isInteger(PIXEL_SCALE)).toBe(true);
+  });
+});
+
+describe("the rest loop of a Hero in Cover", () => {
+  it("never shows the rise at the end of the sheet, which ran into a jump back to crouching every cycle", () => {
+    for (const heroClass of Object.values(HeroClass)) {
+      for (const name of ["inCover", "inCoverFull"] as const) {
+        for (let progress = 0; progress < 5; progress += 0.037) {
+          const at = restLoopProgress(heroClass, name, progress);
+          expect(at, `${heroClass} ${name}`).toBeGreaterThanOrEqual(name === "inCover" ? 0.24 : 0.22);
+          expect(at, `${heroClass} ${name}`).toBeLessThan(0.9);
+        }
+      }
+    }
+  });
+
+  it("starts the loop after the taking and wraps inside it", () => {
+    expect(restLoopProgress(HeroClass.Assassin, "inCover", 0)).toBeCloseTo(0.24);
+    expect(restLoopProgress(HeroClass.Assassin, "inCover", 1)).toBeCloseTo(0.24);
+    expect(restLoopProgress(HeroClass.Assassin, "inCover", 1.5)).toBeCloseTo((0.24 + 0.739) / 2);
+  });
+
+  it("leaves every other clip as it is", () => {
+    expect(restLoopProgress(HeroClass.Bruiser, "idle", 0.7)).toBe(0.7);
   });
 });
