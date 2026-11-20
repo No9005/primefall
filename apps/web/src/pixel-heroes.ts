@@ -3,6 +3,7 @@ import { Assets, Container, Graphics, Sprite, type Spritesheet, type Texture } f
 import { baseFacing, type Facing } from "./facing";
 import { type ClipName, clipOf } from "./hero-clips";
 import { groundMarks, type HeroPose } from "./hero-figure";
+import { CLIP_SPEED } from "./clip-player";
 import { HERO_STYLE } from "./hero-style";
 
 // The Heroes of the Pixel art style: sprite sheets (apps/web/public/assets/pixel-heroes, docs/design/pixel-heroes) played
@@ -111,6 +112,45 @@ export function restLoopProgress(heroClass: HeroClass, name: ClipName, progress:
 }
 
 /**
+ * The frames at the start of the Cover loop in which the Hero is just crouched (a few of them, so that the breathing moves a little
+ * rather than the figure standing as a still image). The rest of the loop (looking up, for Max) plays only now and then.
+ */
+const COVER_HOLD_FRAMES: Record<HeroClass, Partial<Record<ClipName, number>>> = {
+  [HeroClass.Bruiser]: { inCover: 9, inCoverFull: 3 },
+  [HeroClass.Assassin]: { inCover: 3, inCoverFull: 15 },
+  [HeroClass.Controller]: { inCover: 10, inCoverFull: 4 },
+};
+/** How long (at least) the Hero stays crouched between two passes of the loop, and how long one of those frames lasts. */
+const COVER_HOLD_S = 6;
+const COVER_HOLD_FRAME_S = 0.15;
+
+/**
+ * Where in a Cover rest sheet the figure is `clipMs` into the rest: crouched (moving between the first frames of the loop) for most of
+ * the time, then the loop once, and crouched again. `offsetMs` shifts the cycle, so the Heroes of a board do not look up together.
+ */
+export function coverRestProgress(
+  heroClass: HeroClass,
+  name: ClipName,
+  clipMs: number,
+  loopMs: number,
+  frames: number,
+  offsetMs = 0,
+): number {
+  const from = COVER_LOOP_FROM[name];
+  if (from === undefined) return clipMs / loopMs;
+  const holdFrames = COVER_HOLD_FRAMES[heroClass][name] ?? 1;
+  const frameMs = COVER_HOLD_FRAME_S * 1000 * CLIP_SPEED;
+  const roundMs = Math.max(1, 2 * (holdFrames - 1)) * frameMs;
+  const holdMs = Math.ceil((COVER_HOLD_S * 1000 * CLIP_SPEED) / roundMs) * roundMs;
+  const cycleMs = holdMs + loopMs;
+  const at = (((clipMs + offsetMs) % cycleMs) + cycleMs) % cycleMs;
+  if (at >= holdMs) return restLoopProgress(heroClass, name, (at - holdMs) / loopMs);
+  const step = (at % roundMs) / frameMs;
+  const frame = holdFrames <= 1 ? 0 : Math.floor(step <= holdFrames - 1 ? step : 2 * (holdFrames - 1) - step);
+  return from + (frame + 0.5) / frames;
+}
+
+/**
  * The clips whose effect layers the board draws as well. The pause mark and the puff of smoke of a Wait are in the sheet and nowhere
  * else (the game draws the shots, the Shield and the Cover itself, which is why the other clips show their figure only).
  */
@@ -171,6 +211,8 @@ export class PixelHero {
   private readonly body = new Container();
   private readonly sprites: Record<PixelLayer, Sprite>;
   private readonly side: number;
+  /** Shifts the cycle of the Cover rest, so that the Heroes of the board do not all look up together. */
+  private readonly restOffsetMs: number;
   /** The scale of the sprites inside `container`. */
   private readonly unit: number;
   private readonly layers: readonly PixelLayer[];
@@ -199,6 +241,7 @@ export class PixelHero {
     this.layers = layers;
     this.container.scale.set(figureScale);
     this.side = facing === "left" ? -1 : 1;
+    this.restOffsetMs = ((enemy ? 2400 : 0) + Object.values(HeroClass).indexOf(heroClass) * 1700) * CLIP_SPEED;
     // The sprites keep their own scale (whole on the board), whatever the figure scale is.
     this.unit = pixelScale / figureScale;
     this.body.scale.set(this.unit * this.side, this.unit);
@@ -244,7 +287,11 @@ export class PixelHero {
   show(name: ClipName, clipMs: number): void {
     const clip = clipOfSheet(this.heroClass, pixelSheetOf(this.heroClass, name));
     const progress = clipMs / clipOf(this.heroClass, name).durationMs;
-    const frame = frameAt(clip.frames, clip.loop, restLoopProgress(this.heroClass, name, progress));
+    const loopMs = clipOf(this.heroClass, name).durationMs;
+    const resting = COVER_LOOP_FROM[name] !== undefined;
+    const frame = resting
+      ? frameAt(clip.frames, clip.loop, coverRestProgress(this.heroClass, name, clipMs, loopMs, clip.frames, this.restOffsetMs))
+      : frameAt(clip.frames, clip.loop, progress);
     this.draw(clip, frame, EFFECT_CLIPS.includes(name));
     // A Hero that goes Hidden fades to the translucent look it keeps (the sheet's figure stays opaque).
     if (name === "hidden") this.body.alpha = 1 - 0.45 * Math.min(1, Math.max(0, (progress - 0.2) / 0.2));
