@@ -2,7 +2,7 @@ import { HeroClass } from "game-core";
 import { Application, Container, Graphics, Text } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
 import { gameAudio } from "./audio";
-import { cardListTitle, cardRowName, cardRows, feetX, HERO_CLOSE_UP, HERO_NAMES, HERO_PROFILES, HERO_TASKS, MODE_LABELS, type SelectMode, SELECTABLE_HEROES } from "./hero-select";
+import { cardListTitle, cardRowName, cardRows, feetX, HERO_CLOSE_UP, HERO_NAMES, HERO_PROFILES, HERO_TASKS, MODE_LABELS, type SelectMode, SELECTABLE_HEROES, canvasResolution } from "./hero-select";
 import { HERO_STYLE } from "./hero-style";
 import { loadPixelHeroes, PixelHero } from "./pixel-heroes";
 import "./hero-select.css";
@@ -83,8 +83,16 @@ function poseStands(stands: readonly Stand[], choice: Choice, now: number, reduc
 }
 
 /** The canvas of the three Heroes. It follows `choice` through a ref, so the scene is built once. */
-function HeroCanvas({ choice }: { choice: Choice }) {
+function HeroCanvas({ choice, scale }: { choice: Choice; scale: number }) {
   const host = useRef<HTMLDivElement>(null);
+  const appRef = useRef<Application | null>(null);
+  // The stage is scaled to the window by CSS, so the canvas is drawn at the size it ends up (device pixels times that scale):
+  // a canvas drawn at 844 x 390 and enlarged by the browser is smeared.
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
+  useEffect(() => {
+    appRef.current?.renderer.resize(SCREEN.width, SCREEN.height, canvasResolution(window.devicePixelRatio, scale));
+  }, [scale]);
   const stands = useRef<Stand[]>([]);
   const choiceRef = useRef(choice);
 
@@ -108,7 +116,7 @@ function HeroCanvas({ choice }: { choice: Choice }) {
     let cancelled = false;
     const app = new Application();
     void (async () => {
-      await app.init({ width: SCREEN.width, height: SCREEN.height, backgroundAlpha: 0, preference: "webgl", antialias: true, autoDensity: true, resolution: window.devicePixelRatio });
+      await app.init({ width: SCREEN.width, height: SCREEN.height, backgroundAlpha: 0, preference: "webgl", antialias: true, autoDensity: true, resolution: canvasResolution(window.devicePixelRatio, scaleRef.current) });
       if (cancelled) {
         app.destroy(true, { children: true });
         return;
@@ -119,6 +127,7 @@ function HeroCanvas({ choice }: { choice: Choice }) {
         return;
       }
       element.appendChild(app.canvas);
+      appRef.current = app;
       const built = SELECTABLE_HEROES.map(buildStand);
       stands.current = built;
       for (const stand of built) app.stage.addChild(stand.holder);
@@ -131,6 +140,7 @@ function HeroCanvas({ choice }: { choice: Choice }) {
     return () => {
       cancelled = true;
       stands.current = [];
+      appRef.current = null;
       delete element.dataset.ready;
       if (app.renderer) app.destroy(true, { children: true });
     };
@@ -237,7 +247,7 @@ export function HeroSelectScreen({ mode, initial, onBack, onStart }: HeroSelectS
       <div className="hs-stage" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
         <div className="hs-grid" />
         <div className="hs-drift" aria-hidden="true" />
-        <HeroCanvas choice={choice} />
+        <HeroCanvas choice={choice} scale={scale} />
         <button type="button" className="hs-back" onClick={onBack}>
           <BackArrow />
           <span>BACK</span>

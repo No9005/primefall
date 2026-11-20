@@ -1,6 +1,6 @@
 import { HERO_DECKS, HeroClass } from "game-core";
 import { describe, expect, it } from "vitest";
-import { cardListTitle, cardRowName, cardRows, feetX, HERO_CLOSE_UP, HERO_PROFILES, SELECTABLE_HEROES } from "./hero-select";
+import { canvasResolution, cardListTitle, cardRowName, cardRows, feetX, HERO_CLOSE_UP, HERO_PROFILES, SELECTABLE_HEROES } from "./hero-select";
 
 describe("the card list", () => {
   it("has one row per distinct card with the number of copies, for every Hero", () => {
@@ -45,5 +45,13 @@ describe("the Hero Names", () => {
 
   it("keeps the bio free of the other Heroes' kit: nothing about the Site Survey on the sheet of Tilly", () => {
     expect(HERO_PROFILES[HeroClass.Controller].bio).not.toContain("Site Survey");
+  });
+});
+
+describe("the resolution of the Hero Select canvas", () => {
+  it("draws at the size the enlarged stage ends up, never coarser than the device", () => {
+    expect(canvasResolution(1, 2.4)).toBeCloseTo(2.4);
+    expect(canvasResolution(2, 1.5)).toBe(3);
+    expect(canvasResolution(2, 0.8)).toBe(2);
   });
 });
