@@ -469,6 +469,18 @@ export const SCENARIOS: readonly Scenario[] = [
     resolutionShotsMs: [300, 900, 1500, 2100, 2700, 3300],
   },
   {
+    name: "core-hero",
+    description: "A Hero on the core tile of the Prime Zone, under the hanging orb: the orb and its halo are drawn over the Hero's head and the Hero does not show through the light.",
+    buildMatch: () =>
+      stage(27, (hero) => {
+        arrange(hero(PLAYER_BRUISER), { col: 22, row: 12 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
+        arrange(hero(PLAYER_ASSASSIN), { col: 21, row: 11 }, { hand: [] });
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [{ wait: true }],
+    resolutionShotsMs: [400],
+  },
+  {
     name: "zone-wall-depth",
     description: "The Prime Zone before it is active (Round 1): a Hero in front of the zone is drawn over the laser wall, a Hero inside it under the wall, and the posts at the back stand behind the core's light.",
     buildMatch: () =>
