@@ -91,3 +91,9 @@ export function cardRowName(row: CardRow): string {
 export function feetX(heroClass: HeroClass, selected: boolean): number {
   return heroClass === HeroClass.Bruiser && selected ? 62 : 120;
 }
+
+/** The pixel density the canvas is drawn at: the device's times the scale the stage is enlarged by (at least the device's; the canvas is never drawn coarser). */
+export function canvasResolution(devicePixelRatio: number, stageScale: number): number {
+  return devicePixelRatio * Math.max(1, stageScale);
+}
+
