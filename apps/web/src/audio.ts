@@ -30,8 +30,9 @@ const MASTER_HEADROOM = 0.5;
 const DECLICK_IN_S = 0.003;
 const DECLICK_OUT_S = 0.012;
 const MUSIC_FADE_TIME_CONSTANT_S = 0.4;
-/** A change that starts at once is quick: about three of these make it (0.18 s). */
-const MUSIC_NOW_TIME_CONSTANT_S = 0.06;
+/** A change that starts at once: a layer that comes in is quick (about three of these make it, 0.18 s); one that goes out is a little slower (0.45 s), so that drums do not stop in the middle of a hit. */
+const MUSIC_NOW_IN_TIME_CONSTANT_S = 0.06;
+const MUSIC_NOW_OUT_TIME_CONSTANT_S = 0.15;
 const MUSIC_FADE_OUT_S = 1.5;
 /**
  * The opening of a match gives way to the layers: it fades out along a cosine over its last two bars; the layers start earlier,
@@ -495,10 +496,12 @@ export class GameAudio {
       return;
     }
     const from = at === "now" ? context.currentTime : nextBarTime(context.currentTime, music.startedAt, music.loopSeconds, manifest.bars);
-    const timeConstant = at === "now" ? MUSIC_NOW_TIME_CONSTANT_S : MUSIC_FADE_TIME_CONSTANT_S;
     for (const [layer, gain] of Object.entries(music.layers)) {
+      const target = gains[layer] ?? 0;
+      const quietening = target < gain.gain.value;
+      const nowConstant = quietening ? MUSIC_NOW_OUT_TIME_CONSTANT_S : MUSIC_NOW_IN_TIME_CONSTANT_S;
       gain.gain.cancelScheduledValues(context.currentTime);
-      gain.gain.setTargetAtTime(gains[layer] ?? 0, from, timeConstant);
+      gain.gain.setTargetAtTime(target, from, at === "now" ? nowConstant : MUSIC_FADE_TIME_CONSTANT_S);
     }
   }
 
