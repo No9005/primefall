@@ -8,8 +8,11 @@ import { type MusicLevel, nextBarTime } from "./music";
 // mix (`audio-mix.ts`) on two buses (voice and effects). It uses the Web Audio API of the browser,
 // no library. There is no mute switch yet; it comes with the menu (issue #446). A browser lets a page make sound only after a tap, so the sound is armed on the first one (`armUnlock`).
 
-/** A voice that is cut by a more important one fades out this fast. */
-const CUT_FADE_S = 0.08;
+/** A voice or effect that is cut by a more important one fades out this slowly (a short fade clicked when many sounds ran at once). */
+const CUT_FADE_S = 0.25;
+/** The steps are mastered hot and many land at once when a Squad walks: each is 6 dB down. */
+const STEP_GAIN = 0.5;
+const isStep = (assetId: string) => assetId.startsWith("sfx.step-");
 
 interface Playing {
   source: AudioBufferSourceNode;
@@ -138,11 +141,12 @@ export class GameAudio {
     const master = context.createGain();
     master.gain.value = MASTER_HEADROOM;
     const safety = context.createDynamicsCompressor();
-    safety.threshold.value = -3;
-    safety.knee.value = 0;
-    safety.ratio.value = 20;
-    safety.attack.value = 0.001;
-    safety.release.value = 0.25;
+    // A soft knee and a gentle ratio: the hard one (knee 0, ratio 20, attack 1 ms) pumped and crackled when many steps summed up.
+    safety.threshold.value = -6;
+    safety.knee.value = 12;
+    safety.ratio.value = 6;
+    safety.attack.value = 0.005;
+    safety.release.value = 0.3;
     master.connect(safety).connect(context.destination);
     this.voiceBus.connect(master);
     this.sfxBus.connect(master);
@@ -614,7 +618,7 @@ export class GameAudio {
     const source = context.createBufferSource();
     source.buffer = buffer;
     const gain = context.createGain();
-    gain.gain.value = listener && request.tile ? distanceGain(listener, request.tile) : 1;
+    gain.gain.value = (listener && request.tile ? distanceGain(listener, request.tile) : 1) * (isStep(request.assetId) ? STEP_GAIN : 1);
     const playAt = Math.max(context.currentTime, startMs / 1000);
     this.declick(context, source, playAt, buffer.duration).connect(gain);
     gain.connect(bus);
