@@ -3,7 +3,9 @@ import path from "node:path";
 import { HeroClass } from "game-core";
 import { describe, expect, it } from "vitest";
 import type { ClipName } from "./hero-clips";
-import { frameAt, PIXEL_SCALE, pixelSheetOf, restLoopProgress } from "./pixel-heroes";
+import { CLIP_SPEED } from "./clip-player";
+import { clipOf } from "./hero-clips";
+import { coverRestProgress, frameAt, PIXEL_SCALE, pixelSheetOf, restLoopProgress } from "./pixel-heroes";
 
 const FOLDER = path.join(import.meta.dirname, "../public/assets/pixel-heroes");
 const FOLDERS: Record<HeroClass, string> = { [HeroClass.Bruiser]: "bruiser", [HeroClass.Controller]: "controller", [HeroClass.Assassin]: "assassin" };
@@ -98,5 +100,39 @@ describe("the rest loop of a Hero in Cover", () => {
 
   it("leaves every other clip as it is", () => {
     expect(restLoopProgress(HeroClass.Bruiser, "idle", 0.7)).toBe(0.7);
+  });
+});
+
+describe("the Cover rest: crouched most of the time, the loop now and then", () => {
+  const frames = 88;
+  const loopMs = clipOf(HeroClass.Assassin, "inCover").durationMs;
+  const at = (ms: number, offset = 0) => coverRestProgress(HeroClass.Assassin, "inCover", ms, loopMs, frames, offset);
+  const seconds = (s: number) => s * 1000 * CLIP_SPEED;
+
+  it("starts crouched on the frame the loop starts on, and stays within the calm stretch for about six seconds", () => {
+    expect(at(0)).toBeCloseTo(0.24 + 0.5 / frames);
+    for (let ms = 0; ms < seconds(5.5); ms += 97) {
+      expect(at(ms)).toBeGreaterThanOrEqual(0.24);
+      expect(at(ms)).toBeLessThan(0.24 + 3 / frames);
+    }
+  });
+
+  it("plays the loop once after the hold, from its start to its end, and then holds again", () => {
+    const cycleMs = seconds(6) + loopMs;
+    const samples = Array.from({ length: 400 }, (_, step) => at(step * (cycleMs / 400)));
+    expect(Math.max(...samples)).toBeGreaterThan(0.6);
+    expect(Math.max(...samples)).toBeLessThanOrEqual(0.74);
+    const calm = samples.filter((progress) => progress < 0.24 + 3 / frames).length;
+    expect(calm / samples.length).toBeGreaterThan(0.6);
+  });
+
+  it("lets the Heroes of the board look up at different times", () => {
+    expect(at(seconds(7), 0)).not.toBeCloseTo(at(seconds(7), seconds(3)), 2);
+  });
+
+  it("holds still when the sheet has no calm stretch to move in", () => {
+    const still = coverRestProgress(HeroClass.Bruiser, "inCoverFull", 0, 1000, 96);
+    expect(coverRestProgress(HeroClass.Bruiser, "inCoverFull", 123, 1000, 96)).toBeGreaterThanOrEqual(0.22);
+    expect(still).toBeGreaterThanOrEqual(0.22);
   });
 });
