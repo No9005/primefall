@@ -388,6 +388,12 @@ function bakeFloor(atlas: PixelAtlas, layout: PixelLayout, grid: Grid): HTMLCanv
   return out.canvas;
 }
 
+/**
+ * The orb hangs above the core tile and a Hero stands under it (a Hero is at the depth of its tile plus 0.5): the orb and its halo are drawn
+ * over a Hero there, so the Hero does not show through the light; the claw in front is over the orb.
+ */
+const CORE_ORB_DEPTH = 0.55;
+const CORE_FRONT_DEPTH = 0.7;
 /** How long one frame of the breathing halo of the core shows, in ms. */
 const PULSE_FRAME_MS = 200;
 const PULSE_FRAMES = 8;
@@ -427,12 +433,12 @@ export class PixelScenery {
       const depth = depthOf(layout.core.col, layout.core.row);
       const core = { col: layout.core.col, row: layout.core.row };
       this.place({ ...core, name: "core_claw_back" }, depth + 0.1, this.tint);
-      this.place({ ...core, name: "core_claw_front" }, depth + 0.6, this.tint);
+      this.place({ ...core, name: "core_claw_front" }, depth + CORE_FRONT_DEPTH, this.tint);
       const glowName = atlas.tileset.sprites.core_claw_back?.glow;
       if (glowName) this.place({ ...core, name: glowName }, depth + 0.15, 0xffffff, "add");
       this.place({ ...core, name: "core_beam" }, depth + 0.2, 0xffffff, "add");
-      this.place({ ...core, name: "core_orb" }, depth + 0.3, 0xffffff, "add");
-      this.pulse = this.place({ ...core, name: "core_pulse_2" }, depth + 0.35, 0xffffff, "add");
+      this.place({ ...core, name: "core_orb" }, depth + CORE_ORB_DEPTH, 0xffffff, "add");
+      this.pulse = this.place({ ...core, name: "core_pulse_2" }, depth + CORE_ORB_DEPTH + 0.05, 0xffffff, "add");
     }
   }
 
