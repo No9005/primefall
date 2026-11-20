@@ -3,7 +3,7 @@
 
 import { type CardDefinition, type CardIndex, CardTarget, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type HeroView, type SquadId, type SquadView, Visibility } from "./host";
-import { CoverKind, coverAt, type Grid, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind, tileAt } from "./reactor-deck";
+import { blocksSteps, CoverKind, coverAt, type Grid, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind, tileAt } from "./reactor-deck";
 
 /** A Hero's Queue holds at most 4 actions (the maximum Hand size, ADR 0020). */
 export const MAX_QUEUE_LENGTH = 4;
@@ -114,7 +114,7 @@ export function moveDestinations(from: GridPosition, grid: Grid = REACTOR_DECK, 
   for (let row = from.row - distance; row <= from.row + distance; row++) {
     for (let col = from.col - distance; col <= from.col + distance; col++) {
       const kind = tileAt(grid, { col, row });
-      if (kind !== undefined && kind !== TileKind.Wall && chebyshevDistance(from, { col, row }) > 0) {
+      if (kind !== undefined && !blocksSteps(grid, { col, row }) && chebyshevDistance(from, { col, row }) > 0) {
         found.push({ col, row });
       }
     }
@@ -141,9 +141,9 @@ export function movePath(from: GridPosition, destination: GridPosition, grid: Gr
 }
 
 /** The Move 3 destinations the Hero reaches completely: `moveDestinations` minus tiles behind a Wall or Wall corner. */
-export const reachableMoveDestinations = (from: GridPosition): GridPosition[] =>
-  moveDestinations(from).filter((destination) => {
-    const end = moveEnd(from, destination);
+export const reachableMoveDestinations = (from: GridPosition, grid: Grid = REACTOR_DECK): GridPosition[] =>
+  moveDestinations(from, grid).filter((destination) => {
+    const end = moveEnd(from, destination, grid);
     return end.col === destination.col && end.row === destination.row;
   });
 
@@ -302,14 +302,14 @@ const sameTile = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row 
  * on a tile another Hero ends on; a Hero left without a step stays, which may cut other walks. This is repeated
  * until nothing changes. The result does not depend on the order of the requests or on the Squad of a Hero.
  */
-export function resolveWalks(standing: ReadonlyMap<string, GridPosition>, requests: readonly WalkRequest[]): Map<string, WalkOutcome> {
+export function resolveWalks(standing: ReadonlyMap<string, GridPosition>, requests: readonly WalkRequest[], grid: Grid = REACTOR_DECK): Map<string, WalkOutcome> {
   const planned = new Map<string, { path: GridPosition[]; wallBlocked: boolean }>();
   for (const { heroId, destination, distance } of requests) {
     const path = [{ ...standing.get(heroId)! }];
     let wallBlocked = false;
     for (let step = 0; step < distance && !sameTile(path.at(-1)!, destination); step++) {
       const next = stepTowards(path.at(-1)!, destination);
-      if (!isStepAllowed(path.at(-1)!, next)) {
+      if (!isStepAllowed(path.at(-1)!, next, grid)) {
         wallBlocked = true;
         break;
       }

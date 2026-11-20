@@ -171,10 +171,11 @@ describe("the classic mode", () => {
   // re-recorded for Tilly's new deck (#415: Price Tag, Site Survey, Urban Renewal, Temporary Solution, Heavy Metal);
   // re-recorded for Kit's new deck (#415: Long Shot, Vanish, Personal Space, Shield Breaker);
   // re-recorded for the one-Round lookahead (#395), which changes every plan of the AI, and for the Fog of War worlds (#396), which change the replies it plays against.
+  // Re-recorded when the Prime Zone became closed to steps before Round 4 (laser walls).
   const recorded = [
-    { seed: 3, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 26, right: 14 }, deckTotals: { left: 12, right: 9 }, positions: "21,2:4 21,21:3 21,14:5 22,4:5 23,10:0 23,4:4", rng: 3824650020 },
-    { seed: 11, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 3, right: 24 }, deckTotals: { left: 4, right: 13 }, positions: "23,4:0 23,20:0 22,14:4 20,10:5 21,11:4 24,11:4", rng: 2752802279 },
-    { seed: 42, round: 15, winner: SquadId.Left, reason: MatchEndReason.RoundLimit, scores: { left: 6, right: 4 }, deckTotals: { left: 9, right: 16 }, positions: "21,4:2 24,11:2 23,10:5 24,14:8 23,14:4 23,2:4", rng: 2688861113 },
+    { seed: 3, round: 15, winner: SquadId.Right, reason: MatchEndReason.RoundLimit, scores: { left: 8, right: 19 }, deckTotals: { left: 4, right: 10 }, positions: "21,3:0 21,2:0 24,14:4 24,10:3 21,11:3 18,4:4", rng: 4080414808 },
+    { seed: 11, round: 15, winner: SquadId.Left, reason: MatchEndReason.Credits, scores: { left: 30, right: 10 }, deckTotals: { left: 10, right: 12 }, positions: "23,4:4 23,20:2 22,14:4 21,2:4 23,2:4 26,16:4", rng: 473648087 },
+    { seed: 42, round: 15, winner: SquadId.Left, reason: MatchEndReason.Credits, scores: { left: 31, right: 2 }, deckTotals: { left: 8, right: 7 }, positions: "21,2:2 21,10:2 23,10:4 24,4:3 24,3:0 25,4:4", rng: 1425189773 },
   ];
 
   it.each(recorded)("plays seed $seed exactly as recorded", ({ seed, round, winner, reason, scores, deckTotals, positions, rng }) => {

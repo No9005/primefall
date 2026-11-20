@@ -27,6 +27,11 @@ export interface Grid {
    * Absent when there is none.
    */
   wrecks?: readonly GridPosition[];
+  /**
+   * The Prime Zone is closed behind its laser walls (the classic mode before Round 4): no step goes into it. It does not block
+   * Line of Sight. Absent when the zone is open.
+   */
+  zoneClosed?: boolean;
 }
 
 // Raw characters only exist here, at the parsing boundary.
@@ -131,9 +136,19 @@ export function destroyCover(grid: Grid, position: GridPosition): Grid {
 
 export const isWall = (position: GridPosition) => tileAt(REACTOR_DECK, position) === TileKind.Wall;
 
-/** A step is legal into the Grid, not into a Wall, and a diagonal step may not cut a Wall corner. */
+/** Whether no step goes onto the tile: a Wall, or a Prime Zone tile while the zone is closed. */
+export function blocksSteps(grid: Grid, position: GridPosition): boolean {
+  const kind = tileAt(grid, position);
+  return kind === TileKind.Wall || (grid.zoneClosed === true && kind === TileKind.PrimeZone);
+}
+
+/** A copy of the Grid with the Prime Zone closed or open. */
+export const withZoneClosed = (grid: Grid, closed: boolean): Grid =>
+  (grid.zoneClosed ?? false) === closed ? grid : { ...grid, zoneClosed: closed };
+
+/** A step is legal into the Grid, not into a Wall or a closed Prime Zone, and a diagonal step may not cut such a corner. */
 export function isStepAllowed(from: GridPosition, to: GridPosition, grid: Grid = REACTOR_DECK): boolean {
-  const wall = (position: GridPosition) => tileAt(grid, position) === TileKind.Wall;
+  const wall = (position: GridPosition) => blocksSteps(grid, position);
   if (tileAt(grid, to) === undefined || wall(to)) return false;
   const diagonal = from.col !== to.col && from.row !== to.row;
   return !(diagonal && (wall({ col: to.col, row: from.row }) || wall({ col: from.col, row: to.row })));

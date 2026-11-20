@@ -24,7 +24,7 @@ import {
   type ZoneView,
 } from "./host";
 import { chebyshevDistance } from "./plan";
-import { CoverKind, defenderStartTiles, dropPointStartTiles, coverAt, destroyCover, destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, REACTOR_DECK, TileKind, tileAt, withTile, withWreck } from "./reactor-deck";
+import { CoverKind, defenderStartTiles, dropPointStartTiles, coverAt, destroyCover, destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, REACTOR_DECK, TileKind, tileAt, withTile, withWreck, withZoneClosed } from "./reactor-deck";
 
 /** A scoring zone of the classic mode, read from the Reactor Deck. */
 export interface ZoneDefinition {
@@ -208,7 +208,7 @@ export function createMatch(seed: number, mode: MatchModeSetting = { kind: Match
     round: 0,
     heroes: [],
     ghosts: { [SquadId.Left]: {}, [SquadId.Right]: {} },
-    grid: REACTOR_DECK,
+    grid: withZoneClosed(REACTOR_DECK, mode.kind === MatchMode.Classic),
     knownDestroyedCover: { [SquadId.Left]: [], [SquadId.Right]: [] },
     knownWrecks: { [SquadId.Left]: [], [SquadId.Right]: [] },
     placedCover: [],
@@ -267,6 +267,7 @@ export function refillDeck(match: MatchState, hero: HeroState): number {
 export function startRound(previous: MatchState): MatchState {
   const match = structuredClone(previous);
   match.round += 1;
+  match.grid = withZoneClosed(match.grid, match.mode.kind === MatchMode.Classic && match.round < PRIME_ZONE_UNLOCK_ROUND);
   for (const hero of match.heroes.filter((candidate) => !candidate.exhausted)) {
     while (hero.hand.length < HAND_SIZE) {
       refillDeck(match, hero);
@@ -444,7 +445,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   }));
   const points = classic ? { scores: { ...match.scores }, zones } : {};
   return {
-    squad, round: match.round, grid: REACTOR_DECK, ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scrapFields, scannedAreas, visibleTiles, heroes, enemies,
+    squad, round: match.round, grid: withZoneClosed(REACTOR_DECK, match.grid.zoneClosed ?? false), ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scrapFields, scannedAreas, visibleTiles, heroes, enemies,
   };
 }
 

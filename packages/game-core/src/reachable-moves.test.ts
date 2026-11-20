@@ -28,7 +28,7 @@ describe("reachableMoveDestinations", () => {
         if (others.some((hero) => chebyshevDistance(hero.position, from) <= 3)) continue;
         const bruiser = match.heroes.find((hero) => hero.id === BRUISER)!;
         bruiser.position = from;
-        for (const destination of reachableMoveDestinations(from)) {
+        for (const destination of reachableMoveDestinations(from, match.grid)) {
           const plan = {
             squad: SquadId.Left,
             heroes: [{ heroId: BRUISER, queue: [{ kind: ActionKind.Move as const, card: bruiser.hand[0]!, destination }] }],

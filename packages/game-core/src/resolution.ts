@@ -293,6 +293,7 @@ function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: 
   const outcomes = resolveWalks(
     new Map(match.heroes.filter((hero) => !hero.exhausted).map((hero) => [hero.id, hero.position])),
     movers.map((mover) => ({ ...mover, distance: slowedIds.has(mover.heroId) ? slowedDistance(mover.distance) : mover.distance })),
+    match.grid,
   );
   const furthest = Math.max(0, ...[...outcomes.values()].map(({ path, blocked }) => path.length - 1 + (blocked ? 1 : 0)));
   for (let step = 1; step <= furthest; step++) {
@@ -456,7 +457,7 @@ function slideHero(
   for (let step = 0; step < distance; step++) {
     const to = { col: target.position.col + direction.col, row: target.position.row + direction.row };
     const blocked =
-      !isStepAllowed(target.position, to) ||
+      !isStepAllowed(target.position, to, match.grid) ||
       coverAt(match.grid, to) === CoverKind.Full ||
       match.heroes.some((other) => !other.exhausted && samePosition(other.position, to));
     if (blocked) return;
@@ -477,7 +478,7 @@ function chargeAt(match: MatchState, tick: number, caster: HeroState, target: He
   for (let step = 0; step < distance && chebyshevDistance(caster.position, target.position) > 1; step++) {
     const to = stepTowards(caster.position, target.position);
     const blocked =
-      !isStepAllowed(caster.position, to) ||
+      !isStepAllowed(caster.position, to, match.grid) ||
       coverAt(match.grid, to) === CoverKind.Full ||
       match.heroes.some((other) => other !== caster && !other.exhausted && samePosition(other.position, to));
     if (blocked) break;
