@@ -15,7 +15,7 @@ Made with ElevenLabs Music v2.5 (`music_v2_5`). Check that the licence of the pl
 
 ## Summary of all experiments (2026-11-16 to 2026-11-18) and where we stand
 
-**Status.** What plays in the game on `main` is the first approach: four independently made layers (drone, pulse, drums from pilot 2, plus the refrain cut from the whole piece), D minor, 72 BPM, 8-bar loops, faded by game state. It is **muted by default** (`?music=on` plays it) because of audible loops and hard transitions. Every attempt to make the layers *follow chords* failed (F minor tests, path 1). Credits spent on the music: about 23,000 until 2026-11-18 and about 4,000 more on 2026-11-19 (see `refrain-inpaint/` and `end-music/`), estimated from the seconds generated (price: about 31 credits per second of new audio; the stem separations are not counted).
+**Status.** What plays in the game on `main` is the first approach: four independently made layers (drone, pulse, drums from pilot 2, plus the refrain cut from the whole piece), D minor, 72 BPM, 8-bar loops, faded by game state. It plays by default (`?music=off` turns it off); it was muted by default until the loops and transitions were reworked. Every attempt to make the layers *follow chords* failed (F minor tests, path 1). Credits spent on the music: about 23,000 until 2026-11-18 and about 4,000 more on 2026-11-19 (see `refrain-inpaint/` and `end-music/`), estimated from the seconds generated (price: about 31 credits per second of new audio; the stem separations are not counted).
 
 | # | Experiment | Idea | Result | Folder |
 |---|---|---|---|---|
