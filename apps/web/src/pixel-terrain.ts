@@ -416,7 +416,7 @@ export class PixelScenery {
       const sprite = this.place(piece, piece.depth, this.tint);
       this.sprites.push({ sprite, tile: { col: piece.col, row: piece.row }, kind: piece.kind });
       const glow = atlas.tileset.sprites[piece.name]?.glow;
-      if (glow) this.place({ ...piece, name: glow }, piece.depth + 0.05, 0xffffff, "add");
+      if (glow) this.place({ ...piece, name: glow, closedAtFront: false }, piece.depth + 0.05, 0xffffff, "add");
     }
     if (layout.core) {
       const depth = depthOf(layout.core.col, layout.core.row);
