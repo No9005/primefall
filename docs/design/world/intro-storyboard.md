@@ -4,51 +4,52 @@
 
 ## What the film is
 
-- Plays **before the menu** and leads into it. About **55 seconds**, six beats, one narrator (a woman; dry, warm and a little too calm, like a corporate announcement).
-- Tells the world in this order: the Primes fell and have strange abilities, three companies took them over, they rule by paperwork, they hire contractors, and that is why the game is called Primefall.
-- The three Heroes are **not named**. They appear as silhouettes, so that the film does not repeat the Hero Select.
+- Plays **before the menu** and leads into it. **30 to 45 seconds** (target; it may come out shorter), six beats, one narrator (a woman; dry, warm and a little too calm, like a corporate announcement).
+- Tells the world in this order: Artifacts fell from the sky, they are powerful tools of a race called the Primes, three companies took them over, they rule by paperwork, they hire contractors, and that is why the game is called Primefall.
+- **Decided world fact:** the **Primes** are the alien race the Artifacts come from (or, possibly, the Artifacts are the aliens; the game does not settle this). What happened to the Primes is unknown. The Artifacts are "Prime Artifacts".
+- The three Heroes are **not named**. They appear from behind, as silhouettes.
 - A **second, short film (about 10 seconds)** is a separate task: the ship in orbit between the Hero Select and the map. Not part of this storyboard.
-- Look: the pixel style of our Heroes (`docs/design/pixel-heroes/`), a fixed frame, slow camera moves, the colours of the Reactor Deck (blue-black, red lamps, hazard orange) plus a cold white for the Primes.
+- Look: the pixel style of our Heroes (`docs/design/pixel-heroes/`), a fixed frame, slow camera moves. Beats 1, 2, 5 and 6 are quiet and dark (blue-black, red lamps, hazard orange, a cold white for the Artifacts). **Beat 3 is different on purpose:** 8 to 16-bit style, loud and colourful.
 
-## The three companies (placeholders)
+## The three companies (working draft, names open)
 
-| Placeholder | Kind | Look of the sign | The man in the shadow |
-|---|---|---|---|
-| **Vantor Dynamics** | megacorp, hardware and extraction | cold blue | a tall man at the window, back to us, a cigarette ember |
-| **Orrery Mutual** | megacorp, insurance and licences | gold | a man behind a desk lamp, only hands and a pen in the light |
-| **Kestrel Provisional Command** | military branch | red | an officer in a doorway, half his face lit, medals as dots |
+| Colour | Kind | Look |
+|---|---|---|
+| **Yellow** | Japanese corporation | cyberpunk: neon kana, rain on glass, a man in a high-collar suit |
+| **Red** | English-speaking, British (or American) | dry, bureaucratic; a man in a bowler hat or an officer, depending on the choice below |
+| **Blue** | English-speaking, American (or British) | brash; a man in a suit with a flag pin, or a general |
 
-Two of the three hire the two Squads of a match; which two changes with the match.
+Open: which of red and blue is the military, and which is British and which American. Two of the three hire the two Squads of a match; which two changes with the match.
 
 ## Beats
 
 | # | Time | Picture | Voice-over |
 |---|---|---|---|
-| 1 | 0:00 - 0:08 | Night sky over a dark world, stars. Streaks of white light come down one after the other and hit the ground far away; each impact lights the clouds from below. The title card does not show yet. | "They fell from the sky without a word. We called them Primes." |
-| 2 | 0:08 - 0:16 | A crater. Small figures in work lamps stand round a pale shard as tall as a house. A dropped tool floats up and turns slowly in the air. The light bends round the shard. | "Nobody knows what they are. Only what they do: things that should not be possible, done quietly, to anyone who stands close enough." |
-| 3 | 0:16 - 0:26 | Three dark rooms, cut one after the other: the man at the window, the man at the desk, the officer in the door. Each room has its glowing sign (blue, gold, red). Last, all three signs side by side over a skyline. | "Within a year, three companies owned the sky. Within two, they owned the paperwork." |
-| 4 | 0:26 - 0:36 | The satire. A city in the grey of an office: towers of files, queues at counters, a clerk's stamp comes down again and again (APPROVED, DENIED, PENDING), red tape is wound round a street lamp, a crowd stands under a sign "PLEASE TAKE A NUMBER". | "They never conquered anyone. They issued forms. A permit to stand here. A licence to look there. Oppression, in triplicate." |
-| 5 | 0:36 - 0:46 | A contract slides across a table, three signatures dry. Cut to a hangar door: three silhouettes against the light, one broad and heavy with a load on his back, one with an extra arm and a tool, one thin with a long rifle. No faces, no names. | "And when the paperwork fails, there are contractors. Three of them. Hired by the highest bidder, paid by the hour, here for the money." |
-| 6 | 0:46 - 0:55 | Another Prime falls, very slowly this time, into a dark hauler's reactor bay; red lamps flicker. The light of the impact turns white. The word **PRIMEFALL** slams on, lit from below. It holds, then dissolves into the menu. | "Every fallen Prime is a contract. Welcome to Primefall." |
+| 1 | 0:00 - 0:06 | Night sky over a dark world, stars. White streaks come down one after the other and hit the ground far away; each impact lights the clouds from below. | "Artifacts. They fell from the sky without a word." |
+| 2 | 0:06 - 0:14 | A crater. Small figures in work lamps stand round a pale shard as tall as a house. A dropped tool floats up and turns slowly. Then an ordinary worker, in overalls, puts a hand on it, and something enormous happens: a beam goes through the clouds, or a wall of the crater folds away. He looks at his hand. | "Tools of a people we call the Primes. Nobody knows who they were. Only that anyone who touches one can do what should not be possible." |
+| 3 | 0:14 - 0:22 | **8 to 16-bit style, loud colours.** The frame is cut by slanted diagonals into three panels: yellow, red and blue. In each a man in the half-shadow in front of his company's sign (yellow cyberpunk, red and blue English-speaking). The diagonals slide, the three signs end side by side. | "Within a year, three companies owned the sky. Within two, they owned the paperwork." |
+| 4 | 0:22 - 0:30 | The satire. A city in the grey of an office: towers of files, queues at counters, a stamp coming down again and again (APPROVED, DENIED, PENDING), red tape round a street lamp, a sign "PLEASE TAKE A NUMBER". | "They never conquered anyone. They issued forms. A permit to stand here. A licence to look there. Oppression, in triplicate." |
+| 5 | 0:30 - 0:38 | A single hand signs a contract (close up; a pen scratches). The pen lifts. Cut to a hangar door from behind: three silhouettes side by side, one broad with a load on the back, one with an extra arm, one thin with a long rifle. | "And when the paperwork fails, there are contractors. Three of them. Hired by the highest bidder, paid by the hour." |
+| 6 | 0:38 - 0:45 | An Artifact falls, slowly, into a dark hauler's reactor bay; red lamps flicker, the impact turns white. The crystal is the logo: it settles in the middle of the frame and the word **PRIMEFALL** forms around it, lit from below. It holds, then dissolves into the menu. | "Every Prime Artifact is a contract. Welcome to Primefall." |
 
-## Voice-over in one piece (about 105 words)
+## Voice-over in one piece (about 95 words)
 
-They fell from the sky without a word. We called them Primes.
+Artifacts. They fell from the sky without a word.
 
-Nobody knows what they are. Only what they do: things that should not be possible, done quietly, to anyone who stands close enough.
+Tools of a people we call the Primes. Nobody knows who they were. Only that anyone who touches one can do what should not be possible.
 
 Within a year, three companies owned the sky. Within two, they owned the paperwork.
 
 They never conquered anyone. They issued forms. A permit to stand here. A licence to look there. Oppression, in triplicate.
 
-And when the paperwork fails, there are contractors. Three of them. Hired by the highest bidder, paid by the hour, here for the money.
+And when the paperwork fails, there are contractors. Three of them. Hired by the highest bidder, paid by the hour.
 
-Every fallen Prime is a contract. Welcome to Primefall.
+Every Prime Artifact is a contract. Welcome to Primefall.
 
 ## Notes and open points
 
-- **Why "Primefall":** beat 1 names the Primes, beat 6 says every fallen Prime is a contract. The title is the last picture.
-- **Mystery stays in the pictures:** the Prime is never explained, only shown (beat 2). The satire sits in the voice and in beat 4.
+- **Why "Primefall":** the Artifacts of the Primes fell; the logo is the falling crystal. The title is the last picture.
+- **Mystery stays in the pictures:** the Primes are never explained, only their Artifacts are shown (beat 2). The satire sits in the voice and in beat 4.
 - **Reduced motion:** the film needs a skip button; with reduced motion it should be skippable from the first frame.
 - **Pipeline (nothing is generated yet):** storyboard and voice-over agreed, then the voice (ElevenLabs, only with the owner's explicit go and a cost estimate), then I render the frames in the pixel style, then the music under the finished film (ElevenLabs, again only with the owner's go).
 - **Open:** exact length, the company names, whether the officer keeps medals, whether beat 4 may show a crowd (many small figures cost frames).
