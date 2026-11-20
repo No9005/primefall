@@ -122,7 +122,7 @@ describe("fogDuringWalk", () => {
 });
 
 describe("paddedFogMask", () => {
-  const [width, height, margin] = [4, 3, 3];
+  const [width, height, margin] = [4, 3, 3];  // the test's own margin, whatever the game uses
   const alphas = Float32Array.from({ length: width * height }, (_, index) => (index % 2 === 0 ? 1 : 0.4));
   const mask = paddedFogMask(alphas, width, height, margin);
   const at = (col: number, row: number) => mask[(row + margin) * (width + 2 * margin) + col + margin]!;
