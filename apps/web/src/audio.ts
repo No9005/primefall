@@ -54,8 +54,8 @@ function shapedRamp(param: AudioParam, from: number, to: number, start: number, 
 /** The intro of the Hero Select fades in softly and out quickly (the opening of the match comes in hard). */
 const INTRO_FADE_IN_S = 0.5;
 const INTRO_FADE_OUT_S = 0.4;
-/** The music is muted by default until it is reworked (loops audible, hard transitions, clicks): `?music=on` in the address plays it. */
-const MUSIC_ON = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("music") === "on";
+/** The music plays by default; `?music=off` in the address turns it off (`?music=on` is still accepted and changes nothing). */
+const MUSIC_ON = typeof window === "undefined" || new URLSearchParams(window.location.search).get("music") !== "off";
 
 /** The music while a match runs: all layers start together and loop in sync. */
 interface Music {
