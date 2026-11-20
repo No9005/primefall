@@ -72,6 +72,8 @@ export function tileHash(col: number, row: number, salt = 0): number {
 }
 
 const depthOf = (col: number, row: number) => col + row;
+/** How far above the depth of its tile a piece of Cover that is closed at the front stands: over the Hero on the tile (0.5), under the Hero in front of it (1.5). */
+const CLOSED_FRONT_DEPTH = 0.75;
 
 /** The tile kind as characters of the reference layout: '#' wall, 'H', 'F', 'P', 'X', 'S', '.', ' ' outside. */
 function kindAt(grid: Grid, col: number, row: number): TileKind | undefined {
@@ -183,6 +185,9 @@ export function pixelLayout(grid: Grid, tileset: Pick<Tileset, "groups" | "texts
   // in the lower half the back (the way the pieces are drawn). The row of the middle line itself counts to the upper half.
   const middleDepth = (grid.width + grid.height - 2) / 2;
   const inUpperHalf = (col: number, row: number) => depthOf(col, row) <= middleDepth;
+  // A Hero stands at the depth of its tile plus 0.5. A piece that is closed at the front stands over the Hero behind it, so the Hero
+  // crouches behind the front of the piece; a piece that is open at the front stays under the Hero, who stands in front of it.
+  const coverDepth = (col: number, row: number) => depthOf(col, row) + (inUpperHalf(col, row) ? CLOSED_FRONT_DEPTH : 0);
   const near = (col: number, row: number) => row === grid.height - 1 || col === grid.width - 1;
   for (let sum = 0; sum <= grid.width + grid.height - 2; sum++) {
     for (let row = 0; row < grid.height; row++) {
@@ -200,11 +205,11 @@ export function pixelLayout(grid: Grid, tileset: Pick<Tileset, "groups" | "texts
           layout.lights.push({ kind: "lamp", col: facing.col, row: facing.row, dx: 0 });
         } else stand("wall", pick("wall", col, row, 9));
       } else if (here === TileKind.HalfCover) {
-        stand("cover", pick("half_cover", col, row, 11), { closedAtFront: inUpperHalf(col, row) });
+        stand("cover", pick("half_cover", col, row, 11), { closedAtFront: inUpperHalf(col, row) }, coverDepth(col, row));
         layout.lights.push({ kind: "cover", col, row, dx: 0 });
       } else if (here === TileKind.FullCover || here === TileKind.OverwatchNest) {
         // The Overwatch Nest is a Full Cover tile (ADR 0016) and the tileset has no frame of its own for it.
-        stand("cover", "full_cover", { closedAtFront: inUpperHalf(col, row) });
+        stand("cover", "full_cover", { closedAtFront: inUpperHalf(col, row) }, coverDepth(col, row));
         layout.lights.push({ kind: "cover", col, row, dx: 0 });
       } else if (here !== TileKind.PrimeZone && tileHash(col, row, 12) < (here === TileKind.DropPoint ? 0.5 : 0.04)) {
         stand("plant", pick("fern", col, row, 13), { dx: Math.round((tileHash(col, row, 14) - 0.5) * 14), dy: Math.round(tileHash(row, col, 15) * 5) });
