@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cloudPattern, driftOffset, driftUv, fogAlphas, fogDuringWalk, fogShape } from "./fog-clouds";
+import { cloudPattern, driftOffset, driftUv, FOG_EDGE_TILES, fogAlphas, fogDuringWalk, fogShape, paddedFogMask } from "./fog-clouds";
 
 const seen = (...tiles: [number, number][]) => new Set(tiles.map(([col, row]) => `${col},${row}`));
 
@@ -118,5 +118,34 @@ describe("fogDuringWalk", () => {
         expect(alpha).toBeLessThanOrEqual(Math.max(startFog[index]!, endFog[index]!) + 1e-6);
       });
     }
+  });
+});
+
+describe("paddedFogMask", () => {
+  const [width, height, margin] = [4, 3, 3];
+  const alphas = Float32Array.from({ length: width * height }, (_, index) => (index % 2 === 0 ? 1 : 0.4));
+  const mask = paddedFogMask(alphas, width, height, margin);
+  const at = (col: number, row: number) => mask[(row + margin) * (width + 2 * margin) + col + margin]!;
+
+  it("keeps the fog of the board inside", () => {
+    for (let row = 0; row < height; row++) for (let col = 0; col < width; col++) expect(at(col, row)).toBe(alphas[row * width + col]);
+  });
+
+  it("fades the fog out past the edge: from the edge tile's own fog to nothing at the margin", () => {
+    expect(at(0, -1)).toBeGreaterThan(at(0, -2));
+    expect(at(0, -2)).toBeGreaterThan(at(0, -3));
+    expect(at(0, -margin)).toBe(0);
+    expect(at(width - 1 + margin, 0)).toBe(0);
+    expect(at(0, -1)).toBeLessThan(at(0, 0));
+  });
+
+  it("fades by the distance, so the corners are round and a corner is fainter than the edge beside it", () => {
+    expect(at(-1, -1)).toBeLessThan(at(0, -1));
+    expect(at(-margin, -margin)).toBe(0);
+  });
+
+  it("has the size of the board plus the margin on every side", () => {
+    expect(mask.length).toBe((width + 2 * margin) * (height + 2 * margin));
+    expect(FOG_EDGE_TILES).toBeGreaterThan(0);
   });
 });

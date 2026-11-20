@@ -4,8 +4,10 @@
 // The fog shape is a function of the Squad's own sight only; enemies and hidden state never enter it (ADR 0005).
 import { type Grid, type GridPosition } from "game-core";
 import { BufferImageSource, Container, Mesh, MeshGeometry, Shader } from "pixi.js";
-import { footprintCorners, litTiles } from "./terrain";
+import { gridToWorld, litTiles } from "./terrain";
 import { FOG_CLOUDS } from "./terrain-style";
+
+const smooth = (t: number) => t * t * (3 - 2 * t);
 
 /** A tile this far (in tiles, centre to centre) from the nearest seen tile or more is fully fogged. */
 const FEATHER_TILES = 2;
@@ -34,6 +36,29 @@ function nearestSeen(seen: ReadonlySet<string>, col: number, row: number): numbe
   return nearest;
 }
 
+/** The fog fades out over this many tiles past the edge of the board, instead of ending at it. */
+export const FOG_EDGE_TILES = 3;
+
+/**
+ * The fog mask with a margin of `margin` tiles round the board, row by row (`width + 2 * margin` wide). Inside it is the fog of the
+ * board; outside, the fog of the nearest edge tile, faded to 0 at `margin` tiles from the board (eased, round at the corners), so the
+ * clouds melt away at the edge of the map instead of being cut off by it.
+ */
+export function paddedFogMask(alphas: Float32Array, width: number, height: number, margin: number): Float32Array {
+  const paddedWidth = width + 2 * margin;
+  const mask = new Float32Array(paddedWidth * (height + 2 * margin));
+  for (let row = 0; row < height + 2 * margin; row++) {
+    for (let col = 0; col < paddedWidth; col++) {
+      const innerCol = Math.min(width - 1, Math.max(0, col - margin));
+      const innerRow = Math.min(height - 1, Math.max(0, row - margin));
+      const away = Math.hypot(col - margin - innerCol, row - margin - innerRow);
+      const fade = away === 0 ? 1 : 1 - smooth(Math.min(1, away / margin));
+      mask[row * paddedWidth + col] = alphas[innerRow * width + innerCol]! * fade;
+    }
+  }
+  return mask;
+}
+
 /** The fog of a Squad's view: only its visible tiles and the tiles its own Heroes stand on count, never an enemy. */
 export function fogShape(grid: Pick<Grid, "width" | "height">, visibleTiles: readonly GridPosition[], ownHeroPositions: readonly GridPosition[]): Float32Array {
   return fogAlphas(grid.width, grid.height, litTiles(visibleTiles, ownHeroPositions));
@@ -46,7 +71,6 @@ export interface FogWalker {
   at: { col: number; row: number };
 }
 
-const smooth = (t: number) => t * t * (3 - 2 * t);
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 const distance = (a: { col: number; row: number }, b: { col: number; row: number }) => Math.hypot(a.col - b.col, a.row - b.row);
 
@@ -198,15 +222,17 @@ export class FogClouds {
     private readonly reducedMotion: boolean,
   ) {
     const { width, height } = grid;
-    // One texel per tile, linearly filtered: texel centres sit on tile centres, so the mask is feathered between tiles.
-    this.maskPixels = new Uint8Array(width * height * 4).fill(255);
-    this.maskSource = new BufferImageSource({ resource: this.maskPixels, width, height, scaleMode: "linear", addressMode: "clamp-to-edge" });
+    // One texel per tile, linearly filtered: texel centres sit on tile centres, so the mask is feathered between tiles. A margin of
+    // FOG_EDGE_TILES tiles round the board lets the fog fade out past its edge.
+    const [maskWidth, maskHeight] = [width + 2 * FOG_EDGE_TILES, height + 2 * FOG_EDGE_TILES];
+    this.maskPixels = new Uint8Array(maskWidth * maskHeight * 4).fill(255);
+    this.maskSource = new BufferImageSource({ resource: this.maskPixels, width: maskWidth, height: maskHeight, scaleMode: "linear", addressMode: "clamp-to-edge" });
     const pattern = cloudPattern(CLOUD_SIZE);
     const cloudPixels = new Uint8Array(CLOUD_SIZE * CLOUD_SIZE * 4).fill(255);
     pattern.forEach((value, index) => (cloudPixels[index * 4] = value));
     this.cloudSource = new BufferImageSource({ resource: cloudPixels, width: CLOUD_SIZE, height: CLOUD_SIZE, scaleMode: "linear", addressMode: "repeat" });
 
-    // The quad covers the grid footprint; its uv is the position in the grid, from the first tile's edge to the last one's.
+    // The quad covers the footprint of the grid and its margin; its uv is the position in the mask, from the first texel's edge to the last one's.
     this.geometry = new MeshGeometry({
       positions: new Float32Array(8),
       uvs: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
@@ -234,10 +260,12 @@ export class FogClouds {
 
   private readonly shader: Shader;
 
-  /** Puts the quad on the footprint of the grid (the clouds themselves stay in world space). */
+  /** Puts the quad on the footprint of the grid and its margin (the clouds themselves stay in world space). */
   private placeQuad(): void {
     const positions = this.geometry.positions;
-    footprintCorners(this.grid as Grid).forEach(({ x, y }, index) => {
+    const { width, height } = this.grid;
+    const [near, farCol, farRow] = [-0.5 - FOG_EDGE_TILES, width - 0.5 + FOG_EDGE_TILES, height - 0.5 + FOG_EDGE_TILES];
+    [{ col: near, row: near }, { col: farCol, row: near }, { col: farCol, row: farRow }, { col: near, row: farRow }].map(gridToWorld).forEach(({ x, y }, index) => {
       positions[index * 2] = x;
       positions[index * 2 + 1] = y;
     });
@@ -246,7 +274,7 @@ export class FogClouds {
 
   /** Sets the fog per tile (`fogAlphas` order); the texture is uploaded now, not every frame. */
   setFog(alphas: Float32Array): void {
-    alphas.forEach((alpha, index) => (this.maskPixels[index * 4 + 3] = Math.round(alpha * 255)));
+    paddedFogMask(alphas, this.grid.width, this.grid.height, FOG_EDGE_TILES).forEach((alpha, index) => (this.maskPixels[index * 4 + 3] = Math.round(alpha * 255)));
     this.maskSource.update();
   }
 
