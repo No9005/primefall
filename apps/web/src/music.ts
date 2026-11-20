@@ -39,25 +39,14 @@ export function nextBarTime(now: number, startedAt: number, loopSeconds: number,
   return now + wait;
 }
 
-/** A stinger is one sound in three pitches that covers a change of the music: low for the return to planning, mid for the Resolution, high for a contested Prime Zone. */
-export type Stinger = "low" | "mid" | "high";
-
-export interface LevelChange {
-  /** The sound that covers the change; none when something else already makes a sound (the countdown number) or the change is soft. */
-  stinger?: Stinger;
-  /** `now`: the layers change at once (a sound covers it); `bar`: they wait for the next bar line. */
-  at: "now" | "bar";
-}
-
 /**
- * How the music gets from one level to the next. A step into the Resolution or into the contested climax, and the return to planning,
- * come with a stinger and change at once. The countdown has its own number sound and changes at once. A fall from the climax back
- * to the Resolution has no sound, so it waits for the bar line.
+ * When the music changes level: `now` starts the change at once, `bar` waits for the next bar line. A step into the Resolution or into the
+ * contested climax, the countdown and the return to planning come at once (the player is waiting for them; a wait of up to a bar was
+ * heard as a delay). A fall from the climax back to the Resolution has nothing to answer, so it waits for the bar line.
  */
-export function levelChange(before: MusicLevel, after: MusicLevel): LevelChange | undefined {
-  if (after === before) return undefined;
-  if (after === CONTESTED_LEVEL) return { stinger: "high", at: "now" };
-  if (after === 2) return before === CONTESTED_LEVEL ? { at: "bar" } : { stinger: "mid", at: "now" };
-  if (after === 1) return { at: before === 0 ? "now" : "bar" };
-  return before >= 2 ? { stinger: "low", at: "now" } : { at: "bar" };
+export function levelChangeAt(before: MusicLevel, after: MusicLevel): "now" | "bar" {
+  if (after === CONTESTED_LEVEL) return "now";
+  if (after === 2) return before === CONTESTED_LEVEL ? "bar" : "now";
+  if (after === 1) return before === 0 ? "now" : "bar";
+  return before >= 2 ? "now" : "bar";
 }

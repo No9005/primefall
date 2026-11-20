@@ -39,7 +39,7 @@ import { type ComponentProps, type CSSProperties, type MouseEvent as ReactMouseE
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
 import { gameAudio } from "./audio";
 import { planFrame } from "./audio-cues";
-import { levelChange, type MusicLevel, musicLevelFor, musicPhaseOf } from "./music";
+import { levelChangeAt, type MusicLevel, musicLevelFor, musicPhaseOf } from "./music";
 import { useCardSounds } from "./card-sounds";
 import { Board } from "./Board";
 import { EnergyPill, FloatingCard, PulledCard } from "./game-parts";
@@ -972,14 +972,13 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const [secondsLeft, setSecondsLeft] = useState(PLANNING_TIMER_SECONDS);
   // The music steps up with the round: planning, the last seconds of it, the Resolution; a contested Prime Zone is the climax.
   const musicLevel = musicLevelFor(musicPhaseOf(playing, secondsLeft, TIMER_AMBER_SECONDS), contestedNow);
-  // A step into the Resolution or the climax, and the return to planning, come with a stinger that covers the change, so the music
-  // changes at once instead of waiting for the next bar line.
+  // A step into the Resolution or the climax, the countdown and the return to planning change the music at once; waiting for the next bar
+  // line (up to 3.3 s) was heard as a delay.
   const previousMusicLevel = useRef<MusicLevel>(0);
   useEffect(() => {
-    const change = levelChange(previousMusicLevel.current, musicLevel);
+    const at = levelChangeAt(previousMusicLevel.current, musicLevel);
     previousMusicLevel.current = musicLevel;
-    if (change?.stinger) gameAudio.playStinger(change.stinger);
-    gameAudio.setMusicLevel(musicLevel, change?.at ?? "bar");
+    gameAudio.setMusicLevel(musicLevel, at);
   }, [musicLevel]);
   // Every big number of the countdown thumps; the last one has a longer, lower tone.
   useEffect(() => {
