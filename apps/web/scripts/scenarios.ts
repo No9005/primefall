@@ -446,6 +446,41 @@ export const SCENARIOS: readonly Scenario[] = [
     resolutionShotsMs: [400],
   },
   {
+    name: "cover-rest-loop",
+    description: "Kit rests on a Half Cover tile while the Bruiser waits: frames over the whole Resolution show the Cover rest loop, which never stands up and crouches again (the taking of Cover over and over).",
+    buildMatch: () =>
+      stage(26, (hero) => {
+        arrange(hero(PLAYER_BRUISER), { col: 8, row: 3 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
+        arrange(hero(PLAYER_ASSASSIN), { col: 8, row: 2 }, { hand: [] });
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [{ wait: true }],
+    resolutionShotsMs: [200, 500, 800, 1100, 1400, 1700, 2000, 2300, 2600, 2900],
+  },
+  {
+    name: "zone-wall-depth",
+    description: "The Prime Zone before it is active (Round 1): a Hero in front of the zone is drawn over the laser wall, a Hero inside it under the wall, and the posts at the back stand behind the core's light.",
+    buildMatch: () =>
+      stage(27, (hero) => {
+        arrange(hero(PLAYER_BRUISER), { col: 22, row: 15 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
+        arrange(hero(PLAYER_ASSASSIN), { col: 22, row: 13 }, { hand: [] });
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [{ wait: true }],
+    resolutionShotsMs: [400],
+  },
+  {
+    name: "outpost-tint",
+    description: "The Outposts have a yellowish tint on the floor and a border, as the Prime Zone has its own.",
+    buildMatch: () =>
+      stage(28, (hero) => {
+        arrange(hero(PLAYER_BRUISER), { col: 19, row: 3 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [{ wait: true }],
+    resolutionShotsMs: [400],
+  },
+  {
     name: "cover-destroyed",
     description: "Tilly plays Urban Renewal on a Half Cover tile; the Cover is destroyed and the scorch tile stays.",
     buildMatch: () =>
@@ -490,6 +525,21 @@ export const SCENARIOS: readonly Scenario[] = [
     // The enemy holds the Outpost; the Move brings it to 6 tiles.
     steps: [{ slot: 0, use: "move", tile: { col: 17, row: 2 } }],
     resolutionShotsMs: [800, 2500],
+  },
+  {
+    name: "ghost-returns",
+    description: "An enemy Assassin seen two Rounds ago is out of sight and shown as a Ghost far from where it really stands; the Bruiser then moves close enough to see it: the Ghost must not slide across the map to the real tile (frames every 300 ms).",
+    buildMatch: () =>
+      stage(25, (hero, match) => {
+        arrange(hero(PLAYER_BRUISER), { col: 15, row: 2 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
+        // Seen at 21,2, then it walked on to 23,4 unseen; the Squad remembers the first tile.
+        hero("right-assassin").position = { col: 21, row: 2 };
+        recordSightings(match);
+        hero("right-assassin").position = { col: 23, row: 4 };
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [{ slot: 0, use: "move", tile: { col: 17, row: 2 } }],
+    resolutionShotsMs: [100, 400, 700, 1000, 1300, 1600, 1900, 2200, 2500, 3000],
   },
   {
     name: "walk-glide",

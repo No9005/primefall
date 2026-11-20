@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CLIP_SPEED } from "./clip-player";
-import { areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, zoneBorderAlpha, zoneLook, zoneRingAt } from "./vision-effects";
+import { areaContains, areaLift, areaRing, canMove, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, zoneBorderAlpha, zoneLook, zoneRingAt } from "./vision-effects";
 
 describe("Scout Drone area", () => {
   it("lifts the tiles from the middle outwards", () => {
@@ -75,5 +75,17 @@ describe("Prime Zone ring", () => {
     expect(zoneRingAt(800 / CLIP_SPEED).alpha).toBeCloseTo(0.4);
     expect(zoneRingAt(1600 / CLIP_SPEED)).toEqual({ scale: 1.4, alpha: 0 });
     expect(zoneRingAt(5000)).toEqual({ scale: 1.4, alpha: 0 });
+  });
+});
+
+describe("canMove", () => {
+  it("lets an own Hero and an enemy that was on the board glide and slide", () => {
+    expect(canMove({}, false, false)).toBe(true);
+    expect(canMove({}, true, true)).toBe(true);
+  });
+
+  it("keeps a Ghost where it stands, and an enemy that has just come into sight", () => {
+    expect(canMove({ ghost: true }, true, true)).toBe(false);
+    expect(canMove({}, true, false)).toBe(false);
   });
 });

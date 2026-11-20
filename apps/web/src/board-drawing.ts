@@ -251,6 +251,55 @@ export function drawZone(planning: Container, grid: Grid, { color, alpha, emblem
 
 /** Height of the laser walls around the Prime Zone, in world px (a Hero is about 128 px tall). */
 const LASER_WALL_HEIGHT = 64;
+/** The floor of the Outposts: a yellowish tint with a border, so they stand out like the Prime Zone does. */
+export const OUTPOST_COLOR = 0xf2c94c;
+const OUTPOST_TILE_ALPHA = 0.22;
+
+/** Tints the tiles of every Outpost and draws a border round each; a component that is not a rectangle gets the tint only. */
+export function drawOutposts(planning: Container, grid: Grid): Container[] {
+  const created: Container[] = [];
+  const tiles: GridPosition[] = [];
+  grid.tiles.forEach((line, row) => line.forEach((kind, col) => kind === TileKind.Outpost && tiles.push({ col, row })));
+  for (const { col, row } of tiles) {
+    const { x, y } = gridToWorld({ col, row });
+    const tint = new Graphics().poly(floorOutline()).fill({ color: OUTPOST_COLOR, alpha: OUTPOST_TILE_ALPHA });
+    tint.position.set(x, y);
+    planning.addChild(tint);
+    created.push(tint);
+  }
+  // The Outposts are rectangles that touch no other Outpost: group the tiles by flood fill and outline each block.
+  const open = new Set(tiles.map((tile) => `${tile.col},${tile.row}`));
+  while (open.size > 0) {
+    const first = open.values().next().value as string;
+    const block: GridPosition[] = [];
+    const stack = [first];
+    open.delete(first);
+    while (stack.length > 0) {
+      const [col, row] = stack.pop()!.split(",").map(Number) as [number, number];
+      block.push({ col, row });
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const key = `${col + dc},${row + dr}`;
+        if (open.delete(key)) stack.push(key);
+      }
+    }
+    const [minCol, maxCol, minRow, maxRow] = [Math.min(...block.map((t) => t.col)), Math.max(...block.map((t) => t.col)), Math.min(...block.map((t) => t.row)), Math.max(...block.map((t) => t.row))];
+    if (block.length !== (maxCol - minCol + 1) * (maxRow - minRow + 1)) continue;
+    const outer = [[minCol - 0.5, minRow - 0.5], [maxCol + 0.5, minRow - 0.5], [maxCol + 0.5, maxRow + 0.5], [minCol - 0.5, maxRow + 0.5]].flatMap(([col, row]) => {
+      const { x, y } = gridToWorld({ col: col!, row: row! });
+      return [x, y];
+    });
+    const glow = new Graphics().poly(outer).stroke({ width: 7, color: OUTPOST_COLOR, alpha: 0.18, join: "round" });
+    const border = new Graphics().poly(outer).stroke({ width: 3, color: OUTPOST_COLOR, alpha: 0.7, join: "round" });
+    for (const graphic of [glow, border]) {
+      planning.addChild(graphic);
+      created.push(graphic);
+    }
+  }
+  return created;
+}
+
+/** A wall sorts a little in front of the prop on the same tile line and behind a Hero that stands there (a Hero is at the depth of its tile plus 0.5). */
+const WALL_DEPTH_OFFSET = 0.25;
 const LASER_COLOR = 0xff3b30;
 const LASER_EDGE = 0xff6a5c;
 
@@ -282,7 +331,8 @@ export function drawLaserWalls(layer: Container, grid: Grid): LaserWallDrawing {
   for (const [c0, r0, c1, r1] of edges) {
     const [a, b] = [at(c0, r0), at(c1, r1)];
     const lift = LASER_WALL_HEIGHT;
-    const panel = new Graphics()
+    // The wall stands in the depth order of the props and the Heroes (a Hero in front of it is drawn over it, one behind it under it).
+    const panel = new Graphics({ zIndex: (c0 + c1) / 2 + (r0 + r1) / 2 + WALL_DEPTH_OFFSET })
       .poly([a.x, a.y, b.x, b.y, b.x, b.y - lift, a.x, a.y - lift])
       .fill({ color: LASER_COLOR, alpha: 0.2 })
       .poly([a.x, a.y, b.x, b.y, b.x, b.y - lift * 0.45, a.x, a.y - lift * 0.45])
@@ -300,7 +350,7 @@ export function drawLaserWalls(layer: Container, grid: Grid): LaserWallDrawing {
   }
   for (const [col, row] of [[minCol, minRow], [maxCol, minRow], [minCol, maxRow], [maxCol, maxRow]] as const) {
     const { x, y } = at(col, row);
-    const post = new Graphics()
+    const post = new Graphics({ zIndex: col + row + WALL_DEPTH_OFFSET })
       .moveTo(x, y).lineTo(x, y - LASER_WALL_HEIGHT - 10).stroke({ width: 6, color: 0x3b4048 })
       .circle(x, y - LASER_WALL_HEIGHT - 10, 14).fill({ color: LASER_COLOR, alpha: 0.28 })
       .circle(x, y - LASER_WALL_HEIGHT - 10, 5).fill({ color: LASER_COLOR });

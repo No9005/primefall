@@ -84,10 +84,35 @@ export interface CameraView {
 }
 
 /** The zoom steps of the Pixel art style, as multiples of the art (at 1x a pixel of the tileset is one CSS pixel). */
-export const PIXEL_ZOOMS = [0.5, 1, 2] as const;
+export const PIXEL_ZOOMS = [0.5, 1, 2, 3, 4, 5, 6] as const;
 /** The camera scale of 1x in Pixel art: a tile of the tileset is 32 px wide, a world tile 128 px. */
 export const PIXEL_WORLD_SCALE = 32 / TILE_WIDTH;
-export const PIXEL_MAX_SCALE = PIXEL_ZOOMS[PIXEL_ZOOMS.length - 1]! * PIXEL_WORLD_SCALE;
+/** How many steps the player can zoom in past the start framing (1x, or the fitted step when that is larger). */
+export const PIXEL_STEPS_IN = 3;
+/** The whole board is never fitted larger than this step (a large view keeps the 2x it had); the steps above are for zooming in. */
+export const PIXEL_FIT_MAX_ZOOM = 2;
+/** The zoom of the Hero view in Pixel art, as a multiple of the art. */
+export const PIXEL_HERO_ZOOM = 2;
+
+/** The largest zoom (as a camera scale): `PIXEL_STEPS_IN` steps above 1x, or above the fitted step when the board fits larger than that. */
+export function pixelMaxScale(fittedScale: number): number {
+  const base = Math.max(pixelStepScale(fittedScale), PIXEL_WORLD_SCALE);
+  const index = PIXEL_ZOOMS.findIndex((zoom) => zoom * PIXEL_WORLD_SCALE >= base * 0.9999);
+  return PIXEL_ZOOMS[Math.min(PIXEL_ZOOMS.length - 1, index + PIXEL_STEPS_IN)]! * PIXEL_WORLD_SCALE;
+}
+
+/** The step `direction` (+1 in, -1 out) from the step that `scale` rests on; the first or last step when there is none further. */
+export function pixelStepBy(scale: number, direction: 1 | -1): number {
+  const current = PIXEL_ZOOMS.findIndex((zoom) => zoom * PIXEL_WORLD_SCALE >= pixelStepScale(scale) * 0.9999);
+  return PIXEL_ZOOMS[Math.min(PIXEL_ZOOMS.length - 1, Math.max(0, current + direction))]! * PIXEL_WORLD_SCALE;
+}
+
+/** The step nearest to `scale` on a logarithmic scale (a zoom in or out by the same ratio is the same distance). */
+export function nearestPixelStepScale(scale: number): number {
+  const zoom = scale / PIXEL_WORLD_SCALE;
+  const nearest = PIXEL_ZOOMS.reduce((best, step) => (Math.abs(Math.log(step / zoom)) < Math.abs(Math.log(best / zoom)) ? step : best));
+  return nearest * PIXEL_WORLD_SCALE;
+}
 
 /** The largest zoom step (as a camera scale) that is not above `scale`; the smallest step when `scale` is below all of them. */
 export function pixelStepScale(scale: number): number {
@@ -99,7 +124,7 @@ export function fitCamera(view: CameraView): Camera {
   const fitted = computeCamera(view.width, view.height, view.grid);
   if (!view.pixel) return fitted;
   // The whole board at a whole-number zoom: the largest step that fits (0.5x at least), centred.
-  const scale = pixelStepScale(fitted.scale);
+  const scale = Math.min(pixelStepScale(fitted.scale), PIXEL_FIT_MAX_ZOOM * PIXEL_WORLD_SCALE);
   const offset = { x: (fitted.x - view.width / 2) / fitted.scale, y: (fitted.y - view.height / 2) / fitted.scale };
   return { scale, x: view.width / 2 + offset.x * scale, y: view.height / 2 + offset.y * scale };
 }
@@ -118,7 +143,7 @@ export function clampCamera(camera: Camera, view: CameraView): Camera {
 function clampCameraIn(camera: Camera, view: CameraView, area: Rect): Camera {
   const { grid = REACTOR_DECK } = view;
   const fitted = fitCamera(view);
-  const clamped = Math.min(Math.max(camera.scale, fitted.scale), view.pixel ? PIXEL_MAX_SCALE : fitted.scale * MAX_ZOOM);
+  const clamped = Math.min(Math.max(camera.scale, fitted.scale), view.pixel ? pixelMaxScale(fitted.scale) : fitted.scale * MAX_ZOOM);
   const scale = view.pixel ? Math.max(pixelStepScale(clamped), fitted.scale) : clamped;
   const bounds = boardBounds(grid);
   const marginX = (bounds.right - bounds.left) * CAMERA_MARGIN;
@@ -161,7 +186,8 @@ export function panBy(camera: Camera, dx: number, dy: number, view: CameraView):
 
 /** The Hero view: HERO_ZOOM times the fitted scale with the world point in the middle of the view (as far as the board allows). */
 export function zoomOnPoint(world: { x: number; y: number }, view: CameraView): Camera {
-  const scale = view.pixel ? PIXEL_MAX_SCALE : fitCamera(view).scale * HERO_ZOOM;
+  const fitted = fitCamera(view).scale;
+  const scale = view.pixel ? Math.min(pixelMaxScale(fitted), Math.max(PIXEL_HERO_ZOOM * PIXEL_WORLD_SCALE, pixelStepBy(fitted, 1))) : fitted * HERO_ZOOM;
   return clampCamera({ scale, x: view.width / 2 - world.x * scale, y: view.height / 2 - world.y * scale }, view);
 }
 

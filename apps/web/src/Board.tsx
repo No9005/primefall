@@ -13,7 +13,7 @@ import {
 } from "game-core";
 import { Application, Assets, Container, Graphics, Text } from "pixi.js";
 import { LASER_FLICKER_MS, laserWallAlpha } from "./prime-zone";
-import { areaColorOf, COVER_OWN, coverTag, dashedTileOutline, drawLaserWalls, drawScoutArea, drawScrapField, drawTerrain, drawZone, ghostMark, scannedMark, scoutDroneMark } from "./board-drawing";
+import { areaColorOf, COVER_OWN, coverTag, dashedTileOutline, drawLaserWalls, drawOutposts, drawScoutArea, drawScrapField, drawTerrain, drawZone, ghostMark, scannedMark, scoutDroneMark } from "./board-drawing";
 import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPick, Point } from "./card-drag";
 import {
@@ -29,7 +29,9 @@ import {
   gridToWorld,
   isZoomed,
   panBy,
-  PIXEL_MAX_SCALE,
+  nearestPixelStepScale,
+  pixelMaxScale,
+  pixelStepBy,
   pickTileAt,
   resolveTap,
   TILE_HEIGHT,
@@ -46,7 +48,7 @@ import { EffectsLayer, type EffectsWorld, hiddenSeenMark, markedMark, shieldMark
 import { type EffectCue, slideProgress } from "./weapon-effects";
 import { baseFacing, type Facing, turnHeroes } from "./facing";
 import { walkProgress } from "./playback";
-import { areaContains, areaLift, areaRing, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, TRANSITION_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
+import { areaContains, areaLift, areaRing, canMove, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, TRANSITION_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
 import { marksFigure, shieldBubble } from "./hero-figure";
@@ -553,7 +555,6 @@ export function Board({
   const [overlay, setOverlay] = useState<Container>();
   /** The layer of the Fog of War clouds: above the floor and the props, below the planning marks and the effects. */
   const [fogLayer, setFogLayer] = useState<Container>();
-  const [wallsLayer, setWallsLayer] = useState<Container>();
   const wallsWereUp = useRef(false);
   /** Above the props and the Heroes, below the effects: the ghost and the numbers of the planned paths. */
   const [overlayTop, setOverlayTop] = useState<Container>();
@@ -773,13 +774,16 @@ export function Board({
       token.position.set(x, y + footOffset());
       token.zIndex = depthOf(hero.position) + 0.5;
       const targetable = targetableIds.includes(hero.id);
-      const slide = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? undefined : effects.find((cue) => cue.kind === "pull" && cue.toId === hero.id);
+      // Only a figure that was on the board before can move on it: a Ghost, and an enemy that has just come into sight, stand where
+      // they are (they fade in; a glide from a tile of an earlier Round would slide them across the map).
+      const movable = canMove(hero, enemy, enemiesSeen.current.has(hero.id));
+      const slide = !movable || window.matchMedia("(prefers-reduced-motion: reduce)").matches ? undefined : effects.find((cue) => cue.kind === "pull" && cue.toId === hero.id);
       if (slide?.kind === "pull" && slide.from) {
         // The token starts on the tile it was pulled from and slides to the one the rules put it on.
         const from = gridToWorld(slide.from);
         slides.push({ token, fromX: from.x - x, fromY: from.y - y, startMs: slide.startMs });
       }
-      const walkedFrom = walks[hero.id];
+      const walkedFrom = movable ? walks[hero.id] : undefined;
       if (walkedFrom !== undefined && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         const from = gridToWorld(walkedFrom);
         glides.push({ token, fromX: from.x - x, fromY: from.y - y });
@@ -1120,7 +1124,7 @@ export function Board({
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const zone = drawZone(planning, grid, { color: zoneColor, alpha: zoneAlpha, emblemAlpha: zoneEmblemAlpha });
     const zoneTiles = zone.tiles;
-    created.push(...zone.created);
+    created.push(...zone.created, ...drawOutposts(planning, grid));
     const animated: ((now: number) => void)[] = [];
     const effectBegan = performance.now();
     /** Run on every frame while the zone is on screen (the idle pulse), unlike `animated`, which ends after 3 s. */
@@ -1230,8 +1234,10 @@ export function Board({
 
   // The laser walls of the Prime Zone: closed while it is inactive (they show through the fog), a short flicker when it opens.
   useEffect(() => {
-    if (!wallsLayer || !terrain) return;
-    const drawn = drawLaserWalls(wallsLayer, REACTOR_DECK);
+    if (!terrain) return;
+    // The walls stand among the props and the Heroes (sorted by depth), so a Hero in front of the zone is drawn over its wall and
+    // the core inside it over the posts at the back.
+    const drawn = drawLaserWalls(terrain.objects, REACTOR_DECK);
     const flicker = wallsWereUp.current && !primeWalls && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     wallsWereUp.current = primeWalls;
     if (!primeWalls && !flicker) {
@@ -1255,7 +1261,7 @@ export function Board({
       cancelAnimationFrame(frame);
       drawn.created.forEach((child) => child.destroy({ children: true }));
     };
-  }, [wallsLayer, terrain, primeWalls]);
+  }, [terrain, primeWalls]);
 
   useEffect(() => {
     const element = host.current;
@@ -1284,9 +1290,7 @@ export function Board({
       const planningTop = new Container();
       const effectsLayer = new Container();
       const fog = new Container();
-      const walls = new Container();
-      world.addChild(floor, planning, objects, fog, walls, planningTop, effectsLayer);
-      setWallsLayer(walls);
+      world.addChild(floor, planning, objects, fog, planningTop, effectsLayer);
       app.stage.addChild(world);
       setFogLayer(fog);
       setEffectsHost({ layer: effectsLayer, world });
@@ -1385,6 +1389,12 @@ export function Board({
       // A drag or pinch is not a tap.
       let suppressTap = false;
       const DRAG_THRESHOLD = 8;
+      /**
+       * The turn of the wheel (a trackpad: in pixels) that moves the zoom one step. After a step the same gesture needs three times that
+       * for the next one, so the run-out of a trackpad swipe does not run through all steps; a pause of this many ms ends a gesture.
+       */
+      const WHEEL_STEP_TURN = 40;
+      const WHEEL_GESTURE_GAP_MS = 120;
       app.stage.eventMode = "static";
       app.stage.hitArea = app.screen;
       app.stage.on("pointerdown", (event) => {
@@ -1426,14 +1436,18 @@ export function Board({
         }
         if (dragged) setCameraByHand(panBy(camera, current.x - previous.x, current.y - previous.y, size()));
       });
-      // Pixel art zooms in whole steps, so the scale a pinch or the wheel asks for is added up here between the steps.
+      // Pixel art zooms in whole steps. A pinch adds up the scale it asks for and lands on the nearest step.
       let gestureScale: number | undefined;
-      let wheelPause = 0;
       const gestureZoom = (ratio: number): number => {
         if (!size().pixel) return camera.scale * ratio;
-        gestureScale = Math.min(Math.max((gestureScale ?? camera.scale) * ratio, fitCamera(size()).scale), PIXEL_MAX_SCALE);
-        return gestureScale;
+        const fitted = fitCamera(size()).scale;
+        gestureScale = Math.min(Math.max((gestureScale ?? camera.scale) * ratio, fitted), pixelMaxScale(fitted));
+        return nearestPixelStepScale(gestureScale);
       };
+      // The wheel moves one step for a small turn, so zooming reacts at once; a trackpad fling does not run through all steps.
+      let wheelTurn = 0;
+      let wheelStepped = false;
+      let lastWheelAt = -Infinity;
       const release = (event: { pointerId: number }) => {
         down.delete(event.pointerId);
         if (down.size === 0) gestureScale = undefined;
@@ -1449,10 +1463,24 @@ export function Board({
         (event) => {
           event.preventDefault();
           const rect = app.canvas.getBoundingClientRect();
-          setCameraByHand(zoomAt(camera, gestureZoom(Math.exp(-event.deltaY * 0.0015)), event.clientX - rect.left, event.clientY - rect.top, size()));
-          // A pause ends the gesture: the next one starts from the camera again.
-          window.clearTimeout(wheelPause);
-          wheelPause = window.setTimeout(() => (gestureScale = undefined), 250);
+          const [x, y] = [event.clientX - rect.left, event.clientY - rect.top];
+          if (!size().pixel) {
+            setCameraByHand(zoomAt(camera, camera.scale * Math.exp(-event.deltaY * 0.0015), x, y, size()));
+            return;
+          }
+          // A line or page turn of a mouse wheel counts as a whole notch; pixels come from a trackpad.
+          const now = performance.now();
+          if (now - lastWheelAt > WHEEL_GESTURE_GAP_MS) {
+            wheelTurn = 0;
+            wheelStepped = false;
+          }
+          lastWheelAt = now;
+          wheelTurn += event.deltaMode === 0 ? event.deltaY : Math.sign(event.deltaY) * WHEEL_STEP_TURN;
+          if (Math.abs(wheelTurn) < WHEEL_STEP_TURN * (wheelStepped ? 3 : 1)) return;
+          const next = pixelStepBy(camera.scale, wheelTurn < 0 ? 1 : -1);
+          wheelTurn = 0;
+          wheelStepped = true;
+          setCameraByHand(zoomAt(camera, next, x, y, size()));
         },
         { passive: false },
       );
