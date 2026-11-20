@@ -37,7 +37,7 @@ function nearestSeen(seen: ReadonlySet<string>, col: number, row: number): numbe
 }
 
 /** The fog fades out over this many tiles past the edge of the board, instead of ending at it. */
-export const FOG_EDGE_TILES = 1;
+export const FOG_EDGE_TILES = 2;
 
 /**
  * The fog mask with a margin of `margin` tiles round the board, row by row (`width + 2 * margin` wide). Inside it is the fog of the
