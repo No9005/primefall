@@ -18,6 +18,7 @@ import {
   MAX_PLACED_COVER_PER_SQUAD,
   MAX_QUEUE_LENGTH,
   withWreck,
+  withZoneClosed,
   moveDestinations,
   reachableMoveDestinations,
   type GridPosition,
@@ -600,8 +601,8 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     [view.ownPlacedCover, playedPlacedOwn, playedDestroyed],
   );
   const knownGrid = useMemo(
-    () => view.wreckCover.reduce(withWreck, view.destroyedCover.reduce(destroyCover, REACTOR_DECK)),
-    [view.destroyedCover, view.wreckCover],
+    () => withZoneClosed(view.wreckCover.reduce(withWreck, view.destroyedCover.reduce(destroyCover, REACTOR_DECK)), view.grid.zoneClosed ?? false),
+    [view.destroyedCover, view.wreckCover, view.grid.zoneClosed],
   );
   // Who targets whom: the queued actions of the Squad while planning, the actions of the current Tick in the replay.
   const targetLines = useMemo(
@@ -677,9 +678,9 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   }
   const highlights = useMemo(() => {
     if (playing) return [];
-    if (armed !== undefined) return reachableMoveDestinations(planningFrom);
+    if (armed !== undefined) return reachableMoveDestinations(planningFrom, view.grid);
     return aimedModes.flatMap(tileTargetsOf).filter((tile, i, all) => all.findIndex((other) => other.col === tile.col && other.row === tile.row) === i);
-  }, [armed, aimedCard, playing, planningFrom, knownGrid, view.heroes, view.enemies, view.placedCover]);
+  }, [armed, aimedCard, playing, planningFrom, knownGrid, view.grid, view.heroes, view.enemies, view.placedCover]);
   const markers = useMemo(
     () =>
       queue.flatMap((action, i) =>
@@ -816,8 +817,8 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
           ? candidates
           : targetsInReach(positioned, planningFrom, card, (id) => shots.find((shot) => shot.targetId === id)?.ringed ?? true);
     }
-    return { selfId: selected.id, heroIds, primaryTiles: tileTargetsOf(card), moveTiles: reachableMoveDestinations(planningFrom), here: undefined };
-  }, [pulling, heldInHand, selected.id, selected.heroClass, planningFrom, knownGrid, view.heroes, view.enemies, view.placedCover]);
+    return { selfId: selected.id, heroIds, primaryTiles: tileTargetsOf(card), moveTiles: reachableMoveDestinations(planningFrom, view.grid), here: undefined };
+  }, [pulling, heldInHand, selected.id, selected.heroClass, planningFrom, knownGrid, view.grid, view.heroes, view.enemies, view.placedCover]);
   const dragHighlights = useMemo(() => (dragPlaces ? [...dragPlaces.moveTiles, ...dragPlaces.primaryTiles] : NO_TILES), [dragPlaces]);
   const energyPillRef = useRef<HTMLDivElement>(null);
 
