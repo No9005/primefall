@@ -65,7 +65,7 @@ describe("pixelLayout of the Reactor Deck", () => {
     const count = (kinds: TileKind[]) => REACTOR_DECK.tiles.flat().filter((kind) => kinds.includes(kind)).length;
     expect(layout.standing.filter((piece) => piece.kind === "wall")).toHaveLength(count([TileKind.Wall]));
     expect(layout.standing.filter((piece) => piece.kind === "cover")).toHaveLength(count([TileKind.HalfCover, TileKind.FullCover, TileKind.OverwatchNest]));
-    for (const piece of layout.standing.filter((entry) => entry.kind !== "text")) expect(piece.depth).toBe(piece.col + piece.row);
+    for (const piece of layout.standing.filter((entry) => entry.kind !== "text")) expect(piece.depth).toBe(piece.col + piece.row + (piece.closedAtFront ? 0.75 : 0));
   });
 
   it("closes the Cover at the front in the upper half of the map and at the back in the lower half, towards the middle line", () => {

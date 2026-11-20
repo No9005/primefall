@@ -458,6 +458,17 @@ export const SCENARIOS: readonly Scenario[] = [
     resolutionShotsMs: [200, 500, 800, 1100, 1400, 1700, 2000, 2300, 2600, 2900],
   },
   {
+    name: "cover-take-turned",
+    description: "The Bruiser walks onto the Half Cover at 8,11 (upper half of the map: the piece is turned, closed at the front) and takes cover: frames over the Resolution.",
+    buildMatch: () =>
+      stage(26, (hero) => {
+        arrange(hero(PLAYER_BRUISER), { col: 8, row: 8 }, { hand: [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, 2, 3] });
+      }),
+    heroId: PLAYER_BRUISER,
+    steps: [{ slot: 0, use: "move", tile: { col: 8, row: 11 } }],
+    resolutionShotsMs: [300, 900, 1500, 2100, 2700, 3300],
+  },
+  {
     name: "zone-wall-depth",
     description: "The Prime Zone before it is active (Round 1): a Hero in front of the zone is drawn over the laser wall, a Hero inside it under the wall, and the posts at the back stand behind the core's light.",
     buildMatch: () =>
