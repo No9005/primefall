@@ -68,6 +68,14 @@ describe("pixelLayout of the Reactor Deck", () => {
     for (const piece of layout.standing.filter((entry) => entry.kind !== "text")) expect(piece.depth).toBe(piece.col + piece.row);
   });
 
+  it("closes the Cover at the front in the upper half of the map and at the back in the lower half, towards the middle line", () => {
+    const middle = (REACTOR_DECK.width + REACTOR_DECK.height - 2) / 2;
+    const cover = layout.standing.filter((piece) => piece.kind === "cover");
+    for (const piece of cover) expect(Boolean(piece.closedAtFront), `${piece.col},${piece.row}`).toBe(piece.col + piece.row <= middle);
+    expect(cover.some((piece) => piece.closedAtFront)).toBe(true);
+    expect(cover.some((piece) => !piece.closedAtFront)).toBe(true);
+  });
+
   it("lights the Drop Points, the core, every Cover and the lamps", () => {
     const kinds = layout.lights.map((light) => light.kind);
     expect(kinds.filter((kind) => kind === "breach")).toHaveLength(2);

@@ -40,6 +40,8 @@ export interface Standing extends Placed {
   kind: "wall" | "cover" | "plant" | "text";
   /** The sort order against Heroes (a Hero stands at the depth of its tile plus 0.5). */
   depth: number;
+  /** Cover only: the piece is closed at the front (towards the camera) and open at the back, as it stands in the upper half of the map. */
+  closedAtFront?: boolean;
 }
 
 export interface PixelLayout {
@@ -177,13 +179,17 @@ export function pixelLayout(grid: Grid, tileset: Pick<Tileset, "groups" | "texts
     }
   }
 
+  // The closed side of a piece of Cover faces the middle line of the map, where the fighting is: in the upper half that is the front,
+  // in the lower half the back (the way the pieces are drawn). The row of the middle line itself counts to the upper half.
+  const middleDepth = (grid.width + grid.height - 2) / 2;
+  const inUpperHalf = (col: number, row: number) => depthOf(col, row) <= middleDepth;
   const near = (col: number, row: number) => row === grid.height - 1 || col === grid.width - 1;
   for (let sum = 0; sum <= grid.width + grid.height - 2; sum++) {
     for (let row = 0; row < grid.height; row++) {
       const col = sum - row;
       if (col < 0 || col >= grid.width) continue;
       const here = kind(col, row)!;
-      const stand = (kindOfSprite: Standing["kind"], name: string, extra: Partial<Placed> = {}, depth = depthOf(col, row)) =>
+      const stand = (kindOfSprite: Standing["kind"], name: string, extra: Partial<Placed> & { closedAtFront?: boolean } = {}, depth = depthOf(col, row)) =>
         layout.standing.push({ kind: kindOfSprite, name, col, row, depth, ...extra });
       if (here === TileKind.Wall) {
         const lampWall = tileHash(col, row, 10) < 0.3 && (isOpen(kind(col, row + 1)) || isOpen(kind(col + 1, row)));
@@ -194,11 +200,11 @@ export function pixelLayout(grid: Grid, tileset: Pick<Tileset, "groups" | "texts
           layout.lights.push({ kind: "lamp", col: facing.col, row: facing.row, dx: 0 });
         } else stand("wall", pick("wall", col, row, 9));
       } else if (here === TileKind.HalfCover) {
-        stand("cover", pick("half_cover", col, row, 11));
+        stand("cover", pick("half_cover", col, row, 11), { closedAtFront: inUpperHalf(col, row) });
         layout.lights.push({ kind: "cover", col, row, dx: 0 });
       } else if (here === TileKind.FullCover || here === TileKind.OverwatchNest) {
         // The Overwatch Nest is a Full Cover tile (ADR 0016) and the tileset has no frame of its own for it.
-        stand("cover", "full_cover");
+        stand("cover", "full_cover", { closedAtFront: inUpperHalf(col, row) });
         layout.lights.push({ kind: "cover", col, row, dx: 0 });
       } else if (here !== TileKind.PrimeZone && tileHash(col, row, 12) < (here === TileKind.DropPoint ? 0.5 : 0.04)) {
         stand("plant", pick("fern", col, row, 13), { dx: Math.round((tileHash(col, row, 14) - 0.5) * 14), dy: Math.round(tileHash(row, col, 15) * 5) });
@@ -258,6 +264,49 @@ async function loadImage(src: string): Promise<HTMLImageElement> {
   image.src = src;
   await image.decode();
   return image;
+}
+
+const turned = new WeakMap<PixelAtlas, Map<string, Texture>>();
+
+/**
+ * A piece of Cover as the sheet draws it is a V of two panels with its point at the back, closed at the back and open to the front.
+ * The turned piece has the point at the front: every column of the sprite moves up or down so that the foot of the panels runs the
+ * other way round (the point of the V stays where it is), which turns the piece around without drawing a second one.
+ */
+function closedAtFrontTexture(atlas: PixelAtlas, name: string): Texture {
+  const cache = turned.get(atlas) ?? new Map<string, Texture>();
+  turned.set(atlas, cache);
+  const known = cache.get(name);
+  if (known) return known;
+  const { frame, anchor } = atlas.frames[FRAME_PREFIX + name]!;
+  const source = document.createElement("canvas");
+  source.width = frame.w;
+  source.height = frame.h;
+  const sourceContext = source.getContext("2d", { willReadFrequently: true })!;
+  sourceContext.drawImage(atlas.image, frame.x, frame.y, frame.w, frame.h, 0, 0, frame.w, frame.h);
+  const pixels = sourceContext.getImageData(0, 0, frame.w, frame.h);
+  const lowest = (x: number) => {
+    for (let y = frame.h - 1; y >= 0; y--) if (pixels.data[(y * frame.w + x) * 4 + 3]! > 0) return y;
+    return undefined;
+  };
+  const middle = Math.round(anchor.x * frame.w - 0.5);
+  const point = lowest(middle) ?? frame.h - 1;
+  const shifts = Array.from({ length: frame.w }, (_, x) => {
+    const foot = lowest(x);
+    return foot === undefined ? 0 : 2 * (point - foot);
+  });
+  const lift = Math.max(0, ...shifts.map((shift) => -shift));
+  const drop = Math.max(0, ...shifts);
+  const out = document.createElement("canvas");
+  out.width = frame.w;
+  out.height = frame.h + lift + drop;
+  const context = out.getContext("2d")!;
+  shifts.forEach((shift, x) => context.drawImage(source, x, 0, 1, frame.h, x, lift + shift, 1, frame.h));
+  const { source: textureSource } = Texture.from(out);
+  textureSource.scaleMode = "nearest";
+  const texture = new Texture({ source: textureSource, defaultAnchor: { x: anchor.x, y: (anchor.y * frame.h + lift) / out.height } });
+  cache.set(name, texture);
+  return texture;
 }
 
 /** The ambient colour of the light map as a Pixi tint: whatever stands on the floor is multiplied by it, like the floor is. */
@@ -382,8 +431,8 @@ export class PixelScenery {
     }
   }
 
-  private place(piece: Placed, depth: number, tint: number, blendMode?: "add"): Sprite {
-    const sprite = new Sprite(this.atlas.textures[FRAME_PREFIX + piece.name]);
+  private place(piece: Placed & { closedAtFront?: boolean }, depth: number, tint: number, blendMode?: "add"): Sprite {
+    const sprite = new Sprite(piece.closedAtFront ? closedAtFrontTexture(this.atlas, piece.name) : this.atlas.textures[FRAME_PREFIX + piece.name]);
     const { x, y } = gridToWorld(piece);
     sprite.scale.set(PIXEL_SCALE);
     sprite.position.set(x + (piece.dx ?? 0) * PIXEL_SCALE, y + (piece.dy ?? 0) * PIXEL_SCALE);
