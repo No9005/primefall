@@ -241,8 +241,8 @@
   "sfx.concussion": {
    "file": "sfx/concussion.mp3",
    "kind": "sfx",
-   "what": "Time for Coffee: concussive pulse",
-   "durationMs": 1515
+   "what": "Time for Coffee: three air-pressure waves rolling on and hitting the target, deep and muffled (ElevenLabs sound generation, take 1)",
+   "durationMs": 1646
   },
   "sfx.rush": {
    "file": "sfx/rush.mp3",
@@ -486,7 +486,7 @@
      "play": [
       "sfx.concussion"
      ],
-     "atMs": 700
+     "atMs": 620
     }
    ]
   },

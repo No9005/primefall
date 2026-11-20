@@ -1,0 +1,8 @@
+# The Concussion sound (Time for Coffee), 2026-11-20
+
+The old sound (`concussion-old.mp3`: a clear tone at 1047 Hz, 1.5 s, the same file every time) was annoying when the card is spammed. The owner wanted "wup wup wup, like air waves that hit the opponent", then "dumpfer, langgezogen, wabern".
+
+- **Own synthesis** (`synth.py`, `synth2.py`; free): soft sine thumps with a puff of air, then a low impact. Versions A to C (C was "the direction") and D to F (duller, longer, with a wobble). `wup_e.mp3`, `wup_f.mp3` are two of them. Not used in the end.
+- **ElevenLabs sound generation** (`req.json`, the request that was sent three times; 1.6 s, `prompt_influence` 0.5): "Several waves of air pressure from a shockwave cannon hitting a target one after another: deep soft muffled whumps rolling and wobbling like heavy air waves, 'wup wup wup', low-pitched, no high frequencies, dry". Three different takes (`take1.mp3` to `take3.mp3`), about 18 credits each by the response header. All dark (centroid 250 to 320 Hz), with decaying envelope peaks every 0.08 to 0.11 s (the waves). **Take 1 is in the game.**
+- In the game (`apps/web/public/assets/audio/max/sfx/concussion.mp3`): take 1 raised by 5.2 dB (the raw take is quiet: peak 0.32), which puts its loudest 100 ms at -15.5 dB. The other action sounds of Max have a median of -12.7 dB there and the old Concussion had -12.7 dB, so the new one is about 3 dB under both. The cue plays it at 620 ms, the moment of the shot (it was 700 ms), so the first wave goes with the pressure rings.
+- The Hero clip it belongs to (`concussion`, 2.6 s, fire at 620 ms; three violet pressure rings at 650, 720 and 790 ms; the round hits at about 900 ms): `docs/design/pixel-heroes/tools/rigs/bruiser.js`.
