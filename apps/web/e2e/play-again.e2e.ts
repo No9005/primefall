@@ -36,7 +36,7 @@ test("Play again opens the Hero Select; the next match uses the new Hero; Back l
 });
 
 test("in Attack and Defend, Play again opens the Hero Select of the same role", async ({ page }) => {
-  await page.goto("/?role=attack&hero=bruiser");
+  await page.goto("/?role=attack&hero=bruiser&menu=all");
   await page.getByTestId("play-attack-defend").click();
   await resumeFinishedMatch(page);
 

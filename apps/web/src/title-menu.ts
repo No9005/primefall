@@ -14,20 +14,25 @@ export interface MenuSlot {
 }
 
 /**
- * The four rows of the menu from the top: the first, the default mode, is the big one. The small rows are 50 design pixels
- * high, which is 44 px on a phone of 844 x 390, so that a thumb does not miss them; their picture is 34 high (the text is a fifth
- * smaller than the pictures are drawn, the screen was crowded). More air above the first row, under "Every Prime is a contract".
+ * The four rows of the menu from the top: the first, the default mode, is the big one. A row is pressed in `height` design pixels
+ * (50 are 44 px on a phone of 844 x 390, so that a thumb does not miss it) but the pictures stand closer than that: the picture of
+ * a row is `art` high, centred in its area, and the areas of two rows overlap a little (the lower row wins there). The text is a
+ * fifth smaller than the pictures are drawn. The first row starts well under the line "Every Prime is a contract".
  */
 export const MENU_SLOTS: readonly [MenuSlot, MenuSlot, MenuSlot, MenuSlot] = [
-  { top: 214, height: 52, art: 48 },
-  { top: 266, height: 50, art: 34 },
-  { top: 316, height: 50, art: 34 },
+  { top: 232, height: 52, art: 48 },
+  { top: 282, height: 50, art: 34 },
+  { top: 324, height: 50, art: 34 },
   { top: 366, height: 50, art: 34 },
 ];
 
-/** The entries from the top; a saved match adds Resume as the last row. */
-export function menuIds(canResume: boolean): MenuId[] {
-  return canResume ? ["classic", "attack-and-defend", "glossary", "resume"] : ["classic", "attack-and-defend", "glossary"];
+/**
+ * The entries from the top: Start (the classic mode), the Glossary, and Resume when a match was saved. Attack and Defend is out of
+ * the menu for now; `?menu=all` brings its row back between Start and the Glossary (the tests and the screenshots use it).
+ */
+export function menuIds(canResume: boolean, withAttackAndDefend = false): MenuId[] {
+  const ids: MenuId[] = withAttackAndDefend ? ["classic", "attack-and-defend", "glossary"] : ["classic", "glossary"];
+  return canResume ? [...ids, "resume"] : ids;
 }
 
 /** The highlight moves on by itself, row after row, until the player touches the menu. */
