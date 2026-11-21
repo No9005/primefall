@@ -10,6 +10,10 @@
   "drums": "drums.m4a",
   "refrain": "refrain.m4a"
  },
+ "menu": {
+  "file": "menu.m4a",
+  "gain": 0.5
+ },
  "intro": {
   "file": "intro.m4a",
   "gain": 0.5
