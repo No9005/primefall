@@ -12,7 +12,7 @@ const END_SECONDS = 1.3 + 7.94 * 0.9664;
  * The film starts where the light ring of the hyperspace's end begins (78 % of its 1.5 s); what comes before it, the title screen
  * pulled away and the tunnel, the app draws live from the title screen itself.
  */
-const FIRST_FRAME = Math.round(1.5 * 0.78 * FPS);
+const FIRST_FRAME = Number(process.env.FIRST_FRAME ?? Math.round(1.5 * 0.78 * FPS));
 const here = dirname(fileURLToPath(import.meta.url));
 const out = resolve(process.argv[2] ?? "frames");
 mkdirSync(out, { recursive: true });
