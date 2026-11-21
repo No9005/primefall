@@ -50,7 +50,7 @@ for _ in range(16):
 tw.save(OUT+'stars.png')
 # 4 logo: letters and the crystal on transparent
 arr=np.zeros((H,W,3)); s=6; left=glyph_mask("PRIMEF",s,1); right=glyph_mask("LL",s,1)
-cw=44; gap=6; total=left.shape[1]+gap+cw+gap+right.shape[1]; x0=(W-total)//2; y0=62
+cw=44; gap=6; total=left.shape[1]+gap+cw+gap+right.shape[1]; x0=(W-total)//2; y0=54
 chunky(arr,left,x0,y0,s,6); chunky(arr,right,x0+left.shape[1]+gap+cw+gap,y0,s,6)
 logo=rgba_from_black(arr); d=ImageDraw.Draw(logo)
 cx=x0+left.shape[1]+gap+cw//2; top=y0-14; mid=y0+16; bot=y0+7*s+10; cwh=cw//2
@@ -64,11 +64,13 @@ print('crystal',cx,top,bot,'logo y',y0,y0+7*s)
 yy,xx=np.mgrid[0:H,0:W]; m=np.exp(-(((xx-cx)**2)/(2*30**2)+((yy-(y0+20))**2)/(2*44**2)))
 g=np.floor(np.clip(m,0,1)*10)/10; hz=np.dstack([g*90,g*120,g*230]); Image.fromarray(hz.astype('uint8'),'RGB').save(OUT+'haze.png')
 # 6 ribbon, claim
-rib=Image.new('RGBA',(W,H),(0,0,0,0)); d=ImageDraw.Draw(rib); rb="A TOTALLY LEGAL SALVAGE OPERATION"; rw=fw(rb,1)+24; rx=(W-rw)//2; ry=y0-32
+rib=Image.new('RGBA',(W,H),(0,0,0,0)); d=ImageDraw.Draw(rib); rb="A TOTALLY LEGAL SALVAGE OPERATION"; rw=fw(rb,1)+24; rx=(W-rw)//2; ry=y0-40
 d.polygon([(rx,ry),(rx+rw,ry),(rx+rw+8,ry+7),(rx+rw,ry+14),(rx,ry+14),(rx-8,ry+7)],fill=(190,30,40),outline=(14,10,28)); pf.text(d,(W-fw(rb,1))//2,ry+4,rb,(255,244,220),1)
 c="EVERY PRIME IS A CONTRACT"; pf.text(d,(W-fw(c,1))//2,y0+7*s+18,c,(170,185,225),1)
-pf.text(d,6,H-12,"BY PLAYING YOU AGREE TO FORM 27B",(90,220,120),1); t="VERSION 0.4 (PRIME)"; pf.text(d,W-fw(t,1)-6,H-12,t,(90,220,120),1)
 rib.save(OUT+'tagline.png')
+# the two small lines at the foot are pictures of their own: the screen puts them in its corners, whatever its shape
+for name,line in (('legal',"BY PLAYING YOU AGREE TO FORM 27B"),('version',"VERSION 0.4 (PRIME)")):
+    small=Image.new('RGBA',(fw(line,1)+2,9),(0,0,0,0)); pf.text(ImageDraw.Draw(small),1,1,line,(90,220,120),1); small.save(OUT+name+'.png')
 
 # 8 the fireball and its burst
 # the fireball: a burning crystal falling down-left; its flame trails up and to the right

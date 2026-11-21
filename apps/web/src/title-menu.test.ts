@@ -27,8 +27,8 @@ describe("title menu", () => {
   });
 
   it("puts the light streak on the middle of the highlighted row", () => {
-    expect(streakTop(MENU_SLOTS[0])).toBe(207 + 30 - 3);
-    expect(streakTop(MENU_SLOTS[1])).toBe(268 + 25 - 3);
+    expect(streakTop(MENU_SLOTS[0])).toBe(214 + 26 - 3);
+    expect(streakTop(MENU_SLOTS[1])).toBe(266 + 25 - 3);
   });
 
   it("gives every fireball its own period, so that the fall never repeats in step", () => {

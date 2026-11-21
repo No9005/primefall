@@ -85,8 +85,8 @@ async function chooseHeroAndStart(page: Page, hero: HeroClass): Promise<void> {
 /** Screens that are not a match scenario, played by clicking through the app. Their frames are in the order they are taken. */
 export const SCREEN_SCENARIOS: Record<string, { description: string; shots: readonly string[] }> = {
   title: {
-    description: "The title screen: Classic highlighted, a fireball falling, its burst, the third row touched, the smallest phone view",
-    shots: ["01-classic.png", "02-fireball-falling.png", "03-burst.png", "04-glossary-touched.png", "05-small-phone.png"],
+    description: "The title screen: Classic highlighted, a fireball falling, its burst, the third row touched, the smallest phone view, a desktop window (the picture fills it, the sides are cut)",
+    shots: ["01-classic.png", "02-fireball-falling.png", "03-burst.png", "04-glossary-touched.png", "05-small-phone.png", "06-desktop.png"],
   },
   intro: {
     description: "The film of the tap on Classic: the title pulled away, the hyperspace, the far Notstrom, the visor, the hull, the airlock, then the Hero Select",
@@ -267,6 +267,9 @@ async function playTitle(browser: Browser): Promise<void> {
   await page.setViewportSize({ width: 667, height: 375 });
   await page.waitForTimeout(250);
   await shoot("05-small-phone.png");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForTimeout(250);
+  await shoot("06-desktop.png");
   if (errors.length > 0) throw new Error(`title: ${errors.join("; ")}`);
   checkWritten(directory, SCREEN_SCENARIOS.title!.shots);
 }

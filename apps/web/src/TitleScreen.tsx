@@ -62,8 +62,8 @@ export function TitleScreen({ seed, canResume, film, onPlay, onPlayAttackAndDefe
   };
 
   return (
-    <section className="title-screen" aria-label="Start" data-testid="start-screen">
-      <div className={flying ? "title-stage flying" : "title-stage"}>
+    <section className={flying ? "title-screen flying" : "title-screen"} aria-label="Start" data-testid="start-screen">
+      <div className="title-stage">
         <div className="title-tunnel" aria-hidden="true">
           <img className="title-streaks a" src={`${ART}hyperspace.png`} alt="" />
           <img className="title-streaks b" src={`${ART}hyperspace.png`} alt="" />
@@ -119,12 +119,15 @@ export function TitleScreen({ seed, canResume, film, onPlay, onPlayAttackAndDefe
             </button>
           );
         })}
-        <p className="title-seed" data-testid="start-seed">
-          seed {seed}
-        </p>
         </div>
         <img className="title-whip" src={`${ART}hyperspace.png`} alt="" aria-hidden="true" />
       </div>
+      {/* The small lines sit in the corners of the screen, whatever its shape; the stage can be wider than the screen. */}
+      <p className="title-corner title-seed" data-testid="start-seed">
+        seed {seed}
+      </p>
+      <img className="title-corner title-legal" src={`${ART}legal.png`} alt="By playing you agree to Form 27B" />
+      <img className="title-corner title-version" src={`${ART}version.png`} alt="Version 0.4 (Prime)" />
     </section>
   );
 }

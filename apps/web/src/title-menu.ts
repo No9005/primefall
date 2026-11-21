@@ -15,13 +15,14 @@ export interface MenuSlot {
 
 /**
  * The four rows of the menu from the top: the first, the default mode, is the big one. The small rows are 50 design pixels
- * high, which is 44 px on a phone of 844 x 390, so that a thumb does not miss them; their picture is 42 high.
+ * high, which is 44 px on a phone of 844 x 390, so that a thumb does not miss them; their picture is 34 high (the text is a fifth
+ * smaller than the pictures are drawn, the screen was crowded). More air above the first row, under "Every Prime is a contract".
  */
 export const MENU_SLOTS: readonly [MenuSlot, MenuSlot, MenuSlot, MenuSlot] = [
-  { top: 207, height: 60, art: 60 },
-  { top: 268, height: 50, art: 42 },
-  { top: 318, height: 50, art: 42 },
-  { top: 368, height: 50, art: 42 },
+  { top: 214, height: 52, art: 48 },
+  { top: 266, height: 50, art: 34 },
+  { top: 316, height: 50, art: 34 },
+  { top: 366, height: 50, art: 34 },
 ];
 
 /** The entries from the top; a saved match adds Resume as the last row. */
