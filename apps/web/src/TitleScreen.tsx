@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { preloadIntro } from "./NotstromIntro";
 import { AUTO_STEP_MS, BURST_OFFSET, FIREBALLS, MENU_SLOTS, type MenuId, menuIds, nextRow, percentX, percentY, STAGE, streakTop } from "./title-menu";
 import "./title-screen.css";
 
@@ -24,6 +25,8 @@ export function TitleScreen({ seed, canResume, onPlay, onPlayAttackAndDefend, on
   const ids = menuIds(canResume);
   const [row, setRow] = useState(0);
   const [touched, setTouched] = useState(false);
+  // The film of Classic is fetched while the start screen is shown.
+  useEffect(preloadIntro, []);
 
   useEffect(() => {
     if (touched || prefersReducedMotion()) return;

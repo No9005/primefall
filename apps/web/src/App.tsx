@@ -6,6 +6,8 @@ import { aiPlanner } from "./ai-planner";
 import { EndScreen } from "./EndScreen";
 import { SideScreen } from "./SideScreen";
 import { TitleScreen } from "./TitleScreen";
+import { IntroFlash, NotstromIntro } from "./NotstromIntro";
+import { shouldPlayIntro } from "./intro-film";
 import { clearSavedMatch, loadSavedMatch, loadSavedPlayerHero, parsePlayerHero, saveMatch } from "./match-storage";
 import { HeroSelectScreen } from "./HeroSelectScreen";
 import { PlanningScreen } from "./PlanningScreen";
@@ -78,7 +80,8 @@ export function App() {
   const seed = host.seed;
   const [started, setStarted] = useState(false);
   // Before the match: the start screen, the Hero Select (Play) or the Glossary, which run from static data and never touch the host or the saved match.
-  const [entry, setEntry] = useState<"start" | "side" | "select" | "replay" | "glossary">("start");
+  const [entry, setEntry] = useState<"start" | "intro" | "side" | "select" | "replay" | "glossary">("start");
+  const [flash, setFlash] = useState(false);
   // The side chosen in Attack and Defend; none in the classic mode.
   const [role, setRole] = useState<Role>();
   // A match saved by an earlier visit, offered for Resume on the start screen.
@@ -106,6 +109,7 @@ export function App() {
   }
 
   function renderStart() {
+    if (entry === "intro") return <NotstromIntro onDone={(playedToEnd) => { setFlash(playedToEnd); setEntry("select"); }} />;
     if (entry === "glossary") return <GlossaryScreen onClose={() => setEntry("start")} />;
     if (entry === "side") return <SideScreen onBack={() => setEntry("start")} onNext={(side) => { setRole(side); setEntry("select"); }} />;
     if (entry === "select" || entry === "replay") {
@@ -127,6 +131,7 @@ export function App() {
         onPlay={() => {
           setRole(undefined);
           if (startParameters.has("hero")) beginMatch(undefined);
+          else if (shouldPlayIntro({ reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches, automated: navigator.webdriver, forced: startParameters.get("intro") === "on" })) setEntry("intro");
           else setEntry("select");
         }}
         onPlayAttackAndDefend={() => {
@@ -158,6 +163,7 @@ export function App() {
     <main className="app">
       <div className="rotate-notice">Rotate your device</div>
       {renderScreen()}
+      {flash && <IntroFlash onGone={() => setFlash(false)} />}
     </main>
   );
 }
