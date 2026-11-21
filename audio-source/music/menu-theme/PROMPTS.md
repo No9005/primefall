@@ -34,4 +34,5 @@ File: `./plans/menu-theme-extend-to-3-min.json`. The method of the Notstrom piec
 up): the first chunk keeps the 75 s of B as an audio reference, four new chunks follow (30 + 30 + 30 + 15 s = 105 s). Stillness
 (the choir alone), Pressure (the ostinato and percussion return, the motif with a fifth above), Second Climax (the full choir
 in open fifths), Return (everything falls away to the sustained choir chord on D, as at the start, so that the piece loops). The
+experiment of the owner: in **Pressure** very low, distorted guitar power chords (drop D, palm-muted, on D and C, doubling the ostinato; no solos, no high guitar); `guitar` is taken out of the negative styles of that chunk only. The
 `song_id` is a placeholder: B has to be uploaded first (`POST /v1/music/upload`).

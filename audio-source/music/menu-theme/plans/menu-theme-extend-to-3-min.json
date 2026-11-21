@@ -44,7 +44,7 @@
     "context_adherence": "high"
    },
    {
-    "text": "[Pressure]\n{the driving low synthesizer eighth-note ostinato on D and heavy percussion return, darker than before}\n{the choir sings the chant motif with a fifth above and a low octave below, bells answer}",
+    "text": "[Pressure]\n{the driving low synthesizer eighth-note ostinato on D and heavy percussion return, darker than before}\n{experimental: very low, heavily distorted electric guitars play slow palm-muted power chords on D and C, doubling the ostinato, a wall of low rumble, no solos and no high guitar}\n{the choir sings the chant motif with a fifth above and a low octave below, bells answer}",
     "duration_ms": 30000,
     "positive_styles": [
      "instrumental, no lyrics",
@@ -60,21 +60,27 @@
      "great production quality",
      "driving low analog synthesizer eighth-note ostinato on D",
      "heavy percussion with a heartbeat kick",
-     "the motif a little darker and heavier than the first time"
+     "the motif a little darker and heavier than the first time",
+     "very low distorted electric guitar power chords, drop D tuning, palm-muted, heavy and slow",
+     "the guitars stay in the low register and only double the bass ostinato"
     ],
     "negative_styles": [
      "lyrics",
      "words",
      "lead singer",
      "female voice",
-     "guitar",
      "happy",
      "cheerful",
      "heroic",
      "pop",
      "rap",
      "fade out",
-     "tempo change"
+     "tempo change",
+     "guitar solo",
+     "high guitar lead",
+     "shredding",
+     "clean guitar",
+     "melodic guitar line"
     ],
     "context_adherence": "high"
    },
