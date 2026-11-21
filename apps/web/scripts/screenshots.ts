@@ -85,7 +85,7 @@ async function chooseHeroAndStart(page: Page, hero: HeroClass): Promise<void> {
 /** Screens that are not a match scenario, played by clicking through the app. Their frames are in the order they are taken. */
 export const SCREEN_SCENARIOS: Record<string, { description: string; shots: readonly string[] }> = {
   title: {
-    description: "The title screen: Classic highlighted, a fireball falling, its burst, the third row touched, the smallest phone view, a desktop window (the picture fills it, the sides are cut)",
+    description: "The title screen: Start highlighted, a fireball falling, its burst, the third row touched, the smallest phone view, a desktop window (the picture fills it, the sides are cut)",
     shots: ["01-classic.png", "02-fireball-falling.png", "03-burst.png", "04-glossary-touched.png", "05-small-phone.png", "06-desktop.png"],
   },
   intro: {
@@ -185,7 +185,7 @@ async function playAttackDefend(browser: Browser): Promise<void> {
 
   // The start screen with a saved match (so that Resume match is there) and the side screen.
   let page = await open({ snapshot: snapshotOf(startOf(SquadId.Right)) });
-  await page.goto(URL);
+  await page.goto(`${URL}${URL.includes("?") ? "&" : "?"}menu=all`);
   await page.getByTestId("start-screen").waitFor();
   await page.waitForTimeout(300);
   await shoot(page, "01-start.png");
@@ -203,14 +203,14 @@ async function playAttackDefend(browser: Browser): Promise<void> {
   // The role banner (held on screen by ?hold=banner) and the planning HUD of each role.
   for (const [role, bannerShot, hudShot] of [["attack", "04-role-banner-attack.png", "06-hud-attacker.png"], ["defend", "05-role-banner-defend.png", "07-hud-defender.png"]] as const) {
     page = await open();
-    await page.goto(`${URL}/?hero=bruiser&role=${role}&hold=banner`);
+    await page.goto(`${URL}/?hero=bruiser&role=${role}&hold=banner&menu=all`);
     await page.getByTestId("play-attack-defend").click();
     await page.getByTestId("role-banner").waitFor();
     await page.waitForTimeout(1500);
     await shoot(page, bannerShot);
     await page.close();
     page = await open();
-    await page.goto(`${URL}/?hero=bruiser&role=${role}`);
+    await page.goto(`${URL}/?hero=bruiser&role=${role}&menu=all`);
     await page.getByTestId("play-attack-defend").click();
     await page.getByTestId("role-banner").waitFor({ state: "detached" });
     await page.getByRole("list", { name: "Hand" }).getByRole("button").last().waitFor({ state: "visible" });

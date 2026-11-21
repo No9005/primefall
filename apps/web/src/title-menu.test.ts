@@ -2,22 +2,30 @@ import { describe, expect, it } from "vitest";
 import { FIREBALLS, MENU_SLOTS, menuIds, nextRow, percentX, percentY, STAGE, streakTop } from "./title-menu";
 
 describe("title menu", () => {
-  it("lists Classic, Attack and Defend and the Glossary, and Resume only when a match was saved", () => {
-    expect(menuIds(false)).toEqual(["classic", "attack-and-defend", "glossary"]);
-    expect(menuIds(true)).toEqual(["classic", "attack-and-defend", "glossary", "resume"]);
+  it("lists Start (the classic mode) and the Glossary, and Resume only when a match was saved; Attack and Defend is out for now", () => {
+    expect(menuIds(false)).toEqual(["classic", "glossary"]);
+    expect(menuIds(true)).toEqual(["classic", "glossary", "resume"]);
+    expect(menuIds(false, true)).toEqual(["classic", "attack-and-defend", "glossary"]);
+    expect(menuIds(true, true)).toEqual(["classic", "attack-and-defend", "glossary", "resume"]);
   });
 
-  it("has a row of the layout for every entry, one below the other without overlap", () => {
-    expect(MENU_SLOTS.length).toBeGreaterThanOrEqual(menuIds(true).length);
+  it("has a row of the layout for every entry; the pictures stand one below the other, the areas that are pressed overlap a little", () => {
+    expect(MENU_SLOTS.length).toBeGreaterThanOrEqual(menuIds(true, true).length);
     MENU_SLOTS.forEach((slot, i) => {
       const above = MENU_SLOTS[i - 1];
-      if (above) expect(slot.top).toBeGreaterThanOrEqual(above.top + above.height);
+      const middle = (row: (typeof MENU_SLOTS)[number]) => row.top + row.height / 2;
+      if (above) {
+        expect(middle(slot) - slot.art / 2).toBeGreaterThan(middle(above) + above.art / 2);
+        // The overlap of two areas stays smaller than a fifth of the smaller one: each row keeps most of its area.
+        expect(above.top + above.height - slot.top).toBeLessThan(Math.min(slot.height, above.height) / 5);
+      }
+      expect(slot.height).toBeGreaterThanOrEqual(50);
+      expect(slot.art).toBeLessThanOrEqual(slot.height);
     });
     const last = MENU_SLOTS[3];
     // The legal line at the foot of the picture starts at about 425.
     expect(last.top + last.height).toBeLessThanOrEqual(425);
     expect(last.top + last.height).toBeLessThanOrEqual(STAGE.height);
-    for (const slot of MENU_SLOTS) expect(slot.art).toBeLessThanOrEqual(slot.height);
   });
 
   it("moves the highlight on row by row and from the last row back to the first", () => {
@@ -27,8 +35,8 @@ describe("title menu", () => {
   });
 
   it("puts the light streak on the middle of the highlighted row", () => {
-    expect(streakTop(MENU_SLOTS[0])).toBe(214 + 26 - 3);
-    expect(streakTop(MENU_SLOTS[1])).toBe(266 + 25 - 3);
+    expect(streakTop(MENU_SLOTS[0])).toBe(232 + 26 - 3);
+    expect(streakTop(MENU_SLOTS[1])).toBe(282 + 25 - 3);
   });
 
   it("gives every fireball its own period, so that the fall never repeats in step", () => {

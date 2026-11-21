@@ -50,7 +50,7 @@ for _ in range(16):
 tw.save(OUT+'stars.png')
 # 4 logo: letters and the crystal on transparent
 arr=np.zeros((H,W,3)); s=6; left=glyph_mask("PRIMEF",s,1); right=glyph_mask("LL",s,1)
-cw=44; gap=6; total=left.shape[1]+gap+cw+gap+right.shape[1]; x0=(W-total)//2; y0=54
+cw=44; gap=6; total=left.shape[1]+gap+cw+gap+right.shape[1]; x0=(W-total)//2; y0=66
 chunky(arr,left,x0,y0,s,6); chunky(arr,right,x0+left.shape[1]+gap+cw+gap,y0,s,6)
 logo=rgba_from_black(arr); d=ImageDraw.Draw(logo)
 cx=x0+left.shape[1]+gap+cw//2; top=y0-14; mid=y0+16; bot=y0+7*s+10; cwh=cw//2
@@ -90,7 +90,7 @@ for _ in range(14):
 im.save(OUT+'impact.png'); print('ok')
 
 # 7 the menu rows: plain light text, and the red pill with white text for the highlighted row; the first row is the big one
-MENU=[("classic","CLASSIC",3),("attack-and-defend","ATTACK AND DEFEND",2),("glossary","GLOSSARY",2),("resume","RESUME MATCH",2)]
+MENU=[("classic","START",3),("attack-and-defend","ATTACK AND DEFEND",2),("glossary","GLOSSARY",2),("resume","RESUME MATCH",2)]
 for i,(name,label,sc) in enumerate(MENU):
     tw_=fw(label,sc); bw=max(124,tw_+40) if i==0 else tw_+40; bh=30 if sc==3 else 22; BH=40 if sc==3 else 28
     for state in ('off','on'):

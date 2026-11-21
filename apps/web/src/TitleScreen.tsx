@@ -26,7 +26,7 @@ const prefersReducedMotion = () => typeof window.matchMedia === "function" && wi
  * the player touches one.
  */
 export function TitleScreen({ seed, canResume, film, onPlay, onPlayAttackAndDefend, onResume, onGlossary }: TitleScreenProps) {
-  const ids = menuIds(canResume);
+  const ids = menuIds(canResume, new URLSearchParams(window.location.search).get("menu") === "all");
   const [row, setRow] = useState(0);
   const [touched, setTouched] = useState(false);
   const [flying, setFlying] = useState(false);
@@ -51,7 +51,7 @@ export function TitleScreen({ seed, canResume, film, onPlay, onPlayAttackAndDefe
   }
 
   const entries: Record<MenuId, { label: string; testId: string; run: () => void }> = {
-    classic: { label: "Classic", testId: "play-classic", run: film ? fly : onPlay },
+    classic: { label: "Start", testId: "play-classic", run: film ? fly : onPlay },
     "attack-and-defend": { label: "Attack and Defend", testId: "play-attack-defend", run: onPlayAttackAndDefend },
     glossary: { label: "Glossary", testId: "glossary-button", run: onGlossary },
     resume: { label: "Resume match", testId: "resume", run: onResume },

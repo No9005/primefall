@@ -114,7 +114,7 @@ interface Target {
 
 /** The size on screen of a small row of the title menu: the stage is fitted into the view by width or by height. */
 const titleMenuRow = (view: { width: number; height: number }): Size => {
-  const scale = Math.min(view.width, (view.height * STAGE.width) / STAGE.height) / STAGE.width;
+  const scale = view.height / STAGE.height;
   const slot = MENU_SLOTS[1];
   return { width: 450 * scale, height: slot.height * scale };
 };
@@ -135,7 +135,7 @@ const TARGETS: Target[] = [
   { name: "Floating card", tier: "primary", selector: ".floating-card", jsx: [{ file: "game-parts.tsx", includes: "floating-card" }] },
   // The padding of the end-screen buttons is 24 px on each side of the label.
   { name: "End screen button", tier: "primary", selector: ".end-screen button", size: () => ({ width: 48 }), jsx: [{ file: "EndScreen.tsx", includes: "<button" }] },
-  // The title screen is a picture of 960 x 444 design pixels fitted to the view; the small menu rows are 50 of them high (title-menu.ts).
+  // The title screen is a picture of 960 x 444 design pixels as high as the view; the small menu rows are 50 of them high (title-menu.ts).
   { name: "Title menu row", tier: "primary", size: (view) => titleMenuRow(view), jsx: [{ file: "TitleScreen.tsx", includes: "<button" }] },
   { name: "Hand fan", tier: { none: "the container of the Hand cards; a press in a gap of the fan grabs the card whose strip it is on, the cards are the targets" }, jsx: [{ file: "PlanningScreen.tsx", includes: "className={`hand${collapsed" }] },
   { name: "Pull backdrop", tier: { none: "the whole view behind the pulled card; a tap anywhere outside the card closes it" }, jsx: [{ file: "game-parts.tsx", includes: "pull-backdrop" }] },
