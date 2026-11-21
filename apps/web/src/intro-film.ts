@@ -17,7 +17,7 @@ export const FILM = {
     { file: "notstrom-2.png", frames: 35 },
   ],
   /** The colour of the last picture, which the flash fades out from into the next screen. */
-  flashColor: "#fadda7",
+  flashColor: "#ffd9a0",
 } as const;
 
 export const FILM_DURATION_MS = (FILM.frames / FILM.fps) * 1000;

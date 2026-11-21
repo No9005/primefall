@@ -2,8 +2,9 @@
 
 python3 docs/design/intro/tools/pack_sheets.py <frames-dir> <out-dir>
 
-All frames share one palette of 64 colours (median cut over the whole film), and the colours are chosen with a 4 x 4 ordered
-dither, so that a cross-fade or a glow turns into the regular pixel pattern of old games instead of a smear of new colours.
+Every scene of the film has a palette of its own (median cut over the frames of the scene), and its frames are mapped to the nearest
+colour with no dither: a dither pattern turned the dark, smooth parts of the film into grain. The palettes of the scenes follow one
+another in the one palette of the sheets (at most 256 colours); the picture stays flat with clear edges, like the title screen.
 The frames are laid out row by row in sheets of COLUMNS x ROWS frames, small enough for the texture limits of a phone.
 """
 import glob
@@ -14,27 +15,34 @@ import numpy as np
 from PIL import Image
 from scipy.spatial import cKDTree
 
-COLORS = 64
 COLUMNS, ROWS = 6, 10
-BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]], dtype=np.float32) / 16.0 - 0.5
-DITHER = 20.0  # colour levels of the dither pattern; the palette steps are about this far apart
+# The scenes by the number of their first frame (frame 0 is the light ring at the end of the hyperspace): the planet and the far
+# Notstrom, the astronaut's visor (the cross-fade into the hull belongs to the hull), the hull and the flash. The planet has the
+# most colours: its fine steps band as soon as there are too few.
+SCENES = [("planet and far Notstrom", 0, 112), ("visor", 31, 56), ("hull and flash", 68, 56)]
 
 frames_dir, out_dir = sys.argv[1], sys.argv[2]
 paths = sorted(glob.glob(f"{frames_dir}/f*.png"))
 frames = [np.asarray(Image.open(path).convert("RGB")) for path in paths]
 height, width, _ = frames[0].shape
 
-sample = np.concatenate([frame[::2, ::2] for frame in frames[::2]], axis=0)
-sample_image = Image.fromarray(sample)
-quantized = sample_image.quantize(colors=COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
-palette = np.array(quantized.getpalette()[: COLORS * 3], dtype=np.float32).reshape(-1, 3)
-tree = cKDTree(palette)
-pattern = np.tile(BAYER, (height // 4 + 1, width // 4 + 1))[:height, :width, None] * DITHER
-
-indexed = []
-for frame in frames:
-    _, nearest = tree.query((frame.astype(np.float32) + pattern).reshape(-1, 3))
-    indexed.append(nearest.reshape(height, width).astype(np.uint8))
+palette_parts = []
+indexed = [np.zeros((height, width), dtype=np.uint8)] * len(frames)
+offset = 0
+for number, (name, first, colors) in enumerate(SCENES):
+    last = SCENES[number + 1][1] if number + 1 < len(SCENES) else len(frames)
+    sample = np.concatenate([frame[::2, ::2] for frame in frames[first:last]], axis=0)
+    quantized = Image.fromarray(sample).quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+    part = np.array(quantized.getpalette()[: colors * 3], dtype=np.float32).reshape(-1, 3)
+    tree = cKDTree(part)
+    for index in range(first, last):
+        _, nearest = tree.query(frames[index].astype(np.float32).reshape(-1, 3))
+        indexed[index] = (nearest.reshape(height, width) + offset).astype(np.uint8)
+    palette_parts.append(part)
+    offset += len(part)
+    print(f"scene {name}: frames {first} to {last - 1}, {len(part)} colours", file=sys.stderr)
+palette = np.concatenate(palette_parts)
+assert len(palette) <= 256, "the scenes need more than 256 colours together"
 
 per_sheet = COLUMNS * ROWS
 sheets = []

@@ -9,8 +9,9 @@ The first 1.17 s are not in the sheets: the real title screen is pulled towards 
 it, drawn live by CSS (`title-screen.css`, class `flying`). The sheets start where the light ring at the end of the hyperspace
 begins; the live part hands over to them by calling `onPlay` (`WHIP_MS` in `intro-film.ts`).
 
-The film is pixel art: 95 pictures of 640 x 296 pixels at 12 a second, one palette of 64 colours, cross-fades and glows
-turned into a 4 x 4 ordered dither. The app plays them from two sprite sheets (`apps/web/public/assets/intro/notstrom-*.png`,
+The film is pixel art: 95 pictures of 640 x 296 pixels at 12 a second, a palette for every scene (112, 56 and 56 colours,
+no dither: a dither pattern made the dark, smooth parts grainy; the colours of the first version were also too few and lost the
+yellow and red). The app plays them from two sprite sheets (`apps/web/public/assets/intro/notstrom-*.png`,
 6 pictures per row) with `NotstromIntro.tsx` and `intro-film.ts`.
 
 ## Making the sheets again
