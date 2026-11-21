@@ -28,11 +28,17 @@ timed sections.
 
 The owner judged **B better**. A is kept as the second take. B is to be extended to 3 minutes (below).
 
-## Extension of B to 3 minutes (draft, not sent)
+## Extension of B to 3 minutes (sent 2026-11-21)
 
 File: `./plans/menu-theme-extend-to-3-min.json`. The method of the Notstrom piece (inpainting in stages, see the README one level
 up): the first chunk keeps the 75 s of B as an audio reference, four new chunks follow (30 + 30 + 30 + 15 s = 105 s). Stillness
 (the choir alone), Pressure (the ostinato and percussion return, the motif with a fifth above), Second Climax (the full choir
 in open fifths), Return (everything falls away to the sustained choir chord on D, as at the start, so that the piece loops). The
-experiment of the owner: in **Pressure** very low, distorted guitar power chords (drop D, palm-muted, on D and C, doubling the ostinato; no solos, no high guitar); `guitar` is taken out of the negative styles of that chunk only. The
-`song_id` is a placeholder: B has to be uploaded first (`POST /v1/music/upload`).
+experiment of the owner: in **Pressure** very low, distorted guitar power chords (drop D, palm-muted, on D and C, doubling the ostinato; no solos, no high guitar); `guitar` is taken out of the negative styles of that chunk only. B was uploaded first (`POST /v1/music/upload`, song id `Q3vqUJ4FaeG5UyUbPWWC_upload`), then the plan was sent with seed 424242; the result has the song id `46C9jMiQ1oxB947SvFsK` (`ids/menu-theme-extend.hdr`).
+
+**Result (`menu-theme-b-extended-180s.mp3`, 180 s; measured, not heard by the author of the file):**
+
+- The first 75 s have the same sound as B (spectral similarity 0.995 to 1.0 in every 5 s) but are about 20 % quieter; the waveform is not identical (the upload is not bit-exact).
+- The new parts are a little quieter in the Stillness (75 to 105 s; level about 0.18 against 0.24 to 0.27 in the climaxes), so the drop is only partly there. Pressure and the Second Climax are at about 0.27.
+- **The loop:** the start and the end have the same key (D, A) and a chroma similarity of 0.99. The end fades to near silence over the last 3 s (level 0.03, 0.01, 0.004), the start fades in (0.023 in the first second): a short crossfade closes the loop.
+- Whether the guitar power chords in Pressure are there and sound right cannot be seen in a measurement (the band above 500 Hz is only 10 % there, which speaks for a low, dark sound); the owner has to listen.
