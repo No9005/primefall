@@ -7,7 +7,7 @@ import { EndScreen } from "./EndScreen";
 import { SideScreen } from "./SideScreen";
 import { TitleScreen } from "./TitleScreen";
 import { IntroFlash, NotstromIntro } from "./NotstromIntro";
-import { shouldPlayIntro } from "./intro-film";
+import { introPlays } from "./intro-film";
 import { clearSavedMatch, loadSavedMatch, loadSavedPlayerHero, parsePlayerHero, saveMatch } from "./match-storage";
 import { HeroSelectScreen } from "./HeroSelectScreen";
 import { PlanningScreen } from "./PlanningScreen";
@@ -82,8 +82,7 @@ export function App() {
   // Before the match: the start screen, the Hero Select (Play) or the Glossary, which run from static data and never touch the host or the saved match.
   const [entry, setEntry] = useState<"start" | "intro" | "side" | "select" | "replay" | "glossary">("start");
   const [flash, setFlash] = useState(false);
-  // The side chosen in Attack and Defend; none in the classic mode.
-  const [role, setRole] = useState<Role>();
+  const [role, setRole] = useState<Role>(); // The side chosen in Attack and Defend; none in the classic mode.
   // A match saved by an earlier visit, offered for Resume on the start screen.
   const [saved, setSaved] = useState(loadSavedMatch);
   // The Player Hero: set by the start parameter (?hero=controller); Resume restores the saved match's one.
@@ -91,7 +90,6 @@ export function App() {
   const [view, setView] = useMatchView(host, started, playerHero);
   // A browser plays sound only after a tap: the first one arms it.
   useEffect(() => gameAudio.armUnlock(), []);
-
   /** Starts a match of the mode: the host of the start screen is replaced by one with the same seed in the mode of the role. */
   function beginMatch(side: Role | undefined) {
     setHost(createLocalHost(seed, side && modeForRole(side), aiPlanner));
@@ -108,6 +106,7 @@ export function App() {
     setStarted(false);
   }
 
+  const film = !startParameters.has("hero") && introPlays(startParameters);
   function renderStart() {
     if (entry === "intro") return <NotstromIntro onDone={(playedToEnd) => { setFlash(playedToEnd); setEntry("select"); }} />;
     if (entry === "glossary") return <GlossaryScreen onClose={() => setEntry("start")} />;
@@ -128,11 +127,11 @@ export function App() {
       <TitleScreen
         seed={seed}
         canResume={saved !== undefined}
+        film={film}
         onPlay={() => {
           setRole(undefined);
           if (startParameters.has("hero")) beginMatch(undefined);
-          else if (shouldPlayIntro({ reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches, automated: navigator.webdriver, forced: startParameters.get("intro") === "on" })) setEntry("intro");
-          else setEntry("select");
+          else setEntry(film ? "intro" : "select");
         }}
         onPlayAttackAndDefend={() => {
           const side = parseRole(startParameters.get("role"));

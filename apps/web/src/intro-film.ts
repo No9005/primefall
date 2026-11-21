@@ -1,16 +1,20 @@
 // The film of the tap on Classic (docs/design/intro): the title screen is pulled away, the ship leaves the hyperspace, the Notstrom
 // comes closer, an astronaut's visor mirrors it, the camera rides along the hull to the airlock, and a flash fills the picture.
 // It is drawn in pixels at 640 x 296 and shown at 12 pictures a second, packed in two sprite sheets (see the README there).
+// What comes before the sheets, the title screen pulled away and the tunnel of streaks, runs live on the title screen itself.
+
+/** How long the live part runs: until the light ring at the end of the hyperspace begins, where the first picture of the sheets is. */
+export const WHIP_MS = 1170;
 
 export const FILM = {
   fps: 12,
-  frames: 109,
+  frames: 95,
   width: 640,
   height: 296,
   columns: 6,
   sheets: [
     { file: "notstrom-1.png", frames: 60 },
-    { file: "notstrom-2.png", frames: 49 },
+    { file: "notstrom-2.png", frames: 35 },
   ],
   /** The colour of the last picture, which the flash fades out from into the next screen. */
   flashColor: "#fadda7",
@@ -45,5 +49,9 @@ export function shouldPlayIntro(options: { reducedMotion: boolean; automated: bo
   if (options.forced) return true;
   return !options.reducedMotion && !options.automated;
 }
+
+/** `shouldPlayIntro` for this browser and these start parameters. */
+export const introPlays = (parameters: URLSearchParams): boolean =>
+  shouldPlayIntro({ reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches, automated: navigator.webdriver, forced: parameters.get("intro") === "on" });
 
 export const filmSheetUrl = (sheet: number): string => `${import.meta.env.BASE_URL}assets/intro/${FILM.sheets[sheet]!.file}`;

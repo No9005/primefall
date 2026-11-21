@@ -5,7 +5,11 @@ ship leaves the hyperspace, the Notstrom comes closer, an astronaut's visor mirr
 airlock, and a flash fills the picture and fades out over the Hero Select. A tap skips it; a player who asked their device for
 less motion, and an automated browser, go straight to the Hero Select (`?intro=on` plays it anyway).
 
-The film is pixel art: 109 pictures of 640 x 296 pixels at 12 a second, one palette of 64 colours, cross-fades and glows
+The first 1.17 s are not in the sheets: the real title screen is pulled towards the planet and a tunnel of light streaks shows behind
+it, drawn live by CSS (`title-screen.css`, class `flying`). The sheets start where the light ring at the end of the hyperspace
+begins; the live part hands over to them by calling `onPlay` (`WHIP_MS` in `intro-film.ts`).
+
+The film is pixel art: 95 pictures of 640 x 296 pixels at 12 a second, one palette of 64 colours, cross-fades and glows
 turned into a 4 x 4 ordered dither. The app plays them from two sprite sheets (`apps/web/public/assets/intro/notstrom-*.png`,
 6 pictures per row) with `NotstromIntro.tsx` and `intro-film.ts`.
 

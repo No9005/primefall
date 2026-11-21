@@ -286,10 +286,9 @@ async function playIntro(browser: Browser): Promise<void> {
   const started = Date.now();
   const at = async (ms: number) => page.waitForTimeout(Math.max(0, ms - (Date.now() - started)));
   const shoot = (name: string) => page.screenshot({ path: path.join(directory, name) });
-  await page.getByTestId("intro").waitFor();
   const frames: [number, string][] = [
-    [200, "01-title-pulled-away.png"],
-    [1000, "02-hyperspace.png"],
+    [350, "01-title-pulled-away.png"],
+    [900, "02-hyperspace.png"],
     [2900, "03-notstrom-far.png"],
     [4900, "04-visor.png"],
     [6900, "05-hull.png"],
