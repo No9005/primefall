@@ -14,5 +14,5 @@ and drawn together; positions of the parts are in `title-menu.ts`.
 | `fireball.png`, `impact.png` | 150 x 90, 80 x 44 | a burning crystal and its burst on the atmosphere |
 | `menu-<entry>-off.png` / `-on.png` | 300 x 40 (Classic), 300 x 28 | a row of the menu: plain text, and the red pill of the highlighted row |
 
-The pictures were drawn outside the repository (the design canvas "Primefall Title and Flight"); to change one, replace the file
-and keep its size.
+They are made by `docs/design/title/tools/make_title.py` (see `docs/design/title/README.md`): change the script and run it, or replace
+a file by hand and keep its size.
