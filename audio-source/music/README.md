@@ -50,7 +50,7 @@ Made with ElevenLabs Music v2.5 (`music_v2_5`). Check that the licence of the pl
 
 | Path | What |
 |---|---|
-| `menu-theme/` | 2026-11-21: the main-menu theme for all maps (a deep bass male choir in D minor, 75 s, two takes A and B) with its prompt in `PROMPTS.md` and the unsent plan that extends B to 3 minutes (`plans/`) |
+| `menu-theme/` | 2026-11-21: the main-menu theme for all maps (a deep bass male choir in D minor, 75 s, two takes A and B) with its prompt in `PROMPTS.md` and the plans and results that extend B to 3 minutes (v1 and v2 in `plans/`; the old Pressure and Second Climax chunks are kept as audio) |
 | `pieces/notstrom-stage-3-whole-piece.mp3` | the whole piece (3:53): stage 1 + 2 + 3, as the API returned it (kept parts + new parts) |
 | `pieces/notstrom-stages-joined-locally.mp3` | the same, joined by hand with 150 ms crossfades (stage 1 pure to 1:40, stage 2 to 3:00, stage 3 to the end) |
 | `pieces/refrain-test-the-good-feeling.mp3` | the first refrain test (26.7 s): the one the owner liked best for the feeling. Used as the sound reference |
