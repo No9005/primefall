@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>The way from the title screen to the Notstrom (frame source)</title>
+<style>
+html,body{margin:0;background:#04060f;overflow:hidden}
+body{margin:0;background:#04060f}
+.t-layer{position:absolute;left:0;top:0;width:960px;height:444px;image-rendering:pixelated;display:block;pointer-events:none}
+.t-twinkle{animation:t-blink 2.4s steps(2,end) infinite alternate}
+@keyframes t-blink{from{opacity:1}to{opacity:0.25}}
+.t-haze{mix-blend-mode:screen;animation:t-pulse 2s ease-in-out infinite alternate}
+@keyframes t-pulse{from{opacity:0.55}to{opacity:1}}
+.t-logo{animation:t-bob 3s steps(6,end) infinite alternate}
+@keyframes t-bob{from{transform:translateY(0)}to{transform:translateY(-3px)}}
+.t-fb{position:absolute;width:225px;height:135px;image-rendering:pixelated;pointer-events:none;opacity:0;animation-name:t-fall;animation-timing-function:linear;animation-iteration-count:infinite}
+.t-hit{position:absolute;width:120px;height:66px;image-rendering:pixelated;pointer-events:none;opacity:0;animation-name:t-burst;animation-timing-function:linear;animation-iteration-count:infinite}
+@keyframes t-fall{0%{opacity:0;transform:translate(300px,-165px)}4%{opacity:1}12%{opacity:1;transform:translate(0,0)}13%{opacity:0;transform:translate(0,0)}100%{opacity:0}}
+@keyframes t-burst{0%,11%{opacity:0;transform:scale(0.3)}12%{opacity:1;transform:scale(0.5)}18%{opacity:0.8;transform:scale(1.3)}24%{opacity:0;transform:scale(1.6)}100%{opacity:0}}
+.t-streak{position:absolute;left:0;width:960px;height:6px;background:linear-gradient(90deg,rgba(255,70,40,0) 0%,rgba(255,70,40,0.9) 50%,rgba(255,70,40,0) 100%);transition:top 180ms steps(4,end);pointer-events:none}
+.t-item{position:absolute;left:255px;width:450px;padding:0;margin:0;border:0;background:none;cursor:pointer}
+.t-item img{position:absolute;left:0;top:0;width:450px;height:100%;image-rendering:pixelated}
+.t-item .on{opacity:0}
+.t-item.sel .on{opacity:1;animation:t-pop 180ms steps(3,end)}
+.t-item.sel .off{opacity:0}
+@keyframes t-pop{0%{transform:scale(1.22)}100%{transform:scale(1)}}
+.t-item:focus-visible{outline:2px solid #fff}
+.l{position:absolute;image-rendering:pixelated;display:block;pointer-events:none}
+.bg{left:0;top:0;width:960px;height:444px}
+.s1{left:-480px;top:-222px;width:1920px;height:888px;animation:s1 7.94s cubic-bezier(.2,.5,.4,1) forwards}
+.s2{left:-480px;top:-222px;width:1920px;height:888px;animation:s2 7.94s cubic-bezier(.2,.5,.4,1) forwards}
+.s3{left:-480px;top:-222px;width:1920px;height:888px;animation:s3 7.94s cubic-bezier(.2,.5,.4,1) forwards}
+.planet{left:-480px;top:-222px;width:1920px;height:888px;mix-blend-mode:screen;animation:planet 7.94s linear forwards}
+.far{left:520px;top:70px;width:570px;height:300px;animation:far-o 7.94s linear forwards,far-t 7.94s cubic-bezier(.2,.5,.4,1) forwards;opacity:0}
+.hull{left:0;top:0;width:1920px;height:444px;transform-origin:1305px 225px;animation:hull 7.94s linear forwards;opacity:0}
+.flash{position:absolute;left:0;top:0;width:960px;height:444px;background:#ffd9a0;animation:flash 7.94s linear forwards;opacity:0;pointer-events:none}
+.p2{position:absolute;left:0;top:0;width:960px;height:444px;opacity:0;overflow:hidden;pointer-events:none;animation:p2in 7.94s linear forwards}
+@keyframes s1{from{transform:scale(1)}to{transform:scale(1.3)}}
+@keyframes s2{from{transform:scale(1)}to{transform:scale(2.2)}}
+@keyframes s3{0%{transform:scale(1);opacity:1}41.35%{opacity:1}49.12%{opacity:0}100%{transform:scale(3.6);opacity:0}}
+@keyframes planet{0%{transform:translateY(0) scale(1);opacity:1}41.35%{opacity:1}49.12%{transform:translateY(300px) scale(1.35);opacity:0}100%{transform:translateY(300px) scale(1.35);opacity:0}}
+@keyframes far-o{0%{opacity:0}13.06%{opacity:1}34.82%{opacity:1}45.71%{opacity:0}100%{opacity:0}}
+@keyframes far-t{0%{transform:translate(0,0) scale(0.35)}45.71%{transform:translate(-300px,20px) scale(1.15)}100%{transform:translate(-300px,20px) scale(1.15)}}
+@keyframes p2in{0%{opacity:0}30.47%{opacity:0}41.35%{opacity:1}70.14%{opacity:1}78.32%{opacity:0}100%{opacity:0}}
+@keyframes hull{0%{opacity:0;transform:translate(0,0) scale(1)}70.14%{opacity:0;transform:translate(0,0) scale(1)}78.32%{opacity:1;transform:translate(-310px,0) scale(1)}91.90%{opacity:1;transform:translate(-825px,0) scale(1);animation-timing-function:cubic-bezier(.5,0,1,1)}97.32%{opacity:1;transform:translate(-825px,0) scale(2.6)}100%{opacity:1;transform:translate(-825px,0) scale(2.6)}}
+@keyframes flash{0%{opacity:0}94.60%{opacity:0}96.64%{opacity:1}100%{opacity:0}}
+.p2bg{position:absolute;left:0;top:0;width:960px;height:444px;image-rendering:pixelated;display:block}
+.p2s1{position:absolute;left:-480px;top:-222px;width:1920px;height:888px;image-rendering:pixelated;animation:twinkleA 2.4s steps(2,end) infinite alternate}
+.p2s2{position:absolute;left:-480px;top:-222px;width:1920px;height:888px;image-rendering:pixelated;animation:twinkleB 3.1s steps(2,end) infinite alternate;animation-delay:-1.3s}
+@keyframes twinkleA{from{opacity:1}to{opacity:0.22}}
+@keyframes twinkleB{from{opacity:0.3}to{opacity:1}}
+.ghosts{position:absolute;left:0;top:0;width:960px;height:444px}
+.ghost{position:absolute;left:0;top:0;width:480px;height:444px;image-rendering:pixelated;display:block}
+.gwrap{position:absolute;left:0;top:0;width:960px;height:444px}
+.gwA{left:158px;transform-origin:172px 294px;animation:tumbleA 7.5s ease-in-out infinite alternate}
+@keyframes tumbleA{from{transform:translate(0,0) rotate(-5deg)}to{transform:translate(-6px,-9px) rotate(5deg)}}
+.grefl{position:absolute;image-rendering:pixelated;background-repeat:no-repeat;animation-timing-function:steps(31,end);animation-fill-mode:both}
+.grA{left:112.5px;top:243px;width:90px;height:99px;opacity:0.14;background-image:url(source/shadow-reflection.png);background-size:4320px 99px;animation-name:grA;animation-duration:3.8s;animation-delay:3.72s}
+@keyframes grA{from{background-position:-720px 0}to{background-position:-3510px 0}}
+.afloat{position:absolute;left:0;top:0;width:960px;height:444px;transform-origin:540px 225px;animation:afloat 4.5s ease-in-out infinite alternate}
+@keyframes afloat{from{transform:translate(192px,0) scale(1.2) rotate(-0.4deg)}to{transform:translate(196px,-5px) scale(1.2) rotate(0.4deg)}}
+.alayer{position:absolute;left:0;top:0;width:960px;height:444px;image-rendering:pixelated;display:block}
+.reflfx{position:absolute;left:267px;top:24px;width:480px;height:366px;image-rendering:pixelated;background:url(source/visor-reflection.png) -3840px 0 / 23040px 366px no-repeat;animation:reflfx 3.8s steps(31,end) 3.72s both}
+@keyframes reflfx{from{background-position:-3840px 0}to{background-position:-18720px 0}}
+.scan{position:absolute;left:0;top:0;width:960px;height:444px;background:repeating-linear-gradient(0deg,rgba(0,0,0,0.2) 0px,rgba(0,0,0,0.2) 1px,rgba(0,0,0,0) 1px,rgba(0,0,0,0) 3px);pointer-events:none}
+.pane{position:absolute;left:0;top:0;width:960px;height:444px;overflow:hidden;background:#04060f}
+.pane.fly{animation:paneout 0.6s step-end forwards;pointer-events:none}
+.fly .t-logo,.fly img[src*="9ee7e12a"],.fly .t-item,.fly .t-streak{transform-origin:86% 45%;animation:nearz 0.6s step-end forwards}
+.fly .t-twinkle,.fly .t-haze,.fly .t-fb,.fly .t-hit{transform-origin:86% 45%;animation:midz 0.6s step-end forwards}
+.fly img[src*="61b4937e"]{transform-origin:86% 45%;animation:farz 0.6s step-end forwards}
+.whipfx{position:absolute;left:0;top:0;width:960px;height:444px;image-rendering:pixelated;pointer-events:none;opacity:0;mix-blend-mode:screen;transform-origin:86% 45%}
+.whipfx.fly{animation:whipfx 0.6s step-end forwards}
+@keyframes nearz{0.0%{transform:scale(1)}12.5%{transform:scale(1.12)}25.0%{transform:scale(1.38)}37.5%{transform:scale(1.8)}50.0%{transform:scale(2.5)}62.5%{transform:scale(3.7)}75.0%{transform:scale(5.8)}87.5%{transform:scale(9.5)}100.0%{transform:scale(16)}}
+@keyframes midz{0.0%{transform:scale(1)}12.5%{transform:scale(1.05)}25.0%{transform:scale(1.14)}37.5%{transform:scale(1.3)}50.0%{transform:scale(1.5)}62.5%{transform:scale(1.8)}75.0%{transform:scale(2.3)}87.5%{transform:scale(3.0)}100.0%{transform:scale(4.0)}}
+@keyframes farz{0.0%{transform:scale(1)}12.5%{transform:scale(1.02)}25.0%{transform:scale(1.05)}37.5%{transform:scale(1.1)}50.0%{transform:scale(1.17)}62.5%{transform:scale(1.26)}75.0%{transform:scale(1.38)}87.5%{transform:scale(1.55)}100.0%{transform:scale(1.8)}}
+@keyframes paneout{0.0%{opacity:1}12.5%{opacity:1}25.0%{opacity:1}37.5%{opacity:1}50.0%{opacity:1}62.5%{opacity:1}75.0%{opacity:1}87.5%{opacity:0.6}100.0%{opacity:0}}
+@keyframes whipfx{0.0%{opacity:0;transform:scale(0.5)}12.5%{opacity:0.4;transform:scale(0.6)}25.0%{opacity:0.9;transform:scale(0.8)}37.5%{opacity:1;transform:scale(1.0)}50.0%{opacity:1;transform:scale(1.3)}62.5%{opacity:1;transform:scale(1.7)}75.0%{opacity:1;transform:scale(2.3)}87.5%{opacity:0.6;transform:scale(3.0)}100.0%{opacity:0;transform:scale(4.0)}}
+.hsw{position:absolute;left:0;top:0;width:960px;height:444px;overflow:hidden;opacity:0;pointer-events:none;background:radial-gradient(circle at 86% 45%,rgba(120,130,255,0.55) 0%,rgba(50,30,130,0.35) 22%,rgba(6,6,20,0.0) 60%),#04060f;animation:hswin 1.4s step-end forwards}
+@keyframes hswin{0%{opacity:0}22%{opacity:1}88%{opacity:0}100%{opacity:0}}
+.hss{position:absolute;left:0;top:0;width:960px;height:444px;image-rendering:pixelated;transform-origin:86% 45%;mix-blend-mode:screen}
+.hssA{animation:hsloop 0.36s steps(6,end) infinite}
+.hssB{animation:hsloop 0.36s steps(6,end) infinite;animation-delay:-0.18s;transform:rotate(7deg) scale(1.2)}
+@keyframes hsloop{0%{transform:scale(0.5);opacity:0}15%{opacity:1}100%{transform:scale(3.4);opacity:0.2}}
+.hsflash{position:absolute;left:0;top:0;width:960px;height:444px;pointer-events:none;background:#e8eeff;opacity:0;animation:hsflash 1.5s step-end forwards}
+@keyframes hsflash{0%{opacity:0}78%{opacity:1}81%{opacity:0.6}85%{opacity:0.25}90%{opacity:0}100%{opacity:0}}
+.hsring{position:absolute;left:681px;top:140px;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:6px solid #cfe0ff;box-shadow:0 0 24px #7f9cff;opacity:0;pointer-events:none;animation:hsring 1.5s step-end forwards}
+@keyframes hsring{0%{opacity:0;transform:scale(0.1)}78%{opacity:0.95;transform:scale(0.1)}83%{opacity:0.85;transform:scale(0.8)}88%{opacity:0.6;transform:scale(2)}93%{opacity:0.3;transform:scale(4)}97%{opacity:0;transform:scale(6)}100%{opacity:0;transform:scale(6)}}
+.hshake{animation:hsshake 1.5s step-end forwards}
+@keyframes hsshake{0%{transform:translate(0,0)}78%{transform:translate(-5px,3px)}81%{transform:translate(4px,-3px)}84%{transform:translate(-3px,2px)}87%{transform:translate(2px,-1px)}90%{transform:translate(0,0)}100%{transform:translate(0,0)}}
+.flow-stage{position:relative;width:960px;height:444px;overflow:hidden;background:#04060f}
+.s1,.s2,.s3,.planet,.far,.p2,.hull,.flash,.cap,.hg{animation-delay:1.3s}
+.t-item img{position:absolute;left:0;width:450px}
+.film{position:absolute;left:0;top:0;transform:scale(0.666667);transform-origin:0 0}
+</style></head><body>
+<!-- The film of the tap on Classic: the title screen is pulled away, the Hero leaves the hyperspace, the Notstrom comes closer, an
+astronaut's visor mirrors it, the camera rides along the hull to the airlock, and the flash fills the picture. Every animation is
+seeked by tools/render_frames.mjs, so the film is a pure function of the time. 960 x 444 design pixels, drawn at 640 x 296. -->
+<div class="film"><div class="flow-stage">
+<div class="pane hshake">
+<img class="l bg" src="source/space.png" alt="">
+<img class="l s1" src="source/stars-a.png" alt="">
+<img class="l s2" src="source/stars-b.png" alt="">
+<img class="l planet" src="source/planet.png" alt="">
+<img class="l far" src="source/notstrom-far.png" alt="">
+<div class="p2"><img class="p2bg" src="source/space.png" alt=""><img class="p2s1" src="source/stars-a.png" alt=""><img class="p2s2" src="source/stars-b.png" alt="">
+<div class="ghosts"><div class="gwrap gwA"><img class="ghost" src="source/shadow-astronaut.png" alt=""><div class="grefl grA"></div></div></div>
+<div class="afloat"><img class="alayer" src="source/helmet.png" alt=""><div class="reflfx"></div><img class="alayer" src="source/helmet-gloss.png" alt=""></div>
+<div class="scan"></div></div>
+<img class="l s3" src="source/stars-c.png" alt="">
+<img class="l hull" src="source/hull.png" alt="">
+<div class="hsw"><img class="hss hssA" src="source/hyperspace-streaks.png" alt=""><img class="hss hssB" src="source/hyperspace-streaks.png" alt=""></div>
+<div class="hsring"></div>
+<div class="hsflash"></div>
+<div class="flash"></div>
+</div>
+<div class="pane fly">
+<img class="t-layer" src="../../../apps/web/public/assets/title/background.png" alt="">
+<img class="t-layer t-twinkle" src="../../../apps/web/public/assets/title/stars.png" alt="">
+<img class="t-fb" style="left:192px;top:333px;animation-duration:9s;animation-delay:1s" src="../../../apps/web/public/assets/title/fireball.png" alt=""><img class="t-hit" style="left:165px;top:395px;animation-duration:9s;animation-delay:1s" src="../../../apps/web/public/assets/title/impact.png" alt="">
+<img class="t-fb" style="left:312px;top:306px;animation-duration:12s;animation-delay:4s" src="../../../apps/web/public/assets/title/fireball.png" alt=""><img class="t-hit" style="left:285px;top:368px;animation-duration:12s;animation-delay:4s" src="../../../apps/web/public/assets/title/impact.png" alt="">
+<img class="t-fb" style="left:462px;top:297px;animation-duration:7.5s;animation-delay:2.5s" src="../../../apps/web/public/assets/title/fireball.png" alt=""><img class="t-hit" style="left:435px;top:359px;animation-duration:7.5s;animation-delay:2.5s" src="../../../apps/web/public/assets/title/impact.png" alt="">
+<img class="t-fb" style="left:597px;top:309px;animation-duration:10s;animation-delay:6.5s" src="../../../apps/web/public/assets/title/fireball.png" alt=""><img class="t-hit" style="left:570px;top:371px;animation-duration:10s;animation-delay:6.5s" src="../../../apps/web/public/assets/title/impact.png" alt="">
+<img class="t-fb" style="left:717px;top:337px;animation-duration:14s;animation-delay:0.5s" src="../../../apps/web/public/assets/title/fireball.png" alt=""><img class="t-hit" style="left:690px;top:399px;animation-duration:14s;animation-delay:0.5s" src="../../../apps/web/public/assets/title/impact.png" alt="">
+<img class="t-layer t-haze" src="../../../apps/web/public/assets/title/haze.png" alt="">
+<img class="t-layer t-logo" src="../../../apps/web/public/assets/title/logo.png" alt="">
+<img class="t-layer" src="../../../apps/web/public/assets/title/tagline.png" alt="">
+<div class="t-streak" style="top:234px"></div>
+<div class="t-item sel" style="top:207px;height:60px"><img class="off" style="top:0px;height:60px" src="../../../apps/web/public/assets/title/menu-classic-off.png" alt=""><img class="on" style="top:0px;height:60px" src="../../../apps/web/public/assets/title/menu-classic-on.png" alt=""></div>
+<div class="t-item" style="top:268px;height:50px"><img class="off" style="top:4px;height:42px" src="../../../apps/web/public/assets/title/menu-attack-and-defend-off.png" alt=""><img class="on" style="top:4px;height:42px" src="../../../apps/web/public/assets/title/menu-attack-and-defend-on.png" alt=""></div>
+<div class="t-item" style="top:318px;height:50px"><img class="off" style="top:4px;height:42px" src="../../../apps/web/public/assets/title/menu-glossary-off.png" alt=""><img class="on" style="top:4px;height:42px" src="../../../apps/web/public/assets/title/menu-glossary-on.png" alt=""></div>
+</div>
+<img class="whipfx fly" src="source/hyperspace-streaks.png" alt="">
+</div></div>
+</body></html>
