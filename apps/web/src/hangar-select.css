@@ -1,0 +1,56 @@
+/* The Hero Select in the hangar (HeroSelectScreen.tsx, hangar-select.ts). A picture of 960 x 444 design pixels, fitted to the window and
+   centred; the floor and the dark of the ceiling fill what is left. The picture of the hangar is drawn 104 design px higher than the
+   frame (.hg-shift) and continues below it. */
+.hangar-select { background: #080a12; }
+.hg-stage { position: absolute; left: 50%; top: 50%; width: 960px; height: 444px; overflow: hidden; background: #080a12; }
+.hg-shift { position: absolute; left: 0; top: -104px; width: 960px; height: 549px; }
+.hg-layer { position: absolute; left: 0; top: 0; width: 960px; height: 444px; image-rendering: pixelated; display: block; pointer-events: none; }
+.hg-floor, .hg-shade, .hg-glow { height: 549px; }
+.hg-glow { mix-blend-mode: screen; }
+
+/* The open bay door: a burning crystal falls past it now and then; amber guide lights and red beacons blink. */
+.hg-door { position: absolute; left: 384px; top: 103.5px; width: 192px; height: 172.5px; overflow: hidden; pointer-events: none; }
+.hg-fire { position: absolute; left: 0; top: 0; width: 30px; height: 30px; image-rendering: pixelated; opacity: 0; animation: hg-fall 11s steps(10, end) infinite; animation-delay: 3s; }
+@keyframes hg-fall { 0% { transform: translate(160px, -30px); opacity: 1; } 8% { transform: translate(30px, 110px); opacity: 1; } 8.5% { opacity: 0; } 100% { transform: translate(30px, 110px); opacity: 0; } }
+.hg-lights { mix-blend-mode: screen; }
+.hg-lights-a { animation: hg-blink 1.6s steps(1, end) infinite; }
+.hg-lights-b { animation: hg-blink 2.1s steps(1, end) infinite; animation-delay: -0.7s; }
+.hg-lights-c { animation: hg-blink 2.9s steps(1, end) infinite; animation-delay: -1.3s; }
+.hg-lights-d { animation: hg-blink 1.6s steps(1, end) infinite; animation-delay: -0.4s; }
+.hg-lights-flicker { animation: hg-flicker 5.3s steps(1, end) infinite; }
+@keyframes hg-blink { 0% { opacity: 1; } 50% { opacity: 0.08; } }
+@keyframes hg-flicker { 0% { opacity: 1; } 7% { opacity: 0.5; } 9% { opacity: 1; } 40% { opacity: 1; } 43% { opacity: 0.65; } 45% { opacity: 1; } 71% { opacity: 1; } 72% { opacity: 0.4; } 74% { opacity: 1; } 100% { opacity: 1; } }
+.hg-guide { position: absolute; left: 90px; top: 168.75px; width: 78.75px; height: 26.25px; background: url("/assets/hangar/guide.png") 0 0 / 472.5px 26.25px no-repeat; image-rendering: pixelated; mix-blend-mode: screen; animation: hg-guide 1.2s steps(6, end) infinite; pointer-events: none; }
+@keyframes hg-guide { from { background-position: 0 0; } to { background-position: -472.5px 0; } }
+.hg-mote { position: absolute; width: 2px; height: 2px; background: #9cc8ff; opacity: 0; animation: hg-mote 8s steps(12, end) infinite; pointer-events: none; }
+@keyframes hg-mote { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 0.8; } 85% { opacity: 0.5; } 100% { transform: translateY(-46px); opacity: 0; } }
+.hg-spark { position: absolute; width: 84px; height: 84px; background: url("/assets/hangar/spark.png") 0 0 / 504px 84px no-repeat; image-rendering: pixelated; pointer-events: none; opacity: 0; animation-timing-function: steps(1, end); animation-iteration-count: infinite; animation-name: hg-spark; }
+.hg-spark-a { left: 126px; top: 319px; animation-duration: 3.7s; animation-delay: 0.6s; }
+.hg-spark-b { left: 111px; top: 209px; animation-duration: 5.3s; animation-delay: 2.1s; }
+@keyframes hg-spark { 0% { background-position: 0 0; opacity: 1; } 2.4% { background-position: -84px 0; opacity: 1; } 4.8% { background-position: -168px 0; opacity: 1; } 7.2% { background-position: -252px 0; opacity: 1; } 9.6% { background-position: -336px 0; opacity: 1; } 12% { background-position: -420px 0; opacity: 1; } 14% { opacity: 0; } 100% { opacity: 0; } }
+.hg-shade { animation: hg-brown 9.4s steps(1, end) infinite; }
+@keyframes hg-brown { 0% { opacity: 1; } 61% { opacity: 1; } 61.5% { opacity: 0.55; } 63% { opacity: 1; } 64% { opacity: 0.7; } 65% { opacity: 1; } 100% { opacity: 1; } }
+
+/* The Heroes: a strip of frames per clip, played in steps; the plates with their names stand on the floor. */
+.hg-plate { position: absolute; image-rendering: pixelated; pointer-events: none; }
+.hg-sprite { position: absolute; image-rendering: pixelated; pointer-events: none; }
+@keyframes hg-strip { from { background-position: 0 0; } to { background-position: calc(var(--frames) * var(--frame-width) * -1) 0; } }
+.hg-hit { position: absolute; padding: 0; border: 0; background: none; cursor: pointer; }
+.hg-hit:focus-visible { outline: 2px solid #fff; }
+
+/* The mode of the screen (Classic, Attack, Defend) stays as a small chip at the top right; BACK and NEXT are the pictures of the menu style: light text, a red pill when pointed at, NEXT red as soon as a Hero is chosen. */
+.hg-chip { z-index: 5; }
+.hg-bar { position: absolute; left: 0; top: 0; width: 960px; height: 444px; pointer-events: none; }
+.hg-nav { position: absolute; bottom: 14px; width: 150px; height: 45px; padding: 0; border: 0; background-color: transparent; background-size: 100% 100%; background-repeat: no-repeat; image-rendering: pixelated; cursor: pointer; pointer-events: auto; }
+.hg-back { left: 20px; background-image: url("/assets/hangar/back.png"); }
+.hg-next { right: 20px; background-image: url("/assets/hangar/next.png"); }
+.hg-back:hover, .hg-back:active, .hg-back:focus-visible { background-image: url("/assets/hangar/back-on.png"); outline: none; }
+.hg-next:hover, .hg-next:active, .hg-next:focus-visible, .hg-next.ready { background-image: url("/assets/hangar/next-on.png"); outline: none; }
+.hg-next:disabled { cursor: default; }
+.hg-next:disabled:hover { background-image: url("/assets/hangar/next.png"); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hg-fire, .hg-lights, .hg-guide, .hg-mote, .hg-spark, .hg-shade { animation: none; }
+  .hg-spark, .hg-mote { display: none; }
+  .hg-sprite { animation: none !important; }
+}

@@ -4,5 +4,5 @@ import type { Page } from "@playwright/test";
 export async function startMatch(page: Page): Promise<void> {
   await page.getByTestId("play-classic").click();
   await page.getByTestId("hero-bruiser").click();
-  await page.getByRole("button", { name: "START" }).click();
+  await page.getByRole("button", { name: "NEXT" }).click();
 }

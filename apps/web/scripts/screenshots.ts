@@ -79,7 +79,7 @@ async function queueMove(page: Page): Promise<void> {
 /** On the Hero Select: taps a Hero and Start. */
 async function chooseHeroAndStart(page: Page, hero: HeroClass): Promise<void> {
   await page.getByTestId(`hero-${hero}`).click();
-  await page.getByRole("button", { name: "START" }).click();
+  await page.getByRole("button", { name: "NEXT" }).click();
 }
 
 /** Screens that are not a match scenario, played by clicking through the app. Their frames are in the order they are taken. */
@@ -93,8 +93,8 @@ export const SCREEN_SCENARIOS: Record<string, { description: string; shots: read
     shots: ["01-title-pulled-away.png", "02-hyperspace.png", "03-notstrom-far.png", "04-visor.png", "05-hull.png", "06-airlock.png", "07-hero-select.png"],
   },
   "hero-select": {
-    description: "The Hero Select: nothing selected, each Hero ready (Bruiser mid-shots, Controller with the drone out, Assassin Hidden), the card list",
-    shots: ["01-idle.png", "02-bruiser-ready.png", "03-controller-ready.png", "04-assassin-ready.png", "05-cards.png", "06-bio.png"],
+    description: "The Hero Select in the hangar: nothing selected, each Hero selected in turn (Max, Tilly, Kit), the selection taken back",
+    shots: ["01-idle.png", "02-max-selected.png", "03-tilly-selected.png", "04-kit-selected.png", "05-deselected.png"],
   },
   glossary: {
     description: "The Glossary from the start screen: the Heroes group (two frames), the Numbers, Board and HUD groups, scrolled",
@@ -318,26 +318,21 @@ async function playHeroSelect(browser: Browser): Promise<void> {
   const shoot = (name: string) => page.screenshot({ path: path.join(directory, name) });
   await page.goto(URL);
   await page.getByTestId("play-classic").click();
-  await page.getByTestId("hero-canvas").and(page.locator("[data-ready]")).waitFor();
-  await page.waitForTimeout(800);
+  await page.getByTestId("hero-select").waitFor();
+  await page.waitForTimeout(1200);
   await shoot("01-idle.png");
   await page.getByTestId("hero-bruiser").click();
-  await page.waitForTimeout(2100); // the second of the three shots (at 22 %, 34 % and 46 % of 6 s; the frame is taken a little late)
-  await shoot("02-bruiser-ready.png");
+  await page.waitForTimeout(3300); // the lift-and-throw, then the ready pose
+  await shoot("02-max-selected.png");
   await page.getByTestId("hero-controller").click();
-  await page.waitForTimeout(3300); // the drone is out and hovers
-  await shoot("03-controller-ready.png");
+  await page.waitForTimeout(3300); // Max goes back to idle, Tilly is ready with the drone
+  await shoot("03-tilly-selected.png");
   await page.getByTestId("hero-assassin").click();
-  await page.waitForTimeout(3300); // invisible, the label floats up
-  await shoot("04-assassin-ready.png");
-  await page.getByRole("button", { name: "CARDS" }).click();
-  await page.getByTestId("card-list").waitFor();
-  await shoot("05-cards.png");
-  await page.getByRole("button", { name: "Close" }).click();
-  await page.getByTestId("hero-controller").click();
-  await page.getByRole("button", { name: "BIO" }).click();
-  await page.getByTestId("bio-sheet").waitFor();
-  await shoot("06-bio.png");
+  await page.waitForTimeout(3300); // Kit is Hidden on the floor, with his ring
+  await shoot("04-kit-selected.png");
+  await page.getByTestId("hero-assassin").click();
+  await page.waitForTimeout(1500); // the selection is taken back
+  await shoot("05-deselected.png");
   if (errors.length > 0) throw new Error(`hero-select: ${errors.join("; ")}`);
   checkWritten(directory, SCREEN_SCENARIOS["hero-select"]!.shots);
 }
