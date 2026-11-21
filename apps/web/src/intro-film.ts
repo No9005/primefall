@@ -21,11 +21,12 @@ export const FILM = {
 } as const;
 
 /**
- * The Hero Select loop starts under the end of the sound of the film: the sound is 8.9 s long from the tap, fades out in its last 0.4 s,
- * and the loop begins 0.2 s before that and fades in over a second, so the two overlap softly (docs: `audio-source/music/intro-cue/`).
+ * The sound of the film is 8.9 s long from the tap on Start and fades out in its last 0.4 s. The Hero Select loop starts 8.7 s after
+ * the tap, 0.2 s before the sound is out, and fades in over a second, so the two overlap softly. The audio clock times it (`startFilmCue`
+ * in `audio.ts`), not the pictures: they start after the live part and the decoding, which takes a different time on every device.
+ * Docs: `audio-source/music/intro-cue/`.
  */
-export const LOOP_STARTS_AT_MS = (8.9 - 0.2) * 1000 - WHIP_MS;
-export const LOOP_FADE_IN_S = 1;
+export const FILM_SOUND = { loopStartsAtSeconds: 8.7, loopFadeInSeconds: 1 } as const;
 
 export const FILM_DURATION_MS = (FILM.frames / FILM.fps) * 1000;
 

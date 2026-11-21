@@ -2,6 +2,7 @@ import { findTiles, type GridPosition, type HeroClass, REACTOR_DECK, TileKind } 
 import { AUDIO_FOLDER, type AudioManifest, assetUrl, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl, MUSIC_MANIFEST_URL, type MusicManifest, musicFileUrl, type UiSound } from "./audio-manifest";
 import { distanceGain, MUSIC_DUCK, nextAmbienceGapMs, pickVariant, Priority, SfxLimiter, VoiceDirector } from "./audio-mix";
 import { planMoment, type PlanContext, type SoundRequest, type Source } from "./audio-cues";
+import { FILM_SOUND } from "./intro-film";
 import { type MusicLevel, nextBarTime } from "./music";
 
 // The player of the game sound: it loads the Heroes' sounds, starts the sounds the cues ask for through the rules of the
@@ -60,6 +61,8 @@ const MENU_FADE_IN_S = 3;
 const MENU_FADE_OUT_S = 1.5;
 const INTRO_FADE_IN_S = 0.5;
 const INTRO_FADE_OUT_S = 0.4;
+/** A stop of the intro waits this long, in case the screen asks for the intro again at once. */
+const INTRO_STOP_GRACE_MS = 80;
 /** The music plays by default; `?music=off` in the address turns it off (`?music=on` is still accepted and changes nothing). */
 const MUSIC_ON = typeof window === "undefined" || new URLSearchParams(window.location.search).get("music") !== "off";
 
@@ -108,7 +111,9 @@ export class GameAudio {
   private musicLoading: Promise<void> | undefined;
   private music: Music | undefined;
   private musicBus: GainNode | undefined;
-  /** The sound of the film after a tap on Start: it plays once. */
+  /** The sound of the film after a tap on Start: it plays once. The Hero Select loop is scheduled under its end (`intro`, from `introAt`). */
+  private introAt: number | undefined;
+  private introStopTimer: ReturnType<typeof setTimeout> | undefined;
   private filmCue: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
   /** The main-menu theme of the start screen: a loop that runs until the player leaves the screen. */
   private menu: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
@@ -392,6 +397,23 @@ export class GameAudio {
     source.connect(gain).connect(this.musicBus);
     source.start();
     this.filmCue = { source, gain };
+    this.scheduleLoopUnderFilm(context, manifest.intro, this.buffers.get("music:intro"));
+  }
+
+  /** The Hero Select loop starts under the end of the sound of the film, timed on the audio clock (`FILM_SOUND`). */
+  private scheduleLoopUnderFilm(context: AudioContext, track: { gain: number } | undefined, buffer: AudioBuffer | undefined): void {
+    if (this.intro || !track || !buffer || !this.musicBus) return;
+    const at = context.currentTime + FILM_SOUND.loopStartsAtSeconds;
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0, at);
+    gain.gain.linearRampToValueAtTime(track.gain, at + FILM_SOUND.loopFadeInSeconds);
+    source.connect(gain).connect(this.musicBus);
+    source.start(at);
+    this.intro = { source, gain };
+    this.introAt = at;
   }
 
   /** Fades the sound of the film out (the player skipped the film). */
@@ -400,6 +422,11 @@ export class GameAudio {
     const context = this.context;
     this.filmCue = undefined;
     if (!cue || !context) return;
+    // A loop that has not begun yet is cancelled: the Hero Select starts its own.
+    if (this.intro && this.introAt !== undefined && context.currentTime < this.introAt) {
+      this.intro.source.stop();
+      this.intro = undefined;
+    }
     cue.gain.gain.cancelScheduledValues(context.currentTime);
     cue.gain.gain.setValueAtTime(cue.gain.gain.value, context.currentTime);
     cue.gain.gain.linearRampToValueAtTime(0, context.currentTime + INTRO_FADE_OUT_S);
@@ -412,6 +439,8 @@ export class GameAudio {
 
   /** The intro of the Hero Select: it loops until `stopIntro`. The film starts it early, under its end, with a longer fade. */
   startIntro(fadeInSeconds = INTRO_FADE_IN_S): void {
+    // A leaving that comes right before (React in development mounts a screen twice) is taken back: the loop goes on without a break.
+    clearTimeout(this.introStopTimer);
     const context = this.context;
     const manifest = this.musicManifest;
     const buffer = this.buffers.get("music:intro");
@@ -429,6 +458,11 @@ export class GameAudio {
 
   /** Fades the intro out quickly, so the opening of the match can come in hard. */
   stopIntro(): void {
+    clearTimeout(this.introStopTimer);
+    this.introStopTimer = setTimeout(() => this.stopIntroNow(), INTRO_STOP_GRACE_MS);
+  }
+
+  private stopIntroNow(): void {
     const intro = this.intro;
     const context = this.context;
     this.intro = undefined;
