@@ -28,7 +28,7 @@ timed sections.
 
 The owner judged **B better**. A is kept as the second take. B is to be extended to 3 minutes (below).
 
-## Extension of B to 3 minutes (sent 2026-11-21)
+## Extension of B to 3 minutes, version 1 (sent 2026-11-21; plan `plans/menu-theme-extend-v1.json`, result `menu-theme-b-extended-v1-180s.mp3`)
 
 File: `./plans/menu-theme-extend-to-3-min.json`. The method of the Notstrom piece (inpainting in stages, see the README one level
 up): the first chunk keeps the 75 s of B as an audio reference, four new chunks follow (30 + 30 + 30 + 15 s = 105 s). Stillness
@@ -42,3 +42,5 @@ experiment of the owner: in **Pressure** very low, distorted guitar power chords
 - The new parts are a little quieter in the Stillness (75 to 105 s; level about 0.18 against 0.24 to 0.27 in the climaxes), so the drop is only partly there. Pressure and the Second Climax are at about 0.27.
 - **The loop:** the start and the end have the same key (D, A) and a chroma similarity of 0.99. The end fades to near silence over the last 3 s (level 0.03, 0.01, 0.004), the start fades in (0.023 in the first second): a short crossfade closes the loop.
 - Whether the guitar power chords in Pressure are there and sound right cannot be seen in a measurement (the band above 500 Hz is only 10 % there, which speaks for a low, dark sound); the owner has to listen.
+
+**Owner's verdict on v1:** the E-guitars sound good and may play more than one note; Stillness should be shorter; Pressure may be more intense; the piece lacks a real climax, the Second Climax is much too weak against the part before Stillness. Pressure and Second Climax are generated again (v2). The old chunks are kept as audio: `v1-chunk-pressure-1m45-2m15.mp3` and `v1-chunk-second-climax-2m15-2m45.mp3` (cut from the v1 file), their prompts are in `plans/menu-theme-extend-v1.json`.

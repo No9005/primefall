@@ -1,0 +1,145 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "song_id": "Q3vqUJ4FaeG5UyUbPWWC_upload",
+    "range": {
+     "start_ms": 0,
+     "end_ms": 75000
+    }
+   },
+   {
+    "song_id": "46C9jMiQ1oxB947SvFsK",
+    "range": {
+     "start_ms": 75000,
+     "end_ms": 95000
+    }
+   },
+   {
+    "text": "[Pressure]\n{the driving low synthesizer eighth-note ostinato on D and very heavy percussion return at once, much more intense than before}\n{very low, heavily distorted electric guitars play heavy chugging riffs and power chords in a moving progression D, C, B flat, C, doubling the ostinato, a wall of low rumble, no solos and no high guitar}\n{the choir sings the chant motif with a fifth above and a low octave below, bells answer}\n{the last eight seconds build: drums double their pace, a rising synthesizer riser, the choir swells, everything pushes towards the climax}",
+    "duration_ms": 30000,
+    "positive_styles": [
+     "instrumental, no lyrics",
+     "deep bass male choir in the manner of Gregorian and Tibetan monk chanting",
+     "very low, chesty and throaty basses singing wordless sustained vowels",
+     "slow heavy half-time feel, about 84 BPM, 4/4",
+     "D minor",
+     "low analog synthesizer drone on D",
+     "cold sub-bass pulse",
+     "sparse glassy bell tones that never fully resolve",
+     "threatening, mysterious, a ritual in a dark place",
+     "1980s science-fiction film score atmosphere",
+     "great production quality",
+     "very low distorted electric guitars, drop D tuning, heavy palm-muted chugging riffs and power chords, several chords not one note",
+     "very intense, driving and heavy",
+     "heavy percussion with a heartbeat kick and hard snare, double-time in the last bars",
+     "a long rising build into the climax"
+    ],
+    "negative_styles": [
+     "lyrics",
+     "words",
+     "lead singer",
+     "female voice",
+     "happy",
+     "cheerful",
+     "heroic",
+     "pop",
+     "rap",
+     "fade out",
+     "tempo change",
+     "guitar solo",
+     "high guitar lead",
+     "shredding",
+     "clean guitar",
+     "melodic guitar lead",
+     "quiet",
+     "restrained"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Second Climax]\n{the true climax and the biggest moment of the whole piece, clearly louder, denser and bigger than the first climax}\n{the full bass choir in open fifths sings the chant motif at full power, with a high choir an octave above, huge reverb}\n{very low distorted guitars play thick power chords D, C, B flat, C, huge drums and timpani, cymbal crashes on every bar, a rising synthesizer swell, a massive wall of sound}",
+    "duration_ms": 40000,
+    "positive_styles": [
+     "instrumental, no lyrics",
+     "deep bass male choir in the manner of Gregorian and Tibetan monk chanting",
+     "very low, chesty and throaty basses singing wordless sustained vowels",
+     "slow heavy half-time feel, about 84 BPM, 4/4",
+     "D minor",
+     "low analog synthesizer drone on D",
+     "cold sub-bass pulse",
+     "sparse glassy bell tones that never fully resolve",
+     "threatening, mysterious, a ritual in a dark place",
+     "1980s science-fiction film score atmosphere",
+     "great production quality",
+     "very low distorted electric guitars, drop D tuning, heavy palm-muted chugging riffs and power chords, several chords not one note",
+     "the biggest and loudest moment of the piece",
+     "massive wall of sound, maximum intensity",
+     "full choir in open fifths with a high choir an octave above",
+     "huge drums, timpani and cymbal crashes",
+     "epic and overwhelming, much bigger than anything before"
+    ],
+    "negative_styles": [
+     "lyrics",
+     "words",
+     "lead singer",
+     "female voice",
+     "happy",
+     "cheerful",
+     "heroic",
+     "pop",
+     "rap",
+     "fade out",
+     "tempo change",
+     "guitar solo",
+     "high guitar lead",
+     "shredding",
+     "clean guitar",
+     "quiet",
+     "restrained",
+     "thin",
+     "weak",
+     "small"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Return]\n{everything falls away except the sustained bass choir chord on D, exactly as at the very start of the piece}\n{a low drone and one distant bell, no drums, no fade-out, no final hit}",
+    "duration_ms": 15000,
+    "positive_styles": [
+     "instrumental, no lyrics",
+     "deep bass male choir in the manner of Gregorian and Tibetan monk chanting",
+     "very low, chesty and throaty basses singing wordless sustained vowels",
+     "slow heavy half-time feel, about 84 BPM, 4/4",
+     "D minor",
+     "low analog synthesizer drone on D",
+     "cold sub-bass pulse",
+     "sparse glassy bell tones that never fully resolve",
+     "threatening, mysterious, a ritual in a dark place",
+     "1980s science-fiction film score atmosphere",
+     "great production quality",
+     "sustained choir chord on D, soft and wide",
+     "no drums",
+     "seamless loop: ends as it begins"
+    ],
+    "negative_styles": [
+     "lyrics",
+     "words",
+     "lead singer",
+     "female voice",
+     "guitar",
+     "happy",
+     "cheerful",
+     "heroic",
+     "pop",
+     "rap",
+     "fade out",
+     "tempo change"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "seed": 424242
+}
