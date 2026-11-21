@@ -59,7 +59,7 @@ Not tied to a Hero; `map/manifest.json` has its own shape (`ambience` and `ui`).
 
 ## The music (`audio/music/`, a rough first version, #451)
 
-One loop of 8 bars (72 BPM, 26.667 s) in four layers (`drone`, `pulse`, `drums`, `refrain`) that start together and loop in sync, AAC (`.m4a`) because an MP3 leaves a gap at the seam of a loop. It plays only during a match; there is no music on the start screen, Hero Select or the end screen yet.
+One loop of 8 bars (72 BPM, 26.667 s) in four layers (`drone`, `pulse`, `drums`, `refrain`) that start together and loop in sync, AAC (`.m4a`) because an MP3 leaves a gap at the seam of a loop. It plays only during a match; the end screen and the Hero Select have their own music; the **main-menu theme** (`menu.m4a`, a loop of 177 s made from a piece of 3 minutes, `audio-source/music/menu-theme/`) plays on the start screen and starts with the first tap.
 
 The game only says which level it wants (`musicLevelFor` in `music.ts`); the music changes on the **next bar line** (`nextBarTime`), the layers fading to the gains of that level (`manifest.json`):
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { gameAudio } from "./audio";
 import { WHIP_MS } from "./intro-film";
 import { preloadIntro } from "./NotstromIntro";
 import { AUTO_STEP_MS, BURST_OFFSET, FIREBALLS, MENU_SLOTS, type MenuId, menuIds, nextRow, percentX, percentY, STAGE, streakTop } from "./title-menu";
@@ -31,6 +32,11 @@ export function TitleScreen({ seed, canResume, film, onPlay, onPlayAttackAndDefe
   const [flying, setFlying] = useState(false);
   // The film of Classic is fetched while the start screen is shown.
   useEffect(preloadIntro, []);
+  // The main-menu theme plays while the start screen is shown (it starts with the first tap, when the browser allows sound).
+  useEffect(() => {
+    void gameAudio.loadMusic().then(() => gameAudio.startMenu());
+    return () => gameAudio.stopMenu();
+  }, []);
 
   useEffect(() => {
     if (touched || prefersReducedMotion()) return;

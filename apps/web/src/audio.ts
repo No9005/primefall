@@ -55,6 +55,9 @@ function shapedRamp(param: AudioParam, from: number, to: number, start: number, 
 }
 
 /** The intro of the Hero Select fades in softly and out quickly (the opening of the match comes in hard). */
+/** The main-menu theme comes in slowly (it begins as a quiet choir chord) and leaves while the film starts. */
+const MENU_FADE_IN_S = 3;
+const MENU_FADE_OUT_S = 1.5;
 const INTRO_FADE_IN_S = 0.5;
 const INTRO_FADE_OUT_S = 0.4;
 /** The music plays by default; `?music=off` in the address turns it off (`?music=on` is still accepted and changes nothing). */
@@ -105,6 +108,8 @@ export class GameAudio {
   private musicLoading: Promise<void> | undefined;
   private music: Music | undefined;
   private musicBus: GainNode | undefined;
+  /** The main-menu theme of the start screen: a loop that runs until the player leaves the screen. */
+  private menu: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
   /** The intro of the Hero Select: a loop that runs until the player leaves the screen. */
   private intro: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
   /** The music of the end screen: a jingle that gives way to a quiet loop. */
@@ -326,6 +331,7 @@ export class GameAudio {
     if (!context) return;
     const manifest = (await (await fetch(MUSIC_MANIFEST_URL)).json()) as MusicManifest;
     const files: Record<string, string> = { ...manifest.layers };
+    if (manifest.menu) files.menu = manifest.menu.file;
     if (manifest.intro) files.intro = manifest.intro.file;
     if (manifest.opening) files.opening = manifest.opening.file;
     for (const [outcome, track] of Object.entries(manifest.ending ?? {})) {
@@ -339,6 +345,35 @@ export class GameAudio {
       }),
     );
     this.musicManifest = manifest;
+  }
+
+  /** The main-menu theme of the start screen: it loops until `stopMenu`. It starts when the browser lets the page make sound (the first tap). */
+  startMenu(): void {
+    const context = this.context;
+    const manifest = this.musicManifest;
+    const buffer = this.buffers.get("music:menu");
+    if (!MUSIC_ON || this.menu || !context || !manifest?.menu || !buffer || !this.musicBus) return;
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0, context.currentTime);
+    gain.gain.linearRampToValueAtTime(manifest.menu.gain, context.currentTime + MENU_FADE_IN_S);
+    source.connect(gain).connect(this.musicBus);
+    source.start();
+    this.menu = { source, gain };
+  }
+
+  /** Fades the main-menu theme out (leaving the start screen). */
+  stopMenu(): void {
+    const menu = this.menu;
+    const context = this.context;
+    this.menu = undefined;
+    if (!menu || !context) return;
+    menu.gain.gain.cancelScheduledValues(context.currentTime);
+    menu.gain.gain.setValueAtTime(menu.gain.gain.value, context.currentTime);
+    menu.gain.gain.linearRampToValueAtTime(0, context.currentTime + MENU_FADE_OUT_S);
+    menu.source.stop(context.currentTime + MENU_FADE_OUT_S + 0.05);
   }
 
   /** The intro of the Hero Select: it loops until `stopIntro`. */

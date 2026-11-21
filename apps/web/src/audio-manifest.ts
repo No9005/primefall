@@ -128,6 +128,8 @@ export interface MusicManifest {
   bpm: number;
   bars: number;
   layers: Record<string, string>;
+  /** The main-menu theme of the start screen: a loop of 177 s (docs: `audio-source/music/menu-theme/`). */
+  menu?: { file: string; gain: number };
   /** The loop under the Hero Select. */
   intro?: { file: string; gain: number };
   /** Plays once when a match starts, hard from the first beat, and fades into the layers over its last bar. */
