@@ -5,6 +5,7 @@ import { modeForRole, parseRole, type Role, roleOf } from "./attack-defend";
 import { aiPlanner } from "./ai-planner";
 import { EndScreen } from "./EndScreen";
 import { SideScreen } from "./SideScreen";
+import { TitleScreen } from "./TitleScreen";
 import { clearSavedMatch, loadSavedMatch, loadSavedPlayerHero, parsePlayerHero, saveMatch } from "./match-storage";
 import { HeroSelectScreen } from "./HeroSelectScreen";
 import { PlanningScreen } from "./PlanningScreen";
@@ -18,49 +19,6 @@ const newSeed = () => Date.now() >>> 0;
 
 /** A start parameter (?hero=controller) names the Player Hero, so the Hero Select is skipped. */
 const startParameters = new URLSearchParams(window.location.search);
-
-interface StartScreenProps {
-  seed: number;
-  canResume: boolean;
-  onPlay: () => void;
-  onPlayAttackAndDefend: () => void;
-  onResume: () => void;
-  onGlossary: () => void;
-}
-
-function StartScreen({ seed, canResume, onPlay, onPlayAttackAndDefend, onResume, onGlossary }: StartScreenProps) {
-  return (
-    <section className="start-screen" aria-label="Start" data-testid="start-screen">
-      <h1>PRIMEFALL</h1>
-      <p className="start-sub">REACTOR DECK · 3V3 VS AI</p>
-      <div className="start-modes">
-        <button type="button" className="start-mode classic" data-testid="play-classic" onClick={onPlay}>
-          <span className="start-tag">DEFAULT</span>
-          <b>CLASSIC</b>
-          <span className="start-text">Both Squads fight for the Prime Zone. Hold it for 3 Resolutions.</span>
-        </button>
-        <button type="button" className="start-mode attack-defend" data-testid="play-attack-defend" onClick={onPlayAttackAndDefend}>
-          <span className="start-tag">NEW · TWO ROLES</span>
-          <b>ATTACK AND DEFEND</b>
-          <span className="start-text">One Squad storms the Prime Zone, the other holds out. Pick your side next.</span>
-        </button>
-      </div>
-      <div className="start-more">
-        {canResume && (
-          <button type="button" data-testid="resume" onClick={onResume}>
-            Resume match
-          </button>
-        )}
-        <button type="button" data-testid="glossary-button" onClick={onGlossary}>
-          Glossary
-        </button>
-        <p className="seed" data-testid="start-seed">
-          seed {seed}
-        </p>
-      </div>
-    </section>
-  );
-}
 
 /** The player's Squad View of the running match; it is saved (or, for a finished match, forgotten) whenever it changes. */
 function useMatchView(host: LocalMatchHost, started: boolean, playerHero: HeroClass) {
@@ -163,7 +121,7 @@ export function App() {
       );
     }
     return (
-      <StartScreen
+      <TitleScreen
         seed={seed}
         canResume={saved !== undefined}
         onPlay={() => {
