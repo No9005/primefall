@@ -1,6 +1,6 @@
-/* The start screen (TitleScreen.tsx): a picture of 960 x 444 design pixels fitted to the screen; positions are percentages of it. */
+/* The start screen (TitleScreen.tsx): a picture of 960 x 444 design pixels as high as the screen (a narrower screen cuts its sides, a wider one has dark sides); positions are percentages of it. */
 .title-screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #04060f; }
-.title-stage { position: relative; width: min(100%, calc(100dvh * 960 / 444)); aspect-ratio: 960 / 444; overflow: hidden; background: #04060f; }
+.title-stage { position: relative; flex: none; height: 100%; aspect-ratio: 960 / 444; overflow: hidden; background: #04060f; }
 .title-layer { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; pointer-events: none; }
 .title-heading { margin: 0; }
 .title-twinkle { animation: title-blink 2.4s steps(2, end) infinite alternate; }
@@ -19,13 +19,17 @@
 /* The menu: plain light text for a row, a red pill that pops in over three steps for the highlighted one, a light streak through it. */
 .title-streak { position: absolute; left: 0; width: 100%; height: 1.351%; background: linear-gradient(90deg, rgba(255, 70, 40, 0) 0%, rgba(255, 70, 40, 0.9) 50%, rgba(255, 70, 40, 0) 100%); transition: top 180ms steps(4, end); pointer-events: none; }
 .title-item { position: absolute; left: 26.5625%; width: 46.875%; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; }
-.title-item img { position: absolute; left: 0; top: calc((100% - var(--art, 100%)) / 2); width: 100%; height: var(--art, 100%); image-rendering: pixelated; }
+.title-item img { position: absolute; left: 10%; top: calc((100% - var(--art, 100%)) / 2); width: 80%; height: var(--art, 100%); image-rendering: pixelated; }
 .title-item .title-on { opacity: 0; }
 .title-item.sel .title-on { opacity: 1; animation: title-pop 180ms steps(3, end); }
 .title-item.sel .title-off { opacity: 0; }
 @keyframes title-pop { 0% { transform: scale(1.22); } 100% { transform: scale(1); } }
 .title-item:focus-visible { outline: 2px solid #fff; }
-.title-seed { position: absolute; left: 1.5%; top: 1.5%; margin: 0; font: 500 12px var(--font-number); color: var(--muted); }
+.title-corner { position: absolute; margin: 0; pointer-events: none; }
+.title-seed { left: 1.5dvh; top: 1.2dvh; font: 500 12px var(--font-number); color: var(--muted); }
+.title-legal, .title-version { height: clamp(12px, 2.2dvh, 24px); image-rendering: pixelated; bottom: 1.5dvh; }
+.title-legal { left: 1.5dvh; }
+.title-version { right: 1.5dvh; }
 
 /* The tap on Classic when the film follows: for 1.17 s the screen is pulled towards the planet (every part at its own speed, in
 eight steps), fades out, and a tunnel of light streaks shows behind it. Then the film (NotstromIntro.tsx) takes over. */
@@ -37,7 +41,7 @@ eight steps), fades out, and a tunnel of light streaks shows behind it. Then the
 .title-whip { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; opacity: 0; mix-blend-mode: screen; transform-origin: 86% 45%; }
 .flying { pointer-events: none; }
 .flying .title-tunnel { animation: title-tunnel 1.4s step-end forwards; }
-.flying .title-pane { animation: title-paneout 0.6s step-end forwards; }
+.flying .title-pane, .flying .title-corner { animation: title-paneout 0.6s step-end forwards; }
 .flying .title-whip { animation: title-whip 0.6s step-end forwards; }
 .flying .title-logo, .flying .title-tagline, .flying .title-item, .flying .title-streak { transform-origin: 86% 45%; animation: title-near 0.6s step-end forwards !important; }
 .flying .title-twinkle, .flying .title-haze, .flying .title-fireball, .flying .title-burst { transform-origin: 86% 45%; animation: title-mid 0.6s step-end forwards !important; }

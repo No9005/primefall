@@ -17,7 +17,7 @@ It needs Pillow, NumPy and SciPy. The random parts have fixed seeds: a run witho
 | `# 2 bright stars` | the stars that blink |
 | `# 4 logo` | the letters ("PRIMEF" and "LL", the crystal stands between them), their colours and the crystal |
 | `# 5 haze` | the glow behind the crystal |
-| `# 6 ribbon, claim` | the red banner, the line "Every Prime is a contract" and the two small lines at the foot (**the version "0.4 (Prime)" is drawn here**) |
+| `# 6 ribbon, claim` | the red banner and the line "Every Prime is a contract" (`tagline.png`), and the two small lines at the foot as pictures of their own (`legal.png`, `version.png`; **the version "0.4 (Prime)" is drawn here**), which the screen puts in its corners |
 | `# 7 the menu rows` | the list `MENU`: file name, label and text scale of each row; the red pill is drawn in the second state |
 | `# 8 the fireball` | the burning crystal and its burst |
 
@@ -27,3 +27,5 @@ It needs Pillow, NumPy and SciPy. The random parts have fixed seeds: a run witho
 
 The layout of the picture on the screen (positions, the times of the loops) is in `apps/web/src/title-menu.ts` and
 `apps/web/src/title-screen.css`, not in the pictures.
+
+Note: `menu-classic-off.png` in the repository differs a little from what the script draws (the shading of the letters); it was kept as it is.
