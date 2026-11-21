@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { gameAudio } from "./audio";
 import { WHIP_MS } from "./intro-film";
 import { preloadIntro } from "./NotstromIntro";
-import { AUTO_STEP_MS, BURST_OFFSET, FIREBALLS, MENU_SLOTS, type MenuId, menuIds, nextRow, percentX, percentY, STAGE, streakTop } from "./title-menu";
+import { BURST_OFFSET, FIREBALLS, MENU_SLOTS, type MenuId, menuIds, percentX, percentY, STAGE, streakTop } from "./title-menu";
 import "./title-screen.css";
 
 const ART = `${import.meta.env.BASE_URL}assets/title/`;
@@ -18,17 +18,14 @@ interface TitleScreenProps {
   onGlossary: () => void;
 }
 
-const prefersReducedMotion = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 /**
  * The start screen: the dark planet with burning crystals that fall onto it, the logo, and the menu. The picture is drawn at
- * 640 x 296 pixels and scaled to the screen; the highlight (a red pill and a light streak) runs through the rows by itself until
- * the player touches one.
+ * 640 x 296 pixels and scaled to the screen; the highlight (a red pill and a light streak) stays on Start until the pointer or the
+ * focus moves to another row.
  */
 export function TitleScreen({ seed, canResume, film, onPlay, onPlayAttackAndDefend, onResume, onGlossary }: TitleScreenProps) {
   const ids = menuIds(canResume, new URLSearchParams(window.location.search).get("menu") === "all");
   const [row, setRow] = useState(0);
-  const [touched, setTouched] = useState(false);
   const [flying, setFlying] = useState(false);
   // The film of Classic is fetched while the start screen is shown.
   useEffect(preloadIntro, []);
@@ -37,12 +34,6 @@ export function TitleScreen({ seed, canResume, film, onPlay, onPlayAttackAndDefe
     void gameAudio.loadMusic().then(() => gameAudio.startMenu());
     return () => gameAudio.stopMenu();
   }, []);
-
-  useEffect(() => {
-    if (touched || prefersReducedMotion()) return;
-    const timer = window.setInterval(() => setRow((current) => nextRow(current, ids.length)), AUTO_STEP_MS);
-    return () => window.clearInterval(timer);
-  }, [touched, ids.length]);
 
   function fly() {
     if (flying) return;
@@ -57,7 +48,6 @@ export function TitleScreen({ seed, canResume, film, onPlay, onPlayAttackAndDefe
     resume: { label: "Resume match", testId: "resume", run: onResume },
   };
   const pick = (index: number) => {
-    setTouched(true);
     setRow(index);
   };
 

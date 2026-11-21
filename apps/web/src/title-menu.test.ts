@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FIREBALLS, MENU_SLOTS, menuIds, nextRow, percentX, percentY, STAGE, streakTop } from "./title-menu";
+import { FIREBALLS, MENU_SLOTS, menuIds, percentX, percentY, STAGE, streakTop } from "./title-menu";
 
 describe("title menu", () => {
   it("lists Start (the classic mode) and the Glossary, and Resume only when a match was saved; Attack and Defend is out for now", () => {
@@ -27,12 +27,6 @@ describe("title menu", () => {
     const resume = MENU_SLOTS[2];
     expect(resume.top + resume.height).toBeLessThanOrEqual(425);
     expect(MENU_SLOTS[3].top + MENU_SLOTS[3].height / 2).toBeLessThanOrEqual(STAGE.height);
-  });
-
-  it("moves the highlight on row by row and from the last row back to the first", () => {
-    expect(nextRow(0, 3)).toBe(1);
-    expect(nextRow(2, 3)).toBe(0);
-    expect(nextRow(3, 4)).toBe(0);
   });
 
   it("puts the light streak on the middle of the highlighted row", () => {
