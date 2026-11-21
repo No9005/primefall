@@ -1,0 +1,48 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "text": "[Hyperspace and the Notstrom]\n{0:00 to 1:10: a low rising synthesizer swell like a tunnel of light, the bass choir holds a deep D}\n{at 1:10: one bright shimmering impact, light breaking through, then a vast open space with only the low choir chord on D}\n{1:10 to 4:00: wide, calm and lonely, sparse glassy bells high above the choir, a dark drone}\n{4:00 to 7:00: the choir slowly grows, a low rumbling pulse without a tempo, something enormous comes closer}\n{7:00 to 9:00: a long rising riser and a swell towards a bright flash, then all of it settles on a sustained deep male choir chord on D}",
+    "duration_ms": 9000,
+    "positive_styles": [
+     "instrumental, no lyrics",
+     "deep bass male choir in the manner of Gregorian and Tibetan monk chanting, very low, chesty and throaty, wordless sustained vowels",
+     "D minor, everything rests on a low D",
+     "free time, no fixed tempo, no drum beat",
+     "low analog synthesizer drone on D",
+     "sparse glassy bell tones that never fully resolve",
+     "threatening, mysterious, vast and lonely, a ritual in a dark place",
+     "1980s science-fiction film score atmosphere",
+     "cinematic transition cue",
+     "great production quality"
+    ],
+    "negative_styles": [
+     "lyrics",
+     "words",
+     "lead singer",
+     "female voice",
+     "guitar",
+     "drums",
+     "fixed tempo",
+     "rhythmic beat",
+     "happy",
+     "cheerful",
+     "heroic",
+     "pop",
+     "rap",
+     "tempo change"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "song_id": "<UPLOAD_ID_OF_hero-select-intro-0-10s.mp3>",
+    "range": {
+     "start_ms": 0,
+     "end_ms": 10000
+    }
+   }
+  ]
+ },
+ "model_id": "music_v2_5",
+ "seed": 424242
+}
