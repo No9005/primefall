@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { FILM, FILM_DURATION_MS, frameAt, LOOP_FADE_IN_S, LOOP_STARTS_AT_MS, locateFrame, shouldPlayIntro, WHIP_MS } from "./intro-film";
+import { FILM, FILM_DURATION_MS, FILM_SOUND, frameAt, locateFrame, shouldPlayIntro } from "./intro-film";
 
 describe("intro film", () => {
   it("has a picture for every frame in its sheets", () => {
@@ -39,12 +39,10 @@ describe("intro film", () => {
     }
   });
 
-  it("starts the Hero Select loop under the end of the sound, before the film is over", () => {
-    // The sound is 8.9 s from the tap (the live part of 1.17 s plus the film); the loop begins 0.2 s before its end.
-    expect(LOOP_STARTS_AT_MS + WHIP_MS).toBeCloseTo(8700, 0);
-    expect(LOOP_STARTS_AT_MS).toBeGreaterThan(0);
-    expect(LOOP_STARTS_AT_MS).toBeLessThan(FILM_DURATION_MS);
-    expect(LOOP_FADE_IN_S).toBeGreaterThan(0.5);
+  it("starts the Hero Select loop under the end of the sound of the film (8.9 s), with a soft overlap", () => {
+    expect(FILM_SOUND.loopStartsAtSeconds).toBeLessThan(8.9);
+    expect(8.9 - FILM_SOUND.loopStartsAtSeconds).toBeLessThanOrEqual(0.5);
+    expect(FILM_SOUND.loopFadeInSeconds).toBeGreaterThan(0.5);
   });
 
   it("plays only for a player who has not asked for less motion, unless forced", () => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { gameAudio } from "./audio";
-import { FILM, FILM_DURATION_MS, filmSheetUrl, frameAt, LOOP_FADE_IN_S, LOOP_STARTS_AT_MS, locateFrame } from "./intro-film";
+import { FILM, FILM_DURATION_MS, filmSheetUrl, frameAt, locateFrame } from "./intro-film";
 import "./intro.css";
 
 /** Loads the sprite sheets of the film into the browser's cache, so that it can start at once (the start screen asks for this). */
@@ -47,7 +47,6 @@ export function NotstromIntro({ onDone }: NotstromIntroProps) {
         if (cancelled) return;
         const start = performance.now();
         let drawn = -1;
-        let loopStarted = false;
         const tick = (now: number) => {
           const elapsed = now - start;
           const index = frameAt(elapsed);
@@ -55,11 +54,6 @@ export function NotstromIntro({ onDone }: NotstromIntroProps) {
             const { sheet, column, row } = locateFrame(index);
             context.drawImage(sheets[sheet]!, column * FILM.width, row * FILM.height, FILM.width, FILM.height, 0, 0, FILM.width, FILM.height);
             drawn = index;
-          }
-          // The loop of the Hero Select starts under the end of the sound of the film.
-          if (!loopStarted && elapsed >= LOOP_STARTS_AT_MS) {
-            loopStarted = true;
-            gameAudio.startIntro(LOOP_FADE_IN_S);
           }
           if (elapsed >= FILM_DURATION_MS) finish(true);
           else handle = requestAnimationFrame(tick);
