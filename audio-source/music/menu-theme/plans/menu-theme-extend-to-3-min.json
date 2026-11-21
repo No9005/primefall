@@ -1,0 +1,153 @@
+{
+ "composition_plan": {
+  "chunks": [
+   {
+    "song_id": "<UPLOAD_ID_OF_menu-theme-b-75s.mp3>",
+    "range": {
+     "start_ms": 0,
+     "end_ms": 75000
+    }
+   },
+   {
+    "text": "[Stillness]\n{the music drops after the climax: the bass choir alone sings the four-note chant motif D, F, E, D slowly in unison, wordless}\n{sustained drone and sparse bells, no drums}",
+    "duration_ms": 30000,
+    "positive_styles": [
+     "instrumental, no lyrics",
+     "deep bass male choir in the manner of Gregorian and Tibetan monk chanting",
+     "very low, chesty and throaty basses singing wordless sustained vowels",
+     "slow heavy half-time feel, about 84 BPM, 4/4",
+     "D minor",
+     "low analog synthesizer drone on D",
+     "cold sub-bass pulse",
+     "sparse glassy bell tones that never fully resolve",
+     "threatening, mysterious, a ritual in a dark place",
+     "1980s science-fiction film score atmosphere",
+     "great production quality",
+     "no drums",
+     "very sparse",
+     "the choir alone in a large dark hall"
+    ],
+    "negative_styles": [
+     "lyrics",
+     "words",
+     "lead singer",
+     "female voice",
+     "guitar",
+     "happy",
+     "cheerful",
+     "heroic",
+     "pop",
+     "rap",
+     "fade out",
+     "tempo change"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Pressure]\n{the driving low synthesizer eighth-note ostinato on D and heavy percussion return, darker than before}\n{the choir sings the chant motif with a fifth above and a low octave below, bells answer}",
+    "duration_ms": 30000,
+    "positive_styles": [
+     "instrumental, no lyrics",
+     "deep bass male choir in the manner of Gregorian and Tibetan monk chanting",
+     "very low, chesty and throaty basses singing wordless sustained vowels",
+     "slow heavy half-time feel, about 84 BPM, 4/4",
+     "D minor",
+     "low analog synthesizer drone on D",
+     "cold sub-bass pulse",
+     "sparse glassy bell tones that never fully resolve",
+     "threatening, mysterious, a ritual in a dark place",
+     "1980s science-fiction film score atmosphere",
+     "great production quality",
+     "driving low analog synthesizer eighth-note ostinato on D",
+     "heavy percussion with a heartbeat kick",
+     "the motif a little darker and heavier than the first time"
+    ],
+    "negative_styles": [
+     "lyrics",
+     "words",
+     "lead singer",
+     "female voice",
+     "guitar",
+     "happy",
+     "cheerful",
+     "heroic",
+     "pop",
+     "rap",
+     "fade out",
+     "tempo change"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Second Climax]\n{the full bass choir in open fifths sings the chant motif loud and wide, bigger than the first climax}\n{rising synthesizer swell, heavy drums, huge low end}",
+    "duration_ms": 30000,
+    "positive_styles": [
+     "instrumental, no lyrics",
+     "deep bass male choir in the manner of Gregorian and Tibetan monk chanting",
+     "very low, chesty and throaty basses singing wordless sustained vowels",
+     "slow heavy half-time feel, about 84 BPM, 4/4",
+     "D minor",
+     "low analog synthesizer drone on D",
+     "cold sub-bass pulse",
+     "sparse glassy bell tones that never fully resolve",
+     "threatening, mysterious, a ritual in a dark place",
+     "1980s science-fiction film score atmosphere",
+     "great production quality",
+     "the biggest moment of the piece",
+     "full choir in open fifths",
+     "rising synthesizer swell"
+    ],
+    "negative_styles": [
+     "lyrics",
+     "words",
+     "lead singer",
+     "female voice",
+     "guitar",
+     "happy",
+     "cheerful",
+     "heroic",
+     "pop",
+     "rap",
+     "fade out",
+     "tempo change"
+    ],
+    "context_adherence": "high"
+   },
+   {
+    "text": "[Return]\n{everything falls away except the sustained bass choir chord on D, exactly as at the very start of the piece}\n{a low drone and one distant bell, no drums, no fade-out, no final hit}",
+    "duration_ms": 15000,
+    "positive_styles": [
+     "instrumental, no lyrics",
+     "deep bass male choir in the manner of Gregorian and Tibetan monk chanting",
+     "very low, chesty and throaty basses singing wordless sustained vowels",
+     "slow heavy half-time feel, about 84 BPM, 4/4",
+     "D minor",
+     "low analog synthesizer drone on D",
+     "cold sub-bass pulse",
+     "sparse glassy bell tones that never fully resolve",
+     "threatening, mysterious, a ritual in a dark place",
+     "1980s science-fiction film score atmosphere",
+     "great production quality",
+     "sustained choir chord on D, soft and wide",
+     "no drums",
+     "seamless loop: ends as it begins"
+    ],
+    "negative_styles": [
+     "lyrics",
+     "words",
+     "lead singer",
+     "female voice",
+     "guitar",
+     "happy",
+     "cheerful",
+     "heroic",
+     "pop",
+     "rap",
+     "fade out",
+     "tempo change"
+    ],
+    "context_adherence": "high"
+   }
+  ]
+ }
+}
