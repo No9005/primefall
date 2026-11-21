@@ -1,0 +1,31 @@
+// Renders the frames of the film: node docs/design/intro/tools/render_frames.mjs <out-dir>
+// Every CSS animation of film.html is paused and set to the time of the frame, so the same frames come out every time.
+import { chromium } from "playwright";
+import { mkdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const FPS = 12;
+/** The film ends on the full flash: the part of the flight animation (7.94 s after its 1.3 s start) where the flash is complete. */
+const END_SECONDS = 1.3 + 7.94 * 0.9664;
+const here = dirname(fileURLToPath(import.meta.url));
+const out = resolve(process.argv[2] ?? "frames");
+mkdirSync(out, { recursive: true });
+
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+const page = await browser.newPage({ viewport: { width: 640, height: 296 }, deviceScaleFactor: 1 });
+await page.goto(pathToFileURL(join(here, "..", "film.html")).href);
+await page.evaluate(() => Promise.all([...document.images].map((img) => img.decode())));
+const frames = Math.ceil(END_SECONDS * FPS) + 1;
+for (let index = 0; index < frames; index++) {
+  const ms = Math.min(index / FPS, END_SECONDS) * 1000;
+  await page.evaluate((time) => {
+    for (const animation of document.getAnimations()) {
+      animation.pause();
+      animation.currentTime = time;
+    }
+  }, ms);
+  await page.screenshot({ path: join(out, `f${String(index).padStart(3, "0")}.png`) });
+}
+await browser.close();
+console.log(`${frames} frames at ${FPS} fps in ${out}`);
