@@ -44,3 +44,21 @@ experiment of the owner: in **Pressure** very low, distorted guitar power chords
 - Whether the guitar power chords in Pressure are there and sound right cannot be seen in a measurement (the band above 500 Hz is only 10 % there, which speaks for a low, dark sound); the owner has to listen.
 
 **Owner's verdict on v1:** the E-guitars sound good and may play more than one note; Stillness should be shorter; Pressure may be more intense; the piece lacks a real climax, the Second Climax is much too weak against the part before Stillness. Pressure and Second Climax are generated again (v2). The old chunks are kept as audio: `v1-chunk-pressure-1m45-2m15.mp3` and `v1-chunk-second-climax-2m15-2m45.mp3` (cut from the v1 file), their prompts are in `plans/menu-theme-extend-v1.json`.
+
+## Extension of B to 3 minutes, version 2 (sent 2026-11-21; plan `plans/menu-theme-extend-v2.json`, result `menu-theme-b-extended-v2-180s.mp3`)
+
+The plan keeps B (0 to 75 s, the upload `Q3vqUJ4FaeG5UyUbPWWC_upload`) and the first 20 s of the v1 Stillness (range 75 to 95 s of the v1 song `46C9jMiQ1oxB947SvFsK`, so that song was stored for inpainting after all); new are Pressure (30 s, with several-chord guitar riffs D, C, B flat, C and a build in the last 8 s), Second Climax (40 s, "the true climax", a high choir an octave above, thick guitar power chords, timpani, cymbals) and the Return (15 s, as in v1). Result song id `3zgXZGukZnp2ddIsM9Pd` (`ids/menu-theme-extend-v2.hdr`). The first call was refused with 422 before anything was generated (nothing charged): a line of a chunk may be at most 200 characters; the long directions were split into two lines each, the words are the same.
+
+**Result (measured, not heard by the author of the file):**
+
+| Part | Level (RMS) | Share over 500 Hz |
+|---|---|---|
+| first climax of B (55 to 75 s) | 0.23 | 31 % |
+| Stillness (75 to 95 s) | 0.17 | 27 % |
+| Pressure (95 to 125 s) | 0.27 | 18 % |
+| Second Climax (125 to 165 s) | 0.28 | 31 % |
+| Return (165 to 180 s) | 0.15 | 9 % |
+
+- Pressure reaches the level of the climax after 5 s and stays there; the Second Climax is **not louder** than Pressure (0.28 against 0.27) and only about 1.7 dB over the first climax in this file (the first 75 s are about 20 % quieter than the original B). What sets it apart is the sound: more upper content (choir an octave above, cymbals).
+- Peaks above 1.0 in the decoded file in Pressure and the Second Climax (1.13 and 1.19): the file is at the limit.
+- The loop: start and end have chroma similarity 0.97; the end fades to near silence over the last 3 s.
