@@ -2,7 +2,7 @@
  "composition_plan": {
   "chunks": [
    {
-    "song_id": "<UPLOAD_ID_OF_menu-theme-b-75s.mp3>",
+    "song_id": "Q3vqUJ4FaeG5UyUbPWWC_upload",
     "range": {
      "start_ms": 0,
      "end_ms": 75000
@@ -155,5 +155,7 @@
     "context_adherence": "high"
    }
   ]
- }
+ },
+ "model_id": "music_v2_5",
+ "seed": 424242
 }
