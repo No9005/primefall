@@ -108,6 +108,8 @@ export class GameAudio {
   private musicLoading: Promise<void> | undefined;
   private music: Music | undefined;
   private musicBus: GainNode | undefined;
+  /** The sound of the film after a tap on Start: it plays once. */
+  private filmCue: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
   /** The main-menu theme of the start screen: a loop that runs until the player leaves the screen. */
   private menu: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
   /** The intro of the Hero Select: a loop that runs until the player leaves the screen. */
@@ -332,6 +334,7 @@ export class GameAudio {
     const manifest = (await (await fetch(MUSIC_MANIFEST_URL)).json()) as MusicManifest;
     const files: Record<string, string> = { ...manifest.layers };
     if (manifest.menu) files.menu = manifest.menu.file;
+    if (manifest.film) files.film = manifest.film.file;
     if (manifest.intro) files.intro = manifest.intro.file;
     if (manifest.opening) files.opening = manifest.opening.file;
     for (const [outcome, track] of Object.entries(manifest.ending ?? {})) {
@@ -376,8 +379,39 @@ export class GameAudio {
     menu.source.stop(context.currentTime + MENU_FADE_OUT_S + 0.05);
   }
 
-  /** The intro of the Hero Select: it loops until `stopIntro`. */
-  startIntro(): void {
+  /** The sound of the film (8.9 s from the tap on Start): it plays once and fades out by itself over its last 0.4 s. */
+  startFilmCue(): void {
+    const context = this.context;
+    const manifest = this.musicManifest;
+    const buffer = this.buffers.get("music:film");
+    if (!MUSIC_ON || this.filmCue || !context || !manifest?.film || !buffer || !this.musicBus) return;
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    const gain = context.createGain();
+    gain.gain.value = manifest.film.gain;
+    source.connect(gain).connect(this.musicBus);
+    source.start();
+    this.filmCue = { source, gain };
+  }
+
+  /** Fades the sound of the film out (the player skipped the film). */
+  stopFilmCue(): void {
+    const cue = this.filmCue;
+    const context = this.context;
+    this.filmCue = undefined;
+    if (!cue || !context) return;
+    cue.gain.gain.cancelScheduledValues(context.currentTime);
+    cue.gain.gain.setValueAtTime(cue.gain.gain.value, context.currentTime);
+    cue.gain.gain.linearRampToValueAtTime(0, context.currentTime + INTRO_FADE_OUT_S);
+    try {
+      cue.source.stop(context.currentTime + INTRO_FADE_OUT_S + 0.05);
+    } catch {
+      // It has ended already.
+    }
+  }
+
+  /** The intro of the Hero Select: it loops until `stopIntro`. The film starts it early, under its end, with a longer fade. */
+  startIntro(fadeInSeconds = INTRO_FADE_IN_S): void {
     const context = this.context;
     const manifest = this.musicManifest;
     const buffer = this.buffers.get("music:intro");
@@ -387,7 +421,7 @@ export class GameAudio {
     source.loop = true;
     const gain = context.createGain();
     gain.gain.setValueAtTime(0, context.currentTime);
-    gain.gain.linearRampToValueAtTime(manifest.intro.gain, context.currentTime + INTRO_FADE_IN_S);
+    gain.gain.linearRampToValueAtTime(manifest.intro.gain, context.currentTime + fadeInSeconds);
     source.connect(gain).connect(this.musicBus);
     source.start();
     this.intro = { source, gain };

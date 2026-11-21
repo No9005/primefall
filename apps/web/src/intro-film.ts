@@ -20,6 +20,13 @@ export const FILM = {
   flashColor: "#ffd9a0",
 } as const;
 
+/**
+ * The Hero Select loop starts under the end of the sound of the film: the sound is 8.9 s long from the tap, fades out in its last 0.4 s,
+ * and the loop begins 0.2 s before that and fades in over a second, so the two overlap softly (docs: `audio-source/music/intro-cue/`).
+ */
+export const LOOP_STARTS_AT_MS = (8.9 - 0.2) * 1000 - WHIP_MS;
+export const LOOP_FADE_IN_S = 1;
+
 export const FILM_DURATION_MS = (FILM.frames / FILM.fps) * 1000;
 
 /** The picture to show `elapsedMs` after the film started; the last one stays. */

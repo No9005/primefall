@@ -14,6 +14,10 @@
   "file": "menu.m4a",
   "gain": 0.5
  },
+ "film": {
+  "file": "film.m4a",
+  "gain": 1
+ },
  "intro": {
   "file": "intro.m4a",
   "gain": 0.5
