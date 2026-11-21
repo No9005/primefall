@@ -1,0 +1,20 @@
+HTTP/1.1 200 Connection Established
+
+HTTP/1.1 200 OK
+Connection: close
+Content-Length: 304736
+Access-Control-Allow-Headers: *
+Access-Control-Allow-Methods: POST, PATCH, OPTIONS, DELETE, GET, PUT
+Access-Control-Allow-Origin: *
+Access-Control-Max-Age: 600
+Alt-Svc: h3=":443"; ma=2592000
+Content-Type: audio/mpeg
+Date: Sat, 21 Nov 2026 21:25:02 GMT
+Server: uvicorn
+Song-Id: kjHHvgdKFjOw4BejF6tx
+Strict-Transport-Security: max-age=1800;
+Vary: Accept-Language
+Via: 1.1 google
+X-Region: us-central1
+X-Trace-Id: a64114dbb56db9d88f3e130386b929d2
+

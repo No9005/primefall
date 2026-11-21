@@ -1,6 +1,6 @@
 # Prompts: the music of the film of Start (`intro-cue/`)
 
-**Draft, not sent yet.** The cue under the film (tap on Start to the flash, about 9 s) between the main-menu theme (`../menu-theme/`) and the
+**Sent 2026-11-21, two takes (seed 424242 and 7200).** The cue under the film (tap on Start to the flash, about 9 s) between the main-menu theme (`../menu-theme/`) and the
 Hero Select loop (`apps/web/public/assets/audio/music/intro.m4a`, the first 20 s of `pieces/notstrom-stage-3-whole-piece.mp3`).
 
 ## What it must fit
@@ -15,8 +15,7 @@ Hero Select loop (`apps/web/public/assets/audio/music/intro.m4a`, the first 20 s
 
 The plan (`plans/intro-cue-v1.json`) has the new cue as its first chunk and, after it, the first 10 s of the Hero Select loop as an audio
 reference that stays unchanged (as for the extension of the menu theme: kept parts stay identical, the seam does not click), so the cue is made
-to lead into the loop. The reference is the first 10 s of the original piece (a file of the `pieces/` folder), uploaded first
-(`POST /v1/music/upload`). Only the cue is used in the game (cut at 9.0 s).
+to lead into the loop. The reference is the first 10 s of the original piece (cut as `hero-select-intro-0-12s.mp3`, the API takes no upload under 10 s, so 12 s were uploaded; song id `f7vVTlrWZaZjhLrbpqa4_upload`). Only the cue is used in the game (cut at 9.0 s).
 
 ## Times of the film (from the tap)
 
@@ -28,6 +27,19 @@ to lead into the loop. The reference is the first 10 s of the original piece (a 
 | 3.7 to 6.9 s | the astronaut's visor mirrors the Notstrom | the choir grows, a low pulse without tempo |
 | 6.9 to 9 s | the camera rides along the hull to the airlock, the flash | a riser and a swell, then a sustained choir chord on D |
 
-## The prompt (to be sent after the owner's okay)
+## The prompt (sent after the owner's okay)
 
 The text of the chunk, the styles and the negative styles are in `plans/intro-cue-v1.json`.
+
+## Result (measured, not heard by the author of the file)
+
+Take A (seed 424242, song id `kjHHvgdKFjOw4BejF6tx`, `intro-cue-take-a-seed424242.mp3`), take B (seed 7200, `YZTecwntUZC6GDSjvK1F`, `intro-cue-take-b-seed7200.mp3`); each is 19 s: the cue (0 to 9 s) and the kept reference (9 to 19 s; its level is about 1 dB under the original).
+
+| | Take A | Take B |
+|---|---|---|
+| Level of the cue (RMS) | 0.011 to 0.037 in the first 3 s, then falling to 0.003 | 0.001 rising to 0.014 and staying there |
+| Arc | the loudest point is at 2.2 s (the impact), then the music dies away: no build to the flash | rises slowly to 7.5 s, no strong riser |
+| End of the cue | nearly silent (0.004), then a jump to the loop (0.11) | 0.015, then a jump to the loop |
+| Key | D, A, F# | D, A, C# (the same as the first seconds of the loop; chroma match with the loop start 0.90, take A 0.99) |
+
+Both cues are far under the level of the Hero Select loop (0.11): the model made quiet, calm music. B follows the planned arc better, A matches the key better. Probe files (menu theme fading out, the cue, the loop): in the game, the cue would get a gain (+8 dB for B), which brings its end to the level of the loop start; the impact and the riser are not strong enough yet for a flash.
