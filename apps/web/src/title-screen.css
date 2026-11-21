@@ -27,6 +27,28 @@
 .title-item:focus-visible { outline: 2px solid #fff; }
 .title-seed { position: absolute; left: 1.5%; top: 1.5%; margin: 0; font: 500 12px var(--font-number); color: var(--muted); }
 
+/* The tap on Classic when the film follows: for 1.17 s the screen is pulled towards the planet (every part at its own speed, in
+eight steps), fades out, and a tunnel of light streaks shows behind it. Then the film (NotstromIntro.tsx) takes over. */
+.title-pane { position: absolute; inset: 0; }
+.title-tunnel { position: absolute; inset: 0; overflow: hidden; opacity: 0; pointer-events: none; background: radial-gradient(circle at 86% 45%, rgba(120, 130, 255, 0.55) 0%, rgba(50, 30, 130, 0.35) 22%, rgba(6, 6, 20, 0) 60%), #04060f; }
+.title-streaks { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; transform-origin: 86% 45%; mix-blend-mode: screen; animation: title-streaks 0.36s steps(6, end) infinite; }
+.title-streaks.b { animation-delay: -0.18s; transform: rotate(7deg) scale(1.2); }
+@keyframes title-streaks { 0% { transform: scale(0.5); opacity: 0; } 15% { opacity: 1; } 100% { transform: scale(3.4); opacity: 0.2; } }
+.title-whip { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; opacity: 0; mix-blend-mode: screen; transform-origin: 86% 45%; }
+.flying { pointer-events: none; }
+.flying .title-tunnel { animation: title-tunnel 1.4s step-end forwards; }
+.flying .title-pane { animation: title-paneout 0.6s step-end forwards; }
+.flying .title-whip { animation: title-whip 0.6s step-end forwards; }
+.flying .title-logo, .flying .title-tagline, .flying .title-item, .flying .title-streak { transform-origin: 86% 45%; animation: title-near 0.6s step-end forwards !important; }
+.flying .title-twinkle, .flying .title-haze, .flying .title-fireball, .flying .title-burst { transform-origin: 86% 45%; animation: title-mid 0.6s step-end forwards !important; }
+.flying .title-back { transform-origin: 86% 45%; animation: title-far 0.6s step-end forwards; }
+@keyframes title-tunnel { 0% { opacity: 0; } 22% { opacity: 1; } 88% { opacity: 0; } 100% { opacity: 0; } }
+@keyframes title-paneout { 0%, 75% { opacity: 1; } 87.5% { opacity: 0.6; } 100% { opacity: 0; } }
+@keyframes title-near { 0% { transform: scale(1); } 12.5% { transform: scale(1.12); } 25% { transform: scale(1.38); } 37.5% { transform: scale(1.8); } 50% { transform: scale(2.5); } 62.5% { transform: scale(3.7); } 75% { transform: scale(5.8); } 87.5% { transform: scale(9.5); } 100% { transform: scale(16); } }
+@keyframes title-mid { 0% { transform: scale(1); } 12.5% { transform: scale(1.05); } 25% { transform: scale(1.14); } 37.5% { transform: scale(1.3); } 50% { transform: scale(1.5); } 62.5% { transform: scale(1.8); } 75% { transform: scale(2.3); } 87.5% { transform: scale(3); } 100% { transform: scale(4); } }
+@keyframes title-far { 0% { transform: scale(1); } 12.5% { transform: scale(1.02); } 25% { transform: scale(1.05); } 37.5% { transform: scale(1.1); } 50% { transform: scale(1.17); } 62.5% { transform: scale(1.26); } 75% { transform: scale(1.38); } 87.5% { transform: scale(1.55); } 100% { transform: scale(1.8); } }
+@keyframes title-whip { 0% { opacity: 0; transform: scale(0.5); } 12.5% { opacity: 0.4; transform: scale(0.6); } 25% { opacity: 0.9; transform: scale(0.8); } 37.5% { opacity: 1; transform: scale(1); } 50% { opacity: 1; transform: scale(1.3); } 62.5% { opacity: 1; transform: scale(1.7); } 75% { opacity: 1; transform: scale(2.3); } 87.5% { opacity: 0.6; transform: scale(3); } 100% { opacity: 0; transform: scale(4); } }
+
 @media (prefers-reduced-motion: reduce) {
   .title-twinkle, .title-haze, .title-logo, .title-item.sel .title-on { animation: none; }
   .title-fireball, .title-burst { display: none; }

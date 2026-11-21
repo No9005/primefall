@@ -7,8 +7,8 @@ describe("intro film", () => {
     expect(FILM.sheets.reduce((sum, sheet) => sum + sheet.frames, 0)).toBe(FILM.frames);
   });
 
-  it("runs about nine seconds at twelve pictures a second", () => {
-    expect(FILM_DURATION_MS).toBeCloseTo(9083, -1);
+  it("runs about eight seconds at twelve pictures a second after the live part", () => {
+    expect(FILM_DURATION_MS).toBeCloseTo(7917, -1);
   });
 
   it("shows the first picture at the start and holds the last one", () => {
@@ -25,7 +25,7 @@ describe("intro film", () => {
     expect(locateFrame(7)).toEqual({ sheet: 0, column: 1, row: 1 });
     expect(locateFrame(59)).toEqual({ sheet: 0, column: 5, row: 9 });
     expect(locateFrame(60)).toEqual({ sheet: 1, column: 0, row: 0 });
-    expect(locateFrame(FILM.frames - 1)).toEqual({ sheet: 1, column: 0, row: 8 });
+    expect(locateFrame(FILM.frames - 1)).toEqual({ sheet: 1, column: 4, row: 5 });
     expect(() => locateFrame(FILM.frames)).toThrow(RangeError);
   });
 

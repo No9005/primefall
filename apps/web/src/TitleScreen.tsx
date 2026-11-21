@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { WHIP_MS } from "./intro-film";
 import { preloadIntro } from "./NotstromIntro";
 import { AUTO_STEP_MS, BURST_OFFSET, FIREBALLS, MENU_SLOTS, type MenuId, menuIds, nextRow, percentX, percentY, STAGE, streakTop } from "./title-menu";
 import "./title-screen.css";
@@ -8,6 +9,8 @@ const ART = `${import.meta.env.BASE_URL}assets/title/`;
 interface TitleScreenProps {
   seed: number;
   canResume: boolean;
+  /** Whether Classic plays the film: the title screen is then pulled away live first, and `onPlay` follows when that is over. */
+  film: boolean;
   onPlay: () => void;
   onPlayAttackAndDefend: () => void;
   onResume: () => void;
@@ -21,10 +24,11 @@ const prefersReducedMotion = () => typeof window.matchMedia === "function" && wi
  * 640 x 296 pixels and scaled to the screen; the highlight (a red pill and a light streak) runs through the rows by itself until
  * the player touches one.
  */
-export function TitleScreen({ seed, canResume, onPlay, onPlayAttackAndDefend, onResume, onGlossary }: TitleScreenProps) {
+export function TitleScreen({ seed, canResume, film, onPlay, onPlayAttackAndDefend, onResume, onGlossary }: TitleScreenProps) {
   const ids = menuIds(canResume);
   const [row, setRow] = useState(0);
   const [touched, setTouched] = useState(false);
+  const [flying, setFlying] = useState(false);
   // The film of Classic is fetched while the start screen is shown.
   useEffect(preloadIntro, []);
 
@@ -34,8 +38,14 @@ export function TitleScreen({ seed, canResume, onPlay, onPlayAttackAndDefend, on
     return () => window.clearInterval(timer);
   }, [touched, ids.length]);
 
+  function fly() {
+    if (flying) return;
+    setFlying(true);
+    window.setTimeout(onPlay, WHIP_MS);
+  }
+
   const entries: Record<MenuId, { label: string; testId: string; run: () => void }> = {
-    classic: { label: "Classic", testId: "play-classic", run: onPlay },
+    classic: { label: "Classic", testId: "play-classic", run: film ? fly : onPlay },
     "attack-and-defend": { label: "Attack and Defend", testId: "play-attack-defend", run: onPlayAttackAndDefend },
     glossary: { label: "Glossary", testId: "glossary-button", run: onGlossary },
     resume: { label: "Resume match", testId: "resume", run: onResume },
@@ -47,8 +57,13 @@ export function TitleScreen({ seed, canResume, onPlay, onPlayAttackAndDefend, on
 
   return (
     <section className="title-screen" aria-label="Start" data-testid="start-screen">
-      <div className="title-stage">
-        <img className="title-layer" src={`${ART}background.png`} alt="" />
+      <div className={flying ? "title-stage flying" : "title-stage"}>
+        <div className="title-tunnel" aria-hidden="true">
+          <img className="title-streaks a" src={`${ART}hyperspace.png`} alt="" />
+          <img className="title-streaks b" src={`${ART}hyperspace.png`} alt="" />
+        </div>
+        <div className="title-pane">
+        <img className="title-layer title-back" src={`${ART}background.png`} alt="" />
         <img className="title-layer title-twinkle" src={`${ART}stars.png`} alt="" />
         {FIREBALLS.map((ball) => (
           <span key={ball.left} aria-hidden="true">
@@ -75,7 +90,7 @@ export function TitleScreen({ seed, canResume, onPlay, onPlayAttackAndDefend, on
         <h1 className="title-heading">
           <img className="title-layer title-logo" src={`${ART}logo.png`} alt="PRIMEFALL" />
         </h1>
-        <img className="title-layer" src={`${ART}tagline.png`} alt="A totally legal salvage operation. Every Prime is a contract." />
+        <img className="title-layer title-tagline" src={`${ART}tagline.png`} alt="A totally legal salvage operation. Every Prime is a contract." />
         <div className="title-streak" style={{ top: percentY(streakTop(MENU_SLOTS[row] ?? MENU_SLOTS[0])) }} aria-hidden="true" />
         {ids.map((id, index) => {
           const slot = MENU_SLOTS[index];
@@ -101,6 +116,8 @@ export function TitleScreen({ seed, canResume, onPlay, onPlayAttackAndDefend, on
         <p className="title-seed" data-testid="start-seed">
           seed {seed}
         </p>
+        </div>
+        <img className="title-whip" src={`${ART}hyperspace.png`} alt="" aria-hidden="true" />
       </div>
     </section>
   );
