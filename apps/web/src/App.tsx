@@ -82,7 +82,8 @@ export function App() {
   // Before the match: the start screen, the Hero Select (Play) or the Glossary, which run from static data and never touch the host or the saved match.
   const [entry, setEntry] = useState<"start" | "intro" | "side" | "select" | "replay" | "glossary">("start");
   const [flash, setFlash] = useState(false);
-  const [role, setRole] = useState<Role>(); // The side chosen in Attack and Defend; none in the classic mode.
+  // The side chosen in Attack and Defend; none in the classic mode.
+  const [role, setRole] = useState<Role>();
   // A match saved by an earlier visit, offered for Resume on the start screen.
   const [saved, setSaved] = useState(loadSavedMatch);
   // The Player Hero: set by the start parameter (?hero=controller); Resume restores the saved match's one.
@@ -128,11 +129,7 @@ export function App() {
         seed={seed}
         canResume={saved !== undefined}
         film={film}
-        onPlay={() => {
-          setRole(undefined);
-          if (startParameters.has("hero")) beginMatch(undefined);
-          else setEntry(film ? "intro" : "select");
-        }}
+        onPlay={() => { setRole(undefined); if (startParameters.has("hero")) beginMatch(undefined); else setEntry(film ? "intro" : "select"); }}
         onPlayAttackAndDefend={() => {
           const side = parseRole(startParameters.get("role"));
           if (side && startParameters.has("hero")) {
