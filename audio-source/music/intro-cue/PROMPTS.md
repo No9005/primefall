@@ -43,3 +43,11 @@ Take A (seed 424242, song id `kjHHvgdKFjOw4BejF6tx`, `intro-cue-take-a-seed42424
 | Key | D, A, F# | D, A, C# (the same as the first seconds of the loop; chroma match with the loop start 0.90, take A 0.99) |
 
 Both cues are far under the level of the Hero Select loop (0.11): the model made quiet, calm music. B follows the planned arc better, A matches the key better. Probe files (menu theme fading out, the cue, the loop): in the game, the cue would get a gain (+8 dB for B), which brings its end to the level of the loop start; the impact and the riser are not strong enough yet for a flash.
+
+## In the game (owner's decision 2026-11-21: take A, with a soft seam)
+
+Take A is the sound of the film. **The first probe had a loud click at the seam**: the cue had been cut at 9.08 s, which is inside the kept part of the model (its first hit comes at 9.06 s), and without a fade. The version in the game:
+
+- `tools/loops/make_film_cue.py` cuts the cue at **8.9 s**, fades it out over its last 0.4 s and brings it to the level of the Hero Select loop (+4.5 dB; the same downmix as the measurement of the loop); the file is `apps/web/public/assets/audio/music/film.m4a` with the game gain 1 (`film` in `manifest.json`).
+- **Sequence from the tap on Start:** the menu theme fades out at once (1.5 s) and the sound of the film starts (`TitleScreen.tsx`, `startFilmCue` in `audio.ts`); 7.53 s into the film (8.7 s from the tap) the Hero Select loop starts under its end with a 1 s fade-in (`NotstromIntro.tsx`, `LOOP_STARTS_AT_MS` in `intro-film.ts`); when the film is skipped the sound of the film fades out in 0.4 s and the Hero Select starts its loop as usual.
+- Measured at the seam (a probe file with the game levels): the largest jump between two samples 0.017 (the file's 99th percentile 0.019): no click.

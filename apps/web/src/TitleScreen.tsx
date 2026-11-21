@@ -38,6 +38,9 @@ export function TitleScreen({ seed, canResume, film, onPlay, onPlayAttackAndDefe
   function fly() {
     if (flying) return;
     setFlying(true);
+    // The menu theme fades out now and the sound of the film starts: the film is 9 s long from this tap.
+    gameAudio.stopMenu();
+    void gameAudio.loadMusic().then(() => gameAudio.startFilmCue());
     window.setTimeout(onPlay, WHIP_MS);
   }
 
