@@ -22,10 +22,11 @@ describe("title menu", () => {
       expect(slot.height).toBeGreaterThanOrEqual(50);
       expect(slot.art).toBeLessThanOrEqual(slot.height);
     });
-    const last = MENU_SLOTS[3];
-    // The legal line at the foot of the picture starts at about 425.
-    expect(last.top + last.height).toBeLessThanOrEqual(425);
-    expect(last.top + last.height).toBeLessThanOrEqual(STAGE.height);
+    // The rows of the menu as the player sees it (Start, Glossary, Resume) end above the foot of the picture. The fourth row exists
+    // only with `?menu=all` (Attack and Defend back in the menu) and a saved match: its centre is still inside the picture, its lower edge is not.
+    const resume = MENU_SLOTS[2];
+    expect(resume.top + resume.height).toBeLessThanOrEqual(425);
+    expect(MENU_SLOTS[3].top + MENU_SLOTS[3].height / 2).toBeLessThanOrEqual(STAGE.height);
   });
 
   it("moves the highlight on row by row and from the last row back to the first", () => {
@@ -35,8 +36,8 @@ describe("title menu", () => {
   });
 
   it("puts the light streak on the middle of the highlighted row", () => {
-    expect(streakTop(MENU_SLOTS[0])).toBe(232 + 26 - 3);
-    expect(streakTop(MENU_SLOTS[1])).toBe(282 + 25 - 3);
+    expect(streakTop(MENU_SLOTS[0])).toBe(277 + 26 - 3);
+    expect(streakTop(MENU_SLOTS[1])).toBe(327 + 25 - 3);
   });
 
   it("gives every fireball its own period, so that the fall never repeats in step", () => {

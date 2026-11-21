@@ -17,13 +17,13 @@ export interface MenuSlot {
  * The four rows of the menu from the top: the first, the default mode, is the big one. A row is pressed in `height` design pixels
  * (50 are 44 px on a phone of 844 x 390, so that a thumb does not miss it) but the pictures stand closer than that: the picture of
  * a row is `art` high, centred in its area, and the areas of two rows overlap a little (the lower row wins there). The text is a
- * fifth smaller than the pictures are drawn. The first row starts well under the line "Every Prime is a contract".
+ * fifth smaller than the pictures are drawn. The first row starts well under the line "Every Prime is a contract"; the whole block (banner, logo, claim, rows) stands about a fifth of the height down from the top.
  */
 export const MENU_SLOTS: readonly [MenuSlot, MenuSlot, MenuSlot, MenuSlot] = [
-  { top: 232, height: 52, art: 48 },
-  { top: 282, height: 50, art: 34 },
-  { top: 324, height: 50, art: 34 },
-  { top: 366, height: 50, art: 34 },
+  { top: 277, height: 52, art: 48 },
+  { top: 327, height: 50, art: 34 },
+  { top: 369, height: 50, art: 34 },
+  { top: 411, height: 50, art: 34 },
 ];
 
 /**

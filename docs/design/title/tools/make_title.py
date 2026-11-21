@@ -50,7 +50,7 @@ for _ in range(16):
 tw.save(OUT+'stars.png')
 # 4 logo: letters and the crystal on transparent
 arr=np.zeros((H,W,3)); s=6; left=glyph_mask("PRIMEF",s,1); right=glyph_mask("LL",s,1)
-cw=44; gap=6; total=left.shape[1]+gap+cw+gap+right.shape[1]; x0=(W-total)//2; y0=66
+cw=44; gap=6; total=left.shape[1]+gap+cw+gap+right.shape[1]; x0=(W-total)//2; y0=96
 chunky(arr,left,x0,y0,s,6); chunky(arr,right,x0+left.shape[1]+gap+cw+gap,y0,s,6)
 logo=rgba_from_black(arr); d=ImageDraw.Draw(logo)
 cx=x0+left.shape[1]+gap+cw//2; top=y0-14; mid=y0+16; bot=y0+7*s+10; cwh=cw//2
