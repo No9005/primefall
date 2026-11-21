@@ -57,7 +57,7 @@ describe("Glossary screen", () => {
 
   it("opens from the start screen and returns to it", () => {
     const app = read("App.tsx");
-    expect(app).toContain('data-testid="glossary-button"');
+    expect(read("TitleScreen.tsx")).toContain('testId: "glossary-button"');
     expect(app).toMatch(/onGlossary=\{\(\) => setEntry\("glossary"\)\}/);
     expect(app).toMatch(/entry === "glossary"\) return <GlossaryScreen onClose=\{\(\) => setEntry\("start"\)\}/);
   });

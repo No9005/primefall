@@ -1,3 +1,12 @@
 [
-  { "target": "Energy pill", "check": "size", "reason": "owned by #273 (Energy pill)" }
+  {
+    "target": "Energy pill",
+    "check": "size",
+    "reason": "owned by #273 (Energy pill)"
+  },
+  {
+    "target": "Title menu row",
+    "check": "size",
+    "reason": "the title screen is a picture fitted to the view: at 667 x 375 the 50-design-pixel rows are 35 px high, between the floor (24) and the primary tier (40); at 844 x 390 they are 44 px. The rows cannot grow without leaving the picture"
+  }
 ]

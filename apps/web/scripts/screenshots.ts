@@ -84,6 +84,10 @@ async function chooseHeroAndStart(page: Page, hero: HeroClass): Promise<void> {
 
 /** Screens that are not a match scenario, played by clicking through the app. Their frames are in the order they are taken. */
 export const SCREEN_SCENARIOS: Record<string, { description: string; shots: readonly string[] }> = {
+  title: {
+    description: "The title screen: Classic highlighted, a fireball falling, its burst, the third row touched, the smallest phone view",
+    shots: ["01-classic.png", "02-fireball-falling.png", "03-burst.png", "04-glossary-touched.png", "05-small-phone.png"],
+  },
   "hero-select": {
     description: "The Hero Select: nothing selected, each Hero ready (Bruiser mid-shots, Controller with the drone out, Assassin Hidden), the card list",
     shots: ["01-idle.png", "02-bruiser-ready.png", "03-controller-ready.png", "04-assassin-ready.png", "05-cards.png", "06-bio.png"],
@@ -231,6 +235,36 @@ async function playAttackDefend(browser: Browser): Promise<void> {
   }
   if (errors.length > 0) throw new Error(`attack-defend: ${errors.join("; ")}`);
   checkWritten(directory, SCREEN_SCENARIOS["attack-defend"]!.shots);
+}
+
+/** The title screen at the moments of its loops: the first fireball falls at 1.4 to 2.1 s and bursts until 3.2 s; the highlight moves on every 1.6 s. */
+async function playTitle(browser: Browser): Promise<void> {
+  const directory = path.join(OUTPUT_DIR, "title");
+  rmSync(directory, { recursive: true, force: true });
+  mkdirSync(directory, { recursive: true });
+  const page = await browser.newPage({ viewport: VIEWPORT });
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const shoot = (name: string) => page.screenshot({ path: path.join(directory, name) });
+  await page.goto(URL);
+  await page.locator(".title-item img").last().waitFor({ state: "attached" });
+  await page.waitForFunction(() => Array.from(document.images).every((image) => image.complete));
+  const loaded = Date.now();
+  const at = async (ms: number) => page.waitForTimeout(Math.max(0, ms - (Date.now() - loaded)));
+  await at(250);
+  await shoot("01-classic.png");
+  await at(1700);
+  await shoot("02-fireball-falling.png");
+  await at(2500);
+  await shoot("03-burst.png");
+  await page.getByTestId("glossary-button").hover();
+  await page.waitForTimeout(350);
+  await shoot("04-glossary-touched.png");
+  await page.setViewportSize({ width: 667, height: 375 });
+  await page.waitForTimeout(250);
+  await shoot("05-small-phone.png");
+  if (errors.length > 0) throw new Error(`title: ${errors.join("; ")}`);
+  checkWritten(directory, SCREEN_SCENARIOS.title!.shots);
 }
 
 /** Looks at the Hero Select at the moments the design sheets show: the Bruiser mid-shots, the drone out, the Assassin Hidden. */
@@ -586,6 +620,7 @@ async function main(): Promise<void> {
         if (name in SCREEN_SCENARIOS) {
           if (name === "attack-defend") await playAttackDefend(browser);
           else if (name === "glossary") await playGlossary(browser);
+          else if (name === "title") await playTitle(browser);
           else await playHeroSelect(browser);
           console.log(`Scenario ${name}: ${path.join(OUTPUT_DIR, name)}\n${SCREEN_SCENARIOS[name]!.shots.join("\n")}`);
           continue;

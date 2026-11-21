@@ -1,19 +1,4 @@
-/* The start screen, the HUD, the banner and the end screens of Attack and Defend (docs/design/attack-defend/README.md). */
-
-/* Start screen */
-.start-screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; text-align: center; }
-.start-screen h1 { margin: 0; font: 700 40px/1 Rajdhani, sans-serif; letter-spacing: 0.2em; padding-left: 0.2em; }
-.start-sub { margin: 10px 0 20px; font: 500 12px var(--font-number); letter-spacing: 0.2em; color: var(--muted); }
-.start-modes { display: flex; gap: 16px; width: 100%; max-width: 600px; }
-.start-mode { flex: 1; min-height: 132px; box-sizing: border-box; padding: 14px 16px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; border: 2px solid var(--steel); border-radius: 8px; background: var(--panel); cursor: pointer; }
-.start-mode.classic { border-color: var(--teal); }
-.start-mode b { font: 700 22px/1.1 Rajdhani, sans-serif; letter-spacing: 0.06em; white-space: nowrap; color: var(--text); }
-.start-tag { font: 700 12px var(--font-number); letter-spacing: 0.16em; color: var(--teal); }
-.attack-defend .start-tag { color: var(--orange); }
-.start-text { font: 500 14px/1.35 Barlow, system-ui, sans-serif; color: var(--muted-light); }
-.start-more { margin-top: 16px; display: flex; align-items: center; gap: 12px; }
-.start-more button { height: 44px; padding: 0 20px; border: 1.5px solid var(--steel); border-radius: 8px; background: none; font: 700 16px Rajdhani, sans-serif; color: var(--text); cursor: pointer; }
-.start-more .seed { margin: 0 0 0 8px; font: 500 12px var(--font-number); color: var(--muted); }
+/* The HUD, the banner and the end screens of Attack and Defend (docs/design/attack-defend/README.md). */
 
 /* HUD: role label (left), centre pill, Round pill */
 .role-label { position: absolute; z-index: var(--z-pill); left: 8px; top: 4px; height: 34px; box-sizing: border-box; padding: 0 14px; display: flex; align-items: center; gap: 8px; border: 1.5px solid; border-radius: 17px; background: color-mix(in srgb, var(--ink) 93%, transparent); font: 700 16px Rajdhani, sans-serif; letter-spacing: 0.14em; pointer-events: none; }

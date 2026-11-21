@@ -6,6 +6,7 @@ import { loadRules, readSource } from "./css-rules";
 import { MIN_STRIP } from "./hand-fan";
 import { commitButtonRect, energyPillRect, handRect, QUEUE_COLUMN_WIDTH, waitCardRect } from "./hud-layout";
 import { CardUse } from "./planning-selection";
+import { MENU_SLOTS, STAGE } from "./title-menu";
 
 // Touch targets have a minimum size in screen pixels, whatever the board is fitted to (issue 148).
 
@@ -111,6 +112,13 @@ interface Target {
   jsx?: JsxMatch[];
 }
 
+/** The size on screen of a small row of the title menu: the stage is fitted into the view by width or by height. */
+const titleMenuRow = (view: { width: number; height: number }): Size => {
+  const scale = Math.min(view.width, (view.height * STAGE.width) / STAGE.height) / STAGE.width;
+  const slot = MENU_SLOTS[1];
+  return { width: 450 * scale, height: slot.height * scale };
+};
+
 const wide = (rect: { left: number; right: number }) => rect.right - rect.left;
 const high = (rect: { top: number; bottom: number }) => rect.bottom - rect.top;
 
@@ -126,7 +134,9 @@ const TARGETS: Target[] = [
   { name: "Queue row", tier: "secondary", selector: ".queue-row", size: () => ({ width: QUEUE_COLUMN_WIDTH }), gapIn: ".queue-rows" },
   { name: "Floating card", tier: "primary", selector: ".floating-card", jsx: [{ file: "game-parts.tsx", includes: "floating-card" }] },
   // The padding of the end-screen buttons is 24 px on each side of the label.
-  { name: "Start and end screen button", tier: "primary", selector: ".end-screen button", size: () => ({ width: 48 }), jsx: [{ file: "App.tsx", includes: "<button" }, { file: "EndScreen.tsx", includes: "<button" }] },
+  { name: "End screen button", tier: "primary", selector: ".end-screen button", size: () => ({ width: 48 }), jsx: [{ file: "EndScreen.tsx", includes: "<button" }] },
+  // The title screen is a picture of 960 x 444 design pixels fitted to the view; the small menu rows are 50 of them high (title-menu.ts).
+  { name: "Title menu row", tier: "primary", size: (view) => titleMenuRow(view), jsx: [{ file: "TitleScreen.tsx", includes: "<button" }] },
   { name: "Hand fan", tier: { none: "the container of the Hand cards; a press in a gap of the fan grabs the card whose strip it is on, the cards are the targets" }, jsx: [{ file: "PlanningScreen.tsx", includes: "className={`hand${collapsed" }] },
   { name: "Pull backdrop", tier: { none: "the whole view behind the pulled card; a tap anywhere outside the card closes it" }, jsx: [{ file: "game-parts.tsx", includes: "pull-backdrop" }] },
 ];
@@ -193,7 +203,7 @@ function interactiveElements(file: string): string[] {
   return found;
 }
 
-const SCREEN_FILES = ["PlanningScreen.tsx", "EndScreen.tsx", "App.tsx", "game-parts.tsx"];
+const SCREEN_FILES = ["PlanningScreen.tsx", "EndScreen.tsx", "App.tsx", "TitleScreen.tsx", "game-parts.tsx"];
 
 describe("touch target tiers", () => {
   const allowlist = JSON.parse(readSource("touch-targets.allowlist.json")) as { target: string; check: string; reason: string }[];
