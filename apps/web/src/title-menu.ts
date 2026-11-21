@@ -35,12 +35,6 @@ export function menuIds(canResume: boolean, withAttackAndDefend = false): MenuId
   return canResume ? [...ids, "resume"] : ids;
 }
 
-/** The highlight moves on by itself, row after row, until the player touches the menu. */
-export const nextRow = (row: number, rows: number): number => (row + 1) % rows;
-
-/** How long the highlight stays on one row while it moves by itself. */
-export const AUTO_STEP_MS = 1600;
-
 /** The red light streak runs through the middle of the highlighted row. */
 export function streakTop(slot: MenuSlot): number {
   return slot.top + slot.height / 2 - 3;
