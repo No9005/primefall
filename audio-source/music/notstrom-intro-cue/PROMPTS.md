@@ -1,6 +1,6 @@
-# Prompts: the music of the film of Start (`intro-cue/`)
+# Prompts: the music of the Notstrom Intro of Start (`notstrom-intro-cue/`)
 
-**Sent 2026-11-21, two takes (seed 424242 and 7200).** The cue under the film (tap on Start to the flash, about 9 s) between the main-menu theme (`../menu-theme/`) and the
+**Sent 2026-11-21, two takes (seed 424242 and 7200).** The cue under the Notstrom Intro (tap on Start to the flash, about 9 s) between the main-menu theme (`../menu-theme/`) and the
 Hero Select loop (`apps/web/public/assets/audio/music/intro.m4a`, the first 20 s of `pieces/notstrom-stage-3-whole-piece.mp3`).
 
 ## What it must fit
@@ -13,11 +13,11 @@ Hero Select loop (`apps/web/public/assets/audio/music/intro.m4a`, the first 20 s
 
 ## The way: the end is given, the middle is made
 
-The plan (`plans/intro-cue-v1.json`) has the new cue as its first chunk and, after it, the first 10 s of the Hero Select loop as an audio
+The plan (`plans/notstrom-intro-cue-v1.json`) has the new cue as its first chunk and, after it, the first 10 s of the Hero Select loop as an audio
 reference that stays unchanged (as for the extension of the menu theme: kept parts stay identical, the seam does not click), so the cue is made
 to lead into the loop. The reference is the first 10 s of the original piece (cut as `hero-select-intro-0-12s.mp3`, the API takes no upload under 10 s, so 12 s were uploaded; song id `f7vVTlrWZaZjhLrbpqa4_upload`). Only the cue is used in the game (cut at 9.0 s).
 
-## Times of the film (from the tap)
+## Times of the Notstrom Intro (from the tap)
 
 | Time | The picture | What the cue does |
 |---|---|---|
@@ -29,11 +29,11 @@ to lead into the loop. The reference is the first 10 s of the original piece (cu
 
 ## The prompt (sent after the owner's okay)
 
-The text of the chunk, the styles and the negative styles are in `plans/intro-cue-v1.json`.
+The text of the chunk, the styles and the negative styles are in `plans/notstrom-intro-cue-v1.json`.
 
 ## Result (measured, not heard by the author of the file)
 
-Take A (seed 424242, song id `kjHHvgdKFjOw4BejF6tx`, `intro-cue-take-a-seed424242.mp3`), take B (seed 7200, `YZTecwntUZC6GDSjvK1F`, `intro-cue-take-b-seed7200.mp3`); each is 19 s: the cue (0 to 9 s) and the kept reference (9 to 19 s; its level is about 1 dB under the original).
+Take A (seed 424242, song id `kjHHvgdKFjOw4BejF6tx`, `notstrom-intro-cue-take-a-seed424242.mp3`), take B (seed 7200, `YZTecwntUZC6GDSjvK1F`, `notstrom-intro-cue-take-b-seed7200.mp3`); each is 19 s: the cue (0 to 9 s) and the kept reference (9 to 19 s; its level is about 1 dB under the original).
 
 | | Take A | Take B |
 |---|---|---|
@@ -46,10 +46,10 @@ Both cues are far under the level of the Hero Select loop (0.11): the model made
 
 ## In the game (owner's decision 2026-11-21: take A, with a soft seam)
 
-Take A is the sound of the film. **The first probe had a loud click at the seam**: the cue had been cut at 9.08 s, which is inside the kept part of the model (its first hit comes at 9.06 s), and without a fade. The version in the game:
+Take A is the sound of the Notstrom Intro. **The first probe had a loud click at the seam**: the cue had been cut at 9.08 s, which is inside the kept part of the model (its first hit comes at 9.06 s), and without a fade. The version in the game:
 
-- `tools/loops/make_film_cue.py` cuts the cue at **8.9 s**, fades it out over its last 0.4 s and brings it to the level of the Hero Select loop (+4.5 dB; the same downmix as the measurement of the loop); the file is `apps/web/public/assets/audio/music/film.m4a` with the game gain 1 (`film` in `manifest.json`).
-- **Sequence from the tap on Start:** the menu theme fades out at once (1.5 s) and the sound of the film starts (`TitleScreen.tsx`, `startFilmCue` in `audio.ts`); 8.7 s after the tap the Hero Select loop starts under its end with a 1 s fade-in, **timed on the audio clock** when the sound of the film starts (`scheduleLoopUnderFilm` in `audio.ts`, `FILM_SOUND` in `intro-film.ts`; the pictures start later and by a different time on every device, so they must not time it); when the film is skipped the sound of the film fades out in 0.4 s and the Hero Select starts its loop as usual.
+- `tools/loops/make_notstrom_intro_cue.py` cuts the cue at **8.9 s**, fades it out over its last 0.4 s and brings it to the level of the Hero Select loop (+4.5 dB; the same downmix as the measurement of the loop); the file is `apps/web/public/assets/audio/music/notstrom-intro.m4a` with the game gain 1 (`Notstrom Intro` in `manifest.json`).
+- **Sequence from the tap on Start:** the menu theme fades out at once (1.5 s) and the sound of the Notstrom Intro starts (`TitleScreen.tsx`, `startNotstromIntroCue` in `audio.ts`); 8.7 s after the tap the Hero Select loop starts under its end with a 1 s fade-in, **timed on the audio clock** when the sound of the Notstrom Intro starts (`scheduleLoopUnderNotstromIntro` in `audio.ts`, `NOTSTROM_INTRO_SOUND` in `notstrom-intro.ts`; the pictures start later and by a different time on every device, so they must not time it); when the Notstrom Intro is skipped the sound of the Notstrom Intro fades out in 0.4 s and the Hero Select starts its loop as usual.
 - Measured at the seam (a probe file with the game levels): the largest jump between two samples 0.017 (the file's 99th percentile 0.019): no click.
 
 **Fix after the owner heard a jerky transition from the door to the Hero Select music (2026-11-21):** two causes, both in the code and not in the sound. (1) The loop was started by the clock of the pictures, which begins after the live part and the decoding; it could come late. Now the audio clock times it. (2) React in development mounts the Hero Select twice, and the first leaving stopped the loop (a fade-out over 0.4 s) before it was started again from the beginning (a fade-in over 0.5 s): a dip and a restart at the arrival. Now a stop of the intro waits 80 ms and a new start takes it back (`stopIntro`, `startIntro` in `audio.ts`), so the loop goes on without a break.

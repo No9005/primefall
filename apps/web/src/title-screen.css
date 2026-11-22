@@ -31,8 +31,8 @@
 .title-legal { left: 1.5dvh; }
 .title-version { right: 1.5dvh; }
 
-/* The tap on Classic when the film follows: for 1.17 s the screen is pulled towards the planet (every part at its own speed, in
-eight steps), fades out, and a tunnel of light streaks shows behind it. Then the film (NotstromIntro.tsx) takes over. */
+/* The tap on Classic when the Notstrom Intro follows: for 1.17 s the screen is pulled towards the planet (every part at its own speed, in
+eight steps), fades out, and a tunnel of light streaks shows behind it. Then the Notstrom Intro (NotstromIntro.tsx) takes over. */
 .title-pane { position: absolute; inset: 0; }
 .title-tunnel { position: absolute; inset: 0; overflow: hidden; opacity: 0; pointer-events: none; background: radial-gradient(circle at 86% 45%, rgba(120, 130, 255, 0.55) 0%, rgba(50, 30, 130, 0.35) 22%, rgba(6, 6, 20, 0) 60%), #04060f; }
 .title-streaks { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; transform-origin: 86% 45%; mix-blend-mode: screen; animation: title-streaks 0.36s steps(6, end) infinite; }

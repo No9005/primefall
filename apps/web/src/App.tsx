@@ -6,8 +6,8 @@ import { aiPlanner } from "./ai-planner";
 import { EndScreen } from "./EndScreen";
 import { SideScreen } from "./SideScreen";
 import { TitleScreen } from "./TitleScreen";
-import { IntroFlash, NotstromIntro } from "./NotstromIntro";
-import { introPlays } from "./intro-film";
+import { NotstromIntroFlash, NotstromIntro } from "./NotstromIntro";
+import { notstromIntroPlays } from "./notstrom-intro";
 import { clearSavedMatch, loadSavedMatch, loadSavedPlayerHero, parsePlayerHero, saveMatch } from "./match-storage";
 import { HeroSelectScreen } from "./HeroSelectScreen";
 import { PlanningScreen } from "./PlanningScreen";
@@ -80,7 +80,7 @@ export function App() {
   const seed = host.seed;
   const [started, setStarted] = useState(false);
   // Before the match: the start screen, the Hero Select (Play) or the Glossary, which run from static data and never touch the host or the saved match.
-  const [entry, setEntry] = useState<"start" | "intro" | "side" | "select" | "replay" | "glossary">("start");
+  const [entry, setEntry] = useState<"start" | "notstrom-intro" | "side" | "select" | "replay" | "glossary">("start");
   const [flash, setFlash] = useState(false);
   // The side chosen in Attack and Defend; none in the classic mode.
   const [role, setRole] = useState<Role>();
@@ -107,9 +107,9 @@ export function App() {
     setStarted(false);
   }
 
-  const film = !startParameters.has("hero") && introPlays(startParameters);
+  const notstromIntro = !startParameters.has("hero") && notstromIntroPlays(startParameters);
   function renderStart() {
-    if (entry === "intro") return <NotstromIntro onDone={(playedToEnd) => { setFlash(playedToEnd); setEntry("select"); }} />;
+    if (entry === "notstrom-intro") return <NotstromIntro onDone={(playedToEnd) => { setFlash(playedToEnd); setEntry("select"); }} />;
     if (entry === "glossary") return <GlossaryScreen onClose={() => setEntry("start")} />;
     if (entry === "side") return <SideScreen onBack={() => setEntry("start")} onNext={(side) => { setRole(side); setEntry("select"); }} />;
     if (entry === "select" || entry === "replay") {
@@ -128,8 +128,8 @@ export function App() {
       <TitleScreen
         seed={seed}
         canResume={saved !== undefined}
-        film={film}
-        onPlay={() => { setRole(undefined); if (startParameters.has("hero")) beginMatch(undefined); else setEntry(film ? "intro" : "select"); }}
+        notstromIntro={notstromIntro}
+        onPlay={() => { setRole(undefined); if (startParameters.has("hero")) beginMatch(undefined); else setEntry(notstromIntro ? "notstrom-intro" : "select"); }}
         onPlayAttackAndDefend={() => {
           const side = parseRole(startParameters.get("role"));
           if (side && startParameters.has("hero")) {
@@ -159,7 +159,7 @@ export function App() {
     <main className="app">
       <div className="rotate-notice">Rotate your device</div>
       {renderScreen()}
-      {flash && <IntroFlash onGone={() => setFlash(false)} />}
+      {flash && <NotstromIntroFlash onGone={() => setFlash(false)} />}
     </main>
   );
 }

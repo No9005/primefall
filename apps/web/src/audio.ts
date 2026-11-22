@@ -2,7 +2,7 @@ import { findTiles, type GridPosition, type HeroClass, NOTSTROM_MAP, TileKind } 
 import { AUDIO_FOLDER, type AudioManifest, assetUrl, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl, MUSIC_MANIFEST_URL, type MusicManifest, musicFileUrl, type UiSound } from "./audio-manifest";
 import { distanceGain, MUSIC_DUCK, nextAmbienceGapMs, pickVariant, Priority, SfxLimiter, VoiceDirector } from "./audio-mix";
 import { planMoment, type PlanContext, type SoundRequest, type Source } from "./audio-cues";
-import { FILM_SOUND } from "./intro-film";
+import { NOTSTROM_INTRO_SOUND } from "./notstrom-intro";
 import { type MusicLevel, nextBarTime } from "./music";
 
 // The player of the game sound: it loads the Heroes' sounds, starts the sounds the cues ask for through the rules of the
@@ -56,7 +56,7 @@ function shapedRamp(param: AudioParam, from: number, to: number, start: number, 
 }
 
 /** The intro of the Hero Select fades in softly and out quickly (the opening of the match comes in hard). */
-/** The main-menu theme comes in slowly (it begins as a quiet choir chord) and leaves while the film starts. */
+/** The main-menu theme comes in slowly (it begins as a quiet choir chord) and leaves while the Notstrom Intro starts. */
 const MENU_FADE_IN_S = 3;
 const MENU_FADE_OUT_S = 1.5;
 const INTRO_FADE_IN_S = 0.5;
@@ -111,10 +111,10 @@ export class GameAudio {
   private musicLoading: Promise<void> | undefined;
   private music: Music | undefined;
   private musicBus: GainNode | undefined;
-  /** The sound of the film after a tap on Start: it plays once. The Hero Select loop is scheduled under its end (`intro`, from `introAt`). */
+  /** The sound of the Notstrom Intro after a tap on Start: it plays once. The Hero Select loop is scheduled under its end (`intro`, from `introAt`). */
   private introAt: number | undefined;
   private introStopTimer: ReturnType<typeof setTimeout> | undefined;
-  private filmCue: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
+  private notstromIntroCue: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
   /** The main-menu theme of the start screen: a loop that runs until the player leaves the screen. */
   private menu: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
   /** The intro of the Hero Select: a loop that runs until the player leaves the screen. */
@@ -339,7 +339,7 @@ export class GameAudio {
     const manifest = (await (await fetch(MUSIC_MANIFEST_URL)).json()) as MusicManifest;
     const files: Record<string, string> = { ...manifest.layers };
     if (manifest.menu) files.menu = manifest.menu.file;
-    if (manifest.film) files.film = manifest.film.file;
+    if (manifest.notstromIntro) files.notstromIntro = manifest.notstromIntro.file;
     if (manifest.intro) files.intro = manifest.intro.file;
     if (manifest.opening) files.opening = manifest.opening.file;
     for (const [outcome, track] of Object.entries(manifest.ending ?? {})) {
@@ -384,43 +384,43 @@ export class GameAudio {
     menu.source.stop(context.currentTime + MENU_FADE_OUT_S + 0.05);
   }
 
-  /** The sound of the film (8.9 s from the tap on Start): it plays once and fades out by itself over its last 0.4 s. */
-  startFilmCue(): void {
+  /** The sound of the Notstrom Intro (8.9 s from the tap on Start): it plays once and fades out by itself over its last 0.4 s. */
+  startNotstromIntroCue(): void {
     const context = this.context;
     const manifest = this.musicManifest;
-    const buffer = this.buffers.get("music:film");
-    if (!MUSIC_ON || this.filmCue || !context || !manifest?.film || !buffer || !this.musicBus) return;
+    const buffer = this.buffers.get("music:notstromIntro");
+    if (!MUSIC_ON || this.notstromIntroCue || !context || !manifest?.notstromIntro || !buffer || !this.musicBus) return;
     const source = context.createBufferSource();
     source.buffer = buffer;
     const gain = context.createGain();
-    gain.gain.value = manifest.film.gain;
+    gain.gain.value = manifest.notstromIntro.gain;
     source.connect(gain).connect(this.musicBus);
     source.start();
-    this.filmCue = { source, gain };
-    this.scheduleLoopUnderFilm(context, manifest.intro, this.buffers.get("music:intro"));
+    this.notstromIntroCue = { source, gain };
+    this.scheduleLoopUnderNotstromIntro(context, manifest.intro, this.buffers.get("music:intro"));
   }
 
-  /** The Hero Select loop starts under the end of the sound of the film, timed on the audio clock (`FILM_SOUND`). */
-  private scheduleLoopUnderFilm(context: AudioContext, track: { gain: number } | undefined, buffer: AudioBuffer | undefined): void {
+  /** The Hero Select loop starts under the end of the sound of the Notstrom Intro, timed on the audio clock (`NOTSTROM_INTRO_SOUND`). */
+  private scheduleLoopUnderNotstromIntro(context: AudioContext, track: { gain: number } | undefined, buffer: AudioBuffer | undefined): void {
     if (this.intro || !track || !buffer || !this.musicBus) return;
-    const at = context.currentTime + FILM_SOUND.loopStartsAtSeconds;
+    const at = context.currentTime + NOTSTROM_INTRO_SOUND.loopStartsAtSeconds;
     const source = context.createBufferSource();
     source.buffer = buffer;
     source.loop = true;
     const gain = context.createGain();
     gain.gain.setValueAtTime(0, at);
-    gain.gain.linearRampToValueAtTime(track.gain, at + FILM_SOUND.loopFadeInSeconds);
+    gain.gain.linearRampToValueAtTime(track.gain, at + NOTSTROM_INTRO_SOUND.loopFadeInSeconds);
     source.connect(gain).connect(this.musicBus);
     source.start(at);
     this.intro = { source, gain };
     this.introAt = at;
   }
 
-  /** Fades the sound of the film out (the player skipped the film). */
-  stopFilmCue(): void {
-    const cue = this.filmCue;
+  /** Fades the sound of the Notstrom Intro out (the player skipped the Notstrom Intro). */
+  stopNotstromIntroCue(): void {
+    const cue = this.notstromIntroCue;
     const context = this.context;
-    this.filmCue = undefined;
+    this.notstromIntroCue = undefined;
     if (!cue || !context) return;
     // A loop that has not begun yet is cancelled: the Hero Select starts its own.
     if (this.intro && this.introAt !== undefined && context.currentTime < this.introAt) {
@@ -437,7 +437,7 @@ export class GameAudio {
     }
   }
 
-  /** The intro of the Hero Select: it loops until `stopIntro`. The film starts it early, under its end, with a longer fade. */
+  /** The intro of the Hero Select: it loops until `stopIntro`. The Notstrom Intro starts it early, under its end, with a longer fade. */
   startIntro(fadeInSeconds = INTRO_FADE_IN_S): void {
     // A leaving that comes right before (React in development mounts a screen twice) is taken back: the loop goes on without a break.
     clearTimeout(this.introStopTimer);

@@ -1,9 +1,9 @@
-"""Packs the frames of render_frames.mjs into the sprite sheets of the intro film.
+"""Packs the frames of render_frames.mjs into the sprite sheets of the intro Notstrom Intro.
 
-python3 docs/design/intro/tools/pack_sheets.py <frames-dir> <out-dir>
+python3 docs/design/notstrom-intro/tools/pack_sheets.py <frames-dir> <out-dir>
 
-Every scene of the film has a palette of its own (median cut over the frames of the scene), and its frames are mapped to the nearest
-colour with no dither: a dither pattern turned the dark, smooth parts of the film into grain. The palettes of the scenes follow one
+Every scene of the Notstrom Intro has a palette of its own (median cut over the frames of the scene), and its frames are mapped to the nearest
+colour with no dither: a dither pattern turned the dark, smooth parts of the Notstrom Intro into grain. The palettes of the scenes follow one
 another in the one palette of the sheets (at most 256 colours); the picture stays flat with clear edges, like the title screen.
 The frames are laid out row by row in sheets of COLUMNS x ROWS frames, small enough for the texture limits of a phone.
 """

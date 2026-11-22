@@ -130,8 +130,8 @@ export interface MusicManifest {
   layers: Record<string, string>;
   /** The main-menu theme of the start screen: a loop of 177 s (docs: `audio-source/music/menu-theme/`). */
   menu?: { file: string; gain: number };
-  /** The sound of the film after a tap on Start (8.9 s, plays once; docs: `audio-source/music/intro-cue/`). */
-  film?: { file: string; gain: number };
+  /** The sound of the Notstrom Intro after a tap on Start (8.9 s, plays once; docs: `audio-source/music/notstrom-intro-cue/`). */
+  notstromIntro?: { file: string; gain: number };
   /** The loop under the Hero Select. */
   intro?: { file: string; gain: number };
   /** Plays once when a match starts, hard from the first beat, and fades into the layers over its last bar. */
