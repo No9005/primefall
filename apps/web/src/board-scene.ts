@@ -1,5 +1,5 @@
 import { Container } from "pixi.js";
-import { loadPixelHeroes, pixelHeroSheetUrls, resetPixelHeroes } from "./pixel-heroes";
+import { loadPixelHeroes, pixelHeroSheetUrls, resetPixelHeroes } from "./heroes";
 import { loadPixelAtlas, type PixelAtlas, PIXEL_ATLAS_URL, resetPixelAtlas } from "./pixel-terrain";
 import type { FillView } from "./stage-fit";
 import type { Scene, SceneEnv } from "./stage";

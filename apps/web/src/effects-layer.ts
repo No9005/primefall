@@ -3,7 +3,7 @@ import { Container, Graphics, Text } from "pixi.js";
 import { CLIP_SPEED } from "./clip-player";
 import { rubyPieces, shieldBubble } from "./hero-figure";
 import { HERO_STYLE } from "./hero-style";
-import { PIXEL_SCALE } from "./pixel-heroes";
+import { PIXEL_SCALE } from "./heroes";
 import { drawCoverLook } from "./cover-look";
 import { coverLook, type CoverLook, TILE_HEIGHT } from "./terrain";
 import {

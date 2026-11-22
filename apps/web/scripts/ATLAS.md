@@ -1,6 +1,6 @@
 # Scene atlases
 
-One animation format for scenes (ADR 0026, rule 3): a PNG and a JSON in PixiJS v8's sprite sheet format. The match Heroes' sheets (`docs/design/pixel-heroes/README.md`) and the hangar atlases are the same format, so one loader and one player (`src/atlas-animator.ts`) read both.
+One animation format for scenes (ADR 0026, rule 3): a PNG and a JSON in PixiJS v8's sprite sheet format. The match Heroes' sheets (`docs/design/heroes/README.md`) and the hangar atlases are the same format, so one loader and one player (`src/atlas-animator.ts`) read both.
 
 ## The JSON
 

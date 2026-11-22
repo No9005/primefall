@@ -50,7 +50,7 @@ import { areaContains, areaLift, areaRing, canMove, enemyFade, finished, GHOST_A
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
 import { marksFigure, shieldBubble } from "./hero-figure";
-import { type PixelHero, styledHeroFigure } from "./pixel-heroes";
+import { type PixelHero, styledHeroFigure } from "./heroes";
 import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
 import { chestOf, dashRuns, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";

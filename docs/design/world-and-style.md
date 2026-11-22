@@ -19,7 +19,7 @@ Start here before making anything the player sees or hears (a picture, an animat
 | Product pitch and positioning | `docs/PITCH.md` |
 | Terms (use them exactly) | `GLOSSARY.md` |
 | Owner's design decisions (do not contradict) | `docs/design/decisions.md` |
-| The three Heroes: designs, clips, sheet format | `docs/design/pixel-heroes/README.md` |
+| The three Heroes: designs, clips, sheet format | `docs/design/heroes/README.md` |
 | Animation reference (rig, timing, effects) | `docs/design/animation/README.md` |
 | The Notstrom Map look | `docs/design/notstrom-map/` |
 | Title screen, Notstrom Intro, Hero Select (hangar) | `docs/design/title/`, `docs/design/notstrom-intro/`, `docs/design/hero-select/` |

@@ -86,7 +86,7 @@ Notes:
 - Gone from Max's deck compared with the old one: Breach Charge and Wrecking Blow (they went to Tilly), Shockwave, Pull (replaced by the Hook), Adrenal Surge, Bulwark (replaced by Hard Hat), Charge (replaced by Express Delivery). The ideas stay in this file.
 - Synergy that arises natively: the Hook pulls an enemy next to Max, where Buy One, Get Two and Handle With Care deal +1; Time for Coffee keeps the hooked enemy there; Express Delivery closes the rest and shields on the way in.
 - Missing on purpose: no Knockback, no Cover breaking (Tilly does that).
-- Pictures, animations and frame: `docs/design/cards/` and `docs/design/pixel-heroes/` (the sprite sheets `double`, `rush`, `hook`, `concussion`).
+- Pictures, animations and frame: `docs/design/cards/` and `docs/design/heroes/` (the sprite sheets `double`, `rush`, `hook`, `concussion`).
 
 ### Tilly Turnover (Controller), 10 cards: Cover, Scrap and the sight (implemented)
 

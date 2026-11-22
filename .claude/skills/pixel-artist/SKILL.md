@@ -7,13 +7,13 @@ Everything the player sees follows one look. Make it consistent with what exists
 
 ## 1. Ground
 
-Read the _World_ and _Look_ parts of `docs/design/world-and-style.md` and `docs/design/decisions.md`. Then find the agreed design for what you change (the Hero's design in `docs/design/pixel-heroes/README.md`, the board or reference page in `docs/design/<area>/`) and **name it first**; the finished change is checked against it element by element. Done when you can say which reference you follow, or that none exists and the owner has to decide.
+Read the _World_ and _Look_ parts of `docs/design/world-and-style.md` and `docs/design/decisions.md`. Then find the agreed design for what you change (the Hero's design in `docs/design/heroes/README.md`, the board or reference page in `docs/design/<area>/`) and **name it first**; the finished change is checked against it element by element. Done when you can say which reference you follow, or that none exists and the owner has to decide.
 
 ## 2. Pick the kind
 
 | You make | Read and run |
 |---|---|
-| Hero clip or pose | `docs/design/pixel-heroes/README.md` (rigs in `tools/rigs/`, `node docs/design/pixel-heroes/tools/export.mjs`), timing and beats in `docs/design/animation/README.md` |
+| Hero clip or pose | `docs/design/heroes/README.md` (rigs in `tools/rigs/`, `node docs/design/heroes/tools/export.mjs`), timing and beats in `docs/design/animation/README.md` |
 | Scene film (Notstrom Intro) | `docs/design/notstrom-intro/README.md` and `tools/` (`render_frames.mjs`, then `pack_sheets.py`, then `encode_video.mjs` for the video; read its section on encoding pixel art before you make another video) |
 | Title screen, icons, crystal | `docs/design/title/tools/` |
 | Hangar (Hero Select) | `docs/design/hero-select/README.md` and `tools/` |

@@ -1,5 +1,5 @@
 // The scene atlas format (ADR 0026, rule 3): a PNG and a JSON in PixiJS v8's sprite sheet format. The match Heroes' sheets
-// (`docs/design/pixel-heroes/README.md`) and the hangar atlases (`apps/web/scripts/ATLAS.md`) are read by the same code.
+// (`docs/design/heroes/README.md`) and the hangar atlases (`apps/web/scripts/ATLAS.md`) are read by the same code.
 
 /** No atlas page is larger than this on either side (the texture limit of the weakest phones we care about). */
 export const MAX_ATLAS_SIDE = 4096;
