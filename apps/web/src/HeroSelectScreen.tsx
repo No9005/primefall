@@ -14,8 +14,10 @@ import {
   tapOrder,
 } from "./hangar-select";
 import { HERO_NAMES, HERO_PROFILES, type SelectMode, SELECTABLE_HEROES } from "./hero-select";
+import { BRIDGE_SHADOWS, SHADOW_FLAT, SHADOW_LIFT, type ShadowSpot, STILL_SHADOWS } from "./hangar-shadows";
 import "./hero-select.css";
 import "./hangar-select.css";
+import "./hangar-shadows.css";
 
 // The Hero Select in the hangar of the Notstrom (docs/design/hero-select, the design canvas "Hangar: Max, Tilly and Kit"). The
 // hangar is a picture of 960 x 444 design pixels, drawn in layers (floor, flickering lights, dust, a spark, shade) with the three
@@ -42,7 +44,13 @@ const NAME_PLATE: Record<HangarHero, { left: number; top: number; width: number;
   tilly: { left: 375, top: 346.5, width: 210, height: 88.5 },
   kit: { left: 677.25, top: 318.75, width: 135, height: 52.5 },
 };
-const KIT_RING = { left: 639.75, top: 364.5, width: 210, height: 45 };
+/**
+ * The ring around Kit when he is chosen: on the floor around his feet (he lands in front of the crate). The crate stands behind him, so the
+ * part of the ring that would lie on the crate (above its lower edge, y 386) is not drawn.
+ */
+const KIT_RING = { left: 639.75, top: 374.5, width: 210, height: 45 };
+const CRATE_BOTTOM = 386;
+const KIT_RING_CLIP = CRATE_BOTTOM - KIT_RING.top;
 const BEGIN_DELAYS_MS: Record<HangarHero, number> = { max: 0, tilly: 1400, kit: 700 };
 const MOTES: readonly [number, number, number, number][] = [
   [443, 338, 10.8, -10.2], [269, 359, 10.7, -2.7], [287, 300, 6.7, -3.1], [436, 343, 9.3, -5.3], [257, 311, 8.4, -1.5], [546, 300, 10.6, -0.8], [589, 294, 6.8, -6.6], [251, 310, 10.6, -10.2],
@@ -70,6 +78,22 @@ function spriteStyle(hero: HangarHero, player: HeroPlayer, still: boolean): Reac
   const style: React.CSSProperties = { ...base, backgroundImage: `url(${CLIP_ART}${clip.file})`, backgroundSize: `${clip.frames * width}px ${height}px`, backgroundPosition: "0 0" };
   if (still) return style;
   return { ...style, ["--frames" as string]: clip.frames, ["--frame-width" as string]: `${width}px`, animation: `hg-strip ${clip.seconds}s steps(${clip.frames}, end) ${isLooped(mode) ? "infinite" : "1 forwards"}` };
+}
+
+/** The contact shadow of a Hero: it follows the frames of the clip (keyframes made from the strip), and is set by hand in the two frames of a bridge and without motion. */
+function shadowStyle(hero: HangarHero, player: HeroPlayer, still: boolean): React.CSSProperties {
+  const { mode, bridgeEntry, bridgeHalf, bridgeFrom } = player.state;
+  const fromSpot = (spot: ShadowSpot | undefined): React.CSSProperties => {
+    if (!spot) return { opacity: 0 };
+    const [x, y, width] = spot;
+    const height = width * SHADOW_FLAT;
+    return { opacity: 1, left: x - width / 2, top: y - height * SHADOW_LIFT, width, height };
+  };
+  if (mode === "bridge") return fromSpot(BRIDGE_SHADOWS[`${hero}-${bridgeFrom}`]?.[bridgeEntry * 2 + bridgeHalf]);
+  if (still) return fromSpot(STILL_SHADOWS[`${hero}-${mode}`]);
+  const clip = CLIPS[hero][mode];
+  if (!clip) return { opacity: 0 };
+  return { animation: `hg-shadow-${hero}-${mode} ${clip.seconds}s step-end ${isLooped(mode) ? "infinite" : "1 forwards"}` };
 }
 
 interface HeroSelectScreenProps {
@@ -165,7 +189,16 @@ export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenP
             const selected = all ? all[hero].selected : false;
             return <img key={`plate-${hero}`} className="hg-plate" style={NAME_PLATE[hero]} src={`${ART}name-${hero}${selected ? "-selected" : ""}.png`} alt="" aria-hidden="true" />;
           })}
-          <img className="hg-plate" style={{ ...KIT_RING, opacity: all?.kit.selected ? 1 : 0 }} src={`${ART}kit-ring.png`} alt="" aria-hidden="true" />
+          <img className="hg-plate" style={{ ...KIT_RING, opacity: all?.kit.selected ? 1 : 0, clipPath: `inset(${KIT_RING_CLIP}px 0 0 0)` }} src={`${ART}kit-ring.png`} alt="" aria-hidden="true" />
+          {all &&
+            HANGAR_HEROES.map((hero) => {
+              const { width, height } = FRAME[hero];
+              return (
+                <div key={`shadow-${hero}-${all[hero].state.mode}-${all[hero].state.bridgeEntry}-${all[hero].state.bridgeHalf}`} className="hg-shadow-box" style={{ left: PLACE[hero].left, top: PLACE[hero].top, width, height }} aria-hidden="true">
+                  <div className="hg-shadow" style={shadowStyle(hero, all[hero], still.current)} />
+                </div>
+              );
+            })}
           {all &&
             HANGAR_HEROES.map((hero) => (
               <div key={`${hero}-${all[hero].state.mode}-${all[hero].state.bridgeEntry}-${all[hero].state.bridgeHalf}`} className="hg-sprite" style={spriteStyle(hero, all[hero], still.current)} aria-hidden="true" />

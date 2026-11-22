@@ -13,7 +13,8 @@
 /* The open bay door: a burning crystal falls past it now and then; amber guide lights and red beacons blink. */
 .hg-door { position: absolute; left: 384px; top: 103.5px; width: 192px; height: 172.5px; overflow: hidden; pointer-events: none; }
 .hg-fire { position: absolute; left: 0; top: 0; width: 30px; height: 30px; image-rendering: pixelated; opacity: 0; animation: hg-fall 11s steps(10, end) infinite; animation-delay: 3s; }
-@keyframes hg-fall { 0% { transform: translate(160px, -30px); opacity: 1; } 8% { transform: translate(30px, 110px); opacity: 1; } 8.5% { opacity: 0; } 100% { transform: translate(30px, 110px); opacity: 0; } }
+/* The picture of the crystal has its head at the top right and its tail at the lower left; it falls to the lower left, so it is turned by half a turn: the head leads, the tail trails behind. */
+@keyframes hg-fall { 0% { transform: translate(160px, -30px) rotate(180deg); opacity: 1; } 8% { transform: translate(30px, 110px) rotate(180deg); opacity: 1; } 8.5% { opacity: 0; } 100% { transform: translate(30px, 110px) rotate(180deg); opacity: 0; } }
 .hg-lights { mix-blend-mode: screen; }
 .hg-lights-a { animation: hg-blink 1.6s steps(1, end) infinite; }
 .hg-lights-b { animation: hg-blink 2.1s steps(1, end) infinite; animation-delay: -0.7s; }
@@ -36,6 +37,9 @@
 /* The Heroes: a strip of frames per clip, played in steps; the plates with their names stand on the floor. */
 .hg-plate { position: absolute; image-rendering: pixelated; pointer-events: none; }
 .hg-sprite { position: absolute; image-rendering: pixelated; pointer-events: none; }
+/* The contact shadows: dark flat ellipses under the feet, set in the box of the Hero, frame by frame (hangar-shadows.css). */
+.hg-shadow-box { position: absolute; pointer-events: none; }
+.hg-shadow { position: absolute; opacity: 0; background: url("/assets/hangar/shadow.png") 0 0 / 100% 100% no-repeat; image-rendering: pixelated; }
 @keyframes hg-strip { from { background-position: 0 0; } to { background-position: calc(var(--frames) * var(--frame-width) * -1) 0; } }
 .hg-hit { position: absolute; padding: 0; border: 0; background: none; cursor: pointer; }
 .hg-hit:focus-visible { outline: 2px solid #fff; }
@@ -54,5 +58,5 @@
 @media (prefers-reduced-motion: reduce) {
   .hg-fire, .hg-lights, .hg-guide, .hg-mote, .hg-spark, .hg-shade { animation: none; }
   .hg-spark, .hg-mote { display: none; }
-  .hg-sprite { animation: none !important; }
+  .hg-sprite, .hg-shadow { animation: none !important; }
 }
