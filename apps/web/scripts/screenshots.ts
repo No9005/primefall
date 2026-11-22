@@ -8,10 +8,10 @@ import { buildSquadView, createMatch, type MatchState, startRound } from "game-c
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { frameMoveCamera, frameSquadCamera, gridToWorld } from "../src/board-layout";
 import { freeBoardArea } from "../src/hud-layout";
 import { type PlanStep, SCENARIO_NAMES, SCENARIO_SCREENSHOT_NAMES, SCENARIOS, type Scenario, scenarioRounds, scenarioScreenshotNames, type StepUse } from "./scenarios";
+import { OUTPUT_DIR, WEB_ROOT } from "./screenshot-output";
 
 /** The standard set, in the order the path plays them. Names are stable on purpose; do not rename without need. */
 export const SCREENSHOT_NAMES = [
@@ -33,8 +33,8 @@ export type ScreenshotName = (typeof SCREENSHOT_NAMES)[number];
 export const VIEWPORT = { width: 844, height: 390 };
 const PORT = 4174;
 const URL = `http://127.0.0.1:${PORT}`;
-const webRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-export const OUTPUT_DIR = path.join(webRoot, "screenshots");
+const webRoot = WEB_ROOT;
+export { OUTPUT_DIR };
 
 async function waitForServer(): Promise<void> {
   for (let attempt = 0; attempt < 120; attempt++) {
