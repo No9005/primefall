@@ -1,4 +1,4 @@
-import { REACTOR_DECK, type Grid, type GridPosition } from "game-core";
+import { NOTSTROM_MAP, type Grid, type GridPosition } from "game-core";
 import type { Rect } from "./card-drag";
 import { HERO_WORLD_HEIGHT } from "./hero-style";
 import { footprintCorners, gridToWorld, pickWallAt, TILE_HEIGHT, TILE_WIDTH, worldToGrid } from "./terrain";
@@ -28,7 +28,7 @@ export function boardBounds(grid: Grid): { left: number; right: number; top: num
 }
 
 /** Scale and offset of the world container so the whole board is shown, as large as fits, centred. */
-export function computeCamera(viewWidth: number, viewHeight: number, grid: Grid = REACTOR_DECK): Camera {
+export function computeCamera(viewWidth: number, viewHeight: number, grid: Grid = NOTSTROM_MAP): Camera {
   const bounds = boardBounds(grid);
   const boardWidth = bounds.right - bounds.left;
   const boardHeight = bounds.bottom - bounds.top;
@@ -47,7 +47,7 @@ export const HERO_PICK_TOLERANCE = 0.75;
  * The tile under a world point, or undefined outside the grid. A Wall stands in front of the tiles behind it,
  * so a point on a drawn Wall (top or side faces) picks the Wall's tile (the nearest one wins), not the floor it hides.
  */
-export function pickTileAt(x: number, y: number, grid: Grid = REACTOR_DECK): GridPosition | undefined {
+export function pickTileAt(x: number, y: number, grid: Grid = NOTSTROM_MAP): GridPosition | undefined {
   const wall = pickWallAt(x, y, grid);
   if (wall) return wall;
   // A tile is a unit square in grid space, which is exactly its floor polygon on screen.
@@ -59,7 +59,7 @@ export function pickTileAt(x: number, y: number, grid: Grid = REACTOR_DECK): Gri
 
 /** Inverse of a camera: a point in view pixels to world pixels. Without a camera, the fitted one. */
 export function viewToWorld(viewX: number, viewY: number, viewWidth: number, viewHeight: number, ...optional: [grid?: Grid, camera?: Camera]) {
-  const [grid = REACTOR_DECK, camera = computeCamera(viewWidth, viewHeight, grid)] = optional;
+  const [grid = NOTSTROM_MAP, camera = computeCamera(viewWidth, viewHeight, grid)] = optional;
   return { x: (viewX - camera.x) / camera.scale, y: (viewY - camera.y) / camera.scale };
 }
 
@@ -141,7 +141,7 @@ export function clampCamera(camera: Camera, view: CameraView): Camera {
 
 /** Like clampCamera, but the board only has to cover `area` (a part of the view) instead of the whole view. */
 function clampCameraIn(camera: Camera, view: CameraView, area: Rect): Camera {
-  const { grid = REACTOR_DECK } = view;
+  const { grid = NOTSTROM_MAP } = view;
   const fitted = fitCamera(view);
   const clamped = Math.min(Math.max(camera.scale, fitted.scale), view.pixel ? pixelMaxScale(fitted.scale) : fitted.scale * MAX_ZOOM);
   const scale = view.pixel ? Math.max(pixelStepScale(clamped), fitted.scale) : clamped;
@@ -322,7 +322,7 @@ export function resolveTap(
   { heroes, targetableIds, highlights }: TapCandidates,
   ...optional: [grid?: Grid, scale?: number]
 ): TapTarget {
-  const [grid = REACTOR_DECK, scale = 1] = optional;
+  const [grid = NOTSTROM_MAP, scale = 1] = optional;
   const point = worldToGrid(x, y);
   const touchRadius = MIN_TOUCH_RADIUS / scale;
   let nearest: { id: string; distance: number } | undefined;

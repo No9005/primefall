@@ -1,4 +1,4 @@
-import { coverAt, CoverKind, parseGrid, REACTOR_DECK, tileAt, TileKind } from "game-core";
+import { coverAt, CoverKind, parseGrid, NOTSTROM_MAP, tileAt, TileKind } from "game-core";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -17,10 +17,10 @@ function relativeLuminance(hex: number): number {
 const flatPoints = (points: number[]) => Array.from({ length: points.length / 2 }, (_, i) => ({ x: points[i * 2]!, y: points[i * 2 + 1]! }));
 
 describe("buildTerrain at 45 degrees", () => {
-  const tiles = buildTerrain(REACTOR_DECK);
+  const tiles = buildTerrain(NOTSTROM_MAP);
 
   it("yields one floor polygon per tile, equal to the diamond around gridToWorld", () => {
-    expect(tiles).toHaveLength(REACTOR_DECK.width * REACTOR_DECK.height);
+    expect(tiles).toHaveLength(NOTSTROM_MAP.width * NOTSTROM_MAP.height);
     for (const { position, floor } of tiles) {
       const { x, y } = gridToWorld(position);
       expect(flatPoints(floor.points)).toEqual([
@@ -288,7 +288,7 @@ describe("the look of the terrain (artboard J)", () => {
 
 describe("the grid without Cover", () => {
   it("turns every Half and Full Cover tile into floor and keeps Walls and zones", () => {
-    const grid = withoutCover(REACTOR_DECK);
+    const grid = withoutCover(NOTSTROM_MAP);
     let covers = 0;
     let zones = 0;
     grid.tiles.forEach((line, row) => line.forEach((_, col) => {
@@ -296,7 +296,7 @@ describe("the grid without Cover", () => {
       if (tileAt(grid, { col, row }) === TileKind.PrimeZone || tileAt(grid, { col, row }) === TileKind.Outpost) zones += 1;
     }));
     expect(covers).toBe(0);
-    const before = (kind: TileKind) => REACTOR_DECK.tiles.flat().filter((tile) => tile === kind).length;
+    const before = (kind: TileKind) => NOTSTROM_MAP.tiles.flat().filter((tile) => tile === kind).length;
     expect(zones).toBe(before(TileKind.PrimeZone) + before(TileKind.Outpost));
     expect(grid.tiles.flat().filter((tile) => tile === TileKind.Wall).length).toBe(before(TileKind.Wall));
   });

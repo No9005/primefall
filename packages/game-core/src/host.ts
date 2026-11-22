@@ -4,7 +4,7 @@
 
 import type { HeroClass } from "./cards";
 import type { SquadPlan } from "./plan";
-import type { Grid, GridPosition } from "./reactor-deck";
+import type { Grid, GridPosition } from "./notstrom-map";
 
 export enum SquadId {
   Left = "left",
@@ -253,7 +253,7 @@ export interface SquadView {
   /** Set once the match is over; no further plans are accepted. */
   result?: MatchResult;
   /**
-   * Cover tiles of the Reactor Deck that this Squad has seen destroyed. Cover destroyed out of sight is
+   * Cover tiles of the Notstrom Map that this Squad has seen destroyed. Cover destroyed out of sight is
    * not listed until the Squad sees that tile (Fog of War).
    */
   destroyedCover: readonly GridPosition[];

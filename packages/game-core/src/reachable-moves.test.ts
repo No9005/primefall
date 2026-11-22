@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { EventKind, SquadId } from "./host";
 import { createMatch, startRound } from "./match";
 import { ActionKind, chebyshevDistance, reachableMoveDestinations } from "./plan";
-import { REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
+import { NOTSTROM_MAP, TileKind, tileAt } from "./notstrom-map";
 import { resolveRound } from "./resolution";
 
 const BRUISER = "left-bruiser";
@@ -17,10 +17,10 @@ describe("reachableMoveDestinations", () => {
   });
 
   it("only offers destinations that the Resolution reaches when nothing else is in the way", () => {
-    for (let row = 0; row < REACTOR_DECK.height; row++) {
-      for (let col = 0; col < REACTOR_DECK.width; col++) {
+    for (let row = 0; row < NOTSTROM_MAP.height; row++) {
+      for (let col = 0; col < NOTSTROM_MAP.width; col++) {
         const from = { col, row };
-        if (tileAt(REACTOR_DECK, from) === undefined || tileAt(REACTOR_DECK, from) === TileKind.Wall) continue;
+        if (tileAt(NOTSTROM_MAP, from) === undefined || tileAt(NOTSTROM_MAP, from) === TileKind.Wall) continue;
         // The Resolution does not change its input, so one Match State serves every destination of this tile.
         const match = startRound(createMatch(5));
         const others = match.heroes.filter((hero) => hero.id !== BRUISER);

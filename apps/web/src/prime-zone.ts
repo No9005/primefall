@@ -1,4 +1,4 @@
-import { findTiles, type GridPosition, PRIME_ZONE_WIN_RESOLUTIONS, REACTOR_DECK, SquadId, TileKind, ZoneKind, type ZoneView } from "game-core";
+import { findTiles, type GridPosition, PRIME_ZONE_WIN_RESOLUTIONS, NOTSTROM_MAP, SquadId, TileKind, ZoneKind, type ZoneView } from "game-core";
 import type { UiSound } from "./audio-manifest";
 import type { CalloutTone } from "./callout";
 import { type ZoneLook, zoneLook } from "./vision-effects";
@@ -42,7 +42,7 @@ export interface PrimeCallout {
   sounds?: readonly UiSound[];
 }
 
-const PRIME_ZONE_TILES = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+const PRIME_ZONE_TILES = findTiles(NOTSTROM_MAP, TileKind.PrimeZone);
 
 export const isInPrimeZone = ({ col, row }: GridPosition): boolean => PRIME_ZONE_TILES.some((tile) => tile.col === col && tile.row === row);
 

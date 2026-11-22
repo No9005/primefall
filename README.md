@@ -2,7 +2,7 @@
 
 Mobile-first, 2.5D tactical 3v3 game. Both Squads plan at the same time, commit their commands, and a deterministic Resolution plays out. A Squad wins by holding the Prime Zone for three Resolutions in a row.
 
-The current state is an **offline prototype**: you command the Bruiser of a Squad of three against an AI-controlled enemy Squad, on the Reactor Deck map, in a browser, held in landscape. There is no backend yet. The simulation runs in the browser behind the same interface a server will use later.
+The current state is an **offline prototype**: you command the Bruiser of a Squad of three against an AI-controlled enemy Squad, on the Notstrom Map, in a browser, held in landscape. There is no backend yet. The simulation runs in the browser behind the same interface a server will use later.
 
 ## Where to read what
 

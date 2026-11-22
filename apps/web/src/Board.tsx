@@ -7,7 +7,7 @@ import {
   type RevealedArea,
   type ScrapFieldView,
   findTiles,
-  REACTOR_DECK,
+  NOTSTROM_MAP,
   TileKind,
   tileAt,
 } from "game-core";
@@ -344,7 +344,7 @@ interface Terrain {
 
 /** The middle of the Prime Zone tiles (the zone is drawn faintly even in the fog, so using it reveals nothing). */
 function zoneCentre(): GridPosition | undefined {
-  const tiles = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+  const tiles = findTiles(NOTSTROM_MAP, TileKind.PrimeZone);
   if (tiles.length === 0) return undefined;
   return { col: tiles.reduce((sum, t) => sum + t.col, 0) / tiles.length, row: tiles.reduce((sum, t) => sum + t.row, 0) / tiles.length };
 }
@@ -1237,7 +1237,7 @@ export function Board({
     if (!terrain) return;
     // The walls stand among the props and the Heroes (sorted by depth), so a Hero in front of the zone is drawn over its wall and
     // the core inside it over the posts at the back.
-    const drawn = drawLaserWalls(terrain.objects, REACTOR_DECK);
+    const drawn = drawLaserWalls(terrain.objects, NOTSTROM_MAP);
     const flicker = wallsWereUp.current && !primeWalls && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     wallsWereUp.current = primeWalls;
     if (!primeWalls && !flicker) {
@@ -1507,7 +1507,7 @@ export function Board({
   }, []);
 
   return (
-    <div ref={host} className="board" role="img" aria-label="Reactor Deck">
+    <div ref={host} className="board" role="img" aria-label="Notstrom Map">
     </div>
   );
 }

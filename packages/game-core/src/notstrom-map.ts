@@ -1,4 +1,4 @@
-// Reactor Deck map data (ADR 0016) and the Grid model shared by rules and rendering.
+// Notstrom Map data (ADR 0016) and the Grid model shared by rules and rendering.
 
 /** String-valued so Match State stays readable when serialized; always compare against the members. */
 export enum TileKind {
@@ -129,12 +129,12 @@ export function destroyCover(grid: Grid, position: GridPosition): Grid {
   // A wreck on a Prime Zone (or any tile without Cover of its own) only loses the wreck; the tile keeps its kind.
   if (tileCoverAt(cleared, position) === CoverKind.None) return cleared;
   // Placed Cover gives the tile back as the map has it (for example the Prime Zone); map Cover becomes open floor.
-  const base = tileAt(REACTOR_DECK, position);
-  const restored = base !== undefined && tileCoverAt(REACTOR_DECK, position) === CoverKind.None ? base : TileKind.Floor;
+  const base = tileAt(NOTSTROM_MAP, position);
+  const restored = base !== undefined && tileCoverAt(NOTSTROM_MAP, position) === CoverKind.None ? base : TileKind.Floor;
   return withTile(cleared, position, restored);
 }
 
-export const isWall = (position: GridPosition) => tileAt(REACTOR_DECK, position) === TileKind.Wall;
+export const isWall = (position: GridPosition) => tileAt(NOTSTROM_MAP, position) === TileKind.Wall;
 
 /** Whether no step goes onto the tile: a Wall, or a Prime Zone tile while the zone is closed. */
 export function blocksSteps(grid: Grid, position: GridPosition): boolean {
@@ -147,7 +147,7 @@ export const withZoneClosed = (grid: Grid, closed: boolean): Grid =>
   (grid.zoneClosed ?? false) === closed ? grid : { ...grid, zoneClosed: closed };
 
 /** A step is legal into the Grid, not into a Wall or a closed Prime Zone, and a diagonal step may not cut such a corner. */
-export function isStepAllowed(from: GridPosition, to: GridPosition, grid: Grid = REACTOR_DECK): boolean {
+export function isStepAllowed(from: GridPosition, to: GridPosition, grid: Grid = NOTSTROM_MAP): boolean {
   const wall = (position: GridPosition) => blocksSteps(grid, position);
   if (tileAt(grid, to) === undefined || wall(to)) return false;
   const diagonal = from.col !== to.col && from.row !== to.row;
@@ -165,10 +165,10 @@ export function stepTowards(from: GridPosition, destination: GridPosition): Grid
 /** The Cover tiles of the original map that are no longer Cover in `grid`. */
 export function destroyedCoverTiles(grid: Grid): GridPosition[] {
   const destroyed: GridPosition[] = [];
-  REACTOR_DECK.tiles.forEach((line, row) =>
+  NOTSTROM_MAP.tiles.forEach((line, row) =>
     line.forEach((_, col) => {
       const tile = { col, row };
-      if (coverAt(REACTOR_DECK, tile) !== CoverKind.None && coverAt(grid, tile) === CoverKind.None) destroyed.push(tile);
+      if (coverAt(NOTSTROM_MAP, tile) !== CoverKind.None && coverAt(grid, tile) === CoverKind.None) destroyed.push(tile);
     }),
   );
   return destroyed;
@@ -240,13 +240,13 @@ export function shotLine(grid: Grid, from: GridPosition, to: GridPosition, range
 }
 
 /**
- * The Reactor Deck "Crossroads": 45 by 25 tiles, mirror-symmetric left to right and top to bottom (ADR 0016).
+ * The Notstrom Map "Crossroads": 45 by 25 tiles, mirror-symmetric left to right and top to bottom (ADR 0016).
  * Three zones: the Prime Zone (5 by 5) in the middle and two Outposts (3 by 3) on the centre column, top and bottom.
  * On purpose not symmetric: the two slabs beside the Prime Zone are point-symmetric (offset by two rows), and the
  * Overwatch Nests exist only in the top half (the bottom half has Full Cover in their place).
  * `#` Wall, `H` Half Cover, `F` Full Cover, `O` Overwatch Nest, `P` Prime Zone, `X` Outpost, `S` Drop Point, `.` open floor.
  */
-export const REACTOR_DECK: Grid = parseGrid([
+export const NOTSTROM_MAP: Grid = parseGrid([
   "#############################################",
   "#.........##.........###.........##.........#",
   "#......HH.##..F......XXX......F..##.HH......#",
@@ -281,11 +281,11 @@ function middleThree(column: readonly GridPosition[]): GridPosition[] {
   return sorted.slice(first, first + 3);
 }
 
-const isOnSide = (left: boolean, col: number) => (left ? col < REACTOR_DECK.width / 2 : col > REACTOR_DECK.width / 2);
+const isOnSide = (left: boolean, col: number) => (left ? col < NOTSTROM_MAP.width / 2 : col > NOTSTROM_MAP.width / 2);
 
 /** Where a Squad starts: the middle three rows of the inner column of its Drop Point strip. */
 export function dropPointStartTiles(left: boolean): GridPosition[] {
-  const dropPoints = findTiles(REACTOR_DECK, TileKind.DropPoint).filter(({ col }) => isOnSide(left, col));
+  const dropPoints = findTiles(NOTSTROM_MAP, TileKind.DropPoint).filter(({ col }) => isOnSide(left, col));
   const cols = dropPoints.map(({ col }) => col);
   const innerCol = left ? Math.max(...cols) : Math.min(...cols);
   return middleThree(dropPoints.filter(({ col }) => col === innerCol));
@@ -293,7 +293,7 @@ export function dropPointStartTiles(left: boolean): GridPosition[] {
 
 /** Where a Defender starts (ADR 0022): the middle three rows of the Prime Zone column next to the Squad's side. */
 export function defenderStartTiles(left: boolean): GridPosition[] {
-  const zone = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+  const zone = findTiles(NOTSTROM_MAP, TileKind.PrimeZone);
   const cols = zone.map(({ col }) => col);
   const sideCol = left ? Math.min(...cols) : Math.max(...cols);
   return middleThree(zone.filter(({ col }) => col === sideCol));

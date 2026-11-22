@@ -24,7 +24,7 @@
   "businessLogicExceptions": [
     "packages/game-core/src/index.ts",
     "packages/game-core/src/cards.ts",
-    "packages/game-core/src/reactor-deck.ts",
+    "packages/game-core/src/notstrom-map.ts",
     "packages/game-core/src/**/*.test.ts"
   ]
 }

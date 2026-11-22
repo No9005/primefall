@@ -16,7 +16,7 @@ import { type CardDefinition, type CardIndex, CardTarget, CardType, EffectKind, 
 import { type AttackAndDefendRules, EventKind, MatchEndReason, type MatchEvent, MatchMode, type MatchModeSetting, ROUND_LIMIT, SquadId, type SquadView, ZoneTie } from "./host";
 import { buildSquadView, createMatch, type HeroState, type MatchState, startRound } from "./match";
 import { ActionKind, chebyshevDistance, type HeroPlan, moveDestinations, type QueuedAction, queueEnergyCost, type SquadPlan } from "./plan";
-import type { GridPosition } from "./reactor-deck";
+import type { GridPosition } from "./notstrom-map";
 import { resolveRound } from "./resolution";
 
 interface Tweaks {

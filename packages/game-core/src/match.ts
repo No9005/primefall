@@ -24,9 +24,9 @@ import {
   type ZoneView,
 } from "./host";
 import { chebyshevDistance } from "./plan";
-import { CoverKind, defenderStartTiles, dropPointStartTiles, coverAt, destroyCover, destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, REACTOR_DECK, TileKind, tileAt, withTile, withWreck, withZoneClosed } from "./reactor-deck";
+import { CoverKind, defenderStartTiles, dropPointStartTiles, coverAt, destroyCover, destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, NOTSTROM_MAP, TileKind, tileAt, withTile, withWreck, withZoneClosed } from "./notstrom-map";
 
-/** A scoring zone of the classic mode, read from the Reactor Deck. */
+/** A scoring zone of the classic mode, read from the Notstrom Map. */
 export interface ZoneDefinition {
   kind: ZoneKind;
   tiles: readonly GridPosition[];
@@ -59,8 +59,8 @@ function tileGroups(grid: Grid, kind: TileKind): GridPosition[][] {
 
 /** The zones of the classic mode: the Prime Zone first, then the Outposts. Values and unlock Rounds are the constants in host.ts. */
 export const ZONES: readonly ZoneDefinition[] = [
-  ...tileGroups(REACTOR_DECK, TileKind.PrimeZone).map((tiles) => ({ kind: ZoneKind.PrimeZone, tiles, value: PRIME_ZONE_VALUE, unlockRound: PRIME_ZONE_UNLOCK_ROUND })),
-  ...tileGroups(REACTOR_DECK, TileKind.Outpost).map((tiles) => ({ kind: ZoneKind.Outpost, tiles, value: OUTPOST_VALUE, unlockRound: OUTPOST_UNLOCK_ROUND })),
+  ...tileGroups(NOTSTROM_MAP, TileKind.PrimeZone).map((tiles) => ({ kind: ZoneKind.PrimeZone, tiles, value: PRIME_ZONE_VALUE, unlockRound: PRIME_ZONE_UNLOCK_ROUND })),
+  ...tileGroups(NOTSTROM_MAP, TileKind.Outpost).map((tiles) => ({ kind: ZoneKind.Outpost, tiles, value: OUTPOST_VALUE, unlockRound: OUTPOST_UNLOCK_ROUND })),
 ];
 
 const samePosition = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row === b.row;
@@ -208,7 +208,7 @@ export function createMatch(seed: number, mode: MatchModeSetting = { kind: Match
     round: 0,
     heroes: [],
     ghosts: { [SquadId.Left]: {}, [SquadId.Right]: {} },
-    grid: withZoneClosed(REACTOR_DECK, mode.kind === MatchMode.Classic),
+    grid: withZoneClosed(NOTSTROM_MAP, mode.kind === MatchMode.Classic),
     knownDestroyedCover: { [SquadId.Left]: [], [SquadId.Right]: [] },
     knownWrecks: { [SquadId.Left]: [], [SquadId.Right]: [] },
     placedCover: [],
@@ -431,7 +431,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
     mode.kind === MatchMode.AttackAndDefend
       ? (() => {
           const roundLimit = mode.roundLimit ?? DEFENDER_ROUND_LIMIT;
-          const zone = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+          const zone = findTiles(NOTSTROM_MAP, TileKind.PrimeZone);
           return { roundLimit, attackAndDefend: { defender: mode.defender, roundsLeft: match.result ? 0 : Math.max(0, roundLimit - match.round + 1), zone } };
         })()
       : { roundLimit: ROUND_LIMIT };
@@ -445,7 +445,7 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
   }));
   const points = classic ? { scores: { ...match.scores }, zones } : {};
   return {
-    squad, round: match.round, grid: withZoneClosed(REACTOR_DECK, match.grid.zoneClosed ?? false), ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scrapFields, scannedAreas, visibleTiles, heroes, enemies,
+    squad, round: match.round, grid: withZoneClosed(NOTSTROM_MAP, match.grid.zoneClosed ?? false), ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scrapFields, scannedAreas, visibleTiles, heroes, enemies,
   };
 }
 

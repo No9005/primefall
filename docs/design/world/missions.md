@@ -43,7 +43,7 @@ The Prime Zone is enclosed by **red laser walls**, similar to the Shield bubbles
 
 - **Before Round 4 (inactive):** the laser walls stand closed around the 5 by 5 zone. The Prime Zone scores nothing.
 - **The change in Round 4:** the walls flicker and drop away (a short flicker, then gone). From then on the zone is open and scores.
-- On the Reactor Deck this is the story of the blast shutters powering down after four Rounds. Another place can tell it differently with the same look.
+- On the Notstrom Map this is the story of the blast shutters powering down after four Rounds. Another place can tell it differently with the same look.
 - It is a drawing in the game (`board-drawing.ts` / the effects layer) and in the Playback of the Resolution that ends Round 3; no rule changes, the Round-4 activation is the existing rule (`PRIME_ZONE_UNLOCK_ROUND`). The walls are not Cover and do not block Line of Sight or movement.
 - Decided: variant C, the shield panel with a ring pattern (`docs/design/world/images/laser-walls-drafts.png`); the walls are visible in the Fog of War; both styles draw the same walls.
 - Built in `drawLaserWalls` (`board-drawing.ts`) and the effect in `Board.tsx`; the flicker is `laserWallAlpha` in `prime-zone.ts` (1.1 s). It plays when the zone changes from inactive to active during the board's life, that is after the Resolution that unlocks it. Reduced motion: no flicker, the walls just go.

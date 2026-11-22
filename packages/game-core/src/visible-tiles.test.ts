@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, recordSightings, SIGHT_RANGE, startRound } from "./match";
-import { findTiles, type GridPosition, hasLineOfSight, REACTOR_DECK, TileKind } from "./reactor-deck";
+import { findTiles, type GridPosition, hasLineOfSight, NOTSTROM_MAP, TileKind } from "./notstrom-map";
 
 const LEFT_BRUISER = "left-bruiser";
 const RIGHT_BRUISER = "right-bruiser";
@@ -27,11 +27,11 @@ describe("SquadView.visibleTiles", () => {
     const match = setup({ [LEFT_BRUISER]: origin });
     const seen = visibleKeys(match, SquadId.Left);
     const expected = new Set<string>();
-    for (let row = 0; row < REACTOR_DECK.height; row++) {
-      for (let col = 0; col < REACTOR_DECK.width; col++) {
+    for (let row = 0; row < NOTSTROM_MAP.height; row++) {
+      for (let col = 0; col < NOTSTROM_MAP.width; col++) {
         const tile = { col, row };
         const inRange = Math.max(Math.abs(col - origin.col), Math.abs(row - origin.row)) <= SIGHT_RANGE;
-        if (inRange && hasLineOfSight(REACTOR_DECK, origin, tile)) expected.add(key(tile));
+        if (inRange && hasLineOfSight(NOTSTROM_MAP, origin, tile)) expected.add(key(tile));
       }
     }
     expect(seen).toEqual(expected);
@@ -46,7 +46,7 @@ describe("SquadView.visibleTiles", () => {
   });
 
   it("does not show the Prime Zone from the Drop Point area, but does from a Hero standing in it", () => {
-    const primeZone = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+    const primeZone = findTiles(NOTSTROM_MAP, TileKind.PrimeZone);
     const fresh = startRound(createMatch(3));
     expect(primeZone.some((tile) => visibleKeys(fresh, SquadId.Left).has(key(tile)))).toBe(false);
 

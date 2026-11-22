@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CoverKind, coverAgainst, hasLineOfSight, parseGrid, REACTOR_DECK, shotLine } from "./reactor-deck";
+import { CoverKind, coverAgainst, hasLineOfSight, parseGrid, NOTSTROM_MAP, shotLine } from "./notstrom-map";
 
 const grid = parseGrid(["#########", "#.......#", "#...#...#", "#.H...F.#", "#.......#", "#########"]);
 
@@ -39,12 +39,12 @@ describe("shotLine", () => {
   });
 
   it("agrees with hasLineOfSight and coverAgainst on a grid of start and end tiles", () => {
-    const tiles = REACTOR_DECK.tiles.flatMap((line, row) => line.map((_, col) => ({ col, row }))).filter((_, index) => index % 7 === 0);
+    const tiles = NOTSTROM_MAP.tiles.flatMap((line, row) => line.map((_, col) => ({ col, row }))).filter((_, index) => index % 7 === 0);
     for (const from of tiles) {
       for (const to of tiles) {
-        const line = shotLine(REACTOR_DECK, from, to, 4);
-        expect(line.lineOfSight).toBe(hasLineOfSight(REACTOR_DECK, from, to));
-        expect(line.cover).toBe(coverAgainst(REACTOR_DECK, from, to));
+        const line = shotLine(NOTSTROM_MAP, from, to, 4);
+        expect(line.lineOfSight).toBe(hasLineOfSight(NOTSTROM_MAP, from, to));
+        expect(line.cover).toBe(coverAgainst(NOTSTROM_MAP, from, to));
         expect(line.blockedAt !== undefined).toBe(!line.lineOfSight);
       }
     }

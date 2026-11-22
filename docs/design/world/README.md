@@ -29,7 +29,7 @@ The maps are the places such contracts lead to. They already exist as looks, and
 
 | Place | Look | Status |
 |---|---|---|
-| Stricken hauler (Reactor Deck) | worn industrial, red lamps, hazard bands | built (tileset "Notstrom", `docs/design/reactor-deck/`) |
+| Stricken hauler (Notstrom Map) | worn industrial, red lamps, hazard bands | built (tileset "Notstrom", `docs/design/notstrom-map/`) |
 | Snow field under polar night | expedition barricades, orange beacons, glowing artefacts, half-buried ring gate, crashed rescue capsule | assets only (tileset "Polarnacht", `docs/design/ice-field/`), no map |
 | Neon city | rain, signs, corporate towers in the manner of *RoboCop* | idea, no assets |
 

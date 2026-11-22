@@ -2,7 +2,7 @@
 
 A proposal for the look of a second map, worked out with the product owner in a chat session: an outdoor field in snow and ice under a polar night. An expedition has set up barricades and beacons with orange lights; glowing alien artifacts stand in the snow; a ring gate, half dug out of the ice, stands in the Prime Zone. A rescue capsule has crashed on the field, with a flight recorder to salvage.
 
-The tileset is **modular** like the one of the Reactor Deck (`docs/design/reactor-deck/`): single tiles, no picture of a map. `overview/other-layout.png` is a second layout built from the same files as `overview/field.png`.
+The tileset is **modular** like the one of the Notstrom Map (`docs/design/notstrom-map/`): single tiles, no picture of a map. `overview/other-layout.png` is a second layout built from the same files as `overview/field.png`.
 
 **Status: assets and reference only. Nothing in the app uses them, and the map itself does not exist yet.** There is no layout for it in `packages/game-core`, and the secondary objectives it is meant for (fetch and bring, escort) are not in the specs. Both layouts here are placeholders that show the tiles.
 
@@ -16,9 +16,9 @@ The tileset is **modular** like the one of the Reactor Deck (`docs/design/reacto
 | `apps/web/public/assets/ice-field/aurora.png` | The aurora (256 x 112 px, repeats horizontally) |
 | `overview/` | The atlas, the two maps built from it, and a close-up of the capsule |
 | `reference/looks.html` | The page on which the look was chosen (four looks of the same placeholder map; "Polarnacht" is look D). German, as written for the product owner |
-| `tools/` | `tileset.js` draws and packs the tiles, `assemble.js` builds a map from the atlas, `export.mjs` runs both. The sprite, the packer and the light stage are shared with the Reactor Deck: `docs/design/tools/pixel-atlas.js` |
+| `tools/` | `tileset.js` draws and packs the tiles, `assemble.js` builds a map from the atlas, `export.mjs` runs both. The sprite, the packer and the light stage are shared with the Notstrom Map: `docs/design/tools/pixel-atlas.js` |
 
-Geometry, anchors, the three layers of light and the PixiJS code are the same as for the Reactor Deck; read its README for them. All frame names here start with `ice.`.
+Geometry, anchors, the three layers of light and the PixiJS code are the same as for the Notstrom Map; read its README for them. All frame names here start with `ice.`.
 
 ## The frames
 
@@ -73,4 +73,4 @@ node docs/design/ice-field/tools/export.mjs
 
 - **The map and its objectives are not specified.** Fetch and bring, escort, and salvaging from the capsule are ideas of the session; `GLOSSARY.md`, the specs and the rules know none of them. The names used here (relic, landing pad, sled, capsule, salvage case) are working names.
 - **Glow colours.** Alien things glow green and cold, expedition things orange. Green is close to the teal of the own Squad's ring; check it on the board.
-- **Tile size, view angles, quality**: as for the Reactor Deck tileset.
+- **Tile size, view angles, quality**: as for the Notstrom Map tileset.

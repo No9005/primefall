@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { EventKind, SquadId } from "./host";
 import { createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type SquadPlan } from "./plan";
-import type { GridPosition } from "./reactor-deck";
+import type { GridPosition } from "./notstrom-map";
 import { getSquadEvents, resolveRound } from "./resolution";
 
 const LEFT_BRUISER = "left-bruiser";

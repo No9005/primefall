@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { EventKind, SquadId } from "./host";
 import { createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, chebyshevDistance, type SquadPlan } from "./plan";
-import { CoverKind, coverAgainst, coverAt, type GridPosition, hasLineOfSight, parseGrid, REACTOR_DECK } from "./reactor-deck";
+import { CoverKind, coverAgainst, coverAt, type GridPosition, hasLineOfSight, parseGrid, NOTSTROM_MAP } from "./notstrom-map";
 import { resolveRound } from "./resolution";
 import { withFullCover } from "./full-cover-fixture";
 
@@ -12,7 +12,7 @@ const RIGHT_BRUISER = "right-bruiser";
 // Handle With Care (card 0, damage 2, 3 at Range 1) from Range 1.
 const LEFT_ASSASSIN = "left-assassin";
 
-// The Reactor Deck has no Full Cover tile; the matches here get one at (15,1).
+// The Notstrom Map has no Full Cover tile; the matches here get one at (15,1).
 const FULL_COVER = { col: 15, row: 1 };
 
 const hero = (match: MatchState, heroId: string) => match.heroes.find((candidate) => candidate.id === heroId)!;
@@ -32,7 +32,7 @@ function attackFrom(attacker: GridPosition, target: GridPosition) {
 }
 
 describe("Cover against Attacks", () => {
-  // The Reactor Deck has Half Cover at (18,8).
+  // The Notstrom Map has Half Cover at (18,8).
   const halfCover = { col: 18, row: 8 };
 
   it("reduces damage by 1 for a target on Half Cover attacked from Range 3 or more", () => {
@@ -71,10 +71,10 @@ describe("Cover against Attacks", () => {
   });
 
   it("classifies tiles", () => {
-    expect(coverAt(REACTOR_DECK, halfCover)).toBe(CoverKind.Half);
+    expect(coverAt(NOTSTROM_MAP, halfCover)).toBe(CoverKind.Half);
     expect(coverAt(withFullCover(startRound(createMatch(5)), FULL_COVER).grid, FULL_COVER)).toBe(CoverKind.Full);
-    expect(coverAt(REACTOR_DECK, { col: 23, row: 8 })).toBe(CoverKind.None);
-    expect(coverAgainst(REACTOR_DECK, { col: 19, row: 8 }, halfCover)).toBe(CoverKind.None);
+    expect(coverAt(NOTSTROM_MAP, { col: 23, row: 8 })).toBe(CoverKind.None);
+    expect(coverAgainst(NOTSTROM_MAP, { col: 19, row: 8 }, halfCover)).toBe(CoverKind.None);
   });
 });
 

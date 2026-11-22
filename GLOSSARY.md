@@ -125,7 +125,7 @@ _Avoid_: Sniper shot, ranged finisher
 ### Battlefield and objectives
 
 **Grid**:
-The tile-based battlefield (45 by 25 on the Reactor Deck) used for movement, range, line of sight, and cover.
+The tile-based battlefield (45 by 25 on the Notstrom Map) used for movement, range, line of sight, and cover.
 _Avoid_: Map, board, arena
 
 **Line of Sight**:
@@ -208,16 +208,16 @@ _Avoid_: Timeout, draw
 A set of weights chosen per match from the match seed (for example Aggressive, Defensive, Flanker) that shifts how the AI scores its options.
 
 **Overwatch Nest**:
-A Full Cover tile (`O`) with a sightline towards the Prime Zone. The Reactor Deck has two of them, in its top half (ADR 0016).
+A Full Cover tile (`O`) with a sightline towards the Prime Zone. The Notstrom Map has two of them, in its top half (ADR 0016).
 _Avoid_: Sniper nest, camp spot
 
 **Drop Point**:
 One of the 2 by 5 strips of tiles at the left and right edge of the Grid where a Squad is landed and starts; no sight line leads from one Drop Point to the other (ADR 0016, where it is called Drop Point).
 _Avoid_: Drop Point, base, start zone
 
-**Reactor Deck**:
-The first Primefall map: a damaged cargo ship whose central reactor is the Prime Zone.
-_Avoid_: Level, stage
+**Notstrom Map**:
+The first Primefall map, on board the ship Notstrom: a damaged cargo ship whose central reactor is the Prime Zone. Every map has a name of its own; "Notstrom" is both the ship and this map. Formerly called "Reactor Deck".
+_Avoid_: Reactor Deck, Level, stage
 
 **Resolution**:
 The deterministic simulation of all committed commands after both squads have planned.

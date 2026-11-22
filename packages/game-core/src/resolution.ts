@@ -53,13 +53,13 @@ import {
   isWall,
   HALF_COVER_REDUCTION,
   hasLineOfSight,
-  REACTOR_DECK,
+  NOTSTROM_MAP,
   stepTowards,
   TileKind,
   tileAt,
   withTile,
   withWreck,
-} from "./reactor-deck";
+} from "./notstrom-map";
 
 export interface ResolutionResult {
   /** The Match State after the Resolution; the Round counter and Hands are unchanged. */
@@ -78,7 +78,7 @@ export interface ResolutionResult {
 type WithheldField = "from" | "to" | "casterId";
 
 const SQUADS = [SquadId.Left, SquadId.Right];
-const PRIME_ZONE_TILES = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+const PRIME_ZONE_TILES = findTiles(NOTSTROM_MAP, TileKind.PrimeZone);
 
 
 /** Slow applied in a Resolution lasts until the end of the next one: that is `duration` Resolutions after this. */
@@ -662,7 +662,7 @@ function applyZoneDecay(match: MatchState): void {
   const cards = mode.kind === MatchMode.AttackAndDefend ? (mode.zoneDecay ?? ZONE_DECAY_CARDS) : 0;
   if (cards === 0) return;
   for (const hero of match.heroes) {
-    if (hero.exhausted || tileAt(REACTOR_DECK, hero.position) !== TileKind.PrimeZone) continue;
+    if (hero.exhausted || tileAt(NOTSTROM_MAP, hero.position) !== TileKind.PrimeZone) continue;
     for (let i = 0; i < cards && hero.deck.length > 0; i++) hero.exile.push(hero.deck.pop()!);
   }
 }

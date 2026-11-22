@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { findTiles, REACTOR_DECK, TileKind } from "game-core";
+import { findTiles, NOTSTROM_MAP, TileKind } from "game-core";
 import { describe, expect, it } from "vitest";
 import {
   beginMoveFraming,
@@ -58,8 +58,8 @@ describe("computeCamera", () => {
     [667, 375],
     [2000, 920],
   ];
-  const lastCol = REACTOR_DECK.width - 1;
-  const lastRow = REACTOR_DECK.height - 1;
+  const lastCol = NOTSTROM_MAP.width - 1;
+  const lastRow = NOTSTROM_MAP.height - 1;
   const corners = [
     { col: 0, row: 0 },
     { col: lastCol, row: 0 },
@@ -91,7 +91,7 @@ describe("computeCamera", () => {
 
   it.each(viewports)("uses the largest scale that fits and stays centred on %i x %i", (width, height) => {
     const camera = computeCamera(width, height);
-    const bounds = boardBounds(REACTOR_DECK);
+    const bounds = boardBounds(NOTSTROM_MAP);
     const screenWidth = (bounds.right - bounds.left) * camera.scale;
     const screenHeight = (bounds.bottom - bounds.top) * camera.scale;
     // One axis is filled up to the margin, the other fits.
@@ -151,7 +151,7 @@ describe("tile picking at the fitted scale", () => {
 
   it("picks a Wall in front of a tile, not the floor it hides", () => {
     const wall = { col: 12, row: 5 };
-    expect(REACTOR_DECK.tiles[wall.row]?.[wall.col]).toBe(TileKind.Wall);
+    expect(NOTSTROM_MAP.tiles[wall.row]?.[wall.col]).toBe(TileKind.Wall);
     // A point on the top of the Wall (64 px above its footprint) lies over the floor tile behind it.
     const { x, y } = gridToWorld(wall);
     expect(pickTileAt(x, y - TILE_HEIGHT)).toEqual(wall);
@@ -202,7 +202,7 @@ describe("resolveTap", () => {
     const base = { heroes: [], targetableIds: [] };
 
     it("picks a highlighted tile over the Wall sprite that covers its diamond", () => {
-      expect(REACTOR_DECK.tiles[wall.row]?.[wall.col]).toBe(TileKind.Wall);
+      expect(NOTSTROM_MAP.tiles[wall.row]?.[wall.col]).toBe(TileKind.Wall);
       expect(pickTileAt(x - TILE_WIDTH / 2 + inset, y)).toEqual(wall);
       for (const [px, py] of points) expect(resolveTap(px, py, { ...base, highlights: [target] })).toEqual({ kind: "tile", tile: target });
     });
@@ -226,7 +226,7 @@ describe("resolveTap", () => {
 describe("zoom and pan camera", () => {
   const view = { width: 844, height: 390 };
   const fitted = computeCamera(view.width, view.height);
-  const bounds = boardBounds(REACTOR_DECK);
+  const bounds = boardBounds(NOTSTROM_MAP);
   const margin = (bounds.right - bounds.left) * 0.03;
 
   it("limits the zoom to the fitted scale and about three times it", () => {
@@ -354,14 +354,14 @@ describe("framing a Move", () => {
 });
 
 describe("frameSquadCamera", () => {
-  const dropPoints = findTiles(REACTOR_DECK, TileKind.DropPoint);
-  const zoneTiles = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+  const dropPoints = findTiles(NOTSTROM_MAP, TileKind.DropPoint);
+  const zoneTiles = findTiles(NOTSTROM_MAP, TileKind.PrimeZone);
   const zone = {
     col: zoneTiles.reduce((sum, t) => sum + t.col, 0) / zoneTiles.length,
     row: zoneTiles.reduce((sum, t) => sum + t.row, 0) / zoneTiles.length,
   };
   const squadAt = (side: "left" | "right") =>
-    dropPoints.filter((t) => (side === "left" ? t.col < REACTOR_DECK.width / 2 : t.col > REACTOR_DECK.width / 2)).sort((a, b) => a.row - b.row);
+    dropPoints.filter((t) => (side === "left" ? t.col < NOTSTROM_MAP.width / 2 : t.col > NOTSTROM_MAP.width / 2)).sort((a, b) => a.row - b.row);
   const viewOf = (width: number, height: number) => ({ width, height, angle: 45 });
   const freeOf = (width: number, height: number) => freeBoardArea({ width, height }, { kind: "idle" });
   const screenOf = (tile: { col: number; row: number }, camera: { scale: number; x: number; y: number }) => {

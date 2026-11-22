@@ -13,7 +13,7 @@ const root = join(here, '..', '..', '..', '..');
 const assets = join(root, 'apps', 'web', 'public', 'assets', 'ice-field');
 const overview = join(here, '..', 'overview');
 
-// There is no snow map in the game data yet. This layout is a placeholder of the size of the Reactor Deck.
+// There is no snow map in the game data yet. This layout is a placeholder of the size of the Notstrom Map.
 const FIELD = [
   '###############################', '#......##...........##........#', '#..H...........C..H........H..#', '#.....F...........F.....F.....#',
   '#D...........HH.HH...........D#', '#......###...........###......#', '#..H.....#..H.....H..#.....H..#', '#S............PPP............S#',

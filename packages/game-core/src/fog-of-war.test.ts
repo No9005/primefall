@@ -3,7 +3,7 @@ import { HeroClass } from "./cards";
 import { type EnemyView, EventKind, SquadId, Visibility } from "./host";
 import { buildSquadView, canSquadSee, createMatch, type MatchState, recordSightings, SIGHT_RANGE, startRound } from "./match";
 import { ActionKind, type SquadPlan } from "./plan";
-import { findTiles, type GridPosition, REACTOR_DECK, TileKind } from "./reactor-deck";
+import { findTiles, type GridPosition, NOTSTROM_MAP, TileKind } from "./notstrom-map";
 import { getSquadEvents, resolveRound } from "./resolution";
 
 const LEFT_BRUISER = "left-bruiser";
@@ -58,7 +58,7 @@ describe("Visible, Ghost and Unknown", () => {
   });
 
   it("cannot see the Prime Zone from the Drop Point areas", () => {
-    const primeZone = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+    const primeZone = findTiles(NOTSTROM_MAP, TileKind.PrimeZone);
     const fresh = startRound(createMatch(3));
     for (const squad of [SquadId.Left, SquadId.Right]) {
       expect(primeZone.some((tile) => canSquadSee(fresh, squad, tile))).toBe(false);

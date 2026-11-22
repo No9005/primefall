@@ -54,9 +54,9 @@ describe("the Squad View as a Match State", () => {
 });
 
 describe("AI lookahead", () => {
-  it("never imports the Reactor Deck", () => {
+  it("never imports the Notstrom Map", () => {
     const source = readFileSync(new URL("./ai.ts", import.meta.url), "utf8");
-    expect(source).not.toMatch(/REACTOR_DECK/);
+    expect(source).not.toMatch(/NOTSTROM_MAP/);
   });
 
   it("plans the same for the same seed and differently between seeds when plans are close", () => {

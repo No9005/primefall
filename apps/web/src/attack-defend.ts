@@ -1,4 +1,4 @@
-import { defenderStartTiles, findTiles, dropPointStartTiles,type GridPosition, HeroClass, MatchEndReason, MatchMode, type MatchModeSetting, type MatchResult, REACTOR_DECK, SquadId, type SquadView, TileKind } from "game-core";
+import { defenderStartTiles, findTiles, dropPointStartTiles,type GridPosition, HeroClass, MatchEndReason, MatchMode, type MatchModeSetting, type MatchResult, NOTSTROM_MAP, SquadId, type SquadView, TileKind } from "game-core";
 import { computeCamera, gridToWorld } from "./board-layout";
 
 // What the web app shows for the Attack and Defend mode (docs/design/attack-defend): the role of the player, its texts,
@@ -128,7 +128,7 @@ export function previewLayout(role: Role): PreviewLayout {
   };
   const squad = (tiles: GridPosition[], prefix: string): PreviewHero[] => tiles.map((position, i) => ({ id: `${prefix}${i}`, heroClass: HERO_ORDER[i]!, position, exhausted: false }));
   const dropPoint = centreOf(dropPointStartTiles(true).map(toStage));
-  const zone = centreOf(findTiles(REACTOR_DECK, TileKind.PrimeZone).map(toStage));
+  const zone = centreOf(findTiles(NOTSTROM_MAP, TileKind.PrimeZone).map(toStage));
   const enemyDropPoint = centreOf(dropPointStartTiles(false).map(toStage));
   // The translate that puts a stage point in the free middle of the screen (between the role buttons and the text), x centred.
   const centred = (point: Point): Point => ({ x: 844 / 2 - point.x, y: PREVIEW_CENTRE_Y - point.y });

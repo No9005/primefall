@@ -3,7 +3,7 @@ import { cardIndex, HeroClass } from "./cards";
 import { AttackFailReason, EventKind, SquadId } from "./host";
 import { createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type QueuedAction, type SquadPlan } from "./plan";
-import type { GridPosition } from "./reactor-deck";
+import type { GridPosition } from "./notstrom-map";
 import { resolveRound } from "./resolution";
 
 const ASSASSIN = "left-assassin";

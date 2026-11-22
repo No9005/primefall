@@ -4,7 +4,7 @@ import type { Container } from "pixi.js";
 import { PIXEL_WORLD_SCALE } from "./board-layout";
 import { gridToWorld } from "./terrain";
 
-// The Reactor Deck of the Pixel art style, built from the tileset "Notstrom" (docs/design/reactor-deck/README.md; the rules of
+// The Notstrom Map of the Pixel art style, built from the tileset "Notstrom" (docs/design/notstrom-map/README.md; the rules of
 // which tile goes where are those of tools/assemble.js). Tiles are 32 x 16 px art; the board's world is four times that, so a
 // sprite scaled by `PIXEL_SCALE` and put on `gridToWorld` of its tile sits exactly where the art says.
 //
@@ -15,7 +15,7 @@ import { gridToWorld } from "./terrain";
 /** World pixels per art pixel. */
 export const PIXEL_SCALE = 1 / PIXEL_WORLD_SCALE;
 const FRAME_PREFIX = "deck.";
-const ASSET_DIR = `${import.meta.env.BASE_URL}assets/reactor-deck/`;
+const ASSET_DIR = `${import.meta.env.BASE_URL}assets/notstrom-map/`;
 
 export type LightKind = "core" | "breach" | "lamp" | "cover";
 
@@ -400,7 +400,7 @@ const PULSE_FRAMES = 8;
 /** The share of its brightness a wall, plant or text keeps where the Squad does not see. */
 const FOG_SHARE = 0.45;
 
-/** The Reactor Deck as sprites: one baked floor, the standing pieces, the core. `attach` puts them into the board's layers. */
+/** The Notstrom Map as sprites: one baked floor, the standing pieces, the core. `attach` puts them into the board's layers. */
 export class PixelScenery {
   private readonly floor: Sprite;
   private readonly texture: Texture;

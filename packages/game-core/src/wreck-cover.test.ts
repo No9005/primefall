@@ -4,7 +4,7 @@ import { withFullCover } from "./full-cover-fixture";
 import { EventKind, SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type SquadPlan } from "./plan";
-import { CoverKind, coverAgainst, coverAt, findTiles, type GridPosition, TileKind, tileAt } from "./reactor-deck";
+import { CoverKind, coverAgainst, coverAt, findTiles, type GridPosition, TileKind, tileAt } from "./notstrom-map";
 import { resolveRound } from "./resolution";
 import { restoreLocalHost } from "./local-host";
 
