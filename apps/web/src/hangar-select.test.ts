@@ -29,7 +29,7 @@ function fakeEnv(random = (low: number) => low): PlayerEnv & { advance: (ms: num
   };
 }
 
-const png = (path: string) => readFileSync(new URL(`../public/assets/hangar/${path}`, import.meta.url));
+const png = (path: string) => readFileSync(new URL(`../../../archive/hangar/${path}`, import.meta.url));
 const size = (file: Buffer) => ({ width: file.readUInt32BE(16), height: file.readUInt32BE(20) });
 
 describe("hangar Hero Select: the strips", () => {
@@ -37,12 +37,12 @@ describe("hangar Hero Select: the strips", () => {
     for (const hero of HANGAR_HEROES) {
       const frame = FRAME[hero];
       for (const [name, clip] of Object.entries(CLIPS[hero])) {
-        const { width, height } = size(png(`clips/${clip.file}`));
+        const { width, height } = size(png(`strips/${clip.file}`));
         // The sheets were drawn at 2.54 times the size of the design frame: width and height are in the same ratio for every clip.
         expect(width / clip.frames / (height / frame.height), `${hero} ${name}`).toBeCloseTo(frame.width, 0);
       }
       for (const [name, bridge] of Object.entries(BRIDGES[hero])) {
-        const { width, height } = size(png(`clips/${bridge.file}`));
+        const { width, height } = size(png(`strips/${bridge.file}`));
         expect(width / bridge.frames / (height / frame.height), `${hero} bridge ${name}`).toBeCloseTo(frame.width, 0);
       }
     }

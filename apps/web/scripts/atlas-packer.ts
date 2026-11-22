@@ -9,6 +9,8 @@ import { BRIDGE_FRAME_MS, BRIDGES, CLIPS, HANGAR_HEROES, type HangarHero } from 
 
 export const HANGAR_FOLDER = path.resolve(import.meta.dirname, "../public/assets/hangar");
 export const ATLAS_FOLDER = path.join(HANGAR_FOLDER, "atlas");
+/** The strips the atlases are packed from; they are sources, so they live in the archive and not in the build (see archive/README.md). */
+export const STRIP_FOLDER = path.resolve(import.meta.dirname, "../../../archive/hangar/strips");
 
 /** Pixels left empty around every packed frame so that scaling never samples a neighbour. */
 const PADDING = 1;
@@ -196,7 +198,7 @@ export interface PackedAtlas {
 
 const digest = (image: Image): string => createHash("sha1").update(image.data).digest("hex");
 
-/** Packs the animations of one Hero. `readStrip` returns the decoded strip of a file in `clips/`. */
+/** Packs the animations of one Hero. `readStrip` returns the decoded strip of a file in the strip folder. */
 export function packAtlas(hero: HangarHero, jobs: readonly AtlasJob[], readStrip: (file: string) => Image): PackedAtlas {
   const unique: UniqueFrame[] = [];
   const byHash = new Map<string, UniqueFrame>();
@@ -262,7 +264,7 @@ export function packHero(hero: HangarHero): PackedAtlas {
   return packAtlas(hero, jobsOf(hero), (file) => {
     let strip = strips.get(file);
     if (!strip) {
-      strip = decodePng(readFileSync(path.join(HANGAR_FOLDER, "clips", file)));
+      strip = decodePng(readFileSync(path.join(STRIP_FOLDER, file)));
       strips.set(file, strip);
     }
     return strip;

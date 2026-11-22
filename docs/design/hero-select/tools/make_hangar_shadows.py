@@ -20,7 +20,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[4]
-CLIPS = ROOT / "apps/web/public/assets/hangar/clips"
+CLIPS = ROOT / "archive/hangar/strips"
 FRAME_ART = {"max": (190, 112), "tilly": (136, 116), "kit": (136, 118)}  # frame width and height of the strips, in art pixels
 FRAME_DESIGN_WIDTH = {"max": 482.3, "tilly": 345.2, "kit": 345.2}
 MARGIN, MIN_ART, MAX_ART = 1.35, 30, 70

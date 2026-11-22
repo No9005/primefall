@@ -13,7 +13,7 @@ describe("Notstrom Intro", () => {
 
   it("has sheets of the size the layout says", () => {
     for (const { file, frames } of NOTSTROM_INTRO.sheets) {
-      const png = readFileSync(new URL(`../public/assets/notstrom-intro/${file}`, import.meta.url));
+      const png = readFileSync(new URL(`../../../archive/notstrom-intro/sheets/${file}`, import.meta.url));
       const width = png.readUInt32BE(16);
       const height = png.readUInt32BE(20);
       expect(width).toBe(NOTSTROM_INTRO.columns * NOTSTROM_INTRO.width);
