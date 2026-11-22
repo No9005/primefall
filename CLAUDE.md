@@ -68,6 +68,10 @@ In a factory run, the issue named in the run prompt is your ticket (there is no 
 - A command must start with `npm`, `npx`, `node` or `git`: a leading variable (`BALANCE_SEEDS=200 npm run balance`) is denied. Give the balance harness its settings as npm flags: `npm run balance --balance-seeds=200 --balance-only=style`.
 - Run long commands (balance, test, build) in the foreground with the Bash timeout raised (up to 10 minutes; fewer seeds if it would take longer). **Never end your turn to wait for a background process**: a factory run ends with your last message, no branch and no pull request are made for you, and the ticket is lost. If a check cannot finish in the time you have, commit and push what you have, open the pull request and say in it what is not measured yet.
 
+## Chat sessions
+
+In a chat session with the owner, read `docs/agents/working-agreements.md` first (standing agreements and decisions). A session that ends or grows long leaves a handover note, see `docs/agents/session-handover.md`.
+
 ## Agent skills
 
 ### Issue tracker
