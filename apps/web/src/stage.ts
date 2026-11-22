@@ -1,4 +1,4 @@
-import { Application, Assets, Container, Graphics } from "pixi.js";
+import { Application, Assets, Container, Graphics, type Texture, type VideoSource } from "pixi.js";
 import { computeFill, computeFit, computeHeightFit, type FillView, type StageFit } from "./stage-fit";
 
 /** What a scene gets from the stage (ADR 0026). */
@@ -9,6 +9,21 @@ export interface SceneEnv {
   reducedMotion(): boolean;
   /** Asks for one more drawn frame after the scene changed while it is not animating. */
   invalidate(): void;
+  /** The loaded film of the scene's `videos` list at `index`; undefined when it could not be loaded. */
+  video(index: number): VideoClip | undefined;
+}
+
+/** A film on a video texture (ADR 0026, rule 3: films are the one thing that is not an atlas). The real one wraps a hidden `<video>`; tests fake it. */
+export interface VideoClip {
+  texture: Texture;
+  /** Whether the first picture can be drawn. */
+  hasFrame(): boolean;
+  play(): Promise<void>;
+  pause(): void;
+  /** Seconds into the film. */
+  currentTime: number;
+  /** Calls back when the film ended and when it failed to decode or play; returns what removes the listeners. */
+  listen(handlers: { ended(): void; failed(): void }): () => void;
 }
 
 /** A scene builds a container, declares its atlases and reports whether it is ready and animating. */
@@ -22,6 +37,8 @@ export interface Scene {
   fit?: "frame" | "height" | "fill";
   /** Atlas or image URLs the scene needs; loaded on enter, destroyed on leave if no other scene uses them. Read again on leave. */
   readonly assets: readonly string[];
+  /** Films the scene needs, each as the URLs of the same film in several formats (the first one the browser can play is used). Released on leave. */
+  readonly videos?: readonly (readonly string[])[];
   /** Runs before the assets are acquired, for a scene whose asset list is only known after reading a file. */
   prepare?(): Promise<void>;
   create(env: SceneEnv): Container;
@@ -35,12 +52,18 @@ export interface Scene {
   /** A "fill" scene: the size or the resolution is this (called on enter and whenever it changes). */
   viewChanged?(view: FillView): void;
   reducedMotionChanged?(reduced: boolean): void;
+  /** The page was hidden or shown again (a film pauses while it is hidden). */
+  hiddenChanged?(hidden: boolean): void;
 }
 
 /** Loads and destroys textures. The real one is PixiJS's loader; tests count calls with a fake. */
 export interface AssetSource {
   load(urls: readonly string[]): Promise<void>;
   unload(urls: readonly string[]): Promise<void>;
+  /** Loads a film from the first of its formats that the browser plays; rejects when none loads. */
+  loadVideo?(formats: readonly string[]): Promise<VideoClip>;
+  /** Stops the film and destroys its video element and texture. */
+  unloadVideo?(clip: VideoClip): Promise<void>;
 }
 
 /** The rendering side of the stage: the single Application. Faked in tests. */
@@ -113,6 +136,8 @@ export function createStage(deps: StageDeps): Stage {
   let entering = 0;
   /** The scene that is being entered, until it is on show: it asks for its fit while it is created. */
   let entered: Scene | undefined;
+  /** The films of the scene that is being entered or is on show. */
+  let clips: (VideoClip | undefined)[] = [];
   let destroyed = false;
 
   const setAttributes = (name: string, ready: boolean) => {
@@ -141,7 +166,7 @@ export function createStage(deps: StageDeps): Stage {
     }
   }
 
-  const env: SceneEnv = { fit: () => fitOf(current?.scene ?? entered), view: () => view, reducedMotion: () => reduced, invalidate: () => schedule() };
+  const env: SceneEnv = { fit: () => fitOf(current?.scene ?? entered), view: () => view, reducedMotion: () => reduced, invalidate: () => schedule(), video: (index) => clips[index] };
 
   async function acquire(urls: readonly string[]) {
     const fresh = urls.filter((url) => !assetUsers.has(url));
@@ -157,6 +182,15 @@ export function createStage(deps: StageDeps): Stage {
       return left <= 0;
     });
     if (unused.length > 0) await assets.unload(unused);
+  }
+
+  async function acquireVideos(scene: Scene): Promise<(VideoClip | undefined)[]> {
+    const load = assets.loadVideo?.bind(assets);
+    return Promise.all((scene.videos ?? []).map((formats) => (load ? load(formats).catch(() => undefined) : undefined)));
+  }
+
+  async function releaseVideos(loaded: readonly (VideoClip | undefined)[]) {
+    for (const clip of loaded) if (clip) await assets.unloadVideo?.(clip);
   }
 
   function drawFrame() {
@@ -201,6 +235,9 @@ export function createStage(deps: StageDeps): Stage {
     host.hide(old.container);
     old.container.destroy({ children: true });
     setAttributes("", false);
+    const loaded = clips;
+    clips = [];
+    await releaseVideos(loaded);
     await release(old.scene.assets);
   }
 
@@ -214,6 +251,13 @@ export function createStage(deps: StageDeps): Stage {
       await release(scene.assets);
       return;
     }
+    const loaded = await acquireVideos(scene);
+    if (ticket !== entering || destroyed) {
+      await releaseVideos(loaded);
+      await release(scene.assets);
+      return;
+    }
+    clips = loaded;
     view = measureView();
     place(scene);
     entered = scene;
@@ -246,6 +290,7 @@ export function createStage(deps: StageDeps): Stage {
 
   const stopWatching = environment.onChange(() => {
     refit();
+    current?.scene.hiddenChanged?.(environment.isHidden());
     if (environment.isHidden()) stopTicker();
     else if (current?.scene.animating()) schedule();
   });
@@ -285,6 +330,8 @@ export function createStage(deps: StageDeps): Stage {
       const scene = current?.scene;
       current?.container.destroy({ children: true });
       current = undefined;
+      void releaseVideos(clips);
+      clips = [];
       if (scene) void release(scene.assets);
       host.destroy();
     },
@@ -372,6 +419,62 @@ export const pixiAssets: AssetSource = {
   },
   async unload(urls) {
     await Assets.unload([...urls]);
+  },
+  loadVideo: (formats) => pixiVideoAssets.loadVideo(formats),
+  unloadVideo: (clip) => pixiVideoAssets.unloadVideo(clip),
+};
+
+/** The first of the film's formats that this browser says it can play (by the file ending); the last one when it says nothing for all. */
+export function playableFormat(formats: readonly string[]): string {
+  const probe = document.createElement("video");
+  const mimes: Record<string, string> = { webm: 'video/webm; codecs="vp9"', mp4: 'video/mp4; codecs="avc1.640028"' };
+  const playable = formats.find((url) => {
+    const mime = mimes[url.split("?")[0]?.split(".").pop() ?? ""];
+    return mime !== undefined && probe.canPlayType(mime) !== "";
+  });
+  return playable ?? formats[formats.length - 1] ?? "";
+}
+
+/** The real films: PixiJS loads a video texture; the video element is muted and plays inline (mobile browsers need both). */
+function pixiVideoClip(texture: Texture): VideoClip {
+  const element = (texture.source as VideoSource).resource;
+  return {
+    texture,
+    hasFrame: () => element.readyState >= 2,
+    play: () => element.play(),
+    pause: () => element.pause(),
+    get currentTime() {
+      return element.currentTime;
+    },
+    set currentTime(seconds: number) {
+      element.currentTime = seconds;
+    },
+    listen({ ended, failed }) {
+      element.addEventListener("ended", ended);
+      element.addEventListener("error", failed);
+      return () => {
+        element.removeEventListener("ended", ended);
+        element.removeEventListener("error", failed);
+      };
+    },
+  };
+}
+
+const loadedFilms = new Map<VideoClip, string>();
+
+export const pixiVideoAssets: Required<Pick<AssetSource, "loadVideo" | "unloadVideo">> = {
+  async loadVideo(formats) {
+    const url = playableFormat(formats);
+    const texture = await Assets.load<Texture>({ src: url, data: { autoPlay: false, muted: true, playsinline: true, loop: false, preload: true } });
+    const clip = pixiVideoClip(texture);
+    loadedFilms.set(clip, url);
+    return clip;
+  },
+  async unloadVideo(clip) {
+    clip.pause();
+    const url = loadedFilms.get(clip);
+    loadedFilms.delete(clip);
+    if (url) await Assets.unload(url);
   },
 };
 
