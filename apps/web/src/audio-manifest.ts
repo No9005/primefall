@@ -128,9 +128,9 @@ export interface MusicManifest {
   bpm: number;
   bars: number;
   layers: Record<string, string>;
-  /** The main-menu theme of the start screen: a loop of 177 s (docs: `audio-source/music/menu-theme/`). */
+  /** The main-menu theme of the start screen: a loop of 177 s (docs: `archive/audio-source/music/menu-theme/`). */
   menu?: { file: string; gain: number };
-  /** The sound of the Notstrom Intro after a tap on Start (8.9 s, plays once; docs: `audio-source/music/notstrom-intro-cue/`). */
+  /** The sound of the Notstrom Intro after a tap on Start (8.9 s, plays once; docs: `archive/audio-source/music/notstrom-intro-cue/`). */
   notstromIntro?: { file: string; gain: number };
   /** The loop under the Hero Select. */
   intro?: { file: string; gain: number };

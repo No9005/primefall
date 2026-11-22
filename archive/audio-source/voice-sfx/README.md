@@ -24,4 +24,4 @@ The folder descriptions above go by the names and the scripts; the layout is the
 What is **not** here because it can be rebuilt: the review pages (HTML), screenshots and the mixes made for them.
 
 The final, cut and normalised files that the game uses are in `apps/web/public/assets/audio/` with their manifests. The README there lists the rules (lengths, loudness, cues).
-The music has its own archive next to this folder: `audio-source/music/`.
+The music has its own archive next to this folder: `archive/audio-source/music/`.

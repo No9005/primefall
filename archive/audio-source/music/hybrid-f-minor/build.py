@@ -1,6 +1,6 @@
 import numpy as np, subprocess, itertools, base64, json, wave
 SR=44100; BEAT=60/72; BAR=4*BEAT; TOTAL=8*BAR; N=int(round(TOTAL*SR))
-A="/home/user/primefall/audio-source/music/layers/aligned/"
+A="/home/user/primefall/archive/audio-source/music/layers/aligned/"
 def mtof(m): return 440*2**((m-69)/12)
 def load(path,pitch=None):
     af=[]

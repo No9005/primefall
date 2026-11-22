@@ -1,6 +1,6 @@
 """Makes the seamless loop of the main-menu theme.
 
-python3 audio-source/music/tools/loops/make_menu_loop.py <theme.mp3> <out.m4a> [crossfade-seconds]
+python3 archive/audio-source/music/tools/loops/make_menu_loop.py <theme.mp3> <out.m4a> [crossfade-seconds]
 
 The piece fades in at its start and fades out at its end. The last `crossfade` seconds are blended (equal power) with the first
 `crossfade` seconds and the loop starts after them, so the end runs into the start without a dip and without a click. The loop is

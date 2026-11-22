@@ -28,7 +28,7 @@ export const NOTSTROM_INTRO = {
  * The sound of the Notstrom Intro is 8.9 s long from the tap on Start and fades out in its last 0.4 s. The Hero Select loop starts 8.7 s after
  * the tap, 0.2 s before the sound is out, and fades in over a second, so the two overlap softly. The audio clock times it (`startNotstromIntroCue`
  * in `audio.ts`), not the pictures: they start after the live part and the decoding, which takes a different time on every device.
- * Docs: `audio-source/music/notstrom-intro-cue/`.
+ * Docs: `archive/audio-source/music/notstrom-intro-cue/`.
  */
 export const NOTSTROM_INTRO_SOUND = { loopStartsAtSeconds: 8.7, loopFadeInSeconds: 1 } as const;
 
