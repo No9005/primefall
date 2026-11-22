@@ -1,5 +1,5 @@
 import type { MatchState } from "./match";
-import { type GridPosition, TileKind } from "./reactor-deck";
+import { type GridPosition, TileKind } from "./notstrom-map";
 
 /** Test fixture: tests that need Full Cover on an open tile of their own choosing put it on a copy of the grid. */
 export function withFullCover(match: MatchState, ...tiles: GridPosition[]): MatchState {

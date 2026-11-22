@@ -2,7 +2,7 @@
 // Starts the Vite dev server, plays the standard path in Chromium at 844 x 390 and writes PNGs with stable names
 // to apps/web/screenshots/ (git-ignored), so a run before and after a change can be compared name by name.
 import { chromium, type Browser, type Page } from "@playwright/test";
-import { type CardDefinition, CardTarget, coverAt, CoverKind, findTiles, type GridPosition, HERO_DECKS, HeroClass, MatchEndReason, MatchMode, moveDestinations, SquadId, reachableMoveDestinations, REACTOR_DECK, TileKind, Visibility } from "game-core";
+import { type CardDefinition, CardTarget, coverAt, CoverKind, findTiles, type GridPosition, HERO_DECKS, HeroClass, MatchEndReason, MatchMode, moveDestinations, SquadId, reachableMoveDestinations, NOTSTROM_MAP, TileKind, Visibility } from "game-core";
 import { SNAPSHOT_VERSION } from "game-core/local-host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "game-core/server";
 import { execFileSync, spawn } from "node:child_process";
@@ -463,7 +463,7 @@ async function aimCardAt(page: Page, match: MatchState, heroId: string, step: { 
   const card = cardOf(match, heroId, step.slot);
   const view = buildSquadView(match, hero.squad);
   const occupied = [...view.heroes, ...view.enemies.filter((enemy) => enemy.visibility === Visibility.Visible)].map((unit) => unit.position);
-  const lit = moveDestinations(hero.position, REACTOR_DECK, card.range ?? Math.max(REACTOR_DECK.width, REACTOR_DECK.height)).filter(
+  const lit = moveDestinations(hero.position, NOTSTROM_MAP, card.range ?? Math.max(NOTSTROM_MAP.width, NOTSTROM_MAP.height)).filter(
     (tile) =>
       card.target !== CardTarget.EmptyTile ||
       (coverAt(match.grid, tile) === CoverKind.None &&
@@ -490,7 +490,7 @@ async function aimCardAtHero(page: Page, match: MatchState, heroId: string, step
   const target = match.heroes.find((candidate) => candidate.id === step.target)!;
   const box = (await page.locator(".board canvas").boundingBox())!;
   const size = { width: box.width, height: box.height, pixel: true };
-  const tiles = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+  const tiles = findTiles(NOTSTROM_MAP, TileKind.PrimeZone);
   const zone = { col: tiles.reduce((sum, tile) => sum + tile.col, 0) / tiles.length, row: tiles.reduce((sum, tile) => sum + tile.row, 0) / tiles.length };
   const own = match.heroes.filter((hero) => hero.squad === squad).map((hero) => hero.position);
   const queue = page.getByRole("region", { name: "Queue" });

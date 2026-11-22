@@ -1,19 +1,19 @@
-# Reactor Deck: the pixel-art tileset "Notstrom"
+# Notstrom Map: the pixel-art tileset "Notstrom"
 
 A proposal for the final look of the map, worked out with the product owner in a chat session: a crashed space glider that lies almost in the dark. Both Squads enter through breaches in the hull, guide lights in the floor lead to the core, the core is a plasma core that hangs from the ceiling in a claw over the Prime Zone, worn stencil texts stand on the walls, plants grow in at the breaches.
 
-The tileset is **modular**: it holds single tiles, not a picture of the map. Any layout of walls, Cover, zones and Spawns can be built from it. `overview/other-layout.png` is a layout that does not exist in the game, built from the same files as `overview/reactor-deck.png`.
+The tileset is **modular**: it holds single tiles, not a picture of the map. Any layout of walls, Cover, zones and Spawns can be built from it. `overview/other-layout.png` is a layout that does not exist in the game, built from the same files as `overview/notstrom-map.png`.
 
-**Status: the app builds the Reactor Deck from these tiles** (`apps/web/src/pixel-terrain.ts`). The Original look (shapes) was removed.
+**Status: the app builds the Notstrom Map from these tiles** (`apps/web/src/pixel-terrain.ts`). The Original look (shapes) was removed.
 
 ## What is here
 
 | Path | Content |
 |---|---|
-| `apps/web/public/assets/reactor-deck/notstrom.png`, `notstrom.json` | The atlas (512 x 425 px, 97 frames) in the PixiJS sprite sheet format |
-| `apps/web/public/assets/reactor-deck/tileset.json` | What the sheet format cannot say: tile size, the variants of each tile, which sprite has a glow, the texts, the light |
+| `apps/web/public/assets/notstrom-map/notstrom.png`, `notstrom.json` | The atlas (512 x 425 px, 97 frames) in the PixiJS sprite sheet format |
+| `apps/web/public/assets/notstrom-map/tileset.json` | What the sheet format cannot say: tile size, the variants of each tile, which sprite has a glow, the texts, the light |
 | `overview/atlas.png` | The atlas, twice its size |
-| `overview/reactor-deck.png`, `overview/other-layout.png` | Two maps built from the atlas by `tools/assemble.js`, twice their size |
+| `overview/notstrom-map.png`, `overview/other-layout.png` | Two maps built from the atlas by `tools/assemble.js`, twice their size |
 | `reference/looks.html` | The page on which the look was chosen (five looks of the same map; "Notstrom" is look D). German, as written for the product owner |
 | `tools/` | `tileset.js` draws and packs the tiles, `assemble.js` builds a map from the atlas, `export.mjs` runs both. The sprite, the packer and the light stage are shared with the snow map (`docs/design/ice-field/`): `docs/design/tools/pixel-atlas.js` |
 
@@ -58,9 +58,9 @@ In PixiJS v8, with nearest-neighbour scaling:
 ```ts
 import { Assets, Container, Graphics, RenderTexture, Sprite } from "pixi.js";
 
-const sheet = await Assets.load("assets/reactor-deck/notstrom.json");
+const sheet = await Assets.load("assets/notstrom-map/notstrom.json");
 sheet.textureSource.scaleMode = "nearest";
-const tileset = await (await fetch("assets/reactor-deck/tileset.json")).json();
+const tileset = await (await fetch("assets/notstrom-map/tileset.json")).json();
 const centre = (col: number, row: number) => ({ x: (col - row) * 16, y: (col + row) * 8 });
 
 const map = new Container(); // floors first, then walls, Cover and plants sorted by col + row
@@ -86,7 +86,7 @@ lightMap.blendMode = "multiply";
 ## Regenerating
 
 ```
-node docs/design/reactor-deck/tools/export.mjs
+node docs/design/notstrom-map/tools/export.mjs
 ```
 
 It starts a Chromium through Playwright, draws and packs the tiles, writes the three asset files and builds the two maps in `overview/` from those files alone.

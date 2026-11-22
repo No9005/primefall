@@ -1,4 +1,4 @@
-import { type GridPosition, REACTOR_DECK } from "game-core";
+import { type GridPosition, NOTSTROM_MAP } from "game-core";
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { PREVIEW_MOVE_MS, PREVIEW_STAGE, type PreviewLayout, previewLayout, type Point, type Role, ROLE_LABELS, SIDE_TAGLINES, SIDE_TEXTS } from "./attack-defend";
 import { Board } from "./Board";
@@ -21,7 +21,7 @@ const pickRef = { current: undefined };
 /** Every tile of the board: the preview has no Fog of War. */
 const ALL_TILES: readonly GridPosition[] = (() => {
   const tiles: GridPosition[] = [];
-  REACTOR_DECK.tiles.forEach((line, row) => line.forEach((_, col) => tiles.push({ col, row })));
+  NOTSTROM_MAP.tiles.forEach((line, row) => line.forEach((_, col) => tiles.push({ col, row })));
   return tiles;
 })();
 

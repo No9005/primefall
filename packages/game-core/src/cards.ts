@@ -1,7 +1,7 @@
 // Card data for the three fixed Hero Decks (docs/specs/mvp-card-set.md, ADR 0009, ADR 0015).
 // Effects are declarative descriptors; interpreting them belongs to the resolution rules.
 
-import { CoverKind } from "./reactor-deck";
+import { CoverKind } from "./notstrom-map";
 
 export enum HeroClass {
   Bruiser = "bruiser",

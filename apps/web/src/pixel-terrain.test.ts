@@ -1,14 +1,14 @@
-import { parseGrid, REACTOR_DECK, TileKind, tileAt } from "game-core";
+import { parseGrid, NOTSTROM_MAP, TileKind, tileAt } from "game-core";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { dimmed, pixelLayout, PIXEL_SCALE, textFits, tileHash, type Tileset } from "./pixel-terrain";
 import { gridToWorld, TILE_WIDTH } from "./terrain";
 
-const assets = path.join(__dirname, "..", "public", "assets", "reactor-deck");
+const assets = path.join(__dirname, "..", "public", "assets", "notstrom-map");
 const tileset = JSON.parse(readFileSync(path.join(assets, "tileset.json"), "utf8")) as Tileset;
 const sheet = JSON.parse(readFileSync(path.join(assets, "notstrom.json"), "utf8")) as { frames: Record<string, unknown> };
-const layout = pixelLayout(REACTOR_DECK, tileset);
+const layout = pixelLayout(NOTSTROM_MAP, tileset);
 const names = (list: { name: string }[]) => list.map((entry) => entry.name);
 
 describe("the pixel scale", () => {
@@ -18,7 +18,7 @@ describe("the pixel scale", () => {
   });
 });
 
-describe("pixelLayout of the Reactor Deck", () => {
+describe("pixelLayout of the Notstrom Map", () => {
   it("only names frames that the atlas has", () => {
     for (const name of [...names(layout.floors), ...names(layout.standing)]) expect(sheet.frames[`deck.${name}`], name).toBeDefined();
   });
@@ -26,7 +26,7 @@ describe("pixelLayout of the Reactor Deck", () => {
   it("puts a floor on every tile that is not a Wall and none under a Wall", () => {
     const floors = new Set(layout.floors.filter((floor) => !floor.name.startsWith("hazard") && !floor.name.startsWith("outpost_corner") && !floor.name.startsWith("guide")).map((floor) => `${floor.col},${floor.row}`));
     let open = 0;
-    REACTOR_DECK.tiles.forEach((line, row) => line.forEach((kind, col) => {
+    NOTSTROM_MAP.tiles.forEach((line, row) => line.forEach((kind, col) => {
       if (kind !== TileKind.Wall) open++;
       expect(floors.has(`${col},${row}`), `${col},${row}`).toBe(kind !== TileKind.Wall);
     }));
@@ -56,20 +56,20 @@ describe("pixelLayout of the Reactor Deck", () => {
 
   it("cuts the Walls nearest the viewer low and never cuts the others", () => {
     for (const wall of layout.standing.filter((piece) => piece.kind === "wall")) {
-      const near = wall.row === REACTOR_DECK.height - 1 || wall.col === REACTOR_DECK.width - 1;
+      const near = wall.row === NOTSTROM_MAP.height - 1 || wall.col === NOTSTROM_MAP.width - 1;
       expect(wall.name.startsWith("wall_cut"), `${wall.col},${wall.row}`).toBe(near);
     }
   });
 
   it("stands one wall block on each Wall and one Cover piece on each Cover tile, sorted by col + row", () => {
-    const count = (kinds: TileKind[]) => REACTOR_DECK.tiles.flat().filter((kind) => kinds.includes(kind)).length;
+    const count = (kinds: TileKind[]) => NOTSTROM_MAP.tiles.flat().filter((kind) => kinds.includes(kind)).length;
     expect(layout.standing.filter((piece) => piece.kind === "wall")).toHaveLength(count([TileKind.Wall]));
     expect(layout.standing.filter((piece) => piece.kind === "cover")).toHaveLength(count([TileKind.HalfCover, TileKind.FullCover, TileKind.OverwatchNest]));
     for (const piece of layout.standing.filter((entry) => entry.kind !== "text")) expect(piece.depth).toBe(piece.col + piece.row + (piece.closedAtFront ? 0.75 : 0));
   });
 
   it("closes the Cover at the front in the upper half of the map and at the back in the lower half, towards the middle line", () => {
-    const middle = (REACTOR_DECK.width + REACTOR_DECK.height - 2) / 2;
+    const middle = (NOTSTROM_MAP.width + NOTSTROM_MAP.height - 2) / 2;
     const cover = layout.standing.filter((piece) => piece.kind === "cover");
     for (const piece of cover) expect(Boolean(piece.closedAtFront), `${piece.col},${piece.row}`).toBe(piece.col + piece.row <= middle);
     expect(cover.some((piece) => piece.closedAtFront)).toBe(true);
@@ -87,7 +87,7 @@ describe("pixelLayout of the Reactor Deck", () => {
   it("puts the guide lights on open floor between a Drop Point and the Prime Zone only", () => {
     const guides = layout.floors.filter((floor) => floor.name === "guide_col");
     expect(guides.length).toBeGreaterThan(10);
-    for (const guide of guides) expect(tileAt(REACTOR_DECK, guide)).toBe(TileKind.Floor);
+    for (const guide of guides) expect(tileAt(NOTSTROM_MAP, guide)).toBe(TileKind.Floor);
   });
 
   it("only places wall texts on a run of Wall blocks that has an open face", () => {
@@ -100,13 +100,13 @@ describe("pixelLayout of the Reactor Deck", () => {
   });
 
   it("is the same for the same grid and gives another variant of floor on other tiles", () => {
-    expect(pixelLayout(REACTOR_DECK, tileset)).toEqual(layout);
+    expect(pixelLayout(NOTSTROM_MAP, tileset)).toEqual(layout);
     const plates = new Set(layout.floors.filter((floor) => floor.name.startsWith("floor_")).map((floor) => floor.name));
     expect(plates.size).toBeGreaterThan(3);
   });
 
   it("draws Cover only where the grid has it: destroyed Cover leaves a floor", () => {
-    const destroyed = { ...REACTOR_DECK, tiles: REACTOR_DECK.tiles.map((line) => line.map((kind) => ([TileKind.HalfCover, TileKind.FullCover, TileKind.OverwatchNest].includes(kind) ? TileKind.Floor : kind))) };
+    const destroyed = { ...NOTSTROM_MAP, tiles: NOTSTROM_MAP.tiles.map((line) => line.map((kind) => ([TileKind.HalfCover, TileKind.FullCover, TileKind.OverwatchNest].includes(kind) ? TileKind.Floor : kind))) };
     const bare = pixelLayout(destroyed, tileset);
     expect(bare.standing.some((piece) => piece.kind === "cover")).toBe(false);
     expect(bare.lights.some((light) => light.kind === "cover")).toBe(false);

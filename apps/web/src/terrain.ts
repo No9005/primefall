@@ -1,4 +1,4 @@
-import { coverAt, CoverKind, destroyCover, type Grid, type GridPosition, isWreck, REACTOR_DECK, TileKind, withTile, withWreck } from "game-core";
+import { coverAt, CoverKind, destroyCover, type Grid, type GridPosition, isWreck, NOTSTROM_MAP, TileKind, withTile, withWreck } from "game-core";
 import { PIECE_OUTLINE_WIDTH, PIECE_SHAPE, type PieceStyle, TERRAIN_STYLE } from "./terrain-style";
 
 // The terrain as shapes: the grid in, drawing primitives out (floor polygons, and for each
@@ -513,8 +513,8 @@ export function withoutCover(grid: Grid): Grid {
   return result;
 }
 
-/** The Reactor Deck as the Squad knows it: destroyed Cover gone, Cover placed in the match standing, wrecks of Exhausted Heroes as Half Cover. */
+/** The Notstrom Map as the Squad knows it: destroyed Cover gone, Cover placed in the match standing, wrecks of Exhausted Heroes as Half Cover. */
 export function coverGridOf(destroyed: readonly GridPosition[], placed: readonly GridPosition[], wrecks: readonly GridPosition[]): Grid {
-  const standing = placed.reduce((grid, tile) => withTile(grid, tile, TileKind.HalfCover), destroyed.reduce(destroyCover, REACTOR_DECK));
+  const standing = placed.reduce((grid, tile) => withTile(grid, tile, TileKind.HalfCover), destroyed.reduce(destroyCover, NOTSTROM_MAP));
   return wrecks.reduce(withWreck, standing);
 }

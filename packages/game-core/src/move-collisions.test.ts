@@ -4,15 +4,15 @@ import { HeroClass } from "./cards";
 import { EventKind, type HeroView, SquadId } from "./host";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { ActionKind, findMoveCollisions, type QueuedAction, reachableMoveDestinations, type SquadPlan } from "./plan";
-import { type GridPosition, isStepAllowed, REACTOR_DECK, TileKind, tileAt } from "./reactor-deck";
+import { type GridPosition, isStepAllowed, NOTSTROM_MAP, TileKind, tileAt } from "./notstrom-map";
 import { resolveRound } from "./resolution";
 
 /** A row of five open tiles where every step along the row is allowed. */
 function openRow(): GridPosition[] {
-  for (let row = 0; row < REACTOR_DECK.height; row++) {
-    for (let col = 0; col + 4 < REACTOR_DECK.width; col++) {
+  for (let row = 0; row < NOTSTROM_MAP.height; row++) {
+    for (let col = 0; col + 4 < NOTSTROM_MAP.width; col++) {
       const tiles = Array.from({ length: 5 }, (_, i) => ({ col: col + i, row }));
-      const open = tiles.every((tile) => ![undefined, TileKind.Wall].includes(tileAt(REACTOR_DECK, tile)));
+      const open = tiles.every((tile) => ![undefined, TileKind.Wall].includes(tileAt(NOTSTROM_MAP, tile)));
       if (open && tiles.every((tile, i) => i === 0 || isStepAllowed(tiles[i - 1]!, tile))) return tiles;
     }
   }

@@ -6,7 +6,7 @@ A player wants to play a quick, tactical 3v3 match where both squads plan simult
 
 ## Solution
 
-Primefall provides a mobile-first, offline 3v3 tactical match on the Reactor Deck. The player controls one Hero, allied AI controls the other two Heroes, and enemy AI controls all three opposing Heroes.
+Primefall provides a mobile-first, offline 3v3 tactical match on the Notstrom Map. The player controls one Hero, allied AI controls the other two Heroes, and enemy AI controls all three opposing Heroes.
 
 Both squads plan simultaneously, commit commands, and resolve combat through a deterministic priority-interleaved Resolution. In the classic mode a squad wins by Credits from three zones: the central 3 by 3 Prime Zone (2 per Resolution, active from Round 4) and two Outposts (1 each, active from Round 1); the first to 30 wins.
 
@@ -16,11 +16,11 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 
 ## User Stories
 
-1. As a player, I want to start a 3v3 match on the Reactor Deck, so that I can play a complete tactical match against AI opponents.
+1. As a player, I want to start a 3v3 match on the Notstrom Map, so that I can play a complete tactical match against AI opponents.
 2. As a player, I want to control one Hero directly, so that I can make the most important tactical decisions myself.
 3. As a player, I want allied AI to control my other two Heroes, so that I can focus on my own Hero without managing every unit.
 4. As a player, I want enemy AI to control all three opposing Heroes, so that I can play without another human player.
-5. As a player, I want both squads to start on their Drop Points on opposite horizontal edges of the Reactor Deck, so that neither side begins with an unfair positional advantage.
+5. As a player, I want both squads to start on their Drop Points on opposite horizontal edges of the Notstrom Map, so that neither side begins with an unfair positional advantage.
 6. As a player, I want a central 3 by 3 Prime Zone, so that I have a clear objective to contest.
 7. As a player, I want the Prime Zone to contain no permanent Cover, so that holding it requires active protection and squad coordination.
 8. As a player, I want to see the Prime Zone from several approach angles, so that I can plan attacks and defenses around it.
@@ -75,9 +75,9 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 64. As a player, I want the Controller to reveal an area with a Scout Drone, so that the Squad can gather information without exposing the Controller.
 65. As a player, I want the Controller to apply Marked with Tag Round, so that enemies become visible to the Squad.
 66. As a player, I want the Assassin to use Long Shot at Range 7, so that long-range precision is part of its identity.
-68. As a player, I want the Reactor Deck to be mirror-symmetric, so that both Squads begin with equivalent map conditions.
-69. As a player, I want the Reactor Deck to have no interactive doors, so that the first prototype remains focused on core combat.
-70. As a player, I want the Reactor Deck to have one floor level only, so that movement and Line of Sight remain easy to understand.
+68. As a player, I want the Notstrom Map to be mirror-symmetric, so that both Squads begin with equivalent map conditions.
+69. As a player, I want the Notstrom Map to have no interactive doors, so that the first prototype remains focused on core combat.
+70. As a player, I want the Notstrom Map to have one floor level only, so that movement and Line of Sight remain easy to understand.
 71. As a player, I want match state to remain in browser memory, so that the offline prototype does not require a backend.
 72. As a player, I want optional localStorage support, so that I can retain progress between sessions without an account or server.
 73. As a player, I want the game to run in a mobile-friendly web browser, so that I can play without installing an application.
@@ -99,11 +99,11 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 ## Implementation Decisions
 
 - Build an offline, client-side 3v3 tactical match prototype in TypeScript.
-- Use the Reactor Deck as the first map: a horizontally oriented, mirror-symmetric 45 by 25 tile grid (Crossroads, ADR 0016).
+- Use the Notstrom Map as the first map: a horizontally oriented, mirror-symmetric 45 by 25 tile grid (Crossroads, ADR 0016).
 - Place the 5 by 5 Prime Zone at columns 20–24 and rows 10–14.
 - Keep the Prime Zone free of permanent Cover.
 - Classic mode: two 3 by 3 Outposts at columns 21–23, rows 2–4 and rows 20–22.
-- ~~Provide exactly one Overwatch Nest at column 15, row 1, with Full Cover and a limited sightline into the Prime Zone.~~ Removed for now (ADR 0024): the Reactor Deck has no Overwatch Nest.
+- ~~Provide exactly one Overwatch Nest at column 15, row 1, with Full Cover and a limited sightline into the Prime Zone.~~ Removed for now (ADR 0024): the Notstrom Map has no Overwatch Nest.
 - Drop Point one Squad on the left edge (column 1, rows 7–9) and the other on the right edge (column 29, rows 7–9), without direct Line of Sight into the Prime Zone.
 - Implement three Hero classes: Bruiser/Vanguard, Controller/Tactician, and Assassin/Striker.
 - Give each Hero a fixed Deck with no Flex cards: Bruiser 12, Controller 10, Assassin 9 cards (ADR 0025).
@@ -140,7 +140,7 @@ The complete fixed card set is maintained in `docs/specs/mvp-card-set.md`. That 
 - Test movement, collision conflicts, Line of Sight, Cover, Hidden, Marked, Ghosts, Energy, Deck Damage, Crossfire, Exhaustion, and victory conditions through this seam.
 - Test Declared Targets through this seam: an Attack hits when its target is valid in the Tick it fires (after the Hero's Moves or the enemy's Moves), and misses with one reason per failing check, without damage and without stopping later actions.
 - Prefer existing seams; do not introduce additional seams unless a higher-level test cannot otherwise be expressed.
-- Use the Reactor Deck layout and the MVP card set as stable fixtures for deterministic scenario tests.
+- Use the Notstrom Map layout and the MVP card set as stable fixtures for deterministic scenario tests.
 - Treat AI behaviour as heuristic: test that AI actions are legal and objective-oriented, not that a specific action is always chosen.
 
 ## Attack and Defend Mode (second mode)
@@ -152,7 +152,7 @@ A second mode next to the classic mode described above, decided in ADR 0022 (Pro
 88. As a player, I want to choose the mode when a match starts, so that I can play the classic mode or Attack and Defend.
 89. As a player, I want one Squad to be the Defender and the other the Attacker, so that the two sides have different jobs.
 90. As a player, I want the Defender's Heroes to start on the Prime Zone tiles next to their side (column 14 for the Left Squad, column 16 for the Right Squad, rows 7 to 9), so that the Attacker has to fight its way in.
-91. As a player, I want the Attacker to start on its Drop Point tiles, so that it has to cross the Reactor Deck first.
+91. As a player, I want the Attacker to start on its Drop Point tiles, so that it has to cross the Notstrom Map first.
 92. As a player, I want the Attacker to take control of the Prime Zone when at least one of its Heroes stands in it and it has at least as many Heroes in it as the Defender, so that the Defender has to Exhaust or push out the Attacker Heroes instead of just standing there.
 93. As a player, I want the previous controller to keep the Zone when the Attacker does not take it, so that control does not flicker.
 94. As an Attacker, I want to win by controlling the Zone during 3 consecutive Resolutions, so that pressure on the Zone is rewarded.
@@ -174,7 +174,7 @@ The classic mode and ADR 0010 are valid for it. Decks, Energy, Pitch, the MVP ca
 
 ### Testing Decisions
 
-Through the Match Simulation seam, with the Reactor Deck and the MVP card set as fixtures:
+Through the Match Simulation seam, with the Notstrom Map and the MVP card set as fixtures:
 
 - Zone control with ties: one Attacker Hero against one Defender Hero in the Zone gives the Attacker control; one against two does not and the previous controller keeps it; no Attacker Hero in the Zone never gives it control, whatever the count of Defender Heroes.
 - Exhausted Heroes do not count towards the Zone.
@@ -201,7 +201,7 @@ Browser tests are intentionally not part of the MVP. Rough idea for later: a sma
 
 ## Further Notes
 
-The spec uses the project glossary vocabulary and respects the existing ADRs. The Reactor Deck is intentionally open at its centre so that Controller effects, especially Deploy Cover, Scout Drone, Breach Charge, and Marked effects, become tactically valuable.
+The spec uses the project glossary vocabulary and respects the existing ADRs. The Notstrom Map is intentionally open at its centre so that Controller effects, especially Deploy Cover, Scout Drone, Breach Charge, and Marked effects, become tactically valuable.
 
 The single Overwatch Nest is a secondary objective rather than a permanent safe scouting position. It rewards positioning while remaining contestable, preventing passive camping without making information gathering worthless.
 

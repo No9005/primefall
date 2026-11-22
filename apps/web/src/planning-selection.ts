@@ -18,7 +18,7 @@ import {
   MAX_QUEUE_LENGTH,
   type QueuedAction,
   queueEnergyCost,
-  REACTOR_DECK,
+  NOTSTROM_MAP,
 } from "game-core";
 
 export interface PlanningDraft {
@@ -38,7 +38,7 @@ export function selectHero(draft: PlanningDraft, heroId: string, playing: boolea
 }
 
 /** What the Cover on a target's tile does against an attacker at `attacker`; `undefined` without protection. */
-export function coverProtectionLabel(attacker: GridPosition, target: GridPosition, grid: Grid = REACTOR_DECK): string | undefined {
+export function coverProtectionLabel(attacker: GridPosition, target: GridPosition, grid: Grid = NOTSTROM_MAP): string | undefined {
   switch (coverAgainst(grid, attacker, target)) {
     case CoverKind.Full:
       return "Full Cover · cannot be attacked";

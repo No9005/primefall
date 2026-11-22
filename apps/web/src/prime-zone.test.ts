@@ -1,4 +1,4 @@
-import { findTiles, REACTOR_DECK, SquadId, TileKind, ZoneKind, type ZoneView } from "game-core";
+import { findTiles, NOTSTROM_MAP, SquadId, TileKind, ZoneKind, type ZoneView } from "game-core";
 import { describe, expect, it } from "vitest";
 import { LASER_FLICKER_MS, laserWallAlpha, primeCallouts, primeScore, zoneCallouts, zoneOccupancy, zoneTint } from "./prime-zone";
 
@@ -55,7 +55,7 @@ describe("primeScore", () => {
 });
 
 describe("zoneOccupancy and zoneTint", () => {
-  const zone = findTiles(REACTOR_DECK, TileKind.PrimeZone)[0]!;
+  const zone = findTiles(NOTSTROM_MAP, TileKind.PrimeZone)[0]!;
   const away = { col: 0, row: 0 };
 
   it("finds the Squads that stand in the zone, ignoring Exhausted Heroes and Ghosts", () => {

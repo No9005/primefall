@@ -27,7 +27,7 @@ describe("classifyPullRequest", () => {
 
   it.each([
     ["card data", "packages/game-core/src/cards.ts"],
-    ["map data", "packages/game-core/src/reactor-deck.ts"],
+    ["map data", "packages/game-core/src/notstrom-map.ts"],
     ["the package exports", "packages/game-core/src/index.ts"],
     ["a test of the rules package", "packages/game-core/src/match.test.ts"],
     ["a mockup page", "docs/design/mockups.html"],

@@ -3,7 +3,7 @@ import { cardIndex, HeroClass } from "./cards";
 import { EventKind, SquadId } from "./host";
 import { buildSquadView, createMatch, MAX_PLACED_COVER_PER_SQUAD, type MatchState, startRound } from "./match";
 import { ActionKind, type SquadPlan } from "./plan";
-import { CoverKind, coverAgainst, coverAt, type GridPosition, tileAt, TileKind } from "./reactor-deck";
+import { CoverKind, coverAgainst, coverAt, type GridPosition, tileAt, TileKind } from "./notstrom-map";
 import { resolveRound } from "./resolution";
 
 const LEFT_CONTROLLER = "left-controller";

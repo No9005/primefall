@@ -39,7 +39,7 @@ jobs:
         run: |
           if [ "$EVENT" != "pull_request" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -E '^(apps/web/|packages/game-core/src/reactor-deck\.ts$)' > /dev/null; then
+          elif git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -E '^(apps/web/|packages/game-core/src/notstrom-map\.ts$)' > /dev/null; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"

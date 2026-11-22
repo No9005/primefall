@@ -28,7 +28,7 @@ import {
   isStepAllowed,
   tileAt,
   TileKind,
-} from "./reactor-deck";
+} from "./notstrom-map";
 
 /** Actions the AI queues per Hero and Round; fewer than the Queue limit keeps Decks from draining fast. */
 const AI_QUEUE_LENGTH = 3;

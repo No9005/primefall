@@ -1,6 +1,6 @@
-// Draws and packs the Reactor Deck tileset "Notstrom" for PixiJS and builds two maps from it as a check.
+// Draws and packs the Notstrom Map tileset "Notstrom" for PixiJS and builds two maps from it as a check.
 // Run from the repository root:
-//   node docs/design/reactor-deck/tools/export.mjs
+//   node docs/design/notstrom-map/tools/export.mjs
 // It needs a Chromium that Playwright can start (the one the e2e tests use). Set PLAYWRIGHT_CHROMIUM_PATH to use another.
 import { createRequire } from 'node:module';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -10,11 +10,11 @@ import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..', '..', '..');
-const assets = join(root, 'apps', 'web', 'public', 'assets', 'reactor-deck');
+const assets = join(root, 'apps', 'web', 'public', 'assets', 'notstrom-map');
 const overview = join(here, '..', 'overview');
 
-// The Reactor Deck as in packages/game-core/src/reactor-deck.ts, and what the layout does not say by itself.
-const REACTOR_DECK = [
+// The Notstrom Map as in packages/game-core/src/notstrom-map.ts, and what the layout does not say by itself.
+const NOTSTROM_MAP = [
   '###############################', '#.............................#', '#...H...HH...HH.HH...HH...H...#', '#.............XXX.............#',
   '#.....HH..##.HXXXH.##..HH.....#', '#.............H.H.............#', '#....#######HH...HH#######....#', '#S............PPP............S#',
   '#S............PPP............S#', '#S............PPP............S#', '#....#######HH...HH#######....#', '#.............H.H.............#',
@@ -75,9 +75,9 @@ try {
     const big = (cv, scale) => { const c = document.createElement('canvas'); c.width = cv.width * scale; c.height = cv.height * scale; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.fillStyle = '#07090c'; x.fillRect(0, 0, c.width, c.height); x.drawImage(cv, 0, 0, c.width, c.height); return c.toDataURL('image/png'); };
     const sheet = document.createElement('canvas'); sheet.width = image.width; sheet.height = image.height; sheet.getContext('2d').drawImage(image, 0, 0);
     return { atlas: big(sheet, 2), maps: maps.map(m => big(assemble(image, json, tileset, m.layout, m.extras), 2)) };
-  }, { png: atlas.png, json: atlas.json, tileset: atlas.tileset, maps: [{ layout: REACTOR_DECK, extras: DECK_EXTRAS }, { layout: OTHER, extras: OTHER_EXTRAS }] });
+  }, { png: atlas.png, json: atlas.json, tileset: atlas.tileset, maps: [{ layout: NOTSTROM_MAP, extras: DECK_EXTRAS }, { layout: OTHER, extras: OTHER_EXTRAS }] });
   await writeFile(join(overview, 'atlas.png'), pngBytes(pictures.atlas));
-  await writeFile(join(overview, 'reactor-deck.png'), pngBytes(pictures.maps[0]));
+  await writeFile(join(overview, 'notstrom-map.png'), pngBytes(pictures.maps[0]));
   await writeFile(join(overview, 'other-layout.png'), pngBytes(pictures.maps[1]));
   console.log('tileset: ' + Object.keys(atlas.json.frames).length + ' frames, sheet ' + atlas.json.meta.size.w + ' x ' + atlas.json.meta.size.h);
 } finally {

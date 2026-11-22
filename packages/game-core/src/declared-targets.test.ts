@@ -3,7 +3,7 @@ import { withFullCover } from "./full-cover-fixture";
 import { AttackFailReason, EventKind, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, type MatchState, recordSightings, startRound } from "./match";
 import { ActionKind, type QueuedAction, type SquadPlan } from "./plan";
-import type { GridPosition } from "./reactor-deck";
+import type { GridPosition } from "./notstrom-map";
 import { getSquadEvents, resolveRound } from "./resolution";
 
 const LEFT = "left-bruiser";

@@ -1,4 +1,4 @@
-// Draws the tiles of the Reactor Deck look "Notstrom" pixel by pixel and packs them into one atlas.
+// Draws the tiles of the Notstrom Map look "Notstrom" pixel by pixel and packs them into one atlas.
 // Runs in a browser page after docs/design/tools/pixel-atlas.js (export.mjs loads both). Every sprite is drawn
 // around its own origin: the centre of the tile it stands on. Nothing here knows the map; assemble.js builds maps.
 
@@ -243,7 +243,7 @@ function buildSprites() {
 
 function buildAtlas() {
   const { list, groups } = buildSprites();
-  const { png, json, info } = packAtlas(list, groups, { prefix: 'deck.', image: 'notstrom.png', app: 'primefall reactor-deck tileset' });
+  const { png, json, info } = packAtlas(list, groups, { prefix: 'deck.', image: 'notstrom.png', app: 'primefall notstrom-map tileset' });
   const tileset = {
     name: 'notstrom', prefix: 'deck.', tile: { w: HW * 2, h: HH * 2 }, wallHeight: WALL, halfCoverHeight: HALF_COVER, fullCoverHeight: FULL_COVER,
     origin: 'every sprite has its anchor on the centre of the tile it stands on',

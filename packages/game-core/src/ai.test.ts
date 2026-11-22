@@ -7,7 +7,7 @@ import { AI_WEIGHTS, AiStyle, aiStyleFor, assignRoles, GHOST_MEMORY_ROUNDS, plan
 import { MatchMode, ROUND_LIMIT, SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { ActionKind, moveEnd, validatePlan } from "./plan";
-import { CoverKind, coverAt, type GridPosition, parseGrid } from "./reactor-deck";
+import { CoverKind, coverAt, type GridPosition, parseGrid } from "./notstrom-map";
 import { resolveRound } from "./resolution";
 
 const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
@@ -26,7 +26,7 @@ const yieldToWorker = () => setImmediate();
 /**
  * A small mirror-symmetric map (31 by 17, Prime Zone 3 by 3 in the middle, two Outposts of 3 by 2) for the tests that
  * check how the scoring reads a map, with coordinates that stay readable. The AI plans from the grid and the zones of its
- * Squad View, so the tests swap them into the view; the rules of the real Reactor Deck are not involved.
+ * Squad View, so the tests swap them into the view; the rules of the real Notstrom Map are not involved.
  */
 const SMALL_MAP = parseGrid([
   "###############################",
@@ -98,10 +98,10 @@ describe("AI planning", () => {
     expect(planSquad.length).toBeLessThanOrEqual(2);
   });
 
-  it("names no map: ai.ts does not use the Reactor Deck", () => {
+  it("names no map: ai.ts does not use the Notstrom Map", () => {
     const source = readFileSync(new URL("./ai.ts", import.meta.url), "utf8");
-    expect(source).not.toMatch(/REACTOR_DECK|PRIME_ZONE_TILES|isPrimeZoneTile/);
-    expect(source).not.toMatch(/from "\.\/reactor-deck"[\s\S]*REACTOR_DECK/);
+    expect(source).not.toMatch(/NOTSTROM_MAP|PRIME_ZONE_TILES|isPrimeZoneTile/);
+    expect(source).not.toMatch(/from "\.\/notstrom-map"[\s\S]*NOTSTROM_MAP/);
   });
 });
 
@@ -276,7 +276,7 @@ describe("AI Styles", () => {
 describe("AI symmetry", () => {
   const mirror = ({ col, row }: { col: number; row: number }) => ({ col: 30 - col, row });
 
-  // The Reactor Deck is mirror-symmetric around column 15 (ADR 0016), so a Hero and its mirror image must
+  // The Notstrom Map is mirror-symmetric around column 15 (ADR 0016), so a Hero and its mirror image must
   // plan the mirrored Moves; otherwise one Squad reaches the Prime Zone first (issue 87).
   it.each([
     [{ col: 5, row: 1 }],

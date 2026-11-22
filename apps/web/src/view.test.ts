@@ -1,4 +1,4 @@
-import { parseGrid, REACTOR_DECK, TileKind } from "game-core";
+import { parseGrid, NOTSTROM_MAP, TileKind } from "game-core";
 import { describe, expect, it } from "vitest";
 import { boardBounds, computeCamera, pickTileAt, resolveTap } from "./board-layout";
 import { buildTerrain, depthOf, gridToWorld, worldToGrid } from "./terrain";
@@ -7,7 +7,7 @@ const VIEWS = [
   { width: 844, height: 390 },
   { width: 667, height: 375 },
 ];
-const grid = REACTOR_DECK;
+const grid = NOTSTROM_MAP;
 const tiles = grid.tiles.flatMap((line, row) => line.map((kind, col) => ({ col, row, kind })));
 // A board without standing pieces, where what is drawn at a floor centre is that floor tile.
 const openGrid = parseGrid(["........", "........", "........", "........", "........"]);

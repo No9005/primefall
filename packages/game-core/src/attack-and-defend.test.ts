@@ -3,7 +3,7 @@ import { playAiMatch } from "./ai-match";
 import { type AttackAndDefendRules, DEFENDER_ROUND_LIMIT, MatchEndReason, MatchMode, type MatchModeSetting, ROUND_LIMIT, SquadId, ZoneTie } from "./host";
 import { createLocalHost, restoreLocalHost, SNAPSHOT_VERSION } from "./local-host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
-import { findTiles, TileKind, tileAt } from "./reactor-deck";
+import { findTiles, TileKind, tileAt } from "./notstrom-map";
 import { resolveRound } from "./resolution";
 
 const mode = (defender: SquadId): MatchModeSetting => ({ kind: MatchMode.AttackAndDefend, defender });

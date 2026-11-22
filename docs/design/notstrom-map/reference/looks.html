@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reactor Deck Looks</title>
+<title>Notstrom Map Looks</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -60,8 +60,8 @@
 
 <div class="sheet">
   <header>
-    <span class="eyebrow">Primefall · Reactor Deck · Pixel Art</span>
-    <h1>Reactor Deck: Looks zur Auswahl</h1>
+    <span class="eyebrow">Primefall · Notstrom Map · Pixel Art</span>
+    <h1>Notstrom Map: Looks zur Auswahl</h1>
     <p class="lede">Fünfmal dieselbe Karte in ihrem heutigen Aufbau (31 × 17 Kacheln): ein abgestürzter Raumgleiter. Beide Squads steigen durch Risse in der Hülle links und rechts ein, Bodenmarkierungen führen durch den Mittelgang zum Kern in der Prime Zone, der als Plasmakern von der Decke hängt. An den Wänden stehen abgewetzte Schablonentexte, Pflanzen wachsen ins Schiff. Unterschiedlich sind Material, Licht, Bewuchs und die Art, wie der Kern gehalten wird.</p>
   </header>
 
@@ -435,7 +435,7 @@ LOOKS.forEach(T => {
   card.appendChild(head);
   const deck = document.createElement('div'); deck.className = 'deck';
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').putImageData(new ImageData(B.d, W, H), 0, 0);
-  cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'Reactor Deck im Look ' + T.name);
+  cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'Notstrom Map im Look ' + T.name);
   const glow = document.createElement('canvas'); glow.width = W; glow.height = H; glow.className = 'glow'; glow.style.width = '100%'; glow.style.height = '100%';
   deck.appendChild(cv); deck.appendChild(glow); card.appendChild(deck);
   const crops = document.createElement('div'); crops.className = 'crops';

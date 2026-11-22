@@ -1,4 +1,4 @@
-import { findTiles, type GridPosition, type HeroClass, REACTOR_DECK, TileKind } from "game-core";
+import { findTiles, type GridPosition, type HeroClass, NOTSTROM_MAP, TileKind } from "game-core";
 import { AUDIO_FOLDER, type AudioManifest, assetUrl, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl, MUSIC_MANIFEST_URL, type MusicManifest, musicFileUrl, type UiSound } from "./audio-manifest";
 import { distanceGain, MUSIC_DUCK, nextAmbienceGapMs, pickVariant, Priority, SfxLimiter, VoiceDirector } from "./audio-mix";
 import { planMoment, type PlanContext, type SoundRequest, type Source } from "./audio-cues";
@@ -86,7 +86,7 @@ const ONE_SHOT_GAIN = 0.6;
 
 /** The middle of the Prime Zone: the core hum is loudest near it. */
 const PRIME_ZONE_CENTRE: GridPosition = (() => {
-  const tiles = findTiles(REACTOR_DECK, TileKind.PrimeZone);
+  const tiles = findTiles(NOTSTROM_MAP, TileKind.PrimeZone);
   return { col: Math.round(tiles.reduce((sum, tile) => sum + tile.col, 0) / tiles.length), row: Math.round(tiles.reduce((sum, tile) => sum + tile.row, 0) / tiles.length) };
 })();
 

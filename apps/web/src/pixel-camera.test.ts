@@ -1,4 +1,4 @@
-import { findTiles, REACTOR_DECK, TileKind } from "game-core";
+import { findTiles, NOTSTROM_MAP, TileKind } from "game-core";
 import { describe, expect, it } from "vitest";
 import { boardBounds, clampCamera, fitCamera, frameMoveCamera, frameSquadCamera, gridToWorld, nearestPixelStepScale, PIXEL_STEPS_IN, PIXEL_WORLD_SCALE, PIXEL_ZOOMS, pixelMaxScale, pixelStepBy, pixelStepScale, zoomAt, zoomOnPoint } from "./board-layout";
 
@@ -17,7 +17,7 @@ describe("the camera of the Pixel art style", () => {
 
   it("keeps the fitted board centred", () => {
     const fitted = fitCamera(PHONE);
-    const bounds = boardBounds(REACTOR_DECK);
+    const bounds = boardBounds(NOTSTROM_MAP);
     expect(fitted.x + ((bounds.left + bounds.right) / 2) * fitted.scale).toBeCloseTo(PHONE.width / 2);
     expect(fitted.y + ((bounds.top + bounds.bottom) / 2) * fitted.scale).toBeCloseTo(PHONE.height / 2);
   });
@@ -39,7 +39,7 @@ describe("the camera of the Pixel art style", () => {
   });
 
   it("starts at 1x on the own Squad", () => {
-    const zone = findTiles(REACTOR_DECK, TileKind.PrimeZone)[12]!;
+    const zone = findTiles(NOTSTROM_MAP, TileKind.PrimeZone)[12]!;
     const camera = frameSquadCamera([{ col: 2, row: 11 }, { col: 2, row: 12 }], zone, PHONE, { left: 0, top: 0, right: 844, bottom: 390 });
     expect(camera.scale).toBe(1 * PIXEL_WORLD_SCALE);
     const hero = gridToWorld({ col: 2, row: 11 });

@@ -3,7 +3,7 @@
 
 import { type CardDefinition, type CardIndex, CardTarget, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type HeroView, type SquadId, type SquadView, Visibility } from "./host";
-import { blocksSteps, CoverKind, coverAt, type Grid, type GridPosition, isStepAllowed, REACTOR_DECK, stepTowards, TileKind, tileAt } from "./reactor-deck";
+import { blocksSteps, CoverKind, coverAt, type Grid, type GridPosition, isStepAllowed, NOTSTROM_MAP, stepTowards, TileKind, tileAt } from "./notstrom-map";
 
 /** A Hero's Queue holds at most 4 actions (the maximum Hand size, ADR 0020). */
 export const MAX_QUEUE_LENGTH = 4;
@@ -109,7 +109,7 @@ export function chebyshevDistance(a: GridPosition, b: GridPosition): number {
 }
 
 /** Tiles a Move 3 from `from` may be planned to: 1 to 3 tiles away, inside the Grid, not a Wall. */
-export function moveDestinations(from: GridPosition, grid: Grid = REACTOR_DECK, distance = MOVE_DISTANCE): GridPosition[] {
+export function moveDestinations(from: GridPosition, grid: Grid = NOTSTROM_MAP, distance = MOVE_DISTANCE): GridPosition[] {
   const found: GridPosition[] = [];
   for (let row = from.row - distance; row <= from.row + distance; row++) {
     for (let col = from.col - distance; col <= from.col + distance; col++) {
@@ -123,12 +123,12 @@ export function moveDestinations(from: GridPosition, grid: Grid = REACTOR_DECK, 
 }
 
 /** Where a Move 3 towards `destination` really ends: it stops before a Wall or Wall corner (ADR 0020). */
-export function moveEnd(from: GridPosition, destination: GridPosition, grid: Grid = REACTOR_DECK): GridPosition {
+export function moveEnd(from: GridPosition, destination: GridPosition, grid: Grid = NOTSTROM_MAP): GridPosition {
   return movePath(from, destination, grid).at(-1) ?? from;
 }
 
 /** The tiles a Move 3 towards `destination` stands on after each step, without other Heroes in the way. */
-export function movePath(from: GridPosition, destination: GridPosition, grid: Grid = REACTOR_DECK): GridPosition[] {
+export function movePath(from: GridPosition, destination: GridPosition, grid: Grid = NOTSTROM_MAP): GridPosition[] {
   const path: GridPosition[] = [];
   let position = from;
   for (let step = 0; step < MOVE_DISTANCE; step++) {
@@ -141,7 +141,7 @@ export function movePath(from: GridPosition, destination: GridPosition, grid: Gr
 }
 
 /** The Move 3 destinations the Hero reaches completely: `moveDestinations` minus tiles behind a Wall or Wall corner. */
-export const reachableMoveDestinations = (from: GridPosition, grid: Grid = REACTOR_DECK): GridPosition[] =>
+export const reachableMoveDestinations = (from: GridPosition, grid: Grid = NOTSTROM_MAP): GridPosition[] =>
   moveDestinations(from, grid).filter((destination) => {
     const end = moveEnd(from, destination, grid);
     return end.col === destination.col && end.row === destination.row;
@@ -302,7 +302,7 @@ const sameTile = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row 
  * on a tile another Hero ends on; a Hero left without a step stays, which may cut other walks. This is repeated
  * until nothing changes. The result does not depend on the order of the requests or on the Squad of a Hero.
  */
-export function resolveWalks(standing: ReadonlyMap<string, GridPosition>, requests: readonly WalkRequest[], grid: Grid = REACTOR_DECK): Map<string, WalkOutcome> {
+export function resolveWalks(standing: ReadonlyMap<string, GridPosition>, requests: readonly WalkRequest[], grid: Grid = NOTSTROM_MAP): Map<string, WalkOutcome> {
   const planned = new Map<string, { path: GridPosition[]; wallBlocked: boolean }>();
   for (const { heroId, destination, distance } of requests) {
     const path = [{ ...standing.get(heroId)! }];

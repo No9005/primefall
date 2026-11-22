@@ -1,4 +1,4 @@
-// Shared by the pixel-art tilesets under docs/design (reactor-deck, ice-field). Runs in a browser page.
+// Shared by the pixel-art tilesets under docs/design (notstrom-map, ice-field). Runs in a browser page.
 // It holds what every tileset needs: a sprite to draw pixels into, the light sprite, the packer that writes the
 // PixiJS sheet, and the stage that builds a lit picture from a packed atlas.
 

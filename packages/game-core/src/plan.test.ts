@@ -3,7 +3,7 @@ import { HeroClass } from "./cards";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { SquadId, type SquadView } from "./host";
 import { ActionKind, cardRangeArea, energyPool, isInCardRange, type MoveAction, PlanIssueKind, type QueuedAction, type SquadPlan, validatePlan } from "./plan";
-import { type GridPosition, parseGrid } from "./reactor-deck";
+import { type GridPosition, parseGrid } from "./notstrom-map";
 
 // The enemy Bruiser stands in sight of the Squad; the other enemies are still Unknown.
 const match = startRound(createMatch(9));

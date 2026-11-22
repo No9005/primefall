@@ -1,10 +1,12 @@
-# Reactor Deck Map
+# Notstrom Map
+
+> **Name:** this record was written as "Reactor Deck Map" (file `0016-reactor-deck-map.md`). The map is the Notstrom Map now (every map gets a name of its own); the text below uses the new name.
 
 > **Terminology:** `GLOSSARY.md` now calls the Spawn strips Drop Points (this record: Spawn). This record keeps its original words.
 
 **Status:** Rewritten in #361 as the "Crossroads" map for the three zones of ADR 0024. It replaces the 31 by 17 layout (issue 131) and the 21 by 11 layout before it. It has two Overwatch Nests again.
 
-The first Primefall map is the Reactor Deck: a damaged cargo ship whose central reactor is the Prime Zone. The map is horizontally oriented and mirror-symmetric: one squad spawns on the left edge and the other on the right edge.
+The first Primefall map is the Notstrom Map: a damaged cargo ship whose central reactor is the Prime Zone. The map is horizontally oriented and mirror-symmetric: one squad spawns on the left edge and the other on the right edge.
 
 The map uses a 45 by 25 tile grid. It has no interactive doors and no vertical levels in the first prototype. It holds three zones (ADR 0024): the Prime Zone in the centre and an Outpost north and south of it on the centre column.
 
@@ -55,7 +57,7 @@ Legend:
 
 The grid is 45 columns by 25 rows (columns 0–44, rows 0–24, border walls included). The odd width and height place the Prime Zone exactly on the central column (22) and the central row (12). The layout is mirror-symmetric top-bottom around row 12. Left-right it is symmetric around column 22 except for the Full Cover slabs and the Overwatch Nest row, which are shifted on purpose so that no tile sees all three zone centres. Each Squad spawns on a 2 by 5 strip: columns 1–2, rows 10–14 on the left and columns 42–43 on the right. Its Heroes start on rows 11–13 of column 2 or 42 (Defenders on rows 11–13 of column 20 or 24, the inner column of the Prime Zone).
 
-Rules, AI, Spawn positions, camera fit and tile picking all read the grid; none of them hard-codes the size, the zone positions or the Spawn columns. Start tiles come from one shared rule in `reactor-deck.ts`.
+Rules, AI, Spawn positions, camera fit and tile picking all read the grid; none of them hard-codes the size, the zone positions or the Spawn columns. Start tiles come from one shared rule in `notstrom-map.ts`.
 
 ## Prime Zone
 
@@ -86,7 +88,7 @@ They are the Assassin’s secondary objective:
 
 - **Middle:** from each Spawn a Squad crosses open floor to the Prime Zone. Half Cover pieces at columns 8 and 36 (rows 11 and 13) give a first step of Cover, and the Wall pieces at columns 16–17 and 27 break the long sight lines.
 - **North and south:** the flanks lead to the Outposts through gaps in the Wall lines at rows 5 and 19, past Full Cover slabs.
-- **Spawn safety:** there is no sight line from any Spawn tile to any Spawn tile of the other Squad, and no tile sees all three zone centres. Both are checked by tests (`reactor-deck.test.ts`). No run of open floor in the edge rows is longer than 16 tiles.
+- **Spawn safety:** there is no sight line from any Spawn tile to any Spawn tile of the other Squad, and no tile sees all three zone centres. Both are checked by tests (`notstrom-map.test.ts`). No run of open floor in the edge rows is longer than 16 tiles.
 
 Other rules of the layout:
 

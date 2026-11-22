@@ -4,7 +4,7 @@ import { EventKind, SquadId, Visibility } from "./host";
 import { areaTiles, buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, PlanIssueKind, type QueuedAction, type SquadPlan, validatePlan } from "./plan";
 import { AttackFailReason } from "./host";
-import { CoverKind, coverAt, type GridPosition, TileKind, withTile } from "./reactor-deck";
+import { CoverKind, coverAt, type GridPosition, TileKind, withTile } from "./notstrom-map";
 import { resolveRound } from "./resolution";
 
 const CONTROLLER = "left-controller";

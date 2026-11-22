@@ -5,7 +5,7 @@ import { type AiStyle, aiStyleFor, planSquad } from "./ai";
 import { type MatchHost, MatchMode, type MatchModeSetting, SquadId, type SquadView, type SubmitResult } from "./host";
 import { buildSquadView, createMatch, type MatchState, recordSightings, startRound, ZONES } from "./match";
 import { type SquadPlan, validatePlan } from "./plan";
-import { TileKind, withWreck } from "./reactor-deck";
+import { TileKind, withWreck } from "./notstrom-map";
 import { getSquadEvents, resolveRound } from "./resolution";
 import { SERVER_ENTRY } from "./server";
 

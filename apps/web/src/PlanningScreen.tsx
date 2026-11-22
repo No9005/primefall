@@ -25,7 +25,7 @@ import {
   type HeroView,
   type PlanIssue,
   type QueuedAction,
-  REACTOR_DECK,
+  NOTSTROM_MAP,
   PLANNING_TIMER_SECONDS,
   SquadId,
   type SquadPlan,
@@ -601,7 +601,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     [view.ownPlacedCover, playedPlacedOwn, playedDestroyed],
   );
   const knownGrid = useMemo(
-    () => withZoneClosed(view.wreckCover.reduce(withWreck, view.destroyedCover.reduce(destroyCover, REACTOR_DECK)), view.grid.zoneClosed ?? false),
+    () => withZoneClosed(view.wreckCover.reduce(withWreck, view.destroyedCover.reduce(destroyCover, NOTSTROM_MAP)), view.grid.zoneClosed ?? false),
     [view.destroyedCover, view.wreckCover, view.grid.zoneClosed],
   );
   // Who targets whom: the queued actions of the Squad while planning, the actions of the current Tick in the replay.
@@ -661,7 +661,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     if (card?.target !== CardTarget.Tile && card?.target !== CardTarget.Area && card?.target !== CardTarget.EmptyTile) return [];
     // Any tile within the Range can be aimed at; Line of Sight is checked in the Resolution. Temporary Solution needs an
     // empty tile, so Cover and Heroes known to the Squad are left out.
-    const reachable = moveDestinations(planningFrom, REACTOR_DECK, card.range ?? Math.max(REACTOR_DECK.width, REACTOR_DECK.height));
+    const reachable = moveDestinations(planningFrom, NOTSTROM_MAP, card.range ?? Math.max(NOTSTROM_MAP.width, NOTSTROM_MAP.height));
     if (card.target !== CardTarget.EmptyTile) return reachable;
     const occupied = [...view.heroes, ...view.enemies.filter((enemy) => enemy.visibility === Visibility.Visible)].map((unit) => unit.position);
     return reachable.filter(

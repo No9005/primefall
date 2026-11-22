@@ -12,11 +12,11 @@ import {
   type GridPosition,
   hasLineOfSight,
   parseGrid,
-  REACTOR_DECK,
+  NOTSTROM_MAP,
   TileKind,
   tileAt,
   withTile,
-} from "./reactor-deck";
+} from "./notstrom-map";
 import { getSquadEvents, resolveRound } from "./resolution";
 
 const LEFT_BRUISER = "left-controller"; // Tilly breaks Cover (docs/design/decks.md)
@@ -120,7 +120,7 @@ describe("destroyed Cover", () => {
   });
 
   it("leaves tiles without Cover untouched", () => {
-    expect(destroyCover(REACTOR_DECK, { col: 1, row: 1 })).toBe(REACTOR_DECK);
+    expect(destroyCover(NOTSTROM_MAP, { col: 1, row: 1 })).toBe(NOTSTROM_MAP);
   });
 });
 
