@@ -7,8 +7,6 @@ import { type CardDefinition, type GridPosition, isInCardRange } from "game-core
 export const CANCEL_PULL = 36;
 /** A release with less movement than this is a tap, which cancels as well. */
 const TAP_SLOP = 6;
-/** A shorter pull springs the card back to its place in this time. */
-export const SPRING_BACK_MS = 200;
 
 export const PULSE_MIN_ALPHA = 0.35;
 export const PULSE_MAX_ALPHA = 0.9;

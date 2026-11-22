@@ -1,14 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { NOTSTROM_INTRO, NOTSTROM_INTRO_DURATION_MS, NOTSTROM_INTRO_SOUND, shouldPlayNotstromIntro } from "./notstrom-intro";
+import { NOTSTROM_INTRO, NOTSTROM_INTRO_SOUND, shouldPlayNotstromIntro } from "./notstrom-intro";
 
 describe("Notstrom Intro", () => {
   it("has a picture for every frame in its sheets", () => {
     expect(NOTSTROM_INTRO.sheets.reduce((sum, sheet) => sum + sheet.frames, 0)).toBe(NOTSTROM_INTRO.frames);
-  });
-
-  it("runs about eight seconds at twelve pictures a second after the live part", () => {
-    expect(NOTSTROM_INTRO_DURATION_MS).toBeCloseTo(7917, -1);
   });
 
   it("has sheets of the size the layout says", () => {

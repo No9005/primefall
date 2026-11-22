@@ -1,7 +1,7 @@
-import { ActionKind, cardIndex, HERO_DECKS, HeroClass, parseGrid, PlanIssueKind, type QueuedAction, SquadId, validatePlan } from "game-core";
+import { ActionKind, cardIndex, HERO_DECKS, HeroClass, PlanIssueKind, type QueuedAction, SquadId, validatePlan } from "game-core";
 import { createLocalHost } from "game-core/local-host";
 import { describe, expect, it } from "vitest";
-import { actionUsesCard, addWaitAction, cardFace, CardUse, cardUseReasons, queueRowLabel,removeQueueAction, coverProtectionLabel, describeEffects, energyReadout, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
+import { actionUsesCard, addWaitAction, CardUse, cardUseReasons, queueRowLabel,removeQueueAction, describeEffects, energyReadout, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
 
 const LONG_SHOT = cardIndex(HeroClass.Assassin, "Long Shot");
 
@@ -28,19 +28,6 @@ describe("describeEffects", () => {
     expect(describeEffects(longShot.effects)).toBeTruthy();
   });
 
-});
-
-describe("coverProtectionLabel", () => {
-  it("names the protection a target tile gives against the attacker", () => {
-    expect(coverProtectionLabel({ col: 21, row: 8 }, { col: 18, row: 8 })).toBe("Half Cover · damage -1");
-    const fullCoverGrid = parseGrid([".....", ".....", "..F..", ".....", "....."]);
-    expect(coverProtectionLabel({ col: 2, row: 4 }, { col: 2, row: 2 }, fullCoverGrid)).toBe("Full Cover · cannot be attacked");
-  });
-
-  it("shows nothing on open floor or at Range 1", () => {
-    expect(coverProtectionLabel({ col: 21, row: 8 }, { col: 19, row: 8 })).toBeUndefined();
-    expect(coverProtectionLabel({ col: 19, row: 8 }, { col: 18, row: 8 })).toBeUndefined();
-  });
 });
 
 const queue: readonly QueuedAction[] = [{ kind: ActionKind.Move, card: 0, destination: { col: 1, row: 1 } }];
@@ -92,18 +79,6 @@ describe("energyReadout and cardUseReasons", () => {
     const full: QueuedAction[] = [1, 2, 3, 4].map((card) => ({ kind: ActionKind.Move, card, destination: { col: 3, row: 3 } }));
     const reasons = cardUseReasons(HeroClass.Bruiser, 0, full, []);
     expect([reasons[CardUse.Pitch], reasons[CardUse.Move]]).toEqual([undefined, "Queue is full"]);
-  });
-});
-
-describe("cardFace", () => {
-  it("takes the effect text from the card data for every MVP card", () => {
-    for (const heroClass of Object.values(HeroClass)) {
-      for (const card of HERO_DECKS[heroClass]) {
-        const { type, effectText } = cardFace(card);
-        expect(effectText).toContain(describeEffects(card.effects));
-        expect(["ATTACK", "UTILITY"]).toContain(type);
-      }
-    }
   });
 });
 

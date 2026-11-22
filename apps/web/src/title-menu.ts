@@ -60,5 +60,4 @@ export const FIREBALLS: readonly Fireball[] = [
 /** The burst sits at the foot of its fireball. */
 export const BURST_OFFSET = { left: -27, top: 62 } as const;
 
-export const percentX = (x: number): string => `${(x / STAGE.width) * 100}%`;
 export const percentY = (y: number): string => `${(y / STAGE.height) * 100}%`;

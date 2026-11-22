@@ -542,8 +542,6 @@ const CUE_BUILDERS: Partial<Record<EventKind, (event: MatchEvent, frame: CueFram
   [EventKind.SlowApplied]: slowCues,
 };
 
-export const LONG_SHOT_CARD = "Long Shot";
-
 type BreachCue = Extract<EffectCue, { kind: "breach" }>;
 
 /** One cue per caster and tile: the hits of the blast and the destroyed Cover are the same explosion. */
