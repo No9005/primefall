@@ -47,8 +47,9 @@
 .hg-next { right: 20px; background-image: url("/assets/hangar/next.png"); }
 .hg-back:hover, .hg-back:active, .hg-back:focus-visible { background-image: url("/assets/hangar/back-on.png"); outline: none; }
 .hg-next:hover, .hg-next:active, .hg-next:focus-visible, .hg-next.ready { background-image: url("/assets/hangar/next-on.png"); outline: none; }
-.hg-next:disabled { cursor: default; }
-.hg-next:disabled:hover { background-image: url("/assets/hangar/next.png"); }
+/* No Hero chosen: NEXT is greyed out and does not react. */
+.hg-next:disabled { cursor: default; opacity: 0.3; filter: grayscale(1); }
+.hg-next:disabled:hover, .hg-next:disabled:active { background-image: url("/assets/hangar/next.png"); }
 
 @media (prefers-reduced-motion: reduce) {
   .hg-fire, .hg-lights, .hg-guide, .hg-mote, .hg-spark, .hg-shade { animation: none; }
