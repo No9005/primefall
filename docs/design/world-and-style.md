@@ -24,8 +24,8 @@ Start here before making anything the player sees or hears (a picture, an animat
 | The Notstrom Map look | `docs/design/notstrom-map/` |
 | Title screen, Notstrom Intro, Hero Select (hangar) | `docs/design/title/`, `docs/design/notstrom-intro/`, `docs/design/hero-select/` |
 | Where scenes and UI are drawn | `docs/adr/0026-scenes-in-pixijs-ui-in-html.md` |
-| Music, how it was made, what was tried | `audio-source/music/README.md` |
-| Voice and sound effects | `audio-source/voice-sfx/` |
+| Music, how it was made, what was tried | `archive/audio-source/music/README.md` |
+| Voice and sound effects | `archive/audio-source/voice-sfx/` |
 
 ## Look
 
@@ -40,4 +40,4 @@ Start here before making anything the player sees or hears (a picture, an animat
 - Dark sci-fi, 1970s and 1980s analog synthesizers, a driving bass like a heartbeat, and **deep, throaty male bass choir (monk chant) in every piece**: it carries the threat and the mystery. The key so far is D minor.
 - Music must **loop** and must not lean on the Notstrom Map's own piece, because more maps will come.
 - A piece needs a **hook** that stays in the head, not only slow drones.
-- How a piece is made and archived, and the rules for generation: `audio-source/music/README.md` and `docs/agents/working-agreements.md`.
+- How a piece is made and archived, and the rules for generation: `archive/audio-source/music/README.md` and `docs/agents/working-agreements.md`.

@@ -7,7 +7,7 @@
 # Needs ELEVENLABS_API_KEY. `DRY_RUN=1` only shows what would be sent and patches the plans with placeholder ids.
 # The song ids in the saved plans (see ../../README.md) may no longer exist at ElevenLabs; this script replaces them with the new ones.
 set -euo pipefail
-cd "$(dirname "$0")/../.."          # audio-source/music
+cd "$(dirname "$0")/../.."          # archive/audio-source/music
 API="https://api.elevenlabs.io"
 OUT="${OUT:-work}"; mkdir -p "$OUT"
 DRY="${DRY_RUN:-0}"

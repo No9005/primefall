@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Turns the saved plan files (the JSON that was sent to the API) into readable prompts.
-Run from audio-source/music: python3 tools/plans-to-md.py   (it writes the PROMPTS.md next to each experiment)."""
+Run from archive/audio-source/music: python3 tools/plans-to-md.py   (it writes the PROMPTS.md next to each experiment)."""
 import json, os
 
 def chunk_md(c, i):
