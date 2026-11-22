@@ -70,7 +70,7 @@ In a factory run, the issue named in the run prompt is your ticket (there is no 
 
 ## Chat sessions
 
-In a chat session with the owner, read `docs/agents/working-agreements.md` first (standing agreements and decisions). A session that ends or grows long leaves a handover note, see `docs/agents/session-handover.md`.
+In a chat session with the owner, read `docs/agents/working-agreements.md` first (standing agreements and decisions). Before making a picture, animation, sound or text, read `docs/design/world-and-style.md`. A session that ends or grows long leaves a handover note, see `docs/agents/session-handover.md`.
 
 ## Agent skills
 
