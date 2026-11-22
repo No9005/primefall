@@ -13,7 +13,7 @@ import {
   realEnv,
   tapOrder,
 } from "./hangar-select";
-import { HERO_NAMES, HERO_PROFILES, MODE_LABELS, type SelectMode, SELECTABLE_HEROES } from "./hero-select";
+import { HERO_NAMES, HERO_PROFILES, type SelectMode, SELECTABLE_HEROES } from "./hero-select";
 import "./hero-select.css";
 import "./hangar-select.css";
 
@@ -80,7 +80,8 @@ interface HeroSelectScreenProps {
   onStart: (hero: HeroClass) => void;
 }
 
-export function HeroSelectScreen({ mode, initial, onBack, onStart }: HeroSelectScreenProps) {
+// `mode` is kept in the props: the screen shows it again once the design for it is made.
+export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenProps) {
   const [scale, setScale] = useState(fitScale);
   const [, redraw] = useReducer((count: number) => count + 1, 0);
   const players = useRef<Record<HangarHero, HeroPlayer> | undefined>(undefined);
@@ -188,9 +189,6 @@ export function HeroSelectScreen({ mode, initial, onBack, onStart }: HeroSelectS
           })}
           <img className="hg-layer hg-shade" src={`${ART}shade-front.png`} alt="" aria-hidden="true" />
         </div>
-        <span className={`hs-chip ${mode} hg-chip`} data-testid="mode-chip">
-          {MODE_LABELS[mode]}
-        </span>
         <div className="hg-bar">
           <button type="button" className="hg-nav hg-back" aria-label="BACK" onClick={onBack} />
           <button type="button" className={`hg-nav hg-next${chosen ? " ready" : ""}`} aria-label="NEXT" disabled={!chosen} onClick={() => chosen && onStart(HERO_OF[chosen])} />
