@@ -25,7 +25,7 @@ node docs/design/notstrom-intro/tools/encode_video.mjs           # needs ffmpeg 
 node docs/design/notstrom-intro/tools/encode_video.mjs --check   # decodes both files and compares every picture with the sheets
 ```
 
-Settings (deterministic): pictures cut with `crop`, scaled with `flags=neighbor`; BT.709 limited range, `yuv420p`; VP9 `-crf 10 -b:v 0
+Settings (deterministic): pictures cut with `crop`, changed to RGB, then scaled with `flags=neighbor` (scaling the palette picture directly is off by half a picture point); BT.709 limited range, `yuv420p`; VP9 `-crf 10 -b:v 0
 -deadline best -cpu-used 0 -row-mt 0 -g 12`; H.264 `-preset veryslow -crf 8 -profile:v high -g 12 -movflags +faststart`. The check scales
 each decoded picture down by 2 (area average) and requires a mean absolute difference of at most 6 of 255 per colour channel (the codec
 spreads colours of neighbouring pixels in 4:2:0), plus 95 pictures, 12 fps and the size.

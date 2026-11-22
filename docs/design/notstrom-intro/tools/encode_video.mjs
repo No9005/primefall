@@ -54,7 +54,8 @@ function encode() {
   try {
     for (let index = 0; index < FRAMES; index++) {
       const name = path.join(frames, `${String(index + 1).padStart(3, "0")}.png`);
-      run("ffmpeg", cutArgs(index, `,scale=iw*${SCALE}:ih*${SCALE}:flags=neighbor`, [name]));
+      // The sheets are palette pictures: scale only after the change to RGB, or the doubling is off by half a picture point and blurs it.
+      run("ffmpeg", cutArgs(index, `,format=rgb24,scale=iw*${SCALE}:ih*${SCALE}:flags=neighbor`, [name]));
     }
     // Colours: the pictures are sRGB; the video says BT.709 limited range, which every browser reads the same way.
     const common = ["-v", "error", "-y", "-framerate", String(FPS), "-i", path.join(frames, "%03d.png"), "-an", "-r", String(FPS), "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"];
