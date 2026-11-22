@@ -1,6 +1,6 @@
-"""Makes the sound of the film of Start from take A of the cue (`menu`-like game file `film.m4a`).
+"""Makes the sound of the Notstrom Intro of Start from take A of the cue (`menu`-like game file `notstrom-intro.m4a`).
 
-python3 audio-source/music/tools/loops/make_film_cue.py <take.mp3> <out.m4a>
+python3 audio-source/music/tools/loops/make_notstrom_intro_cue.py <take.mp3> <out.m4a>
 
 The model's take is 19 s: the cue (to 9 s) and, kept unchanged behind it, the start of the Hero Select loop, whose first hit comes at
 9.06 s. The cue is cut at 8.9 s, before that hit, and fades out over its last 0.4 s; it is brought to the level of the Hero Select loop in

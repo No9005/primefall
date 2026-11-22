@@ -1,9 +1,9 @@
 """Draws source/shadow-astronaut.png: the dark silhouette of the second astronaut behind the main helmet (320 x 356 pixels).
 
-python3 docs/design/intro/tools/make_shadow.py
+python3 docs/design/notstrom-intro/tools/make_shadow.py
 
 The helmet is turned to the left with a rim light on its right edge, the pack stands behind it, the shoulders and the upper arms run
-on straight down below the picture (the film lets the figure sway around the foot of the picture, so its body must never end in it).
+on straight down below the picture (the Notstrom Intro lets the figure sway around the foot of the picture, so its body must never end in it).
 """
 from PIL import Image, ImageDraw
 

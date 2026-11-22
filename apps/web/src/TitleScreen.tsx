@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { gameAudio } from "./audio";
-import { WHIP_MS } from "./intro-film";
-import { preloadIntro } from "./NotstromIntro";
+import { WHIP_MS } from "./notstrom-intro";
+import { preloadNotstromIntro } from "./NotstromIntro";
 import { BURST_OFFSET, FIREBALLS, MENU_SLOTS, type MenuId, menuIds, percentX, percentY, STAGE, streakTop } from "./title-menu";
 import "./title-screen.css";
 
@@ -10,8 +10,8 @@ const ART = `${import.meta.env.BASE_URL}assets/title/`;
 interface TitleScreenProps {
   seed: number;
   canResume: boolean;
-  /** Whether Classic plays the film: the title screen is then pulled away live first, and `onPlay` follows when that is over. */
-  film: boolean;
+  /** Whether Classic plays the Notstrom Intro: the title screen is then pulled away live first, and `onPlay` follows when that is over. */
+  notstromIntro: boolean;
   onPlay: () => void;
   onPlayAttackAndDefend: () => void;
   onResume: () => void;
@@ -23,12 +23,12 @@ interface TitleScreenProps {
  * 640 x 296 pixels and scaled to the screen; the highlight (a red pill and a light streak) stays on Start until the pointer or the
  * focus moves to another row.
  */
-export function TitleScreen({ seed, canResume, film, onPlay, onPlayAttackAndDefend, onResume, onGlossary }: TitleScreenProps) {
+export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onPlayAttackAndDefend, onResume, onGlossary }: TitleScreenProps) {
   const ids = menuIds(canResume, new URLSearchParams(window.location.search).get("menu") === "all");
   const [row, setRow] = useState(0);
   const [flying, setFlying] = useState(false);
-  // The film of Classic is fetched while the start screen is shown.
-  useEffect(preloadIntro, []);
+  // The Notstrom Intro of Classic is fetched while the start screen is shown.
+  useEffect(preloadNotstromIntro, []);
   // The main-menu theme plays while the start screen is shown (it starts with the first tap, when the browser allows sound).
   useEffect(() => {
     void gameAudio.loadMusic().then(() => gameAudio.startMenu());
@@ -38,14 +38,14 @@ export function TitleScreen({ seed, canResume, film, onPlay, onPlayAttackAndDefe
   function fly() {
     if (flying) return;
     setFlying(true);
-    // The menu theme fades out now and the sound of the film starts: the film is 9 s long from this tap.
+    // The menu theme fades out now and the sound of the Notstrom Intro starts: the Notstrom Intro is 9 s long from this tap.
     gameAudio.stopMenu();
-    void gameAudio.loadMusic().then(() => gameAudio.startFilmCue());
+    void gameAudio.loadMusic().then(() => gameAudio.startNotstromIntroCue());
     window.setTimeout(onPlay, WHIP_MS);
   }
 
   const entries: Record<MenuId, { label: string; testId: string; run: () => void }> = {
-    classic: { label: "Start", testId: "play-classic", run: film ? fly : onPlay },
+    classic: { label: "Start", testId: "play-classic", run: notstromIntro ? fly : onPlay },
     "attack-and-defend": { label: "Attack and Defend", testId: "play-attack-defend", run: onPlayAttackAndDefend },
     glossary: { label: "Glossary", testId: "glossary-button", run: onGlossary },
     resume: { label: "Resume match", testId: "resume", run: onResume },

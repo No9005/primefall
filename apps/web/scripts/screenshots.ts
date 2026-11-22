@@ -88,8 +88,8 @@ export const SCREEN_SCENARIOS: Record<string, { description: string; shots: read
     description: "The title screen: Start highlighted, a fireball falling, its burst, the third row touched, the smallest phone view, a desktop window (the picture fills it, the sides are cut)",
     shots: ["01-classic.png", "02-fireball-falling.png", "03-burst.png", "04-glossary-touched.png", "05-small-phone.png", "06-desktop.png"],
   },
-  intro: {
-    description: "The film of the tap on Classic: the title pulled away, the hyperspace, the far Notstrom, the visor, the hull, the airlock, then the Hero Select",
+  "notstrom-intro": {
+    description: "The Notstrom Intro of the tap on Classic: the title pulled away, the hyperspace, the far Notstrom, the visor, the hull, the airlock, then the Hero Select",
     shots: ["01-title-pulled-away.png", "02-hyperspace.png", "03-notstrom-far.png", "04-visor.png", "05-hull.png", "06-airlock.png", "07-hero-select.png"],
   },
   "hero-select": {
@@ -274,15 +274,15 @@ async function playTitle(browser: Browser): Promise<void> {
   checkWritten(directory, SCREEN_SCENARIOS.title!.shots);
 }
 
-/** The film of the tap on Classic (about 9 s) at the moments of its parts, then the Hero Select it hands over to. */
-async function playIntro(browser: Browser): Promise<void> {
-  const directory = path.join(OUTPUT_DIR, "intro");
+/** The Notstrom Intro of the tap on Classic (about 9 s) at the moments of its parts, then the Hero Select it hands over to. */
+async function playNotstromIntro(browser: Browser): Promise<void> {
+  const directory = path.join(OUTPUT_DIR, "notstrom-intro");
   rmSync(directory, { recursive: true, force: true });
   mkdirSync(directory, { recursive: true });
   const page = await browser.newPage({ viewport: VIEWPORT });
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(`${URL}${URL.includes("?") ? "&" : "?"}intro=on`);
+  await page.goto(`${URL}${URL.includes("?") ? "&" : "?"}notstrom-intro=on`);
   await page.locator(".title-item img").last().waitFor({ state: "attached" });
   await page.waitForFunction(() => Array.from(document.images).every((image) => image.complete));
   await page.getByTestId("play-classic").click();
@@ -303,8 +303,8 @@ async function playIntro(browser: Browser): Promise<void> {
   }
   await page.getByTestId("hero-select").waitFor({ timeout: 6000 }).catch(() => undefined);
   await shoot("07-hero-select.png");
-  if (errors.length > 0) throw new Error(`intro: ${errors.join("; ")}`);
-  checkWritten(directory, SCREEN_SCENARIOS.intro!.shots);
+  if (errors.length > 0) throw new Error(`notstrom-intro: ${errors.join("; ")}`);
+  checkWritten(directory, SCREEN_SCENARIOS["notstrom-intro"]!.shots);
 }
 
 /** Looks at the Hero Select at the moments the design sheets show: the Bruiser mid-shots, the drone out, the Assassin Hidden. */
@@ -663,7 +663,7 @@ async function main(): Promise<void> {
           if (name === "attack-defend") await playAttackDefend(browser);
           else if (name === "glossary") await playGlossary(browser);
           else if (name === "title") await playTitle(browser);
-          else if (name === "intro") await playIntro(browser);
+          else if (name === "notstrom-intro") await playNotstromIntro(browser);
           else await playHeroSelect(browser);
           console.log(`Scenario ${name}: ${path.join(OUTPUT_DIR, name)}\n${SCREEN_SCENARIOS[name]!.shots.join("\n")}`);
           continue;
