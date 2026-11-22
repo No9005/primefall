@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { gameAudio } from "./audio";
-import { WHIP_MS } from "./notstrom-intro";
 import { preloadNotstromIntro } from "./NotstromIntro";
-import { BURST_OFFSET, FIREBALLS, MENU_SLOTS, type MenuId, menuIds, percentX, percentY, STAGE, streakTop } from "./title-menu";
+import { StageLayer } from "./StageLayer";
+import { MENU_SLOTS, type MenuId, menuIds, percentY, STAGE, streakTop } from "./title-menu";
+import { type FlyLook, TITLE_SCENE_NAME, titleScene } from "./title-scene";
 import "./title-screen.css";
 
 const ART = `${import.meta.env.BASE_URL}assets/title/`;
@@ -10,7 +11,7 @@ const ART = `${import.meta.env.BASE_URL}assets/title/`;
 interface TitleScreenProps {
   seed: number;
   canResume: boolean;
-  /** Whether Classic plays the Notstrom Intro: the title screen is then pulled away live first, and `onPlay` follows when that is over. */
+  /** Whether Classic plays the Notstrom Intro: the title screen is then pulled away live first (on the stage clock), and `onPlay` follows when that is over. */
   notstromIntro: boolean;
   onPlay: () => void;
   onPlayAttackAndDefend: () => void;
@@ -18,14 +19,15 @@ interface TitleScreenProps {
 }
 
 /**
- * The start screen: the dark planet with burning crystals that fall onto it, the logo, and the menu. The picture is drawn at
- * 640 x 296 pixels and scaled to the screen; the highlight (a red pill and a light streak) stays on Start until the pointer or the
+ * The start screen: the dark planet with burning crystals that fall onto it, the logo, and the menu. The picture is the scene "title" on
+ * the stage (title-scene.ts, drawn at 640 x 296 pixels and scaled to the window's height); the menu rows are buttons over it. The highlight (a red pill and a light streak) stays on Start until the pointer or the
  * focus moves to another row.
  */
 export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onPlayAttackAndDefend, onResume }: TitleScreenProps) {
   const ids = menuIds(canResume, new URLSearchParams(window.location.search).get("menu") === "all");
   const [row, setRow] = useState(0);
   const [flying, setFlying] = useState(false);
+  const screen = useRef<HTMLElement>(null);
   // The Notstrom Intro of Classic is fetched while the start screen is shown.
   useEffect(preloadNotstromIntro, []);
   // The main-menu theme plays while the start screen is shown (it starts with the first tap, when the browser allows sound).
@@ -34,13 +36,25 @@ export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onPlayAtta
     return () => gameAudio.stopMenu();
   }, []);
 
+  // While the scene pulls the picture away, the menu rows and the corner lines follow it: the scene gives their scale and opacity every frame.
+  useEffect(() => {
+    const apply = (look: FlyLook) => {
+      screen.current?.style.setProperty("--fly-scale", String(look.near));
+      screen.current?.style.setProperty("--fly-alpha", String(look.paneAlpha));
+    };
+    titleScene.watchFly(apply);
+    return () => titleScene.watchFly(undefined);
+  }, []);
+  const cancelFly = useRef<() => void>(() => {});
+  useEffect(() => () => cancelFly.current(), []);
+
   function fly() {
     if (flying) return;
     setFlying(true);
     // The menu theme fades out now and the sound of the Notstrom Intro starts: the Notstrom Intro is 9 s long from this tap.
     gameAudio.stopMenu();
     void gameAudio.loadMusic().then(() => gameAudio.startNotstromIntroCue());
-    window.setTimeout(onPlay, WHIP_MS);
+    cancelFly.current = titleScene.fly(onPlay);
   }
 
   const entries: Record<MenuId, { label: string; testId: string; run: () => void }> = {
@@ -53,42 +67,15 @@ export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onPlayAtta
   };
 
   return (
-    <section className={flying ? "title-screen flying" : "title-screen"} aria-label="Start" data-testid="start-screen">
-      <div className="title-stage">
-        <div className="title-tunnel" aria-hidden="true">
-          <img className="title-streaks a" src={`${ART}hyperspace.png`} alt="" />
-          <img className="title-streaks b" src={`${ART}hyperspace.png`} alt="" />
-        </div>
-        <div className="title-pane">
-        <img className="title-layer title-back" src={`${ART}background.png`} alt="" />
-        <img className="title-layer title-twinkle" src={`${ART}stars.png`} alt="" />
-        {FIREBALLS.map((ball) => (
-          <span key={ball.left} aria-hidden="true">
-            <img
-              className="title-fireball"
-              style={{ left: percentX(ball.left), top: percentY(ball.top), animationDuration: `${ball.period}s`, animationDelay: `${ball.delay}s` }}
-              src={`${ART}fireball.png`}
-              alt=""
-            />
-            <img
-              className="title-burst"
-              style={{
-                left: percentX(ball.left + BURST_OFFSET.left),
-                top: percentY(ball.top + BURST_OFFSET.top),
-                animationDuration: `${ball.period}s`,
-                animationDelay: `${ball.delay}s`,
-              }}
-              src={`${ART}impact.png`}
-              alt=""
-            />
-          </span>
-        ))}
-        <img className="title-layer title-haze" src={`${ART}haze.png`} alt="" />
-        <h1 className="title-heading">
-          <img className="title-layer title-logo" src={`${ART}logo.png`} alt="PRIMEFALL" />
-        </h1>
-        <img className="title-layer title-tagline" src={`${ART}tagline.png`} alt="A totally legal salvage operation. Every Prime is a contract." />
-        <div className="title-streak" style={{ top: percentY(streakTop(MENU_SLOTS[row] ?? MENU_SLOTS[0])) }} aria-hidden="true" />
+    <>
+      <StageLayer scene={TITLE_SCENE_NAME} />
+      <section ref={screen} className="title-screen" aria-label="Start" data-testid="start-screen" style={flying ? { pointerEvents: "none" } : undefined}>
+        {/* The logo and the tagline are pictures in the scene; a screen reader gets them as text. */}
+        <h1 className="title-text">PRIMEFALL</h1>
+        <p className="title-text">A totally legal salvage operation. Every Prime is a contract.</p>
+        <div className="title-stage">
+          <div className="title-pane">
+            <div className="title-streak" style={{ top: percentY(streakTop(MENU_SLOTS[row] ?? MENU_SLOTS[0])) }} aria-hidden="true" />
         {ids.map((id, index) => {
           const slot = MENU_SLOTS[index];
           const entry = entries[id];
@@ -110,9 +97,8 @@ export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onPlayAtta
             </button>
           );
         })}
+          </div>
         </div>
-        <img className="title-whip" src={`${ART}hyperspace.png`} alt="" aria-hidden="true" />
-      </div>
       {/* The small lines sit in the corners of the screen, whatever its shape; the stage can be wider than the screen. */}
       <p className="title-corner title-seed" data-testid="start-seed">
         seed {seed}
@@ -120,5 +106,6 @@ export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onPlayAtta
       <img className="title-corner title-legal" src={`${ART}legal.png`} alt="By playing you agree to Form 27B" />
       <img className="title-corner title-version" src={`${ART}version.png`} alt="Version 0.4 (Prime)" />
     </section>
+    </>
   );
 }

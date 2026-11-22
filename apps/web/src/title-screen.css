@@ -1,22 +1,14 @@
-/* The start screen (TitleScreen.tsx): a picture of 960 x 444 design pixels as high as the screen (a narrower screen cuts its sides, a wider one has dark sides); positions are percentages of it. */
-.title-screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #04060f; }
-.title-stage { position: relative; flex: none; height: 100%; aspect-ratio: 960 / 444; overflow: hidden; background: #04060f; }
-.title-layer { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; pointer-events: none; }
-.title-heading { margin: 0; }
-.title-twinkle { animation: title-blink 2.4s steps(2, end) infinite alternate; }
-.title-haze { mix-blend-mode: screen; animation: title-pulse 2s ease-in-out infinite alternate; }
-.title-logo { animation: title-bob 3s steps(6, end) infinite alternate; }
-@keyframes title-blink { from { opacity: 1; } to { opacity: 0.25; } }
-@keyframes title-pulse { from { opacity: 0.55; } to { opacity: 1; } }
-@keyframes title-bob { from { transform: translateY(0); } to { transform: translateY(-0.7%); } }
+/* The start screen (TitleScreen.tsx). The picture (stars, planet, crystals, logo, tagline, the fly-away) is the scene "title" on the stage below
+this layer (title-scene.ts); this is the UI over it: the menu rows, the seed and the corner lines. The frame the rows are placed in is
+960 x 444 design pixels as high as the screen (a narrower screen cuts its sides, a wider one has dark sides), like the scene's frame; positions are percentages of it. */
+.title-screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.title-stage { position: relative; flex: none; height: 100%; aspect-ratio: 960 / 444; }
+/* The logo and the tagline are pictures in the scene; their words are for screen readers only. */
+.title-text { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
-/* A burning crystal falls onto the planet from the top right in about a second and bursts on the atmosphere. */
-.title-fireball { position: absolute; width: 23.4375%; height: 30.405%; image-rendering: pixelated; pointer-events: none; opacity: 0; animation-name: title-fall; animation-timing-function: linear; animation-iteration-count: infinite; }
-.title-burst { position: absolute; width: 12.5%; height: 14.865%; image-rendering: pixelated; pointer-events: none; opacity: 0; animation-name: title-burst; animation-timing-function: linear; animation-iteration-count: infinite; }
-@keyframes title-fall { 0% { opacity: 0; transform: translate(133.33%, -122.22%); } 4% { opacity: 1; } 12% { opacity: 1; transform: translate(0, 0); } 13% { opacity: 0; transform: translate(0, 0); } 100% { opacity: 0; } }
-@keyframes title-burst { 0%, 11% { opacity: 0; transform: scale(0.3); } 12% { opacity: 1; transform: scale(0.5); } 18% { opacity: 0.8; transform: scale(1.3); } 24% { opacity: 0; transform: scale(1.6); } 100% { opacity: 0; } }
-
-/* The menu: plain light text for a row, a red pill that pops in over three steps for the highlighted one, a light streak through it. */
+/* The menu: plain light text for a row, a red pill that pops in over three steps for the highlighted one, a light streak through it. During the
+fly-away the scene sets --fly-scale and --fly-alpha every frame (the menu is pulled with the logo; the corner lines only fade). */
+.title-pane { position: absolute; inset: 0; transform-origin: 86% 45%; transform: scale(var(--fly-scale, 1)); opacity: var(--fly-alpha, 1); }
 .title-streak { position: absolute; left: 0; width: 100%; height: 1.351%; background: linear-gradient(90deg, rgba(255, 70, 40, 0) 0%, rgba(255, 70, 40, 0.9) 50%, rgba(255, 70, 40, 0) 100%); transition: top 180ms steps(4, end); pointer-events: none; }
 .title-item { position: absolute; left: 26.5625%; width: 46.875%; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; }
 .title-item img { position: absolute; left: 10%; top: calc((100% - var(--art, 100%)) / 2); width: 80%; height: var(--art, 100%); image-rendering: pixelated; }
@@ -25,36 +17,13 @@
 .title-item.sel .title-off { opacity: 0; }
 @keyframes title-pop { 0% { transform: scale(1.22); } 100% { transform: scale(1); } }
 .title-item:focus-visible { outline: 2px solid #fff; }
-.title-corner { position: absolute; margin: 0; pointer-events: none; }
+.title-corner { position: absolute; margin: 0; pointer-events: none; opacity: var(--fly-alpha, 1); }
 .title-seed { left: 1.5dvh; top: 1.2dvh; font: 500 12px var(--font-number); color: var(--muted); }
 .title-legal, .title-version { height: clamp(12px, 2.2dvh, 24px); image-rendering: pixelated; bottom: 1.5dvh; }
 .title-legal { left: 1.5dvh; }
 .title-version { right: 1.5dvh; }
 
-/* The tap on Classic when the Notstrom Intro follows: for 1.17 s the screen is pulled towards the planet (every part at its own speed, in
-eight steps), fades out, and a tunnel of light streaks shows behind it. Then the Notstrom Intro (NotstromIntro.tsx) takes over. */
-.title-pane { position: absolute; inset: 0; }
-.title-tunnel { position: absolute; inset: 0; overflow: hidden; opacity: 0; pointer-events: none; background: radial-gradient(circle at 86% 45%, rgba(120, 130, 255, 0.55) 0%, rgba(50, 30, 130, 0.35) 22%, rgba(6, 6, 20, 0) 60%), #04060f; }
-.title-streaks { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; transform-origin: 86% 45%; mix-blend-mode: screen; animation: title-streaks 0.36s steps(6, end) infinite; }
-.title-streaks.b { animation-delay: -0.18s; transform: rotate(7deg) scale(1.2); }
-@keyframes title-streaks { 0% { transform: scale(0.5); opacity: 0; } 15% { opacity: 1; } 100% { transform: scale(3.4); opacity: 0.2; } }
-.title-whip { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; opacity: 0; mix-blend-mode: screen; transform-origin: 86% 45%; }
-.flying { pointer-events: none; }
-.flying .title-tunnel { animation: title-tunnel 1.4s step-end forwards; }
-.flying .title-pane, .flying .title-corner { animation: title-paneout 0.6s step-end forwards; }
-.flying .title-whip { animation: title-whip 0.6s step-end forwards; }
-.flying .title-logo, .flying .title-tagline, .flying .title-item, .flying .title-streak { transform-origin: 86% 45%; animation: title-near 0.6s step-end forwards !important; }
-.flying .title-twinkle, .flying .title-haze, .flying .title-fireball, .flying .title-burst { transform-origin: 86% 45%; animation: title-mid 0.6s step-end forwards !important; }
-.flying .title-back { transform-origin: 86% 45%; animation: title-far 0.6s step-end forwards; }
-@keyframes title-tunnel { 0% { opacity: 0; } 22% { opacity: 1; } 88% { opacity: 0; } 100% { opacity: 0; } }
-@keyframes title-paneout { 0%, 75% { opacity: 1; } 87.5% { opacity: 0.6; } 100% { opacity: 0; } }
-@keyframes title-near { 0% { transform: scale(1); } 12.5% { transform: scale(1.12); } 25% { transform: scale(1.38); } 37.5% { transform: scale(1.8); } 50% { transform: scale(2.5); } 62.5% { transform: scale(3.7); } 75% { transform: scale(5.8); } 87.5% { transform: scale(9.5); } 100% { transform: scale(16); } }
-@keyframes title-mid { 0% { transform: scale(1); } 12.5% { transform: scale(1.05); } 25% { transform: scale(1.14); } 37.5% { transform: scale(1.3); } 50% { transform: scale(1.5); } 62.5% { transform: scale(1.8); } 75% { transform: scale(2.3); } 87.5% { transform: scale(3); } 100% { transform: scale(4); } }
-@keyframes title-far { 0% { transform: scale(1); } 12.5% { transform: scale(1.02); } 25% { transform: scale(1.05); } 37.5% { transform: scale(1.1); } 50% { transform: scale(1.17); } 62.5% { transform: scale(1.26); } 75% { transform: scale(1.38); } 87.5% { transform: scale(1.55); } 100% { transform: scale(1.8); } }
-@keyframes title-whip { 0% { opacity: 0; transform: scale(0.5); } 12.5% { opacity: 0.4; transform: scale(0.6); } 25% { opacity: 0.9; transform: scale(0.8); } 37.5% { opacity: 1; transform: scale(1); } 50% { opacity: 1; transform: scale(1.3); } 62.5% { opacity: 1; transform: scale(1.7); } 75% { opacity: 1; transform: scale(2.3); } 87.5% { opacity: 0.6; transform: scale(3); } 100% { opacity: 0; transform: scale(4); } }
-
 @media (prefers-reduced-motion: reduce) {
-  .title-twinkle, .title-haze, .title-logo, .title-item.sel .title-on { animation: none; }
-  .title-fireball, .title-burst { display: none; }
+  .title-item.sel .title-on { animation: none; }
   .title-streak { transition: none; }
 }
