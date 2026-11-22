@@ -1,11 +1,13 @@
-/* The Hero Select in the hangar (HeroSelectScreen.tsx, hangar-select.ts). A picture of 960 x 444 design pixels, fitted to the window and
-   centred; the floor and the dark of the ceiling fill what is left. The picture of the hangar is drawn 104 design px higher than the
+/* The Hero Select in the hangar (HeroSelectScreen.tsx, hangar-select.ts). A frame of 960 x 444 design pixels is fitted to the window
+   and centred; the picture of the hangar goes on beyond it on all sides and fades into the dark, so a window of another shape has no bars. The picture of the hangar is drawn 104 design px higher than the
    frame (.hg-shift) and continues below it. */
 .hangar-select { background: #080a12; }
-.hg-stage { position: absolute; left: 50%; top: 50%; width: 960px; height: 444px; overflow: hidden; background: #080a12; }
+.hg-stage { position: absolute; left: 50%; top: 50%; width: 960px; height: 444px; }
 .hg-shift { position: absolute; left: 0; top: -104px; width: 960px; height: 549px; }
 .hg-layer { position: absolute; left: 0; top: 0; width: 960px; height: 444px; image-rendering: pixelated; display: block; pointer-events: none; }
-.hg-floor, .hg-shade, .hg-glow { height: 549px; }
+.hg-shade, .hg-glow { height: 549px; }
+/* The floor picture is the hangar continued on all sides (hangar-wide.png, 2080 x 1052 pixels at 0.75): 300 px to the sides, 90 above, 150 below the hangar. */
+.hg-floor { left: -300px; top: -90px; width: 1560px; height: 789px; }
 .hg-glow { mix-blend-mode: screen; }
 
 /* The open bay door: a burning crystal falls past it now and then; amber guide lights and red beacons blink. */
