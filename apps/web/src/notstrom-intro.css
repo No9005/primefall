@@ -1,7 +1,5 @@
-/* The Notstrom Intro after a tap on Start (NotstromIntro.tsx): the picture of 640 x 296 pixels. */
-.notstrom-intro { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #04060f; }
-/* As high as the screen, like the start screen it follows: a narrower screen cuts the sides of the picture. */
-.notstrom-intro-stage { flex: none; height: 100%; aspect-ratio: 640 / 296; image-rendering: pixelated; display: block; }
+/* The Notstrom Intro after a tap on Start (NotstromIntro.tsx): the film plays in the scene on the stage below; this layer only takes the tap that skips it. */
+.notstrom-intro { position: absolute; inset: 0; z-index: 1; }
 
 /* The last picture of the Notstrom Intro is a flash; it fades out in five steps over the Hero Select. */
 .notstrom-intro-flash { position: absolute; inset: 0; z-index: 50; pointer-events: none; animation: notstrom-intro-flash-out 0.5s steps(5, end) forwards; }

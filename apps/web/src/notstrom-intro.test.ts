@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { NOTSTROM_INTRO, NOTSTROM_INTRO_DURATION_MS, NOTSTROM_INTRO_SOUND, frameAt, locateFrame, shouldPlayNotstromIntro } from "./notstrom-intro";
+import { NOTSTROM_INTRO, NOTSTROM_INTRO_DURATION_MS, NOTSTROM_INTRO_SOUND, shouldPlayNotstromIntro } from "./notstrom-intro";
 
 describe("Notstrom Intro", () => {
   it("has a picture for every frame in its sheets", () => {
@@ -9,24 +9,6 @@ describe("Notstrom Intro", () => {
 
   it("runs about eight seconds at twelve pictures a second after the live part", () => {
     expect(NOTSTROM_INTRO_DURATION_MS).toBeCloseTo(7917, -1);
-  });
-
-  it("shows the first picture at the start and holds the last one", () => {
-    expect(frameAt(0)).toBe(0);
-    expect(frameAt(-50)).toBe(0);
-    expect(frameAt(83)).toBe(0);
-    expect(frameAt(84)).toBe(1);
-    expect(frameAt(NOTSTROM_INTRO_DURATION_MS)).toBe(NOTSTROM_INTRO.frames - 1);
-    expect(frameAt(NOTSTROM_INTRO_DURATION_MS * 3)).toBe(NOTSTROM_INTRO.frames - 1);
-  });
-
-  it("finds each picture in its sheet, row by row", () => {
-    expect(locateFrame(0)).toEqual({ sheet: 0, column: 0, row: 0 });
-    expect(locateFrame(7)).toEqual({ sheet: 0, column: 1, row: 1 });
-    expect(locateFrame(59)).toEqual({ sheet: 0, column: 5, row: 9 });
-    expect(locateFrame(60)).toEqual({ sheet: 1, column: 0, row: 0 });
-    expect(locateFrame(NOTSTROM_INTRO.frames - 1)).toEqual({ sheet: 1, column: 4, row: 5 });
-    expect(() => locateFrame(NOTSTROM_INTRO.frames)).toThrow(RangeError);
   });
 
   it("has sheets of the size the layout says", () => {
