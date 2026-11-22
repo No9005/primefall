@@ -1,5 +1,5 @@
 import { Application, Assets, Container, Graphics } from "pixi.js";
-import { computeFill, computeFit, type FillView, type StageFit } from "./stage-fit";
+import { computeFill, computeFit, computeHeightFit, type FillView, type StageFit } from "./stage-fit";
 
 /** What a scene gets from the stage (ADR 0026). */
 export interface SceneEnv {
@@ -15,10 +15,11 @@ export interface SceneEnv {
 export interface Scene {
   name: string;
   /**
-   * How the stage places the scene: "frame" (default) fits the 960 x 444 design frame into the window; "fill" gives the scene the size
-   * of the element the stage is mounted in (`viewChanged`) and leaves the camera to the scene.
+   * How the stage places the scene: "frame" (default) fits the 960 x 444 design frame into the window; "height" makes the frame as high as
+   * the window (a narrower window cuts its sides, a wider one shows dark sides); "fill" gives the scene the size of the element the stage
+   * is mounted in (`viewChanged`) and leaves the camera to the scene.
    */
-  fit?: "frame" | "fill";
+  fit?: "frame" | "height" | "fill";
   /** Atlas or image URLs the scene needs; loaded on enter, destroyed on leave if no other scene uses them. Read again on leave. */
   readonly assets: readonly string[];
   /** Runs before the assets are acquired, for a scene whose asset list is only known after reading a file. */
@@ -104,11 +105,14 @@ export function createStage(deps: StageDeps): Stage {
   const assetUsers = new Map<string, number>();
   let current: { scene: Scene; container: Container } | undefined;
   let fit = computeFit(environment.window.width, environment.window.height, environment.window.devicePixelRatio);
+  let heightFit = computeHeightFit(environment.window.width, environment.window.height, environment.window.devicePixelRatio);
   let view = measureView();
   let reduced = environment.reducedMotion.matches();
   let frameHandle: number | undefined;
   let lastTime = 0;
   let entering = 0;
+  /** The scene that is being entered, until it is on show: it asks for its fit while it is created. */
+  let entered: Scene | undefined;
   let destroyed = false;
 
   const setAttributes = (name: string, ready: boolean) => {
@@ -123,18 +127,21 @@ export function createStage(deps: StageDeps): Stage {
     return computeFill(width, height, size.devicePixelRatio);
   }
 
+  const fitOf = (scene: Scene | undefined): StageFit => (scene?.fit === "height" ? heightFit : fit);
+
   /** Puts the canvas and the stage container where the scene wants them and tells the scene. */
   function place(scene: Scene | undefined) {
     if (scene?.fit === "fill") {
       host.applyFill(view);
       scene.viewChanged?.(view);
     } else {
-      host.applyFit(fit, environment.window.width, environment.window.height);
-      scene?.fitChanged?.(fit);
+      const chosen = fitOf(scene);
+      host.applyFit(chosen, environment.window.width, environment.window.height);
+      scene?.fitChanged?.(chosen);
     }
   }
 
-  const env: SceneEnv = { fit: () => fit, view: () => view, reducedMotion: () => reduced, invalidate: () => schedule() };
+  const env: SceneEnv = { fit: () => fitOf(current?.scene ?? entered), view: () => view, reducedMotion: () => reduced, invalidate: () => schedule() };
 
   async function acquire(urls: readonly string[]) {
     const fresh = urls.filter((url) => !assetUsers.has(url));
@@ -209,7 +216,9 @@ export function createStage(deps: StageDeps): Stage {
     }
     view = measureView();
     place(scene);
+    entered = scene;
     const container = scene.create(env);
+    entered = undefined;
     scene.reducedMotionChanged?.(reduced);
     current = { scene, container };
     host.show(container);
@@ -229,6 +238,7 @@ export function createStage(deps: StageDeps): Stage {
 
   function refit() {
     fit = computeFit(environment.window.width, environment.window.height, environment.window.devicePixelRatio);
+    heightFit = computeHeightFit(environment.window.width, environment.window.height, environment.window.devicePixelRatio);
     view = measureView();
     place(current?.scene);
     if (current) drawFrame();
