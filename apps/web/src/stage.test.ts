@@ -17,6 +17,7 @@ function setup() {
     show: () => {},
     hide: () => {},
     applyFit: () => {},
+    applyFill: () => {},
     render: () => void state.renders++,
     onContextLost: (cb) => void (lost = cb),
     onContextRestored: (cb) => void (restored = cb),
@@ -162,10 +163,10 @@ describe("one PixiJS Application", () => {
     return result?.messages.map((m) => m.message) ?? [];
   }
 
-  it("forbids new Application() outside the stage and the named exceptions", async () => {
+  it("forbids new Application() outside the stage and the one named exception (the glossary pictures)", async () => {
     expect((await lint("apps/web/src/other.ts")).some((m) => m.includes("PixiJS Application"))).toBe(true);
     expect(await lint("apps/web/src/stage.ts")).toEqual([]);
-    expect(await lint("apps/web/src/Board.tsx")).toEqual([]);
+    expect((await lint("apps/web/src/Board.tsx")).some((m) => m.includes("PixiJS Application"))).toBe(true);
     expect(await lint("apps/web/src/glossary-pictures.ts")).toEqual([]);
   });
 });

@@ -11,7 +11,10 @@ import {
   TileKind,
   tileAt,
 } from "game-core";
-import { Application, Assets, Container, Graphics, Text } from "pixi.js";
+import { Container, Graphics, Text } from "pixi.js";
+import { BOARD_SCENE_NAME, type BoardClock, type BoardLayers, boardScene } from "./board-scene";
+import { attachBoardInput, BoardGestures } from "./board-gestures";
+import { StageLayer } from "./StageLayer";
 import { LASER_FLICKER_MS, laserWallAlpha } from "./prime-zone";
 import { areaColorOf, COVER_OWN, coverTag, dashedTileOutline, drawLaserWalls, drawOutposts, drawScoutArea, drawScrapField, drawTerrain, drawZone, ghostMark, scannedMark, scoutDroneMark } from "./board-drawing";
 import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
@@ -28,16 +31,11 @@ import {
   takeOverFraming,
   gridToWorld,
   isZoomed,
-  panBy,
-  nearestPixelStepScale,
-  pixelMaxScale,
-  pixelStepBy,
   pickTileAt,
   resolveTap,
   TILE_HEIGHT,
   TILE_WIDTH,
   viewToWorld,
-  zoomAt,
   zoomOnPoint,
 } from "./board-layout";
 import { freeBoardArea } from "./hud-layout";
@@ -52,7 +50,7 @@ import { areaContains, areaLift, areaRing, canMove, enemyFade, finished, GHOST_A
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
 import { marksFigure, shieldBubble } from "./hero-figure";
-import { loadPixelHeroes, type PixelHero, styledHeroFigure } from "./pixel-heroes";
+import { type PixelHero, styledHeroFigure } from "./pixel-heroes";
 import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
 import { chestOf, dashRuns, SegmentStyle, type ShotDrawing, shotInWorld, type ShotInWorld } from "./shot-lines";
@@ -60,7 +58,10 @@ import { finalTile, PathOwner, type PlannedPath } from "./ally-paths";
 import { type CoverPlan, type CrossfireRing, type EffectPath, LineKind, NO_COVER_PLAN, LineTone, RingSegment, type TargetLine } from "./target-lines";
 import { PLAN_STYLE, SHOT_STYLE, TERRAIN_STYLE } from "./terrain-style";
 import { pulseAlpha } from "./target-pick";
-import { loadPixelAtlas, type PixelAtlas, PixelScenery } from "./pixel-terrain";
+import { type PixelAtlas, PixelScenery } from "./pixel-terrain";
+
+/** Every animation of the board follows this clock, which the stage ticker moves (ADR 0026, rule 4). */
+const clock = boardScene.clock;
 
 /** Strokes `segment` as a run of dashes: long for a clear shot, dots for the stopped part, grey after a block. */
 function strokeShotSegment(graphics: Graphics, { from, to, style }: ShotInWorld["segments"][number]): void {
@@ -294,24 +295,6 @@ function shotGraphics(drawing: ShotDrawing): Graphics {
   return graphics;
 }
 
-interface Manifest {
-  bundles: { name: string; assets: { alias: string; src: string; data?: { anchor?: [number, number] } }[] }[];
-}
-
-const ASSET_BASE = `${import.meta.env.BASE_URL}assets/`;
-let assetsReady: Promise<Manifest> | undefined;
-
-/** Loads every bundle of the asset manifest once; placeholder and final art load the same way. */
-function loadAssets(): Promise<Manifest> {
-  assetsReady ??= (async () => {
-    const manifest = (await (await fetch(`${ASSET_BASE}manifest.json`)).json()) as Manifest;
-    await Assets.init({ manifest, basePath: ASSET_BASE });
-    await Assets.loadBundle(manifest.bundles.map((bundle) => bundle.name));
-    return manifest;
-  })();
-  return assetsReady;
-}
-
 /** A numbered marker on a tile: the destination of a planned action. */
 export interface BoardMarker {
   position: GridPosition;
@@ -448,48 +431,45 @@ const RANGE_BLOCKED_COLOR = 0x8a99a8;
 const RANGE_ALPHA = 0.27;
 
 
+/** Runs `step` on the scene clock with the time since now until it returns true or the returned cancel function is called. */
+function runFor(clock: BoardClock, step: (elapsedMs: number) => boolean): () => void {
+  const start = clock.now();
+  const stop = clock.subscribe((now) => {
+    if (step(now - start)) stop();
+  });
+  return stop;
+}
+
 /** Grows a shape from small and transparent to full size in `ms`; with reduced motion it just shows. Returns a cancel function. */
-function animateAppear(shape: Graphics, ms: number): () => void {
+function animateAppear(clock: BoardClock, shape: Graphics, ms: number): () => void {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return () => undefined;
-  const start = performance.now();
-  let frame = 0;
-  const step = (now: number) => {
-    const t = Math.min(1, (now - start) / ms);
-    shape.alpha = t;
-    shape.scale.set(0.4 + 0.6 * t);
-    if (t < 1) frame = requestAnimationFrame(step);
-  };
   shape.alpha = 0;
   shape.scale.set(0.4);
-  frame = requestAnimationFrame(step);
-  return () => cancelAnimationFrame(frame);
+  return runFor(clock, (elapsed) => {
+    const t = Math.min(1, elapsed / ms);
+    shape.alpha = t;
+    shape.scale.set(0.4 + 0.6 * t);
+    return t >= 1;
+  });
 }
 
 /** Fades a figure between the real figure and its Ghost; with reduced motion the caller does not call this. Returns a cancel function. */
-function animateFade(figure: Container, kind: "toGhost" | "toSeen" | "appear"): () => void {
-  const start = performance.now();
-  let frame = 0;
-  const step = (now: number) => {
-    figure.alpha = enemyFade(kind, now - start);
-    if (!finished(now - start, GHOST_FADE_MS)) frame = requestAnimationFrame(step);
-  };
+function animateFade(clock: BoardClock, figure: Container, kind: "toGhost" | "toSeen" | "appear"): () => void {
   figure.alpha = enemyFade(kind, 0);
-  frame = requestAnimationFrame(step);
-  return () => cancelAnimationFrame(frame);
+  return runFor(clock, (elapsed) => {
+    figure.alpha = enemyFade(kind, elapsed);
+    return finished(elapsed, GHOST_FADE_MS);
+  });
 }
 
 /** Fades a shape from full to transparent in `ms`. Returns a cancel function. */
-function animateFadeOut(shape: Graphics, ms: number): () => void {
-  const start = performance.now();
-  let frame = 0;
-  const step = (now: number) => {
-    const t = Math.min(1, (now - start) / ms);
+function animateFadeOut(clock: BoardClock, shape: Graphics, ms: number): () => void {
+  return runFor(clock, (elapsed) => {
+    const t = Math.min(1, elapsed / ms);
     shape.alpha = 1 - t;
     shape.scale.set(1 + 0.2 * t);
-    if (t < 1) frame = requestAnimationFrame(step);
-  };
-  frame = requestAnimationFrame(step);
-  return () => cancelAnimationFrame(frame);
+    return t >= 1;
+  });
 }
 
 /** Length of the camera ease when a Move is armed, placed or cancelled. */
@@ -543,22 +523,25 @@ export function Board({
   heroScreenRef,
   overview = false,
 }: BoardProps) {
-  const host = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLDivElement>(null);
   // The overview (side screen preview) shows the zones but not the Cover: where the goal is, not what the cover looks like.
   const coverGrid = useMemo(() => {
     const grid = coverGridOf(destroyedCover, placedCover, wreckCover);
     return overview ? withoutCover(grid) : grid;
   }, [destroyedCover, placedCover, wreckCover, overview]);
-  const [tokens, setTokens] = useState<Container>();
+  // The containers of the board scene; they are new after a lost WebGL context, and everything below is drawn into them again.
+  const [layers, setLayers] = useState<BoardLayers>();
+  useEffect(() => boardScene.watchLayers(setLayers), []);
+  const tokens = layers?.objects;
   // The layer of the attack effects (above the Heroes) and the world it shakes.
-  const [effectsHost, setEffectsHost] = useState<{ layer: Container; world: Container }>();
-  const [overlay, setOverlay] = useState<Container>();
+  const effectsHost = useMemo(() => layers && { layer: layers.effects, world: layers.world }, [layers]);
+  const overlay = layers?.planning;
   /** The layer of the Fog of War clouds: above the floor and the props, below the planning marks and the effects. */
-  const [fogLayer, setFogLayer] = useState<Container>();
+  const fogLayer = layers?.fog;
   const wallsWereUp = useRef(false);
   /** Above the props and the Heroes, below the effects: the ghost and the numbers of the planned paths. */
-  const [overlayTop, setOverlayTop] = useState<Container>();
-  const [terrain, setTerrain] = useState<Terrain>();
+  const overlayTop = layers?.planningTop;
+  const terrain = useMemo<Terrain | undefined>(() => layers && { floor: layers.floor, objects: layers.objects, planning: layers.planning, atlas: layers.atlas }, [layers]);
   const [scenery, setScenery] = useState<PixelScenery>();
   // Always the latest callbacks, so the pixi sprites need not be rebuilt for them.
   const onSelectRef = useRef(onSelect);
@@ -585,13 +568,13 @@ export function Board({
   const enemiesDrawn = useRef(false);
   // When the playback frame being shown started. The Shield and the Knockback slide of the Heroes follow it, so a redraw of
   // the figures in the middle of a frame (Cover that changes) does not start them again.
-  const frameClock = useRef(performance.now());
+  const frameClock = useRef(clock.now());
   // Aiming an Attack is the state that draws lines of fire.
   const aiming = shotLines.length > 0;
   const frameOfEffects = useRef(effects);
   if (frameOfEffects.current !== effects) {
     frameOfEffects.current = effects;
-    frameClock.current = performance.now();
+    frameClock.current = clock.now();
   }
   // One clip player per Hero; the figures are drawn again for every frame, the players (and their cross-fades) are not.
   const clipPlayers = useRef(new Map<string, ClipPlayer>());
@@ -661,14 +644,16 @@ export function Board({
     }
     // The lit tiles pulse slowly (issue 208); with reduced motion they stand still.
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const pulseStart = performance.now();
-    let pulseFrame = 0;
+    const pulseStart = clock.now();
     const pulse = (now: number) => {
       const alpha = pulseAlpha(now - pulseStart, reducedMotion);
       for (const highlight of lit) highlight.alpha = alpha;
-      if (!reducedMotion) pulseFrame = requestAnimationFrame(pulse);
     };
-    if (lit.length > 0) pulse(pulseStart);
+    let stopPulse: (() => void) | undefined;
+    if (lit.length > 0) {
+      pulse(pulseStart);
+      if (!reducedMotion) stopPulse = clock.subscribe(pulse);
+    }
     const previewTile = dropTile ?? pressed;
     if (previewTile) {
       // The tile under the finger, drawn larger than the tile so the finger does not hide it.
@@ -745,7 +730,7 @@ export function Board({
       created.push(cross);
     }
     return () => {
-      cancelAnimationFrame(pulseFrame);
+      stopPulse?.();
       created.forEach((child) => child.destroy({ children: true }));
     };
   }, [overlay, overlayTop, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, crossfireRings, effectPaths, coverPlan, paths, collisionTiles, strokeScale]);
@@ -809,11 +794,11 @@ export function Board({
       // An enemy that just left sight fades to its Ghost; one seen again fades from the Ghost to the real figure.
       if (enemy && !reduced) {
         const was = ghostSeen.current.has(hero.id) ? "ghost" : enemiesSeen.current.has(hero.id) ? "seen" : undefined;
-        if (hero.ghost && was === "seen") cancels.push(animateFade(figure, "toGhost"));
-        else if (!hero.ghost && was === "ghost") cancels.push(animateFade(figure, "toSeen"));
+        if (hero.ghost && was === "seen") cancels.push(animateFade(clock, figure, "toGhost"));
+        else if (!hero.ghost && was === "ghost") cancels.push(animateFade(clock, figure, "toSeen"));
         else if (!hero.ghost && was === undefined && (enemiesDrawn.current || revealedAreas.some((area) => areaContains(area.center, area.size, hero.position)))) {
           // A Scout Drone lifted the fog over it, or a walking Hero came into sight of it (it shows with the next Round's view): it fades in.
-          cancels.push(animateFade(figure, "appear"));
+          cancels.push(animateFade(clock, figure, "appear"));
         }
       }
       token.addChild(figure);
@@ -842,12 +827,12 @@ export function Board({
       if (shield === undefined && heroMarks?.bubble) {
         const bubble = shieldBubble(strokeScale);
         token.addChild(bubble);
-        if (!bubbleSeen.current.has(hero.id)) cancels.push(animateAppear(bubble, HERO_STYLE.marks.bubble.appearMs));
+        if (!bubbleSeen.current.has(hero.id)) cancels.push(animateAppear(clock, bubble,HERO_STYLE.marks.bubble.appearMs));
       } else if (shield === undefined && bubbleSeen.current.has(hero.id) && !reduced) {
         // The Shield was used up or expired: the bubble fades away (not with reduced motion).
         const bubble = shieldBubble(strokeScale);
         token.addChild(bubble);
-        cancels.push(animateFadeOut(bubble, HERO_STYLE.marks.bubble.appearMs));
+        cancels.push(animateFadeOut(clock, bubble,HERO_STYLE.marks.bubble.appearMs));
       }
       // Marked and Slow are state: drawn whenever the Hero has them, also when the board is loaded mid-match. In the frame
       // that applies one, the effects layer draws it with its lock-on instead.
@@ -889,16 +874,16 @@ export function Board({
     // A bubble appears with an animation only when it was not there before this redraw.
     bubbleSeen.current = new Set(Object.entries(marks).flatMap(([id, heroMarks]) => (heroMarks.bubble ? [id] : [])));
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const pulseStart = performance.now();
-    let pulseFrame = 0;
+    const pulseStart = clock.now();
     const pulse = (now: number) => {
       const alpha = pulseAlpha(now - pulseStart, reducedMotion);
       for (const targetRing of pulsingRings) targetRing.alpha = alpha;
-      if (!reducedMotion) pulseFrame = requestAnimationFrame(pulse);
     };
-    if (pulsingRings.length > 0) pulse(pulseStart);
+    if (pulsingRings.length > 0) {
+      pulse(pulseStart);
+      if (!reducedMotion) cancels.push(clock.subscribe(pulse));
+    }
     // The clip of every Hero: the active one of this frame, Idle otherwise. Reduced motion stands on the rest frame.
-    let clipFrame = 0;
     const playClips = (now: number) => {
       const frameMs = (now - frameClock.current) * CLIP_SPEED;
       for (const mark of shieldMarks) mark.update(frameMs);
@@ -926,12 +911,10 @@ export function Board({
         player.update(now);
         pixel.show(player.playing, player.clipTimeMs(now));
       }
-      if (!reducedMotion) clipFrame = requestAnimationFrame(playClips);
     };
-    playClips(performance.now());
+    playClips(clock.now());
+    if (!reducedMotion) cancels.push(clock.subscribe(playClips));
     return () => {
-      cancelAnimationFrame(pulseFrame);
-      cancelAnimationFrame(clipFrame);
       cancels.forEach((cancel) => cancel());
       created.forEach((token) => token.destroy({ children: true }));
     };
@@ -967,15 +950,14 @@ export function Board({
       own: (id) => !enemyIdsRef.current.has(id),
     };
     layer.play(effects, frameClock.current, world, reduced);
-    let frame = 0;
-    const step = () => {
-      const shake = layer.update(performance.now());
+    const step = (now: number) => {
+      const shake = layer.update(now);
       effectsHost.world.pivot.set(shake.x, shake.y);
-      if (effects.length > 0) frame = requestAnimationFrame(step);
     };
-    step();
+    step(clock.now());
+    const stop = effects.length > 0 ? clock.subscribe(step) : undefined;
     return () => {
-      cancelAnimationFrame(frame);
+      stop?.();
       effectsHost.world.pivot.set(0, 0);
     };
   }, [effects, effectsHost]);
@@ -984,7 +966,7 @@ export function Board({
   const [fogClouds, setFogClouds] = useState<FogClouds>();
   useEffect(() => {
     if (!fogLayer) return;
-    const clouds = new FogClouds(coverGrid, window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    const clouds = new FogClouds(coverGrid, window.matchMedia("(prefers-reduced-motion: reduce)").matches, clock);
     fogLayer.addChild(clouds.container);
     setFogClouds(clouds);
     return () => {
@@ -1039,8 +1021,7 @@ export function Board({
       const endFog = fogShape(coverGrid, sightAfter.visibleTiles, Object.values(sightAfter.endPositions));
       const walkers: FogWalker[] = ids.map((id) => ({ from: sightAfter.startPositions[id]!, to: sightAfter.endPositions[id]!, at: { col: 0, row: 0 } }));
       const frame = new Float32Array(startFog.length);
-      const startedAt = performance.now();
-      let handle = 0;
+      const startedAt = clock.now();
       const step = (now: number) => {
         const progress = reduced ? 1 : walkProgress(now - frameClock.current);
         ids.forEach((id, index) => {
@@ -1054,26 +1035,23 @@ export function Board({
         const ms = now - startedAt;
         for (const { index, fog, lift } of fading) frame[index] = (fog - frame[index]!) * lift(ms) + frame[index]!;
         fogClouds.setFog(frame);
-        handle = requestAnimationFrame(step);
       };
-      step(performance.now());
-      return () => cancelAnimationFrame(handle);
+      step(startedAt);
+      return clock.subscribe(step);
     }
     const finalFog = fogShape(coverGrid, visibleTiles, own);
     fogClouds.setFog(finalFog);
     if (fading.length === 0) return;
     const frame = new Float32Array(finalFog);
-    const startedAt = performance.now();
-    let handle = 0;
-    const step = (now: number) => {
-      const ms = now - startedAt;
+    const step = (ms: number): boolean => {
       for (const { index, fog, lift } of fading) frame[index] = (fog - finalFog[index]!) * lift(ms) + finalFog[index]!;
       fogClouds.setFog(frame);
-      if (!finished(ms, TRANSITION_MS)) handle = requestAnimationFrame(step);
-      else fogClouds.setFog(finalFog);
+      const done = finished(ms, TRANSITION_MS);
+      if (done) fogClouds.setFog(finalFog);
+      return done;
     };
-    step(startedAt);
-    return () => cancelAnimationFrame(handle);
+    step(0);
+    return runFor(clock, step);
   }, [fogClouds, coverGrid, visibleTiles, heroes, revealedAreas, sightAfter, walks]);
 
   // Pixel art: the floor is baked into one texture and the Walls and Cover are sprites. They are built again only when the map's
@@ -1098,15 +1076,9 @@ export function Board({
   useEffect(() => {
     if (!scenery) return;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    scenery.tick(performance.now(), reducedMotion);
+    scenery.tick(clock.now(), reducedMotion);
     if (reducedMotion || !scenery.animated) return;
-    let frame = 0;
-    const step = (now: number) => {
-      scenery.tick(now, false);
-      frame = requestAnimationFrame(step);
-    };
-    frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
+    return clock.subscribe((now) => scenery.tick(now, false));
   }, [scenery]);
 
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
@@ -1126,7 +1098,7 @@ export function Board({
     const zoneTiles = zone.tiles;
     created.push(...zone.created, ...drawOutposts(planning, grid));
     const animated: ((now: number) => void)[] = [];
-    const effectBegan = performance.now();
+    const effectBegan = clock.now();
     /** Run on every frame while the zone is on screen (the idle pulse), unlike `animated`, which ends after 3 s. */
     const idle: ((now: number) => void)[] = [];
     if (zone.border && zone.glow) {
@@ -1216,18 +1188,19 @@ export function Board({
       }
     }
     areaSeen.current = seenNow;
-    const effectStart = performance.now();
-    let effectFrame = 0;
+    const effectStart = clock.now();
+    let stopEffects: (() => void) | undefined;
     const runEffects = (now: number) => {
       for (const update of animated) update(now - effectStart);
       for (const update of idle) update(now);
       // Every transition (the longest: a ring of the zone or an area of up to 5 rings) is over within 3 s; the idle pulse never ends.
       const transitioning = animated.length > 0 && !finished(now - effectStart, TRANSITION_MS);
-      if (!reducedMotion && (idle.length > 0 || transitioning)) effectFrame = requestAnimationFrame(runEffects);
+      if (reducedMotion || (idle.length === 0 && !transitioning)) stopEffects?.();
     };
     runEffects(effectStart);
+    if (!reducedMotion && (idle.length > 0 || animated.length > 0)) stopEffects = clock.subscribe(runEffects);
     return () => {
-      cancelAnimationFrame(effectFrame);
+      stopEffects?.();
       created.forEach((child) => child.destroy({ children: true }));
     };
   }, [terrain, strokeScale, aiming, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scannedAreas, scrapFields, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
@@ -1244,8 +1217,8 @@ export function Board({
       drawn.created.forEach((child) => child.destroy({ children: true }));
       return;
     }
-    let frame = 0;
-    const began = performance.now();
+    let stopFlicker: (() => void) | undefined;
+    const began = clock.now();
     const run = (now: number) => {
       const ms = now - began;
       drawn.panels.forEach((panel, index) => {
@@ -1254,260 +1227,150 @@ export function Board({
       drawn.posts.forEach((post) => {
         post.alpha = flicker ? laserWallAlpha(ms, 1000) : 1;
       });
-      if (flicker && ms < LASER_FLICKER_MS) frame = requestAnimationFrame(run);
+      if (!flicker || ms >= LASER_FLICKER_MS) stopFlicker?.();
     };
     run(began);
+    if (flicker) stopFlicker = clock.subscribe(run);
     return () => {
-      cancelAnimationFrame(frame);
+      stopFlicker?.();
       drawn.created.forEach((child) => child.destroy({ children: true }));
     };
   }, [terrain, primeWalls]);
 
+  // The camera lives here, not in the scene: a scene rebuilt after a lost WebGL context gets the camera where the player left it.
+  const cameraRef = useRef<Camera | undefined>(undefined);
   useEffect(() => {
-    const element = host.current;
-    if (!element) return;
-    let cancelled = false;
-    const app = new Application();
-
-    void (async () => {
-      const [, , , atlas] = await Promise.all([
-        loadAssets(),
-        loadPixelHeroes(),
-        app.init({ background: "#12161c", resizeTo: element, preference: "webgl", antialias: true, autoDensity: true, resolution: window.devicePixelRatio }),
-        loadPixelAtlas(),
-      ]);
-      if (cancelled) {
-        app.destroy(true, { children: true });
-        return;
-      }
-      element.appendChild(app.canvas);
-
-      const world = new Container();
-      const floor = new Container();
-      const objects = new Container();
-      objects.sortableChildren = true;
-      const planning = new Container();
-      const planningTop = new Container();
-      const effectsLayer = new Container();
-      const fog = new Container();
-      world.addChild(floor, planning, objects, fog, planningTop, effectsLayer);
-      app.stage.addChild(world);
-      setFogLayer(fog);
-      setEffectsHost({ layer: effectsLayer, world });
-      // Hero tokens sort together with the props, by tile depth.
-      setTokens(objects);
-      // Highlights and markers lie on the floor; markers would hide behind props, which is acceptable.
-      setOverlay(planning);
-      setOverlayTop(planningTop);
-
-      setTerrain({ floor, objects, planning, atlas });
-
-      // Pixel art zooms in whole steps, except in the overview, which always shows the whole board as large as fits.
-      const size = (): CameraView => ({ width: app.screen.width, height: app.screen.height, pixel: !overview });
-      // The start framing: the own Squad and the Prime Zone, never an enemy (Fog of War).
-      const startFraming = (): Camera => {
-        const view = size();
-        const zone = zoneCentre();
-        return zone && !overview ? frameSquadCamera(ownPositionsRef.current, zone, view, freeBoardArea(view, { kind: "idle" })) : fitCamera(view);
-      };
-      let camera = startFraming();
-      const setCamera = (next: Camera) => {
-        camera = next;
-        world.scale.set(camera.scale);
-        world.position.set(camera.x, camera.y);
-        setStrokeScale(lineScale(camera.scale));
-      };
-      // Eases to a camera in FRAME_MS; jumps when the player prefers reduced motion.
-      let animation: number | undefined;
-      const stopAnimation = () => {
-        if (animation !== undefined) cancelAnimationFrame(animation);
-        animation = undefined;
-      };
-      const animateTo = (target: Camera) => {
-        stopAnimation();
-        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setCamera(target);
-        const from = camera;
-        const start = performance.now();
-        const step = (now: number) => {
-          const t = Math.min((now - start) / FRAME_MS, 1);
-          const eased = 1 - (1 - t) ** 3;
-          setCamera({
-            scale: from.scale + (target.scale - from.scale) * eased,
-            x: from.x + (target.x - from.x) * eased,
-            y: from.y + (target.y - from.y) * eased,
-          });
-          animation = t < 1 ? requestAnimationFrame(step) : undefined;
-        };
-        animation = requestAnimationFrame(step);
-      };
-      // The camera of an armed Move; a manual camera change ends the automatic framing for that Move.
-      let framing: MoveFraming | undefined;
-      const setCameraByHand = (next: Camera) => {
-        stopAnimation();
-        framing = takeOverFraming(framing);
-        setCamera(next);
-      };
-      cameraControl.current = {
-        toggle: () => {
-          const hero = candidatesRef.current.heroes.find((h) => h.id === selectedIdRef.current);
-          if (isZoomed(camera, size()) || !hero) setCameraByHand(fitCamera(size()));
-          else setCameraByHand(zoomOnPoint(gridToWorld(hero.position), size()));
-        },
-        frame: (hero) => {
-          framing ??= beginMoveFraming(camera);
-          if (framing.automatic) animateTo(frameMoveCamera(hero, candidatesRef.current.highlights, size(), freeBoardArea(size(), { kind: "picking" })));
-        },
-        release: () => {
-          if (framing?.automatic) animateTo(endMoveFraming(framing, camera));
-          framing = undefined;
-        },
-      };
-
-      if (heroScreenRef) {
-        heroScreenRef.current = (heroId) => {
-          const hero = candidatesRef.current.heroes.find((h) => h.id === heroId);
-          if (!hero) return undefined;
-          const world = gridToWorld(hero.position);
-          const rect = app.canvas.getBoundingClientRect();
-          return { x: rect.left + world.x * camera.scale + camera.x, y: rect.top + world.y * camera.scale + camera.y };
-        };
-      }
-
-      const pick = (viewX: number, viewY: number) => {
-        const { x, y } = viewToWorld(viewX, viewY, app.screen.width, app.screen.height, undefined, camera);
-        return { x, y, target: resolveTap(x, y, candidatesRef.current, undefined, camera.scale) };
-      };
-      pickRef.current = ({ x: clientX, y: clientY }) => {
-        const rect = app.canvas.getBoundingClientRect();
-        const { x, y, target } = pick(clientX - rect.left, clientY - rect.top);
-        return { target, ground: pickTileAt(x, y, undefined) };
-      };
-      // Fingers (or the mouse button) currently down, by pointer id; two of them pinch, one pans a zoomed board.
-      const down = new Map<number, { x: number; y: number }>();
-      let dragStart = { x: 0, y: 0 };
-      let dragged = false;
-      // A drag or pinch is not a tap.
-      let suppressTap = false;
-      const DRAG_THRESHOLD = 8;
-      /**
-       * The turn of the wheel (a trackpad: in pixels) that moves the zoom one step. After a step the same gesture needs three times that
-       * for the next one, so the run-out of a trackpad swipe does not run through all steps; a pause of this many ms ends a gesture.
-       */
-      const WHEEL_STEP_TURN = 40;
-      const WHEEL_GESTURE_GAP_MS = 120;
-      app.stage.eventMode = "static";
-      app.stage.hitArea = app.screen;
-      app.stage.on("pointerdown", (event) => {
-        down.set(event.pointerId, { x: event.global.x, y: event.global.y });
-        if (down.size === 1) {
-          suppressTap = false;
-          dragged = false;
-          dragStart = { x: event.global.x, y: event.global.y };
-          const { x, y, target } = pick(event.global.x, event.global.y);
-          setPressed(target.kind === "tile" ? target.tile : pickTileAt(x, y, undefined));
-        } else {
-          suppressTap = true;
-          setPressed(undefined);
-        }
-      });
-      app.stage.on("globalpointermove", (event) => {
-        const previous = down.get(event.pointerId);
-        if (!previous) return;
-        const current = { x: event.global.x, y: event.global.y };
-        if (down.size >= 2) {
-          const [a, b] = [...down.entries()].map(([id, point]) => (id === event.pointerId ? current : point));
-          const [oldA, oldB] = [...down.values()];
-          const oldDistance = Math.hypot(oldA!.x - oldB!.x, oldA!.y - oldB!.y);
-          const distance = Math.hypot(a!.x - b!.x, a!.y - b!.y);
-          const oldMid = { x: (oldA!.x + oldB!.x) / 2, y: (oldA!.y + oldB!.y) / 2 };
-          const mid = { x: (a!.x + b!.x) / 2, y: (a!.y + b!.y) / 2 };
-          down.set(event.pointerId, current);
-          if (oldDistance === 0) return;
-          const zoomedCamera = zoomAt(camera, gestureZoom(distance / oldDistance), oldMid.x, oldMid.y, size());
-          setCameraByHand(panBy(zoomedCamera, mid.x - oldMid.x, mid.y - oldMid.y, size()));
-          return;
-        }
-        down.set(event.pointerId, current);
-        if (!isZoomed(camera, size())) return;
-        if (!dragged && Math.hypot(current.x - dragStart.x, current.y - dragStart.y) > DRAG_THRESHOLD) {
-          dragged = true;
-          suppressTap = true;
-          setPressed(undefined);
-        }
-        if (dragged) setCameraByHand(panBy(camera, current.x - previous.x, current.y - previous.y, size()));
-      });
-      // Pixel art zooms in whole steps. A pinch adds up the scale it asks for and lands on the nearest step.
-      let gestureScale: number | undefined;
-      const gestureZoom = (ratio: number): number => {
-        if (!size().pixel) return camera.scale * ratio;
-        const fitted = fitCamera(size()).scale;
-        gestureScale = Math.min(Math.max((gestureScale ?? camera.scale) * ratio, fitted), pixelMaxScale(fitted));
-        return nearestPixelStepScale(gestureScale);
-      };
-      // The wheel moves one step for a small turn, so zooming reacts at once; a trackpad fling does not run through all steps.
-      let wheelTurn = 0;
-      let wheelStepped = false;
-      let lastWheelAt = -Infinity;
-      const release = (event: { pointerId: number }) => {
-        down.delete(event.pointerId);
-        if (down.size === 0) gestureScale = undefined;
-        // The finger left after a pinch pans from where it is.
-        if (down.size === 1) dragged = true;
-        setPressed(undefined);
-      };
-      app.stage.on("pointerup", release);
-      app.stage.on("pointerupoutside", release);
-      app.stage.on("pointercancel", release);
-      app.canvas.addEventListener(
-        "wheel",
-        (event) => {
-          event.preventDefault();
-          const rect = app.canvas.getBoundingClientRect();
-          const [x, y] = [event.clientX - rect.left, event.clientY - rect.top];
-          if (!size().pixel) {
-            setCameraByHand(zoomAt(camera, camera.scale * Math.exp(-event.deltaY * 0.0015), x, y, size()));
-            return;
-          }
-          // A line or page turn of a mouse wheel counts as a whole notch; pixels come from a trackpad.
-          const now = performance.now();
-          if (now - lastWheelAt > WHEEL_GESTURE_GAP_MS) {
-            wheelTurn = 0;
-            wheelStepped = false;
-          }
-          lastWheelAt = now;
-          wheelTurn += event.deltaMode === 0 ? event.deltaY : Math.sign(event.deltaY) * WHEEL_STEP_TURN;
-          if (Math.abs(wheelTurn) < WHEEL_STEP_TURN * (wheelStepped ? 3 : 1)) return;
-          const next = pixelStepBy(camera.scale, wheelTurn < 0 ? 1 : -1);
-          wheelTurn = 0;
-          wheelStepped = true;
-          setCameraByHand(zoomAt(camera, next, x, y, size()));
-        },
-        { passive: false },
-      );
-      app.stage.on("pointertap", (event) => {
-        if (suppressTap) return;
-        const { target } = pick(event.global.x, event.global.y);
-        if (target.kind === "tile") onTileTapRef.current(target.tile);
-        else if (target.kind === "hero") {
-          const targetable = candidatesRef.current.targetableIds.includes(target.id);
-          if (enemyIdsRef.current.has(target.id) || targetable) onTargetTapRef.current(target.id);
-          else onSelectRef.current(target.id);
-        }
-      });
-
-      // After a resize or rotation the view starts framed on the own Squad again.
-      setCamera(camera);
-      app.renderer.on("resize", () => setCameraByHand(startFraming()));
-    })();
-
-    return () => {
-      cancelled = true;
-      if (app.renderer) app.destroy(true, { children: true });
+    const element = input.current;
+    if (!layers || !element) return;
+    const { world } = layers;
+    // Pixel art zooms in whole steps, except in the overview, which always shows the whole board as large as fits.
+    const size = (): CameraView => {
+      const view = boardScene.view();
+      return { width: view.width, height: view.height, pixel: !overview };
     };
-  }, []);
+    // The start framing: the own Squad and the Prime Zone, never an enemy (Fog of War).
+    const startFraming = (): Camera => {
+      const view = size();
+      const zone = zoneCentre();
+      return zone && !overview ? frameSquadCamera(ownPositionsRef.current, zone, view, freeBoardArea(view, { kind: "idle" })) : fitCamera(view);
+    };
+    let camera = cameraRef.current ?? startFraming();
+    const setCamera = (next: Camera) => {
+      camera = next;
+      cameraRef.current = next;
+      world.scale.set(camera.scale);
+      world.position.set(camera.x, camera.y);
+      setStrokeScale(lineScale(camera.scale));
+      boardScene.touch();
+    };
+    // Eases to a camera in FRAME_MS on the scene clock; jumps when the player prefers reduced motion.
+    let stopAnimation: (() => void) | undefined;
+    const animateTo = (target: Camera) => {
+      stopAnimation?.();
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setCamera(target);
+      const from = camera;
+      stopAnimation = runFor(clock, (elapsed) => {
+        const t = Math.min(elapsed / FRAME_MS, 1);
+        const eased = 1 - (1 - t) ** 3;
+        setCamera({
+          scale: from.scale + (target.scale - from.scale) * eased,
+          x: from.x + (target.x - from.x) * eased,
+          y: from.y + (target.y - from.y) * eased,
+        });
+        return t >= 1;
+      });
+    };
+    // The camera of an armed Move; a manual camera change ends the automatic framing for that Move.
+    let framing: MoveFraming | undefined;
+    const setCameraByHand = (next: Camera) => {
+      stopAnimation?.();
+      framing = takeOverFraming(framing);
+      setCamera(next);
+    };
+    cameraControl.current = {
+      toggle: () => {
+        const hero = candidatesRef.current.heroes.find((h) => h.id === selectedIdRef.current);
+        if (isZoomed(camera, size()) || !hero) setCameraByHand(fitCamera(size()));
+        else setCameraByHand(zoomOnPoint(gridToWorld(hero.position), size()));
+      },
+      frame: (hero) => {
+        framing ??= beginMoveFraming(camera);
+        if (framing.automatic) animateTo(frameMoveCamera(hero, candidatesRef.current.highlights, size(), freeBoardArea(size(), { kind: "picking" })));
+      },
+      release: () => {
+        if (framing?.automatic) animateTo(endMoveFraming(framing, camera));
+        framing = undefined;
+      },
+    };
+
+    if (heroScreenRef) {
+      heroScreenRef.current = (heroId) => {
+        const hero = candidatesRef.current.heroes.find((h) => h.id === heroId);
+        if (!hero) return undefined;
+        const at = gridToWorld(hero.position);
+        const rect = element.getBoundingClientRect();
+        return { x: rect.left + at.x * camera.scale + camera.x, y: rect.top + at.y * camera.scale + camera.y };
+      };
+    }
+
+    const pick = (viewX: number, viewY: number) => {
+      const { width, height } = size();
+      const { x, y } = viewToWorld(viewX, viewY, width, height, undefined, camera);
+      return { x, y, target: resolveTap(x, y, candidatesRef.current, undefined, camera.scale) };
+    };
+    pickRef.current = ({ x: clientX, y: clientY }) => {
+      const rect = element.getBoundingClientRect();
+      const { x, y, target } = pick(clientX - rect.left, clientY - rect.top);
+      return { target, ground: pickTileAt(x, y, undefined) };
+    };
+    // One transparent element over the canvas takes the pointer events; the gestures turn them into camera moves, presses and taps.
+    const detach = attachBoardInput(
+      element,
+      new BoardGestures({
+        camera: () => camera,
+        view: size,
+        setCameraByHand,
+        press(point) {
+          if (!point) return setPressed(undefined);
+          const { x, y, target } = pick(point.x, point.y);
+          setPressed(target.kind === "tile" ? target.tile : pickTileAt(x, y, undefined));
+        },
+        tap(point) {
+          const { target } = pick(point.x, point.y);
+          if (target.kind === "tile") onTileTapRef.current(target.tile);
+          else if (target.kind === "hero") {
+            const targetable = candidatesRef.current.targetableIds.includes(target.id);
+            if (enemyIdsRef.current.has(target.id) || targetable) onTargetTapRef.current(target.id);
+            else onSelectRef.current(target.id);
+          }
+        },
+      }),
+    );
+
+    // After a resize or rotation the view starts framed on the own Squad again.
+    setCamera(camera);
+    const stopWatchingView = boardScene.watchView(() => setCameraByHand(startFraming()));
+    return () => {
+      stopWatchingView();
+      detach();
+      stopAnimation?.();
+      cameraControl.current = undefined;
+      pickRef.current = undefined;
+      if (heroScreenRef) heroScreenRef.current = undefined;
+    };
+  }, [layers]);
+
+  // The first frame that shows the tiles and the Heroes is the one the scene reports as ready (the seam of ADR 0026, rule 10).
+  useEffect(() => {
+    if (scenery) boardScene.markDrawn();
+  }, [scenery]);
+  // Whatever the effects above changed is drawn in one more frame; a board that changes nothing runs no frames.
+  useEffect(() => boardScene.touch());
 
   return (
-    <div ref={host} className="board" role="img" aria-label="Notstrom Map">
+    <div className="board" role="img" aria-label="Notstrom Map">
+      <StageLayer scene={BOARD_SCENE_NAME} />
+      <div ref={input} className="board-input" />
     </div>
   );
 }

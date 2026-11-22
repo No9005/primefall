@@ -159,6 +159,20 @@ const EFFECT_CLIPS: readonly ClipName[] = ["wait"];
 const loaded = new Map<HeroClass, Map<string, PixelClip>>();
 let loading: Promise<void> | undefined;
 
+const sheetUrls: string[] = [];
+
+/** The URLs of the loaded sheets, which the stage destroys when the scene that needs them is left. */
+export function pixelHeroSheetUrls(): readonly string[] {
+  return sheetUrls;
+}
+
+/** Forgets the loaded sheets (their textures were destroyed), so the next `loadPixelHeroes` loads them again. */
+export function resetPixelHeroes(): void {
+  loaded.clear();
+  sheetUrls.length = 0;
+  loading = undefined;
+}
+
 /** True once the sheets are loaded, which the Pixel-art figures need. */
 export function pixelHeroesReady(): boolean {
   return loaded.size === Object.keys(CLASS_FOLDER).length;
@@ -176,6 +190,7 @@ export function loadPixelHeroes(): Promise<void> {
         info.clips
           .filter((clip) => wanted.has(clip.sheet.replace(".json", "")))
           .map(async (clip) => {
+            sheetUrls.push(`${folder}${clip.sheet}`);
             const sheet = await Assets.load<Spritesheet>(`${folder}${clip.sheet}`);
             sheet.textureSource.scaleMode = "nearest";
             const layer = (name: PixelLayer) => sheet.animations[`${CLASS_FOLDER[heroClass]}.${clip.name}.${name}`];

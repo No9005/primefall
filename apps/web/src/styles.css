@@ -56,6 +56,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .planning { position: absolute; inset: 0; }
 .board { position: absolute; inset: 0; overflow: hidden; }
 .board canvas { display: block; touch-action: none; }
+/* The one transparent element over the stage's canvas that takes the board's pointer events (ADR 0026, rule 2: the board's exception). */
+.board-input { position: absolute; inset: 0; touch-action: none; }
 
 
 
