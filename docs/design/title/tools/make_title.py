@@ -11,6 +11,7 @@ OUT = os.path.join(OUT, "")
 os.makedirs(OUT, exist_ok=True)
 from scene import *
 import pf
+from crystal import draw_crystal
 from pf import G, width as fw
 import numpy as np, random, math
 from scipy.ndimage import binary_dilation
@@ -54,10 +55,7 @@ cw=44; gap=6; total=left.shape[1]+gap+cw+gap+right.shape[1]; x0=(W-total)//2; y0
 chunky(arr,left,x0,y0,s,6); chunky(arr,right,x0+left.shape[1]+gap+cw+gap,y0,s,6)
 logo=rgba_from_black(arr); d=ImageDraw.Draw(logo)
 cx=x0+left.shape[1]+gap+cw//2; top=y0-14; mid=y0+16; bot=y0+7*s+10; cwh=cw//2
-d.polygon([(cx,top),(cx-cwh,mid),(cx,bot)],fill=(150,215,240)); d.polygon([(cx,top),(cx+cwh,mid),(cx,bot)],fill=(70,120,200))
-d.polygon([(cx,top),(cx-cwh,mid),(cx,mid)],fill=(232,250,255)); d.polygon([(cx,mid),(cx+cwh,mid),(cx,bot)],fill=(46,82,170))
-d.line([(cx,top),(cx,bot)],fill=(240,252,255)); d.line([(cx-cwh,mid),(cx+cwh,mid)],fill=(255,255,255))
-for p,q in [((cx,top),(cx-cwh,mid)),((cx-cwh,mid),(cx,bot)),((cx,top),(cx+cwh,mid)),((cx+cwh,mid),(cx,bot))]: d.line([p,q],fill=(14,10,28))
+draw_crystal(d,cx,top,mid,bot,cwh)
 logo.save(OUT+'logo.png')
 print('crystal',cx,top,bot,'logo y',y0,y0+7*s)
 # 5 haze behind the crystal (screen blend)

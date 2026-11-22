@@ -6,7 +6,7 @@ import { groundMarks, type HeroPose } from "./hero-figure";
 import { CLIP_SPEED } from "./clip-player";
 import { HERO_STYLE } from "./hero-style";
 
-// The Heroes of the Pixel art style: sprite sheets (apps/web/public/assets/pixel-heroes, docs/design/pixel-heroes) played
+// The Heroes of the Pixel art style: sprite sheets (apps/web/public/assets/heroes, docs/design/pixel-heroes) played
 // instead of the shape rig. Which clip plays when stays with `playback.ts` and `hero-clips.ts`; this module only decides
 // which sheet a clip name is, and draws the frame. The sheets carry no team colour, so the ring under the feet stays the
 // renderer's. Only the `figure` layer is used on the board (the effect layers of a Wait too): the game draws the Shield bubble,
@@ -36,7 +36,7 @@ export const PIXEL_FRAME = { width: 136, height: 104, feetX: 58, feetY: 86 } as 
 /** World px per sprite px: whole, so that the pixels stay square. A Hero is then about 90 px tall at game size (the rig's is 100). */
 export const PIXEL_SCALE = 2;
 
-const PIXEL_ASSETS = `${import.meta.env.BASE_URL}assets/pixel-heroes/`;
+const PIXEL_ASSETS = `${import.meta.env.BASE_URL}assets/heroes/`;
 const CLASS_FOLDER: Record<HeroClass, string> = { [HeroClass.Bruiser]: "bruiser", [HeroClass.Controller]: "controller", [HeroClass.Assassin]: "assassin" };
 
 /** The sheets of the clips the game plays; a clip the game plays for a class but that is not here uses `PIXEL_FALLBACKS`. */

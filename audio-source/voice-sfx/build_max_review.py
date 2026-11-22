@@ -1,5 +1,5 @@
 import base64,json,os
-R="/home/user/primefall/apps/web/public/assets/pixel-heroes/bruiser/"
+R="/home/user/primefall/apps/web/public/assets/heroes/bruiser/"
 b64=lambda p:base64.b64encode(open(p,"rb").read()).decode()
 SHEETS=["select_ready","slam","double","rush","hook","concussion","block","shield","hit","half","full","exhausted","idle","walk","wait"]
 clips={c["name"]:c for c in json.load(open(R+"clips.json"))["clips"]}

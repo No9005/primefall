@@ -9,7 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..', '..', '..');
-const assets = join(root, 'apps', 'web', 'public', 'assets', 'pixel-heroes');
+const assets = join(root, 'apps', 'web', 'public', 'assets', 'heroes');
 const overviewDir = join(here, '..', 'overview');
 const reference = join(here, '..', 'reference');
 

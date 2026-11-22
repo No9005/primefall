@@ -7,7 +7,7 @@ import { CLIP_SPEED } from "./clip-player";
 import { clipOf } from "./hero-clips";
 import { coverRestProgress, frameAt, PIXEL_SCALE, pixelSheetOf, restLoopProgress } from "./pixel-heroes";
 
-const FOLDER = path.join(import.meta.dirname, "../public/assets/pixel-heroes");
+const FOLDER = path.join(import.meta.dirname, "../public/assets/heroes");
 const FOLDERS: Record<HeroClass, string> = { [HeroClass.Bruiser]: "bruiser", [HeroClass.Controller]: "controller", [HeroClass.Assassin]: "assassin" };
 
 /** Every clip name the game can play for a Hero (the `ClipName` union, as an exhaustive record). */
