@@ -210,6 +210,7 @@ async function playTitle(browser: Browser): Promise<void> {
   await page.goto(URL);
   await page.locator(".title-item img").last().waitFor({ state: "attached" });
   await page.waitForFunction(() => Array.from(document.images).every((image) => image.complete));
+  await waitForScene(page);
   const loaded = Date.now();
   const at = async (ms: number) => page.waitForTimeout(Math.max(0, ms - (Date.now() - loaded)));
   await at(250);
@@ -239,6 +240,7 @@ async function playNotstromIntro(browser: Browser): Promise<void> {
   await page.goto(`${URL}${URL.includes("?") ? "&" : "?"}notstrom-intro=on`);
   await page.locator(".title-item img").last().waitFor({ state: "attached" });
   await page.waitForFunction(() => Array.from(document.images).every((image) => image.complete));
+  await waitForScene(page);
   await page.getByTestId("play-classic").click();
   const started = Date.now();
   const at = async (ms: number) => page.waitForTimeout(Math.max(0, ms - (Date.now() - started)));

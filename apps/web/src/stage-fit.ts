@@ -29,6 +29,17 @@ export function computeFill(width: number, height: number, devicePixelRatio: num
   return { width, height, resolution: Math.min(devicePixelRatio, MAX_CANVAS_SIDE / Math.max(width, height, 1)) };
 }
 
+/**
+ * The "as high as the window" mode (the title screen): the design frame fills the window's height; a narrower window cuts the sides of the
+ * frame (negative offset), a wider one shows dark sides.
+ */
+export function computeHeightFit(windowWidth: number, windowHeight: number, devicePixelRatio: number): StageFit {
+  const scale = windowHeight / DESIGN_HEIGHT;
+  const offsetX = (windowWidth - DESIGN_WIDTH * scale) / 2;
+  const resolution = Math.min(devicePixelRatio, MAX_CANVAS_SIDE / Math.max(windowWidth, windowHeight));
+  return { scale, offsetX, offsetY: 0, visible: { left: offsetX / scale, right: offsetX / scale, top: 0, bottom: 0 }, resolution };
+}
+
 /** Fits the design frame completely inside the window (no bars: the canvas fills the whole window). */
 export function computeFit(windowWidth: number, windowHeight: number, devicePixelRatio: number): StageFit {
   const scale = Math.min(windowWidth / DESIGN_WIDTH, windowHeight / DESIGN_HEIGHT);
