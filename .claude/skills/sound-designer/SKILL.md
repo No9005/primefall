@@ -1,6 +1,6 @@
 ---
 name: sound-designer
-description: Sound design for Primefall. Use when generating, cutting, looping, levelling or wiring game music, voice lines or sound effects.
+description: Sound design for Primefall. Use when generating, cutting, levelling or wiring voice lines, sound effects or ambience, and for the archive and cost steps of any audio work.
 ---
 
 Sound work in Primefall is expensive and cannot be undone: ElevenLabs lets nothing be downloaded again (a song id only works as an audio reference), every call costs credits, and the owner judges by ear. Work in the order below. Each step ends on its checkable bar; do not start the next before it holds.
@@ -9,7 +9,7 @@ Sound work in Primefall is expensive and cannot be undone: ElevenLabs lets nothi
 
 Read the _Sound_ part of `docs/design/world-and-style.md`, then the archive of the kind you make:
 
-- **Music:** `audio-source/music/README.md`, and `menu-theme/README.md` as the worked example of the whole way (take, upload, extend by plan, loop, wire in).
+- **Music:** use the `composer` skill for the piece; this skill's steps 2 to 5 (prompt shown first, one call, archive, measure) hold for it too.
 - **Voice lines:** `audio-source/voice-sfx/CHARACTERS.md` (the Hero's voice, settings, tags used, a checklist for new lines) and `PROMPTS.md`.
 - **Effects and ambience:** `audio-source/voice-sfx/PROMPTS.md`, and `apps/web/public/assets/audio/README.md` for what the game plays when.
 
