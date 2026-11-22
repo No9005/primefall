@@ -30,6 +30,25 @@ Settings (deterministic): pictures cut with `crop`, changed to RGB, then scaled 
 each decoded picture down by 2 (area average) and requires a mean absolute difference of at most 6 of 255 per colour channel (the codec
 spreads colours of neighbouring pixels in 4:2:0), plus 95 pictures, 12 fps and the size.
 
+### Making another video from pixel art: what went wrong the first time
+
+Read this before you encode any other film from sheets or frames; the encode script is the model to copy.
+
+- **Palette pictures (`pal8`) must be changed to RGB before they are scaled.** `ffmpeg -vf scale=...:flags=neighbor` on a palette PNG does not
+  double exactly: the result is off by half a picture point and blurred (8 % of the points were exact, the rest were mixed with a neighbour).
+  `format=rgb24,scale=iw*2:ih*2:flags=neighbor` is exact (100 %). The sheets of the Notstrom Intro are palette pictures.
+- **The symptom was misleading.** The first encode was 54 Mbit/s (53 MB for 8 s) and `--check` failed with a difference of 11 to 15 of 255 *even at
+  that bitrate*. A difference that does not fall when the quality rises is not codec noise: look for a systematic error before the first
+  encode settings (CRF, preset, colour matrix, dithering) are tuned. Ruling things out took one test each: the colour matrix and dithering made
+  no difference; the doubling was the cause.
+- **Measure the steps without the codec.** Compare each step against an exact reference you build yourself (for a doubling: `numpy.repeat` of the
+  sheet's picture): sheet to doubled picture, doubled picture to `yuv420p` and back, and only then the encoded file. The error of the whole chain
+  after the fix is 1.7 to 2.5 of 255; the file is 1.6 MB (WebM) and 2.5 MB (MP4).
+- **Do not judge a picture by looking at the whole frame.** The dark, noisy-looking decode was only visible next to the reference; use a 4 x
+  crop with nearest-neighbour zoom (`crop=240:120:x:y,scale=iw*4:ih*4:flags=neighbor`) to see the pixel blocks and compare.
+- **Keep the check.** `--check` compares every decoded picture, scaled down by the same whole number with an area average, with the sheets. A new
+  video gets the same check with its own picture count, size and frame rate; do not loosen the tolerance to make a file pass.
+
 ## Making the sheets again
 
 `notstrom-intro.html` is the Notstrom Intro as layers and CSS animations (from the design canvas, 960 x 444 design pixels drawn at 640 x 296). Its
