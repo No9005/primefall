@@ -1,6 +1,6 @@
 # The hangar of the Hero Select
 
-The pictures of `HeroSelectScreen.tsx` (design: `docs/design/hero-select/README.md`, the section "the Hero Select in the hangar"). The hangar is
+The pictures of the hangar scene (`apps/web/src/hangar-scene.ts`, on the stage, ADR 0026; the screen is `HeroSelectScreen.tsx`) (design: `docs/design/hero-select/README.md`, the section "the Hero Select in the hangar"). The hangar is
 drawn at 1280 pixels wide and shown at 960 design pixels; the Heroes are strips of frames drawn larger (Max 190, Tilly 136 and Kit 136 pixels
 a frame, shown at 482, 345 and 345 design pixels).
 
@@ -15,5 +15,5 @@ a frame, shown at 482, 345 and 345 design pixels).
 | `back.png`, `back-on.png`, `next.png`, `next-on.png` | BACK and NEXT in the menu style |
 | `clips/<hero>-<clip>.png` | a strip of frames: `idle`, `tolift`, `act`, `toidle` (the action), `selecti` (from idle into the chosen pose), `select`, `hold` (the chosen pose, looped), `desel`; `<hero>-bridge*.png` has two frames for each moment of the action |
 
-The frame counts and times of the clips are in `apps/web/src/hangar-select.ts`; a test checks that every strip has the size its table says.
+The strips are no longer shown by the app: the scene plays the atlases in `atlas/`, which the packer (`npm run atlas -w apps/web`) makes from the strips, so the strips stay as its source. The frame counts and times of the clips are in `apps/web/src/hangar-select.ts`; a test checks that every strip has the size its table says.
 They were made on the design canvas; the sources are not in this repository yet.

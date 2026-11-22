@@ -34,6 +34,8 @@ export interface AssetSource {
 /** The rendering side of the stage: the single Application. Faked in tests. */
 export interface StageHost {
   root: { setAttribute(name: string, value: string): void };
+  /** Puts the stage root into the element a screen provides (below its UI); the root stays the same one between screens. */
+  mount?(parent: HTMLElement): void;
   show(container: Container): void;
   hide(container: Container): void;
   /** Places the stage container and sizes the canvas to the window. */
@@ -217,7 +219,11 @@ export function createStage(deps: StageDeps): Stage {
 
   return {
     showScene,
-    leaveScene: leaveCurrent,
+    async leaveScene() {
+      entering++; // an enter that is still loading must not show its scene after this
+      await leaveCurrent();
+      setAttributes("", false);
+    },
     step: advance,
     fit: () => fit,
     reducedMotion: () => reduced,
@@ -269,7 +275,7 @@ export function createProofScene(): Scene & { x(): number; stopped: boolean } {
 }
 
 /** The real thing: one PixiJS Application, the only one the app creates (the board and the glossary pictures still have their own, see eslint.config.js). */
-export async function createPixiHost(parent: HTMLElement): Promise<StageHost> {
+export async function createPixiHost(): Promise<StageHost> {
   const app = new Application();
   await app.init({ background: "#12161c", preference: "webgl", antialias: true, autoDensity: true, autoStart: false, sharedTicker: false });
   const root = document.createElement("div");
@@ -277,12 +283,12 @@ export async function createPixiHost(parent: HTMLElement): Promise<StageHost> {
   root.setAttribute("data-scene", "");
   root.setAttribute("data-scene-ready", "false");
   root.appendChild(app.canvas);
-  parent.prepend(root);
   const world = new Container();
   app.stage.addChild(world);
   const canvas = app.canvas;
   return {
     root,
+    mount: (element) => void element.prepend(root),
     show: (container) => void world.addChild(container),
     hide: (container) => void world.removeChild(container),
     applyFit(fit, width, height) {
