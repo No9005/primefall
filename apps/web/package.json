@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "e2e": "npm run build && playwright test",
     "screenshots": "vite-node scripts/screenshots.ts",
+    "atlas": "vite-node scripts/atlas-cli.ts",
     "render-mix": "vite-node scripts/render-mix.ts"
   },
   "dependencies": {
