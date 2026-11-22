@@ -1,9 +1,11 @@
 import { Application, Assets, Container, Graphics } from "pixi.js";
-import { computeFit, type StageFit } from "./stage-fit";
+import { computeFill, computeFit, type FillView, type StageFit } from "./stage-fit";
 
 /** What a scene gets from the stage (ADR 0026). */
 export interface SceneEnv {
   fit(): StageFit;
+  /** The size handed to a scene that fills its element (`fit: "fill"`). */
+  view(): FillView;
   reducedMotion(): boolean;
   /** Asks for one more drawn frame after the scene changed while it is not animating. */
   invalidate(): void;
@@ -12,8 +14,15 @@ export interface SceneEnv {
 /** A scene builds a container, declares its atlases and reports whether it is ready and animating. */
 export interface Scene {
   name: string;
-  /** Atlas or image URLs the scene needs; loaded on enter, destroyed on leave if no other scene uses them. */
-  assets: readonly string[];
+  /**
+   * How the stage places the scene: "frame" (default) fits the 960 x 444 design frame into the window; "fill" gives the scene the size
+   * of the element the stage is mounted in (`viewChanged`) and leaves the camera to the scene.
+   */
+  fit?: "frame" | "fill";
+  /** Atlas or image URLs the scene needs; loaded on enter, destroyed on leave if no other scene uses them. Read again on leave. */
+  readonly assets: readonly string[];
+  /** Runs before the assets are acquired, for a scene whose asset list is only known after reading a file. */
+  prepare?(): Promise<void>;
   create(env: SceneEnv): Container;
   enter?(): void;
   leave?(): void;
@@ -22,6 +31,8 @@ export interface Scene {
   ready(): boolean;
   animating(): boolean;
   fitChanged?(fit: StageFit): void;
+  /** A "fill" scene: the size or the resolution is this (called on enter and whenever it changes). */
+  viewChanged?(view: FillView): void;
   reducedMotionChanged?(reduced: boolean): void;
 }
 
@@ -40,6 +51,10 @@ export interface StageHost {
   hide(container: Container): void;
   /** Places the stage container and sizes the canvas to the window. */
   applyFit(fit: StageFit, windowWidth: number, windowHeight: number): void;
+  /** Sizes the canvas to the view and puts the stage container at scale 1 (a "fill" scene). */
+  applyFill(view: FillView): void;
+  /** The size of the element the root is mounted in, when it has one. */
+  size?(): { width: number; height: number } | undefined;
   render(): void;
   onContextLost(callback: () => void): void;
   onContextRestored(callback: () => void): void;
@@ -68,6 +83,8 @@ export interface Stage {
   /** Advances the clock by a given delta without real time passing (tests, recordings). */
   step(deltaMs: number): void;
   fit(): StageFit;
+  /** Measures the window and the mount element again. */
+  refit(): void;
   reducedMotion(): boolean;
   destroy(): void;
 }
@@ -87,6 +104,7 @@ export function createStage(deps: StageDeps): Stage {
   const assetUsers = new Map<string, number>();
   let current: { scene: Scene; container: Container } | undefined;
   let fit = computeFit(environment.window.width, environment.window.height, environment.window.devicePixelRatio);
+  let view = measureView();
   let reduced = environment.reducedMotion.matches();
   let frameHandle: number | undefined;
   let lastTime = 0;
@@ -98,7 +116,25 @@ export function createStage(deps: StageDeps): Stage {
     host.root.setAttribute("data-scene-ready", String(ready));
   };
 
-  const env: SceneEnv = { fit: () => fit, reducedMotion: () => reduced, invalidate: () => schedule() };
+  function measureView(): FillView {
+    const area = host.size?.();
+    const { window: size } = environment;
+    const [width, height] = area && area.width > 0 && area.height > 0 ? [area.width, area.height] : [size.width, size.height];
+    return computeFill(width, height, size.devicePixelRatio);
+  }
+
+  /** Puts the canvas and the stage container where the scene wants them and tells the scene. */
+  function place(scene: Scene | undefined) {
+    if (scene?.fit === "fill") {
+      host.applyFill(view);
+      scene.viewChanged?.(view);
+    } else {
+      host.applyFit(fit, environment.window.width, environment.window.height);
+      scene?.fitChanged?.(fit);
+    }
+  }
+
+  const env: SceneEnv = { fit: () => fit, view: () => view, reducedMotion: () => reduced, invalidate: () => schedule() };
 
   async function acquire(urls: readonly string[]) {
     const fresh = urls.filter((url) => !assetUsers.has(url));
@@ -164,13 +200,16 @@ export function createStage(deps: StageDeps): Stage {
   async function enter(scene: Scene) {
     const ticket = ++entering;
     setAttributes(scene.name, false);
+    await scene.prepare?.();
+    if (ticket !== entering || destroyed) return;
     await acquire(scene.assets);
     if (ticket !== entering || destroyed) {
       await release(scene.assets);
       return;
     }
+    view = measureView();
+    place(scene);
     const container = scene.create(env);
-    scene.fitChanged?.(fit);
     scene.reducedMotionChanged?.(reduced);
     current = { scene, container };
     host.show(container);
@@ -190,8 +229,8 @@ export function createStage(deps: StageDeps): Stage {
 
   function refit() {
     fit = computeFit(environment.window.width, environment.window.height, environment.window.devicePixelRatio);
-    host.applyFit(fit, environment.window.width, environment.window.height);
-    current?.scene.fitChanged?.(fit);
+    view = measureView();
+    place(current?.scene);
     if (current) drawFrame();
   }
 
@@ -226,6 +265,7 @@ export function createStage(deps: StageDeps): Stage {
     },
     step: advance,
     fit: () => fit,
+    refit,
     reducedMotion: () => reduced,
     destroy() {
       destroyed = true;
@@ -274,7 +314,7 @@ export function createProofScene(): Scene & { x(): number; stopped: boolean } {
   return scene;
 }
 
-/** The real thing: one PixiJS Application, the only one the app creates (the board and the glossary pictures still have their own, see eslint.config.js). */
+/** The real thing: one PixiJS Application, the only one the app creates (the glossary pictures still have their own, see eslint.config.js). */
 export async function createPixiHost(): Promise<StageHost> {
   const app = new Application();
   await app.init({ background: "#12161c", preference: "webgl", antialias: true, autoDensity: true, autoStart: false, sharedTicker: false });
@@ -291,10 +331,16 @@ export async function createPixiHost(): Promise<StageHost> {
     mount: (element) => void element.prepend(root),
     show: (container) => void world.addChild(container),
     hide: (container) => void world.removeChild(container),
+    size: () => (root.parentElement ? { width: root.parentElement.clientWidth, height: root.parentElement.clientHeight } : undefined),
     applyFit(fit, width, height) {
       app.renderer.resize(width, height, fit.resolution);
       world.scale.set(fit.scale);
       world.position.set(fit.offsetX, fit.offsetY);
+    },
+    applyFill(fill) {
+      app.renderer.resize(fill.width, fill.height, fill.resolution);
+      world.scale.set(1);
+      world.position.set(0, 0);
     },
     render: () => app.renderer.render(app.stage),
     onContextLost: (callback) =>

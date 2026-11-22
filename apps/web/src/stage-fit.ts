@@ -16,6 +16,19 @@ export interface StageFit {
   resolution: number;
 }
 
+/** What a scene that fills its element (not the design frame) gets: the element's size in CSS pixels and the capped resolution. */
+export interface FillView {
+  width: number;
+  height: number;
+  /** Device pixels per CSS pixel, capped so the canvas stays within MAX_CANVAS_SIDE. */
+  resolution: number;
+}
+
+/** The "fill the window" mode: the scene draws at the real size and handles its own camera (the board). */
+export function computeFill(width: number, height: number, devicePixelRatio: number): FillView {
+  return { width, height, resolution: Math.min(devicePixelRatio, MAX_CANVAS_SIDE / Math.max(width, height, 1)) };
+}
+
 /** Fits the design frame completely inside the window (no bars: the canvas fills the whole window). */
 export function computeFit(windowWidth: number, windowHeight: number, devicePixelRatio: number): StageFit {
   const scale = Math.min(windowWidth / DESIGN_WIDTH, windowHeight / DESIGN_HEIGHT);

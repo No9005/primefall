@@ -30,6 +30,7 @@ function setup(options: { reduced?: boolean; random?: (low: number, high: number
     show: () => {},
     hide: () => {},
     applyFit: () => {},
+    applyFill: () => {},
     render: () => {},
     onContextLost: () => {},
     onContextRestored: () => {},
