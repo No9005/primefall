@@ -8,7 +8,7 @@ The look of the cards, worked out with the product owner in a chat session for i
 
 | Path | Content |
 |---|---|
-| `apps/web/public/assets/cards/<card>.png` | The picture of each card, 136 x 104 px, drawn with the Bruiser and Controller sprites of `docs/design/pixel-heroes/`. `back.png` is the whole card back with its text (300 x 420 CSS px at 2 x) |
+| `apps/web/public/assets/cards/<card>.png` | The picture of each card, 136 x 104 px, drawn with the Bruiser and Controller sprites of `docs/design/heroes/`. `back.png` is the whole card back with its text (300 x 420 CSS px at 2 x) |
 | `overview/<card>.png` | The finished card (frame, picture and text) at 2 x, to look at |
 | `reference/card-faces.html` | The live page: the frames, the backs and all cards. It draws the pictures pixel by pixel; its texts are German where they are notes to the product owner |
 | `tools/export.mjs` | Renders the pictures and the overview images from the reference page: `node docs/design/cards/tools/export.mjs` |

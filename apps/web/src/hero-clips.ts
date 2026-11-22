@@ -1,7 +1,7 @@
 import { CoverKind, HeroClass } from "game-core";
 
 // The timeline of the Hero clips: how long each clip of each class runs and when its beats come. The pictures are the sprite
-// sheets of docs/design/pixel-heroes (`pixel-heroes.ts`); the game plays them at the pace given here, and the playback uses
+// sheets of docs/design/heroes (`heroes.ts`); the game plays them at the pace given here, and the playback uses
 // the beats to time shots and ticks (`playback.ts`). Times are in clip time, before `CLIP_SPEED`.
 
 export type ClipName =

@@ -1,7 +1,7 @@
 import { OUTLINE } from "./terrain-style";
 
 // The numbers of a Hero's drawn surroundings (docs/design/animation/README.md): the Squad ring under the feet, the contact
-// shadow, the marks above the head. The Heroes themselves are the sprite sheets of docs/design/pixel-heroes.
+// shadow, the marks above the head. The Heroes themselves are the sprite sheets of docs/design/heroes.
 
 /** Height of a Hero from its feet to the top of the head or the rifle, in world pixels. */
 export const HERO_WORLD_HEIGHT = 113;

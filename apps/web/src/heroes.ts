@@ -6,7 +6,7 @@ import { groundMarks, type HeroPose } from "./hero-figure";
 import { CLIP_SPEED } from "./clip-player";
 import { HERO_STYLE } from "./hero-style";
 
-// The Heroes of the Pixel art style: sprite sheets (apps/web/public/assets/heroes, docs/design/pixel-heroes) played
+// The Heroes of the Pixel art style: sprite sheets (apps/web/public/assets/heroes, docs/design/heroes) played
 // instead of the shape rig. Which clip plays when stays with `playback.ts` and `hero-clips.ts`; this module only decides
 // which sheet a clip name is, and draws the frame. The sheets carry no team colour, so the ring under the feet stays the
 // renderer's. Only the `figure` layer is used on the board (the effect layers of a Wait too): the game draws the Shield bubble,

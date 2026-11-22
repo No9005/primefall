@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { ClipName } from "./hero-clips";
 import { CLIP_SPEED } from "./clip-player";
 import { clipOf } from "./hero-clips";
-import { coverRestProgress, frameAt, PIXEL_SCALE, pixelSheetOf, restLoopProgress } from "./pixel-heroes";
+import { coverRestProgress, frameAt, PIXEL_SCALE, pixelSheetOf, restLoopProgress } from "./heroes";
 
 const FOLDER = path.join(import.meta.dirname, "../public/assets/heroes");
 const FOLDERS: Record<HeroClass, string> = { [HeroClass.Bruiser]: "bruiser", [HeroClass.Controller]: "controller", [HeroClass.Assassin]: "assassin" };

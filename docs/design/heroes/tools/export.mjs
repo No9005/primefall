@@ -1,5 +1,5 @@
 // Renders the pixel-art Heroes into sprite sheets for PixiJS. Run from the repository root:
-//   node docs/design/pixel-heroes/tools/export.mjs
+//   node docs/design/heroes/tools/export.mjs
 // It needs a Chromium that Playwright can start (the one the e2e tests use). Set PLAYWRIGHT_CHROMIUM_PATH to use another.
 import { createRequire } from 'node:module';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';

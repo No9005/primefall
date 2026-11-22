@@ -1,6 +1,8 @@
 # Pixel-art Heroes: sprite sheets for PixiJS
 
 > The sheets live in `apps/web/public/assets/heroes/` (the folder was called `pixel-heroes`; the old picture models of the first style are gone).
+>
+> This folder and the module `apps/web/src/heroes.ts` were called `pixel-heroes` until issue #479; older issues, commits and the `meta` of the sheets' JSON still use that name.
 
 A proposal for the final look of the three Heroes, worked out with the product owner in a chat session: the designs, their animation clips and the poses of the Hero Select screen, rendered into sprite sheets that PixiJS v8 loads directly.
 
@@ -92,7 +94,7 @@ Durations and beats are the ones of `docs/design/animation/README.md`; only the 
 ## Regenerating the sheets
 
 ```
-node docs/design/pixel-heroes/tools/export.mjs
+node docs/design/heroes/tools/export.mjs
 ```
 
 The export starts a Chromium through Playwright (the one of the e2e tests), runs the three rigs in a page and writes the sheets, `clips.json`, the figures and the overview images. The rigs in `tools/rigs/` are the source; the pages in `reference/` are copies for looking at and are not read by the export, except the three `concepts-*` pages, from which the standing figure and the portrait are taken.
