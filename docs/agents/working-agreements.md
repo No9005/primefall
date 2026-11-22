@@ -1,6 +1,6 @@
 # Working agreements with the owner
 
-Standing agreements between the owner and the chat agent. They hold for every chat session until the owner changes them. Read this file at the start of a chat session. Anything that only exists in a chat is lost, so a new agreement is added here (one line, with the reason) in the same session it is made.
+Standing agreements between the owner and the chat agent. They hold for every chat session until the owner changes them. Read this file and `docs/design/world-and-style.md` at the start of a chat session. Anything that only exists in a chat is lost, so a new agreement is added here (one line, with the reason) in the same session it is made.
 
 Related: `docs/process/status.md` (how the owner and the chat agent work together), `docs/design/decisions.md` (design decisions), `docs/agents/session-handover.md` (how a session ends and the next one starts).
 
@@ -13,6 +13,7 @@ Related: `docs/process/status.md` (how the owner and the chat agent work togethe
 ## Before spending, before building
 
 - **External generation (ElevenLabs music or sound, images, video):** show the owner the exact prompt or plan and the expected credit cost (an upload costs extra) and wait for an okay before sending. Never retry a generation call.
+- **Archive every generation, used or not.** ElevenLabs lets nothing be downloaded again (a song id only works as an audio reference), so a generation that is not archived is lost. Right after a generation: save the audio, the exact prompt or plan, the song or request id, the settings, the credit cost and the owner's verdict (used, discarded, why) in `audio-source/` (music: a folder with a `README.md` and `PROMPTS.md`, as in `audio-source/music/menu-theme/`). Discarded takes stay there too. Only the final file goes to `apps/web/public/assets/audio/`.
 - **Visual or audio changes the owner has not seen:** when asked, show a preview (artifact or screenshot) first and build after the owner picks a variant.
 - **Tests and benchmarks:** run only what the change needs. A long run (the full end-to-end suite takes about 20 minutes) only when the owner asks. When the owner says "no tests", run none.
 - **Pull requests:** open one only when asked. Never merge without the owner's word for that pull request. Say so when a change touches the factory's path rules (`tools/factory/blast-radius-rules.json`, `.github/CODEOWNERS`).
@@ -20,8 +21,11 @@ Related: `docs/process/status.md` (how the owner and the chat agent work togethe
 ## Product decisions made in chat
 
 - Names: **Notstrom Map** (the board; "Reactor Deck" is gone), **Notstrom Intro** (the film after Start), menu entry **Start** (not "Classic"). Attack and Defend is hidden and only reachable with `?menu=all`.
+- Card animations and menu rows are DOM (they are UI), not Pixi.
+- All scenes go into **one** PixiJS application (the board, the glossary pictures, the hangar, the title screen, the Notstrom Intro); issue #462 (`needs-triage`).
+- World, tone and style: `docs/design/world-and-style.md` (read it before making any picture, sound or text).
 - Hero pictures live in `apps/web/public/assets/heroes` (the old head PNGs are deleted).
-- Scenes (backgrounds, sprites, animation, transitions) are rendered by PixiJS; UI (buttons, text, HUD, cards, menus, glossary) stays HTML and CSS: ADR 0026. The migration is not started; the open choices are in the pull request that introduced the ADR and in the chat summary.
+- Scenes (backgrounds, sprites, animation, transitions) are rendered by PixiJS; UI (buttons, text, HUD, cards, menus, glossary) stays HTML and CSS: ADR 0026. The migration is not started; the plan and the open choices are in issue #462.
 - Hero Select: NEXT is greyed out until a Hero is chosen and starts the match (transition later); no Hero info box for now; clips are idle, select, deselect.
 - Music: the menu theme and the Notstrom Intro cue are made with ElevenLabs and archived with prompts and plans in `audio-source/music/`; the Hero Select loop is unchanged. Loops are baked with a cross-fade and scheduled on the audio clock.
 
