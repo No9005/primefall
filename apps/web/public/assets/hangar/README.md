@@ -6,7 +6,8 @@ a frame, shown at 482, 345 and 345 design pixels).
 
 | File | What |
 |---|---|
-| `hangar.png` | the floor, the walls, the crates and the open bay door (1280 x 732; the lower part continues below the frame) |
+| `hangar.png` | the floor, the walls, the crates and the open bay door (1280 x 732; the upper 104 design px lie above the frame, the lower edge is the frame's) |
+| `hangar-wide.png` | the same picture continued on all four sides (2080 x 1052: 400 px to each side, 120 above, 200 below) so that a window of another shape (4:3 to about 3:1) has no bars; the continuation fades into the dark of the page. Made by `docs/design/hero-select/tools/make_hangar_wide.py` (the screen's shade layers are taken into account); the screen uses this file instead of `hangar.png` |
 | `lights-a.png` … `lights-d.png`, `lights-flicker.png` | the lamps and beacons that blink, added with `screen` |
 | `fire.png`, `spark.png`, `guide.png`, `flap.png` | a burning crystal past the door, the strip of a spark, the strip of the amber guide lights, the wall part that flaps (kept for the throw of Max) |
 | `shade-back.png`, `shade-front.png`, `glow.png` | the dark shade behind and in front of the Heroes (it flickers), and the glow of the lamps |

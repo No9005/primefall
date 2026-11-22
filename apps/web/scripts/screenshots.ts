@@ -93,8 +93,8 @@ export const SCREEN_SCENARIOS: Record<string, { description: string; shots: read
     shots: ["01-title-pulled-away.png", "02-hyperspace.png", "03-notstrom-far.png", "04-visor.png", "05-hull.png", "06-airlock.png", "07-hero-select.png"],
   },
   "hero-select": {
-    description: "The Hero Select in the hangar: nothing selected, each Hero selected in turn (Max, Tilly, Kit), the selection taken back",
-    shots: ["01-idle.png", "02-max-selected.png", "03-tilly-selected.png", "04-kit-selected.png", "05-deselected.png"],
+    description: "The Hero Select in the hangar: nothing selected, each Hero selected in turn (Max, Tilly, Kit), the selection taken back, a window of 4:3 and one of 21:9",
+    shots: ["01-idle.png", "02-max-selected.png", "03-tilly-selected.png", "04-kit-selected.png", "05-deselected.png", "06-window-4-3.png", "07-window-21-9.png"],
   },
   glossary: {
     description: "The Glossary from the start screen: the Heroes group (two frames), the Numbers, Board and HUD groups, scrolled",
@@ -333,6 +333,13 @@ async function playHeroSelect(browser: Browser): Promise<void> {
   await page.getByTestId("hero-assassin").click();
   await page.waitForTimeout(1500); // the selection is taken back
   await shoot("05-deselected.png");
+  // Windows of other shapes: the hangar goes on beyond its frame, with no bars.
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.waitForTimeout(300);
+  await shoot("06-window-4-3.png");
+  await page.setViewportSize({ width: 2560, height: 1080 });
+  await page.waitForTimeout(300);
+  await shoot("07-window-21-9.png");
   if (errors.length > 0) throw new Error(`hero-select: ${errors.join("; ")}`);
   checkWritten(directory, SCREEN_SCENARIOS["hero-select"]!.shots);
 }

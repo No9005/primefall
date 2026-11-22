@@ -145,7 +145,7 @@ export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenP
     <section className="hero-select hangar-select" aria-label="Hero Select" data-testid="hero-select">
       <div className="hg-stage" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
         <div className="hg-shift">
-          <img className="hg-layer hg-floor" src={`${ART}hangar.png`} alt="The hangar of the Notstrom" />
+          <img className="hg-layer hg-floor" src={`${ART}hangar-wide.png`} alt="The hangar of the Notstrom" />
           <div className="hg-door" aria-hidden="true">
             <img className="hg-fire" src={`${ART}fire.png`} alt="" />
           </div>
