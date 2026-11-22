@@ -50,7 +50,7 @@ test("taking back a Pitch the Queue needs flags the action and disables Commit u
   });
   const hand = await startPlanning(page);
   const cards = hand.getByRole("button");
-  await expect(cards.first().locator(".card-name")).toHaveText("Hard Hat");
+  await expect(cards.first()).toHaveAccessibleName("Hard Hat");
 
   const pitchedPosition = (await cards.count()) - 1;
   await pitch(page, pitchedPosition);

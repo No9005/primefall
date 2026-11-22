@@ -38,8 +38,7 @@
 .hg-hit { position: absolute; padding: 0; border: 0; background: none; cursor: pointer; }
 .hg-hit:focus-visible { outline: 2px solid #fff; }
 
-/* The mode of the screen (Classic, Attack, Defend) stays as a small chip at the top right; BACK and NEXT are the pictures of the menu style: light text, a red pill when pointed at, NEXT red as soon as a Hero is chosen. */
-.hg-chip { z-index: 5; }
+/* BACK and NEXT are the pictures of the menu style: light text, a red pill when pointed at, NEXT red as soon as a Hero is chosen. */
 .hg-bar { position: absolute; left: 0; top: 0; width: 960px; height: 444px; pointer-events: none; }
 .hg-nav { position: absolute; bottom: 14px; width: 150px; height: 45px; padding: 0; border: 0; background-color: transparent; background-size: 100% 100%; background-repeat: no-repeat; image-rendering: pixelated; cursor: pointer; pointer-events: auto; }
 .hg-back { left: 20px; background-image: url("/assets/hangar/back.png"); }

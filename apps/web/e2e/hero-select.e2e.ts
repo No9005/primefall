@@ -51,11 +51,6 @@ test("Back leads to the start screen", async ({ page }) => {
   await expect(page.getByTestId("start-screen")).toBeVisible();
 });
 
-test("the mode chip names the mode", async ({ page }) => {
-  await openHeroSelect(page);
-  await expect(page.getByTestId("mode-chip")).toHaveText("CLASSIC");
-});
-
 test("with reduced motion the Hero Select works without animation errors", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
