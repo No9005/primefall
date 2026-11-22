@@ -54,8 +54,19 @@ test("a drop on a highlighted tile queues Move 2 there; a drop on empty board pa
   await expect(removeButtons(page)).toHaveCount(0);
   await page.mouse.click(board.x + 12, board.y + 60); // the card goes back
 
-  // The tiles are drawn on a canvas; with the fixed viewport and start (the Squad framed on the 45 by 25 map), a lit tile of Move 2 is at this point, left of the faces.
-  await pull(page, hand, { x: board.x + 125, y: board.y + 138 });
+  // The tiles are drawn on a canvas and which ones are lit is the game's call (the Move of this card reaches 3 tiles), so a few
+  // points around the Hero (the upper left of the view, found with a grid over the whole board) are tried until a drop queues the Move. A drop on a tile that is not lit parks the card; a tap outside puts it back.
+  const points: [number, number][] = [
+    [0.2, 0.25],
+    [0.3, 0.25],
+    [0.2, 0.35],
+    [0.3, 0.15],
+  ];
+  for (const [x, y] of points) {
+    await pull(page, hand, { x: board.x + board.width * x, y: board.y + board.height * y });
+    if ((await removeButtons(page).count()) === 1) break;
+    await page.mouse.click(board.x + 12, board.y + 60); // the card goes back
+  }
   await expect(removeButtons(page)).toHaveCount(1);
   await expect(page.getByRole("region", { name: "Queue" })).toContainText(/Move/);
   await expect(faces(page)).toHaveCount(0);
