@@ -6,13 +6,29 @@ airlock, and a flash fills the picture and fades out over the Hero Select. A tap
 less motion, and an automated browser, go straight to the Hero Select (`?notstrom-intro=on` plays it anyway).
 
 The first 1.17 s are not in the sheets: the real title screen is pulled towards the planet and a tunnel of light streaks shows behind
-it, drawn live by CSS (`title-screen.css`, class `flying`). The sheets start where the light ring at the end of the hyperspace
+it, drawn live by the title scene. The sheets start where the light ring at the end of the hyperspace
 begins; the live part hands over to them by calling `onPlay` (`WHIP_MS` in `notstrom-intro.ts`).
 
 The Notstrom Intro is pixel art: 95 pictures of 640 x 296 pixels at 12 a second, a palette for every scene (112, 56 and 56 colours,
 no dither: a dither pattern made the dark, smooth parts grainy; the colours of the first version were also too few and lost the
-yellow and red). The app plays them from two sprite sheets (`apps/web/public/assets/notstrom-intro/notstrom-*.png`,
-6 pictures per row) with `NotstromIntro.tsx` and `notstrom-intro.ts`.
+yellow and red). The sheets (`apps/web/public/assets/notstrom-intro/notstrom-*.png`, 6 pictures per row) are the source; the app plays a
+video made from them (below) as the scene `notstrom-intro` on the stage (`notstrom-intro-scene.ts`, `NotstromIntro.tsx`).
+
+## The video
+
+`notstrom-intro.webm` (VP9) and `notstrom-intro.mp4` (H.264) in `apps/web/public/assets/notstrom-intro/`: the 95 pictures at 12 a second
+(7.92 s), each scaled by 2 with nearest neighbour to 1280 x 592 before encoding, without sound (the sound is timed by the audio clock). The
+pictures are 640 x 296, a ratio of 2.16:1 (not 2.39:1); the scene shows them whole, as large as fits, never cropped.
+
+```
+node docs/design/notstrom-intro/tools/encode_video.mjs           # needs ffmpeg and ffprobe on the PATH
+node docs/design/notstrom-intro/tools/encode_video.mjs --check   # decodes both files and compares every picture with the sheets
+```
+
+Settings (deterministic): pictures cut with `crop`, scaled with `flags=neighbor`; BT.709 limited range, `yuv420p`; VP9 `-crf 10 -b:v 0
+-deadline best -cpu-used 0 -row-mt 0 -g 12`; H.264 `-preset veryslow -crf 8 -profile:v high -g 12 -movflags +faststart`. The check scales
+each decoded picture down by 2 (area average) and requires a mean absolute difference of at most 6 of 255 per colour channel (the codec
+spreads colours of neighbouring pixels in 4:2:0), plus 95 pictures, 12 fps and the size.
 
 ## Making the sheets again
 
