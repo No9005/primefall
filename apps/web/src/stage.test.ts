@@ -166,6 +166,5 @@ describe("one PixiJS Application", () => {
     expect((await lint("apps/web/src/other.ts")).some((m) => m.includes("PixiJS Application"))).toBe(true);
     expect(await lint("apps/web/src/stage.ts")).toEqual([]);
     expect(await lint("apps/web/src/Board.tsx")).toEqual([]);
-    expect(await lint("apps/web/src/glossary-pictures.ts")).toEqual([]);
   });
 });

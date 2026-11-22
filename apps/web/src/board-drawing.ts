@@ -6,8 +6,7 @@ import { dashRuns } from "./shot-lines";
 import { TERRAIN_STYLE } from "./terrain-style";
 import { AREA_COLOR, AREA_PIPS, type ZoneLook } from "./vision-effects";
 
-// The drawing of the board's own marks that the Board and the glossary screen both use, so a symbol in the glossary is the
-// very shape the board draws. The Board decides when and where; these functions only make the Pixi shapes.
+// The drawing of the board's own marks. The Board decides when and where; these functions only make the Pixi shapes.
 
 /** The areas of an enemy scan are outlined in this amber (docs/design/role-visuals/380/scout-drone-b.png). */
 export const SCANNED_COLOR = 0xffb347;

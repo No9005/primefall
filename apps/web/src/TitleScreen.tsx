@@ -15,7 +15,6 @@ interface TitleScreenProps {
   onPlay: () => void;
   onPlayAttackAndDefend: () => void;
   onResume: () => void;
-  onGlossary: () => void;
 }
 
 /**
@@ -23,7 +22,7 @@ interface TitleScreenProps {
  * 640 x 296 pixels and scaled to the screen; the highlight (a red pill and a light streak) stays on Start until the pointer or the
  * focus moves to another row.
  */
-export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onPlayAttackAndDefend, onResume, onGlossary }: TitleScreenProps) {
+export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onPlayAttackAndDefend, onResume }: TitleScreenProps) {
   const ids = menuIds(canResume, new URLSearchParams(window.location.search).get("menu") === "all");
   const [row, setRow] = useState(0);
   const [flying, setFlying] = useState(false);
@@ -47,7 +46,6 @@ export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onPlayAtta
   const entries: Record<MenuId, { label: string; testId: string; run: () => void }> = {
     classic: { label: "Start", testId: "play-classic", run: notstromIntro ? fly : onPlay },
     "attack-and-defend": { label: "Attack and Defend", testId: "play-attack-defend", run: onPlayAttackAndDefend },
-    glossary: { label: "Glossary", testId: "glossary-button", run: onGlossary },
     resume: { label: "Resume match", testId: "resume", run: onResume },
   };
   const pick = (index: number) => {

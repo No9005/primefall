@@ -86,9 +86,9 @@ export default tseslint.config(
   },
   {
     // One PixiJS Application for the whole app (ADR 0026, rule 1): only the stage creates it.
-    // Named exceptions until the board and the glossary pictures move onto the stage (issue #462 and its migration tickets).
+    // Named exception until the board moves onto the stage (issue #462 and its migration tickets).
     files: ["apps/web/**/*.{ts,tsx}"],
-    ignores: ["**/*.test.{ts,tsx}", "apps/web/src/stage.ts", "apps/web/src/Board.tsx", "apps/web/src/glossary-pictures.ts"],
+    ignores: ["**/*.test.{ts,tsx}", "apps/web/src/stage.ts", "apps/web/src/Board.tsx"],
     rules: {
       "no-restricted-syntax": ["error", { selector: "NewExpression[callee.name='Application']", message: "Do not create a PixiJS Application; request a scene from the stage (ADR 0026, rule 1)." }],
     },
