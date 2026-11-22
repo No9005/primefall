@@ -23,6 +23,8 @@ The source of a picture (script, rig, page) is committed under `docs/design/<are
 
 ## 3. Rules of the look
 
+- **Animation quality:** `docs/design/animation-criteria.md` is the checklist (density, anticipation, squash and stretch, follow-through, split body, asynchronous detail, hit stop, no overlap of neighbouring Heroes). Name which criteria a clip meets.
+
 - Pixel art, nearest-neighbour scaling, whole-number scale only.
 - A Hero frame is 136 x 104 px with the feet at (58, 86), 20 fps, facing right (mirror for the other side). Scenes carry their own size and rate (the Notstrom Intro: 640 x 296, 12 fps). Hero sprites carry no tile and no Squad ring.
 - A scene film gets one palette per scene and no dithering.
