@@ -302,9 +302,15 @@ async function playNotstromIntro(browser: Browser): Promise<void> {
     await shoot(name);
   }
   await page.getByTestId("hero-select").waitFor({ timeout: 6000 }).catch(() => undefined);
+  await waitForScene(page).catch(() => undefined);
   await shoot("07-hero-select.png");
   if (errors.length > 0) throw new Error(`notstrom-intro: ${errors.join("; ")}`);
   checkWritten(directory, SCREEN_SCENARIOS["notstrom-intro"]!.shots);
+}
+
+/** Waits until the stage has drawn the first frame of the scene on show (ADR 0026, rule 10); nothing reads pixels. */
+async function waitForScene(page: Page): Promise<void> {
+  await page.locator("[data-scene-ready=true]").waitFor({ state: "attached", timeout: 15_000 });
 }
 
 /** Looks at the Hero Select at the moments the design sheets show: the Bruiser mid-shots, the drone out, the Assassin Hidden. */
@@ -319,6 +325,7 @@ async function playHeroSelect(browser: Browser): Promise<void> {
   await page.goto(URL);
   await page.getByTestId("play-classic").click();
   await page.getByTestId("hero-select").waitFor();
+  await waitForScene(page);
   await page.waitForTimeout(1200);
   await shoot("01-idle.png");
   await page.getByTestId("hero-bruiser").click();
@@ -335,9 +342,11 @@ async function playHeroSelect(browser: Browser): Promise<void> {
   await shoot("05-deselected.png");
   // Windows of other shapes: the hangar goes on beyond its frame, with no bars.
   await page.setViewportSize({ width: 1024, height: 768 });
+  await waitForScene(page);
   await page.waitForTimeout(300);
   await shoot("06-window-4-3.png");
   await page.setViewportSize({ width: 2560, height: 1080 });
+  await waitForScene(page);
   await page.waitForTimeout(300);
   await shoot("07-window-21-9.png");
   if (errors.length > 0) throw new Error(`hero-select: ${errors.join("; ")}`);

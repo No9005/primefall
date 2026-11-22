@@ -251,3 +251,94 @@ export function tapOrder(tapped: HangarHero, selected: readonly HangarHero[]): {
   if (selected.includes(tapped)) return { release: [], tap: tapped };
   return { release: selected.filter((hero) => hero !== tapped), tap: tapped };
 }
+
+/**
+ * A clock the stage ticker moves (ADR 0026, rule 4): timers run when `advance` reaches them, in order. The three Heroes share one, so a test
+ * steps the whole machine without real time, and nothing runs while the stage's ticker is stopped.
+ */
+export class SteppedClock implements PlayerEnv {
+  private time = 0;
+  private nextHandle = 0;
+  private readonly timers = new Map<number, { at: number; run: () => void }>();
+
+  constructor(readonly random: PlayerEnv["random"] = realEnv.random) {}
+
+  now = (): number => this.time;
+
+  after = (ms: number, run: () => void): number => {
+    this.timers.set(this.nextHandle, { at: this.time + ms, run });
+    return this.nextHandle++;
+  };
+
+  cancel = (handle: unknown): void => void this.timers.delete(handle as number);
+
+  advance(ms: number): void {
+    const target = this.time + ms;
+    for (;;) {
+      const due = [...this.timers.entries()].filter(([, timer]) => timer.at <= target).sort((a, b) => a[1].at - b[1].at)[0];
+      if (!due) break;
+      this.timers.delete(due[0]);
+      this.time = Math.max(this.time, due[1].at);
+      due[1].run();
+    }
+    this.time = target;
+  }
+}
+
+/** When each Hero begins its idle (ms), so that nothing moves in step. */
+export const BEGIN_DELAYS_MS: Record<HangarHero, number> = { max: 0, tilly: 1400, kit: 700 };
+
+/**
+ * The three Heroes of the hangar and the rule that exactly one of them is chosen. The screen owns it; the scene moves its clock (on the stage's
+ * ticker) and only shows the state of the players.
+ */
+export class HangarHeroes {
+  readonly players: Record<HangarHero, HeroPlayer>;
+  private readonly clock: SteppedClock;
+
+  /** `still`: no motion (reduced motion), a Hero is in the idle pose or the ready pose and a tap changes it at once. */
+  constructor(
+    onChange: () => void,
+    readonly still: boolean,
+    random?: PlayerEnv["random"],
+  ) {
+    this.clock = new SteppedClock(random);
+    this.players = Object.fromEntries(HANGAR_HEROES.map((hero) => [hero, new HeroPlayer(hero, this.clock, onChange)])) as Record<HangarHero, HeroPlayer>;
+  }
+
+  /** Every Hero idles, or `initial` stands in the ready pose. */
+  start(initial?: HeroClass): void {
+    for (const hero of HANGAR_HEROES) {
+      const chosen = initial !== undefined && HERO_OF[hero] === initial;
+      if (this.still) this.players[hero].setStill(chosen);
+      else if (chosen) this.players[hero].beginSelected();
+      else this.players[hero].begin(BEGIN_DELAYS_MS[hero]);
+    }
+  }
+
+  get selected(): HangarHero | undefined {
+    return HANGAR_HEROES.find((hero) => this.players[hero].selected);
+  }
+
+  /** A tap on a Hero; returns it when it is chosen now (not when the choice was taken back). */
+  tap(hero: HangarHero): HangarHero | undefined {
+    const { release, tap } = tapOrder(hero, HANGAR_HEROES.filter((other) => this.players[other].selected));
+    for (const other of release) this.touch(other, false);
+    const wasSelected = this.players[tap].selected;
+    this.touch(tap, !wasSelected);
+    return wasSelected ? undefined : tap;
+  }
+
+  advance(ms: number): void {
+    this.clock.advance(ms);
+  }
+
+  dispose(): void {
+    for (const hero of HANGAR_HEROES) this.players[hero].dispose();
+  }
+
+  private touch(hero: HangarHero, selected: boolean): void {
+    if (this.still) this.players[hero].setStill(selected);
+    else this.players[hero].tap();
+  }
+}
