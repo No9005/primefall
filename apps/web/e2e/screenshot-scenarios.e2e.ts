@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
-import { OUTPUT_DIR } from "../scripts/screenshots";
+import { OUTPUT_DIR } from "../scripts/screenshot-output";
 import { SCENARIO_SCREENSHOT_NAMES } from "../scripts/scenarios";
 
 // The screenshot tool starts its own dev server and browser. It exits non-zero on a page error, a control it cannot
