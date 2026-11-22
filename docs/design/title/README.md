@@ -27,3 +27,13 @@ It needs Pillow, NumPy and SciPy. The random parts have fixed seeds: a run witho
 
 The layout of the picture on the screen (positions, the times of the loops) is in `apps/web/src/title-menu.ts` and
 `apps/web/src/title-screen.css`, not in the pictures.
+
+## The app icons
+
+`tools/make_icons.py` draws the icons of `apps/web/public/icons/` (`apple-touch-icon.png`, `icon-192.png`, `icon-512.png` of the manifest, `favicon-32.png`):
+the crystal of the logo (`tools/crystal.py`, also used by `make_title.py`) on the dark of space with a stepped blue glow behind it. The crystal stays within the middle
+64 % of the icon, so that a round mask (Android) does not cut it.
+
+```
+python3 docs/design/title/tools/make_icons.py
+```

@@ -1,5 +1,5 @@
 import base64,json,os,re
-R="/home/user/primefall/apps/web/public/assets/pixel-heroes/controller/"
+R="/home/user/primefall/apps/web/public/assets/heroes/controller/"
 os.chdir(os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else ".")
 b64=lambda p:base64.b64encode(open(p,"rb").read()).decode()
 # ---- sprite sheets ----

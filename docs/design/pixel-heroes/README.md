@@ -1,5 +1,7 @@
 # Pixel-art Heroes: sprite sheets for PixiJS
 
+> The sheets live in `apps/web/public/assets/heroes/` (the folder was called `pixel-heroes`; the old picture models of the first style are gone).
+
 A proposal for the final look of the three Heroes, worked out with the product owner in a chat session: the designs, their animation clips and the poses of the Hero Select screen, rendered into sprite sheets that PixiJS v8 loads directly.
 
 **Status: assets and reference only. Nothing in the app uses them yet.** The game still draws the Heroes with the shape rig of `docs/design/animation/`. Wiring the sheets into `apps/web` needs a ticket; the open points at the end of this file belong in it.
@@ -8,7 +10,7 @@ A proposal for the final look of the three Heroes, worked out with the product o
 
 | Path | Content |
 |---|---|
-| `apps/web/public/assets/pixel-heroes/<class>/` | The sheets, one per clip: `<clip>.png` and `<clip>.json` (PixiJS sprite sheet format), plus `clips.json` (the list of clips with their timing), `figure.png` (the standing figure of the design sheet) `portrait.png` (36 x 36; also the close-up of the BIO sheet of the Hero Select, shown at 6 x) |
+| `apps/web/public/assets/heroes/<class>/` | The sheets, one per clip: `<clip>.png` and `<clip>.json` (PixiJS sprite sheet format), plus `clips.json` (the list of clips with their timing), `figure.png` (the standing figure of the design sheet) `portrait.png` (36 x 36; also the close-up of the BIO sheet of the Hero Select, shown at 6 x) |
 | `overview/<class>.png` | One still per clip, with tile and Squad ring, to look at |
 | `reference/*.html` | The live pages. Open them in a browser to see the motion: the designs to choose from (`concepts-*`), the clips (`animation-*`) and the Hero Select screen (`hero-select`). Their texts are German, as written for the product owner |
 | `tools/` | The source of the sheets: the rigs (`rigs/<class>.js`) and the export (`export.mjs`) |
@@ -40,7 +42,7 @@ Loading a clip in PixiJS v8:
 ```ts
 import { AnimatedSprite, Assets, Container } from "pixi.js";
 
-const sheet = await Assets.load("assets/pixel-heroes/bruiser/slam.json");
+const sheet = await Assets.load("assets/heroes/bruiser/slam.json");
 const hero = new Container();
 for (const layer of ["fx_back", "figure", "fx_front"]) {
   const frames = sheet.animations[`bruiser.slam.${layer}`];
