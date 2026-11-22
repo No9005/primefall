@@ -13,7 +13,7 @@ The look of the Hero Select screen and of the poses its three Heroes strike. It 
 - **Kit's ring** lies on the floor around his feet and is not drawn above the lower edge of the crate (it would lie on the crate there). **Kit's name plate** has no box, only the name. **The crystals** that fall past the bay door fly head first.
 - **Reduced motion:** nothing plays: the idle pose, or the ready pose when chosen; the lights and the dust stand still.
 - **Left out for now (not removed from the code):** the role text of each Hero, the CARDS and BIO sheets, the title "CHOOSE YOUR HERO" and the START button of the earlier screen. `hero-select.ts` still has the texts and the card list; the Side Select still uses the earlier stage (`hero-select.css`). NEXT does what START did: it starts the match with the chosen Hero (the walk towards us and the fog front of the board "NEXT sends the Heroes towards us" are the next step).
-- **Pictures:** `apps/web/public/assets/hangar/` (the hangar in layers, the strips of the clips in `clips/`, the plates, the buttons); see the README there.
+- **Pictures:** `apps/web/public/assets/hangar/` (the hangar in layers, the atlases of the clips in `atlas/`; their strips and the plain hangar picture are in `archive/hangar/`, the plates, the buttons); see the README there.
 
 ## Update: Hero Names, bigger Heroes, the BIO sheet (design canvas page "Hero Select: names and bios", variant A)
 

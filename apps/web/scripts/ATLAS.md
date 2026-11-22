@@ -14,7 +14,7 @@ Hangar atlases (`public/assets/hangar/atlas/<hero>.png|json`): one per Hero (`ma
 ## The packer
 
 ```
-npm run atlas -w apps/web            # write the atlases from the strips
+npm run atlas -w apps/web            # write the atlases from the strips (`archive/hangar/strips/`)
 npm run atlas -w apps/web -- --check # fail if the committed atlases differ from what the strips produce
 ```
 

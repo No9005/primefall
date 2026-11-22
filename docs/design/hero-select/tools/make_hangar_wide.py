@@ -12,7 +12,7 @@ top, 200 below and 400 at each side, enough for windows from 4:3 to about 3:1 (t
 import numpy as np
 from PIL import Image
 
-SOURCE = "apps/web/public/assets/hangar/hangar.png"
+SOURCE = "archive/hangar/pictures/hangar.png"
 TARGET = "apps/web/public/assets/hangar/hangar-wide.png"
 TOP, BOTTOM, SIDE = 120, 200, 400
 BACKGROUND = np.array([8, 10, 18], dtype=np.float32)  # the colour of the page behind the hangar

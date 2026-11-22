@@ -13,7 +13,7 @@ export const HANGAR_HERO_OF: Record<HeroClass, HangarHero> = { [HeroClass.Bruise
 
 export type ClipName = "idle" | "tolift" | "act" | "toidle" | "selecti" | "select" | "hold" | "desel";
 
-/** A clip: a strip of `frames` frames played in `seconds`; `file` is in `assets/hangar/clips/`. */
+/** A clip: a strip of `frames` frames played in `seconds`; `file` is in `archive/hangar/strips/` (the source of the atlases, not shipped). */
 export interface Clip {
   file: string;
   frames: number;

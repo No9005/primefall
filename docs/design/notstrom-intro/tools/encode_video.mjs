@@ -11,6 +11,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 const ASSETS = path.resolve("apps/web/public/assets/notstrom-intro");
+/** The sprite sheets the video is made from: sources, so they are in the archive and not in the build. */
+const SHEET_FOLDER = path.resolve("archive/notstrom-intro/sheets");
 const SHEETS = [
   { file: "notstrom-1.png", frames: 60 },
   { file: "notstrom-2.png", frames: 35 },
@@ -46,7 +48,7 @@ function locate(index) {
 
 const cutArgs = (index, filter, output) => {
   const { file, x, y } = locate(index);
-  return ["-v", "error", "-y", "-i", path.join(ASSETS, file), "-vf", `crop=${WIDTH}:${HEIGHT}:${x}:${y}${filter}`, "-frames:v", "1", ...output];
+  return ["-v", "error", "-y", "-i", path.join(SHEET_FOLDER, file), "-vf", `crop=${WIDTH}:${HEIGHT}:${x}:${y}${filter}`, "-frames:v", "1", ...output];
 };
 
 function encode() {

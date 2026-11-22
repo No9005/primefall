@@ -11,7 +11,7 @@ begins; the live part hands over to them by calling `onPlay` (`WHIP_MS` in `nots
 
 The Notstrom Intro is pixel art: 95 pictures of 640 x 296 pixels at 12 a second, a palette for every scene (112, 56 and 56 colours,
 no dither: a dither pattern made the dark, smooth parts grainy; the colours of the first version were also too few and lost the
-yellow and red). The sheets (`apps/web/public/assets/notstrom-intro/notstrom-*.png`, 6 pictures per row) are the source; the app plays a
+yellow and red). The sheets (`archive/notstrom-intro/sheets/notstrom-*.png`, 6 pictures per row) are the source; the app plays a
 video made from them (below) as the scene `notstrom-intro` on the stage (`notstrom-intro-scene.ts`, `NotstromIntro.tsx`).
 
 ## The video
@@ -56,7 +56,7 @@ pictures are in `source/`, the title screen's in `apps/web/public/assets/title/`
 
 ```
 CHROMIUM_PATH=<chrome binary> node docs/design/notstrom-intro/tools/render_frames.mjs /tmp/frames
-python3 docs/design/notstrom-intro/tools/pack_sheets.py /tmp/frames apps/web/public/assets/notstrom-intro
+python3 docs/design/notstrom-intro/tools/pack_sheets.py /tmp/frames archive/notstrom-intro/sheets
 ```
 
 `render_frames.mjs` pauses every animation at the time of each picture, so the same pictures come out every time.

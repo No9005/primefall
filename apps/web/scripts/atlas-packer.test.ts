@@ -4,9 +4,9 @@ import path from "node:path";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { MAX_ATLAS_SIDE, parseAtlas } from "../src/atlas";
 import { BRIDGES, CLIPS, HANGAR_HEROES } from "../src/hangar-select";
-import { ATLAS_FOLDER, atlasPaths, checkAtlases, decodePng, encodePng, HANGAR_FOLDER, type Image, jobsOf, packAtlas, packHero, untrimFrame } from "./atlas-packer";
+import { ATLAS_FOLDER, atlasPaths, checkAtlases, decodePng, encodePng, HANGAR_FOLDER, type Image, jobsOf, packAtlas, packHero, STRIP_FOLDER, untrimFrame } from "./atlas-packer";
 
-const strip = (file: string) => decodePng(readFileSync(path.join(HANGAR_FOLDER, "clips", file)));
+const strip = (file: string) => decodePng(readFileSync(path.join(STRIP_FOLDER, file)));
 
 const pixel = (r: number, g: number, b: number, a: number) => [r, g, b, a];
 function stripOf(frames: number[][][]): Image {
