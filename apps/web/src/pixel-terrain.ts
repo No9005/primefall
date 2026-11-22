@@ -249,6 +249,14 @@ export interface PixelAtlas {
 
 let atlasReady: Promise<PixelAtlas> | undefined;
 
+/** The sheet the stage destroys when the board is left. */
+export const PIXEL_ATLAS_URL = `${ASSET_DIR}notstrom.json`;
+
+/** Forgets the loaded atlas (its textures were destroyed), so the next `loadPixelAtlas` loads it again. */
+export function resetPixelAtlas(): void {
+  atlasReady = undefined;
+}
+
 /** Loads the atlas, its sheet data and tileset.json once. */
 export function loadPixelAtlas(): Promise<PixelAtlas> {
   atlasReady ??= (async () => {

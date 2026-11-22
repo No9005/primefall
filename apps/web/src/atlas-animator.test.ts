@@ -191,7 +191,7 @@ describe("atlas animator on the stage", () => {
       ready: () => animator !== undefined,
       animating: () => animator?.animating ?? false,
     };
-    const host: StageHost = { root: { setAttribute: () => {} }, show: () => {}, hide: () => {}, applyFit: () => {}, render: () => {}, onContextLost: () => {}, onContextRestored: () => {}, destroy: () => {} };
+    const host: StageHost = { root: { setAttribute: () => {} }, show: () => {}, hide: () => {}, applyFit: () => {}, applyFill: () => {}, render: () => {}, onContextLost: () => {}, onContextRestored: () => {}, destroy: () => {} };
     const environment: StageEnvironment = {
       window: { width: 844, height: 390, devicePixelRatio: 1 },
       isHidden: () => false,

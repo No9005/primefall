@@ -214,12 +214,13 @@ export class FogClouds {
   private readonly maskSource: BufferImageSource;
   private readonly cloudSource: BufferImageSource;
   private readonly drift = new Float32Array(4);
-  private readonly start = performance.now();
-  private frame = 0;
+  private stopDrift: (() => void) | undefined;
 
+  /** `clock` is the scene's: the clouds drift with its time (the stage ticker), and stand still with reduced motion. */
   constructor(
     private readonly grid: Pick<Grid, "width" | "height">,
     private readonly reducedMotion: boolean,
+    private readonly clock: { now(): number; subscribe(step: (now: number) => void): () => void },
   ) {
     const { width, height } = grid;
     // One texel per tile, linearly filtered: texel centres sit on tile centres, so the mask is feathered between tiles. A margin of
@@ -255,7 +256,8 @@ export class FogClouds {
     });
     this.shader = shader;
     this.container.addChild(new Mesh({ geometry: this.geometry, shader }));
-    this.tick();
+    this.tick(clock.now());
+    if (!reducedMotion) this.stopDrift = clock.subscribe(this.tick);
   }
 
   private readonly shader: Shader;
@@ -278,8 +280,7 @@ export class FogClouds {
     this.maskSource.update();
   }
 
-  private tick = (): void => {
-    const now = performance.now() - this.start;
+  private tick = (now: number): void => {
     const a = driftUv("a", now, this.reducedMotion);
     const b = driftUv("b", now, this.reducedMotion);
     this.drift[0] = a.u;
@@ -287,11 +288,10 @@ export class FogClouds {
     this.drift[2] = b.u;
     this.drift[3] = b.v;
     this.shader.resources.fogUniforms.update();
-    if (!this.reducedMotion) this.frame = requestAnimationFrame(this.tick);
   };
 
   destroy(): void {
-    cancelAnimationFrame(this.frame);
+    this.stopDrift?.();
     this.container.destroy({ children: true });
     this.maskSource.destroy();
     this.cloudSource.destroy();

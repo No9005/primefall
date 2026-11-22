@@ -148,11 +148,11 @@ async function playAttackDefend(browser: Browser): Promise<void> {
   await shoot(page, "01-start.png");
   await page.getByTestId("play-attack-defend").click();
   // The preview rests for 2 s at the start of its camera move; the frames are taken in that rest, once the board is drawn.
-  await page.locator(".sd-stage canvas").waitFor();
+  await page.locator('[data-scene="board"][data-scene-ready="true"]').waitFor({ state: "attached" });
   await page.waitForTimeout(700);
   await shoot(page, "02-side-attack.png");
   await page.getByTestId("side-defend").click();
-  await page.locator(".sd-stage canvas").waitFor();
+  await page.locator('[data-scene="board"][data-scene-ready="true"]').waitFor({ state: "attached" });
   await page.waitForTimeout(700);
   await shoot(page, "03-side-defend.png");
   await page.close();

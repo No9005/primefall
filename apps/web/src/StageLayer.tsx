@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
+import { boardScene } from "./board-scene";
 import { hangarScene } from "./hangar-scene";
 import { browserClock, browserEnvironment, createPixiHost, createStage, pixiAssets, type Scene, type Stage, type StageHost } from "./stage";
 
 /** Scenes a screen may request by name. */
-export const STAGE_SCENES: readonly Scene[] = [hangarScene];
+export const STAGE_SCENES: readonly Scene[] = [hangarScene, boardScene];
 
 // One stage for the whole app: remounting a screen reuses it instead of making a second Application.
 let shared: Promise<{ stage: Stage; host: StageHost }> | undefined;
