@@ -1,24 +1,19 @@
 import {
   ActionKind,
-  CardType,
   type CardDefinition,
   type CardEffect,
   type CardIndex,
   CardTarget,
   CoverKind,
-  coverAgainst,
   EffectKind,
   energyPool,
-  type Grid,
   type GridPosition,
-  HALF_COVER_REDUCTION,
   HERO_DECKS,
   type HeroClass,
   isPlayableCard,
   MAX_QUEUE_LENGTH,
   type QueuedAction,
   queueEnergyCost,
-  NOTSTROM_MAP,
 } from "game-core";
 
 export interface PlanningDraft {
@@ -35,18 +30,6 @@ export interface PlanningDraft {
 export function selectHero(draft: PlanningDraft, heroId: string, playing: boolean): PlanningDraft {
   if (playing || heroId === draft.selectedId) return draft;
   return { selectedId: heroId, queue: [], pitched: [], armed: undefined };
-}
-
-/** What the Cover on a target's tile does against an attacker at `attacker`; `undefined` without protection. */
-export function coverProtectionLabel(attacker: GridPosition, target: GridPosition, grid: Grid = NOTSTROM_MAP): string | undefined {
-  switch (coverAgainst(grid, attacker, target)) {
-    case CoverKind.Full:
-      return "Full Cover · cannot be attacked";
-    case CoverKind.Half:
-      return `Half Cover · damage -${HALF_COVER_REDUCTION}`;
-    default:
-      return undefined;
-  }
 }
 
 /** The card text of each kind of effect. */
@@ -83,15 +66,6 @@ export function describeEffects(effects: readonly CardEffect[] | undefined): str
   if (!effects || effects.length === 0) return undefined;
   const text = effects.map(describeEffect).join(", ");
   return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-/** What a card face shows besides its name and cost; the effect text always comes from the card data. */
-export function cardFace(card: CardDefinition): { type: string; effectText: string } {
-  const effectText = describeEffects(card.effects) ?? "";
-  return {
-    type: card.type === CardType.Attack ? "ATTACK" : "UTILITY",
-    effectText,
-  };
 }
 
 /** What a Queue row shows: the action name in bold and, below it, its target (empty for Block and Wait). */

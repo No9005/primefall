@@ -9,7 +9,6 @@ export const HANGAR_HEROES = ["max", "tilly", "kit"] as const;
 export type HangarHero = (typeof HANGAR_HEROES)[number];
 
 export const HERO_OF: Record<HangarHero, HeroClass> = { max: HeroClass.Bruiser, tilly: HeroClass.Controller, kit: HeroClass.Assassin };
-export const HANGAR_HERO_OF: Record<HeroClass, HangarHero> = { [HeroClass.Bruiser]: "max", [HeroClass.Controller]: "tilly", [HeroClass.Assassin]: "kit" };
 
 export type ClipName = "idle" | "tolift" | "act" | "toidle" | "selecti" | "select" | "hold" | "desel";
 

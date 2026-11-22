@@ -3,11 +3,6 @@
 
 export const GAME_NAME = "Primefall";
 
-/** Short description of the rules package, shown by the web app to prove the wiring works. */
-export function describeRules(): string {
-  return `${GAME_NAME} rules package, shared entry point`;
-}
-
 export * from "./cards";
 export * from "./host";
 export * from "./plan";

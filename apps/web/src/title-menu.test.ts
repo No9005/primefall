@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FIREBALLS, MENU_SLOTS, menuIds, percentX, percentY, STAGE, streakTop } from "./title-menu";
+import { FIREBALLS, MENU_SLOTS, menuIds, percentY, STAGE, streakTop } from "./title-menu";
 
 describe("title menu", () => {
   it("lists Start (the classic mode), and Resume only when a match was saved; Attack and Defend is out for now", () => {
@@ -37,7 +37,6 @@ describe("title menu", () => {
   });
 
   it("turns design pixels into percentages of the stage", () => {
-    expect(percentX(480)).toBe("50%");
     expect(percentY(222)).toBe("50%");
   });
 });

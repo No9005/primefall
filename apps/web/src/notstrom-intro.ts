@@ -32,8 +32,6 @@ export const NOTSTROM_INTRO = {
  */
 export const NOTSTROM_INTRO_SOUND = { loopStartsAtSeconds: 8.7, loopFadeInSeconds: 1 } as const;
 
-export const NOTSTROM_INTRO_DURATION_MS = (NOTSTROM_INTRO.frames / NOTSTROM_INTRO.fps) * 1000;
-
 /**
  * Whether Classic plays the Notstrom Intro before the Hero Select. A player who asked their device for less motion does not get it, nor
  * does a browser that an automated test drives (so that the tests do not wait for it); `?notstrom-intro=on` plays it anyway.

@@ -173,11 +173,6 @@ export function resetPixelHeroes(): void {
   loading = undefined;
 }
 
-/** True once the sheets are loaded, which the Pixel-art figures need. */
-export function pixelHeroesReady(): boolean {
-  return loaded.size === Object.keys(CLASS_FOLDER).length;
-}
-
 /** Loads every sheet the game plays once (nearest-neighbour, so the pixels stay sharp). */
 export function loadPixelHeroes(): Promise<void> {
   loading ??= (async () => {

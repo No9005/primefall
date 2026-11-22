@@ -1,7 +1,6 @@
-import { CardType, type CardDefinition, HERO_DECKS, HeroClass } from "game-core";
-import { cardFace } from "./planning-selection";
+import { HeroClass } from "game-core";
 
-// What the Hero Select screen shows besides the figures: the three Heroes in their order, the info text of each, and the card list.
+// What the Hero Select screen shows besides the figures: the three Heroes in their order and their names.
 
 /** The Heroes in the order they stand on the screen, left to right. */
 export const SELECTABLE_HEROES = [HeroClass.Bruiser, HeroClass.Controller, HeroClass.Assassin] as const;
@@ -10,13 +9,6 @@ export const HERO_NAMES: Record<HeroClass, string> = {
   [HeroClass.Bruiser]: "Bruiser",
   [HeroClass.Controller]: "Controller",
   [HeroClass.Assassin]: "Assassin",
-};
-
-/** The main task of each Hero, the owner's texts (two lines at 560 px wide, Barlow 500 14 px). */
-export const HERO_TASKS: Record<HeroClass, string> = {
-  [HeroClass.Bruiser]: "Tank and enabler. +1 damage at Range 1.",
-  [HeroClass.Controller]: "Controller. Builds and blows up Cover, turns the rubble into Scrap, marks targets and sends the Site Survey drone anywhere on the map.",
-  [HeroClass.Assassin]: "Sniper and glass cannon. Shoots far, hides with Vanish and pushes enemies away. Cannot hit what stands next to it.",
 };
 
 /** Who a Hero is, besides its class: the Hero Name, the line of the Hero Select, the bio of the BIO sheet (docs/design/world). */
@@ -44,56 +36,10 @@ export const HERO_PROFILES: Record<HeroClass, HeroProfile> = {
   },
 };
 
-/** The folder of a Hero's sheets: its `portrait.png` (36 x 36 px, the close-up of the pixel concept) is shown at 6 x on the BIO sheet. */
-export const HERO_CLOSE_UP: Record<HeroClass, string> = {
-  [HeroClass.Bruiser]: "bruiser",
-  [HeroClass.Controller]: "controller",
-  [HeroClass.Assassin]: "assassin",
-};
-
 /** The three ways into the Hero Select; the chip at the top right names it. */
 export type SelectMode = "classic" | "attack" | "defend";
-
-export const MODE_LABELS: Record<SelectMode, string> = { classic: "CLASSIC", attack: "ATTACK", defend: "DEFEND" };
-
-/** One row of the card list: a card of the Deck, with the number of copies in the Deck. */
-export interface CardRow {
-  name: string;
-  copies: number;
-  type: string;
-  cost: number;
-  /** The effect text of the card data. */
-  effect: string;
-}
-
-/** The Deck of a Hero as rows, in Deck order, identical cards on one row ("x2"). The text comes from the card data. */
-export function cardRows(heroClass: HeroClass): CardRow[] {
-  const rows = new Map<CardDefinition, CardRow>();
-  for (const card of HERO_DECKS[heroClass]) {
-    const row = rows.get(card);
-    if (row) row.copies += 1;
-    else rows.set(card, { name: card.name, copies: 1, type: card.type === CardType.Attack ? "Attack" : "Utility", cost: card.energyCost, effect: cardFace(card).effectText });
-  }
-  return [...rows.values()];
-}
-
-/** "CONTROLLER: 12 CARDS": the heading of the card list. */
-export function cardListTitle(heroClass: HeroClass): string {
-  return `${HERO_NAMES[heroClass].toUpperCase()}: ${HERO_DECKS[heroClass].length} CARDS`;
-}
-
-/** The text of the name of a card in the list: the name, with "x2" for a card that is in the Deck twice. */
-export function cardRowName(row: CardRow): string {
-  return row.copies > 1 ? `${row.name} x${row.copies}` : row.name;
-}
 
 /** Where the feet of a Hero stand inside its area: the selected Bruiser steps left so its tracer stays inside the area. */
 export function feetX(heroClass: HeroClass, selected: boolean): number {
   return heroClass === HeroClass.Bruiser && selected ? 62 : 120;
 }
-
-/** The pixel density the canvas is drawn at: the device's times the scale the stage is enlarged by (at least the device's; the canvas is never drawn coarser). */
-export function canvasResolution(devicePixelRatio: number, stageScale: number): number {
-  return devicePixelRatio * Math.max(1, stageScale);
-}
-
