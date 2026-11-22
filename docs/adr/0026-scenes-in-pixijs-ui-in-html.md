@@ -18,9 +18,11 @@ The owner wants one way to render and one place to change things, and wants the 
 | Drawn by | PixiJS | HTML and CSS (React) |
 | Why | One animation format, one clock, transitions and cross-fades in one place | Semantics, accessibility, keyboard and touch targets, text, test ids |
 
+Card animations (the pull, the drop, the shuffle) and menu rows are UI, so they stay DOM.
+
 Rules:
 
-1. **One stage.** The app has one PixiJS `Application` and one canvas, below the UI layer. A scene is a container that is put on the stage and taken off it; a screen does not make an application of its own. The stage owns the ticker, the asset loader, the fit to the window and the transitions between scenes.
+1. **One stage.** The app has one PixiJS `Application` and one canvas, below the UI layer. A scene is a container that is put on the stage and taken off it; a screen does not make an application of its own. This includes the match board and the glossary pictures, which each have an application of their own today: they move onto the stage (issue #462). The stage owns the ticker, the asset loader, the fit to the window and the transitions between scenes.
 2. **UI over the scene.** Buttons and text are DOM elements above the canvas. Anything in a scene that is pressed (a Hero in the Hero Select, a tile of the board) gets an invisible DOM element as its tap area, with the accessible name, the focus, the keyboard and the test id. The picture comes from PixiJS, the input and the meaning from the DOM.
 3. **One animation format.** Clips are texture atlases (a PNG and a JSON with the frames and the animations, frames trimmed, in rows, at most 4096 pixels on a side, which every phone's GPU accepts), loaded by the stage's loader and played by one clip player. Strips played by CSS (`background-position` in steps) and sheets drawn by hand on a 2D canvas are not used for scenes any more. State machines that decide which clip plays (the Hero Select's idle, action and select of each Hero) stay pure code without rendering, as they are today.
 4. **One clock.** All motion of a scene follows the stage's ticker (its delta time), not CSS animations or independent timers, so that a cross-fade, a shake, a fog wipe and a Hero's walk run in step, and can be stepped by a test or a recording.
