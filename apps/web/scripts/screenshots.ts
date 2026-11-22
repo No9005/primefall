@@ -85,8 +85,8 @@ async function chooseHeroAndStart(page: Page, hero: HeroClass): Promise<void> {
 /** Screens that are not a match scenario, played by clicking through the app. Their frames are in the order they are taken. */
 export const SCREEN_SCENARIOS: Record<string, { description: string; shots: readonly string[] }> = {
   title: {
-    description: "The title screen: Start highlighted, a fireball falling, its burst, the third row touched, the smallest phone view, a desktop window (the picture fills it, the sides are cut)",
-    shots: ["01-classic.png", "02-fireball-falling.png", "03-burst.png", "04-glossary-touched.png", "05-small-phone.png", "06-desktop.png"],
+    description: "The title screen: Start highlighted, a fireball falling, its burst, the smallest phone view, a desktop window (the picture fills it, the sides are cut)",
+    shots: ["01-classic.png", "02-fireball-falling.png", "03-burst.png", "04-small-phone.png", "05-desktop.png"],
   },
   "notstrom-intro": {
     description: "The Notstrom Intro of the tap on Classic: the title pulled away, the hyperspace, the far Notstrom, the visor, the hull, the airlock, then the Hero Select",
@@ -95,10 +95,6 @@ export const SCREEN_SCENARIOS: Record<string, { description: string; shots: read
   "hero-select": {
     description: "The Hero Select in the hangar: nothing selected, each Hero selected in turn (Max, Tilly, Kit), the selection taken back, a window of 4:3 and one of 21:9",
     shots: ["01-idle.png", "02-max-selected.png", "03-tilly-selected.png", "04-kit-selected.png", "05-deselected.png", "06-window-4-3.png", "07-window-21-9.png"],
-  },
-  glossary: {
-    description: "The Glossary from the start screen: the Heroes group (two frames), the Numbers, Board and HUD groups, scrolled",
-    shots: ["01-heroes.png", "05-heroes-more.png", "06-heroes-end.png", "07-heroes-last.png", "02-numbers.png", "08-numbers-more.png", "03-board.png", "09-board-more.png", "10-board-end.png", "04-hud.png", "11-hud-more.png"],
   },
   "attack-defend": {
     description: "Attack and Defend: the start screen, the side screen (both roles), the role banner and the planning HUD of both roles, the Resolution bar, the four end screens",
@@ -118,45 +114,6 @@ export const SCREEN_SCENARIOS: Record<string, { description: string; shots: read
     ],
   },
 };
-
-const MORE_FRAMES: Record<string, readonly string[]> = {
-  Heroes: ["05-heroes-more.png", "06-heroes-end.png", "07-heroes-last.png"],
-  Numbers: ["08-numbers-more.png"],
-  Board: ["09-board-more.png", "10-board-end.png"],
-  HUD: ["11-hud-more.png"],
-};
-
-/** The Glossary opened from the start screen: one frame per group, the screen scrolled to the top of the group. */
-async function playGlossary(browser: Browser): Promise<void> {
-  const directory = path.join(OUTPUT_DIR, "glossary");
-  rmSync(directory, { recursive: true, force: true });
-  mkdirSync(directory, { recursive: true });
-  const page = await browser.newPage({ viewport: VIEWPORT });
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(URL);
-  await page.getByTestId("glossary-button").click();
-  // The pictures are rendered in one go; they are all there when the last image has loaded.
-  await page.locator(".glossary-picture img").last().waitFor();
-  await page.waitForTimeout(500);
-  const groups = ["Heroes", "Numbers", "Board", "HUD"];
-  for (const [index, group] of groups.entries()) {
-    await page.getByTestId(`glossary-group-${group}`).evaluate((element) => element.scrollIntoView({ block: "start" }));
-    await page.waitForTimeout(150);
-    await page.screenshot({ path: path.join(directory, `0${index + 1}-${group.toLowerCase()}.png`) });
-    // The Heroes and Board groups are long: further frames down, the rest of the group.
-    const more = MORE_FRAMES[group] ?? [];
-    for (const shot of more) {
-      await page.getByTestId("glossary-body").evaluate((element) => element.scrollBy(0, 340));
-      await page.waitForTimeout(150);
-      await page.screenshot({ path: path.join(directory, shot) });
-    }
-  }
-  await page.getByTestId("glossary-back").click();
-  await page.getByTestId("start-screen").waitFor();
-  if (errors.length > 0) throw new Error(`glossary: ${errors.join("; ")}`);
-  checkWritten(directory, SCREEN_SCENARIOS.glossary!.shots);
-}
 
 /** The four end screens: the match is built in Node, finished by an edit of its result, and resumed in the browser. */
 const END_SCREENS = [
@@ -261,15 +218,12 @@ async function playTitle(browser: Browser): Promise<void> {
   await shoot("02-fireball-falling.png");
   await at(2500);
   await shoot("03-burst.png");
-  await page.getByTestId("glossary-button").hover();
-  await page.waitForTimeout(350);
-  await shoot("04-glossary-touched.png");
   await page.setViewportSize({ width: 667, height: 375 });
   await page.waitForTimeout(250);
-  await shoot("05-small-phone.png");
+  await shoot("04-small-phone.png");
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.waitForTimeout(250);
-  await shoot("06-desktop.png");
+  await shoot("05-desktop.png");
   if (errors.length > 0) throw new Error(`title: ${errors.join("; ")}`);
   checkWritten(directory, SCREEN_SCENARIOS.title!.shots);
 }
@@ -670,7 +624,6 @@ async function main(): Promise<void> {
       for (const name of options.scenarios) {
         if (name in SCREEN_SCENARIOS) {
           if (name === "attack-defend") await playAttackDefend(browser);
-          else if (name === "glossary") await playGlossary(browser);
           else if (name === "title") await playTitle(browser);
           else if (name === "notstrom-intro") await playNotstromIntro(browser);
           else await playHeroSelect(browser);

@@ -163,10 +163,9 @@ describe("one PixiJS Application", () => {
     return result?.messages.map((m) => m.message) ?? [];
   }
 
-  it("forbids new Application() outside the stage and the one named exception (the glossary pictures)", async () => {
+  it("forbids new Application() anywhere outside the stage", async () => {
     expect((await lint("apps/web/src/other.ts")).some((m) => m.includes("PixiJS Application"))).toBe(true);
     expect(await lint("apps/web/src/stage.ts")).toEqual([]);
     expect((await lint("apps/web/src/Board.tsx")).some((m) => m.includes("PixiJS Application"))).toBe(true);
-    expect(await lint("apps/web/src/glossary-pictures.ts")).toEqual([]);
   });
 });

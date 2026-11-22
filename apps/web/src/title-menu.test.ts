@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { FIREBALLS, MENU_SLOTS, menuIds, percentX, percentY, STAGE, streakTop } from "./title-menu";
 
 describe("title menu", () => {
-  it("lists Start (the classic mode) and the Glossary, and Resume only when a match was saved; Attack and Defend is out for now", () => {
-    expect(menuIds(false)).toEqual(["classic", "glossary"]);
-    expect(menuIds(true)).toEqual(["classic", "glossary", "resume"]);
-    expect(menuIds(false, true)).toEqual(["classic", "attack-and-defend", "glossary"]);
-    expect(menuIds(true, true)).toEqual(["classic", "attack-and-defend", "glossary", "resume"]);
+  it("lists Start (the classic mode), and Resume only when a match was saved; Attack and Defend is out for now", () => {
+    expect(menuIds(false)).toEqual(["classic"]);
+    expect(menuIds(true)).toEqual(["classic", "resume"]);
+    expect(menuIds(false, true)).toEqual(["classic", "attack-and-defend"]);
+    expect(menuIds(true, true)).toEqual(["classic", "attack-and-defend", "resume"]);
   });
 
   it("has a row of the layout for every entry; the pictures stand one below the other, the areas that are pressed overlap a little", () => {
@@ -22,11 +22,9 @@ describe("title menu", () => {
       expect(slot.height).toBeGreaterThanOrEqual(50);
       expect(slot.art).toBeLessThanOrEqual(slot.height);
     });
-    // The rows of the menu as the player sees it (Start, Glossary, Resume) end above the foot of the picture. The fourth row exists
-    // only with `?menu=all` (Attack and Defend back in the menu) and a saved match: its centre is still inside the picture, its lower edge is not.
-    const resume = MENU_SLOTS[2];
-    expect(resume.top + resume.height).toBeLessThanOrEqual(425);
-    expect(MENU_SLOTS[3].top + MENU_SLOTS[3].height / 2).toBeLessThanOrEqual(STAGE.height);
+    // The third row exists only with `?menu=all` (Attack and Defend back in the menu) and a saved match: it ends above the foot of the picture.
+    const last = MENU_SLOTS[2];
+    expect(last.top + last.height).toBeLessThanOrEqual(STAGE.height);
   });
 
   it("puts the light streak on the middle of the highlighted row", () => {

@@ -4,7 +4,7 @@
 /** The size of the title stage in design pixels (the art is drawn at 640 x 296 and shown at 1.5 times). */
 export const STAGE = { width: 960, height: 444 } as const;
 
-export type MenuId = "classic" | "attack-and-defend" | "glossary" | "resume";
+export type MenuId = "classic" | "attack-and-defend" | "resume";
 
 export interface MenuSlot {
   /** The area a press counts for, and the height of the picture of the row inside it (centred). */
@@ -14,24 +14,23 @@ export interface MenuSlot {
 }
 
 /**
- * The four rows of the menu from the top: the first, the default mode, is the big one. A row is pressed in `height` design pixels
+ * The three rows of the menu from the top: the first, the default mode, is the big one. A row is pressed in `height` design pixels
  * (50 are 44 px on a phone of 844 x 390, so that a thumb does not miss it) but the pictures stand closer than that: the picture of
  * a row is `art` high, centred in its area, and the areas of two rows overlap a little (the lower row wins there). The text is a
  * fifth smaller than the pictures are drawn. The first row starts well under the line "Every Prime is a contract"; the whole block (banner, logo, claim, rows) stands about a fifth of the height down from the top.
  */
-export const MENU_SLOTS: readonly [MenuSlot, MenuSlot, MenuSlot, MenuSlot] = [
+export const MENU_SLOTS: readonly [MenuSlot, MenuSlot, MenuSlot] = [
   { top: 277, height: 52, art: 48 },
   { top: 327, height: 50, art: 34 },
   { top: 369, height: 50, art: 34 },
-  { top: 411, height: 50, art: 34 },
 ];
 
 /**
- * The entries from the top: Start (the classic mode), the Glossary, and Resume when a match was saved. Attack and Defend is out of
- * the menu for now; `?menu=all` brings its row back between Start and the Glossary (the tests and the screenshots use it).
+ * The entries from the top: Start (the classic mode) and Resume when a match was saved. Attack and Defend is out of the menu for
+ * now; `?menu=all` brings its row back between Start and Resume (the tests and the screenshots use it).
  */
 export function menuIds(canResume: boolean, withAttackAndDefend = false): MenuId[] {
-  const ids: MenuId[] = withAttackAndDefend ? ["classic", "attack-and-defend", "glossary"] : ["classic", "glossary"];
+  const ids: MenuId[] = withAttackAndDefend ? ["classic", "attack-and-defend"] : ["classic"];
   return canResume ? [...ids, "resume"] : ids;
 }
 

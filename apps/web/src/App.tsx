@@ -11,7 +11,6 @@ import { notstromIntroPlays } from "./notstrom-intro";
 import { clearSavedMatch, loadSavedMatch, loadSavedPlayerHero, parsePlayerHero, saveMatch } from "./match-storage";
 import { HeroSelectScreen } from "./HeroSelectScreen";
 import { PlanningScreen } from "./PlanningScreen";
-import { GlossaryScreen } from "./GlossaryScreen";
 import { gameAudio } from "./audio";
 
 /** The player's Squad in the offline prototype. */
@@ -79,8 +78,8 @@ export function App() {
   const [host, setHost] = useState(() => createLocalHost(newSeed(), undefined, aiPlanner));
   const seed = host.seed;
   const [started, setStarted] = useState(false);
-  // Before the match: the start screen, the Hero Select (Play) or the Glossary, which run from static data and never touch the host or the saved match.
-  const [entry, setEntry] = useState<"start" | "notstrom-intro" | "side" | "select" | "replay" | "glossary">("start");
+  // Before the match: the start screen, the Hero Select (Play), which run from static data and never touch the host or the saved match.
+  const [entry, setEntry] = useState<"start" | "notstrom-intro" | "side" | "select" | "replay">("start");
   const [flash, setFlash] = useState(false);
   // The side chosen in Attack and Defend; none in the classic mode.
   const [role, setRole] = useState<Role>();
@@ -110,7 +109,6 @@ export function App() {
   const notstromIntro = !startParameters.has("hero") && notstromIntroPlays(startParameters);
   function renderStart() {
     if (entry === "notstrom-intro") return <NotstromIntro onDone={(playedToEnd) => { setFlash(playedToEnd); setEntry("select"); }} />;
-    if (entry === "glossary") return <GlossaryScreen onClose={() => setEntry("start")} />;
     if (entry === "side") return <SideScreen onBack={() => setEntry("start")} onNext={(side) => { setRole(side); setEntry("select"); }} />;
     if (entry === "select" || entry === "replay") {
       return (
@@ -144,7 +142,6 @@ export function App() {
           }
           setStarted(true);
         }}
-        onGlossary={() => setEntry("glossary")}
       />
     );
   }

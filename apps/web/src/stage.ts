@@ -314,7 +314,7 @@ export function createProofScene(): Scene & { x(): number; stopped: boolean } {
   return scene;
 }
 
-/** The real thing: one PixiJS Application, the only one the app creates (the glossary pictures still have their own, see eslint.config.js). */
+/** The real thing: one PixiJS Application, the only one the app creates. */
 export async function createPixiHost(): Promise<StageHost> {
   const app = new Application();
   await app.init({ background: "#12161c", preference: "webgl", antialias: true, autoDensity: true, autoStart: false, sharedTicker: false });
