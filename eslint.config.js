@@ -51,7 +51,6 @@ export default tseslint.config(
       "apps/web/src/weapon-effects.ts",
       "packages/game-core/src/balance.bal.ts",
       "apps/web/src/App.tsx",
-      "apps/dashboard/src/github.ts",
       "apps/web/src/board-layout.ts",
       "apps/web/src/hero-figure.ts",
       "apps/web/src/target-lines.ts",
