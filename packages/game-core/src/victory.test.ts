@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   EventKind,
   MatchEndReason,
-  MatchMode,
   OUTPOST_UNLOCK_ROUND,
   OUTPOST_VALUE,
   PRIME_ZONE_UNLOCK_ROUND,
@@ -245,7 +244,7 @@ describe("Round Limit", () => {
 describe("the takeover bonus", () => {
   const withRules = (rules: { takeoverBonusFactor?: number; takeoverCooldown?: number }, left: number, right: number) => {
     const match = matchWithHeroesInZone(left, right);
-    match.mode = { kind: MatchMode.Classic, ...rules };
+    match.rules = rules;
     return match;
   };
   /** Resolves once with the given numbers of Heroes in the Prime Zone, keeping the state of the match. */

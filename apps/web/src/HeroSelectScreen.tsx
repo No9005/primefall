@@ -3,7 +3,7 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import { gameAudio } from "./audio";
 import { HANGAR_HEROES, HangarHeroes, HERO_OF } from "./hangar-select";
 import { HANGAR_SCENE_NAME, HANGAR_SHIFT, hangarScene, PLACE } from "./hangar-scene";
-import { HERO_NAMES, HERO_PROFILES, type SelectMode, SELECTABLE_HEROES } from "./hero-select";
+import { HERO_NAMES, HERO_PROFILES, SELECTABLE_HEROES } from "./hero-select";
 import { StageLayer } from "./StageLayer";
 import { computeFit } from "./stage-fit";
 import "./hero-select.css";
@@ -23,14 +23,12 @@ export const prefersReducedMotion = (): boolean => window.matchMedia("(prefers-r
 const windowFit = () => computeFit(window.innerWidth, window.innerHeight, window.devicePixelRatio);
 
 interface HeroSelectScreenProps {
-  mode: SelectMode;
   /** The Hero chosen when the screen opens (none: all three idle and NEXT waits). */
   initial?: HeroClass;
   onBack: () => void;
   onStart: (hero: HeroClass) => void;
 }
 
-// `mode` is kept in the props: the screen shows it again once the design for it is made.
 export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenProps) {
   const [fit, setFit] = useState(windowFit);
   const [, redraw] = useReducer((count: number) => count + 1, 0);

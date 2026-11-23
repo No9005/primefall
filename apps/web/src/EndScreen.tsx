@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
-import { CREDITS_TO_WIN, type GridPosition, type HeroClass, MatchEndReason, type MatchResult, PRIME_ZONE_WIN_RESOLUTIONS, SquadId } from "game-core";
+import { CREDITS_TO_WIN, type GridPosition, type HeroClass, MatchEndReason, type MatchResult, SquadId } from "game-core";
 import { gameAudio } from "./audio";
-import { endTexts, type Role } from "./attack-defend";
 
 /** The Hero of the player who speaks when the end music has played for a moment. */
 export interface EndHero {
@@ -18,10 +17,6 @@ interface EndScreenProps {
   /** The player's Squad. */
   squad: SquadId;
   seed: number;
-  /** The player's role in Attack and Defend; none in the classic mode. */
-  role?: Role;
-  /** The Round limit of the match's mode. */
-  roundLimit: number;
   /** Whose voice line plays over the end music. */
   hero?: EndHero;
   onPlayAgain: () => void;
@@ -35,19 +30,15 @@ function headline(result: MatchResult, squad: SquadId): string {
 function reasonText(result: MatchResult, squad: SquadId): string {
   const own = result.winner === squad;
   switch (result.reason) {
-    case MatchEndReason.PrimeZoneHeld:
-      return `${own ? "Your Squad" : "The enemy Squad"} controlled the Prime Zone for ${PRIME_ZONE_WIN_RESOLUTIONS} consecutive Resolutions.`;
     case MatchEndReason.Credits:
       return `${own ? "Your Squad" : "The enemy Squad"} reached ${CREDITS_TO_WIN} Credits. ${scoreText(result, squad)}`;
     case MatchEndReason.AllHeroesExhausted:
       if (result.winner === undefined) return "All Heroes of both Squads are Exhausted.";
       return `All Heroes of ${own ? "the enemy Squad" : "your Squad"} are Exhausted.`;
-    case MatchEndReason.DefenceHeld:
-      return `${own ? "Your Squad" : "The enemy Squad"} held the defence until the Round limit.`;
     case MatchEndReason.RoundLimit: {
       const enemy = squad === SquadId.Left ? SquadId.Right : SquadId.Left;
-      const tiebreak = result.scores && result.scores[squad] === result.scores[enemy] && result.cardTotals;
-      const cards = tiebreak ? ` Equal scores: cards not in the Exile, you ${result.cardTotals![squad]}, enemy ${result.cardTotals![enemy]}.` : "";
+      const tiebreak = result.scores[squad] === result.scores[enemy];
+      const cards = tiebreak ? ` Equal scores: cards not in the Exile, you ${result.cardTotals[squad]}, enemy ${result.cardTotals[enemy]}.` : "";
       return `Round Limit reached. ${scoreText(result, squad)}${cards}`;
     }
   }
@@ -55,10 +46,10 @@ function reasonText(result: MatchResult, squad: SquadId): string {
 
 function scoreText(result: MatchResult, squad: SquadId): string {
   const enemy = squad === SquadId.Left ? SquadId.Right : SquadId.Left;
-  return result.scores ? `Credits: you ${result.scores[squad]}, enemy ${result.scores[enemy]}.` : "";
+  return `Credits: you ${result.scores[squad]}, enemy ${result.scores[enemy]}.`;
 }
 
-export function EndScreen({ result, squad, seed, role, roundLimit, hero, onPlayAgain }: EndScreenProps) {
+export function EndScreen({ result, squad, seed, hero, onPlayAgain }: EndScreenProps) {
   const heroRef = useRef(hero);
   heroRef.current = hero;
   // The end music: a jingle, then a quiet loop; a draw has none. The Hero's line follows a few seconds in.
@@ -74,27 +65,6 @@ export function EndScreen({ result, squad, seed, role, roundLimit, hero, onPlayA
       gameAudio.stopEnding();
     };
   }, [result.winner, squad]);
-  if (role) {
-    const texts = endTexts(result, role, roundLimit);
-    return (
-      <section className="end-screen ad-end" aria-label="Match result" data-testid="end-screen">
-        <p className={`ad-you-were ${role}`}>{texts.youWere}</p>
-        <h1 className={texts.headline === "VICTORY" ? "victory" : "defeat"}>{texts.headline}</h1>
-        <p className="ad-reason" data-testid="end-reason">
-          {texts.reason}
-        </p>
-        <p className="ad-detail" data-testid="end-round">
-          {texts.detail}
-        </p>
-        <button type="button" onClick={onPlayAgain}>
-          Play again
-        </button>
-        <p className="seed" data-testid="end-seed">
-          seed {seed}
-        </p>
-      </section>
-    );
-  }
   return (
     <section className="end-screen" aria-label="Match result" data-testid="end-screen">
       <p className="label">Match result</p>

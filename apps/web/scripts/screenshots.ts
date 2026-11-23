@@ -2,9 +2,9 @@
 // Starts the Vite dev server, plays the standard path in Chromium at 844 x 390 and writes PNGs with stable names
 // to apps/web/screenshots/ (git-ignored), so a run before and after a change can be compared name by name.
 import { chromium, type Browser, type Page } from "@playwright/test";
-import { type CardDefinition, CardTarget, coverAt, CoverKind, findTiles, type GridPosition, HERO_DECKS, HeroClass, MatchEndReason, MatchMode, moveDestinations, SquadId, reachableMoveDestinations, NOTSTROM_MAP, TileKind, Visibility } from "game-core";
+import { type CardDefinition, CardTarget, coverAt, CoverKind, findTiles, type GridPosition, HERO_DECKS, HeroClass, moveDestinations, reachableMoveDestinations, NOTSTROM_MAP, TileKind, Visibility } from "game-core";
 import { SNAPSHOT_VERSION } from "game-core/local-host";
-import { buildSquadView, createMatch, type MatchState, startRound } from "game-core/server";
+import { buildSquadView, type MatchState } from "game-core/server";
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
@@ -96,107 +96,7 @@ export const SCREEN_SCENARIOS: Record<string, { description: string; shots: read
     description: "The Hero Select in the hangar: nothing selected, each Hero selected in turn (Max, Tilly, Kit), the selection taken back, a window of 4:3 and one of 21:9",
     shots: ["01-idle.png", "02-max-selected.png", "03-tilly-selected.png", "04-kit-selected.png", "05-deselected.png", "06-window-4-3.png", "07-window-21-9.png"],
   },
-  "attack-defend": {
-    description: "Attack and Defend: the start screen, the side screen (both roles), the role banner and the planning HUD of both roles, the Resolution bar, the four end screens",
-    shots: [
-      "01-start.png",
-      "02-side-attack.png",
-      "03-side-defend.png",
-      "04-role-banner-attack.png",
-      "05-role-banner-defend.png",
-      "06-hud-attacker.png",
-      "07-hud-defender.png",
-      "08-hud-resolution.png",
-      "09-end-attacker-victory.png",
-      "10-end-defender-victory.png",
-      "11-end-attacker-defeat.png",
-      "12-end-defender-defeat.png",
-    ],
-  },
 };
-
-/** The four end screens: the match is built in Node, finished by an edit of its result, and resumed in the browser. */
-const END_SCREENS = [
-  { shot: "09-end-attacker-victory.png", defender: SquadId.Right, winner: SquadId.Left, reason: MatchEndReason.PrimeZoneHeld, round: 7 },
-  { shot: "10-end-defender-victory.png", defender: SquadId.Left, winner: SquadId.Left, reason: MatchEndReason.DefenceHeld, round: 12 },
-  { shot: "11-end-attacker-defeat.png", defender: SquadId.Right, winner: SquadId.Right, reason: MatchEndReason.DefenceHeld, round: 12 },
-  { shot: "12-end-defender-defeat.png", defender: SquadId.Left, winner: SquadId.Right, reason: MatchEndReason.AllHeroesExhausted, round: 9 },
-] as const;
-
-/** Looks at the Attack and Defend screens in the order of the design sheets. */
-async function playAttackDefend(browser: Browser): Promise<void> {
-  const directory = path.join(OUTPUT_DIR, "attack-defend");
-  rmSync(directory, { recursive: true, force: true });
-  mkdirSync(directory, { recursive: true });
-  const errors: string[] = [];
-  const open = async (init?: { snapshot: string }): Promise<Page> => {
-    const page = await browser.newPage({ viewport: VIEWPORT });
-    page.setDefaultTimeout(SCENARIO_ACTION_TIMEOUT_MS);
-    page.on("pageerror", (error) => errors.push(error.message));
-    if (init) await page.addInitScript(([key, value]) => localStorage.setItem(key!, value!), [STORAGE_KEY, init.snapshot]);
-    return page;
-  };
-  const shoot = (page: Page, name: string) => page.screenshot({ path: path.join(directory, name) });
-  const snapshotOf = (match: MatchState) => JSON.stringify({ version: SNAPSHOT_VERSION, match });
-  const startOf = (defender: SquadId) => startRound(createMatch(42, { kind: MatchMode.AttackAndDefend, defender }));
-
-  // The start screen with a saved match (so that Resume match is there) and the side screen.
-  let page = await open({ snapshot: snapshotOf(startOf(SquadId.Right)) });
-  await page.goto(`${URL}${URL.includes("?") ? "&" : "?"}menu=all`);
-  await page.getByTestId("start-screen").waitFor();
-  await page.waitForTimeout(300);
-  await shoot(page, "01-start.png");
-  await page.getByTestId("play-attack-defend").click();
-  // The preview rests for 2 s at the start of its camera move; the frames are taken in that rest, once the board is drawn.
-  await page.locator('[data-scene="board"][data-scene-ready="true"]').waitFor({ state: "attached" });
-  await page.waitForTimeout(700);
-  await shoot(page, "02-side-attack.png");
-  await page.getByTestId("side-defend").click();
-  await page.locator('[data-scene="board"][data-scene-ready="true"]').waitFor({ state: "attached" });
-  await page.waitForTimeout(700);
-  await shoot(page, "03-side-defend.png");
-  await page.close();
-
-  // The role banner (held on screen by ?hold=banner) and the planning HUD of each role.
-  for (const [role, bannerShot, hudShot] of [["attack", "04-role-banner-attack.png", "06-hud-attacker.png"], ["defend", "05-role-banner-defend.png", "07-hud-defender.png"]] as const) {
-    page = await open();
-    await page.goto(`${URL}/?hero=bruiser&role=${role}&hold=banner&menu=all`);
-    await page.getByTestId("play-attack-defend").click();
-    await page.getByTestId("role-banner").waitFor();
-    await page.waitForTimeout(1500);
-    await shoot(page, bannerShot);
-    await page.close();
-    page = await open();
-    await page.goto(`${URL}/?hero=bruiser&role=${role}&menu=all`);
-    await page.getByTestId("play-attack-defend").click();
-    await page.getByTestId("role-banner").waitFor({ state: "detached" });
-    await page.getByRole("list", { name: "Hand" }).getByRole("button").last().waitFor({ state: "visible" });
-    await page.waitForTimeout(1500);
-    await shoot(page, hudShot);
-    if (role === "attack") {
-      await page.locator(".wait-card").click();
-      await page.getByRole("button", { name: "Commit" }).click();
-      await page.getByTestId("resolution-bar").waitFor();
-      await page.waitForTimeout(1800);
-      await shoot(page, "08-hud-resolution.png");
-    }
-    await page.close();
-  }
-
-  for (const { shot, defender, winner, reason, round } of END_SCREENS) {
-    const match = startOf(defender);
-    const finished: MatchState = { ...match, result: { winner, reason, round, deckTotals: { [SquadId.Left]: 14, [SquadId.Right]: 9 } } };
-    page = await open({ snapshot: snapshotOf(finished) });
-    await page.goto(URL);
-    await page.getByTestId("resume").click();
-    await page.getByTestId("end-screen").waitFor();
-    await page.waitForTimeout(300);
-    await shoot(page, shot);
-    await page.close();
-  }
-  if (errors.length > 0) throw new Error(`attack-defend: ${errors.join("; ")}`);
-  checkWritten(directory, SCREEN_SCENARIOS["attack-defend"]!.shots);
-}
 
 /** The title screen at the moments of its loops: the first fireball falls at 1.4 to 2.1 s and bursts until 3.2 s; the highlight moves on every 1.6 s. */
 async function playTitle(browser: Browser): Promise<void> {
@@ -625,8 +525,7 @@ async function main(): Promise<void> {
       }
       for (const name of options.scenarios) {
         if (name in SCREEN_SCENARIOS) {
-          if (name === "attack-defend") await playAttackDefend(browser);
-          else if (name === "title") await playTitle(browser);
+          if (name === "title") await playTitle(browser);
           else if (name === "notstrom-intro") await playNotstromIntro(browser);
           else await playHeroSelect(browser);
           console.log(`Scenario ${name}: ${path.join(OUTPUT_DIR, name)}\n${SCREEN_SCENARIOS[name]!.shots.join("\n")}`);

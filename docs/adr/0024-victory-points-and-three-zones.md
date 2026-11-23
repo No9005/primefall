@@ -1,5 +1,7 @@
 # Victory Points and Three Zones
 
+> **Update:** Attack and Defend (ADR 0022) was removed; the mentions of it in this record are history.
+
 > **Terminology:** `GLOSSARY.md` now calls the score of the classic mode Credits (this record: Victory Points). This record keeps its original words.
 
 The classic mode is won by Victory Points from three zones, not by holding one Prime Zone for three Resolutions.

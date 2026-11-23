@@ -1,6 +1,6 @@
 # Prime Zone and Victory
 
-> **Update:** The three-consecutive-Resolutions win is superseded for the classic mode by ADR 0024 (Credits from three zones, first to 30). The Zone control rule and the three-Resolution win live on, adapted, in Attack and Defend (ADR 0022).
+> **Update:** The three-consecutive-Resolutions win is superseded for the classic mode by ADR 0024 (Credits from three zones, first to 30). Attack and Defend (ADR 0022), where the rule lived on, was removed too: this record is history only.
 
 The central objective is a 3 by 3 Prime Zone. At the end of each Resolution, the squad with more non-exhausted Heroes inside the Zone controls it; on a tie, the previous controlling squad retains control.
 

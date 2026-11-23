@@ -36,9 +36,6 @@ export const HERO_PROFILES: Record<HeroClass, HeroProfile> = {
   },
 };
 
-/** The three ways into the Hero Select; the chip at the top right names it. */
-export type SelectMode = "classic" | "attack" | "defend";
-
 /** Where the feet of a Hero stand inside its area: the selected Bruiser steps left so its tracer stays inside the area. */
 export function feetX(heroClass: HeroClass, selected: boolean): number {
   return heroClass === HeroClass.Bruiser && selected ? 62 : 120;

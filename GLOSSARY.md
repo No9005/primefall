@@ -169,7 +169,7 @@ One simultaneous Resolution step in which each non-exhausted Hero processes the 
 _Avoid_: Turn, phase
 
 **Prime Zone**:
-The central 5 by 5 zone, worth 2 Credits per Resolution in the classic mode. It is inactive (scores nothing) until Round 4. In Attack and Defend the Attacker wins by controlling it during three consecutive Resolutions.
+The central 5 by 5 zone, worth 2 Credits per Resolution. It is inactive (scores nothing) until Round 4.
 _Avoid_: Point, base, capture zone
 
 **Outpost**:
@@ -189,20 +189,8 @@ The score of the classic mode (ADR 0024, called Credits there): the Heroes are m
 _Avoid_: Credits, score points, money, coins, kills, health
 
 **Round Limit**:
-The maximum of Rounds per match in the classic mode (15). When it is played, the Squad with more Credits wins; equal points go to the Squad with more cards not in the Exile (Deck, Discard and Hand of all its Heroes); if still equal the match is a draw. Attack and Defend has its own Round limit.
+The maximum of Rounds per match (15). When it is played, the Squad with more Credits wins; equal points go to the Squad with more cards not in the Exile (Deck, Discard and Hand of all its Heroes); if still equal the match is a draw.
 _Avoid_: Timeout, turn cap
-
-**Attacker**:
-In Attack and Defend mode, the Squad that starts on its Drop Point tiles and wins by controlling the Prime Zone during three consecutive Resolutions or by Exhausting all Heroes of the Defender. It takes control of the Prime Zone when at least one of its Heroes stands in it and it has at least as many Heroes in it as the Defender (a tie goes to the Attacker). In the classic mode the Squads have no roles.
-_Avoid_: Aggressor, invader
-
-**Defender**:
-In Attack and Defend mode, the Squad whose Heroes start on the Prime Zone tiles of the inner column next to its side. It never wins by holding the Zone; it wins with Defence Held.
-_Avoid_: Guard, holder
-
-**Defence Held**:
-The end reason of an Attack and Defend match in which the Round limit of the mode (default 12) was played without an Attacker win. The Defender wins.
-_Avoid_: Timeout, draw
 
 **AI Style**:
 A set of weights chosen per match from the match seed (for example Aggressive, Defensive, Flanker) that shifts how the AI scores its options.

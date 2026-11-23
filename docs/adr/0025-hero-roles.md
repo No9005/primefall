@@ -1,5 +1,7 @@
 # Hero Roles
 
+> **Update:** Attack and Defend (ADR 0022) was removed; the mentions of it in this record are history.
+
 The three classes get different jobs, toughness, reach and tools. Almost every Attack no longer deals 2 damage at similar range.
 
 ## Context

@@ -34,7 +34,6 @@ Matches are one-sided. Both Squads run to the Prime Zone and play Shield plus At
 | Length | At most 15 Rounds. |
 | Public | Control of each zone and both scores are always visible; enemy Heroes stay in the Fog. |
 | Takeover bonus | Off by default. Two constants (bonus, cooldown per zone) exist for the case that the tug-of-war gauge is missed: a one-time bonus equal to the zone's value when a Squad takes a zone the enemy controlled in the previous Resolution. |
-| Attack and Defend | Keeps its own win rules, Round limit (ADR 0022). The new decks and combat rules apply to both modes, so its balance (#302) is measured again after the decks. |
 | Overwatch Nest | Removed in ADR 0024, placed again by the Crossroads map (#361, ADR 0016): two Nests in the top half, a Full Cover tile with a sightline towards the Prime Zone. The card Overwatch Uplink stays. |
 
 At most 4 Credits a Resolution can be scored (2 + 1 + 1) from Round 4, 2 before; at most about 54 in a match.
@@ -58,7 +57,7 @@ At most 4 Credits a Resolution can be scored (2 + 1 + 1) from Round 4, 2 before;
 | **Roles: damage and support share** | The Assassin deals at least 45 % of a Squad's damage, the Bruiser at most 30 %, the Controller at most 15 %; the Controller gives at least 40 % of the Shield, Cover and revealed tiles. |
 | **Roles: composition** | A mixed Squad (Bruiser, Controller, Assassin) beats Squads of three of the same class in at least 60 % of the matches. |
 
-Existing tools: `npm run balance` (the harness), the Exposed Hero measurement (#343) and the ladder of three AI play styles used for the first measurement (Rusher, Waiter, Holder; the Waiter and Holder use the Attack and Defend branches of the AI).
+Existing tools: `npm run balance` (the harness), the Exposed Hero measurement (#343) and the ladder of three AI play styles used for the first measurement (Rusher, Waiter, Holder; the Waiter and Holder are not measurable any more since Attack and Defend and its AI branches were removed).
 
 ## Roles (ADR 0025)
 

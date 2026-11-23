@@ -65,7 +65,6 @@ describe("validatePlan", () => {
 });
 
 describe("validatePlan: Pitch, Energy and Block", () => {
-  // Block exists in Attack and Defend only; the classic mode has none.
   const planKinds = (pitched: number[], queue: QueuedAction[]) =>
     validatePlan(view, { squad: SquadId.Left, heroes: [{ heroId: bruiser.id, queue, pitched }] }).map((issue) => issue.kind);
 

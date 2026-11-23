@@ -1,5 +1,7 @@
 # Crossfire
 
+> **Update:** Attack and Defend (ADR 0022) was removed; the mentions of it in this record are history.
+
 Hits by different attackers on the same Hero in consecutive Ticks deal extra damage.
 
 ## Context

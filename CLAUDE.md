@@ -1,6 +1,6 @@
 # Primefall
 
-Mobile-first, 2.5D tactical 3v3 game: both Squads plan simultaneously, commit commands, and a deterministic Resolution plays out. A Squad wins by holding the Prime Zone for three consecutive Resolutions.
+Mobile-first, 2.5D tactical 3v3 game: both Squads plan simultaneously, commit commands, and a deterministic Resolution plays out. A Squad wins by scoring Credits from the Prime Zone and two Outposts (first to 30).
 
 There is no separate product spec any more: the rules are in `packages/game-core` (card effects: `cards.ts`, behaviour: its tests), the vocabulary is `GLOSSARY.md`, decisions are in `docs/adr/`, and the design principles are in `docs/design/principles.md`. Work is tracked as GitHub issues. Switch values, working agreements and approaches that were tried and dropped: `docs/process/status.md`.
 

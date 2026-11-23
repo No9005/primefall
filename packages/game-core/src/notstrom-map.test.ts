@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   CoverKind,
   coverAt,
-  defenderStartTiles,
   findTiles,
   type GridPosition,
   hasLineOfSight,
@@ -93,11 +92,6 @@ describe("Notstrom Map", () => {
   it("starts the three Heroes of a Squad on the middle rows of the inner Drop Point column", () => {
     expect(dropPointStartTiles(true)).toEqual([11, 12, 13].map((row) => ({ col: 2, row })));
     expect(dropPointStartTiles(false)).toEqual([11, 12, 13].map((row) => ({ col: 42, row })));
-  });
-
-  it("starts Defenders on the middle rows of the inner column of the Prime Zone", () => {
-    expect(defenderStartTiles(true)).toEqual([11, 12, 13].map((row) => ({ col: 20, row })));
-    expect(defenderStartTiles(false)).toEqual([11, 12, 13].map((row) => ({ col: 24, row })));
   });
 
   it("puts the open 5 by 5 Prime Zone on the central tiles", () => {

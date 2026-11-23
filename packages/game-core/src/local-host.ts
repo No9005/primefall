@@ -2,7 +2,7 @@
 // prototype behind the same interface a network host will use later (ADR 0017).
 
 import { type AiStyle, aiStyleFor, planSquad } from "./ai";
-import { type MatchHost, MatchMode, type MatchModeSetting, SquadId, type SquadView, type SubmitResult } from "./host";
+import { type MatchHost, type MatchRules, SquadId, type SquadView, type SubmitResult } from "./host";
 import { buildSquadView, createMatch, type MatchState, recordSightings, startRound, ZONES } from "./match";
 import { type SquadPlan, validatePlan } from "./plan";
 import { TileKind, withWreck } from "./notstrom-map";
@@ -29,8 +29,8 @@ export interface LocalMatchHost extends MatchHost {
 }
 
 /** Starts a match at Round 1 with all Hands drawn. The AI plans the enemy Squad and the allied Heroes the player leaves out of a plan. */
-export function createLocalHost(seed: number, mode?: MatchModeSetting, planner: SquadPlanner = planOnThisThread): LocalMatchHost {
-  return hostFor(startRound(createMatch(seed, mode)), planner);
+export function createLocalHost(seed: number, rules?: MatchRules, planner: SquadPlanner = planOnThisThread): LocalMatchHost {
+  return hostFor(startRound(createMatch(seed, rules)), planner);
 }
 
 /** Resumes a saved match. Returns undefined if the text is unreadable or has another schema version. */
@@ -39,7 +39,8 @@ export function restoreLocalHost(snapshot: string, planner: SquadPlanner = planO
     const saved: unknown = JSON.parse(snapshot);
     if (typeof saved !== "object" || saved === null) return undefined;
     const { version, match } = saved as { version?: unknown; match?: Partial<MatchState> };
-    // Version 1 is the same shape without a mode: it is a classic match.
+    // Version 1 is the same shape without rules. A match saved in the removed Attack and Defend mode cannot be resumed.
+    if ((match as { mode?: { kind?: string } } | undefined)?.mode?.kind === "attackAndDefend") return undefined;
     if ((version !== SNAPSHOT_VERSION && version !== 1) || typeof match !== "object" || match === null) return undefined;
     if (!Array.isArray(match.heroes) || typeof match.round !== "number" || typeof match.rngState !== "number") return undefined;
     return hostFor(upgradeSavedMatch(match as MatchState), planner);
@@ -62,7 +63,7 @@ function withDropPoints(match: MatchState): MatchState {
  */
 function upgradeSavedMatch(match: MatchState): MatchState {
   match = withDropPoints(match);
-  if (match.mode === undefined) match = { ...match, mode: { kind: MatchMode.Classic } };
+  if (match.rules === undefined) match = { ...match, rules: {} };
   // Matches saved before the Credits start with none.
   if (match.scores === undefined) match = { ...match, scores: { [SquadId.Left]: 0, [SquadId.Right]: 0 }, zoneControl: ZONES.map(() => ({ contested: false })) };
   if (match.takeoverCooldown === undefined) match = { ...match, takeoverCooldown: ZONES.map(() => 0) };

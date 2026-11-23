@@ -31,7 +31,7 @@ The Heroes are the sprite sheets of `apps/web/public/assets/heroes/<class>/` (fo
 
 ## Effects
 
-Muzzle flashes, projectiles, rings, numbers and the Scout Drone are drawn by the game from shapes (`apps/web/src/effects-layer.ts`, timing in `docs/design/animation/README.md`). The old placeholder PNGs and their manifest (made by a script) are in `archive/placeholders/`; nothing loads them.
+Muzzle flashes, projectiles, rings, numbers and the Scout Drone are drawn by the game from shapes (`apps/web/src/effects-layer.ts`, timing in `docs/design/animation/README.md`).
 
 ## Rendering notes (from the 45 x 25 Grid)
 

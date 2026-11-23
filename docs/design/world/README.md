@@ -33,7 +33,7 @@ The maps are the places such contracts lead to. They already exist as looks, and
 | Snow field under polar night | expedition barricades, orange beacons, glowing artefacts, half-buried ring gate, crashed rescue capsule | assets only (tileset "Polarnacht", `docs/design/ice-field/`), no map |
 | Neon city | rain, signs, corporate towers in the manner of *RoboCop* | idea, no assets |
 
-Salvage and rescue match the mission ideas the snow field already carries (fetch and bring a flight recorder, escort a rescue capsule), and the classic and Attack and Defend modes become contracts with a client and a one-line advertising text.
+Salvage and rescue match the mission ideas the snow field already carries (fetch and bring a flight recorder, escort a rescue capsule), and the match becomes a contract with a client and a one-line advertising text.
 
 ## Heroes
 
@@ -65,7 +65,7 @@ Notes:
 
 1. **The Prime Zone.** Today it is the central 5 by 5 zone with a core in the middle. In this world it could be the artefact or the find the clients want. This needs its own discussion: what is it, why do both clients want it, and does it change per place (a ring gate in the snow, a reactor core on the hauler, something else in the city)?
 2. **The clients.** Which megacorps and military branches exist, and do they have names, logos and advertising voices? Do the two Squads of a match always have different clients?
-3. **Missions as contracts.** How the classic mode, Attack and Defend, fetch and bring and escort read as contracts, and how much text each gets.
+3. **Missions as contracts.** How the match, fetch and bring and escort read as contracts, and how much text each gets.
 4. **The names and where they show.** The decisions listed under *Heroes*, then a ticket for the display.
 5. **The neon city** as a third place: is it needed, and which mission type fits it?
 6. **Opposing Squad names** and whether the Heroes may differ in colour from the Squad colours (`docs/design/decisions.md`).

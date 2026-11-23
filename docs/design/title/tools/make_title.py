@@ -88,7 +88,7 @@ for _ in range(14):
 im.save(OUT+'impact.png'); print('ok')
 
 # 7 the menu rows: plain light text, and the red pill with white text for the highlighted row; the first row is the big one
-MENU=[("classic","START",3),("attack-and-defend","ATTACK AND DEFEND",2),("glossary","GLOSSARY",2),("resume","RESUME MATCH",2)]
+MENU=[("classic","START",3),("glossary","GLOSSARY",2),("resume","RESUME MATCH",2)]
 for i,(name,label,sc) in enumerate(MENU):
     tw_=fw(label,sc); bw=max(124,tw_+40) if i==0 else tw_+40; bh=30 if sc==3 else 22; BH=40 if sc==3 else 28
     for state in ('off','on'):

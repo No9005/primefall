@@ -60,10 +60,8 @@ import { DeckShuffle } from "./DeckShuffle";
 import { exhaustionHud } from "./exhaustion-hud";
 import { applyDrop, type BoardPick, type DropLayout, type DropPlaces, type DropUse, type Point, type Rect, resolveDrop } from "./card-drag";
 import { Callout } from "./Callout";
-import { defenderZone, ROLE_LABELS, roleOf, roundPillText } from "./attack-defend";
-import { AttackerPill, DefenderPill, RoleBanner, RoleLabel } from "./RoleHud";
 import { COUNTDOWN_CALLOUT_MS, countdownCallout, formatTimer, TIMER_AMBER_SECONDS, timerTone } from "./callout";
-import { matchEndCallouts, type PrimeCallout, primeCallouts, primeCountdown, type PrimeProgress, pointsZoneScore, primeScore, zoneCallouts, zoneDots, zoneOccupancy, zoneTint } from "./prime-zone";
+import { matchEndCallouts, type PrimeCallout, primeCountdown, type SquadCounts, pointsZoneScore, zoneCallouts, zoneDots, zoneOccupancy, zoneTint } from "./prime-zone";
 import { targetsInReach } from "./target-pick";
 import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionBarText, resolutionCommitLabel } from "./resolution-hud";
 import { buildCommentary, type CommentaryEntry, type CommentarySide, MAX_COMMENTARY_ENTRIES } from "./commentary";
@@ -492,10 +490,8 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const issues = useMemo(() => validatePlan(view, plan), [view, plan]);
   /** Set from Commit until the next Round: Waiting..., the RESOLUTION callout, the Ticks, Done. */
   const [resolutionStage, setResolutionStage] = useState<ResolutionStage>();
-  /** The counts after the Resolution and the callout being shown, from the end of the Ticks until the next view arrives. */
-  const [primeAfter, setPrimeAfter] = useState<PrimeProgress>();
-  /** Classic: the Credits after the Resolution, shown once its playback is done. */
-  const [scoresAfter, setScoresAfter] = useState<PrimeProgress>();
+  /** The Credits after the Resolution, shown once its playback is done; the callout being shown goes until the next view arrives. */
+  const [scoresAfter, setScoresAfter] = useState<SquadCounts>();
   const [zonesAfter, setZonesAfter] = useState<readonly ZoneView[]>();
   const [primeCallout, setPrimeCallout] = useState<PrimeCallout>();
   const playing = resolutionStage !== undefined;
@@ -702,18 +698,17 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const boardEnemies = useMemo(() => enemyTokens(view.enemies, onBoard), [view.enemies, playback]);
   const zone = zoneOccupancy(boardHeroes, boardEnemies);
   const contestedNow = zone.contested || FORCE_CONTESTED_PILL;
-  const score = view.zones ? pointsZoneScore(view.zones, view.squad, contestedNow) : primeScore(primeAfter ?? view.primeProgress, view.squad, contestedNow);
+  const score = pointsZoneScore(view.zones, view.squad, contestedNow);
   const points = scoresAfter ?? view.scores;
   const zoneList = zonesAfter ?? view.zones;
   // The zones after the Resolution belong to the next Round.
-  const countdown = zoneList && primeCountdown(zoneList, zonesAfter ? view.round + 1 : view.round);
+  const countdown = primeCountdown(zoneList, zonesAfter ? view.round + 1 : view.round);
   // The laser walls around the inactive Prime Zone hum; when they flicker out, their dissolving sounds.
   const wallsUp = countdown !== undefined;
   useEffect(() => {
     gameAudio.setBarrier(wallsUp);
   }, [wallsUp]);
   const enemySquad = view.squad === SquadId.Left ? SquadId.Right : SquadId.Left;
-  const role = roleOf(view);
   /** The Heroes a card in one mode can be aimed at. */
   function heroTargetsOf(mode: CardDefinition): string[] {
     if (mode.target === CardTarget.SelfHero) return [selected.id];
@@ -1163,15 +1158,11 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
       if (unmounted.current) return;
     }
     setResolutionStage("done");
-    if (result.view.scores) setScoresAfter(result.view.scores);
-    // The Prime Zone counts after the Resolution: pips fill and the callouts play one after the other.
-    const zoneResult = view.zones && result.view.zones;
-    if (zoneResult) setZonesAfter(zoneResult);
-    const callouts = zoneResult
-      ? [...zoneCallouts(view.zones!, zoneResult, view.squad), ...matchEndCallouts(result.view.result, view.squad)]
-      : primeCallouts(view.primeProgress, result.view.primeProgress, view.squad);
+    setScoresAfter(result.view.scores);
+    // The zones after the Resolution: the callouts play one after the other.
+    setZonesAfter(result.view.zones);
+    const callouts = [...zoneCallouts(view.zones, result.view.zones, view.squad), ...matchEndCallouts(result.view.result, view.squad)];
     for (const callout of callouts) {
-      setPrimeAfter(result.view.primeProgress);
       // Unmount between two callouts so that two with the same text both play.
       setPrimeCallout(undefined);
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -1192,7 +1183,6 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     setShufflePending(NO_SHUFFLE_PENDING);
     setPlayback(undefined);
     setResolutionStage(undefined);
-    setPrimeAfter(undefined);
     setScoresAfter(undefined);
     setZonesAfter(undefined);
     setPrimeCallout(undefined);
@@ -1247,38 +1237,24 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         moveFrameHero={frameHero}
         heroScreenRef={heroScreenRef}
       />
-      {/* During the Resolution the role stands at the right of the Resolution bar instead. */}
-      {role && !playing && <RoleLabel role={role} />}
-      {role === "attack" ? (
-        <AttackerPill filled={(primeAfter ?? view.primeProgress)[view.squad]} resolving={playing} />
-      ) : role === "defend" ? (
-        <DefenderPill
-          roundsLeft={view.attackAndDefend!.roundsLeft}
-          zone={defenderZone(zone, (primeAfter ?? view.primeProgress)[view.squad === SquadId.Left ? SquadId.Right : SquadId.Left])}
-          resolving={playing}
-        />
-      ) : (
-        <div
-          className={`prime-pill prime-${score.state}${zoneList ? " with-zones" : ""}${playing ? " resolving" : ""}`}
-          data-testid="prime-progress"
-          aria-label={`Credits, you ${points?.[view.squad] ?? 0}, enemy ${points?.[enemySquad] ?? 0}`}
-        >
-          <span className="prime-label">{score.label}</span>
-          <span className="prime-credits-score prime-credits-own">{points?.[view.squad] ?? 0}</span>
-          <span className="prime-credits-divider">:</span>
-          <span className="prime-credits-score prime-credits-enemy">{points?.[enemySquad] ?? 0}</span>
-          {zoneList && (
-            <span className="zone-dots" data-testid="zone-dots">
-              {zoneDots(zoneList, view.squad).map((dot, i) => (
-                <span key={i} className={`zone-dot zone-dot-${dot.state}${dot.kind === ZoneKind.PrimeZone ? " zone-dot-prime" : ""}`} data-state={dot.state}>
-                  {dot.state === "inactive" && dot.kind === ZoneKind.PrimeZone ? `R${dot.unlockRound}` : ""}
-                </span>
-              ))}
+      <div
+        className={`prime-pill prime-${score.state} with-zones${playing ? " resolving" : ""}`}
+        data-testid="prime-progress"
+        aria-label={`Credits, you ${points[view.squad]}, enemy ${points[enemySquad]}`}
+      >
+        <span className="prime-label">{score.label}</span>
+        <span className="prime-credits-score prime-credits-own">{points[view.squad]}</span>
+        <span className="prime-credits-divider">:</span>
+        <span className="prime-credits-score prime-credits-enemy">{points[enemySquad]}</span>
+        <span className="zone-dots" data-testid="zone-dots">
+          {zoneDots(zoneList, view.squad).map((dot, i) => (
+            <span key={i} className={`zone-dot zone-dot-${dot.state}${dot.kind === ZoneKind.PrimeZone ? " zone-dot-prime" : ""}`} data-state={dot.state}>
+              {dot.state === "inactive" && dot.kind === ZoneKind.PrimeZone ? `R${dot.unlockRound}` : ""}
             </span>
-          )}
-        </div>
-      )}
-      {!role && zoneList && countdown !== undefined && (
+          ))}
+        </span>
+      </div>
+      {countdown !== undefined && (
         <div className={`zone-note${playing ? " resolving" : ""}`} data-testid="zone-note">
           PRIME ZONE ACTIVE IN {countdown}
         </div>
@@ -1289,7 +1265,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         aria-label={`Round ${view.round} of ${view.roundLimit}`}
       >
         <span data-testid="round" className="timer-round">
-          {role ? roundPillText(view.round, view.roundLimit) : `ROUND ${view.round} / ${view.roundLimit}`}
+          {`ROUND ${view.round} / ${view.roundLimit}`}
         </span>
         <span data-testid="timer" className="timer-time" aria-label="Planning time left">
           {secondsLeft === 0 || playing ? "LOCKED" : formatTimer(secondsLeft)}
@@ -1301,12 +1277,10 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
       {!playing && countdownCallout(secondsLeft) !== undefined && (
         <Callout kind="number" text={countdownCallout(secondsLeft)!.text} tone={countdownCallout(secondsLeft)!.tone} durationMs={COUNTDOWN_CALLOUT_MS} />
       )}
-      {role && view.round === 1 && <RoleBanner role={role} roundLimit={view.roundLimit} />}
       {resolutionStage === "callout" && <Callout kind="word" text="RESOLUTION" tone="teal" durationMs={RESOLUTION_CALLOUT_MS} />}
       {playing && (
         <div className="resolution-bar" data-testid="resolution-bar" aria-hidden="true">
           {resolutionBarText(resolutionStage!, playback?.tick ?? 0, playback?.tickCount ?? 0)}
-          {role && <span className={`bar-role ${role}`}>{ROLE_LABELS[role]}</span>}
         </div>
       )}
       {primeCallout !== undefined && <Callout kind="word" text={primeCallout.text} detail={primeCallout.detail} tone={primeCallout.tone} durationMs={primeCallout.durationMs} />}
