@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { playAiMatch } from "./ai-match";
 // These tests check how the greedy scoring behaves (scoring, symmetry, roles); the lookahead on top is tested in ai-lookahead.test.ts.
-import { AI_WEIGHTS, AiStyle, aiStyleFor, assignRoles, GHOST_MEMORY_ROUNDS, planSquadGreedy as planSquad, SquadRole, weightsFor } from "./ai";
+import { AI_WEIGHTS, AiStyle, aiStyleFor, planSquadGreedy as planSquad } from "./ai";
+import { assignRoles, GHOST_MEMORY_ROUNDS, SquadRole, weightsFor } from "./ai-internals";
 import { SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { ActionKind, moveEnd, validatePlan } from "./plan";

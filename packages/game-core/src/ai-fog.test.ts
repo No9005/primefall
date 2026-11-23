@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { aiStyleFor, planSquad, sampleWorlds, WORLDS } from "./ai";
+import { aiStyleFor, planSquad } from "./ai";
+import { sampleWorlds, WORLDS } from "./ai-internals";
 import { SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, matchFromSquadView, recordSightings, startRound } from "./match";
 import { chebyshevDistance } from "./plan";
