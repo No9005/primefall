@@ -1,7 +1,8 @@
 import { matchFromSquadView } from "./ai-world";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { aiStyleFor, planSquad, planSquadGreedy, SIMULATIONS_PER_ROUND } from "./ai";
+import { aiStyleFor, planSquad, planSquadGreedy } from "./ai";
+import { SIMULATIONS_PER_ROUND } from "./ai-internals";
 import { SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, startRound } from "./match";
 import { validatePlan } from "./plan";
