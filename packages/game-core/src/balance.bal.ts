@@ -10,10 +10,11 @@
 // on a branch and measured with the same table. The AI is the measuring instrument, not a player: read its numbers as
 // comparisons between variants.
 
+import { ROUND_LIMIT } from "./rules";
 import { it } from "vitest";
 import { AI_WEIGHTS, AiStyle, aiStyleFor, planSquad } from "./ai";
 import { type CardDefinition, type CardIndex, CardTarget, CardType, EffectKind, HERO_DECKS, HeroClass } from "./cards";
-import { EventKind, MatchEndReason, type MatchEvent, ROUND_LIMIT, SquadId, type SquadView } from "./host";
+import { EventKind, MatchEndReason, type MatchEvent, SquadId, type SquadView } from "./host";
 import { buildSquadView, createMatch, type HeroState, type MatchState, startRound } from "./match";
 import { ActionKind, chebyshevDistance, type HeroPlan, moveDestinations, type QueuedAction, queueEnergyCost, type SquadPlan } from "./plan";
 import type { GridPosition } from "./notstrom-map";

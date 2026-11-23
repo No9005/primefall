@@ -1,6 +1,7 @@
+import { HAND_SIZE, ROUND_LIMIT } from "./rules";
 import { describe, expect, it } from "vitest";
-import { HAND_SIZE, HERO_DECKS } from "./cards";
-import { ROUND_LIMIT, SquadId } from "./host";
+import { HERO_DECKS } from "./cards";
+import { SquadId } from "./host";
 import { ActionKind, type SquadPlan } from "./plan";
 import { createLocalHost, restoreLocalHost, SNAPSHOT_VERSION } from "./local-host";
 

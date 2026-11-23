@@ -1,6 +1,7 @@
+import { SIGHT_RANGE } from "./rules";
 import { describe, expect, it } from "vitest";
 import { SquadId } from "./host";
-import { buildSquadView, createMatch, type MatchState, recordSightings, SIGHT_RANGE, startRound } from "./match";
+import { buildSquadView, createMatch, type MatchState, recordSightings, startRound } from "./match";
 import { findTiles, type GridPosition, hasLineOfSight, NOTSTROM_MAP, TileKind } from "./notstrom-map";
 
 const LEFT_BRUISER = "left-bruiser";

@@ -1,23 +1,12 @@
 // AI planning (ADR 0017, ADR 0018). A pure, deterministic function from a Squad View to a Squad Plan.
 // It only ever sees the Squad View, so it cannot read enemy Hands or unseen Heroes: no cheating.
 
+import { MAX_QUEUE_LENGTH, MOVE_DISTANCE } from "./rules";
 import { type CardIndex, HeroClass, HERO_DECKS, isSimpleAttack, normalRange } from "./cards";
 import { buildSquadView, type HeroState, matchFromSquadView, type MatchState, seededHash, ZONES } from "./match";
 import { resolveRound, cardsNotExiled } from "./resolution";
 import { type GhostEnemyView, type HeroView, SquadId, type SquadView, Visibility, type VisibleEnemyView } from "./host";
-import {
-  ActionKind,
-  chebyshevDistance,
-  type HeroPlan,
-  MAX_QUEUE_LENGTH,
-  MOVE_DISTANCE,
-  moveDestinations,
-  moveEnd,
-  movePath,
-  type QueuedAction,
-  type SquadPlan,
-  validatePlan,
-} from "./plan";
+import { ActionKind, chebyshevDistance, type HeroPlan, moveDestinations, moveEnd, movePath, type QueuedAction, type SquadPlan, validatePlan } from "./plan";
 import {
   CoverKind,
   coverAt,

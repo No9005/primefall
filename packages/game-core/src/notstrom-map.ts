@@ -1,5 +1,7 @@
 // Notstrom Map data (ADR 0016) and the Grid model shared by rules and rendering.
 
+import { COVER_IGNORED_RANGE } from "./rules";
+
 /** String-valued so Match State stays readable when serialized; always compare against the members. */
 export enum TileKind {
   Floor = "floor",
@@ -76,11 +78,6 @@ export enum CoverKind {
   Half = "half",
   Full = "full",
 }
-
-/** Half Cover reduces incoming damage by this much. */
-export const HALF_COVER_REDUCTION = 1;
-/** Attackers at this Range or closer ignore Cover. */
-export const COVER_IGNORED_RANGE = 1;
 
 /** The Overwatch Nest is a Full Cover tile (ADR 0016). */
 export function coverAt(grid: Grid, position: GridPosition): CoverKind {

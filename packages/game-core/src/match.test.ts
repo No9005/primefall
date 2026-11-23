@@ -1,5 +1,6 @@
+import { HAND_SIZE } from "./rules";
 import { describe, expect, it } from "vitest";
-import { HAND_SIZE, HERO_DECKS, HeroClass } from "./cards";
+import { HERO_DECKS, HeroClass } from "./cards";
 import { createMatch, HeroState, MatchState, startRound } from "./match";
 import { SquadId } from "./host";
 

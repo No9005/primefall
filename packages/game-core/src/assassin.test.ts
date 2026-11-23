@@ -1,8 +1,9 @@
+import { SIGHT_RANGE } from "./rules";
 import { describe, expect, it } from "vitest";
 import { cardIndex, HERO_DECKS, HeroClass } from "./cards";
 import { withFullCover } from "./full-cover-fixture";
 import { AttackFailReason, EventKind, SquadId, Visibility } from "./host";
-import { buildSquadView, createMatch, type MatchState, recordSightings, SIGHT_RANGE, startRound } from "./match";
+import { buildSquadView, createMatch, type MatchState, recordSightings, startRound } from "./match";
 import { ActionKind, type QueuedAction, type SquadPlan, validatePlan, PlanIssueKind } from "./plan";
 import { resolveRound } from "./resolution";
 

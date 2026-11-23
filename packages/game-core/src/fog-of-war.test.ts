@@ -1,7 +1,8 @@
+import { SIGHT_RANGE } from "./rules";
 import { describe, expect, it } from "vitest";
 import { HeroClass } from "./cards";
 import { type EnemyView, EventKind, SquadId, Visibility } from "./host";
-import { buildSquadView, canSquadSee, createMatch, type MatchState, recordSightings, SIGHT_RANGE, startRound } from "./match";
+import { buildSquadView, canSquadSee, createMatch, type MatchState, recordSightings, startRound } from "./match";
 import { ActionKind, type SquadPlan } from "./plan";
 import { findTiles, type GridPosition, NOTSTROM_MAP, TileKind } from "./notstrom-map";
 import { getSquadEvents, resolveRound } from "./resolution";

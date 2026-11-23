@@ -1,7 +1,8 @@
+import { MAX_QUEUE_LENGTH } from "./rules";
 import { describe, expect, it } from "vitest";
 import { EventKind, SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
-import { ActionKind, MAX_QUEUE_LENGTH, PlanIssueKind, type QueuedAction, type SquadPlan, validatePlan } from "./plan";
+import { ActionKind, PlanIssueKind, type QueuedAction, type SquadPlan, validatePlan } from "./plan";
 import { resolveRound } from "./resolution";
 
 const BRUISER = "left-bruiser";

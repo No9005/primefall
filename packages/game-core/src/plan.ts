@@ -1,21 +1,13 @@
 // Squad Plans and planning-time validation (ADR 0013, ADR 0020). Shared with clients: a plan is plain
 // data, and `validatePlan` lets the UI explain why a plan cannot be committed. The host validates again.
 
+import { MAX_QUEUE_LENGTH, MOVE_DISTANCE, PITCH_ENERGY } from "./rules";
 import { type CardDefinition, type CardIndex, CardTarget, HERO_DECKS, type HeroClass, isPlayableCard } from "./cards";
 import { type HeroView, type SquadId, type SquadView, Visibility } from "./host";
 import { blocksSteps, CoverKind, coverAt, type Grid, type GridPosition, isStepAllowed, NOTSTROM_MAP, stepTowards, TileKind, tileAt } from "./notstrom-map";
 
-/** A Hero's Queue holds at most 4 actions (the maximum Hand size, ADR 0020). */
-export const MAX_QUEUE_LENGTH = 4;
-
-/** Tiles a Move 3 covers at most. */
-export const MOVE_DISTANCE = 3;
-
 /** Tiles a Slowed Hero's Move covers: half of the distance, rounded down (a Move 3 becomes a Move 1). */
 export const slowedDistance = (distance: number): number => Math.floor(distance / 2);
-
-/** Energy one Pitch produces (ADR 0007). */
-export const PITCH_ENERGY = 1;
 
 export enum ActionKind {
   /** Any card used as Move 3: up to three steps towards the destination. */

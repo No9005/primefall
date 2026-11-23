@@ -1,16 +1,6 @@
+import { CREDITS_TO_WIN, OUTPOST_UNLOCK_ROUND, OUTPOST_VALUE, PRIME_ZONE_UNLOCK_ROUND, PRIME_ZONE_VALUE, ROUND_LIMIT } from "./rules";
 import { describe, expect, it } from "vitest";
-import {
-  EventKind,
-  MatchEndReason,
-  OUTPOST_UNLOCK_ROUND,
-  OUTPOST_VALUE,
-  PRIME_ZONE_UNLOCK_ROUND,
-  PRIME_ZONE_VALUE,
-  ROUND_LIMIT,
-  SquadId,
-  CREDITS_TO_WIN,
-  ZoneKind,
-} from "./host";
+import { EventKind, MatchEndReason, SquadId, ZoneKind } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound, ZONES } from "./match";
 import { getSquadEvents, resolveRound } from "./resolution";
 
