@@ -1,9 +1,10 @@
 // Balance analysis: `npm run sim` plays many AI-versus-AI matches and prints win rates and match lengths.
 // Set SIM_SEEDS to change the number of seeds (default 1000). Not part of `npm test`.
 
+import { ROUND_LIMIT } from "./rules";
 import { it } from "vitest";
 import { playAiMatch } from "./ai-match";
-import { MatchEndReason, ROUND_LIMIT, SquadId } from "./host";
+import { MatchEndReason, SquadId } from "./host";
 
 it("prints win rates and match lengths", () => {
   const seeds = Number(process.env.SIM_SEEDS ?? 1000);

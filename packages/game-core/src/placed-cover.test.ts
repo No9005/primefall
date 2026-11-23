@@ -1,7 +1,8 @@
+import { MAX_PLACED_COVER_PER_SQUAD } from "./rules";
 import { describe, expect, it } from "vitest";
 import { cardIndex, HeroClass } from "./cards";
 import { EventKind, SquadId } from "./host";
-import { buildSquadView, createMatch, MAX_PLACED_COVER_PER_SQUAD, type MatchState, startRound } from "./match";
+import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type SquadPlan } from "./plan";
 import { CoverKind, coverAgainst, coverAt, type GridPosition, tileAt, TileKind } from "./notstrom-map";
 import { resolveRound } from "./resolution";

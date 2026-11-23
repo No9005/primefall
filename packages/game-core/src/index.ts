@@ -6,4 +6,5 @@ export const GAME_NAME = "Primefall";
 export * from "./cards";
 export * from "./host";
 export * from "./plan";
+export * from "./rules";
 export * from "./notstrom-map";

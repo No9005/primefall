@@ -1,26 +1,9 @@
 // Match setup and the card economy of a Round (ADR 0007, ADR 0017). Pure and deterministic:
 // every function returns a new Match State and all randomness comes from the seeded PRNG in it.
 
-import { type CardIndex, EffectKind, HAND_SIZE, HERO_DECKS, HeroClass } from "./cards";
-import {
-  type EnemyView,
-  type MatchResult,
-  type RevealedArea,
-  MAX_PLACED_COVER_PER_SQUAD,
-  OUTPOST_UNLOCK_ROUND,
-  OUTPOST_VALUE,
-  PRIME_ZONE_UNLOCK_ROUND,
-  PRIME_ZONE_VALUE,
-  type MatchRules,
-  ROUND_LIMIT,
-  SquadId,
-  type HeroView,
-  type SquadView,
-  Visibility,
-  type ZoneControl,
-  ZoneKind,
-  type ZoneView,
-} from "./host";
+import { HAND_SIZE, HIDDEN_SIGHT_BONUS, OUTPOST_UNLOCK_ROUND, OUTPOST_VALUE, PRIME_ZONE_UNLOCK_ROUND, PRIME_ZONE_VALUE, ROUND_LIMIT, SIGHT_RANGE } from "./rules";
+import { type CardIndex, EffectKind, HERO_DECKS, HeroClass } from "./cards";
+import { type EnemyView, type MatchResult, type RevealedArea, type MatchRules, SquadId, type HeroView, type SquadView, Visibility, type ZoneControl, ZoneKind, type ZoneView } from "./host";
 import { chebyshevDistance } from "./plan";
 import { CoverKind, dropPointStartTiles, coverAt, destroyCover, destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, NOTSTROM_MAP, TileKind, tileAt, withTile, withWreck, withZoneClosed } from "./notstrom-map";
 
@@ -99,11 +82,6 @@ interface GhostMemory {
   lastSeenRound: number;
 }
 
-/** Sight range of every Hero in tiles (ADR 0005). */
-export const SIGHT_RANGE = 7;
-/** Extra sight range of a Hidden Assassin: 9 tiles in total. */
-const HIDDEN_SIGHT_BONUS = 2;
-
 /** How many tiles a Hero sees: the Hidden Assassin sees further. */
 function sightRange(hero: HeroState): number {
   return SIGHT_RANGE + (hero.hidden > 0 && hero.heroClass === HeroClass.Assassin ? HIDDEN_SIGHT_BONUS : 0);
@@ -114,9 +92,6 @@ interface PlacedCover {
   squad: SquadId;
   position: GridPosition;
 }
-
-// A Squad has at most this many Placed Cover tiles; placing another removes its oldest (the constant is in host.ts, which a client may import).
-export { MAX_PLACED_COVER_PER_SQUAD };
 
 /** A Scrap Field (Heavy Metal): Heroes that Move through its area are Slowed and take `damage` once per Move. */
 export interface ActiveField extends RevealedArea {

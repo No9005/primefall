@@ -1,6 +1,7 @@
 // Resolution of a Round (ADR 0013, ADR 0020). Pure and deterministic: the same Match State and plans
 // always give the same result. Only Move actions exist so far.
 
+import { CREDITS_TO_WIN, HALF_COVER_REDUCTION, MAX_PLACED_COVER_PER_SQUAD, MAX_QUEUE_LENGTH, MOVE_DISTANCE, ROUND_LIMIT, TAKEOVER_BONUS_FACTOR, TAKEOVER_COOLDOWN } from "./rules";
 import {
   type CardDefinition,
   type CardEffect,
@@ -14,44 +15,10 @@ import {
   isPlayableUtility,
   type PLAYABLE_UTILITY_EFFECTS,
 } from "./cards";
-import {
-  AttackFailReason,
-  EventKind,
-  MatchEndReason,
-  type MatchEvent,
-  TAKEOVER_BONUS_FACTOR,
-  TAKEOVER_COOLDOWN,
-  ROUND_LIMIT,
-  SquadId,
-  CREDITS_TO_WIN,
-} from "./host";
-import { type ActiveField, areaTiles, canSquadSee, canSquadSeeHero, type HeroState, MAX_PLACED_COVER_PER_SQUAD, type MatchState, recordSightings, refillDeck, ZONES } from "./match";
-import {
-  ActionKind,
-  chebyshevDistance,
-  MAX_QUEUE_LENGTH,
-  MOVE_DISTANCE,
-  slowedDistance,
-  type QueuedAction,
-  resolveWalks,
-  type SquadPlan,
-} from "./plan";
-import {
-  CoverKind,
-  coverAgainst,
-  coverAt,
-  destroyCover,
-  type GridPosition,
-  isStepAllowed,
-  isWall,
-  HALF_COVER_REDUCTION,
-  hasLineOfSight,
-  stepTowards,
-  TileKind,
-  tileAt,
-  withTile,
-  withWreck,
-} from "./notstrom-map";
+import { AttackFailReason, EventKind, MatchEndReason, type MatchEvent, SquadId } from "./host";
+import { type ActiveField, areaTiles, canSquadSee, canSquadSeeHero, type HeroState, type MatchState, recordSightings, refillDeck, ZONES } from "./match";
+import { ActionKind, chebyshevDistance, slowedDistance, type QueuedAction, resolveWalks, type SquadPlan } from "./plan";
+import { CoverKind, coverAgainst, coverAt, destroyCover, type GridPosition, isStepAllowed, isWall, hasLineOfSight, stepTowards, TileKind, tileAt, withTile, withWreck } from "./notstrom-map";
 
 interface ResolutionResult {
   /** The Match State after the Resolution; the Round counter and Hands are unchanged. */

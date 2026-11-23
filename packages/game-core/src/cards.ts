@@ -106,9 +106,6 @@ export interface CardDefinition {
 /** Index of a card in its Hero's fixed Deck list (`HERO_DECKS`). */
 export type CardIndex = number;
 
-/** Maximum Hand size a Draw fills up to. */
-export const HAND_SIZE = 4;
-
 /**
  * Cards whose Primary effect is only "deal damage to one visible enemy". These are the Attacks the
  * resolution can play so far; other effects follow with their own tickets.
