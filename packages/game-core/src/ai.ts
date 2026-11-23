@@ -168,7 +168,7 @@ export const AI_WEIGHTS = {
   evalWin: 1000,
 };
 
-export type AiWeights = typeof AI_WEIGHTS;
+type AiWeights = typeof AI_WEIGHTS;
 
 /** AI Styles (GLOSSARY): a named set of multipliers on `AI_WEIGHTS`. Progress is never scaled, so every style heads for the Zone. */
 export enum AiStyle {
@@ -245,7 +245,7 @@ export function weightsFor(style: AiStyle, role: SquadRole): AiWeights {
 export const GHOST_MEMORY_ROUNDS = 4;
 
 /** A remembered enemy and how much of its threat is left (1 when just seen, 0 after `GHOST_MEMORY_ROUNDS`). */
-export interface GhostThreat {
+interface GhostThreat {
   position: GridPosition;
   heroClass: HeroClass;
   freshness: number;
@@ -592,7 +592,7 @@ const inCover = (match: MatchState, hero: HeroState) => coverAt(match.grid, hero
  * How good the Match State after a simulated Round is for a Squad, own minus enemy: Credits, zone control, cards not in the Exile (Deck-as-Life), Heroes in Cover, and danger (enemies that can
  * still hit a Hero, less what Cover takes). It names no tile or zone; the weights are in `AI_WEIGHTS`.
  */
-export function evaluateRound(match: MatchState, squad: SquadId, W: AiWeights = AI_WEIGHTS): number {
+function evaluateRound(match: MatchState, squad: SquadId, W: AiWeights = AI_WEIGHTS): number {
   const enemySquad = squad === SquadId.Left ? SquadId.Right : SquadId.Left;
   const sign = (who: SquadId | undefined) => (who === squad ? 1 : who === enemySquad ? -1 : 0);
   const points = match.scores[squad] - match.scores[enemySquad];
