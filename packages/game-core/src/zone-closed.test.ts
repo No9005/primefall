@@ -1,6 +1,7 @@
+import { matchFromSquadView } from "./ai-world";
 import { describe, expect, it } from "vitest";
 import { EventKind, SquadId } from "./host";
-import { createMatch, matchFromSquadView, buildSquadView, startRound, type MatchState } from "./match";
+import { createMatch, buildSquadView, startRound, type MatchState } from "./match";
 import { ActionKind, moveDestinations, moveEnd, reachableMoveDestinations } from "./plan";
 import { hasLineOfSight, isStepAllowed } from "./notstrom-map";
 import { resolveRound } from "./resolution";

@@ -1,7 +1,8 @@
+import { matchFromSquadView } from "./ai-world";
 import { describe, expect, it } from "vitest";
 import { aiStyleFor, planSquad, sampleWorlds, WORLDS } from "./ai";
 import { SquadId, Visibility } from "./host";
-import { buildSquadView, createMatch, matchFromSquadView, recordSightings, startRound } from "./match";
+import { buildSquadView, createMatch, recordSightings, startRound } from "./match";
 import { chebyshevDistance } from "./plan";
 import { tileAt, TileKind } from "./notstrom-map";
 
