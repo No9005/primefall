@@ -35,7 +35,7 @@ Matches are one-sided. Both Squads run to the Prime Zone and play Shield plus At
 | Public | Control of each zone and both scores are always visible; enemy Heroes stay in the Fog. |
 | Takeover bonus | Off by default. Two constants (bonus, cooldown per zone) exist for the case that the tug-of-war gauge is missed: a one-time bonus equal to the zone's value when a Squad takes a zone the enemy controlled in the previous Resolution. |
 | Attack and Defend | Keeps its own win rules, Round limit (ADR 0022). The new decks and combat rules apply to both modes, so its balance (#302) is measured again after the decks. |
-| Overwatch Nest | Removed for now (the tile, its rules and the AI weight). The card Overwatch Uplink stays. |
+| Overwatch Nest | Removed in ADR 0024, placed again by the Crossroads map (#361, ADR 0016): two Nests in the top half, a Full Cover tile with a sightline towards the Prime Zone. The card Overwatch Uplink stays. |
 
 At most 4 Credits a Resolution can be scored (2 + 1 + 1) from Round 4, 2 before; at most about 54 in a match.
 
@@ -85,7 +85,7 @@ Distance decides a duel: close the Bruiser, far the Assassin. The Controller is 
 
 ## Open: the next stages
 
-1. **Map** (#349): where the Outposts and the Prime Zone are, sight blockers, no Overwatch Nest, equal lanes for both Squads.
+1. **Map** (#349): where the Outposts and the Prime Zone are, sight blockers, the two Overwatch Nests, equal lanes for both Squads.
 2. **Roles** (#348, ADR 0025): decided; the tickets build the cards. What the Heroes do with two Outposts is tested by the role gauges.
 3. **AI**: plans for splitting between zones and for holding vision; a Squad plan from the seed.
 4. **Mission types** (three per game) as a possible later layer; not part of this decision.

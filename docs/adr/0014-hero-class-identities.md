@@ -12,4 +12,4 @@ Complementary roles create squad-level decisions: who holds space, who enables, 
 
 ## Status
 
-accepted. Revised: the decks are superseded by `docs/specs/mvp-card-set.md`; Overdrive is removed (ADR 0003).
+accepted. Revised: the decks are superseded by ADR 0025 and `packages/game-core/src/cards.ts`; Overdrive is removed (ADR 0003).

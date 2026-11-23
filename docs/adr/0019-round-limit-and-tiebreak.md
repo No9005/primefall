@@ -1,5 +1,7 @@
 # Round Limit and Tiebreak
 
+> **Update:** Superseded for the classic mode by ADR 0024 (15 Rounds, higher Credit score wins, the Squad with more cards not in the Exile wins on equal Credits) and for Attack and Defend by ADR 0022 (Round limit 12, Defence Held).
+
 A match lasts at most 30 Rounds. If no Squad has won by then, the Squad with more cards in the Decks of all its Heroes wins; equal totals are a draw. Matches should take 8 to 10 minutes, which leaves roughly 16 to 20 seconds per Round for planning and Resolution.
 
 Without a limit, two Squads that avoid the Prime Zone would never finish. Using Deck size as the tiebreak stays consistent with Deck-as-Life. The limit and the planning timer are balancing values to be revisited after the first playtests.

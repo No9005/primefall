@@ -8,10 +8,10 @@ The current state is an **offline prototype**: you command the Bruiser of a Squa
 
 | You want | Read |
 |---|---|
-| The idea and the design | `docs/PITCH.md`, the spec `docs/specs/offline-mvp-prototype.md`, the card set `docs/specs/mvp-card-set.md` |
+| The idea and the design | `docs/design/principles.md`, the card data `packages/game-core/src/cards.ts` |
 | The words the project uses | `GLOSSARY.md` |
 | Why things are the way they are | `docs/adr/` (one decision per file) |
-| The UI and the assets | `docs/design/ui-spec.md`, `docs/design/asset-contract.md` |
+| The UI and the assets | `docs/design/world-and-style.md` (entry), `docs/design/decisions.md`, `docs/design/asset-contract.md` |
 | How agents and the owner work | `CLAUDE.md`, `CODING_STANDARDS.md`, `docs/agents/`, `docs/process/status.md` |
 | What is planned and in progress | the GitHub issues and pull requests (they are the truth, not the docs) |
 

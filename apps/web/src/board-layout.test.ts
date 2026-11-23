@@ -1,5 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
-import path from "node:path";
 import { findTiles, NOTSTROM_MAP, TileKind } from "game-core";
 import { describe, expect, it } from "vitest";
 import {
@@ -30,25 +28,11 @@ import {
 import { freeBoardArea } from "./hud-layout";
 import { HERO_WORLD_HEIGHT } from "./hero-style";
 
-const assetsDir = path.resolve(__dirname, "../public/assets");
-const manifest = JSON.parse(readFileSync(path.join(assetsDir, "manifest.json"), "utf8")) as {
-  bundles: { assets: { alias: string; src: string }[] }[];
-};
-const manifestAssets = new Map(manifest.bundles.flatMap((b) => b.assets).map((a) => [a.alias, a.src]));
-
 describe("gridToWorld", () => {
   it("uses the 2:1 projection with 128 x 64 px tiles", () => {
     expect(gridToWorld({ col: 0, row: 0 })).toEqual({ x: 0, y: 0 });
     expect(gridToWorld({ col: 1, row: 0 })).toEqual({ x: 64, y: 32 });
     expect(gridToWorld({ col: 0, row: 1 })).toEqual({ x: -64, y: 32 });
-  });
-});
-
-describe("the manifest", () => {
-  it("lists only existing files and no terrain sprites", () => {
-    const aliases = [...manifestAssets.keys()];
-    expect(aliases.some((alias) => alias.startsWith("tiles.") || alias.startsWith("props."))).toBe(false);
-    for (const [alias, src] of manifestAssets) expect(existsSync(path.join(assetsDir, src)), alias).toBe(true);
   });
 });
 

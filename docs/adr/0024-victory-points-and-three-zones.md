@@ -40,4 +40,4 @@ Taking a zone from the enemy (it controlled the zone at the end of the previous 
 
 ## Status
 
-Proposed. The owner accepts it by merging.
+Accepted. It was merged and is implemented.

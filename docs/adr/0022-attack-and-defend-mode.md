@@ -32,4 +32,4 @@ The numbers are a first guess. An experiment (AI against AI, 300 seeds, not merg
 
 ## Status
 
-Proposed. The owner accepts it by merging.
+Accepted. It was merged and is implemented.

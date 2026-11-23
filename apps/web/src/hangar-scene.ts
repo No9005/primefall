@@ -11,7 +11,7 @@ import {
 import { BRIDGE_SHADOWS, CLIP_SHADOWS, SHADOW_FLAT, SHADOW_LIFT, type ShadowSpot } from "./hangar-shadows";
 import type { Scene, SceneEnv } from "./stage";
 
-// The hangar of the Hero Select as a scene on the stage (ADR 0026; design: docs/design/hero-select/README.md, "the Hero Select in the hangar").
+// The hangar of the Hero Select as a scene on the stage (ADR 0026; design: docs/design/decisions.md, the Hero Select rows).
 // The picture is drawn in design pixels (the frame is 960 x 444), 104 above the frame and continued on all sides. The scene only shows: the
 // machine of the three Heroes (hangar-select.ts) belongs to the screen, which hands it over with `attach`. All motion follows the stage ticker.
 

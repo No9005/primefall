@@ -2,7 +2,7 @@
 
 Mobile-first, 2.5D tactical 3v3 game: both Squads plan simultaneously, commit commands, and a deterministic Resolution plays out. A Squad wins by holding the Prime Zone for three consecutive Resolutions.
 
-The current product spec is `docs/specs/offline-mvp-prototype.md` (card effects: `docs/specs/mvp-card-set.md`). The vocabulary is `GLOSSARY.md`. Decisions are in `docs/adr/`. Work is tracked as GitHub issues. Switch values, working agreements and approaches that were tried and dropped: `docs/process/status.md`.
+There is no separate product spec any more: the rules are in `packages/game-core` (card effects: `cards.ts`, behaviour: its tests), the vocabulary is `GLOSSARY.md`, decisions are in `docs/adr/`, and the design principles are in `docs/design/principles.md`. Work is tracked as GitHub issues. Switch values, working agreements and approaches that were tried and dropped: `docs/process/status.md`.
 
 ## Language
 
@@ -22,7 +22,7 @@ Root scripts, all run from the repository root: `dev`, `build`, `test`, `lint`, 
 
 ## How to work on a ticket
 
-1. Read the whole issue, including its comments, and the spec, ADRs and glossary parts it touches.
+1. Read the whole issue, including its comments, and the ADRs, glossary parts and design principles it touches.
 2. Check the issue's blocking relationships (see `docs/agents/issue-tracker.md`). If a blocking issue is still open, stop and comment on the issue instead of starting. (A factory run has already checked this: skip the step, `gh api` and `gh issue list` are not available to it.)
 3. Work on your own new branch named `agent/issue-<number>-<short-slug>`, cut from the latest `origin/main` (`git fetch origin main`, then `git switch -c <branch> origin/main`). See _Git rules_ below.
 4. Keep the change small and limited to the ticket. Do not fix unrelated things; mention them in the pull request.
@@ -32,7 +32,7 @@ Root scripts, all run from the repository root: `dev`, `build`, `test`, `lint`, 
 7. Open a pull request against `main` that references the issue (`Closes #<number>`). Agents never merge. The product owner merges, or GitHub auto-merge does for low blast radius pull requests that the software factory enables (see _Software factory_).
 8. In the pull request: a short summary, how you verified it (commands and results), and anything open or decided on your own.
 
-If the issue is unclear or contradicts the spec, an ADR or the glossary, do not guess. Comment on the issue with the question and stop.
+If the issue is unclear or contradicts an ADR, the glossary or the design principles, do not guess. Comment on the issue with the question and stop.
 
 ## Git rules
 
@@ -53,7 +53,7 @@ If the issue is unclear or contradicts the spec, an ADR or the glossary, do not 
 
 - **The simulation is pure and deterministic.** Rules (movement, Line of Sight, Cover, Energy, Deck Damage, Exhaustion, victory) live in a module with no knowledge of rendering, browser APIs or storage. Given the same Match State and Squad Plans it must always produce the same result. Rendering and AI consume the simulation; they never reimplement its rules.
 - **Respect the ADRs.** If your change contradicts an ADR, surface it explicitly in the pull request instead of silently overriding it.
-- Do not edit `GLOSSARY.md`, ADRs or specs unless the issue asks for it. Propose changes in the pull request description.
+- Do not edit `GLOSSARY.md`, ADRs or `docs/design/principles.md` unless the issue asks for it. Propose changes in the pull request description.
 - Do not add dependencies beyond the decided stack without a reason stated in the pull request.
 - Tickets without the `ready-for-agent` label are not for agents. Work only on the ticket or tickets the product owner names in the chat, one at a time, and stop after opening the pull request.
 
@@ -76,7 +76,7 @@ In a chat session with the owner, read `docs/agents/working-agreements.md` first
 
 ### Issue tracker
 
-Issues and specs live in GitHub Issues of `No9005/primefall` (via `gh` / REST API). See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues of `No9005/primefall` (via `gh` / REST API). See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

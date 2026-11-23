@@ -15,14 +15,14 @@ Start here before making anything the player sees or hears (a picture, an animat
 
 | Topic | File |
 |---|---|
+| The design principles (read first) | `docs/design/principles.md` |
 | Tone, frame, Heroes, open questions | `docs/design/world/README.md`, `missions.md` |
-| Product pitch and positioning | `docs/PITCH.md` |
 | Terms (use them exactly) | `GLOSSARY.md` |
 | Owner's design decisions (do not contradict) | `docs/design/decisions.md` |
 | The three Heroes: designs, clips, sheet format | `docs/design/heroes/README.md` |
 | Animation reference (rig, timing, effects) | `docs/design/animation/README.md` |
 | The Notstrom Map look | `docs/design/notstrom-map/` |
-| Title screen, Notstrom Intro, Hero Select (hangar) | `docs/design/title/`, `docs/design/notstrom-intro/`, `docs/design/hero-select/` |
+| Title screen, Notstrom Intro, Hero Select (hangar) | `docs/design/title/`, `docs/design/notstrom-intro/`, `docs/design/decisions.md` (Hero Select), `archive/hangar/tools/` |
 | Where scenes and UI are drawn | `docs/adr/0026-scenes-in-pixijs-ui-in-html.md` |
 | Music, how it was made, what was tried | `archive/audio-source/music/README.md` |
 | Voice and sound effects | `archive/audio-source/voice-sfx/` |

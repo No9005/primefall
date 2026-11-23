@@ -23,7 +23,7 @@ Pull requests are not a request surface (external PRs are not triaged as feature
 A ticket that changes what the player sees (board, HUD, animation):
 
 - Read `docs/design/decisions.md` first and do not contradict it; if a ticket needs to, say so in the ticket and ask the owner.
-- Name the reference (a board of the design canvas, a page under `docs/design/animation`, or `docs/design/ui-spec.md`). Add a **checklist of every visible element of the reference**: each text exactly as written there (for example "RESOLUTION · TICK n / 4"), its position, its states, and its timing in milliseconds. The agent ticks them off against its own screenshots. If no reference exists, give measurable values (px, contrast ratios, milliseconds) instead of words like "bigger" or "nicer".
+- Name the reference (a board of the design canvas, a page under `docs/design/animation`, or `docs/design/decisions.md`). Add a **checklist of every visible element of the reference**: each text exactly as written there (for example "RESOLUTION · TICK n / 4"), its position, its states, and its timing in milliseconds. The agent ticks them off against its own screenshots. If no reference exists, give measurable values (px, contrast ratios, milliseconds) instead of words like "bigger" or "nicer".
 - State which states the screenshot tool can stage (`npm run screenshots -w apps/web`, scenarios of #263) and which cannot; the latter go to the owner's check in play (see `CLAUDE.md`, "Look at what you built").
 
 ## When a skill says "publish to the issue tracker"

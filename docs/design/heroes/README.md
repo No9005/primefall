@@ -6,7 +6,7 @@
 
 A proposal for the final look of the three Heroes, worked out with the product owner in a chat session: the designs, their animation clips and the poses of the Hero Select screen, rendered into sprite sheets that PixiJS v8 loads directly.
 
-**Status: assets and reference only. Nothing in the app uses them yet.** The game still draws the Heroes with the shape rig of `docs/design/animation/`. Wiring the sheets into `apps/web` needs a ticket; the open points at the end of this file belong in it.
+**Status: the game uses the sheets** (`apps/web/src/heroes.ts`, `hero-clips.ts`). The board plays the `figure` layer; the Hero Select (hangar) plays all three layers. The shape rig that came before is gone; this folder's `tools/rigs` are the source the sheets are exported from.
 
 ## What is here
 
@@ -28,7 +28,7 @@ A proposal for the final look of the three Heroes, worked out with the product o
 ## Format
 
 - Every frame is **136 x 104 px** with the **centre of the feet at (58, 86)**. The frames are trimmed in the sheet; the JSON carries `spriteSourceSize`, `sourceSize` and an `anchor`, so a sprite made from any frame has its origin at the feet.
-- The figures **face right**. An enemy, or a Hero facing left, is the same sprite mirrored (`scale.x = -1`), as with the shape rig.
+- The figures **face right**. An enemy, or a Hero facing left, is the same sprite mirrored (`scale.x = -1`).
 - **20 frames per second** (50 ms per frame). A loop whose length is not a multiple of 50 ms is sampled evenly; its `frameMs` in `clips.json` says how long a frame lasts (Bruiser `walk` 49.231, Controller `walk` 48.333).
 - Each clip has up to three layers, each its own animation in the sheet, all with the same number of frames:
   - `<class>.<clip>.figure`: the Hero alone, with a dark outline.
@@ -99,11 +99,8 @@ node docs/design/heroes/tools/export.mjs
 
 The export starts a Chromium through Playwright (the one of the e2e tests), runs the three rigs in a page and writes the sheets, `clips.json`, the figures and the overview images. The rigs in `tools/rigs/` are the source; the pages in `reference/` are copies for looking at and are not read by the export, except the three `concepts-*` pages, from which the standing figure and the portrait are taken.
 
-## Open points for the ticket that wires this in
+## Open points
 
-- **Asset contract.** `docs/design/asset-contract.md` describes single pose images on a 128 x 192 canvas, facing south-east, loaded through `assets/manifest.json`. These sheets are animated clips on a 136 x 104 frame, facing right, and are not in the manifest. The contract has to be changed or these assets fitted to it.
-- **Size.** The figures are about 45 px tall (Controller and Bruiser) to 50 px (Assassin with fin); the shape rig is about 36 px tall on the 46 x 24 tile. Pixel art must be scaled by whole numbers, so either the board scale or the art has to move.
 - **View angles.** There is one view only. How pre-drawn pixel art works for eight view angles is the open question of ADR 0021.
-- **Baked effects.** The `fx` layers hold effects that the game already draws itself (Shield bubble, damage numbers, the Wait mark, Cover walls, the Scout Drone, projectiles). Use the `figure` layer alone where the game keeps its own effect.
 - **Differences to the reference**, decided in the session: the Bruiser carries the shotgun in one hand; the Controller's Aegis beam comes from the reactor core in her chest, her core turns violet for Shock Pulse, and the third arm throws the Scout Drone and slams the Cover deployer; the Assassin's shimmer is violet. Controller and Assassin have no clip for a hit the Shield absorbs.
 - **Quality.** The parts are rotated per frame, so edges show steps, and the Assassin's cape is one stiff part. These are sketches to judge the direction; final art would redraw the key frames by hand.
