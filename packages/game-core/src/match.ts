@@ -25,7 +25,7 @@ import { chebyshevDistance } from "./plan";
 import { CoverKind, dropPointStartTiles, coverAt, destroyCover, destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, NOTSTROM_MAP, TileKind, tileAt, withTile, withWreck, withZoneClosed } from "./notstrom-map";
 
 /** A scoring zone, read from the Notstrom Map. */
-export interface ZoneDefinition {
+interface ZoneDefinition {
   kind: ZoneKind;
   tiles: readonly GridPosition[];
   value: number;
@@ -91,7 +91,7 @@ export interface HeroState {
 }
 
 /** What a Squad last saw of an enemy Hero (Ghost memory, ADR 0005). */
-export interface GhostMemory {
+interface GhostMemory {
   position: GridPosition;
   deckCount: number;
   discardCount: number;
@@ -102,15 +102,15 @@ export interface GhostMemory {
 /** Sight range of every Hero in tiles (ADR 0005). */
 export const SIGHT_RANGE = 7;
 /** Extra sight range of a Hidden Assassin: 9 tiles in total. */
-export const HIDDEN_SIGHT_BONUS = 2;
+const HIDDEN_SIGHT_BONUS = 2;
 
 /** How many tiles a Hero sees: the Hidden Assassin sees further. */
-export function sightRange(hero: HeroState): number {
+function sightRange(hero: HeroState): number {
   return SIGHT_RANGE + (hero.hidden > 0 && hero.heroClass === HeroClass.Assassin ? HIDDEN_SIGHT_BONUS : 0);
 }
 
 /** Cover a Hero put on a tile with a card; it stays until destroyed. `match.placedCover` keeps the order of placing, oldest first. */
-export interface PlacedCover {
+interface PlacedCover {
   squad: SquadId;
   position: GridPosition;
 }
@@ -129,7 +129,7 @@ export interface ActiveField extends RevealedArea {
 }
 
 /** An area a Squad's Scout Drone reveals. */
-export interface ActiveReveal extends RevealedArea {
+interface ActiveReveal extends RevealedArea {
   squad: SquadId;
   /** Resolution ends left before the area is hidden again. */
   remaining: number;

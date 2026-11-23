@@ -53,7 +53,7 @@ import {
   withWreck,
 } from "./notstrom-map";
 
-export interface ResolutionResult {
+interface ResolutionResult {
   /** The Match State after the Resolution; the Round counter and Hands are unchanged. */
   match: MatchState;
   /** Everything that happened, for all Squads. Clients only ever see `getSquadEvents`. */
