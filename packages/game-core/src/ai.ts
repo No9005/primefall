@@ -3,7 +3,8 @@
 
 import { MAX_QUEUE_LENGTH, MOVE_DISTANCE } from "./rules";
 import { type CardIndex, HeroClass, HERO_DECKS, isSimpleAttack, normalRange } from "./cards";
-import { buildSquadView, type HeroState, matchFromSquadView, type MatchState, seededHash, ZONES } from "./match";
+import { matchFromSquadView } from "./ai-world";
+import { buildSquadView, type HeroState, type MatchState, seededHash, ZONES } from "./match";
 import { resolveRound, cardsNotExiled } from "./resolution";
 import { type GhostEnemyView, type HeroView, SquadId, type SquadView, Visibility, type VisibleEnemyView } from "./host";
 import { ActionKind, chebyshevDistance, type HeroPlan, moveDestinations, moveEnd, movePath, type QueuedAction, type SquadPlan, validatePlan } from "./plan";
