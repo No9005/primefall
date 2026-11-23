@@ -4,7 +4,7 @@ A proposal for the look of a second map, worked out with the product owner in a 
 
 The tileset is **modular** like the one of the Notstrom Map (`docs/design/notstrom-map/`): single tiles, no picture of a map. `overview/other-layout.png` is a second layout built from the same files as `overview/field.png`.
 
-**Status: assets and reference only. Nothing in the app uses them, and the map itself does not exist yet.** There is no layout for it in `packages/game-core`, and the secondary objectives it is meant for (fetch and bring, escort) are not in the specs. Both layouts here are placeholders that show the tiles.
+**Status: assets and reference only. Nothing in the app uses them, and the map itself does not exist yet.** There is no layout for it in `packages/game-core`, and the secondary objectives it is meant for (fetch and bring, escort) are not in any ADR or in the code. Both layouts here are placeholders that show the tiles.
 
 ## What is here
 

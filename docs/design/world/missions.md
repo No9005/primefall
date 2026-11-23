@@ -51,7 +51,7 @@ The Prime Zone is enclosed by **red laser walls**, similar to the Shield bubbles
 
 ### Renamed in the code and the docs
 
-"Victory Points" are called **Credits** and the "Spawn" is called the **Drop Point** in `GLOSSARY.md`, in the code (`MatchEndReason.Credits`, `CREDITS_TO_WIN`, `TileKind.DropPoint`, `dropPointStartTiles` and similar), in the UI texts and in the specs. A match saved earlier is still resumed (its grid is converted). The ADRs keep their original words and carry a note. Not renamed: the frame names `spawn_floor` of the tileset "Notstrom" (they are in the atlas and its tool), the file name of ADR 0024, and the design canvas references.
+"Victory Points" are called **Credits** and the "Spawn" is called the **Drop Point** in `GLOSSARY.md`, in the code (`MatchEndReason.Credits`, `CREDITS_TO_WIN`, `TileKind.DropPoint`, `dropPointStartTiles` and similar), in the UI texts. A match saved earlier is still resumed (its grid is converted). The ADRs keep their original words and carry a note. Not renamed: the frame names `spawn_floor` of the tileset "Notstrom" (they are in the atlas and its tool), the file name of ADR 0024, and the design canvas references.
 
 ## 2. Carry and extract (idea)
 

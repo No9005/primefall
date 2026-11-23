@@ -19,7 +19,7 @@ import {
 } from "./notstrom-map";
 import { getSquadEvents, resolveRound } from "./resolution";
 
-const LEFT_BRUISER = "left-controller"; // Tilly breaks Cover (docs/design/decks.md)
+const LEFT_BRUISER = "left-controller"; // Tilly breaks Cover (ADR 0025)
 const LEFT_ASSASSIN = "left-assassin";
 const LONG_SHOT = 0; // Assassin card 0: 3 damage, Range 3 to 7
 const RIGHT_BRUISER = "right-bruiser";

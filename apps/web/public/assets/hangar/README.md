@@ -1,12 +1,12 @@
 # The hangar of the Hero Select
 
-The pictures of the hangar scene (`apps/web/src/hangar-scene.ts`, on the stage, ADR 0026; the screen is `HeroSelectScreen.tsx`) (design: `docs/design/hero-select/README.md`, the section "the Hero Select in the hangar"). The hangar is
+The pictures of the hangar scene (`apps/web/src/hangar-scene.ts`, on the stage, ADR 0026; the screen is `HeroSelectScreen.tsx`) (design: `docs/design/decisions.md`, the Hero Select rows). The hangar is
 drawn at 1280 pixels wide and shown at 960 design pixels; the Heroes are strips of frames drawn larger (Max 190, Tilly 136 and Kit 136 pixels
 a frame, shown at 482, 345 and 345 design pixels).
 
 | File | What |
 |---|---|
-| `hangar-wide.png` | the same picture continued on all four sides (2080 x 1052: 400 px to each side, 120 above, 200 below) so that a window of another shape (4:3 to about 3:1) has no bars; the continuation fades into the dark of the page. Made by `docs/design/hero-select/tools/make_hangar_wide.py` (the screen's shade layers are taken into account); the screen uses this file instead of `hangar.png` |
+| `hangar-wide.png` | the same picture continued on all four sides (2080 x 1052: 400 px to each side, 120 above, 200 below) so that a window of another shape (4:3 to about 3:1) has no bars; the continuation fades into the dark of the page. Made by `archive/hangar/tools/make_hangar_wide.py` (the screen's shade layers are taken into account); the screen uses this file instead of `hangar.png` |
 | `lights-a.png` … `lights-d.png`, `lights-flicker.png` | the lamps and beacons that blink, added with `screen` |
 | `fire.png`, `spark.png`, `guide.png` | a burning crystal past the door, the strip of a spark, the strip of the amber guide lights |
 | `shade-back.png`, `shade-front.png`, `glow.png` | the dark shade behind and in front of the Heroes (it flickers), and the glow of the lamps |

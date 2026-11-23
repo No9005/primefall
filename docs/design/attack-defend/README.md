@@ -1,6 +1,6 @@
 # Attack and Defend: the design reference
 
-The look of the start flow, the side screen, the role announcement, the HUD and the end screens of the Attack and Defend mode. It was worked out with the product owner on the design canvas. **Build it the way it is shown here.** Where this text and the images disagree, the images win. Decisions behind it: ticket #303 and #298. The Hero Select screen that follows the side screen is in `docs/design/hero-select/`.
+The look of the start flow, the side screen, the role announcement, the HUD and the end screens of the Attack and Defend mode. It was worked out with the product owner on the design canvas. **Build it the way it is shown here.** Where this text and the images disagree, the images win. Decisions behind it: ticket #303 and #298. The Hero Select screen that follows the side screen is in `docs/design/decisions.md` (Hero Select rows).
 
 ## Files (all 844 x 390, landscape phone; `reference/*.html` are the live pages)
 
@@ -19,7 +19,7 @@ Classic: Start screen, Hero Select, match. Attack and Defend: Start screen, side
 
 ## Colours and tokens
 
-ATTACK orange `#ff8a3d`, DEFEND blue `#4da3ff`, own Squad teal `#2ec4b6`, enemy red `#e5484d`; panels `#1b222b`, steel `#3d5a73`, text `#dbe4ec`; fonts Rajdhani (labels), Barlow (body), IBM Plex Mono (counts). Everything else is the token list of `docs/design/ui-spec.md`; touch targets and text sizes as in `docs/design/decisions.md`.
+ATTACK orange `#ff8a3d`, DEFEND blue `#4da3ff`, own Squad teal `#2ec4b6`, enemy red `#e5484d`; panels `#1b222b`, steel `#3d5a73`, text `#dbe4ec`; fonts Rajdhani (labels), Barlow (body), IBM Plex Mono (counts). Everything else is the tokens of `apps/web/src/styles.css`; touch targets and text sizes as in `docs/design/decisions.md`.
 
 ## Acceptance table
 

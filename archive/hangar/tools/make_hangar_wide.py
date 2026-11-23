@@ -1,6 +1,6 @@
 """Draws apps/web/public/assets/hangar/hangar-wide.png: the picture of the hangar continued on all four sides.
 
-python3 docs/design/hero-select/tools/make_hangar_wide.py
+python3 archive/hangar/tools/make_hangar_wide.py
 
 The hangar is drawn at 1280 x 732 pixels (960 x 549 design pixels) and fitted to the window; a window of another shape shows more
 than the picture. So the picture is continued: the dark ceiling upwards, the floor with its tile lines downwards, the walls to the

@@ -9,7 +9,7 @@ import { computeFit } from "./stage-fit";
 import "./hero-select.css";
 import "./hangar-select.css";
 
-// The Hero Select in the hangar of the Notstrom (docs/design/hero-select, the design canvas "Hangar: Max, Tilly and Kit"). The picture (the
+// The Hero Select in the hangar of the Notstrom (docs/design/decisions.md, the design canvas "Hangar: Max, Tilly and Kit"). The picture (the
 // hangar, the lamps, dust, the three Heroes with their shadows and name plates) is the scene "hangar" on the stage (hangar-scene.ts, ADR 0026).
 // This screen owns the machine of the three Heroes (hangar-select.ts) and the UI over the canvas: a tap area for each Hero, BACK and NEXT.
 // The Side Select still uses the 844 x 390 stage of the earlier Hero Select.

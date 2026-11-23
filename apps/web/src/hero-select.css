@@ -1,4 +1,4 @@
-/* The Hero Select screen (docs/design/hero-select/README.md). The stage is 844 x 390 and is scaled to the window; every
+/* The Hero Select screen (docs/design/decisions.md). The stage is 844 x 390 and is scaled to the window; every
    size and position below is in stage px, as in the acceptance table. The Heroes are drawn on the canvas below the controls. */
 /* Stacking: the title is in front of the Heroes and their drone; the sheets (CARDS, BIO) lie over the title. */
 :root { --cyan: #7fe8ff; --hs-z-title: 3; --hs-z-sheet: 4; }

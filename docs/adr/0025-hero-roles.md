@@ -30,8 +30,8 @@ Block is removed in every mode (ADR 0002); Shield cards are the only Shield. The
 
 ## Status
 
-Proposed. The owner accepts it by merging.
+Accepted. It was merged and is implemented.
 
 ## Revision (#415)
 
-The Bruiser and Controller decks are redesigned in `docs/design/decks.md` and `docs/specs/mvp-card-set.md`: Max (Bruiser) has Buy One, Get Two, Express Delivery, Hard Hat, Cargo Hook, Handle With Care and Time for Coffee; Shockwave, Knockback, Adrenal Surge, Breach Charge and the old Charge are gone from his deck. Tilly (Controller) loses the Shield cards (Aegis Protocol, Reinforce) and gets Breach Charge and Wrecking Blow, so she creates and destroys Cover. Block, Overdrive and passives are removed (ADR 0002, ADR 0003).
+The Bruiser and Controller decks are redesigned in `packages/game-core/src/cards.ts`: Max (Bruiser) has Buy One, Get Two, Express Delivery, Hard Hat, Cargo Hook, Handle With Care and Time for Coffee; Shockwave, Knockback, Adrenal Surge, Breach Charge and the old Charge are gone from his deck. Tilly (Controller) loses the Shield cards (Aegis Protocol, Reinforce) and gets Breach Charge and Wrecking Blow, so she creates and destroys Cover. Block, Overdrive and passives are removed (ADR 0002, ADR 0003).

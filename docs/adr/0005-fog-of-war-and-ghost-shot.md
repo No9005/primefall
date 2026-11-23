@@ -16,4 +16,4 @@ The events of a Resolution follow the same rule: a Squad is told what its Heroes
 
 ## Status
 
-accepted. Revised: Overdrive is removed (ADR 0003); Ghost Shot is a normal Attack that can only target a Ghost's last known position (see `docs/specs/mvp-card-set.md`).
+accepted. Revised: Overdrive is removed (ADR 0003); Ghost Shot is a normal Attack that can only target a Ghost's last known position (see `packages/game-core/src/cards.ts`).

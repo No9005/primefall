@@ -28,4 +28,4 @@ Considered and not chosen now: facing and rear damage (complexity, a new display
 
 ## Status
 
-Proposed. The owner accepts it by merging.
+Accepted. It was merged and is implemented.

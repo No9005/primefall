@@ -16,7 +16,7 @@ Read the _World_ and _Look_ parts of `docs/design/world-and-style.md` and `docs/
 | Hero clip or pose | `docs/design/heroes/README.md` (rigs in `tools/rigs/`, `node docs/design/heroes/tools/export.mjs`), timing and beats in `docs/design/animation/README.md` |
 | Scene film (Notstrom Intro) | `docs/design/notstrom-intro/README.md` and `tools/` (`render_frames.mjs`, then `pack_sheets.py`, then `encode_video.mjs` for the video; read its section on encoding pixel art before you make another video) |
 | Title screen, icons, crystal | `docs/design/title/tools/` |
-| Hangar (Hero Select) | `docs/design/hero-select/README.md` and `tools/` |
+| Hangar (Hero Select) | `docs/design/decisions.md` (Hero Select rows) and `archive/hangar/tools/` |
 | Map tiles and props | `docs/design/notstrom-map/`, `docs/design/asset-contract.md` |
 
 The source of a picture (script, rig, page) is committed under `docs/design/<area>/tools/`; a PNG without its source cannot be changed later.

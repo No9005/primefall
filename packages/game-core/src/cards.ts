@@ -1,4 +1,4 @@
-// Card data for the three fixed Hero Decks (docs/specs/mvp-card-set.md, ADR 0009, ADR 0015).
+// Card data for the three fixed Hero Decks (ADR 0009, ADR 0015, ADR 0025, docs/design/principles.md).
 // Effects are declarative descriptors; interpreting them belongs to the resolution rules.
 
 import { CoverKind } from "./notstrom-map";
@@ -187,7 +187,7 @@ const shield = (amount: number): CardEffect => ({ kind: EffectKind.GainShield, a
 // Hero ranges (ADR 0009); attack cards without an explicit range use their Hero's range.
 const BRUISER_RANGE = 3;
 
-// Max Overload: up close and personal (docs/design/decks.md). Every card costs 1 Energy.
+// Max Overload: up close and personal (ADR 0025). Every card costs 1 Energy.
 // Range 1 to 2: 2 damage, 3 at Range 1.
 const handleWithCare: CardDefinition = {
   name: "Handle With Care", type: CardType.Attack, energyCost: 1, range: 2,
@@ -216,7 +216,7 @@ const cargoHook: CardDefinition = {
   target: CardTarget.VisibleOrGhostEnemy, effects: [{ kind: EffectKind.Pull, amount: 6 }],
 };
 
-// Tilly Turnover creates and destroys Cover, and makes Scrap of it (docs/design/decks.md).
+// Tilly Turnover creates and destroys Cover, and makes Scrap of it (ADR 0025).
 // Scrap: active once a card of hers destroyed Cover this Round; `scrap` on an effect is what it becomes then.
 const temporarySolution: CardDefinition = {
   name: "Temporary Solution", type: CardType.Utility, energyCost: 1, range: 5,
@@ -242,7 +242,7 @@ const priceTag: CardDefinition = {
   target: CardTarget.VisibleEnemy, effects: [{ kind: EffectKind.Damage, amount: 1, scrap: { amount: 2 } }, marked],
 };
 
-// Kit Crosshair is the sniper, a glass cannon (docs/design/decks.md). Every card costs 1 Energy.
+// Kit Crosshair is the sniper, a glass cannon (ADR 0025). Every card costs 1 Energy.
 // Range 3 to 7, 3 damage; a Hidden Kit or a Marked target is reached up to Range 9, and a Hidden Kit deals +1 beyond Range 7.
 const longShot: CardDefinition = {
   name: "Long Shot", type: CardType.Attack, energyCost: 1, range: 9, minRange: 3,

@@ -12,4 +12,4 @@ Distinct ranges and deck weights give each role a clear job without making any s
 
 ## Status
 
-accepted. Revised: the decks are superseded by `docs/specs/mvp-card-set.md`; Overdrive is removed (ADR 0003).
+accepted. Revised: the decks are superseded by ADR 0025 and `packages/game-core/src/cards.ts`; Overdrive is removed (ADR 0003).

@@ -1,4 +1,4 @@
-// Made by docs/design/hero-select/tools/make_hangar_shadows.py (the clip shadows below were converted from its keyframes when the hangar moved onto the stage): the spot of the contact shadow in each frame of the bridges, in design pixels
+// Made by archive/hangar/tools/make_hangar_shadows.py (the clip shadows below were converted from its keyframes when the hangar moved onto the stage): the spot of the contact shadow in each frame of the bridges, in design pixels
 // inside the box of the Hero: [x of the middle, y of the contact, width], or null where the Hero is off the ground.
 export type ShadowSpot = readonly [number, number, number] | null;
 
