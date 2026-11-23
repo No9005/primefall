@@ -59,6 +59,17 @@ for (const layer of ["fx_back", "figure", "fx_front"]) {
 
 Set the texture source to nearest-neighbour scaling (`sheet.textureSource.scaleMode = "nearest"`) and scale by whole numbers only, or the pixels blur.
 
+## Hangar clips (Hero Select)
+
+The Hero Select in the hangar (`apps/web/src/hangar-select.ts`, `hangar-scene.ts`) plays its own clips, not the board sheets above. Tilly's are rendered from her rig, so the hangar shows the same figure as the map; Max and Kit are still packed from strips (`apps/web/scripts/ATLAS.md`). How Tilly is set up, and how to add or change a clip:
+
+- **Files** (all in `tools/`): `hangar-controller.js` defines the clips; `export-hangar.mjs` runs the rig in a browser page (the rig's frame constants are replaced there: the hangar frame is 136 x 116 px with the feet at (58, 112), the map's is 136 x 104 with the feet at (58, 86), so the Hero has more room above her); `export-hangar-page.js` renders and packs. The output is `apps/web/public/assets/hangar/atlas/tilly.png` and `.json`, written in the atlas format of `apps/web/scripts/ATLAS.md`.
+- **A clip** is a rig clip like the ones above: `tracks` of keyframes `K([t, value, ease], ...)` for the pose (`g1`, `g2`, `g3` and `claw` for the third arm, `armF`, `armB`, `head`, `lean`, `stretch`, `pony`, `core`), `back(S, t, info)` for effects behind her, `front(S, t, info)` for effects in front. The Hero Select clips of the map (`SEL_IDLE`, `SEL_READY`) are reused where the choreography is the same: `idle` is `SEL_IDLE` raised higher, `selecti`, `select` and `hold` are `SEL_READY`, `act` (the tinkering) is new. `blendClip(from, t, to, t, ease)` makes a clip that blends two moments of other clips (used for `tolift`, `toidle`, `desel` and the bridge).
+- **The list** `HANGAR_EXPORT` (end of the file) says which clip is rendered from which moments of which rig clip; `HANGAR_FRAMES` and `HANGAR_MS` give each clip's frame count and duration. They must equal `CLIPS` and `BRIDGES` in `hangar-select.ts` (a test checks the atlas against those tables). A loop is sampled evenly so its last frame leads into its first; a one-shot ends exactly on its last pose.
+- **Layers:** the figure is `tilly.<clip>`, effects are `tilly.<clip>.fx_back` and `.fx_front` (only when a clip has some; same frame count and timing). The scene plays them back to front. The bridge frames are flat pictures with everything in one.
+- **To change or add an animation:** edit `hangar-controller.js`, then from the repository root run `node docs/design/heroes/tools/export-hangar.mjs controller --preview <folder>` (it needs the Chromium of Playwright, `npx playwright install chromium`; the preview writes one contact sheet per clip to look at), and check the result in the app with `npm run screenshots -w apps/web -- --scenario hero-select`. Do not edit the atlas by hand. A new clip name also needs an entry in `CLIPS` (and, for the packer test, nothing else: Tilly is in `RIG_HEROES`).
+- **Max and Kit** are next: the same file pattern (`hangar-bruiser.js`, `hangar-assassin.js`), their name added to `HEROES` in `export-hangar.mjs` and to `RIG_HEROES` in `hangar-select.ts`, then their strips can leave `archive/hangar/strips/`.
+
 ## The clips
 
 Durations and beats are the ones of `docs/design/animation/README.md`; only the motion is new and deliberately exaggerated. A clip that plays once ends on its rest pose (one extra frame at the end).
