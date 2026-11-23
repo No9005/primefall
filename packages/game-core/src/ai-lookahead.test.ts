@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { aiStyleFor, planSquad, planSquadGreedy, SIMULATIONS_PER_ROUND } from "./ai";
-import { MatchMode, SquadId, Visibility } from "./host";
+import { SquadId, Visibility } from "./host";
 import { buildSquadView, createMatch, matchFromSquadView, startRound } from "./match";
 import { validatePlan } from "./plan";
 import { resolveRound } from "./resolution";
@@ -112,13 +112,5 @@ describe("AI lookahead", () => {
       resolveRound(match, [plan, enemy]).match.heroes.filter((hero) => hero.squad === SquadId.Left).reduce((sum, hero) => sum + hero.exile.length, 0);
     expect(exiled(greedy)).toBe(5);
     expect(exiled(looked)).toBe(3);
-  });
-
-  it("works in Attack and Defend", () => {
-    const match = startRound(createMatch(4, { kind: MatchMode.AttackAndDefend, defender: SquadId.Left }));
-    for (const squad of SIDES) {
-      const view = buildSquadView(match, squad);
-      expect(validatePlan(view, planSquad(view, undefined, aiStyleFor(4, squad), 4))).toEqual([]);
-    }
   });
 });

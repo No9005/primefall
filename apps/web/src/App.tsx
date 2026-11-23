@@ -1,10 +1,8 @@
 import { type HeroClass, SquadId, type SquadView } from "game-core";
 import { createLocalHost, type LocalMatchHost } from "game-core/local-host";
 import { useEffect, useState } from "react";
-import { modeForRole, parseRole, type Role, roleOf } from "./attack-defend";
 import { aiPlanner } from "./ai-planner";
 import { EndScreen } from "./EndScreen";
-import { SideScreen } from "./SideScreen";
 import { TitleScreen } from "./TitleScreen";
 import { NotstromIntroFlash, NotstromIntro } from "./NotstromIntro";
 import { notstromIntroPlays } from "./notstrom-intro";
@@ -51,16 +49,15 @@ interface MatchScreenProps {
   host: LocalMatchHost;
   playerHero: HeroClass;
   onResolved: (view: SquadView) => void;
-  onPlayAgain: (side: Role | undefined) => void;
+  onPlayAgain: () => void;
 }
 
 /** The running match (planning and Resolution) or, once it has a result, the end screen. */
 function MatchScreen({ view, host, playerHero, onResolved, onPlayAgain }: MatchScreenProps) {
   if (view.result) {
-    const side = roleOf(view);
     const unit = view.heroes.find((candidate) => candidate.heroClass === playerHero);
     const hero = unit && { heroId: unit.id, heroClass: unit.heroClass, tile: unit.position };
-    return <EndScreen result={view.result} squad={PLAYER_SQUAD} seed={host.seed} role={side} roundLimit={view.roundLimit} hero={hero} onPlayAgain={() => onPlayAgain(side)} />;
+    return <EndScreen result={view.result} squad={PLAYER_SQUAD} seed={host.seed} hero={hero} onPlayAgain={onPlayAgain} />;
   }
   return (
     <PlanningScreen
@@ -79,10 +76,8 @@ export function App() {
   const seed = host.seed;
   const [started, setStarted] = useState(false);
   // Before the match: the start screen, the Hero Select (Play), which run from static data and never touch the host or the saved match.
-  const [entry, setEntry] = useState<"start" | "notstrom-intro" | "side" | "select" | "replay">("start");
+  const [entry, setEntry] = useState<"start" | "notstrom-intro" | "select" | "replay">("start");
   const [flash, setFlash] = useState(false);
-  // The side chosen in Attack and Defend; none in the classic mode.
-  const [role, setRole] = useState<Role>();
   // A match saved by an earlier visit, offered for Resume on the start screen.
   const [saved, setSaved] = useState(loadSavedMatch);
   // The Player Hero: set by the start parameter (?hero=controller); Resume restores the saved match's one.
@@ -90,18 +85,17 @@ export function App() {
   const [view, setView] = useMatchView(host, started, playerHero);
   // A browser plays sound only after a tap: the first one arms it.
   useEffect(() => gameAudio.armUnlock(), []);
-  /** Starts a match of the mode: the host of the start screen is replaced by one with the same seed in the mode of the role. */
-  function beginMatch(side: Role | undefined) {
-    setHost(createLocalHost(seed, side && modeForRole(side), aiPlanner));
+  /** Starts the match: the host of the start screen is replaced by a fresh one with the same seed. */
+  function beginMatch() {
+    setHost(createLocalHost(seed, undefined, aiPlanner));
     setStarted(true);
   }
 
-  /** Back to the Hero Select of the same mode ("replay": its Back leads to the start screen, the role stays chosen); the next match starts there with a new seed and the Hero picked then. */
-  function playAgain(side: Role | undefined) {
-    setHost(createLocalHost(newSeed(), side && modeForRole(side), aiPlanner));
+  /** Back to the Hero Select ("replay": its Back leads to the start screen); the next match starts there with a new seed and the Hero picked then. */
+  function playAgain() {
+    setHost(createLocalHost(newSeed(), undefined, aiPlanner));
     setView(undefined);
     setSaved(undefined);
-    setRole(side);
     setEntry("replay");
     setStarted(false);
   }
@@ -109,15 +103,13 @@ export function App() {
   const notstromIntro = !startParameters.has("hero") && notstromIntroPlays(startParameters);
   function renderStart() {
     if (entry === "notstrom-intro") return <NotstromIntro onDone={(playedToEnd) => { setFlash(playedToEnd); setEntry("select"); }} />;
-    if (entry === "side") return <SideScreen onBack={() => setEntry("start")} onNext={(side) => { setRole(side); setEntry("select"); }} />;
     if (entry === "select" || entry === "replay") {
       return (
         <HeroSelectScreen
-          mode={role ?? "classic"}
-          onBack={() => setEntry(role && entry === "select" ? "side" : "start")}
+          onBack={() => setEntry("start")}
           onStart={(hero) => {
             setPlayerHero(hero);
-            beginMatch(role);
+            beginMatch();
           }}
         />
       );
@@ -127,14 +119,7 @@ export function App() {
         seed={seed}
         canResume={saved !== undefined}
         notstromIntro={notstromIntro}
-        onPlay={() => { setRole(undefined); if (startParameters.has("hero")) beginMatch(undefined); else setEntry(notstromIntro ? "notstrom-intro" : "select"); }}
-        onPlayAttackAndDefend={() => {
-          const side = parseRole(startParameters.get("role"));
-          if (side && startParameters.has("hero")) {
-            setRole(side);
-            beginMatch(side);
-          } else setEntry("side");
-        }}
+        onPlay={() => { if (startParameters.has("hero")) beginMatch(); else setEntry(notstromIntro ? "notstrom-intro" : "select"); }}
         onResume={() => {
           if (saved) {
             setHost(saved);

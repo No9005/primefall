@@ -18,7 +18,7 @@ Every mission has at least two goals that the three Heroes cannot all pursue at 
 
 ## 1. Hold zones (exists)
 
-Zones are held for Victory Points per Resolution (ADR 0024). It is the classic mode: the Prime Zone (2 points per Resolution, active from Round 4) and an Outpost north and south of it (1 point each, active from Round 1). The Prime Zone together with the Outposts is already a split of the Squad. Attack and Defend (ADR 0022) is the same map with roles: the Attacker wins by controlling the Prime Zone three Resolutions in a row or by Exhausting all Defending Heroes.
+Zones are held for Victory Points per Resolution (ADR 0024). It is the classic mode: the Prime Zone (2 points per Resolution, active from Round 4) and an Outpost north and south of it (1 point each, active from Round 1). The Prime Zone together with the Outposts is already a split of the Squad.
 
 ### As a contract in the world (proposal)
 
@@ -74,7 +74,7 @@ Open: what a target is and how it is destroyed (hit points, a number of Resoluti
 - **Quadrant control and Consoles:** too many goals for three Heroes.
 - **Frontline:** too close to Hold zones.
 - **Marked Hero:** with three Heroes the target is clear early and the match tips too easily.
-- **Annihilation:** already part of Attack and Defend as a second way to win; as a type of its own it has the problem of a Squad avoiding the fight (it needs a Round limit).
+- **Annihilation:** Exhausting a whole Squad already ends a match; as a type of its own it has the problem of a Squad avoiding the fight (it needs a Round limit).
 
 ## Next
 

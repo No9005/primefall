@@ -2,15 +2,13 @@ import { describe, expect, it } from "vitest";
 import { FIREBALLS, MENU_SLOTS, menuIds, percentY, STAGE, streakTop } from "./title-menu";
 
 describe("title menu", () => {
-  it("lists Start (the classic mode), and Resume only when a match was saved; Attack and Defend is out for now", () => {
+  it("lists Start, and Resume only when a match was saved", () => {
     expect(menuIds(false)).toEqual(["classic"]);
     expect(menuIds(true)).toEqual(["classic", "resume"]);
-    expect(menuIds(false, true)).toEqual(["classic", "attack-and-defend"]);
-    expect(menuIds(true, true)).toEqual(["classic", "attack-and-defend", "resume"]);
   });
 
   it("has a row of the layout for every entry; the pictures stand one below the other, the areas that are pressed overlap a little", () => {
-    expect(MENU_SLOTS.length).toBeGreaterThanOrEqual(menuIds(true, true).length);
+    expect(MENU_SLOTS.length).toBeGreaterThanOrEqual(menuIds(true).length);
     MENU_SLOTS.forEach((slot, i) => {
       const above = MENU_SLOTS[i - 1];
       const middle = (row: (typeof MENU_SLOTS)[number]) => row.top + row.height / 2;
@@ -22,8 +20,8 @@ describe("title menu", () => {
       expect(slot.height).toBeGreaterThanOrEqual(50);
       expect(slot.art).toBeLessThanOrEqual(slot.height);
     });
-    // The third row exists only with `?menu=all` (Attack and Defend back in the menu) and a saved match: it ends above the foot of the picture.
-    const last = MENU_SLOTS[2];
+    // The last row (Resume, with a saved match) ends above the foot of the picture.
+    const last = MENU_SLOTS[1];
     expect(last.top + last.height).toBeLessThanOrEqual(STAGE.height);
   });
 

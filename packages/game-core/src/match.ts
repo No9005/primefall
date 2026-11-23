@@ -6,14 +6,12 @@ import {
   type EnemyView,
   type MatchResult,
   type RevealedArea,
-  DEFENDER_ROUND_LIMIT,
   MAX_PLACED_COVER_PER_SQUAD,
-  MatchMode,
   OUTPOST_UNLOCK_ROUND,
   OUTPOST_VALUE,
   PRIME_ZONE_UNLOCK_ROUND,
   PRIME_ZONE_VALUE,
-  type MatchModeSetting,
+  type MatchRules,
   ROUND_LIMIT,
   SquadId,
   type HeroView,
@@ -24,9 +22,9 @@ import {
   type ZoneView,
 } from "./host";
 import { chebyshevDistance } from "./plan";
-import { CoverKind, defenderStartTiles, dropPointStartTiles, coverAt, destroyCover, destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, NOTSTROM_MAP, TileKind, tileAt, withTile, withWreck, withZoneClosed } from "./notstrom-map";
+import { CoverKind, dropPointStartTiles, coverAt, destroyCover, destroyedCoverTiles, findTiles, type Grid, type GridPosition, hasLineOfSight, isWreck, NOTSTROM_MAP, TileKind, tileAt, withTile, withWreck, withZoneClosed } from "./notstrom-map";
 
-/** A scoring zone of the classic mode, read from the Notstrom Map. */
+/** A scoring zone, read from the Notstrom Map. */
 export interface ZoneDefinition {
   kind: ZoneKind;
   tiles: readonly GridPosition[];
@@ -57,7 +55,7 @@ function tileGroups(grid: Grid, kind: TileKind): GridPosition[][] {
   return groups;
 }
 
-/** The zones of the classic mode: the Prime Zone first, then the Outposts. Values and unlock Rounds are the constants in host.ts. */
+/** The zones: the Prime Zone first, then the Outposts. Values and unlock Rounds are the constants in host.ts. */
 export const ZONES: readonly ZoneDefinition[] = [
   ...tileGroups(NOTSTROM_MAP, TileKind.PrimeZone).map((tiles) => ({ kind: ZoneKind.PrimeZone, tiles, value: PRIME_ZONE_VALUE, unlockRound: PRIME_ZONE_UNLOCK_ROUND })),
   ...tileGroups(NOTSTROM_MAP, TileKind.Outpost).map((tiles) => ({ kind: ZoneKind.Outpost, tiles, value: OUTPOST_VALUE, unlockRound: OUTPOST_UNLOCK_ROUND })),
@@ -167,16 +165,14 @@ export interface MatchState {
   placedCover: PlacedCover[];
   revealedAreas: ActiveReveal[];
   scrapFields: ActiveField[];
-  /** Attack and Defend only: the Squad that controls the Prime Zone and for how many consecutive Resolutions (ADR 0010, ADR 0022). Unused in the classic mode. */
-  primeZone: { controller?: SquadId; progress: number };
-  /** Classic: Credits of each Squad. */
+  /** Credits of each Squad. */
   scores: Record<SquadId, number>;
-  /** Classic: control of each zone of `ZONES` after the last Resolution. */
+  /** Control of each zone of `ZONES` after the last Resolution. */
   zoneControl: ZoneControl[];
-  /** Classic: Resolutions left in which each zone gives no takeover bonus. */
+  /** Resolutions left in which each zone gives no takeover bonus. */
   takeoverCooldown: number[];
-  /** Classic by default; in Attack and Defend one Squad is the Defender and the other the Attacker (ADR 0022). */
-  mode: MatchModeSetting;
+  /** The tunable numbers of this match (the balance harness varies them). */
+  rules: MatchRules;
   /** Set when a victory condition is met; the match accepts no further Rounds. */
   result?: MatchResult;
 }
@@ -201,28 +197,27 @@ function shuffle(state: MatchState, cards: CardIndex[]): void {
 }
 
 /** Creates two Squads of three Heroes on their start tiles, each with a freshly shuffled Deck. */
-export function createMatch(seed: number, mode: MatchModeSetting = { kind: MatchMode.Classic }): MatchState {
+export function createMatch(seed: number, rules: MatchRules = {}): MatchState {
   const match: MatchState = {
     seed,
     rngState: seed >>> 0,
     round: 0,
     heroes: [],
     ghosts: { [SquadId.Left]: {}, [SquadId.Right]: {} },
-    grid: withZoneClosed(NOTSTROM_MAP, mode.kind === MatchMode.Classic),
+    grid: withZoneClosed(NOTSTROM_MAP, true),
     knownDestroyedCover: { [SquadId.Left]: [], [SquadId.Right]: [] },
     knownWrecks: { [SquadId.Left]: [], [SquadId.Right]: [] },
     placedCover: [],
     revealedAreas: [],
     scrapFields: [],
-    primeZone: { progress: 0 },
     scores: { [SquadId.Left]: 0, [SquadId.Right]: 0 },
     zoneControl: ZONES.map(() => ({ contested: false })),
     takeoverCooldown: ZONES.map(() => 0),
-    mode,
+    rules,
   };
   for (const squad of [SquadId.Left, SquadId.Right]) {
     const left = squad === SquadId.Left;
-    const dropPoints = mode.kind === MatchMode.AttackAndDefend && mode.defender === squad ? defenderStartTiles(left) : dropPointStartTiles(left);
+    const dropPoints = dropPointStartTiles(left);
     SQUAD_ORDER.forEach((heroClass, i) => {
       const deck = HERO_DECKS[heroClass].map((_, index) => index);
       shuffle(match, deck);
@@ -267,7 +262,7 @@ export function refillDeck(match: MatchState, hero: HeroState): number {
 export function startRound(previous: MatchState): MatchState {
   const match = structuredClone(previous);
   match.round += 1;
-  match.grid = withZoneClosed(match.grid, match.mode.kind === MatchMode.Classic && match.round < PRIME_ZONE_UNLOCK_ROUND);
+  match.grid = withZoneClosed(match.grid, match.round < PRIME_ZONE_UNLOCK_ROUND);
   for (const hero of match.heroes.filter((candidate) => !candidate.exhausted)) {
     while (hero.hand.length < HAND_SIZE) {
       refillDeck(match, hero);
@@ -393,12 +388,6 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
       if (ghost) return { ...identity, visibility: Visibility.Ghost, ...structuredClone(ghost) };
       return { ...identity, visibility: Visibility.Unknown };
     });
-  const { controller, progress } = match.primeZone;
-  const classic = match.mode.kind === MatchMode.Classic;
-  const primeProgress = {
-    [SquadId.Left]: controller === SquadId.Left ? progress : 0,
-    [SquadId.Right]: controller === SquadId.Right ? progress : 0,
-  };
   const result = match.result ? { result: structuredClone(match.result) } : {};
   // Cover that was destroyed out of sight still looks intact to this Squad.
   const destroyedCover = match.knownDestroyedCover[squad].map((tile) => ({ ...tile }));
@@ -426,15 +415,6 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
       if (canSquadSee(match, squad, { col, row })) visibleTiles.push({ col, row });
     }
   }
-  const { mode } = match;
-  const modeView =
-    mode.kind === MatchMode.AttackAndDefend
-      ? (() => {
-          const roundLimit = mode.roundLimit ?? DEFENDER_ROUND_LIMIT;
-          const zone = findTiles(NOTSTROM_MAP, TileKind.PrimeZone);
-          return { roundLimit, attackAndDefend: { defender: mode.defender, roundsLeft: match.result ? 0 : Math.max(0, roundLimit - match.round + 1), zone } };
-        })()
-      : { roundLimit: ROUND_LIMIT };
   const zones: ZoneView[] = ZONES.map((zone, i) => ({
     kind: zone.kind,
     tiles: zone.tiles.map((tile) => ({ ...tile })),
@@ -443,9 +423,8 @@ export function buildSquadView(match: MatchState, squad: SquadId): SquadView {
     active: match.round >= zone.unlockRound,
     ...match.zoneControl[i]!,
   }));
-  const points = classic ? { scores: { ...match.scores }, zones } : {};
   return {
-    squad, round: match.round, grid: withZoneClosed(NOTSTROM_MAP, match.grid.zoneClosed ?? false), ...modeView, primeProgress, ...points, ...result, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scrapFields, scannedAreas, visibleTiles, heroes, enemies,
+    squad, round: match.round, grid: withZoneClosed(NOTSTROM_MAP, match.grid.zoneClosed ?? false), roundLimit: ROUND_LIMIT, scores: { ...match.scores }, zones, ...result, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scrapFields, scannedAreas, visibleTiles, heroes, enemies,
   };
 }
 
@@ -528,8 +507,6 @@ export function matchFromSquadView(view: SquadView, seed: number, imagined: Read
 
   const fieldCard = HERO_DECKS[HeroClass.Controller].find((card) => card.effects.some(({ kind }) => kind === EffectKind.ScrapField))!;
   const fieldEffect = fieldCard.effects.find(({ kind }) => kind === EffectKind.ScrapField)!;
-  const { primeProgress } = view;
-  const primeController = primeProgress[SquadId.Left] > 0 ? SquadId.Left : primeProgress[SquadId.Right] > 0 ? SquadId.Right : undefined;
   const match: MatchState = {
     seed,
     rngState: seededHash(seed, salt),
@@ -547,13 +524,10 @@ export function matchFromSquadView(view: SquadView, seed: number, imagined: Read
       casterId: heroes.find((hero) => hero.squad === (field.own ? view.squad : enemySquad) && hero.heroClass === HeroClass.Controller)?.id ?? "",
       card: fieldCard.name, damage: fieldEffect.amount ?? 0,
     })),
-    primeZone: primeController === undefined ? { progress: 0 } : { controller: primeController, progress: primeProgress[primeController] },
-    scores: view.scores ? { ...view.scores } : { [SquadId.Left]: 0, [SquadId.Right]: 0 },
-    zoneControl: ZONES.map((_, i) => ({ controller: view.zones?.[i]?.controller, contested: view.zones?.[i]?.contested ?? false })),
+    scores: { ...view.scores },
+    zoneControl: ZONES.map((_, i) => ({ controller: view.zones[i]?.controller, contested: view.zones[i]?.contested ?? false })),
     takeoverCooldown: ZONES.map(() => 0),
-    mode: view.attackAndDefend
-      ? { kind: MatchMode.AttackAndDefend, defender: view.attackAndDefend.defender, roundLimit: view.roundLimit }
-      : { kind: MatchMode.Classic },
+    rules: {},
   };
   recordSightings(match);
   return match;

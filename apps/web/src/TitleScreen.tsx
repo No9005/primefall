@@ -14,7 +14,6 @@ interface TitleScreenProps {
   /** Whether Classic plays the Notstrom Intro: the title screen is then pulled away live first (on the stage clock), and `onPlay` follows when that is over. */
   notstromIntro: boolean;
   onPlay: () => void;
-  onPlayAttackAndDefend: () => void;
   onResume: () => void;
 }
 
@@ -23,8 +22,8 @@ interface TitleScreenProps {
  * the stage (title-scene.ts, drawn at 640 x 296 pixels and scaled to the window's height); the menu rows are buttons over it. The highlight (a red pill and a light streak) stays on Start until the pointer or the
  * focus moves to another row.
  */
-export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onPlayAttackAndDefend, onResume }: TitleScreenProps) {
-  const ids = menuIds(canResume, new URLSearchParams(window.location.search).get("menu") === "all");
+export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onResume }: TitleScreenProps) {
+  const ids = menuIds(canResume);
   const [row, setRow] = useState(0);
   const [flying, setFlying] = useState(false);
   const screen = useRef<HTMLElement>(null);
@@ -59,7 +58,6 @@ export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onPlayAtta
 
   const entries: Record<MenuId, { label: string; testId: string; run: () => void }> = {
     classic: { label: "Start", testId: "play-classic", run: notstromIntro ? fly : onPlay },
-    "attack-and-defend": { label: "Attack and Defend", testId: "play-attack-defend", run: onPlayAttackAndDefend },
     resume: { label: "Resume match", testId: "resume", run: onResume },
   };
   const pick = (index: number) => {

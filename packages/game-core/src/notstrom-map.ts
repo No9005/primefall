@@ -291,10 +291,3 @@ export function dropPointStartTiles(left: boolean): GridPosition[] {
   return middleThree(dropPoints.filter(({ col }) => col === innerCol));
 }
 
-/** Where a Defender starts (ADR 0022): the middle three rows of the Prime Zone column next to the Squad's side. */
-export function defenderStartTiles(left: boolean): GridPosition[] {
-  const zone = findTiles(NOTSTROM_MAP, TileKind.PrimeZone);
-  const cols = zone.map(({ col }) => col);
-  const sideCol = left ? Math.min(...cols) : Math.max(...cols);
-  return middleThree(zone.filter(({ col }) => col === sideCol));
-}

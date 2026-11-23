@@ -1,5 +1,7 @@
 # Attack and Defend Mode
 
+> **Removed:** this mode no longer exists (see Status).
+
 > **Terminology:** `GLOSSARY.md` now calls the Spawn strips Drop Points (this record: Spawn). This record keeps its original words.
 
 Primefall gets a second match mode, Attack and Defend, next to the classic mode. The player chooses the mode when a match starts. The classic mode stays the default and keeps every rule it has today; ADR 0010 (Prime Zone and Victory) and ADR 0019 (Round Limit and Tiebreak) stay valid for it and are not superseded.
@@ -32,4 +34,4 @@ The numbers are a first guess. An experiment (AI against AI, 300 seeds, not merg
 
 ## Status
 
-Accepted. It was merged and is implemented.
+Superseded. The mode was removed again: the code, the screens and the design pages of Attack and Defend are gone, and the classic mode (ADR 0024) is the only mode. This record stays as history.

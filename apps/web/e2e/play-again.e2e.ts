@@ -34,16 +34,3 @@ test("Play again opens the Hero Select; the next match uses the new Hero; Back l
   await expect(page.getByTestId("round")).toHaveText("ROUND 1 / 15");
   await expect.poll(() => page.evaluate(() => localStorage.getItem("primefall.playerHero"))).toBe("assassin");
 });
-
-test("in Attack and Defend, Play again opens the Hero Select of the same role", async ({ page }) => {
-  await page.goto("/?role=attack&hero=bruiser&menu=all");
-  await page.getByTestId("play-attack-defend").click();
-  await resumeFinishedMatch(page);
-
-  await page.getByRole("button", { name: "Play again" }).click();
-  await expect(page.getByTestId("hero-select")).toBeVisible();
-  await page.getByTestId("hero-controller").click();
-  await page.getByRole("button", { name: "NEXT" }).click();
-  await expect(page.getByTestId("round")).toBeVisible();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("primefall.playerHero"))).toBe("controller");
-});

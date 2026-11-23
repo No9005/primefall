@@ -48,14 +48,12 @@ interface Navigation {
 }
 
 /**
- * The tiles the AI heads for. Classic: the tiles of the zones with the highest value (the most points per Resolution).
+ * The tiles the AI heads for: the tiles of the zones with the highest value (the most Credits per Resolution).
  * A zone that is not unlocked yet counts for the value it will have: the AI walks toward it and arrives when it scores.
- * Who controls a zone is not read here: a held zone stays the goal so the Squad keeps it. Attack and Defend: the Zone
- * to take or hold.
+ * Who controls a zone is not read here: a held zone stays the goal so the Squad keeps it.
  */
 function objectiveTiles(view: SquadView): GridPosition[] {
-  if (view.attackAndDefend) return [...view.attackAndDefend.zone];
-  const zones = view.zones ?? [];
+  const { zones } = view;
   const best = Math.max(0, ...zones.map((zone) => zone.value));
   return zones.filter((zone) => zone.value === best).flatMap((zone) => [...zone.tiles]);
 }
@@ -134,78 +132,8 @@ const tilesAfterSteps = (from: GridPosition, destination: GridPosition, grid: Gr
   return Array.from({ length: MOVE_DISTANCE }, (_, step) => path[step] ?? path.at(-1) ?? from);
 };
 
-/** Attack and Defend (ADR 0022): the Squad View says which role the viewing Squad plays. */
-enum Role {
-  Classic,
-  Attacker,
-  Defender,
-}
-
-/** Steps an Attacker covers in one Round (a full queue of Moves): from this far from the objective all Heroes can enter together. */
-const ENTRY_DISTANCE = AI_QUEUE_LENGTH * MOVE_DISTANCE;
-/** While the Attacker waits for its Squad mates it stays at least this far from the Zone. */
-const STAGING_DISTANCE = ENTRY_DISTANCE - 1;
-/** With this many Rounds left the Attacker stops waiting for stragglers. */
-const ATTACKER_PATIENCE_ROUNDS = 8;
-/** The Defender queues at most this many actions per Hero: its Deck has to last until the Round limit. */
-const DEFENDER_QUEUE_LENGTH = 2;
-
-interface Approach {
-  /** Prefer a Cover tile among equally close destinations. */
-  preferCover?: boolean;
-  /** Skip destinations closer to the Zone than this (walking distance). */
-  stayAtLeast?: number;
-}
-
-const roleOf = (view: SquadView): Role =>
-  view.attackAndDefend === undefined ? Role.Classic : view.attackAndDefend.defender === view.squad ? Role.Defender : Role.Attacker;
-
-/** The Attacker enters the Zone with all living Heroes in the same Round, so it wins the tie (ADR 0022). */
-function attackerIsReady(view: SquadView, nav: Navigation): boolean {
-  if ((view.attackAndDefend?.roundsLeft ?? Infinity) <= ATTACKER_PATIENCE_ROUNDS) return true;
-  return view.heroes.every((hero) => hero.exhausted || (nav.distances.get(nav.key(hero.position)) ?? Infinity) <= ENTRY_DISTANCE);
-}
-
 /**
- * The Move 3 destination that ends closest to the objective by walking distance; undefined if none gets closer.
- * Moving Heroes do not hinder each other, but a Move cannot step onto a blocked tile (a Hero stays there) or a
- * tile another Hero already claimed for the same step of the queue slot.
- */
-function stepTowardObjective(
-  from: GridPosition,
-  squad: SquadId,
-  slot: number,
-  claimed: ClaimedTiles,
-  blocked: ReadonlySet<number>,
-  nav: Navigation,
-  approach: Approach = {},
-): GridPosition | undefined {
-  const { key } = nav;
-  const distanceTo = (tile: GridPosition) => nav.distances.get(key(tile)) ?? Infinity;
-  const inCover = (tile: GridPosition) => coverAt(nav.grid, tile) !== CoverKind.None;
-  let best: GridPosition | undefined;
-  let bestEnd: GridPosition | undefined;
-  let bestDistance = nav.isObjective(from) ? 0 : distanceTo(from);
-  for (const destination of destinationsInOrder(from, squad, nav)) {
-    const end = moveEnd(from, destination, nav.grid);
-    const steps = tilesAfterSteps(from, destination, nav.grid);
-    if (blocked.has(key(end)) || steps.some((tile) => blocked.has(key(tile)))) continue;
-    // Crossing in the middle of a walk is allowed; only the tile where the Move ends must not be claimed.
-    if (claimed.get(claimKey(slot, MOVE_DISTANCE))?.has(key(steps.at(-1)!))) continue;
-    const distance = distanceTo(end);
-    if (distance < (approach.stayAtLeast ?? 0)) continue;
-    const coverTie = approach.preferCover && best !== undefined && distance === bestDistance && inCover(end) && !inCover(bestEnd!);
-    if (distance < bestDistance || coverTie) {
-      best = destination;
-      bestEnd = end;
-      bestDistance = distance;
-    }
-  }
-  return best;
-}
-
-/**
- * The weights of the Classic mode scoring: the single default AI Style. Each consideration is a count or a share (0 to 1)
+ * The weights of the scoring: the single default AI Style. Each consideration is a count or a share (0 to 1)
  * times its weight. Progress dominates on purpose: one step closer to the Zone beats everything else except a real
  * flank or a Full Cover, so Squads cannot stand off for ever.
  */
@@ -395,7 +323,7 @@ function scoreTile(
 
 /**
  * The Move 3 destination with the best score, or undefined when staying put scores best. Legal destinations are the same
- * as for `stepTowardObjective`: no blocked tile, no tile another Hero already claimed for this step.
+ * as for a Move in the plan: no blocked tile, no tile another Hero already claimed for this step.
  */
 function chooseDestination(
   from: GridPosition,
@@ -447,8 +375,6 @@ function planHero(
   claimed: ClaimedTiles,
   blocked: ReadonlySet<number>,
   nav: Navigation,
-  role: Role,
-  attackerReady: boolean,
   weights: AiWeights,
   plannedAttacks: PlannedAttacks,
 ): HeroPlan {
@@ -484,11 +410,8 @@ function planHero(
   let position = hero.position;
   let energyNeeded = 0;
 
-  const queueLength = role === Role.Defender ? DEFENDER_QUEUE_LENGTH : AI_QUEUE_LENGTH;
-  const approach: Approach =
-    role === Role.Attacker ? { preferCover: true, stayAtLeast: attackerReady ? 0 : STAGING_DISTANCE } : {};
 
-  while (queue.length < Math.min(queueLength, MAX_QUEUE_LENGTH)) {
+  while (queue.length < Math.min(AI_QUEUE_LENGTH, MAX_QUEUE_LENGTH)) {
     // Every queued card and every pitched card must come from the Hand; Attacks need their Energy pitched.
     const cardsLeft = hero.hand.length - queue.length - energyNeeded;
     const attackCard = attackCards.find((card) => {
@@ -514,10 +437,7 @@ function planHero(
     const card = spare()[0];
     if (card === undefined || cardsLeft - 1 < 0) break;
     const slot = queue.length;
-    const destination =
-      role === Role.Classic
-        ? chooseDestination(position, view.squad, slot, claimed, unavailable, nav, targets, matesEndingSlot(claimed, slot, nav.grid.width), weapon, ghosts, weights)
-        : stepTowardObjective(position, view.squad, slot, claimed, unavailable, nav, approach);
+    const destination = chooseDestination(position, view.squad, slot, claimed, unavailable, nav, targets, matesEndingSlot(claimed, slot, nav.grid.width), weapon, ghosts, weights);
     if (destination) {
       queue.push({ kind: ActionKind.Move, card, destination });
       claimSteps(claimed, slot, tilesAfterSteps(position, destination, nav.grid), nav);
@@ -555,17 +475,15 @@ export function planSquadGreedy(
   const claimed: ClaimedTiles = new Map();
   const reverseTies = variant.reverseTies ?? false;
   const base = buildNavigation(view, undefined, reverseTies);
-  const role = roleOf(view);
-  const attackerReady = role === Role.Attacker && attackerIsReady(view, base.nav);
   const roles = assignRoles(view, heroIds);
   const plannedAttacks: PlannedAttacks = new Map();
   const heroes = view.heroes
     .filter((hero) => heroIds.includes(hero.id) && !hero.exhausted)
     .map((hero, i) => {
-      const zone = variant.zones === undefined ? undefined : view.zones?.[variant.zones[i]!];
+      const zone = variant.zones === undefined ? undefined : view.zones[variant.zones[i]!];
       const { nav, blocked } = zone ? buildNavigation(view, zone.tiles, reverseTies) : base;
       const weights = weightsFor(style, roles.get(hero.id) ?? SquadRole.None);
-      return planHero(view, hero, claimed, blocked, nav, role, attackerReady, weights, plannedAttacks);
+      return planHero(view, hero, claimed, blocked, nav, weights, plannedAttacks);
     });
   const plan: SquadPlan = { squad: view.squad, heroes };
   const broken = new Set(validatePlan(view, plan).flatMap((issue) => (issue.heroId ? [issue.heroId] : [])));
@@ -653,7 +571,7 @@ const planSignature = (plan: SquadPlan): string =>
  * two and one a 2-1, each in its own a 1-1-1.
  */
 function candidateVariants(view: SquadView, planned: number, preferred: AiStyle, seed: number): PlanVariant[] {
-  const zoneCount = view.zones?.length ?? 0;
+  const zoneCount = view.zones.length;
   const allocations: (readonly number[] | undefined)[] = [undefined];
   if (zoneCount > 1) {
     let tuples: number[][] = [[]];
@@ -671,14 +589,13 @@ function candidateVariants(view: SquadView, planned: number, preferred: AiStyle,
 const inCover = (match: MatchState, hero: HeroState) => coverAt(match.grid, hero.position) !== CoverKind.None;
 
 /**
- * How good the Match State after a simulated Round is for a Squad, own minus enemy: Credits (or the progress on
- * the Prime Zone), zone control, cards not in the Exile (Deck-as-Life), Heroes in Cover, and danger (enemies that can
+ * How good the Match State after a simulated Round is for a Squad, own minus enemy: Credits, zone control, cards not in the Exile (Deck-as-Life), Heroes in Cover, and danger (enemies that can
  * still hit a Hero, less what Cover takes). It names no tile or zone; the weights are in `AI_WEIGHTS`.
  */
 export function evaluateRound(match: MatchState, squad: SquadId, W: AiWeights = AI_WEIGHTS): number {
   const enemySquad = squad === SquadId.Left ? SquadId.Right : SquadId.Left;
   const sign = (who: SquadId | undefined) => (who === squad ? 1 : who === enemySquad ? -1 : 0);
-  const points = match.scores[squad] - match.scores[enemySquad] + sign(match.primeZone.controller) * match.primeZone.progress;
+  const points = match.scores[squad] - match.scores[enemySquad];
   const zones = ZONES.reduce((sum, zone, i) => sum + sign(match.zoneControl[i]?.controller) * zone.value, 0);
   const cards = cardsNotExiled(match, squad) - cardsNotExiled(match, enemySquad);
   const own = match.heroes.filter((hero) => hero.squad === squad && !hero.exhausted);

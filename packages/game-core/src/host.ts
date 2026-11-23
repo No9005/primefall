@@ -11,10 +11,10 @@ export enum SquadId {
   Right = "right",
 }
 
-/** Rounds per match in the classic mode (Round Limit; docs/design/game-goals.md). */
+/** Rounds per match (Round Limit; docs/design/game-goals.md). */
 export const ROUND_LIMIT = 15;
 
-/** Credits a Squad needs to win the classic mode at once. */
+/** Credits a Squad needs to win at once. */
 export const CREDITS_TO_WIN = 30;
 
 /** Credits per Resolution for controlling the Prime Zone. */
@@ -39,14 +39,14 @@ export enum ZoneKind {
   Outpost = "outpost",
 }
 
-/** Who controls a zone after the last Resolution (classic mode). Nobody when it is empty or inactive. */
+/** Who controls a zone after the last Resolution. Nobody when it is empty or inactive. */
 export interface ZoneControl {
   controller?: SquadId;
   /** Both Squads have equally many non-Exhausted Heroes in it, at least one each: nobody scores. */
   contested: boolean;
 }
 
-/** One zone of the classic mode as a Squad sees it: public information, like the scores. */
+/** One zone as a Squad sees it: public information, like the scores. */
 export interface ZoneView extends ZoneControl {
   kind: ZoneKind;
   tiles: readonly GridPosition[];
@@ -58,59 +58,23 @@ export interface ZoneView extends ZoneControl {
   active: boolean;
 }
 
-/** Rounds the Defender must survive in Attack and Defend (ADR 0022); replaces `ROUND_LIMIT` in that mode. */
-export const DEFENDER_ROUND_LIMIT = 9;
-
-export enum MatchMode {
-  Classic = "classic",
-  AttackAndDefend = "attackAndDefend",
-}
-
-/** Who wins a tie in the number of Heroes in the Zone in Attack and Defend (ADR 0022). */
-export enum ZoneTie {
-  Attacker = "attacker",
-  Defender = "defender",
-}
-
-/** The tie rule of Attack and Defend. */
-export const DEFENDER_ZONE_TIE: ZoneTie = ZoneTie.Attacker;
-
-/** Cards each Hero that ends a Resolution in the Zone moves from the top of its Deck to the Exile in Attack and Defend; 0 = off. */
-export const ZONE_DECAY_CARDS = 0;
-
-/** The tunable numbers of Attack and Defend; each defaults to the constant above. The balance harness varies them. */
-export interface AttackAndDefendRules {
-  roundLimit?: number;
-  zoneTie?: ZoneTie;
-  zoneDecay?: number;
-}
-
-/** The tunable numbers of the classic mode; each defaults to the constant above. */
-export interface ClassicRules {
+/** The tunable numbers of a match; each defaults to the constant above. The balance harness varies them. */
+export interface MatchRules {
   takeoverBonusFactor?: number;
   takeoverCooldown?: number;
 }
 
-/** The mode of a match; in Attack and Defend the other Squad is the Attacker (ADR 0022). */
-export type MatchModeSetting =
-  | ({ kind: MatchMode.Classic } & ClassicRules)
-  | ({ kind: MatchMode.AttackAndDefend; defender: SquadId } & AttackAndDefendRules);
-
 /** Seconds a Squad has to plan a Round before the host closes Planning with empty Queues (ADR 0017). */
 export const PLANNING_TIMER_SECONDS = 60;
 
-/** Why a match ended (ADR 0010, ADR 0011, ADR 0019). */
+/** Why a match ended (ADR 0011, ADR 0024). */
 export enum MatchEndReason {
-  /** Attack and Defend: the Attacker controlled the Prime Zone for three consecutive Resolutions. */
-  PrimeZoneHeld = "primeZoneHeld",
-  /** Classic: a Squad reached the Credits needed to win. */
+  /** A Squad reached the Credits needed to win. */
   Credits = "credits",
   /** All three Heroes of a Squad are Exhausted. */
   AllHeroesExhausted = "allHeroesExhausted",
-  /** Classic: the Round Limit passed; decided by Credits, then by the cards not in the Exile. */
+  /** The Round Limit passed; decided by Credits, then by the cards not in the Exile. */
   RoundLimit = "roundLimit",
-  /** Attack and Defend: the Defender survived the Round limit of the mode (ADR 0022). */
-  DefenceHeld = "defenceHeld",
 }
 
 /** The result of a finished match. */
@@ -122,14 +86,11 @@ export interface MatchResult {
   round: number;
   /** Cards in all Decks of each Squad's Heroes at the end. */
   deckTotals: Record<SquadId, number>;
-  /** Classic only: the Credits at the end. */
-  scores?: Record<SquadId, number>;
-  /** Classic only: cards not in the Exile (Deck, Discard and Hand of all Heroes), the tiebreak of equal scores. */
-  cardTotals?: Record<SquadId, number>;
+  /** The Credits at the end. */
+  scores: Record<SquadId, number>;
+  /** Cards not in the Exile (Deck, Discard and Hand of all Heroes), the tiebreak of equal scores. */
+  cardTotals: Record<SquadId, number>;
 }
-
-/** Consecutive Resolutions the Attacker must control the Prime Zone to win Attack and Defend (ADR 0010, ADR 0022). */
-export const PRIME_ZONE_WIN_RESOLUTIONS = 3;
 
 export interface HeroView {
   id: string;
@@ -239,17 +200,10 @@ export interface SquadView {
    * `destroyedCover`, `wreckCover` and `placedCover`.
    */
   grid: Grid;
-  /**
-   * Only in Attack and Defend (public information): the Defender, the Rounds left until Defence Held, and the tiles
-   * of the Zone to take or hold (the same shape as the tiles of a `ZoneView`).
-   */
-  attackAndDefend?: { defender: SquadId; roundsLeft: number; zone: readonly GridPosition[] };
-  /** Attack and Defend: consecutive Resolutions each Squad has controlled the Prime Zone (0 for the Squad that does not). Always 0 in the classic mode. */
-  primeProgress: Record<SquadId, number>;
-  /** Classic only: the Credits of both Squads. */
-  scores?: Record<SquadId, number>;
-  /** Classic only: the Prime Zone and the Outposts. Control is the result of the last Resolution; enemy Hero positions stay in the Fog. */
-  zones?: readonly ZoneView[];
+  /** The Credits of both Squads. */
+  scores: Record<SquadId, number>;
+  /** The Prime Zone and the Outposts. Control is the result of the last Resolution; enemy Hero positions stay in the Fog. */
+  zones: readonly ZoneView[];
   /** Set once the match is over; no further plans are accepted. */
   result?: MatchResult;
   /**
@@ -326,7 +280,7 @@ export enum EventKind {
   Wait = "wait",
   /** A Hero has no card left in its Deck and Discard after the Resolution; it is removed from the match. */
   Exhausted = "exhausted",
-  /** Classic: `squad` took the zone `zone` (index in `ZONES`) from the enemy and earned `amount` Credits (0 when the bonus is off). Public; `heroId` is empty. */
+  /** `squad` took the zone `zone` (index in `ZONES`) from the enemy and earned `amount` Credits (0 when the bonus is off). Public; `heroId` is empty. */
   ZoneTakenOver = "zoneTakenOver",
 }
 
