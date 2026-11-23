@@ -3,9 +3,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { deflateSync, inflateSync } from "node:zlib";
 import { type AtlasClipTiming, type AtlasData, type AtlasFrame, MAX_ATLAS_SIDE, parseAtlas } from "../src/atlas";
-import { BRIDGE_FRAME_MS, BRIDGES, CLIPS, HANGAR_HEROES, type HangarHero } from "../src/hangar-select";
+import { BRIDGE_FRAME_MS, BRIDGES, CLIPS, HANGAR_HEROES, type HangarHero, RIG_HEROES } from "../src/hangar-select";
 
 // Packs the hangar's strips (one frame after the other) into one trimmed atlas per Hero. See ATLAS.md.
+
+/** Heroes whose atlas is packed from the strips in `archive/hangar/strips/`. */
+export const STRIP_HEROES: readonly HangarHero[] = HANGAR_HEROES.filter((hero) => !RIG_HEROES.includes(hero));
 
 export const HANGAR_FOLDER = path.resolve(import.meta.dirname, "../public/assets/hangar");
 export const ATLAS_FOLDER = path.join(HANGAR_FOLDER, "atlas");
@@ -111,10 +114,15 @@ export interface AtlasJob {
 }
 
 /** The animations of a Hero, taken from `CLIPS` and `BRIDGES` (the hangar's tables stay the one place for them). */
+function stripOf(hero: HangarHero, clip: string, file: string | undefined): string {
+  if (!file) throw new Error(`${hero} ${clip} has no strip: the atlas of ${hero} is not packed from strips`);
+  return file;
+}
+
 export function jobsOf(hero: HangarHero): AtlasJob[] {
   const jobs: AtlasJob[] = [];
-  for (const [name, clip] of Object.entries(CLIPS[hero])) jobs.push({ animation: `${hero}.${name}`, file: clip.file, frames: clip.frames, durationMs: Math.round(clip.seconds * 1000) });
-  for (const [name, bridge] of Object.entries(BRIDGES[hero])) jobs.push({ animation: `${hero}.bridge.${name}`, file: bridge.file, frames: bridge.frames, durationMs: bridge.frames * BRIDGE_FRAME_MS });
+  for (const [name, clip] of Object.entries(CLIPS[hero])) jobs.push({ animation: `${hero}.${name}`, file: stripOf(hero, name, clip.file), frames: clip.frames, durationMs: Math.round(clip.seconds * 1000) });
+  for (const [name, bridge] of Object.entries(BRIDGES[hero])) jobs.push({ animation: `${hero}.bridge.${name}`, file: stripOf(hero, `bridge ${name}`, bridge.file), frames: bridge.frames, durationMs: bridge.frames * BRIDGE_FRAME_MS });
   return jobs;
 }
 
@@ -273,7 +281,7 @@ export function packHero(hero: HangarHero): PackedAtlas {
 
 export function writeAtlases(): void {
   mkdirSync(ATLAS_FOLDER, { recursive: true });
-  for (const hero of HANGAR_HEROES) {
+  for (const hero of STRIP_HEROES) {
     const packed = packHero(hero);
     writeFileSync(atlasPaths(hero).png, packed.png);
     writeFileSync(atlasPaths(hero).json, packed.json);
@@ -286,7 +294,7 @@ export function writeAtlases(): void {
  */
 export function checkAtlases(folder = ATLAS_FOLDER): string[] {
   const problems: string[] = [];
-  for (const hero of HANGAR_HEROES) {
+  for (const hero of STRIP_HEROES) {
     const { png, json } = atlasPaths(hero, folder);
     if (!existsSync(png) || !existsSync(json)) {
       problems.push(`${hero}: atlas files are missing`);

@@ -13,5 +13,5 @@ a frame, shown at 482, 345 and 345 design pixels).
 | `name-<hero>.png`, `name-<hero>-selected.png`, `kit-ring.png` | the name plates on the floor, plain and chosen |
 | `back.png`, `back-on.png`, `next.png`, `next-on.png` | BACK and NEXT in the menu style |
 
-The scene plays the atlases in `atlas/` (one per Hero). The strips of frames they are packed from, and two pictures nothing draws any more (`hangar.png`, the source of `hangar-wide.png`, and `flap.png`), are in `archive/hangar/` at the repository root and are not shipped (see `archive/README.md`). The frame counts and times of the clips are in `apps/web/src/hangar-select.ts`; a test checks that every strip has the size its table says.
+The scene plays the atlases in `atlas/` (one per Hero). Tilly's is rendered from the rig of the match Hero (`docs/design/heroes/tools/export-hangar.mjs`, see `apps/web/scripts/ATLAS.md`); Max's and Kit's are packed from strips of frames. Those strips, and two pictures nothing draws any more (`hangar.png`, the source of `hangar-wide.png`, and `flap.png`), are in `archive/hangar/` at the repository root and are not shipped (see `archive/README.md`). The frame counts and times of the clips are in `apps/web/src/hangar-select.ts`; a test checks that every strip has the size its table says.
 They were made on the design canvas; the sources are not in this repository yet.

@@ -11,6 +11,10 @@ One animation format for scenes (ADR 0026, rule 3): a PNG and a JSON in PixiJS v
 
 Hangar atlases (`public/assets/hangar/atlas/<hero>.png|json`): one per Hero (`max`, `tilly`, `kit`), one animation per clip (`max.idle`, `max.tolift`, ...) and per bridge (`max.bridge.act`; a bridge's duration is its frames times `BRIDGE_FRAME_MS`). The anchor is the middle of the bottom edge of the whole frame. Clip frame counts and durations are not repeated anywhere: the packer reads `CLIPS` and `BRIDGES` of `src/hangar-select.ts`.
 
+## Atlases from the rig (Tilly)
+
+Tilly's atlas is not packed from strips: `node docs/design/heroes/tools/export-hangar.mjs controller` renders it with the rig of the match Hero, so her figure is the map's. Her clips (`docs/design/heroes/tools/hangar-controller.js`) keep the frame counts and times of the `CLIPS` and `BRIDGES` tables. A clip with effects has them as layers of their own: `tilly.<clip>` is the figure, `tilly.<clip>.fx_back` and `.fx_front` the effects (same frame count and timing); the scene plays whichever exist, back to front. The bridge frames are flat pictures. The packer skips the Heroes in `RIG_HEROES` (`scripts/atlas-packer.ts`); Max and Kit are still packed from the strips.
+
 ## The packer
 
 ```

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BRIDGES, CLIPS, FRAME, HANGAR_HEROES, type HangarHero, HeroPlayer, isLooped, type PlayerEnv, tapOrder } from "./hangar-select";
+import { BRIDGES, CLIPS, FRAME, HANGAR_HEROES, type HangarHero, HeroPlayer, isLooped, type PlayerEnv, RIG_HEROES, tapOrder } from "./hangar-select";
 
 /** A clock the tests move by hand: timers run when the time reaches them. */
 function fakeEnv(random = (low: number) => low): PlayerEnv & { advance: (ms: number) => void } {
@@ -34,7 +34,7 @@ const size = (file: Buffer) => ({ width: file.readUInt32BE(16), height: file.rea
 
 describe("hangar Hero Select: the strips", () => {
   it("has a strip of the right size for every clip and bridge", () => {
-    for (const hero of HANGAR_HEROES) {
+    for (const hero of HANGAR_HEROES.filter((name) => !RIG_HEROES.includes(name))) {
       const frame = FRAME[hero];
       for (const [name, clip] of Object.entries(CLIPS[hero])) {
         const { width, height } = size(png(`strips/${clip.file}`));
