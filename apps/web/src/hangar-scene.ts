@@ -324,6 +324,11 @@ export function createHangarScene(art: HangarArt = pixiHangarArt): HangarScene {
     return root;
   }
 
+  /** The layers of a clip that has effects of its own (`<clip>.fx_back`, `<clip>.fx_front`), back to front with the figure between; a clip without them is the figure alone. */
+  function layersOf(sheet: AtlasSheet, clip: string): string[] {
+    return [`${clip}.fx_back`, clip, `${clip}.fx_front`].filter((name) => sheet.animations[name]);
+  }
+
   /** Puts what the machine says on the Heroes: a clip starts when the mode changes; a bridge shows one of its two frames. */
   function showHeroes(deltaMs: number): void {
     if (!parts || !heroes) return;
@@ -346,7 +351,7 @@ export function createHangarScene(art: HangarArt = pixiHangarArt): HangarScene {
           view.bridge.visible = true;
         } else {
           view.bridge.visible = false;
-          view.animator.play(`${hero}.${mode}`, { loop: isLooped(mode) });
+          view.animator.play(layersOf(view.sheet, `${hero}.${mode}`), { loop: isLooped(mode) });
         }
       }
       view.animator.update(advance);

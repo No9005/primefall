@@ -12,9 +12,12 @@ export const HERO_OF: Record<HangarHero, HeroClass> = { max: HeroClass.Bruiser, 
 
 export type ClipName = "idle" | "tolift" | "act" | "toidle" | "selecti" | "select" | "hold" | "desel";
 
-/** A clip: a strip of `frames` frames played in `seconds`; `file` is in `archive/hangar/strips/` (the source of the atlases, not shipped). */
+/** The Heroes whose atlas is rendered from the rig of the match Hero (`docs/design/heroes/tools/export-hangar.mjs`), so their clips have no strips. */
+export const RIG_HEROES: readonly HangarHero[] = ["tilly"];
+
+/** A clip: `frames` frames played in `seconds`; `file` is the strip in `archive/hangar/strips/` it is packed from (the source of the atlas, not shipped), none for a Hero of `RIG_HEROES`. */
 export interface Clip {
-  file: string;
+  file?: string;
   frames: number;
   seconds: number;
 }
@@ -41,14 +44,14 @@ export const CLIPS: Record<HangarHero, Partial<Record<ClipName, Clip>>> = {
     desel: { file: "max-desel.png", frames: 5, seconds: 0.4 },
   },
   tilly: {
-    idle: { file: "tilly-idle.png", frames: 40, seconds: 2.0 },
-    tolift: { file: "tilly-tolift.png", frames: 2, seconds: 0.12 },
-    act: { file: "tilly-act.png", frames: 27, seconds: 2.7 },
-    toidle: { file: "tilly-toidle.png", frames: 2, seconds: 0.12 },
-    select: { file: "tilly-select.png", frames: 23, seconds: 1.5 },
-    selecti: { file: "tilly-selecti.png", frames: 30, seconds: 1.8 },
-    hold: { file: "tilly-hold.png", frames: 88, seconds: 4.4 },
-    desel: { file: "tilly-desel.png", frames: 15, seconds: 1.0 },
+    idle: { frames: 40, seconds: 2.0 },
+    tolift: { frames: 2, seconds: 0.12 },
+    act: { frames: 27, seconds: 2.7 },
+    toidle: { frames: 2, seconds: 0.12 },
+    select: { frames: 23, seconds: 1.5 },
+    selecti: { frames: 30, seconds: 1.8 },
+    hold: { frames: 88, seconds: 4.4 },
+    desel: { frames: 15, seconds: 1.0 },
   },
   kit: {
     idle: { file: "kit-idle.png", frames: 36, seconds: 3.6 },
@@ -64,14 +67,14 @@ export const CLIPS: Record<HangarHero, Partial<Record<ClipName, Clip>>> = {
  * action. `entry` is the moment to use (the one the action is at), or `undefined` for "the moment that fits the frame of the clip".
  */
 export interface Bridge {
-  file: string;
+  file?: string;
   frames: number;
   entry?: number;
 }
 
 export const BRIDGES: Record<HangarHero, Partial<Record<"idle" | "act", Bridge>>> = {
   max: { act: { file: "max-bridge-act.png", frames: 36 } },
-  tilly: { act: { file: "tilly-bridge-act.png", frames: 54 } },
+  tilly: { act: { frames: 54 } },
   kit: { act: { file: "kit-bridge.png", frames: 84 }, idle: { file: "kit-bridge.png", frames: 84, entry: 0 } },
 };
 

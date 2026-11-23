@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { MAX_ATLAS_SIDE, parseAtlas } from "../src/atlas";
-import { BRIDGES, CLIPS, HANGAR_HEROES } from "../src/hangar-select";
-import { ATLAS_FOLDER, atlasPaths, checkAtlases, decodePng, encodePng, HANGAR_FOLDER, type Image, jobsOf, packAtlas, packHero, STRIP_FOLDER, untrimFrame } from "./atlas-packer";
+import { BRIDGES, CLIPS, HANGAR_HEROES, RIG_HEROES } from "../src/hangar-select";
+import { ATLAS_FOLDER, atlasPaths, checkAtlases, decodePng, encodePng, HANGAR_FOLDER, type Image, jobsOf, packAtlas, packHero, STRIP_FOLDER, STRIP_HEROES, untrimFrame } from "./atlas-packer";
 
 const strip = (file: string) => decodePng(readFileSync(path.join(STRIP_FOLDER, file)));
 
@@ -65,12 +65,12 @@ describe("hangar atlases", () => {
         expect(animations[`${hero}.bridge.${name}`], `${hero} bridge ${name}`).toHaveLength(bridge.frames);
         expect(meta.clips?.[`${hero}.bridge.${name}`]?.frames).toBe(bridge.frames);
       }
-      expect(Object.keys(animations)).toHaveLength(jobsOf(hero).length);
+      if (!RIG_HEROES.includes(hero)) expect(Object.keys(animations)).toHaveLength(jobsOf(hero).length);
     }
   });
 
   it("holds every frame of every strip pixel for pixel after untrimming", () => {
-    for (const hero of HANGAR_HEROES) {
+    for (const hero of STRIP_HEROES) {
       const { frames, animations } = atlas(hero);
       const sheet = decodePng(readFileSync(atlasPaths(hero).png));
       for (const job of jobsOf(hero)) {
@@ -87,7 +87,7 @@ describe("hangar atlases", () => {
   });
 
   it("is smaller in texture memory than the strips", () => {
-    for (const hero of HANGAR_HEROES) {
+    for (const hero of STRIP_HEROES) {
       const files = new Set(jobsOf(hero).map((job) => job.file));
       const strips = [...files].reduce((sum, file) => sum + strip(file).width * strip(file).height * 4, 0);
       const page = atlas(hero).meta.size;
