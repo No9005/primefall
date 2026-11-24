@@ -9,6 +9,8 @@ New poses of Tilly for the intro videos and as a base for new rig animations. Th
 | `tilly-pose-controlnet.json` | The workflow: SDXL inpainting UNet + pixel-art LoRA, IP-Adapter (her look from `tilly-source.png`), ControlNet union with the outline (Canny) of the guide as the pose, composited into the page (`tilly-blank.png`, or a scene for an intro frame) |
 | `tilly-pose-inpaint.json` | The first workflow: plain SDXL base inpainting with a mask. It cannot place a limb (it erases it or paints a new figure); kept as the simple baseline |
 
+Where the work stopped and which ways are left for the hangar animations: `ANIMATION-OPTIONS.md`.
+
 ## Models to download
 
 Already in `~/comfy-models/` (used by the first workflow too): `checkpoints/sd_xl_base_1.0.safetensors` and the LoRAs `loras/pixel-art-xl.safetensors` (and the two other pixel-art LoRAs). The ControlNet workflow needs four more files (about 11 GB), all from Hugging Face, into the folders of the ComfyUI workspace (`~/claude-home/code/ComfyUI/models/`; the folder names below are the ones ComfyUI and the IP-Adapter node look in):
