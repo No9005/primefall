@@ -85,15 +85,15 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
   /* ---------- palette ---------- */
   const H = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
   const P = {
-    skyA: "#05060f", skyB: "#14102c", skyC: "#2a1448",
+    skyA: "#050816", skyB: "#0c1d40", skyC: "#2b1850",
     asph0: "#12141d", asph1: "#191c28", asph2: "#212534", asph3: "#2c3144", crack: "#080910", rim: "#3a4058",
     walk0: "#262c42", walk1: "#303852", walk2: "#3d4663", seam: "#171b2c", curb: "#5a6486",
     yellow: "#d9b43a", white: "#c9d0e0",
     plaza0: "#171d33", plaza1: "#1e2640", plazaLine: "#2fb8d6",
-    steelL: "#161d30", steelR: "#202a43", steelT: "#2c3856",
-    brickL: "#27182a", brickR: "#36223a", brickT: "#43304a",
-    tealL: "#0f2630", tealR: "#17364a", tealT: "#22495c",
-    winDark: "#080b14", warm: "#ffd27a", cyanW: "#5ee6ff", pinkW: "#ff6fb0",
+    steelL: "#10213f", steelR: "#183059", steelT: "#27477a",
+    brickL: "#32132f", brickR: "#4a1a3e", brickT: "#5b2a52",
+    tealL: "#0b2c38", tealR: "#124055", tealT: "#1d5f78",
+    winDark: "#080b14", warm: "#ffc15a", cyanW: "#4fe9ff", pinkW: "#ff5fae",
     pink: "#ff3d9a", cyan: "#3de0ff", amber: "#ff8a2a", violet: "#8a5cff", lime: "#b6ff5a",
     metal: "#1e2434", metalL: "#35405c", rust: "#6b3a22", concrete: "#3b4256", concreteD: "#272d40", concreteL: "#555f7c",
     glass: "#07101c", glassHi: "#2a4e6c",
@@ -166,7 +166,15 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
       }
       if (bh > 150) fx.beacons.push([bx + bw / 2, base - bh - 2]);
     }
-    for (let i = 0; i < 28; i++) buf.ellipse(Math.round(hash(i, 5, 73) * w), oy + 80 + Math.round(hash(i, 6, 73) * 30), 90, 14, C.pink, 5);
+    for (let i = 0; i < 28; i++) buf.ellipse(Math.round(hash(i, 5, 73) * w), oy + 80 + Math.round(hash(i, 6, 73) * 30), 90, 14, i % 2 ? C.pink : C.cyan, 6);
+    for (let i = 0; i < 9; i++) { // billboards on the far towers
+      const bx = Math.floor(hash(i, 8, 74) * (w - 30)), by = oy - 40 + Math.floor(hash(i, 9, 74) * 110), col = [C.pink, C.cyan, C.amber, C.violet][i % 4];
+      buf.rect(bx, by, 12, 22, shade(col, 0.55)); buf.rect(bx + 1, by + 1, 10, 20, col, 120);
+      for (let k = 0; k < 4; k++) buf.rect(bx + 3, by + 3 + k * 5, 6, 1, [255, 255, 255], 200);
+    }
+    // a flyover across the whole city behind the board
+    for (let x = 0; x < w; x++) { for (let k = 0; k < 7; k++) buf.set(x, oy + 38 + k, k === 0 ? [90, 230, 255] : k < 3 ? [30, 120, 150] : [14, 40, 60], 235); if (x % 6 < 3) buf.set(x, oy + 41, [150, 255, 255]); }
+    for (let x = 40; x < w; x += 150) for (let k = 0; k < 60; k++) buf.rect(x, oy + 45 + k, 4, 1, [10, 28, 44], 235);
 
     /* ground: back to front by diagonal */
     const roadLine = (c, r) => {
@@ -205,6 +213,8 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
             if (Math.abs(a) > 0.43 || Math.abs(b) > 0.43) col = C.metalDrop;
           } else {
             col = h1 < 0.07 ? C.asph0 : h1 > 0.93 ? C.asph3 : big > 0.58 ? C.asph2 : C.asph1;
+            const wet = vnoise(px / 13, py / 6, 31);
+            if (wet > 0.6) col = mixc(col, vnoise(px / 40, py / 20, 32) > 0.5 ? C.pink : C.cyan, (wet - 0.6) * 0.5);
             if (hash(px >> 1, py, 9) > 0.992) col = C.asph3;
             if (line === "u" && Math.abs(b) < 0.045 && ((a + 0.5) * 2) % 1 < 0.55) col = C.yellow;
             if (line === "v" && Math.abs(a) < 0.045 && ((b + 0.5) * 2) % 1 < 0.55) col = C.yellow;
@@ -303,6 +313,7 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
         if (ground) {
           const shop = u % 20;
           if (v < 2) return shade(base, 0.5);
+          if (shop > 1 && shop < 19 && v >= 10 && v <= 13) return (u % 6 < 3) ? [[255, 120, 40], [255, 60, 150], [40, 210, 240]][Math.floor(u / 20) % 3] : shade([[255, 120, 40], [255, 60, 150], [40, 210, 240]][Math.floor(u / 20) % 3], 0.45);
           if (shop > 3 && shop < 17 && v > 2 && v < 10) {
             const lit = hash(Math.floor(u / 20), b.seed, 21);
             return lit > 0.35 ? mixc(lit > 0.7 ? C.cyanW : C.pinkW, [10, 14, 26], 0.55 + (v / 14) * 0.3) : C.winDark;
@@ -310,6 +321,7 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
           return col;
         }
         const wx = u % 8;
+        if (hash(cell, fl, b.seed + 15) > 0.93 && wx >= 1 && wx <= 6 && fv >= 2 && fv <= 7) return ((wx - 3) ** 2 + (fv - 5) ** 2 < 5) ? [60, 66, 90] : [96, 106, 134];   // an air-conditioner
         if (wx >= 2 && wx <= 5 && fv >= 3 && fv <= 7) {
           const lit = hash(cell, fl, b.seed + 7);
           if (lit > 0.62) { const hue = hash(cell, fl, b.seed + 9); return mixc(hue > 0.66 ? C.warm : hue > 0.33 ? C.cyanW : C.pinkW, [20, 22, 40], fv > 5 ? 0.35 : 0); }
@@ -318,6 +330,7 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
         for (const s of signs) {
           if (u >= s.u && u < s.u + s.w && v >= s.v && v < s.v + s.h) {
             const edge = u === s.u || u === s.u + s.w - 1 || v === s.v || v === s.v + s.h - 1;
+            if (s.kind === "glyph" && edge) return s.color;
             if (s.kind === "glyph") { const gl = (u - s.u) % 5, gy = (v - s.v) % 7; const on = (gy === 0 || gy === 6) ? hash(Math.floor((v - s.v) / 7), (u - s.u) >> 2, s.seed) > 0.45 : (gl === 0 || gl === 4) ? hash(Math.floor((v - s.v) / 7), gy, s.seed + 1) > 0.4 : gy === 3 && hash(Math.floor((v - s.v) / 7), u - s.u, s.seed + 2) > 0.3; return on ? s.color : shade(s.color, 0.16); }
             return edge ? shade(s.color, 0.6) : s.color;
           }
@@ -412,10 +425,12 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
     /* props of a yard: boxes in continuous tile coordinates; a fence is see-through */
     function prop(p) {
       const P0 = Pt(p.c, p.r), dir = p.dir || "u";
-      const dims = { dumpster: [0.5, 0.26, 9], crate: [0.26, 0.26, 6], barrel: [0.16, 0.16, 9], fence: [0.5, 0.04, 11] }[p.type], [hl, hw, hh] = dims;
+      if (p.type === "sign") return standingSign(p);
+      const dims = { dumpster: [0.5, 0.26, 9], crate: [0.26, 0.26, 6], barrel: [0.16, 0.16, 9], fence: [0.5, 0.04, 11], vending: [0.3, 0.3, 17] }[p.type], [hl, hw, hh] = dims;
       const ca = dir === "u" ? p.c - hl : p.c - hw, cb = dir === "u" ? p.c + hl : p.c + hw, ra = dir === "u" ? p.r - hw : p.r - hl, rb = dir === "u" ? p.r + hw : p.r + hl;
       if (p.type !== "fence") buf.ellipse(Math.round(P0[0]), Math.round(P0[1] + 3), Math.round(hl * 26), Math.round(hl * 11), [0, 0, 0], 110);
-      const col = { dumpster: p.paint || [34, 56, 52], crate: [92, 62, 36], barrel: C.rust, fence: C.metalL }[p.type];
+      const col = { dumpster: p.paint || [34, 56, 52], crate: [92, 62, 36], barrel: C.rust, fence: C.metalL, vending: p.paint || [26, 36, 66] }[p.type];
+      if (p.type === "vending") { buf.ellipse(Math.round(P0[0] + 2), Math.round(P0[1] + 3), 14, 6, p.light || C.cyan, 34); fx.glows.push({ x: P0[0] + 3, y: P0[1] - 9, w: 9, h: 11, color: p.light || C.cyan, flick: 0, ph: 1, halo: 3 }); }
       const burning = p.burning;
       const face = (dark) => (u, v) => {
         if (p.type === "fence") { if (v >= hh - 1) return C.metalL; return (u + v) % 4 === 0 || (u - v + 40) % 4 === 0 ? shade(C.metalL, dark ? 0.8 : 1) : null; }
@@ -424,11 +439,29 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
         if (p.type === "dumpster" && v % 4 === 0) c2 = shade(c2, 0.8);
         if (p.type === "crate" && (u % 6 === 0 || v % 6 === 0)) c2 = shade(c2, 0.7);
         if (p.type === "barrel" && v % 4 === 0) c2 = shade(c2, 0.7);
+        if (p.type === "vending") { const lit = p.light || C.cyan; if (u > 2 && u < 13 && v > 3 && v < 14) return (u + v) % 5 === 0 ? [255, 255, 255] : shade(lit, 0.75 + 0.25 * hash(u >> 2, v >> 2, 4)); return shade(col, dark ? 0.8 : 1.2); }
         if (burning && hash(u, v, 12) > 0.8) c2 = C.scorch;
         return c2;
       };
       box({ ca, ra, cb, rb, z0: p.z || 0, H: hh, left: face(true), right: face(false), top: () => (burning ? [255, 150, 40] : shade(col, 1.3)) });
       if (p.type === "barrel" && burning) fx.fires.push({ x: P0[0], y: P0[1] - hh - 2 - (p.z || 0), s: 0.75, ph: Math.floor(hash(p.c, p.r, 63) * 9) });
+    }
+    /* a standing neon sign: a pole and a double-sided board with lit glyphs; its light spills on the wet ground */
+    function standingSign(p) {
+      const P0 = Pt(p.c, p.r), col = p.color || C.pink, dir = p.dir || "u", bz = 18, bh = p.h || 30;
+      buf.ellipse(Math.round(P0[0]), Math.round(P0[1] + 2), 18, 7, col, 30);
+      for (let i = 0; i < 6; i++) buf.line(P0[0] - 5 + i * 2, P0[1] + 4, P0[0] - 5 + i * 2, P0[1] + 9 + (i % 2) * 2, col, 38);   // streaks of colour in the puddle
+      box({ ca: p.c - 0.04, ra: p.r - 0.04, cb: p.c + 0.04, rb: p.r + 0.04, z0: 0, H: bz, left: () => C.metalL, right: () => C.metal, top: () => C.metalL });
+      const w = dir === "u" ? [0.34, 0.05] : [0.05, 0.34];
+      const seed2 = Math.floor(hash(p.c, p.r, 14) * 999);
+      const glyph = (u, v) => {
+        const edge = u < 2 || v < 2 || v >= bh - 2 || u >= 22;
+        if (edge) return col;
+        const gl = (u - 2) % 5, gy = (v - 2) % 7, cell = Math.floor((v - 2) / 7), on = (gy === 0 || gy === 6) ? hash(cell, (u - 2) >> 2, seed2) > 0.4 : (gl === 0 || gl === 4) ? hash(cell, gy, seed2 + 1) > 0.35 : gy === 3 && hash(cell, u, seed2 + 2) > 0.3;
+        return on ? [255, 245, 250] : shade(col, 0.22);
+      };
+      box({ ca: p.c - w[0], ra: p.r - w[1], cb: p.c + w[0], rb: p.r + w[1], z0: bz, H: bh, left: (u, v) => glyph(u, v), right: (u, v) => glyph(u, v), top: () => shade(col, 0.6) });
+      fx.glows.push({ x: P0[0], y: P0[1] - bz - bh / 2, w: 20, h: bh, color: col, flick: p.flick ? 1 : 0, ph: seed2 % 7, halo: 5 });
     }
     function manhole(c, r) {
       const P0 = Pt(c, r);
@@ -436,6 +469,17 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
       for (let i = -5; i <= 5; i += 2) buf.set(P0[0] + i, P0[1], C.asph3);
       fx.steams.push({ x: P0[0], y: P0[1] - 1, ph: hash(c, r, 5) * 9 });
     }
+    function lanternString(l) { // paper lanterns on a cable
+      const A = Pt(l.a[0], l.a[1]), B = Pt(l.b[0], l.b[1]); A[1] -= l.a[2]; B[1] -= l.b[2];
+      const n = Math.round(Math.hypot(B[0] - A[0], B[1] - A[1]));
+      for (let i = 0; i <= n; i++) { const t = i / n; buf.set(A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t + Math.sin(t * Math.PI) * 5, [60, 50, 70]); }
+      for (let i = 8; i < n - 6; i += 12) {
+        const t = i / n, x = A[0] + (B[0] - A[0]) * t, y = A[1] + (B[1] - A[1]) * t + Math.sin(t * Math.PI) * 5;
+        buf.ellipse(Math.round(x), Math.round(y + 4), 3, 4, [200, 40, 40]); buf.ellipse(Math.round(x), Math.round(y + 4), 2, 3, [255, 110, 70]); buf.rect(x - 1, y, 3, 1, [40, 30, 30]);
+        fx.glows.push({ x, y: y + 4, w: 3, h: 4, color: [255, 90, 60], flick: 0, ph: i, halo: 3 });
+      }
+    }
+    function cable(l) { const A = Pt(l.a[0], l.a[1]), B = Pt(l.b[0], l.b[1]); A[1] -= l.a[2]; B[1] -= l.b[2]; const n = Math.round(Math.hypot(B[0] - A[0], B[1] - A[1])); for (let i = 0; i <= n; i++) { const t = i / n; buf.set(A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t + Math.sin(t * Math.PI) * (l.sag ?? 6), [18, 20, 30]); } }
     function clothesline(l) { // two points on the walls, a sagging line, pegged washing
       const A = Pt(l.a[0], l.a[1]), B = Pt(l.b[0], l.b[1]); A[1] -= l.a[2]; B[1] -= l.b[2];
       const n = Math.round(Math.hypot(B[0] - A[0], B[1] - A[1]));
@@ -452,7 +496,7 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
     for (const cr of spec.cars || []) items.push({ k: cr.key ?? cr.c + cr.r + 0.5, f: () => car(cr.c, cr.r, cr.dir, cr) });
     for (const p of spec.props || []) items.push({ k: p.key ?? p.c + p.r + 0.4, f: () => prop(p) });
     for (const m of spec.manholes || []) items.push({ k: m[0] + m[1] - 0.2, f: () => manhole(m[0], m[1]) });
-    for (const l of spec.lines || []) items.push({ k: 999, f: () => clothesline(l) });
+    for (const l of spec.lines || []) items.push({ k: 999, f: () => (l.lantern ? lanternString(l) : l.cable ? cable(l) : clothesline(l)) });
     for (const l of spec.lights || []) items.push({ k: l.c + l.r + 0.2, f: () => streetlight(l.c, l.r, l.color) });
     if (spec.artefact) items.push({ k: spec.artefact[0] + spec.artefact[1] + 0.3, f: () => artefact(spec.artefact[0], spec.artefact[1]) });
     items.sort((p, q) => p.k - q.k).forEach((i) => i.f());
@@ -466,6 +510,23 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
     const g = canvasFx.getContext("2d"), reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const drops = Array.from({ length: Math.round((w * h) / 2600) }, (_, i) => ({ x: hash(i, 1, 80) * (w + 120), y: hash(i, 2, 80) * h, v: 260 + hash(i, 3, 80) * 160, len: 5 + hash(i, 4, 80) * 5, a: 0.18 + hash(i, 5, 80) * 0.25 }));
     const splashes = [];
+    const fliers = [
+      { y: 0.12, dir: 1, speed: 46, sc: 2, color: C.pink, ph: 0.1, slope: 0.5 }, { y: 0.2, dir: -1, speed: 34, sc: 2, color: C.cyan, ph: 0.55, slope: -0.5 },
+      { y: 0.27, dir: 1, speed: 62, sc: 3, color: C.amber, ph: 0.8, slope: 0.5 }, { y: 0.17, dir: -1, speed: 52, sc: 2, color: C.lime, ph: 0.3, slope: 0.5 },
+      { y: 0.34, dir: 1, speed: 28, sc: 2, color: C.cyan, ph: 0.45, slope: -0.5 },
+    ];
+    function flyer(f, t) {
+      const span = w + 140, x = ((f.dir > 0 ? t * f.speed : -t * f.speed) + f.ph * span + span * 8) % span - 70, y = h * f.y + (x - w / 2) * f.slope * 0.35 + Math.sin(t * 1.6 + f.ph * 9) * 1.5, s = f.sc, d = f.dir;
+      const [r0, g0, b0] = f.color;
+      for (let k = 1; k <= 16 * s; k++) { g.fillStyle = `rgba(${r0},${g0},${b0},${(0.45 * (1 - k / (16 * s + 1))).toFixed(3)})`; g.fillRect(Math.round(x - d * (7 * s + k)), Math.round(y + s), 1, s); }          // the trail of the lift
+      g.fillStyle = "#1a1f33"; g.fillRect(Math.round(x - 7 * s), Math.round(y), 14 * s, 3 * s);
+      g.fillStyle = "#2c3556"; g.fillRect(Math.round(x - 5 * s), Math.round(y - 2 * s), 9 * s, 2 * s);
+      g.fillStyle = "#7fe6ff"; g.fillRect(Math.round(x - 3 * s + d * s), Math.round(y - 2 * s), 4 * s, s);
+      g.fillStyle = `rgb(${r0},${g0},${b0})`; g.fillRect(Math.round(x - 6 * s), Math.round(y + 3 * s), 12 * s, s);
+      g.fillStyle = `rgba(${r0},${g0},${b0},0.16)`; g.fillRect(Math.round(x - 9 * s), Math.round(y + 3 * s), 18 * s, 4 * s);
+      g.fillStyle = "#fff6c0"; g.fillRect(Math.round(x + d * 7 * s) - (d < 0 ? s : 0), Math.round(y + s), s, s);
+      g.fillStyle = "#ff3030"; g.fillRect(Math.round(x - d * 7 * s) - (d > 0 ? s : 0), Math.round(y + s), s, s);
+    }
     function frame(ms) {
       const t = ms / 1000;
       g.clearRect(0, 0, w, h);
@@ -479,6 +540,16 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
       }
       for (const [bx, by] of fx.beacons) if (Math.floor(t * 0.9 + bx * 0.01) % 2 === 0) { g.fillStyle = "#ff3030"; g.fillRect(Math.round(bx), Math.round(by), 2, 2); g.fillStyle = "rgba(255,40,40,0.18)"; g.fillRect(Math.round(bx) - 2, Math.round(by) - 2, 6, 6); }
       if (fx.plazaRing) { const [px, py] = fx.plazaRing, k = (t * 0.5) % 1; g.strokeStyle = `rgba(61,224,255,${(0.5 * (1 - k)).toFixed(3)})`; g.lineWidth = 1; g.beginPath(); g.ellipse(Math.round(px), Math.round(py), 10 + k * 30, 5 + k * 15, 0, 0, Math.PI * 2); g.stroke(); }
+      // the spotlight drone: hovers over the yard, its cone sweeps the crater
+      if (spec.drone) {
+        const D = Pt(spec.drone[0], spec.drone[1]), dx0 = D[0], dy0 = D[1] - spec.drone[2] + Math.sin(t * 1.3) * 2, sw = Math.sin(t * 0.5) * 38;
+        const tx = D[0] + sw, ty = D[1] + 22 + Math.cos(t * 0.5) * 6;
+        g.fillStyle = "rgba(190,235,255,0.10)"; g.beginPath(); g.moveTo(dx0, dy0 + 3); g.lineTo(tx - 30, ty); g.lineTo(tx + 30, ty); g.closePath(); g.fill();
+        g.fillStyle = "rgba(190,235,255,0.12)"; g.beginPath(); g.ellipse(tx, ty, 30, 11, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#1a1f33"; g.fillRect(Math.round(dx0 - 8), Math.round(dy0 - 2), 16, 5); g.fillStyle = "#2c3556"; g.fillRect(Math.round(dx0 - 5), Math.round(dy0 - 4), 10, 2);
+        g.fillStyle = Math.floor(t * 2) % 2 ? "#ff3030" : "#3de0ff"; g.fillRect(Math.round(dx0 - 8), Math.round(dy0 - 1), 2, 2); g.fillStyle = "#e6f6ff"; g.fillRect(Math.round(dx0 - 1), Math.round(dy0 + 3), 3, 2);
+      }
+      for (const f of fliers) flyer(f, t);
       // fire
       for (const f of fx.fires) {
         const flick = 0.8 + 0.2 * Math.sin(t * 13 + f.ph);
@@ -535,16 +606,18 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
   (() => {
     const cols = 15, rows = 14, grid = gridOf(cols, rows);
     const buildings = [
-      bld(0, 0, 14, 2, 124, "brick", { fire: true, fireSide: "L", fireU: [34, 150], fireW: 46, signs: [sign("L", 96, 16, 5, 40, C.pink, { flick: 1 }), sign("L", 190, 20, 26, 6, C.amber, { kind: "glyph" }), sign("R", 12, 30, 5, 30, C.cyan)] }),
-      bld(0, 3, 2, 12, 96, "teal", { fire: true, fireSide: "R", fireU: [18, 96], fireW: 44, signs: [sign("R", 62, 16, 5, 44, C.cyan), sign("R", 130, 26, 16, 6, C.lime, { kind: "glyph", flick: 1 })] }),
+      bld(0, 0, 14, 2, 124, "brick", { fire: true, fireSide: "L", fireU: [34, 150], fireW: 46, signs: [sign("L", 96, 16, 5, 40, C.pink, { flick: 1 }), sign("L", 190, 20, 26, 6, C.amber, { kind: "glyph" }), sign("R", 12, 30, 5, 30, C.cyan), sign("L", 60, 36, 10, 40, C.cyan, { kind: "glyph" }), sign("L", 120, 50, 12, 36, C.pink, { kind: "glyph", flick: 1 }), sign("L", 14, 22, 12, 40, C.amber, { kind: "glyph" }), sign("L", 214, 48, 10, 36, C.lime, { kind: "glyph" })] }),
+      bld(0, 3, 2, 12, 96, "teal", { fire: true, fireSide: "R", fireU: [18, 96], fireW: 44, signs: [sign("R", 62, 16, 5, 44, C.cyan), sign("R", 130, 26, 16, 6, C.lime, { kind: "glyph", flick: 1 }), sign("R", 104, 18, 10, 44, C.pink, { kind: "glyph" }), sign("R", 36, 42, 12, 36, C.amber, { kind: "glyph", flick: 1 }), sign("L", 12, 30, 12, 34, C.cyan, { kind: "glyph" })] }),
       bld(10, 3, 13, 5, 38, "steel", { signs: [sign("L", 8, 16, 18, 5, C.pink, { kind: "glyph", flick: 1 })], fire: true, fireSide: "R", fireU: 6, fireW: 30 }),
     ];
     buildings.push(bld(11, 4, 12, 4, 18, "brick", { z0: 38 }));
     ring(grid, buildings.slice(0, 3));
-    for (const [c, r] of [[6, 6], [7, 6], [6, 7], [7, 7], [8, 7], [7, 8], [5, 7], [4, 5], [9, 5], [10, 8], [5, 9], [11, 10], [8, 10], [3, 8]]) if (grid[r][c] === "A") grid[r][c] = "K";
+    for (const [c, r] of [[7, 6], [6, 7], [7, 7], [11, 10]]) if (grid[r][c] === "A") grid[r][c] = "K";   // one crater and one pothole, no more
     const props = [
       { type: "dumpster", c: 5, r: 3, dir: "u" }, { type: "dumpster", c: 8, r: 3, dir: "u", paint: [70, 40, 30] }, { type: "dumpster", c: 3, r: 10, dir: "v", paint: [36, 50, 70] },
       { type: "barrel", c: 4, r: 5, burning: true }, { type: "barrel", c: 12, r: 8, burning: true }, { type: "barrel", c: 4, r: 4 },
+      { type: "sign", c: 4, r: 8, color: C.cyan, flick: true, h: 34 }, { type: "sign", c: 12, r: 6.2, color: C.pink, dir: "v", h: 30 }, { type: "sign", c: 8, r: 11.2, color: C.amber, h: 26 },
+      { type: "vending", c: 3.4, r: 5.6, dir: "v", light: C.pink }, { type: "vending", c: 10, r: 6, dir: "u", light: C.cyan, paint: [50, 24, 60] },
       { type: "crate", c: 13, r: 10 }, { type: "crate", c: 13, r: 11 }, { type: "crate", c: 13, r: 10.1, z: 6 },
     ];
     for (let c = 3; c <= 13; c++) if (c < 7 || c > 9) props.push({ type: "fence", c, r: 12.5, dir: "u" });   // the front fence, with a gate at 7 to 9
@@ -553,7 +626,8 @@ hr { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
     makeScene({
       cols, rows, grid, buildings, cars, props, tall: 230, seed: 6, centre: null,
       manholes: [[9, 6]],
-      lines: [{ a: [2.5, 6, 74], b: [8, 2.5, 86] }, { a: [2.5, 8.5, 56], b: [9.5, 2.5, 62] }],
+      drone: [7, 7, 96],
+      lines: [{ a: [2.5, 6, 74], b: [8, 2.5, 86] }, { a: [2.5, 8.5, 56], b: [9.5, 2.5, 62] }, { a: [2.5, 4.5, 44], b: [9.5, 2.5, 40], lantern: true }, { a: [2.5, 10.5, 34], b: [12.5, 5.5, 30], lantern: true }, { a: [2.5, 7, 96], b: [5, 2.5, 100], cable: true, sag: 10 }, { a: [12.5, 5, 40], b: [10, 2.5, 80], cable: true, sag: 8 }],
       lights: [{ c: 6, r: 5, color: C.amber }, { c: 11, r: 7, color: C.cyan }],
     }, document.getElementById("y-base"), document.getElementById("y-fx"), 2);
   })();
