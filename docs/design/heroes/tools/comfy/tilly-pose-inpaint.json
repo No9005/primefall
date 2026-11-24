@@ -1,0 +1,17 @@
+{
+  "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "sd_xl_base_1.0.safetensors" }, "_meta": { "title": "SDXL base" } },
+  "2": { "class_type": "LoraLoader", "inputs": { "model": ["1", 0], "clip": ["1", 1], "lora_name": "pixel-art-xl.safetensors", "strength_model": 1.0, "strength_clip": 1.0 }, "_meta": { "title": "Pixel art LoRA" } },
+  "3": { "class_type": "CLIPTextEncode", "inputs": { "clip": ["2", 1], "text": "pixel art, 16-bit game sprite part, a long grey mechanical robot arm with three segments and a claw, teal glowing joints, reaching straight up, flat grey background" }, "_meta": { "title": "Prompt: only the part inside the mask (edit the pose here)" } },
+  "4": { "class_type": "CLIPTextEncode", "inputs": { "clip": ["2", 1], "text": "blurry, photo, realistic, 3d render, extra limbs, extra arms, deformed hands, text, watermark, gradient, soft shading, anti-aliasing" }, "_meta": { "title": "Negative prompt" } },
+  "5": { "class_type": "LoadImage", "inputs": { "image": "tilly-source.png" }, "_meta": { "title": "Source: Tilly (map look)" } },
+  "6": { "class_type": "LoadImageMask", "inputs": { "image": "tilly-mask-arm3.png", "channel": "red" }, "_meta": { "title": "Mask: where Tilly may change" } },
+  "7": { "class_type": "GrowMask", "inputs": { "mask": ["6", 0], "expand": 8, "tapered_corners": true }, "_meta": { "title": "Grow the mask" } },
+  "8": { "class_type": "VAEEncode", "inputs": { "pixels": ["5", 0], "vae": ["1", 2] }, "_meta": { "title": "Encode the source" } },
+  "9": { "class_type": "SetLatentNoiseMask", "inputs": { "samples": ["8", 0], "mask": ["7", 0] }, "_meta": { "title": "Repaint only the mask" } },
+  "10": { "class_type": "KSampler", "inputs": { "model": ["2", 0], "positive": ["3", 0], "negative": ["4", 0], "latent_image": ["9", 0], "seed": 1, "control_after_generate": "fixed", "steps": 30, "cfg": 7.0, "sampler_name": "dpmpp_2m", "scheduler": "karras", "denoise": 0.85 }, "_meta": { "title": "Sampler (denoise: how far the pose may move)" } },
+  "11": { "class_type": "VAEDecode", "inputs": { "samples": ["10", 0], "vae": ["1", 2] }, "_meta": { "title": "Decode" } },
+  "12": { "class_type": "ImageCompositeMasked", "inputs": { "destination": ["5", 0], "source": ["11", 0], "x": 0, "y": 0, "resize_source": false, "mask": ["7", 0] }, "_meta": { "title": "Paste the repaint into the source (the rest stays pixel-exact)" } },
+  "13": { "class_type": "SaveImage", "inputs": { "images": ["12", 0], "filename_prefix": "tilly-pose/pose" }, "_meta": { "title": "Save (1024 px)" } },
+  "14": { "class_type": "ImageScaleBy", "inputs": { "image": ["12", 0], "upscale_method": "nearest-exact", "scale_by": 0.125 }, "_meta": { "title": "Back to sprite size (1/8)" } },
+  "15": { "class_type": "SaveImage", "inputs": { "images": ["14", 0], "filename_prefix": "tilly-pose/pose-small" }, "_meta": { "title": "Save (128 px)" } }
+}
