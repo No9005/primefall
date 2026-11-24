@@ -51,11 +51,22 @@ const ARM_F = part(-1, -1, 1, 20, R => {   // her left arm: skin, frayed sleeve,
   R(-1, 13, 3, 6, P.metalLo); R(1, 13, 1, 6, P.metal); R(-1, 19, 3, 1, P.glow);
   R(-1, 11, 3, 3, SK.skin); R(1, 11, 1, 3, SK.skinLo);
 });
+const ARM_F_BARE = part(-1, -1, 1, 15, R => {   // the same arm without the emitter: a bare hand (the hangar's act clip, where she works with empty hands)
+  R(-1, 0, 3, 12, SK.skin); R(1, 0, 1, 12, SK.skinLo); R(-1, -1, 3, 6, P.cloth); R(1, 0, 1, 5, P.clothLo); R(-1, 5, 1, 2, P.cloth);
+  R(-2, 11, 5, 4, SK.skin); R(2, 11, 1, 4, SK.skinLo); R(-2, 14, 5, 1, SK.skinLo);
+});
 const HEAD = part(-5, -12, 5, 0, R => {
   R(-4, -9, 9, 8, SK.skin); R(4, -9, 1, 7, SK.skinLo); R(-4, -2, 1, 1, null); R(4, -2, 1, 1, null); R(-2, -1, 5, 1, SK.skinLo);
   R(-2, -6, 1, 2, SK.eye); R(2, -6, 1, 2, SK.eye); R(-2, -7, 2, 1, P.hairLo); R(2, -7, 2, 1, P.hairLo);
   R(1, -4, 1, 1, SK.skinLo); R(0, -3, 2, 1, SK.lip);
   R(-5, -12, 11, 4, P.hair); R(-5, -12, 1, 1, null); R(5, -12, 1, 1, null); R(-5, -8, 2, 4, P.hair); R(4, -8, 2, 2, P.hairLo); R(-3, -9, 4, 1, P.hairLo);
+  R(-5, -10, 11, 2, '#2a2420'); R(-3, -10, 3, 2, P.glow); R(1, -10, 3, 2, P.glow); R(-3, -10, 1, 1, '#ffffff'); R(1, -10, 1, 1, '#ffffff');
+});
+const HEAD_SHOCK = part(-5, -12, 5, 0, R => {
+  R(-4, -9, 9, 8, SK.skin); R(4, -9, 1, 7, SK.skinLo); R(-4, -2, 1, 1, null); R(4, -2, 1, 1, null);
+  R(-5, -12, 11, 4, P.hair); R(-5, -12, 1, 1, null); R(5, -12, 1, 1, null); R(-5, -8, 2, 4, P.hair); R(4, -8, 2, 2, P.hairLo); R(-3, -9, 4, 1, P.hairLo);
+  R(-3, -7, 3, 3, '#ffffff'); R(1, -7, 3, 3, '#ffffff'); R(-2, -6, 1, 1, SK.eye); R(2, -6, 1, 1, SK.eye);
+  R(-1, -3, 3, 2, '#5a1a1a'); R(0, -2, 1, 1, SK.lip);
   R(-5, -10, 11, 2, '#2a2420'); R(-3, -10, 3, 2, P.glow); R(1, -10, 3, 2, P.glow); R(-3, -10, 1, 1, '#ffffff'); R(1, -10, 1, 1, '#ffffff');
 });
 const PONY = part(-5, -1, 0, 8, R => { R(-3, -1, 4, 3, P.hair); R(-5, 1, 3, 6, P.hair); R(-5, 6, 2, 3, P.hairLo); });
@@ -83,13 +94,24 @@ function poseAt(clip, t) {
 }
 
 
-Object.assign(REST, { armB: 6, pony: 0, g1: G1, g2: G2, g3: G3, claw: .5, gripFront: 0, core: 1, violet: 0, cigarOff: 1, scrap: 0 });
+Object.assign(REST, { armB: 6, pony: 0, g1: G1, g2: G2, g3: G3, claw: .5, gripFront: 0, core: 1, violet: 0, cigarOff: 1, scrap: 0, noClaw: 0, shock: 0, noGun: 0, armBFront: 0 });
 
 /* ---------- figure renderer ---------- */
 const fig = document.createElement('canvas'); fig.width = SW; fig.height = SH;
 const fctx = fig.getContext('2d', { willReadFrequently: true });
 const rad = d => d * Math.PI / 180;
 function put(s) { fctx.drawImage(s.c, s.x, s.y); }
+/** A part with its own dark outline, for a part that lies in front of the body (the outline of the figure is drawn only around the whole figure, so it would merge with the grey of the chest plate). */
+const silhouettes = new WeakMap();
+function putOutlined(s) {
+  if (!silhouettes.has(s)) {
+    const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height;
+    const g = c.getContext('2d'); g.drawImage(s.c, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = 'rgb(' + P.outline.join(',') + ')'; g.fillRect(0, 0, c.width, c.height);
+    silhouettes.set(s, c);
+  }
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) fctx.drawImage(silhouettes.get(s), s.x + dx, s.y + dy);
+  put(s);
+}
 function world(x, y) { const q = fctx.getTransform().transformPoint(new DOMPoint(x, y)); return { x: Math.round(q.x - OX), y: Math.round(q.y - OY) }; }
 function block(x, y, w, h, c) { fctx.fillStyle = c; fctx.fillRect(OX + Math.round(x), OY + Math.round(y), w, h); }
 function stroke(a, b, th, c, hi) {
@@ -103,7 +125,7 @@ function drawGrip(base, tilt, p, info) {
   const pts = [base]; [p.g1, p.g2, p.g3].forEach((g, i) => pts.push(polar(pts[i], tilt + g, SEG[i])));
   for (let i = 0; i < 3; i++) stroke(pts[i], pts[i + 1], 2, P.metalLo, P.metal);
   const e = pts[3], dir = tilt + p.g3, open = 14 + 42 * p.claw;
-  for (const s of [-1, 1]) { const k = polar(e, dir + s * open, 5), tip = polar(k, dir - s * 20, 4); stroke(e, k, 2, P.metalLo); stroke(k, tip, 1, P.metalHi); }
+  if (!p.noClaw) for (const s of [-1, 1]) { const k = polar(e, dir + s * open, 5), tip = polar(k, dir - s * 20, 4); stroke(e, k, 2, P.metalLo); stroke(k, tip, 1, P.metalHi); }
   [pts[1], pts[2], e].forEach(q => { block(q.x - 1, q.y - 1, 4, 4, P.metal); block(q.x - 1, q.y - 1, 4, 1, P.metalHi); block(q.x, q.y, 2, 2, p.core > .2 ? P.glow : P.metalLo); });
   const h = polar(e, dir, 6);
   info.claw = { x: Math.round(e.x), y: Math.round(e.y) }; info.hold = { x: Math.round(h.x), y: Math.round(h.y) }; info.elbow = { x: Math.round(pts[2].x), y: Math.round(pts[2].y) };
@@ -132,14 +154,16 @@ function drawFigure(p) {
   torso();
   put(p.core <= .2 ? TORSO_OFF : p.violet > .5 ? TORSO_V : p.scrap > .5 ? TORSO_S : TORSO);
   info.core = world(0, -10);
-  fctx.save(); fctx.translate(-8, -13); fctx.rotate(rad(p.armB)); put(ARM_B); info.wrist = world(-1, 9); fctx.restore();
-  const armF = () => { fctx.save(); fctx.translate(7, -14); fctx.rotate(rad(p.armF)); put(ARM_F); info.muzzle = world(0, 22); fctx.restore(); };
+  const armB = () => { fctx.save(); fctx.translate(-8, -13); fctx.rotate(rad(p.armB)); (p.armBFront ? putOutlined : put)(ARM_B); info.wrist = world(-1, 9); fctx.restore(); };
+  if (!p.armBFront) armB();
+  const armF = () => { fctx.save(); fctx.translate(7, -14); fctx.rotate(rad(p.armF)); put(p.noGun > .5 ? ARM_F_BARE : ARM_F); info.muzzle = world(0, p.noGun > .5 ? 14 : 22); fctx.restore(); };
   if (!p.armFront) armF();
   fctx.save(); fctx.translate(Math.round(p.headDx), -15 + Math.round(p.headDy)); fctx.rotate(rad(p.head)); fctx.scale(p.flip, 1);
   fctx.save(); fctx.translate(-5, -9); fctx.rotate(rad(p.pony)); put(PONY); fctx.restore();
-  put(HEAD); info.top = world(0, -13);
+  put(p.shock > .5 ? HEAD_SHOCK : HEAD); info.top = world(0, -13);
   fctx.restore();
   if (p.armFront) armF();
+  if (p.armBFront) armB();   // her robot arm passes in front of her face
   if (p.gripFront) grip();
 
   fctx.setTransform(1, 0, 0, 1, 0, 0);

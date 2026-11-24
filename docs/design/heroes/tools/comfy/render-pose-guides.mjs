@@ -1,6 +1,7 @@
 // Renders poses of the Controller rig as pose guides for the ControlNet of tilly-pose-controlnet.json, 1024 x 1024 on flat grey, scaled 8x:
 //   node docs/design/heroes/tools/comfy/render-pose-guides.mjs [<spec> ...]
-// A spec is `hangar:<clip>:<frame>` (a frame of a hangar clip of hangar-controller.js, e.g. hangar:act:13) or `rig:<clip>:<ms>` (a moment of a
+// A spec is `strip:<label>:<frame>` (a frame of the strip file named in STRIP_FILE, 136 px wide frames in the hangar frame; the guide is called `tilly-guide-<label>-<frame>.png`),
+// `hangar:<clip>:<frame>` (a frame of a hangar clip of hangar-controller.js, e.g. hangar:act:13) or `rig:<clip>:<ms>` (a moment of a
 // clip of the rig, e.g. rig:pulse:620). The pictures go to ComfyUI's input folder as `tilly-guide-<clip>-<frame or ms>.png`. With no spec a set
 // of different poses is rendered. A new pose is a clip of the rig (tools/rigs/controller.js, tools/hangar-controller.js): draw it there first.
 import { createRequire } from 'node:module';
@@ -12,6 +13,10 @@ const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url)), tools = join(here, '..');
 const inputDir = process.env.COMFY_INPUT ?? join(process.env.HOME, 'claude-home', 'code', 'ComfyUI', 'input');
 const chromium = (() => { try { return require('@playwright/test').chromium; } catch { return require('playwright').chromium; } })();
+// GUIDE_LAYERS (default `fx_back,figure,fx_front`) picks the layers drawn: `figure` alone leaves out dust, steam, projectiles and the drone, which are drawn
+// as layers of their own. GUIDE_ZOOM (default 8) is the scale. A pose that touches the edge of the page would be cut off (the third arm reaches far): the script says so.
+const layers = (process.env.GUIDE_LAYERS ?? 'fx_back,figure,fx_front').split(',');
+const zoom = Number(process.env.GUIDE_ZOOM ?? 8);
 const specs = process.argv.length > 2 ? process.argv.slice(2) : ['hangar:idle:0', 'hangar:act:0', 'hangar:act:13', 'hangar:act:22', 'hangar:hold:0', 'rig:pulse:620', 'rig:tag:730', 'rig:slow:680', 'rig:drone:800'];
 
 // The same page as export-hangar.mjs builds (the rig with the hangar frame, export-tail.js and hangar-controller.js), but it also returns the rig's clips.
@@ -21,9 +26,15 @@ const tail = (await readFile(join(tools, 'export-tail.js'), 'utf8')).replace(/\n
 const hangar = await readFile(join(tools, 'hangar-controller.js'), 'utf8');
 const script = 'const RIG = (() => {\n' + rig.replace(FRAME_LINE, 'const SW = 136, SH = 116, OX = 58, OY = 112') + '\n' + tail + '\n' + hangar +
   '\nreturn { LAYERS, layerCtx, renderLayers, HANGAR_EXPORT, CLIPS, SW, SH };\n})();\n' +
-  `function guide(spec) {
+  `function guide(spec, layers, Z) {
     const [kind, name, at] = spec.split(':'), n = Number(at);
     let clip, t;
+    if (kind === 'strip') {
+      const SIZE = 1024, c = document.createElement('canvas'); c.width = c.height = SIZE;
+      const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.fillStyle = '#808080'; g.fillRect(0, 0, SIZE, SIZE);
+      g.drawImage(window.STRIP, n * 136, 0, 136, window.STRIP.height, Math.round(SIZE / 2 - 58 * Z), Math.round(SIZE - 30 - 112 * Z), 136 * Z, window.STRIP.height * Z);
+      return { url: c.toDataURL('image/png'), cut: false };
+    }
     if (kind === 'hangar') {
       const d = RIG.HANGAR_EXPORT.list.find(c => c.name === name); if (!d) throw new Error('no hangar clip ' + name);
       clip = d.clip; t = d.from + (d.to - d.from) * (d.loop ? n / d.frames : n / Math.max(1, d.frames - 1));
@@ -31,11 +42,13 @@ const script = 'const RIG = (() => {\n' + rig.replace(FRAME_LINE, 'const SW = 13
       clip = RIG.CLIPS.find(c => c.id === name); if (!clip) throw new Error('no rig clip ' + name); t = n;
     }
     RIG.renderLayers({ clip, t0: t, loop: false, dur: 1 }, 0, 0);
-    const Z = 8, SIZE = 1024, c = document.createElement('canvas'); c.width = c.height = SIZE;
+    const SIZE = 1024, c = document.createElement('canvas'); c.width = c.height = SIZE;
     const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.fillStyle = '#808080'; g.fillRect(0, 0, SIZE, SIZE);
     const ox = Math.round(SIZE / 2 - 58 * Z), oy = Math.round(SIZE - 30 - 112 * Z);
-    for (const layer of ['fx_back', 'figure', 'fx_front']) g.drawImage(RIG.layerCtx[layer].canvas, 0, 0, RIG.SW, RIG.SH, ox, oy, RIG.SW * Z, RIG.SH * Z);
-    return c.toDataURL('image/png');
+    for (const layer of layers) g.drawImage(RIG.layerCtx[layer].canvas, 0, 0, RIG.SW, RIG.SH, ox, oy, RIG.SW * Z, RIG.SH * Z);
+    const edge = [...g.getImageData(0, 0, SIZE, 1).data, ...g.getImageData(0, SIZE - 1, SIZE, 1).data, ...g.getImageData(0, 0, 1, SIZE).data, ...g.getImageData(SIZE - 1, 0, 1, SIZE).data];
+    let cut = false; for (let i = 0; i < edge.length; i += 4) if (edge[i] !== 128 || edge[i + 1] !== 128 || edge[i + 2] !== 128) cut = true;
+    return { url: c.toDataURL('image/png'), cut };
   }`;
 
 const browser = await chromium.launch();
@@ -44,9 +57,14 @@ try {
   page.on('pageerror', error => { throw error; });
   await page.setContent('<body></body>');
   await page.addScriptTag({ content: script });
+  if (process.env.STRIP_FILE) {
+    const strip = 'data:image/png;base64,' + (await readFile(process.env.STRIP_FILE)).toString('base64');
+    await page.evaluate(async url => { window.STRIP = new Image(); window.STRIP.src = url; await window.STRIP.decode(); }, strip);
+  }
   await mkdir(inputDir, { recursive: true });
   for (const spec of specs) {
-    const url = await page.evaluate(s => guide(s), spec);
+    const { url, cut } = await page.evaluate(([s, l, z]) => guide(s, l, z), [spec, layers, zoom]);
+    if (cut) console.warn('WARNING: ' + spec + ' touches the edge of the page and is cut off; try GUIDE_ZOOM=' + (zoom - 1));
     const file = join(inputDir, 'tilly-guide-' + spec.split(':').slice(1).join('-') + '.png');
     await writeFile(file, Buffer.from(url.slice(url.indexOf(',') + 1), 'base64'));
     console.log(spec, '->', file);

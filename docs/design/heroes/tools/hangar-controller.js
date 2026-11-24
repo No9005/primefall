@@ -27,38 +27,51 @@ const H_IDLE = {
   front(S, t, info) { sparks(S, info.hold.x, info.hold.y, (t - 1600) * 2, 'rgba(111,240,208,.9)', 3); }
 };
 
-/* ---------- act: tinkering. The arm folds over her head and works, shoots up and throws a gear, she steams, wrenches with her left arm ---------- */
-const LOOP = { g1: -48, g2: 112, g3: 150 };
+/* ---------- act: the original of the hangar strip. She works on the third arm with both hands over her head (frames 0 to 12), it shoots up and its claw tears
+ off and flies away (13 to 17), she is shocked while the piece falls and the arm folds back (18 to 21), swings her left arm at it (22, 23), holds the arm up
+ (24) and is back at work (25, 26). One frame of the strip is 100 ms. ---------- */
+const LOOP = { g1: -15, g2: 70, g3: 135 };
+const FR = n => n * 100;
 const H_ACT = {
   tracks: {
-    g1: K([0, LOOP.g1], [550, LOOP.g1 - 6], [700, LOOP.g1 + 10, 'out'], [1050, LOOP.g1], [1250, -6, 'out'], [1650, -3], [1750, -14, 'back'], [1900, LOOP.g1 + 8], [2150, LOOP.g1], [2500, -4, 'out'], [2700, LOOP.g1]),
-    g2: K([0, LOOP.g2], [550, LOOP.g2 + 8], [700, LOOP.g2 - 10, 'out'], [1050, LOOP.g2], [1250, 6, 'out'], [1650, 4], [1750, 30, 'back'], [1900, LOOP.g2 + 6], [2150, LOOP.g2], [2500, 8, 'out'], [2700, LOOP.g2]),
-    g3: K([0, LOOP.g3], [550, LOOP.g3 + 10], [700, LOOP.g3 - 12, 'out'], [1050, LOOP.g3], [1250, 4, 'out'], [1650, 2], [1750, 60, 'back'], [1900, LOOP.g3 - 6], [2150, LOOP.g3], [2500, 10, 'out'], [2700, LOOP.g3]),
-    claw: K([0, .3], [500, 1], [600, .1], [700, 1], [800, .1], [1050, .5], [1250, 1], [1650, 1], [1750, 0], [2150, .4], [2500, 1], [2700, .3]),
-    armF: K([0, -150], [1100, -150], [1250, -158, 'out'], [1650, -158], [1900, -60, 'back'], [2150, -70], [2250, -112, 'out'], [2400, -40], [2500, -168, 'back'], [2700, -150]),
-    armB: K([0, 6], [1100, 6], [1250, -40], [1650, -40], [1900, 14], [2700, 6]),
-    head: K([0, 2], [550, -5], [1100, 5], [1250, -10, 'out'], [1650, -10], [1750, 8, 'out'], [2150, 6], [2500, -8], [2700, 2]),
-    lean: K([0, 0], [1250, -5, 'out'], [1650, -5], [1750, 3, 'out'], [2150, 3], [2300, 12, 'out'], [2500, -2], [2700, 0]),
-    stretch: K([0, 1], [600, 1.03], [1250, 1.08, 'out'], [1650, 1.08], [1750, .93, 'out'], [1900, 1], [2300, .94, 'out'], [2500, 1.05], [2700, 1]),
-    pony: K([0, 0], [700, 10], [1250, -16, 'out'], [1750, 20, 'out'], [2300, 8], [2500, -20, 'out'], [2700, 0]),
-    core: K([0, 1], [1250, 1.8], [1750, 2.4, 'in'], [2150, 1.6], [2700, 1])
+    // the third arm: an arch over her head that rocks while she works, straight up when it tears, folded back, angled when she holds it up
+    g1: K([0, LOOP.g1], [FR(6), LOOP.g1 - 10], [FR(7), LOOP.g1 + 6, 'out'], [FR(9), LOOP.g1 - 12], [FR(10), LOOP.g1 + 4, 'out'], [FR(12), LOOP.g1], [FR(13), -3, 'out'], [FR(17), -1], [FR(18), -20, 'back'], [FR(20), LOOP.g1 + 6], [FR(24), LOOP.g1 + 14], [FR(24.5), -26, 'out'], [FR(25), LOOP.g1]),
+    g2: K([0, LOOP.g2], [FR(6), LOOP.g2 + 10], [FR(7), LOOP.g2 - 6, 'out'], [FR(9), LOOP.g2 + 8], [FR(10), LOOP.g2 - 8, 'out'], [FR(12), LOOP.g2], [FR(13), 2, 'out'], [FR(17), 4], [FR(18), 40, 'back'], [FR(20), LOOP.g2 - 6], [FR(24), LOOP.g2 - 20], [FR(24.5), 10, 'out'], [FR(25), LOOP.g2]),
+    g3: K([0, LOOP.g3], [FR(7), LOOP.g3 - 10], [FR(10), LOOP.g3 + 8], [FR(12), LOOP.g3], [FR(13), 0, 'out'], [FR(17), 2], [FR(18), 70, 'back'], [FR(20), LOOP.g3 - 10], [FR(24), LOOP.g3 - 40], [FR(24.5), 14, 'out'], [FR(25), LOOP.g3]),
+    claw: K([0, .3], [FR(2), 1], [FR(3), .1], [FR(5), .9], [FR(6), .2], [FR(9), 1], [FR(10), .2], [FR(12), .5], [FR(24), .8], [FR(27), .3]),
+    armF: K([0, -150], [FR(12), -150], [FR(13), -168, 'out'], [FR(21), -160], [FR(22), -92, 'back'], [FR(23), -58, 'out'], [FR(23.9), -62], [FR(24.2), -170, 'out'], [FR(25), -150], [FR(27), -150]),
+    // her robot arm reaches across her chest, below her face, to hold the end of the third arm
+    armB: K([0, -100], [FR(12), -100], [FR(13), 24], [FR(22), 24], [FR(24), -100], [FR(27), -100]),
+    armBFront: K([0, 1], [FR(13) - 1, 1], [FR(13), 0, 'step'], [FR(24) - 1, 0], [FR(24), 1, 'step']),
+    head: K([0, 2], [FR(12), 2], [FR(13), -10, 'out'], [FR(17), -12], [FR(18), 8], [FR(21), 10], [FR(22), 14], [FR(24), -6], [FR(27), 2]),
+    lean: K([0, 0], [FR(13), -8, 'out'], [FR(16), -6], [FR(18), 6, 'out'], [FR(21), 8], [FR(22), 14, 'out'], [FR(23), 16], [FR(24), -2], [FR(27), 0]),
+    stretch: K([0, 1], [FR(13), 1.09, 'out'], [FR(17), 1.06], [FR(18), .93, 'out'], [FR(21), .95], [FR(24), 1.05], [FR(27), 1]),
+    pony: K([0, 0], [FR(13), -22, 'out'], [FR(16), 12], [FR(18), 24, 'out'], [FR(22), -10], [FR(24), -18], [FR(27), 0]),
+    core: K([0, 1], [FR(13), 2.2, 'in'], [FR(18), 2.6], [FR(22), 1.4], [FR(27), 1]),
+    // the claw is off from the moment the arm shoots up until she has it back; she is shocked while the piece flies and falls
+    // empty hands: the emitter of her left arm is not in her hand while she works
+    noGun: K([0, 1], [FR(27), 1]),
+    noClaw: K([0, 0], [FR(13) - 1, 0], [FR(13), 1, 'step'], [FR(24.5) - 1, 1], [FR(24.5), 0, 'step']),
+    shock: K([0, 0], [FR(13) - 1, 0], [FR(13), 1, 'step'], [FR(24) - 1, 1], [FR(24), 0, 'step'])
   },
   back(S, t, info) {
-    // Steam from the arm joint while she is startled (1750 to 2300 ms).
-    for (let k = 0; k < 3; k++) { const age = t - 1750 - k * 160; S.puff(info.elbow.x - 4 - age * .01, info.elbow.y - age * .02, age, 520, 3); }
+    // steam from the joint where the claw tore off (frames 16 to 19)
+    for (let k = 0; k < 3; k++) { const age = t - FR(16) - k * 120; S.puff(info.claw.x - 3 + k, info.claw.y + 16 - age * .02, age, 460, 3); }
   },
   front(S, t, info) {
-    const GEAR = '#9aa6b2', INK = '#0b0f15';
-    // The gear is thrown up by the arm at 1250 ms, hangs, and falls back at 1750 ms.
-    const a = t - 1250;
-    if (a >= 0 && a < 1000) {
-      const rise = a < 300 ? a * .22 : 66 - (a - 300) * .02, y = a < 700 ? info.claw.y - 4 - Math.min(rise, 26) : info.claw.y - 30 + (a - 700) * .09, x = info.claw.x + 4 + a * .01;
-      S.disc(x, y, 4, INK); S.disc(x, y, 3, GEAR); S.disc(x, y, 1, INK); S.rect(x - 1, y - 4, 3, 1, '#e6edf2');
-      if (a < 320) for (let i = 1; i < 4; i++) S.rect(x - 1, y + 4 + i * 3, 1, 2, 'rgba(230,237,242,' + (.6 - i * .15).toFixed(2) + ')');
-    }
-    sparks(S, info.hold.x, info.hold.y, t - 100, GLOW + '.9)', 2);
-    sparks(S, info.hold.x, info.hold.y, t - 700, '#fff3c0', 2);
-    if (t > 2300 && t < 2480) for (let k = 0; k < 3; k++) S.line(info.hold.x - 4 + k * 4, info.hold.y - 4, info.hold.x - 7 + k * 7, info.hold.y - 9, '#fff3c0');
+    const INK = '#0b0f15';
+    const piece = (x, y) => { S.rect(x - 5, y - 3, 11, 7, INK); S.rect(x - 4, y - 2, 9, 5, '#5a6672'); S.rect(x - 4, y - 2, 5, 2, '#9aa6b2'); S.rect(x - 3, y, 3, 2, '#6ae0ff'); S.rect(x + 2, y - 4, 2, 2, '#9aa6b2'); };
+    // the piece flies off up and to the right (13 to 15), hangs at the top (16, 17), falls (18 to 20), bounces and lies on the floor (20 to 22)
+    const rise = (t - FR(13)) / FR(1.5);
+    if (t >= FR(13) && t < FR(18)) { const u = Math.max(0, Math.min(1, rise)); piece(Math.round(info.claw.x + 6 + (30 - info.claw.x - 6) * u), Math.round(info.claw.y - 4 + (-100 - info.claw.y + 4) * u + (t > FR(15.5) ? 2 * Math.sin(t / 60) : 0))); }
+    if (t >= FR(18) && t < FR(22.9)) { const u = Math.min(1, (t - FR(18)) / FR(2)); let y = -100 + 92 * u * u; if (t > FR(20)) y = -8 - 5 * Math.sin(Math.min(1, (t - FR(20)) / FR(.6)) * Math.PI); piece(30 + (t > FR(20) ? 3 : 0), Math.round(y)); }
+    // speed lines and a spark where it tears off, shock strokes over her head, the streak of the swing
+    if (t >= FR(13) && t < FR(16)) { for (let i = 0; i < 4; i++) S.rect(-18 + i * 3, -104, 1, 12, '#e6edf2'); sparks(S, 8, -87, (t - FR(13)) * 1.2, '#fff3c0', 3); S.line(6, -90, 11, -86, '#fff3c0'); }
+    if (t >= FR(20) && t < FR(22)) { S.line(-14, -96, -8, -92, '#fff3c0'); S.rect(0, -100, 1, 5, '#fff3c0'); S.line(14, -96, 9, -92, '#fff3c0'); }
+    if (t >= FR(23) && t < FR(24)) for (let i = 0; i < 6; i++) { S.line(info.muzzle.x - 30 + i * 2, info.muzzle.y - 18 + i * 3, info.muzzle.x - 2 + i * 6, info.muzzle.y + i, i < 3 ? 'rgba(255,170,90,.75)' : 'rgba(255,230,200,.7)'); }
+    if (t >= FR(24) && t < FR(24.6)) piece(info.muzzle.x + 1, info.muzzle.y - 7);
+    sparks(S, info.hold.x, info.hold.y, t - FR(2), '#fff3c0', 2);
+    sparks(S, info.hold.x, info.hold.y, t - FR(25), '#fff3c0', 2);
   }
 };
 
