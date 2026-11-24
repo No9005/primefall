@@ -125,7 +125,7 @@ const high = (rect: { top: number; bottom: number }) => rect.bottom - rect.top;
 const TARGETS: Target[] = [
   { name: "Commit", tier: "primary", selector: ".commit", size: (view) => ({ width: wide(commitButtonRect(view)) }), jsx: [{ file: "PlanningScreen.tsx", includes: "className={`commit" }] },
   { name: "Card face", tier: "primary", selector: ".pull-face", jsx: [{ file: "game-parts.tsx", includes: "pull-face" }] },
-  { name: "Hand card", tier: "primary", size: (view) => ({ width: MIN_STRIP, height: high(handRect(view)) }), jsx: [{ file: "PlanningScreen.tsx", includes: "className={`card designed ${card.type}" }] },
+  { name: "Hand card", tier: "primary", size: (view) => ({ width: MIN_STRIP, height: high(handRect(view)) }), jsx: [{ file: "PlanningScreen.tsx", includes: "className={cardButtonClass(" }] },
   { name: "Wait card", tier: "primary", size: (view) => ({ width: wide(waitCardRect(view)), height: high(waitCardRect(view)) }), jsx: [{ file: "PlanningScreen.tsx", includes: "wait-card" }] },
   { name: "Queue remove button", tier: "primary", selector: ".queue-remove", jsx: [{ file: "PlanningScreen.tsx", includes: "queue-remove" }] },
   { name: "Energy pill", tier: "primary", selector: ".energy", size: (view) => ({ width: wide(energyPillRect(view)) }) },
