@@ -59,6 +59,12 @@ export default tseslint.config(
       "apps/web/src/target-lines.ts",
       "apps/web/src/planning-selection.ts",
       "apps/web/src/playback.ts",
+      "apps/web/src/hangar-scene.ts",
+      "apps/web/src/title-scene.ts",
+      "apps/web/src/stage.ts",
+      "apps/web/src/notstrom-intro-scene.ts",
+      "apps/web/src/board-drawing.ts",
+      "apps/web/src/audio.ts",
       "packages/game-core/src/resolution.ts",
     ],
     rules: {

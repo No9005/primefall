@@ -122,10 +122,20 @@ export function dashedTileOutline(tile: GridPosition, color: number, scale: numb
 }
 
 /** Draws the floor, the Cover and the shield glyphs of the map; returns everything it made, for the caller to destroy. */
-export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover }: TerrainInput): Container[] {
+export function drawTerrain(layers: TerrainLayers, input: TerrainInput): Container[] {
   const created: Container[] = [];
+  drawGroundAndPieces(layers, input, created);
+  drawDestroyedOutlines(layers.planning, input, created);
+  drawShieldGlyphs(layers.objects, input, created);
+  return created;
+}
+
+const isAt = (tile: GridPosition) => (other: GridPosition) => other.col === tile.col && other.row === tile.row;
+
+/** Floor tiles share one shape layer (dark where the Squad does not see); standing pieces are drawn per tile and sort with the Heroes by depth. */
+function drawGroundAndPieces({ floor, objects }: TerrainLayers, input: TerrainInput, created: Container[]): void {
+  const { grid, lit, placedCover, ownPlacedCover } = input;
   const ownTiles = new Set((ownPlacedCover ?? placedCover).map((p) => `${p.col},${p.row}`));
-  // Floor tiles share one shape layer; standing pieces are drawn per tile and sort with the Heroes by depth.
   const ground = new Graphics();
   floor.addChild(ground);
   created.push(ground);
@@ -136,45 +146,52 @@ export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid,
     }
     if (!tile.piece) continue;
     // The Walls and the Cover of the map are sprites; Placed Cover and wrecks keep the game's own drawing.
-    if ((tile.kind === TileKind.Wall || tile.kind === TileKind.OverwatchNest || (hasCoverLook(tile.kind) && !placedCover.some((p) => p.col === tile.position.col && p.row === tile.position.row)))) continue;
-    const piece = new Graphics();
-    if (hasCoverLook(tile.kind)) {
-      const built = placedCover.some((p) => p.col === tile.position.col && p.row === tile.position.row);
-      // Fog of War: the map's own Cover is not drawn where the Squad does not see; it shows when the tile is revealed.
-      // Cover a Hero placed is remembered and stays.
-      if (!built && !tile.lit) continue;
-      const look = coverLook(tile.position, tile.kind === TileKind.FullCover ? "full" : "half", built);
-      drawCoverLook(piece, look, strokeScale);
-      // Only the Squad's own Placed Cover is marked: it is the one a new placement can take (the oldest), and for a Hero in
-      // cover it makes no difference whose Cover it is.
-      if (built && ownTiles.has(`${tile.position.col},${tile.position.row}`)) {
-        const marks = coverCornerMarks(tile.position, COVER_OWN, strokeScale);
-        // Above the bars of the Cover and below the Heroes (depth + 0.5), so the corners show round the foot of the piece.
-        marks.zIndex = tile.depth + 0.2;
-        objects.addChild(marks);
-        created.push(marks);
-      }
-      if (look.panels.length > 0) {
-        // The panel stands in front of the Heroes on the tile (they sit at depth + 0.5) and behind the next tile.
-        const front = new Graphics();
-        drawCoverPanels(front, look, strokeScale);
-        front.zIndex = tile.depth + 0.75;
-        if (!tile.lit) front.alpha = TERRAIN_STYLE.fogPieceAlpha;
-        objects.addChild(front);
-        created.push(front);
-      }
-    } else for (const face of tile.piece) fillFace(piece, face, strokeScale);
-    piece.zIndex = tile.depth;
-    if (!tile.lit) piece.alpha = TERRAIN_STYLE.fogPieceAlpha;
-    objects.addChild(piece);
-    created.push(piece);
+    const built = placedCover.some(isAt(tile.position));
+    if (tile.kind === TileKind.Wall || tile.kind === TileKind.OverwatchNest || (hasCoverLook(tile.kind) && !built)) continue;
+    drawPiece(objects, tile, { built, own: ownTiles.has(`${tile.position.col},${tile.position.row}`), strokeScale: input.strokeScale }, created);
   }
+}
 
-  // Standing Cover has its own look (panels or bars); only the broken tile keeps a floor outline.
+/** One standing piece: Cover has its own look (panels or bars), a wreck or other piece is drawn face by face. */
+function drawPiece(objects: Container, tile: ReturnType<typeof buildTerrain>[number], { built, own, strokeScale }: { built: boolean; own: boolean; strokeScale: number }, created: Container[]): void {
+  const piece = new Graphics();
+  if (hasCoverLook(tile.kind)) {
+    // Fog of War: the map's own Cover is not drawn where the Squad does not see; it shows when the tile is revealed.
+    // Cover a Hero placed is remembered and stays.
+    if (!built && !tile.lit) return;
+    const look = coverLook(tile.position, tile.kind === TileKind.FullCover ? "full" : "half", built);
+    drawCoverLook(piece, look, strokeScale);
+    // Only the Squad's own Placed Cover is marked: it is the one a new placement can take (the oldest), and for a Hero in
+    // cover it makes no difference whose Cover it is.
+    if (built && own) {
+      const marks = coverCornerMarks(tile.position, COVER_OWN, strokeScale);
+      // Above the bars of the Cover and below the Heroes (depth + 0.5), so the corners show round the foot of the piece.
+      marks.zIndex = tile.depth + 0.2;
+      objects.addChild(marks);
+      created.push(marks);
+    }
+    if (look.panels.length > 0) {
+      // The panel stands in front of the Heroes on the tile (they sit at depth + 0.5) and behind the next tile.
+      const front = new Graphics();
+      drawCoverPanels(front, look, strokeScale);
+      front.zIndex = tile.depth + 0.75;
+      if (!tile.lit) front.alpha = TERRAIN_STYLE.fogPieceAlpha;
+      objects.addChild(front);
+      created.push(front);
+    }
+  } else for (const face of tile.piece ?? []) fillFace(piece, face, strokeScale);
+  piece.zIndex = tile.depth;
+  if (!tile.lit) piece.alpha = TERRAIN_STYLE.fogPieceAlpha;
+  objects.addChild(piece);
+  created.push(piece);
+}
+
+/** Standing Cover has its own look (panels or bars); only the broken tile keeps a floor outline. */
+function drawDestroyedOutlines(planning: Container, { grid, placedCover, destroyedCover }: TerrainInput, created: Container[]): void {
   grid.tiles.forEach((line, row) =>
     line.forEach((_, col) => {
-      const isTile = (tile: GridPosition) => tile.col === col && tile.row === row;
-      const destroyed = !placedCover.some(isTile) && destroyedCover.some(isTile);
+      const here = isAt({ col, row });
+      const destroyed = !placedCover.some(here) && destroyedCover.some(here);
       if (!destroyed) return;
       const { x, y } = gridToWorld({ col, row });
       const outline = new Graphics().poly(floorOutline()).stroke({ width: 2, color: TERRAIN_STYLE.coverOutline.destroyed, alpha: 0.6 });
@@ -183,8 +200,10 @@ export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid,
       created.push(outline);
     }),
   );
+}
 
-  // A shield glyph sits above each piece of the map's own Cover.
+/** A shield glyph sits above each piece of the map's own Cover. */
+function drawShieldGlyphs(objects: Container, { grid, lit, placedCover, strokeScale }: TerrainInput, created: Container[]): void {
   const builtTiles = new Set(placedCover.map((p) => `${p.col},${p.row}`));
   for (const mark of coverMarks(grid, builtTiles)) {
     if (!lit.has(`${mark.position.col},${mark.position.row}`)) continue;
@@ -196,7 +215,6 @@ export function drawTerrain({ floor, objects, planning }: TerrainLayers, { grid,
     objects.addChild(glyph);
     created.push(glyph);
   }
-  return created;
 }
 
 export interface ZoneDrawing {

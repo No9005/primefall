@@ -18,6 +18,26 @@ export interface NotstromIntroScene extends Scene {
   skip(): void;
 }
 
+/** The film as large as fits the view, in its middle. */
+function fitFilm(sprite: Sprite, view: FillView): void {
+  const { width, height } = sprite.texture;
+  if (width <= 1 || height <= 1) return;
+  const scale = Math.min(view.width / width, view.height / height);
+  sprite.scale.set(scale);
+  sprite.position.set((view.width - width * scale) / 2, (view.height - height * scale) / 2);
+}
+
+/** The scene's root: the dark backdrop and, when the film loaded, the sprite that shows it. */
+function buildFilmRoot(clip: VideoClip | undefined): { root: Container; sprite?: Sprite } {
+  const root = new Container();
+  root.addChild(new Graphics().rect(-3000, -3000, 9000, 9000).fill(BACKDROP));
+  if (!clip) return { root };
+  clip.texture.source.scaleMode = "nearest";
+  const sprite = new Sprite(clip.texture);
+  root.addChild(sprite);
+  return { root, sprite };
+}
+
 export function createNotstromIntroScene(urls: () => string[] = notstromIntroVideoUrls): NotstromIntroScene {
   let clip: VideoClip | undefined;
   let sprite: Sprite | undefined;
@@ -30,15 +50,7 @@ export function createNotstromIntroScene(urls: () => string[] = notstromIntroVid
   /** Where the film goes on after the scene was rebuilt (a lost WebGL context) while the screen is still there. */
   let resumeAt = 0;
 
-  /** The film as large as fits the view, in its middle. */
-  function layout() {
-    if (!sprite || !view) return;
-    const { width, height } = sprite.texture;
-    if (width <= 1 || height <= 1) return;
-    const scale = Math.min(view.width / width, view.height / height);
-    sprite.scale.set(scale);
-    sprite.position.set((view.width - width * scale) / 2, (view.height - height * scale) / 2);
-  }
+  const layout = () => sprite && view && fitFilm(sprite, view);
 
   function finish(playedToEnd: boolean) {
     if (outcome !== undefined) return;
@@ -47,29 +59,22 @@ export function createNotstromIntroScene(urls: () => string[] = notstromIntroVid
     onDone?.(playedToEnd);
   }
 
-  function play() {
-    clip?.play().catch(() => finish(false));
-  }
+  const play = () => clip?.play().catch(() => finish(false));
 
   const scene: NotstromIntroScene = {
     name: NOTSTROM_INTRO_SCENE_NAME,
     fit: "fill",
     assets: [],
-    get videos() {
-      return [urls()];
-    },
+    get videos() { return [urls()]; },
     create(env: SceneEnv) {
       clip = env.video(0);
       drawn = false;
-      const root = new Container();
-      root.addChild(new Graphics().rect(-3000, -3000, 9000, 9000).fill(BACKDROP));
-      if (clip) {
-        clip.texture.source.scaleMode = "nearest";
-        sprite = new Sprite(clip.texture);
-        root.addChild(sprite);
+      const built = buildFilmRoot(clip);
+      if (built.sprite) {
+        sprite = built.sprite;
         layout();
       }
-      return root;
+      return built.root;
     },
     enter() {
       // The film could not be loaded: the intro is over, as if it was skipped.

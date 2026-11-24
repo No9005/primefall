@@ -123,219 +123,263 @@ export interface StageDeps {
 
 const MAX_FRAME_MS = 100;
 
-export function createStage(deps: StageDeps): Stage {
-  const { host, assets, clock, environment } = deps;
-  const assetUsers = new Map<string, number>();
-  let current: { scene: Scene; container: Container } | undefined;
-  let fit = computeFit(environment.window.width, environment.window.height, environment.window.devicePixelRatio);
-  let heightFit = computeHeightFit(environment.window.width, environment.window.height, environment.window.devicePixelRatio);
-  let view = measureView();
-  let reduced = environment.reducedMotion.matches();
-  let frameHandle: number | undefined;
-  let lastTime = 0;
-  let entering = 0;
+/** The stage: shows one scene at a time, keeps its assets loaded while it is on show, and runs the ticker only while something moves. */
+class StageController implements Stage {
+  private readonly host: StageHost;
+  private readonly assets: AssetSource;
+  private readonly clock: FrameClock;
+  private readonly environment: StageEnvironment;
+  private readonly scenes: readonly Scene[];
+  private readonly assetUsers = new Map<string, number>();
+  private current: { scene: Scene; container: Container } | undefined;
+  private fitState: StageFit;
+  private heightFit: StageFit;
+  private view: FillView;
+  private reduced: boolean;
+  private frameHandle: number | undefined;
+  private lastTime = 0;
+  private entering = 0;
   /** The scene that is being entered, until it is on show: it asks for its fit while it is created. */
-  let entered: Scene | undefined;
+  private entered: Scene | undefined;
   /** The films of the scene that is being entered or is on show. */
-  let clips: (VideoClip | undefined)[] = [];
-  let destroyed = false;
+  private clips: (VideoClip | undefined)[] = [];
+  private destroyed = false;
+  private readonly sceneEnv: SceneEnv;
+  private readonly stopWatching: () => void;
+  private readonly stopMotion: () => void;
 
-  const setAttributes = (name: string, ready: boolean) => {
-    host.root.setAttribute("data-scene", name);
-    host.root.setAttribute("data-scene-ready", String(ready));
-  };
+  constructor({ host, assets, clock, environment, scenes }: StageDeps) {
+    this.host = host;
+    this.assets = assets;
+    this.clock = clock;
+    this.environment = environment;
+    this.scenes = scenes;
+    const { width, height, devicePixelRatio } = environment.window;
+    this.fitState = computeFit(width, height, devicePixelRatio);
+    this.heightFit = computeHeightFit(width, height, devicePixelRatio);
+    this.view = this.measureView();
+    this.reduced = environment.reducedMotion.matches();
+    this.sceneEnv = {
+      fit: () => this.fitOf(this.current?.scene ?? this.entered),
+      view: () => this.view,
+      reducedMotion: () => this.reduced,
+      invalidate: () => this.schedule(),
+      video: (index) => this.clips[index],
+    };
+    this.stopWatching = environment.onChange(() => this.onEnvironmentChange());
+    this.stopMotion = environment.reducedMotion.subscribe(() => {
+      this.reduced = environment.reducedMotion.matches();
+      this.current?.scene.reducedMotionChanged?.(this.reduced);
+      this.schedule();
+    });
+    // Context loss (rule 8): rebuild the current scene, which reloads its textures.
+    host.onContextLost(() => {
+      this.stopTicker();
+      if (this.current) this.setAttributes(this.current.scene.name, false);
+    });
+    host.onContextRestored(() => {
+      const scene = this.current?.scene;
+      if (scene) void this.leaveCurrent().then(() => this.enter(scene));
+    });
+    host.applyFit(this.fitState, environment.window.width, environment.window.height);
+  }
 
-  function measureView(): FillView {
-    const area = host.size?.();
-    const { window: size } = environment;
+  private setAttributes(name: string, ready: boolean): void {
+    this.host.root.setAttribute("data-scene", name);
+    this.host.root.setAttribute("data-scene-ready", String(ready));
+  }
+
+  private measureView(): FillView {
+    const area = this.host.size?.();
+    const { window: size } = this.environment;
     const [width, height] = area && area.width > 0 && area.height > 0 ? [area.width, area.height] : [size.width, size.height];
     return computeFill(width, height, size.devicePixelRatio);
   }
 
-  const fitOf = (scene: Scene | undefined): StageFit => (scene?.fit === "height" ? heightFit : fit);
+  private fitOf(scene: Scene | undefined): StageFit {
+    return scene?.fit === "height" ? this.heightFit : this.fitState;
+  }
 
   /** Puts the canvas and the stage container where the scene wants them and tells the scene. */
-  function place(scene: Scene | undefined) {
+  private place(scene: Scene | undefined): void {
     if (scene?.fit === "fill") {
-      host.applyFill(view);
-      scene.viewChanged?.(view);
+      this.host.applyFill(this.view);
+      scene.viewChanged?.(this.view);
     } else {
-      const chosen = fitOf(scene);
-      host.applyFit(chosen, environment.window.width, environment.window.height);
+      const chosen = this.fitOf(scene);
+      this.host.applyFit(chosen, this.environment.window.width, this.environment.window.height);
       scene?.fitChanged?.(chosen);
     }
   }
 
-  const env: SceneEnv = { fit: () => fitOf(current?.scene ?? entered), view: () => view, reducedMotion: () => reduced, invalidate: () => schedule(), video: (index) => clips[index] };
-
-  async function acquire(urls: readonly string[]) {
-    const fresh = urls.filter((url) => !assetUsers.has(url));
-    urls.forEach((url) => assetUsers.set(url, (assetUsers.get(url) ?? 0) + 1));
-    if (fresh.length > 0) await assets.load(fresh);
+  private async acquire(urls: readonly string[]): Promise<void> {
+    const fresh = urls.filter((url) => !this.assetUsers.has(url));
+    urls.forEach((url) => this.assetUsers.set(url, (this.assetUsers.get(url) ?? 0) + 1));
+    if (fresh.length > 0) await this.assets.load(fresh);
   }
 
-  async function release(urls: readonly string[]) {
+  private async release(urls: readonly string[]): Promise<void> {
     const unused = urls.filter((url) => {
-      const left = (assetUsers.get(url) ?? 1) - 1;
-      if (left > 0) assetUsers.set(url, left);
-      else assetUsers.delete(url);
+      const left = (this.assetUsers.get(url) ?? 1) - 1;
+      if (left > 0) this.assetUsers.set(url, left);
+      else this.assetUsers.delete(url);
       return left <= 0;
     });
-    if (unused.length > 0) await assets.unload(unused);
+    if (unused.length > 0) await this.assets.unload(unused);
   }
 
-  async function acquireVideos(scene: Scene): Promise<(VideoClip | undefined)[]> {
-    const load = assets.loadVideo?.bind(assets);
+  private async acquireVideos(scene: Scene): Promise<(VideoClip | undefined)[]> {
+    const load = this.assets.loadVideo?.bind(this.assets);
     return Promise.all((scene.videos ?? []).map((formats) => (load ? load(formats).catch(() => undefined) : undefined)));
   }
 
-  async function releaseVideos(loaded: readonly (VideoClip | undefined)[]) {
-    for (const clip of loaded) if (clip) await assets.unloadVideo?.(clip);
+  private async releaseVideos(loaded: readonly (VideoClip | undefined)[]): Promise<void> {
+    for (const clip of loaded) if (clip) await this.assets.unloadVideo?.(clip);
   }
 
-  function drawFrame() {
-    host.render();
-    if (current && current.scene.ready()) setAttributes(current.scene.name, true);
+  private drawFrame(): void {
+    this.host.render();
+    if (this.current && this.current.scene.ready()) this.setAttributes(this.current.scene.name, true);
   }
 
-  function frame() {
-    frameHandle = undefined;
-    const now = clock.now();
-    const delta = Math.min(now - lastTime, MAX_FRAME_MS);
-    lastTime = now;
-    advance(delta);
+  private frame(): void {
+    this.frameHandle = undefined;
+    const now = this.clock.now();
+    const delta = Math.min(now - this.lastTime, MAX_FRAME_MS);
+    this.lastTime = now;
+    this.advance(delta);
   }
 
-  function advance(deltaMs: number) {
-    if (!current || environment.isHidden()) return;
-    current.scene.update(deltaMs);
-    drawFrame();
-    if (current.scene.animating()) schedule();
+  private advance(deltaMs: number): void {
+    if (!this.current || this.environment.isHidden()) return;
+    this.current.scene.update(deltaMs);
+    this.drawFrame();
+    if (this.current.scene.animating()) this.schedule();
   }
 
   /** The ticker runs only while the scene animates or changed, and not while the page is hidden (rule 6). */
-  function schedule() {
-    if (destroyed || frameHandle !== undefined || environment.isHidden() || !current) return;
-    lastTime = clock.now();
-    frameHandle = clock.request(frame);
+  private schedule(): void {
+    if (this.destroyed || this.frameHandle !== undefined || this.environment.isHidden() || !this.current) return;
+    this.lastTime = this.clock.now();
+    this.frameHandle = this.clock.request(() => this.frame());
   }
 
-  function stopTicker() {
-    if (frameHandle === undefined) return;
-    clock.cancel(frameHandle);
-    frameHandle = undefined;
+  private stopTicker(): void {
+    if (this.frameHandle === undefined) return;
+    this.clock.cancel(this.frameHandle);
+    this.frameHandle = undefined;
   }
 
-  async function leaveCurrent() {
-    const old = current;
+  private async leaveCurrent(): Promise<void> {
+    const old = this.current;
     if (!old) return;
-    current = undefined;
-    stopTicker();
+    this.current = undefined;
+    this.stopTicker();
     old.scene.leave?.();
-    host.hide(old.container);
+    this.host.hide(old.container);
     old.container.destroy({ children: true });
-    setAttributes("", false);
-    const loaded = clips;
-    clips = [];
-    await releaseVideos(loaded);
-    await release(old.scene.assets);
+    this.setAttributes("", false);
+    const loaded = this.clips;
+    this.clips = [];
+    await this.releaseVideos(loaded);
+    await this.release(old.scene.assets);
   }
 
-  async function enter(scene: Scene) {
-    const ticket = ++entering;
-    setAttributes(scene.name, false);
+  /** Whether this enter was overtaken by a later one (or the stage was destroyed) while it was loading. */
+  private overtaken(ticket: number): boolean {
+    return ticket !== this.entering || this.destroyed;
+  }
+
+  private async enter(scene: Scene): Promise<void> {
+    const ticket = ++this.entering;
+    this.setAttributes(scene.name, false);
     await scene.prepare?.();
-    if (ticket !== entering || destroyed) return;
-    await acquire(scene.assets);
-    if (ticket !== entering || destroyed) {
-      await release(scene.assets);
+    if (this.overtaken(ticket)) return;
+    await this.acquire(scene.assets);
+    if (this.overtaken(ticket)) {
+      await this.release(scene.assets);
       return;
     }
-    const loaded = await acquireVideos(scene);
-    if (ticket !== entering || destroyed) {
-      await releaseVideos(loaded);
-      await release(scene.assets);
+    const loaded = await this.acquireVideos(scene);
+    if (this.overtaken(ticket)) {
+      await this.releaseVideos(loaded);
+      await this.release(scene.assets);
       return;
     }
-    clips = loaded;
-    view = measureView();
-    place(scene);
-    entered = scene;
-    const container = scene.create(env);
-    entered = undefined;
-    scene.reducedMotionChanged?.(reduced);
-    current = { scene, container };
-    host.show(container);
+    this.clips = loaded;
+    this.view = this.measureView();
+    this.place(scene);
+    this.entered = scene;
+    const container = scene.create(this.sceneEnv);
+    this.entered = undefined;
+    scene.reducedMotionChanged?.(this.reduced);
+    this.current = { scene, container };
+    this.host.show(container);
     scene.enter?.();
-    drawFrame();
-    if (scene.animating()) schedule();
+    this.drawFrame();
+    if (scene.animating()) this.schedule();
   }
 
-  async function showScene(name: string) {
-    const scene = deps.scenes.find((candidate) => candidate.name === name);
+  async showScene(name: string): Promise<void> {
+    const scene = this.scenes.find((candidate) => candidate.name === name);
     if (!scene) throw new Error(`Unknown scene: ${name}`);
-    reduced = environment.reducedMotion.matches();
-    setAttributes(name, false);
-    await leaveCurrent();
-    await enter(scene);
+    this.reduced = this.environment.reducedMotion.matches();
+    this.setAttributes(name, false);
+    await this.leaveCurrent();
+    await this.enter(scene);
   }
 
-  function refit() {
-    fit = computeFit(environment.window.width, environment.window.height, environment.window.devicePixelRatio);
-    heightFit = computeHeightFit(environment.window.width, environment.window.height, environment.window.devicePixelRatio);
-    view = measureView();
-    place(current?.scene);
-    if (current) drawFrame();
+  async leaveScene(): Promise<void> {
+    this.entering++; // an enter that is still loading must not show its scene after this
+    await this.leaveCurrent();
+    this.setAttributes("", false);
   }
 
-  const stopWatching = environment.onChange(() => {
-    refit();
-    current?.scene.hiddenChanged?.(environment.isHidden());
-    if (environment.isHidden()) stopTicker();
-    else if (current?.scene.animating()) schedule();
-  });
-  const stopMotion = environment.reducedMotion.subscribe(() => {
-    reduced = environment.reducedMotion.matches();
-    current?.scene.reducedMotionChanged?.(reduced);
-    schedule();
-  });
+  step(deltaMs: number): void {
+    this.advance(deltaMs);
+  }
 
-  /** Context loss (rule 8): rebuild the current scene, which reloads its textures. */
-  host.onContextLost(() => {
-    stopTicker();
-    if (current) setAttributes(current.scene.name, false);
-  });
-  host.onContextRestored(() => {
-    const scene = current?.scene;
-    if (scene) void leaveCurrent().then(() => enter(scene));
-  });
-  host.applyFit(fit, environment.window.width, environment.window.height);
+  fit(): StageFit {
+    return this.fitState;
+  }
 
-  return {
-    showScene,
-    async leaveScene() {
-      entering++; // an enter that is still loading must not show its scene after this
-      await leaveCurrent();
-      setAttributes("", false);
-    },
-    step: advance,
-    fit: () => fit,
-    refit,
-    reducedMotion: () => reduced,
-    destroy() {
-      destroyed = true;
-      stopTicker();
-      stopWatching();
-      stopMotion();
-      const scene = current?.scene;
-      current?.container.destroy({ children: true });
-      current = undefined;
-      void releaseVideos(clips);
-      clips = [];
-      if (scene) void release(scene.assets);
-      host.destroy();
-    },
-  };
+  refit(): void {
+    const { width, height, devicePixelRatio } = this.environment.window;
+    this.fitState = computeFit(width, height, devicePixelRatio);
+    this.heightFit = computeHeightFit(width, height, devicePixelRatio);
+    this.view = this.measureView();
+    this.place(this.current?.scene);
+    if (this.current) this.drawFrame();
+  }
+
+  private onEnvironmentChange(): void {
+    this.refit();
+    this.current?.scene.hiddenChanged?.(this.environment.isHidden());
+    if (this.environment.isHidden()) this.stopTicker();
+    else if (this.current?.scene.animating()) this.schedule();
+  }
+
+  reducedMotion(): boolean {
+    return this.reduced;
+  }
+
+  destroy(): void {
+    this.destroyed = true;
+    this.stopTicker();
+    this.stopWatching();
+    this.stopMotion();
+    const scene = this.current?.scene;
+    this.current?.container.destroy({ children: true });
+    this.current = undefined;
+    void this.releaseVideos(this.clips);
+    this.clips = [];
+    if (scene) void this.release(scene.assets);
+    this.host.destroy();
+  }
+}
+
+export function createStage(deps: StageDeps): Stage {
+  return new StageController(deps);
 }
 
 /** The proof scene: a rectangle that moves with the ticker. Used by tests only; no screen requests it. */
