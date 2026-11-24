@@ -66,6 +66,15 @@ function crossfireBonus(match: MatchState, tick: number, source: HeroState, targ
   return joined ? 1 : 0;
 }
 
+/** One hit for `dealDamage`: who hits whom for how much, and whether it skips the Shield (`piercing`) or the Crossfire bonus. */
+interface DamageHit {
+  source: HeroState;
+  target: HeroState;
+  damage: number;
+  piercing?: boolean;
+  crossfire?: boolean;
+}
+
 /**
  * Crossfire and Marked raise the incoming damage before Shield absorbs. Piercing Damage skips the Shield.
  * Shield absorbs first; the rest is Deck Damage: the top cards, one per point, leave the cycle (Exile) so the
@@ -75,11 +84,8 @@ function crossfireBonus(match: MatchState, tick: number, source: HeroState, targ
 function dealDamage(
   match: MatchState,
   tick: number,
-  source: HeroState,
-  target: HeroState,
-  baseDamage: number,
   events: MatchEvent[],
-  { piercing = false, crossfire: joinsCrossfire = true }: { piercing?: boolean; crossfire?: boolean } = {},
+  { source, target, damage: baseDamage, piercing = false, crossfire: joinsCrossfire = true }: DamageHit,
 ): void {
   let crossfire = joinsCrossfire ? crossfireBonus(match, tick, source, target) : 0;
   // Marked: every hit on the Hero deals 1 more damage (Price Tag).
@@ -152,9 +158,7 @@ function tagCardEvents(
   match: MatchState,
   events: MatchEvent[],
   first: number,
-  caster: HeroState,
-  card: CardDefinition,
-  tile?: GridPosition,
+  { caster, card, tile }: { caster: HeroState; card: CardDefinition; tile?: GridPosition },
 ): void {
   for (const event of events.slice(first)) {
     if (!CARD_EVENT_KINDS.has(event.kind)) continue;
@@ -272,7 +276,7 @@ function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: 
     const caster = field && match.heroes.find((hero) => hero.id === field.casterId);
     if (!field || !caster) continue;
     const first = events.length;
-    dealDamage(match, tick, caster, match.heroes.find((hero) => hero.id === heroId)!, field.damage, events, { crossfire: false });
+    dealDamage(match, tick, events, { source: caster, target: match.heroes.find((hero) => hero.id === heroId)!, damage: field.damage, crossfire: false });
     for (const event of events.slice(first)) if (event.kind === EventKind.AttackHit) event.card = field.card;
   }
   for (const { heroId } of movers) {
@@ -323,7 +327,7 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     if (reason) {
       const first = events.length;
       events.push({ kind: EventKind.AttackFailed, tick, heroId: hero.id, targetId, reason });
-      tagCardEvents(match, events, first, hero, card);
+      tagCardEvents(match, events, first, { caster: hero, card });
     }
     return reason === undefined;
   });
@@ -343,7 +347,7 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     const damage = (damageEffect.amount ?? 0) + closeBonus + farBonus;
     const incoming = Math.max(0, damage - (halfCover ? HALF_COVER_REDUCTION : 0));
     const piercing = card.effects.some(({ kind }) => kind === EffectKind.PiercingDamage);
-    dealDamage(match, tick, hero, target, incoming, events, { piercing });
+    dealDamage(match, tick, events, { source: hero, target, damage: incoming, piercing });
     if (halfCover && damage > 0) flagHalfCover(events, first);
     flagCloseBonus(events, first, closeBonus);
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplySlow)) {
@@ -353,15 +357,15 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
       applyMarked(tick, hero, target, effect, events);
     }
     for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.Knockback)) {
-      pushAway(match, tick, hero, target, effect.amount ?? 0, events);
+      pushAway(match, tick, events, { caster: hero, target, distance: effect.amount ?? 0 });
     }
-    tagCardEvents(match, events, first, hero, card);
+    tagCardEvents(match, events, first, { caster: hero, card });
   }
   // Area Attacks come after the other damage of the Tick, so Cover they destroy still protected against it.
   for (const attack of areaAttacks) {
     const first = events.length;
     resolveAreaAttack(match, tick, attack, events);
-    tagCardEvents(match, events, first, attack.hero, attack.card, attack.tile);
+    tagCardEvents(match, events, first, { caster: attack.hero, card: attack.card, tile: attack.tile });
   }
 }
 
@@ -380,7 +384,7 @@ function resolveAreaAttack(match: MatchState, tick: number, { hero, card, tile }
   events.push({ kind: EventKind.AreaBlasted, tick, heroId: hero.id, to: { ...tile }, amount: blast.size ?? 1 });
   for (const target of match.heroes) {
     if (target.exhausted || !tiles.some((covered) => samePosition(covered, target.position))) continue;
-    dealDamage(match, tick, hero, target, blast.amount ?? 0, events);
+    dealDamage(match, tick, events, { source: hero, target, damage: blast.amount ?? 0 });
   }
   let destroyed = 0;
   for (const covered of tiles) {
@@ -406,11 +410,8 @@ function destroyCoverAt(match: MatchState, tick: number, hero: HeroState, tile: 
 function slideHero(
   match: MatchState,
   tick: number,
-  target: HeroState,
-  direction: { col: number; row: number },
-  distance: number,
   events: MatchEvent[],
-  casterId: string,
+  { target, direction, distance, casterId }: { target: HeroState; direction: { col: number; row: number }; distance: number; casterId: string },
 ): void {
   for (let step = 0; step < distance; step++) {
     const to = { col: target.position.col + direction.col, row: target.position.row + direction.row };
@@ -425,14 +426,14 @@ function slideHero(
 }
 
 /** Knockback: `target` is pushed up to `distance` tiles directly away from `caster`, and stops like a pulled Hero does. */
-function pushAway(match: MatchState, tick: number, caster: HeroState, target: HeroState, distance: number, events: MatchEvent[]): void {
+function pushAway(match: MatchState, tick: number, events: MatchEvent[], { caster, target, distance }: { caster: HeroState; target: HeroState; distance: number }): void {
   if (target.exhausted) return;
   const direction = { col: Math.sign(target.position.col - caster.position.col), row: Math.sign(target.position.row - caster.position.row) };
-  slideHero(match, tick, target, direction, distance, events, caster.id);
+  slideHero(match, tick, events, { target, direction, distance, casterId: caster.id });
 }
 
 /** Charge: the caster walks up to `distance` tiles toward `target` and stops next to it, or earlier at an obstacle (Step events, like a Move). */
-function chargeAt(match: MatchState, tick: number, caster: HeroState, target: HeroState, distance: number, events: MatchEvent[]): void {
+function chargeAt(match: MatchState, tick: number, events: MatchEvent[], { caster, target, distance }: { caster: HeroState; target: HeroState; distance: number }): void {
   for (let step = 0; step < distance && chebyshevDistance(caster.position, target.position) > 1; step++) {
     const to = stepTowards(caster.position, target.position);
     const blocked =
@@ -521,7 +522,7 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
       col: Math.sign(caster.position.col - target.position.col),
       row: Math.sign(caster.position.row - target.position.row),
     };
-    slideHero(match, tick, target, direction, effect.amount ?? 0, events, caster.id);
+    slideHero(match, tick, events, { target, direction, distance: effect.amount ?? 0, casterId: caster.id });
   },
   [EffectKind.Charge]: ({ match, tick, effect, caster, target, events }) => {
     const shield = effect.shield ?? 0;
@@ -529,7 +530,7 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
       caster.shield += shield;
       events.push({ kind: EventKind.ShieldGained, tick, heroId: caster.id, amount: shield, casterId: caster.id });
     }
-    chargeAt(match, tick, caster, target, effect.amount ?? 0, events);
+    chargeAt(match, tick, events, { caster, target, distance: effect.amount ?? 0 });
   },
   // Vanish: Hidden wherever the Hero stands.
   [EffectKind.BecomeHidden]: ({ tick, effect, caster, events }) => {
@@ -545,12 +546,8 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
 function resolveUtility(
   match: MatchState,
   tick: number,
-  caster: HeroState,
-  card: CardDefinition,
-  targetId: string,
-  tile: GridPosition | undefined,
-  ghostTile: GridPosition | undefined,
   events: MatchEvent[],
+  { caster, card, targetId, tile, ghostTile }: { caster: HeroState; card: CardDefinition; targetId: string; tile: GridPosition | undefined; ghostTile: GridPosition | undefined },
 ): void {
   const target = match.heroes.find((candidate) => candidate.id === targetId);
   // Site Survey, Temporary Solution and Heavy Metal reach as far as the card's Range (no Line of Sight needed).
@@ -632,6 +629,12 @@ function evaluateMatchEnd(match: MatchState, events: MatchEvent[], tick: number)
   if (match.round >= ROUND_LIMIT) end(MatchEndReason.RoundLimit, winnerOnPoints());
 }
 
+/** The Squad with more Heroes in a zone, or nobody when they are level. */
+function zoneController(left: number, right: number): SquadId | undefined {
+  if (left > right) return SquadId.Left;
+  return right > left ? SquadId.Right : undefined;
+}
+
 /** The number of non-Exhausted Heroes of a Squad standing on the given tiles. */
 function heroesIn(match: MatchState, squad: SquadId, tiles: readonly GridPosition[]): number {
   return match.heroes.filter(
@@ -657,7 +660,7 @@ function scoreZones(match: MatchState, events: MatchEvent[], tick: number): void
     }
     const left = heroesIn(match, SquadId.Left, zone.tiles);
     const right = heroesIn(match, SquadId.Right, zone.tiles);
-    const controller = left > right ? SquadId.Left : right > left ? SquadId.Right : undefined;
+    const controller = zoneController(left, right);
     match.zoneControl[i] = controller ? { controller, contested: false } : { contested: left > 0 };
     if (!controller) return;
     match.scores[controller] += zone.value;
@@ -752,8 +755,8 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
       const card = playedCard(hero, action);
       if (card.type !== CardType.Utility) continue;
       const first = events.length;
-      resolveUtility(match, tick, hero, card, action.target, action.tile, ghostTiles[hero.squad][action.target]?.position, events);
-      tagCardEvents(match, events, first, hero, card);
+      resolveUtility(match, tick, events, { caster: hero, card, targetId: action.target, tile: action.tile, ghostTile: ghostTiles[hero.squad][action.target]?.position });
+      tagCardEvents(match, events, first, { caster: hero, card });
     }
     const movers = actions.flatMap(({ hero, action }) => {
       if (action.kind !== ActionKind.Move) return [];

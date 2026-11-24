@@ -267,23 +267,22 @@ const canShoot = (grid: Grid, from: GridPosition, to: GridPosition, range: numbe
 const coverShare = (grid: Grid, tile: GridPosition, threats: readonly { position: GridPosition }[]) => {
   if (threats.length === 0 || threats.every((enemy) => chebyshevDistance(tile, enemy.position) <= 1)) return 0;
   const cover = coverAt(grid, tile);
-  return cover === CoverKind.Full ? 1 : cover === CoverKind.Half ? 0.5 : 0;
+  if (cover === CoverKind.Full) return 1;
+  return cover === CoverKind.Half ? 0.5 : 0;
 };
 
-/**
- * Scores a tile a Hero could end a Move on. `mates` are the
- * tiles Squad mates planned to end this slot on, `weapon` the Range of the Hero's attacks, `ghosts` the remembered enemies.
- */
-function scoreTile(
-  nav: Navigation,
-  tile: GridPosition,
-  distance: number,
-  targets: readonly VisibleEnemyView[],
-  mates: readonly GridPosition[],
-  weapon: number,
-  ghosts: readonly GhostThreat[],
-  W: AiWeights = AI_WEIGHTS,
-): number {
+/** What a Hero weighs when it scores a tile: `mates` are the tiles Squad mates planned to end this slot on, `weapon` the Range of its attacks, `ghosts` the remembered enemies. */
+interface TileScoring {
+  nav: Navigation;
+  targets: readonly VisibleEnemyView[];
+  mates: readonly GridPosition[];
+  weapon: number;
+  ghosts: readonly GhostThreat[];
+  weights: AiWeights;
+}
+
+/** Scores a tile a Hero could end a Move on. */
+function scoreTile(tile: GridPosition, distance: number, { nav, targets, mates, weapon, ghosts, weights: W }: TileScoring): number {
   const { grid } = nav;
   const hitters = targets.filter((enemy) => canShoot(grid, enemy.position, tile, WEAPON_RANGE[enemy.heroClass] ?? 0));
   const cover = coverShare(grid, tile, hitters);
@@ -317,21 +316,14 @@ function scoreTile(
  */
 function chooseDestination(
   from: GridPosition,
-  squad: SquadId,
-  slot: number,
-  claimed: ClaimedTiles,
-  blocked: ReadonlySet<number>,
-  nav: Navigation,
-  targets: readonly VisibleEnemyView[],
-  mates: readonly GridPosition[],
-  weapon: number,
-  ghosts: readonly GhostThreat[],
-  weights: AiWeights,
+  { squad, slot, claimed, blocked }: { squad: SquadId; slot: number; claimed: ClaimedTiles; blocked: ReadonlySet<number> },
+  scoring: TileScoring,
 ): GridPosition | undefined {
+  const { nav } = scoring;
   const { key } = nav;
   const distanceTo = (tile: GridPosition) => (nav.isObjective(tile) ? 0 : nav.distances.get(key(tile)) ?? Infinity);
   let best: GridPosition | undefined;
-  let bestScore = scoreTile(nav, from, distanceTo(from), targets, mates, weapon, ghosts, weights);
+  let bestScore = scoreTile(from, distanceTo(from), scoring);
   for (const destination of destinationsInOrder(from, squad, nav)) {
     const end = moveEnd(from, destination, nav.grid);
     const steps = tilesAfterSteps(from, destination, nav.grid);
@@ -339,7 +331,7 @@ function chooseDestination(
     if (claimed.get(claimKey(slot, MOVE_DISTANCE))?.has(key(steps.at(-1)!))) continue;
     const distance = distanceTo(end);
     if (!Number.isFinite(distance)) continue;
-    const score = scoreTile(nav, end, distance, targets, mates, weapon, ghosts, weights);
+    const score = scoreTile(end, distance, scoring);
     if (score > bestScore) {
       best = destination;
       bestScore = score;
@@ -359,15 +351,16 @@ function claimSteps(claimed: ClaimedTiles, slot: number, tiles: readonly GridPos
   });
 }
 
-function planHero(
-  view: SquadView,
-  hero: HeroView,
-  claimed: ClaimedTiles,
-  blocked: ReadonlySet<number>,
-  nav: Navigation,
-  weights: AiWeights,
-  plannedAttacks: PlannedAttacks,
-): HeroPlan {
+/** What the Squad has settled so far and how a Hero plans: the tiles and attacks claimed by earlier Heroes, the blocked tiles, the map data and the Hero's weights. */
+interface HeroPlanning {
+  claimed: ClaimedTiles;
+  blocked: ReadonlySet<number>;
+  nav: Navigation;
+  weights: AiWeights;
+  plannedAttacks: PlannedAttacks;
+}
+
+function planHero(view: SquadView, hero: HeroView, { claimed, blocked, nav, weights, plannedAttacks }: HeroPlanning): HeroPlan {
   const deck = HERO_DECKS[hero.heroClass];
   const isAttackCard = (card: CardIndex) => isSimpleAttack(deck[card]!);
   // Attacks are kept for attacking; other cards pay for Moves, Blocks and Pitch first.
@@ -427,7 +420,7 @@ function planHero(
     const card = spare()[0];
     if (card === undefined || cardsLeft - 1 < 0) break;
     const slot = queue.length;
-    const destination = chooseDestination(position, view.squad, slot, claimed, unavailable, nav, targets, matesEndingSlot(claimed, slot, nav.grid.width), weapon, ghosts, weights);
+    const destination = chooseDestination(position, { squad: view.squad, slot, claimed, blocked: unavailable }, { nav, targets, mates: matesEndingSlot(claimed, slot, nav.grid.width), weapon, ghosts, weights });
     if (destination) {
       queue.push({ kind: ActionKind.Move, card, destination });
       claimSteps(claimed, slot, tilesAfterSteps(position, destination, nav.grid), nav);
@@ -473,7 +466,7 @@ export function planSquadGreedy(
       const zone = variant.zones === undefined ? undefined : view.zones[variant.zones[i]!];
       const { nav, blocked } = zone ? buildNavigation(view, zone.tiles, reverseTies) : base;
       const weights = weightsFor(style, roles.get(hero.id) ?? SquadRole.None);
-      return planHero(view, hero, claimed, blocked, nav, weights, plannedAttacks);
+      return planHero(view, hero, { claimed, blocked, nav, weights, plannedAttacks });
     });
   const plan: SquadPlan = { squad: view.squad, heroes };
   const broken = new Set(validatePlan(view, plan).flatMap((issue) => (issue.heroId ? [issue.heroId] : [])));
@@ -584,7 +577,10 @@ const inCover = (match: MatchState, hero: HeroState) => coverAt(match.grid, hero
  */
 function evaluateRound(match: MatchState, squad: SquadId, W: AiWeights = AI_WEIGHTS): number {
   const enemySquad = squad === SquadId.Left ? SquadId.Right : SquadId.Left;
-  const sign = (who: SquadId | undefined) => (who === squad ? 1 : who === enemySquad ? -1 : 0);
+  const sign = (who: SquadId | undefined) => {
+    if (who === squad) return 1;
+    return who === enemySquad ? -1 : 0;
+  };
   const points = match.scores[squad] - match.scores[enemySquad];
   const zones = ZONES.reduce((sum, zone, i) => sum + sign(match.zoneControl[i]?.controller) * zone.value, 0);
   const cards = cardsNotExiled(match, squad) - cardsNotExiled(match, enemySquad);

@@ -8,6 +8,17 @@ import { CoverKind, coverAt, destroyCover, type Grid, type GridPosition, TileKin
 
 const hashOfText = (text: string) => [...text].reduce((sum, char) => Math.imul(sum, 31) + char.charCodeAt(0), 7);
 
+/** What `matchFromSquadView` knows of one Hero: the card counts, and the Hand only when it is the Squad's own. */
+interface GuessedHero {
+  id: string;
+  squad: SquadId;
+  heroClass: HeroClass;
+  position: GridPosition;
+  counts: { deck: number; discard: number; exile: number };
+  knownHand: readonly CardIndex[] | undefined;
+  exhausted: boolean;
+}
+
 /**
  * A Match State built from what one Squad knows, so the AI can play a Round through the real Resolution without reading
  * hidden state. Own Heroes are exact except the order of Deck and Discard. An enemy Hand is a guess: as many cards as the
@@ -23,15 +34,7 @@ export function matchFromSquadView(view: SquadView, seed: number, imagined: Read
   for (const tile of view.wreckCover) grid = withWreck(grid, tile);
   for (const tile of view.placedCover) if (coverAt(grid, tile) === CoverKind.None) grid = withTile(grid, tile, TileKind.HalfCover);
 
-  const heroState = (
-    id: string,
-    squad: SquadId,
-    heroClass: HeroClass,
-    position: GridPosition,
-    counts: { deck: number; discard: number; exile: number },
-    knownHand: readonly CardIndex[] | undefined,
-    exhausted: boolean,
-  ): HeroState => {
+  const heroState = ({ id, squad, heroClass, position, counts, knownHand, exhausted }: GuessedHero): HeroState => {
     const all = HERO_DECKS[heroClass].map((_, index) => index);
     const others = all
       .filter((card) => !knownHand?.includes(card))
@@ -49,7 +52,7 @@ export function matchFromSquadView(view: SquadView, seed: number, imagined: Read
   };
 
   const heroes: HeroState[] = view.heroes.map((own) => ({
-    ...heroState(own.id, view.squad, own.heroClass, own.position, { deck: own.deckCount, discard: own.discardCount, exile: own.exileCount }, own.hand, own.exhausted),
+    ...heroState({ id: own.id, squad: view.squad, heroClass: own.heroClass, position: own.position, counts: { deck: own.deckCount, discard: own.discardCount, exile: own.exileCount }, knownHand: own.hand, exhausted: own.exhausted }),
     slow: own.slowed ? 1 : 0,
     hidden: own.hidden ? 1 : 0,
     marked: own.marked ? 1 : 0,
@@ -61,12 +64,17 @@ export function matchFromSquadView(view: SquadView, seed: number, imagined: Read
     if (enemy.visibility === Visibility.Unknown) {
       // Never seen: left out, or, in an imagined world, standing on the imagined tile with a fresh Deck.
       const fresh = { deck: HERO_DECKS[enemy.heroClass].length - HAND_SIZE, discard: 0, exile: 0 };
-      heroes.push(guess ? heroState(enemy.id, enemySquad, enemy.heroClass, guess, fresh, undefined, false) : heroState(enemy.id, enemySquad, enemy.heroClass, { col: 0, row: 0 }, { deck: 0, discard: 0, exile: 0 }, undefined, true));
+      const base = { id: enemy.id, squad: enemySquad, heroClass: enemy.heroClass, knownHand: undefined };
+      heroes.push(
+        guess
+          ? heroState({ ...base, position: guess, counts: fresh, exhausted: false })
+          : heroState({ ...base, position: { col: 0, row: 0 }, counts: { deck: 0, discard: 0, exile: 0 }, exhausted: true }),
+      );
       continue;
     }
     const counts = { deck: enemy.deckCount, discard: enemy.discardCount, exile: enemy.exileCount };
     const where = enemy.visibility === Visibility.Ghost && guess ? guess : enemy.position;
-    const state = heroState(enemy.id, enemySquad, enemy.heroClass, where, counts, undefined, enemy.visibility === Visibility.Visible && enemy.exhausted);
+    const state = heroState({ id: enemy.id, squad: enemySquad, heroClass: enemy.heroClass, position: where, counts, knownHand: undefined, exhausted: enemy.visibility === Visibility.Visible && enemy.exhausted });
     if (enemy.visibility === Visibility.Visible) {
       Object.assign(state, { shield: enemy.shield, slow: enemy.slowed ? 1 : 0, marked: enemy.marked ? 1 : 0, scrap: enemy.scrap });
     } else {
