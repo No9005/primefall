@@ -65,6 +65,12 @@ export default tseslint.config(
       "apps/web/src/target-lines.ts",
       "apps/web/src/planning-selection.ts",
       "apps/web/src/playback.ts",
+      "apps/web/src/terrain.ts",
+      "apps/web/src/pixel-terrain.ts",
+      "apps/web/src/atlas.ts",
+      "apps/web/src/commentary.ts",
+      "apps/web/src/hangar-select.ts",
+      "apps/web/scripts/atlas-packer.ts",
       "packages/game-core/src/resolution.ts",
     ],
     rules: {

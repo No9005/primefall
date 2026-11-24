@@ -196,6 +196,28 @@ export class HeroPlayer {
     this.timer = undefined;
   }
 
+  /** The clip that follows `mode` and after how many ms: idle and act last a random time, the others as long as the clip. */
+  private followUp(mode: ClipName, seconds: number): { next: ClipName; after: number } | undefined {
+    const [lift, drop] = TRANSITIONS[this.hero];
+    const ms = seconds * 1000;
+    switch (mode) {
+      case "idle":
+        return { next: lift ?? "act", after: ms * this.env.random(2, 3) };
+      case "act":
+        return { next: drop ?? "idle", after: ms * this.env.random(1, 2) };
+      case "tolift":
+        return { next: "act", after: ms };
+      case "toidle":
+      case "desel":
+        return { next: "idle", after: ms };
+      case "selecti":
+      case "select":
+        return { next: "hold", after: ms };
+      default:
+        return undefined;
+    }
+  }
+
   private start(mode: ClipName, delay: number): void {
     this.cancelTimer();
     const go = () => {
@@ -203,23 +225,8 @@ export class HeroPlayer {
       this.set({ mode, bridgeEntry: 0, bridgeHalf: 0, bridgeFrom: "idle" });
       const clip = CLIPS[this.hero][mode];
       if (!clip) return;
-      const [lift, drop] = TRANSITIONS[this.hero];
-      let next: ClipName | undefined;
-      let after = clip.seconds * 1000;
-      if (mode === "idle") {
-        next = lift ?? "act";
-        after = clip.seconds * 1000 * this.env.random(2, 3);
-      } else if (mode === "tolift") next = "act";
-      else if (mode === "act") {
-        next = drop ?? "idle";
-        after = clip.seconds * 1000 * this.env.random(1, 2);
-      } else if (mode === "toidle") next = "idle";
-      else if (mode === "selecti" || mode === "select") next = "hold";
-      else if (mode === "desel") next = "idle";
-      if (next) {
-        const following = next;
-        this.timer = this.env.after(after, () => this.start(following, 0));
-      }
+      const following = this.followUp(mode, clip.seconds);
+      if (following) this.timer = this.env.after(following.after, () => this.start(following.next, 0));
       if (this.pending && (mode === "idle" || mode === "act")) {
         this.pending = false;
         this.env.after(0, () => this.tap());

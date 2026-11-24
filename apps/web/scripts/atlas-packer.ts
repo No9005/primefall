@@ -85,7 +85,12 @@ export function decodePng(file: Buffer): Image {
     } else if (type === "IDAT") parts.push(body);
     at += 12 + length;
   }
-  const raw = inflateSync(Buffer.concat(parts));
+  const data = unfilterRows(inflateSync(Buffer.concat(parts)), width, height);
+  return { width, height, data };
+}
+
+/** Undoes the PNG row filters (None, Sub, Up, Average, Paeth) of the inflated image data. */
+function unfilterRows(raw: Buffer, width: number, height: number): Uint8Array {
   const stride = width * 4;
   const data = new Uint8Array(stride * height);
   for (let y = 0; y < height; y++) {
@@ -105,7 +110,7 @@ export function decodePng(file: Buffer): Image {
       data[at] = (byte + predicted) & 0xff;
     }
   }
-  return { width, height, data };
+  return data;
 }
 
 // ---- What to pack: the hangar's own tables -----------------------------------------------------------------------------------------
@@ -213,6 +218,28 @@ const digest = (image: Image): string => createHash("sha1").update(image.data).d
 
 /** Packs the animations of one Hero. `readStrip` returns the decoded strip of a file in the strip folder. */
 export function packAtlas(hero: HangarHero, jobs: readonly AtlasJob[], readStrip: (file: string) => Image): PackedAtlas {
+  const { unique, animations, clips } = collectFrames(hero, jobs, readStrip);
+  const page = packFrames(unique);
+  const sheet: Image = { width: page.width, height: page.height, data: new Uint8Array(page.width * page.height * 4) };
+  const frames: Record<string, AtlasFrame> = {};
+  for (const frame of unique) {
+    for (let y = 0; y < frame.image.height; y++) sheet.data.set(frame.image.data.subarray(y * frame.image.width * 4, (y + 1) * frame.image.width * 4), ((frame.y + y) * page.width + frame.x) * 4);
+    frames[frame.name] = {
+      frame: { x: frame.x, y: frame.y, w: frame.image.width, h: frame.image.height },
+      rotated: false,
+      trimmed: frame.image.width !== frame.source.w || frame.image.height !== frame.source.h,
+      spriteSourceSize: { x: frame.offset.x, y: frame.offset.y, w: frame.image.width, h: frame.image.height },
+      sourceSize: frame.source,
+      // The origin of a hangar frame is the middle of its bottom edge: the feet stand there, in the place the screen puts the Hero.
+      anchor: { x: 0.5, y: 1 },
+    };
+  }
+  const data: AtlasData = { frames, animations, meta: { image: `${hero}.png`, size: { w: page.width, h: page.height }, scale: "1", format: "RGBA8888", clips } };
+  return { png: encodePng(sheet), json: `${JSON.stringify(data)}\n`, data };
+}
+
+/** Cuts every strip into frames and keeps each different frame once; the animations name their frames, the clips keep their timing. */
+function collectFrames(hero: HangarHero, jobs: readonly AtlasJob[], readStrip: (file: string) => Image) {
   const unique: UniqueFrame[] = [];
   const byHash = new Map<string, UniqueFrame>();
   const animations: Record<string, string[]> = {};
@@ -240,24 +267,7 @@ export function packAtlas(hero: HangarHero, jobs: readonly AtlasJob[], readStrip
     }
     clips[job.animation] = { frames: job.frames, durationMs: job.durationMs };
   }
-
-  const page = packFrames(unique);
-  const sheet: Image = { width: page.width, height: page.height, data: new Uint8Array(page.width * page.height * 4) };
-  const frames: Record<string, AtlasFrame> = {};
-  for (const frame of unique) {
-    for (let y = 0; y < frame.image.height; y++) sheet.data.set(frame.image.data.subarray(y * frame.image.width * 4, (y + 1) * frame.image.width * 4), ((frame.y + y) * page.width + frame.x) * 4);
-    frames[frame.name] = {
-      frame: { x: frame.x, y: frame.y, w: frame.image.width, h: frame.image.height },
-      rotated: false,
-      trimmed: frame.image.width !== frame.source.w || frame.image.height !== frame.source.h,
-      spriteSourceSize: { x: frame.offset.x, y: frame.offset.y, w: frame.image.width, h: frame.image.height },
-      sourceSize: frame.source,
-      // The origin of a hangar frame is the middle of its bottom edge: the feet stand there, in the place the screen puts the Hero.
-      anchor: { x: 0.5, y: 1 },
-    };
-  }
-  const data: AtlasData = { frames, animations, meta: { image: `${hero}.png`, size: { w: page.width, h: page.height }, scale: "1", format: "RGBA8888", clips } };
-  return { png: encodePng(sheet), json: `${JSON.stringify(data)}\n`, data };
+  return { unique, animations, clips };
 }
 
 /** Puts a frame back into its whole size, as the strip has it (for the pixel-for-pixel test). */
