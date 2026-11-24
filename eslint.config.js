@@ -48,6 +48,8 @@ export default tseslint.config(
     // Files cleaned of readability warnings (#188): the six rules are errors here, with the same thresholds.
     files: [
       "apps/web/src/effects-layer.ts",
+      "apps/web/src/PlanningScreen.tsx",
+      "apps/web/src/resolution-playback.ts",
       "apps/web/src/weapon-effects.ts",
       "apps/web/scripts/screenshots.ts",
       "apps/web/scripts/render-mix.ts",
