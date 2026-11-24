@@ -56,6 +56,7 @@ export default tseslint.config(
       "apps/web/src/target-lines.ts",
       "apps/web/src/planning-selection.ts",
       "apps/web/src/playback.ts",
+      "packages/game-core/src/resolution.ts",
     ],
     rules: {
       "no-nested-ternary": "error",
