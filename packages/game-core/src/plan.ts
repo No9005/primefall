@@ -155,81 +155,91 @@ export function validatePlan(view: SquadView, plan: SquadPlan): PlanIssue[] {
   if (plan.squad !== view.squad) {
     issues.push({ kind: PlanIssueKind.WrongSquad, message: "The plan belongs to another Squad." });
   }
-  for (const { heroId, queue, pitched = [] } of plan.heroes) {
-    const hero = view.heroes.find((candidate) => candidate.id === heroId);
-    if (!hero) {
-      issues.push({ kind: PlanIssueKind.UnknownHero, heroId, message: `Unknown Hero ${heroId}.` });
-      continue;
+  for (const heroPlan of plan.heroes) issues.push(...validateHeroPlan(view, heroPlan));
+  return issues;
+}
+
+/** The rules one Hero's plan breaks: its Queue, its pitched cards, its Energy and each action in turn. */
+function validateHeroPlan(view: SquadView, { heroId, queue, pitched = [] }: HeroPlan): PlanIssue[] {
+  const hero = view.heroes.find((candidate) => candidate.id === heroId);
+  if (!hero) return [{ kind: PlanIssueKind.UnknownHero, heroId, message: `Unknown Hero ${heroId}.` }];
+  if (hero.exhausted && (queue.length > 0 || pitched.length > 0)) {
+    return [{ kind: PlanIssueKind.HeroExhausted, heroId, message: "An Exhausted Hero cannot act." }];
+  }
+  const issues: PlanIssue[] = [];
+  if (queue.length > MAX_QUEUE_LENGTH) {
+    issues.push({ kind: PlanIssueKind.QueueTooLong, heroId, message: `A Queue holds at most ${MAX_QUEUE_LENGTH} actions.` });
+  }
+  const used = new Set<CardIndex>();
+  // A card fulfils one role per Round: Pitch and Queue actions share the same set.
+  const useCard = (card: CardIndex) => {
+    if (!hero.hand.includes(card)) {
+      issues.push({ kind: PlanIssueKind.CardNotInHand, heroId, message: "A planned card is not in the Hand." });
+    } else if (used.has(card)) {
+      issues.push({ kind: PlanIssueKind.CardUsedTwice, heroId, message: "A card can be used only once per Round." });
     }
-    if (hero.exhausted && (queue.length > 0 || pitched.length > 0)) {
-      issues.push({ kind: PlanIssueKind.HeroExhausted, heroId, message: "An Exhausted Hero cannot act." });
-      continue;
-    }
-    if (queue.length > MAX_QUEUE_LENGTH) {
-      issues.push({ kind: PlanIssueKind.QueueTooLong, heroId, message: `A Queue holds at most ${MAX_QUEUE_LENGTH} actions.` });
-    }
-    const used = new Set<CardIndex>();
-    // A card fulfils one role per Round: Pitch and Queue actions share the same set.
-    const useCard = (card: CardIndex) => {
-      if (!hero.hand.includes(card)) {
-        issues.push({ kind: PlanIssueKind.CardNotInHand, heroId, message: "A planned card is not in the Hand." });
-      } else if (used.has(card)) {
-        issues.push({ kind: PlanIssueKind.CardUsedTwice, heroId, message: "A card can be used only once per Round." });
-      }
-      used.add(card);
-    };
-    pitched.forEach(useCard);
-    const cost = queueEnergyCost(hero.heroClass, queue);
-    if (cost > energyPool(pitched)) {
-      issues.push({
-        kind: PlanIssueKind.NotEnoughEnergy,
-        heroId,
-        slot: firstUnaffordableSlot(hero.heroClass, queue, energyPool(pitched)),
-        message: `The Queue needs ${cost} Energy but only ${energyPool(pitched)} is pitched.`,
-      });
-    }
-    let position = hero.position;
-    for (const [slot, action] of queue.entries()) {
-      const report = (issue: PlanIssue) => issues.push({ ...issue, slot });
-      if (action.kind === ActionKind.Wait) continue;
-      useCard(action.card);
-      if (action.kind === ActionKind.Primary) {
-        const card = HERO_DECKS[hero.heroClass][action.card];
-        if (!card || !isPlayableCard(card)) {
-          report({ kind: PlanIssueKind.UnplayableCard, heroId, message: "This card's effect cannot be played yet." });
-        } else if (card.target === CardTarget.VisibleOrGhostEnemy) {
-          const named = view.enemies.find((enemy) => enemy.id === action.target);
-          if (named?.visibility !== Visibility.Ghost && !(named?.visibility === Visibility.Visible && !named.exhausted)) {
-            report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Visible enemy Hero or a Ghost as its target.` });
-          }
-        } else if (card.target === CardTarget.Tile || card.target === CardTarget.EmptyTile || card.target === CardTarget.Area) {
-          // Range, Line of Sight and whether the tile is empty are checked when the card resolves.
-          const kind = action.tile && tileAt(view.grid, action.tile);
-          if (action.target !== heroId || kind === undefined || kind === TileKind.Wall) {
-            report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a tile that is not a Wall as its target.` });
-          }
-        } else if (card.target === CardTarget.SelfHero) {
-          // Self cards are confirmed on this Hero.
-          if (action.target !== heroId) {
-            report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} can only target this Hero.` });
-          }
-        } else if (!view.enemies.some(
-            (enemy) => enemy.id === action.target && enemy.visibility === Visibility.Visible && !enemy.exhausted,
-          )) {
-          report({ kind: PlanIssueKind.BadTarget, heroId, message: `${card.name} needs a Visible enemy Hero as its target.` });
-        }
-      }
-      if (action.kind !== ActionKind.Move) continue;
-      const reachable = moveDestinations(position, view.grid).some(
-        (tile) => tile.col === action.destination.col && tile.row === action.destination.row,
-      );
-      if (!reachable) {
-        report({ kind: PlanIssueKind.BadDestination, heroId, message: "Move 3 needs a free destination 1 to 3 tiles away." });
-      }
-      position = action.destination;
-    }
+    used.add(card);
+  };
+  pitched.forEach(useCard);
+  const energyIssue = notEnoughEnergyIssue(hero, queue, pitched);
+  if (energyIssue) issues.push(energyIssue);
+  let position = hero.position;
+  for (const [slot, action] of queue.entries()) {
+    if (action.kind === ActionKind.Wait) continue;
+    useCard(action.card);
+    const issue = action.kind === ActionKind.Primary ? primaryActionIssue(view, hero, action) : moveActionIssue(view, heroId, position, action);
+    if (issue) issues.push({ ...issue, slot });
+    if (action.kind === ActionKind.Move) position = action.destination;
   }
   return issues;
+}
+
+function notEnoughEnergyIssue(hero: HeroView, queue: readonly QueuedAction[], pitched: readonly CardIndex[]): PlanIssue | undefined {
+  const cost = queueEnergyCost(hero.heroClass, queue);
+  if (cost <= energyPool(pitched)) return undefined;
+  return {
+    kind: PlanIssueKind.NotEnoughEnergy,
+    heroId: hero.id,
+    slot: firstUnaffordableSlot(hero.heroClass, queue, energyPool(pitched)),
+    message: `The Queue needs ${cost} Energy but only ${energyPool(pitched)} is pitched.`,
+  };
+}
+
+/** Why a Primary action cannot be committed: the card cannot be played yet, or its target does not fit what the card aims at. */
+function primaryActionIssue(view: SquadView, hero: HeroView, action: PrimaryAction): PlanIssue | undefined {
+  const heroId = hero.id;
+  const card = HERO_DECKS[hero.heroClass][action.card];
+  if (!card || !isPlayableCard(card)) {
+    return { kind: PlanIssueKind.UnplayableCard, heroId, message: "This card's effect cannot be played yet." };
+  }
+  const badTarget = (message: string): PlanIssue => ({ kind: PlanIssueKind.BadTarget, heroId, message });
+  const visibleEnemy = view.enemies.some((enemy) => enemy.id === action.target && enemy.visibility === Visibility.Visible && !enemy.exhausted);
+  switch (card.target) {
+    case CardTarget.VisibleOrGhostEnemy: {
+      const ghost = view.enemies.some((enemy) => enemy.id === action.target && enemy.visibility === Visibility.Ghost);
+      return ghost || visibleEnemy ? undefined : badTarget(`${card.name} needs a Visible enemy Hero or a Ghost as its target.`);
+    }
+    case CardTarget.Tile:
+    case CardTarget.EmptyTile:
+    case CardTarget.Area:
+      return tileTargetUsable(view, heroId, action) ? undefined : badTarget(`${card.name} needs a tile that is not a Wall as its target.`);
+    // Self cards are confirmed on this Hero.
+    case CardTarget.SelfHero:
+      return action.target === heroId ? undefined : badTarget(`${card.name} can only target this Hero.`);
+    default:
+      return visibleEnemy ? undefined : badTarget(`${card.name} needs a Visible enemy Hero as its target.`);
+  }
+}
+
+/** A card aimed at a tile is confirmed on its caster and names a tile that is not a Wall; Range, Line of Sight and whether the tile is empty are checked when the card resolves. */
+function tileTargetUsable(view: SquadView, heroId: string, action: PrimaryAction): boolean {
+  const kind = action.tile && tileAt(view.grid, action.tile);
+  return action.target === heroId && kind !== undefined && kind !== TileKind.Wall;
+}
+
+function moveActionIssue(view: SquadView, heroId: string, from: GridPosition, action: MoveAction): PlanIssue | undefined {
+  const reachable = moveDestinations(from, view.grid).some((tile) => tile.col === action.destination.col && tile.row === action.destination.row);
+  return reachable ? undefined : { kind: PlanIssueKind.BadDestination, heroId, message: "Move 3 needs a free destination 1 to 3 tiles away." };
 }
 
 export interface RangeTile {
@@ -295,45 +305,12 @@ const sameTile = (a: GridPosition, b: GridPosition) => a.col === b.col && a.row 
  * until nothing changes. The result does not depend on the order of the requests or on the Squad of a Hero.
  */
 export function resolveWalks(standing: ReadonlyMap<string, GridPosition>, requests: readonly WalkRequest[], grid: Grid = NOTSTROM_MAP): Map<string, WalkOutcome> {
-  const planned = new Map<string, { path: GridPosition[]; wallBlocked: boolean }>();
-  for (const { heroId, destination, distance } of requests) {
-    const path = [{ ...standing.get(heroId)! }];
-    let wallBlocked = false;
-    for (let step = 0; step < distance && !sameTile(path.at(-1)!, destination); step++) {
-      const next = stepTowards(path.at(-1)!, destination);
-      if (!isStepAllowed(path.at(-1)!, next, grid)) {
-        wallBlocked = true;
-        break;
-      }
-      path.push(next);
-    }
-    planned.set(heroId, { path, wallBlocked });
-  }
-
+  const planned = plannedWalks(standing, requests, grid);
   const length = new Map([...planned].map(([heroId, { path }]) => [heroId, path.length - 1]));
   const stoppedBy = new Map<string, string>();
-  const tileOf = (heroId: string) => planned.get(heroId)?.path[length.get(heroId)!] ?? standing.get(heroId)!;
   for (let changed = true; changed; ) {
     changed = false;
-    const cuts = new Map<string, { newLength: number; by: string }>();
-    // Heroes that stay for the whole Tick: not moving, or left without a step.
-    const stayers = [...standing.keys()].filter((heroId) => (length.get(heroId) ?? 0) === 0).sort();
-    for (const [heroId, { path }] of planned) {
-      const steps = length.get(heroId)!;
-      if (steps === 0) continue;
-      for (let index = 1; index <= steps; index++) {
-        const stayer = stayers.find((other) => other !== heroId && sameTile(standing.get(other)!, path[index]!));
-        if (stayer !== undefined) {
-          cuts.set(heroId, { newLength: index - 1, by: stayer });
-          break;
-        }
-      }
-      if (cuts.has(heroId)) continue;
-      const end = tileOf(heroId);
-      const sharing = [...standing.keys()].filter((other) => other !== heroId && sameTile(tileOf(other), end)).sort();
-      if (sharing.length > 0) cuts.set(heroId, { newLength: steps - 1, by: sharing[0]! });
-    }
-    for (const [heroId, { newLength, by }] of cuts) {
+    for (const [heroId, { newLength, by }] of walkCuts(standing, planned, length)) {
       length.set(heroId, newLength);
       stoppedBy.set(heroId, by);
       changed = true;
@@ -347,6 +324,58 @@ export function resolveWalks(standing: ReadonlyMap<string, GridPosition>, reques
       return [heroId, outcome];
     }),
   );
+}
+
+interface PlannedWalk {
+  path: GridPosition[];
+  wallBlocked: boolean;
+}
+
+/** Each walking Hero's walk towards its destination, as far as the distance and the Walls allow, ignoring other Heroes. */
+function plannedWalks(standing: ReadonlyMap<string, GridPosition>, requests: readonly WalkRequest[], grid: Grid): Map<string, PlannedWalk> {
+  const planned = new Map<string, PlannedWalk>();
+  for (const { heroId, destination, distance } of requests) {
+    const path = [{ ...standing.get(heroId)! }];
+    let wallBlocked = false;
+    for (let step = 0; step < distance && !sameTile(path.at(-1)!, destination); step++) {
+      const next = stepTowards(path.at(-1)!, destination);
+      if (!isStepAllowed(path.at(-1)!, next, grid)) {
+        wallBlocked = true;
+        break;
+      }
+      path.push(next);
+    }
+    planned.set(heroId, { path, wallBlocked });
+  }
+  return planned;
+}
+
+/** One round of cutting: the walks that pass a Hero that stays, or end where another Hero ends, and the length they are cut to. */
+function walkCuts(
+  standing: ReadonlyMap<string, GridPosition>,
+  planned: ReadonlyMap<string, PlannedWalk>,
+  length: ReadonlyMap<string, number>,
+): Map<string, { newLength: number; by: string }> {
+  const tileOf = (heroId: string) => planned.get(heroId)?.path[length.get(heroId)!] ?? standing.get(heroId)!;
+  const cuts = new Map<string, { newLength: number; by: string }>();
+  // Heroes that stay for the whole Tick: not moving, or left without a step.
+  const stayers = [...standing.keys()].filter((heroId) => (length.get(heroId) ?? 0) === 0).sort();
+  for (const [heroId, { path }] of planned) {
+    const steps = length.get(heroId)!;
+    if (steps === 0) continue;
+    for (let index = 1; index <= steps; index++) {
+      const stayer = stayers.find((other) => other !== heroId && sameTile(standing.get(other)!, path[index]!));
+      if (stayer !== undefined) {
+        cuts.set(heroId, { newLength: index - 1, by: stayer });
+        break;
+      }
+    }
+    if (cuts.has(heroId)) continue;
+    const end = tileOf(heroId);
+    const sharing = [...standing.keys()].filter((other) => other !== heroId && sameTile(tileOf(other), end)).sort();
+    if (sharing.length > 0) cuts.set(heroId, { newLength: steps - 1, by: sharing[0]! });
+  }
+  return cuts;
 }
 
 /** A planned Move that stops short because of another Hero of the same Squad (ADR 0013). */
