@@ -12,7 +12,7 @@ import {
   coverAt,
   destroyCover,
   EffectKind,
-  EventKind,
+  
   HERO_DECKS,
   HeroClass,
   MAX_PLACED_COVER_PER_SQUAD,
@@ -36,13 +36,13 @@ import {
   ZoneKind,
   type ZoneView,
 } from "game-core";
-import { type ComponentProps, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { collisionWarnings, type PlannedPath, plannedPaths } from "./ally-paths";
 import { gameAudio } from "./audio";
-import { planFrame } from "./audio-cues";
 import { levelChangeAt, type MusicLevel, musicLevelFor, musicPhaseOf } from "./music";
 import { useCardSounds } from "./card-sounds";
 import { Board } from "./Board";
+import { type PlaybackState, playResolution } from "./resolution-playback";
 import { EnergyPill, FloatingCard, PulledCard } from "./game-parts";
 import { HERO_BASICS } from "./hero-basics";
 import { DesignedCard } from "./card-design";
@@ -50,26 +50,24 @@ import { cancel as cancelPull, type Face, faceReveal, faceViews, heldCard, IDLE,
 import { CardUseStage, hudFocus } from "./hud-focus";
 import { drawShots, SegmentStyle, type ShotDrawing } from "./shot-lines";
 import { heroMarks } from "./shield-marks";
-import { crossfireRings, NO_COVER_PLAN, plannedCoverPlan, plannedEffectPaths, plannedTargetLines, replayTargetLines, type TargetLine } from "./target-lines";
+import { crossfireRings, NO_COVER_PLAN, plannedCoverPlan, plannedEffectPaths, plannedTargetLines   } from "./target-lines";
 import { cardAtX, FAN_WIDTH, fanSpacing } from "./hand-fan";
 import { drawSchedule, newCards, shownDeckCount } from "./hand-draw";
-import { addBurn, type BurnBatch, NO_BURN_PENDING, settleBurn, shownBurnCounts } from "./deck-burn";
+import { type BurnBatch, NO_BURN_PENDING, settleBurn, shownBurnCounts } from "./deck-burn";
 import { DeckBurn } from "./DeckBurn";
-import { addShuffle, NO_SHUFFLE_PENDING, settleShuffle, shownDeckAfterShuffle, shownDiscardCount, SHUFFLE_MS, type ShuffleStep, shuffledWhileDrawing } from "./deck-shuffle";
+import { NO_SHUFFLE_PENDING, settleShuffle, shownDeckAfterShuffle, shownDiscardCount, SHUFFLE_MS, type ShuffleStep, shuffledWhileDrawing } from "./deck-shuffle";
 import { DeckShuffle } from "./DeckShuffle";
 import { exhaustionHud } from "./exhaustion-hud";
 import { applyDrop, type BoardPick, type DropLayout, type DropPlaces, type DropUse, type Point, type Rect, resolveDrop } from "./card-drag";
 import { Callout } from "./Callout";
 import { COUNTDOWN_CALLOUT_MS, countdownCallout, formatTimer, TIMER_AMBER_SECONDS, timerTone } from "./callout";
-import { matchEndCallouts, type PrimeCallout, primeCountdown, type SquadCounts, pointsZoneScore, zoneCallouts, zoneDots, zoneOccupancy, zoneTint } from "./prime-zone";
+import { type PrimeCallout, primeCountdown, type SquadCounts, pointsZoneScore, zoneDots, zoneOccupancy, zoneTint } from "./prime-zone";
 import { targetsInReach } from "./target-pick";
 import { queueRowState, RESOLUTION_CALLOUT_MS, RESOLUTION_DIM, type ResolutionStage, resolutionBarText, resolutionCommitLabel } from "./resolution-hud";
-import { buildCommentary, type CommentaryEntry, type CommentarySide, MAX_COMMENTARY_ENTRIES } from "./commentary";
-import { CLIP_SPEED } from "./clip-player";
-import { coverGridOf } from "./terrain";
-import { buildPlaybackFrames, enemyIsDrawn, enemyTokens, STEP_MS, tickCountOf } from "./playback";
-import type { ClipName } from "./hero-clips";
-import type { EffectCue } from "./weapon-effects";
+import { type CommentarySide, MAX_COMMENTARY_ENTRIES } from "./commentary";
+import { enemyTokens   } from "./playback";
+import type {  } from "./hero-clips";
+import type {  } from "./weapon-effects";
 import { actionUsesCard, addWaitAction, CARD_USE_LABELS, CardUse, cardUseReasons, describeEffects, energyReadout, moveAction, primaryAction, queueRowLabel,removeQueueAction, selectHero, pickInstruction, unpitchCard } from "./planning-selection";
 
 const NO_TILES: readonly GridPosition[] = [];
@@ -86,46 +84,6 @@ const HERO_NAMES: Record<HeroClass, string> = {
   [HeroClass.Controller]: "Controller",
   [HeroClass.Assassin]: "Assassin",
 };
-
-interface PlaybackState {
-  tick: number;
-  tickCount: number;
-  positions: Record<string, GridPosition>;
-  /** Shield per Hero id gained so far in the playback, less what Attacks absorbed; it expires with the playback. */
-  shields: Record<string, number>;
-  /** Cards removed from each Hero's Deck so far in the playback (Deck Damage). */
-  deckDamage: Record<string, number>;
-  /** Cards shuffled from the Discard into each Hero's Deck so far in the playback. */
-  shuffled: Record<string, number>;
-  exhausted: string[];
-  /** Heroes hit in the frame being shown. */
-  hit: string[];
-  /** The clip each Hero plays in the frame being shown (Heroes not listed idle). */
-  clips: Record<string, ClipName>;
-  /** Milliseconds after the start of the frame at which a Hero's clip starts (a target reacts at the impact beat). */
-  clipDelays: Record<string, number>;
-  /** The tile each walking Hero comes from in the frame being shown (its figure glides to its new tile). */
-  walks: Record<string, GridPosition>;
-  /** The sight at the end of the Round and the positions of the Squad's Heroes at both ends: the fog follows the walk between them. */
-  sightAfter: NonNullable<ComponentProps<typeof Board>["sightAfter"]>;
-  aims: Record<string, string>;
-  /** The effects of the attacks of the frame being shown. */
-  effects: EffectCue[];
-  /** Heroes Slowed or Marked so far in the playback: they carry it until the end of the next Resolution. */
-  slowed: string[];
-  marked: string[];
-  /** The commentary of the Tick being shown. */
-  commentary: CommentaryEntry[];
-  /** The target lines of the actions resolved in the frame being shown. */
-  lines: TargetLine[];
-  /** Cover destroyed and Cover placed so far in the playback, each from the moment its effect shows it; the board adds them to the view's. */
-  coverDestroyed: GridPosition[];
-  coverPlaced: GridPosition[];
-  /** The Cover placed so far in the playback by the Squad's own Heroes (the rest of `coverPlaced` is the enemy's). */
-  coverPlacedOwn: GridPosition[];
-  /** The tiles of `coverDestroyed` that leave no scorched outline (Placed Cover that went for a fourth). */
-  coverNoScorch: GridPosition[];
-}
 
 /**
  * The chip at the top right under the timer: how many Placed Cover tiles the Squad has of the most it may have (docs/design/
@@ -233,8 +191,6 @@ function WaitCard({ heroClass, dimmed, disabled, locked, onWait }: { heroClass: 
 }
 
 const WAIT_CARD_WIDTH = 108;
-/** Two sounds of one callout (a zone taken, then Credits) follow each other this far apart. */
-const SOUND_GAP_MS = 450;
 
 const LOCKED_TITLE = "locked during the Resolution";
 const USED_TITLE = "already used this Round";
@@ -334,12 +290,74 @@ const ACTION_USE_LABELS: Record<Exclude<ActionKind, ActionKind.Wait>, string> = 
   [ActionKind.Primary]: CARD_USE_LABELS[CardUse.Primary],
 };
 
-function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpacity, disabled, locked, onCardClick, onCardPointerDown, collapsed, arriving }: HandProps) {
-  const deck = HERO_DECKS[hero.heroClass];
-  const middle = (hero.hand.length - 1) / 2;
+/** The note on a card of the Hand that is in use: what it does in the Queue, that a Pitch can be undone, or what to pick next. */
+function cardUseLabel({ queued, queuedAt, isPitched, armed, armedLabel }: { queued: QueuedAction | undefined; queuedAt: number; isPitched: boolean; armed: boolean; armedLabel: string }): string {
+  if (queued && queued.kind !== ActionKind.Wait) return `${ACTION_USE_LABELS[queued.kind]} · #${queuedAt + 1}`;
+  if (isPitched) return `${CARD_USE_LABELS[CardUse.Pitch]} · tap to undo`;
+  return armed ? armedLabel : "";
+}
+
+/** Where a card that is drawn flies in from: the Deck pile, after its turn in the draw (empty for a card that is already in the Hand). */
+function arrivalStyle(position: number, arrivalOrder: number, spacing: ReturnType<typeof fanSpacing>): CSSProperties {
+  if (arrivalOrder < 0) return {};
+  return {
+    "--from-x": `${PILE_CENTRE_X - (position * spacing.step + spacing.cardWidth / 2)}px`,
+    "--from-y": `${PILE_TO_CARD_Y}px`,
+    "--draw-delay": `${drawSchedule(arrivalOrder).start}ms`,
+  } as CSSProperties;
+}
+
+const cardButtonClass = (type: CardType, { used, locked, lifted }: { used: boolean; locked: boolean; lifted: boolean }) =>
+  `card designed ${type}${used ? " used" : ""}${locked ? " locked" : ""}${lifted ? " lifted" : ""}`;
+
+/** The tooltip of a locked card: it was used this Round, or the Resolution is playing. */
+function lockedTitle(locked: boolean, used: boolean): string | undefined {
+  if (!locked) return undefined;
+  return used ? USED_TITLE : LOCKED_TITLE;
+}
+
+type PressedCard = (event: ReactPointerEvent<HTMLElement> | ReactMouseEvent<HTMLElement>, fallback: CardIndex) => CardIndex;
+
+/** One card of the fan. */
+function HandCard({ hand, cardIndex, position, spacing, pressedCard }: { hand: HandProps; cardIndex: number; position: number; spacing: ReturnType<typeof fanSpacing>; pressedCard: PressedCard }) {
+  const { hero, queue, pitched, armed, armedLabel, held, inUse, otherOpacity, disabled, locked, onCardClick, onCardPointerDown, arriving } = hand;
+  const card = HERO_DECKS[hero.heroClass][cardIndex]!;
+  const queuedAt = queue.findIndex((action) => actionUsesCard(action, cardIndex));
+  const queued = queue[queuedAt];
+  const isPitched = pitched.includes(cardIndex);
+  const used = Boolean(queued || isPitched);
+  const use = cardUseLabel({ queued, queuedAt, isPitched, armed: cardIndex === armed, armedLabel });
+  const arrivalOrder = arriving.indexOf(cardIndex);
+  const dim = inUse !== undefined && cardIndex !== inUse ? otherOpacity : 1;
+  return (
+    <li
+      className={arrivalOrder >= 0 ? "arriving" : undefined}
+      style={{ "--offset": position - (hero.hand.length - 1) / 2, "--position": position, "--dim": dim, ...arrivalStyle(position, arrivalOrder, spacing) } as CSSProperties}
+    >
+      <button
+        type="button"
+        className={cardButtonClass(card.type, { used, locked, lifted: cardIndex === held })}
+        aria-label={card.name}
+        title={lockedTitle(locked, used)}
+        aria-pressed={cardIndex === armed || cardIndex === held || queuedAt >= 0 || isPitched}
+        disabled={disabled}
+        onClick={(event) => onCardClick(event.detail === 0 ? cardIndex : pressedCard(event, cardIndex), event)}
+        onPointerDown={(event) => onCardPointerDown(pressedCard(event, cardIndex), event)}
+      >
+        <DesignedCard card={card} width={spacing.cardWidth} />
+        {use && <span className="card-use">{use}</span>}
+        {locked && <LockedMark used={used} />}
+        {arrivalOrder >= 0 && <span className="card-back" aria-hidden="true" />}
+      </button>
+    </li>
+  );
+}
+
+function Hand(props: HandProps) {
+  const { hero, disabled, onCardPointerDown, collapsed, arriving } = props;
   const spacing = fanSpacing(FAN_WIDTH, hero.hand.length);
   // The card under the finger is the one whose strip it is on, however the rotated card boxes overlap.
-  const pressedCard = (event: ReactPointerEvent<HTMLElement> | ReactMouseEvent<HTMLElement>, fallback: CardIndex): CardIndex => {
+  const pressedCard: PressedCard = (event, fallback) => {
     const fan = event.currentTarget.closest("ul");
     if (!fan) return fallback;
     const position = cardAtX(spacing, hero.hand.length, event.clientX - fan.getBoundingClientRect().left);
@@ -356,51 +374,9 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
       }}
       onDragStart={(event) => event.preventDefault()}
     >
-      {hero.hand.map((cardIndex, position) => {
-        const card = deck[cardIndex]!;
-        const offset = position - middle;
-        const queuedAt = queue.findIndex((action) => actionUsesCard(action, cardIndex));
-        const isPitched = pitched.includes(cardIndex);
-        let use = "";
-        const queued = queue[queuedAt];
-        const lockedTitle = queued || isPitched ? USED_TITLE : LOCKED_TITLE;
-        if (queued && queued.kind !== ActionKind.Wait) {
-          use = `${ACTION_USE_LABELS[queued.kind]} · #${queuedAt + 1}`;
-        } else if (isPitched) use = `${CARD_USE_LABELS[CardUse.Pitch]} · tap to undo`;
-        else if (cardIndex === armed) use = armedLabel;
-        const arrivalOrder = arriving.indexOf(cardIndex);
-        const arrival =
-          arrivalOrder < 0
-            ? ({} as CSSProperties)
-            : ({
-                "--from-x": `${PILE_CENTRE_X - (position * spacing.step + spacing.cardWidth / 2)}px`,
-                "--from-y": `${PILE_TO_CARD_Y}px`,
-                "--draw-delay": `${drawSchedule(arrivalOrder).start}ms`,
-              } as CSSProperties);
-        return (
-          <li
-            key={cardIndex}
-            className={arrivalOrder >= 0 ? "arriving" : undefined}
-            style={{ "--offset": offset, "--position": position, "--dim": inUse !== undefined && cardIndex !== inUse ? otherOpacity : 1, ...arrival } as CSSProperties}
-          >
-            <button
-              type="button"
-              className={`card designed ${card.type}${queued || isPitched ? " used" : ""}${locked ? " locked" : ""}${cardIndex === held ? " lifted" : ""}`}
-              aria-label={card.name}
-              title={locked ? lockedTitle : undefined}
-              aria-pressed={cardIndex === armed || cardIndex === held || queuedAt >= 0 || isPitched}
-              disabled={disabled}
-              onClick={(event) => onCardClick(event.detail === 0 ? cardIndex : pressedCard(event, cardIndex), event)}
-              onPointerDown={(event) => onCardPointerDown(pressedCard(event, cardIndex), event)}
-            >
-              <DesignedCard card={card} width={spacing.cardWidth} />
-              {use && <span className="card-use">{use}</span>}
-              {locked && <LockedMark used={Boolean(queued || isPitched)} />}
-              {arrivalOrder >= 0 && <span className="card-back" aria-hidden="true" />}
-            </button>
-          </li>
-        );
-      })}
+      {hero.hand.map((cardIndex, position) => (
+        <HandCard key={cardIndex} hand={props} cardIndex={cardIndex} position={position} spacing={spacing} pressedCard={pressedCard} />
+      ))}
     </ul>
   );
 }
@@ -447,7 +423,8 @@ interface PlanningScreenProps {
   onResolved: (view: SquadView) => void;
 }
 
-export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan, onResolved }: PlanningScreenProps) {
+function usePlanState(p: PlanningScreenProps) {
+  const { view, playerHeroClass } = p;
   const initial = view.heroes.find((hero) => hero.heroClass === playerHeroClass)!;
   const [selectedId, setSelectedId] = useState(initial.id);
   const selected = view.heroes.find((hero) => hero.id === selectedId) ?? initial;
@@ -468,6 +445,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const [shufflePending, setShufflePending] = useState(NO_SHUFFLE_PENDING);
   const burnId = useRef(0);
   const unmounted = useRef(false);
+  return { selected, burnQueueRef, burnId, unmounted, selectedId, setSelectedId, queue, setQueue, pitched, setPitched, armed, setArmed, aiming, setAiming, pull, setPullState, playback, setPlayback, burnQueue, setBurnQueue, burnPending, setBurnPending, shufflePending, setShufflePending };
+}
+type Ctx1 = PlanningScreenProps & ReturnType<typeof usePlanState>;
+
+function useMatchAudioLoad(p: Ctx1) {
+  const { view, unmounted } = p;
   useEffect(() => {
     unmounted.current = false;
     // The sounds of the Heroes in this match load while the player plans.
@@ -483,7 +466,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
       gameAudio.stopMusic();
     };
   }, []);
+  return {};
+}
+type Ctx2 = Ctx1 & ReturnType<typeof useMatchAudioLoad>;
 
+function usePlanAndStage(p: Ctx2) {
+  const { view, playerHeroClass, selected, queue, pitched  } = p;
   const plan: SquadPlan = useMemo(
     () => ({ squad: view.squad, heroes: [{ heroId: selected.id, queue, pitched }] }),
     [view.squad, selected.id, queue, pitched],
@@ -502,7 +490,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   useEffect(() => {
     if (playerTile) gameAudio.setListener(playerTile);
   }, [playerTile?.col, playerTile?.row]);
+  return { plan, issues, playing, resolutionStage, setResolutionStage, scoresAfter, setScoresAfter, zonesAfter, setZonesAfter, primeCallout, setPrimeCallout };
+}
+type Ctx3 = Ctx2 & ReturnType<typeof usePlanAndStage>;
 
+function useHandDraw(p: Ctx3) {
+  const { view, playerHeroClass, selected } = p;
   // The draw animation: the cards new in the player's Hand fly in one after the other (hand-draw.ts). The state is
   // derived while rendering the first time a view is seen, so no card shows face up before it has flown.
   // The Deck count the last Resolution left for the player's Hero, to see whether the draw shuffled the Discard in.
@@ -531,7 +524,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
       window.removeEventListener("pointerdown", skip, true);
     };
   }, [draw.view, draw.done, view]);
+  return { deckAfterResolution, drawing, draw };
+}
+type Ctx4 = Ctx3 & ReturnType<typeof useHandDraw>;
 
+function usePileDisplay(p: Ctx4) {
+  const { selected, playback, burnQueue, burnPending, shufflePending, drawing, draw } = p;
   const burning = burnQueue[0];
   const burnCounts = shownBurnCounts(
     selected.deckCount - (playback?.deckDamage[selected.id] ?? 0) + (playback?.shuffled[selected.id] ?? 0),
@@ -548,7 +546,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     exhaustedInPlayback: playback?.exhausted.includes(selected.id) ?? false,
     animationsQueued: burnQueue.length > 0,
   });
+  return { burning, burnCounts, shownDeck, shownDiscard, shuffleWhileDrawing, reducedMotion, exhaustion };
+}
+type Ctx5 = Ctx4 & ReturnType<typeof usePileDisplay>;
 
+function usePlanPaths(p: Ctx5) {
+  const { view, playerHeroClass, getAllyPlan, selected, queue, pitched, plan, playing } = p;
   // The AI allies plan from the same view, so their plan is known before Commit and does not change with ours.
   const [allyPlan, setAllyPlan] = useState<SquadPlan>();
   const getAllyPlanRef = useRef(getAllyPlan);
@@ -579,6 +582,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
 
   const lastMove = queue.filter((action) => action.kind === ActionKind.Move).at(-1);
   const planningFrom = lastMove?.kind === ActionKind.Move ? lastMove.destination : selected.position;
+  return { playerHeroId, squadPlans, paths, collisionTiles, energy, planningFrom };
+}
+type Ctx6 = Ctx5 & ReturnType<typeof usePlanPaths>;
+
+function useShownCover(p: Ctx6) {
+  const { view, playback } = p;
   // During the playback the board also shows the Cover that was destroyed or placed in it so far.
   const playedDestroyed = playback?.coverDestroyed;
   const playedPlaced = playback?.coverPlaced;
@@ -601,6 +610,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     () => withZoneClosed(view.wreckCover.reduce(withWreck, view.destroyedCover.reduce(destroyCover, NOTSTROM_MAP)), view.grid.zoneClosed ?? false),
     [view.destroyedCover, view.wreckCover, view.grid.zoneClosed],
   );
+  return { shownDestroyed, shownPlaced, shownOwnPlaced, knownGrid };
+}
+type Ctx7 = Ctx6 & ReturnType<typeof useShownCover>;
+
+function usePlanLines(p: Ctx7) {
+  const { view, selected, playback, playing, playerHeroId, squadPlans, knownGrid } = p;
   // Who targets whom: the queued actions of the Squad while planning, the actions of the current Tick in the replay.
   const targetLines = useMemo(
     () =>
@@ -645,6 +660,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     ]);
     return Object.fromEntries([...own, ...enemies]);
   }, [view.heroes, view.enemies, squadPlans, playback, playing, playerHeroId]);
+  return { targetLines, effectPaths, crossfireRingList, missHints, marks };
+}
+type Ctx8 = Ctx7 & ReturnType<typeof usePlanLines>;
+
+function useAiming(p: Ctx8) {
+  const { view, selected, queue, armed, aiming, playing, planningFrom, knownGrid } = p;
   // A Long Shot reaches only its normal Range unless the Hero is Hidden (a Marked target is checked by the Resolution).
   const aimedCard = aiming === undefined ? undefined : withReach(HERO_DECKS[selected.heroClass][aiming]!, selected.hidden);
   const aimedModes = aimedCard === undefined ? [] : [aimedCard];
@@ -685,7 +706,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
       ),
     [queue],
   );
+  return { aimedCard, aimedModes, aimsAtTile, highlights, markers, tileTargetsOf, enemyTargetsOf };
+}
+type Ctx9 = Ctx8 & ReturnType<typeof useAiming>;
 
+function useBoardDisplay(p: Ctx9) {
+  const { view, playback, scoresAfter, zonesAfter } = p;
   const onBoard = <T extends { id: string; position: GridPosition; exhausted: boolean }>(units: readonly T[]) =>
     units.map((unit) => ({
       ...unit,
@@ -710,6 +736,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     gameAudio.setBarrier(wallsUp);
   }, [wallsUp]);
   const enemySquad = view.squad === SquadId.Left ? SquadId.Right : SquadId.Left;
+  return { boardHeroes, boardEnemies, zone, contestedNow, score, points, zoneList, countdown, enemySquad };
+}
+type Ctx10 = Ctx9 & ReturnType<typeof useBoardDisplay>;
+
+function useTargeting(p: Ctx10) {
+  const { view, playerHeroClass, selected, selectedId, setSelectedId, queue, setQueue, pitched, setPitched, armed, setArmed, aiming, setAiming, setPullState, playing, aimedModes, enemyTargetsOf } = p;
   /** The Heroes a card in one mode can be aimed at. */
   function heroTargetsOf(mode: CardDefinition): string[] {
     if (mode.target === CardTarget.SelfHero) return [selected.id];
@@ -738,30 +770,45 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     setAiming(undefined);
     setPullState(IDLE);
   }
+  return { candidateIds, sideOf, nameOf, heroTargetsOf, changeSelection };
+}
+type Ctx11 = Ctx10 & ReturnType<typeof useTargeting>;
 
+const placesCover = (card: CardDefinition | undefined) => card?.effects.some((effect) => effect.kind === EffectKind.PlaceCover) === true;
+
+/** How far the use of a card has come: nothing in use, a card selected, or a use chosen on the faces of a pulled card. */
+function cardUseStage(cardInUse: CardIndex | undefined, pull: PullState): CardUseStage {
+  if (cardInUse === undefined) return CardUseStage.Idle;
+  return showsFaces(pull) ? CardUseStage.UseChosen : CardUseStage.Selected;
+}
+
+function useCardUseState(p: Ctx11) {
+  const { view, selected, armed, aiming, pull, playing, squadPlans, energy, planningFrom, aimedCard, aimsAtTile } = p;
   const planningRef = useRef<HTMLDivElement>(null);
   // The card whose use is in progress: pressed or pulled out, or selected for a tile or target.
   const heldInHand = playing ? undefined : heldCard(pull);
   const cardInUse = playing ? undefined : (heldInHand ?? armed ?? aiming);
   // The Placed Cover the plans put down and the oldest that goes for it; a Placed-Cover card being aimed counts as one more.
   // A card that places Cover counts from the moment it is picked up (pulled from the Hand) or aimed, so the player sees at once which Cover it takes.
-  const placesCover = (card: CardDefinition | undefined) => card?.effects.some((effect) => effect.kind === EffectKind.PlaceCover) === true;
   const aimsToPlaceCover = !playing && (placesCover(aimedCard) || (heldInHand !== undefined && placesCover(HERO_DECKS[selected.heroClass][heldInHand])));
   const coverChange = useMemo(
     () => (playing ? undefined : plannedCoverPlan(view.ownPlacedCover, view.heroes, squadPlans, aimsToPlaceCover)),
     [playing, view.ownPlacedCover, view.heroes, squadPlans, aimsToPlaceCover],
   );
   const coverPlan = coverChange ?? NO_COVER_PLAN;
-  let stage = CardUseStage.Idle;
-  if (cardInUse !== undefined) stage = showsFaces(pull) ? CardUseStage.UseChosen : CardUseStage.Selected;
-  const focus = hudFocus({ energy: energy.available, stage });
+  const focus = hudFocus({ energy: energy.available, stage: cardUseStage(cardInUse, pull) });
   const pickBoard = useRef<((point: Point) => BoardPick) | undefined>(undefined);
 
   const picking = (armed !== undefined || aiming !== undefined) && !playing;
   const heroScreenRef = useRef<((heroId: string) => Point | undefined) | undefined>(undefined);
   /** The hero whose surroundings the camera frames while a tile is picked. */
   const frameHero = picking && (armed !== undefined || aimsAtTile) ? planningFrom : undefined;
+  return { planningRef, heldInHand, cardInUse, aimsToPlaceCover, coverChange, coverPlan, focus, pickBoard, picking, heroScreenRef, frameHero };
+}
+type Ctx12 = Ctx11 & ReturnType<typeof useCardUseState>;
 
+function useShotTargets(p: Ctx12) {
+  const { view, playing, planningFrom, knownGrid, aimedCard, aimsAtTile, candidateIds } = p;
   // The line of fire to every enemy the aimed Attack card can be aimed at.
   const shotLines = useMemo(
     () =>
@@ -794,7 +841,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     const outOfReach = shotLines.some((shot) => !shot.ringed || shot.segments.some((segment) => segment.style !== SegmentStyle.Clear));
     return outOfReach ? "red lines may miss from the planned position" : undefined;
   }, [namesDeclaredTarget, aimedCard, shotLines]);
+  return { shotLines, targetableIds, rangeArea, noEnemyInRange, aimHint };
+}
+type Ctx13 = Ctx12 & ReturnType<typeof useShotTargets>;
 
+function useDragPlaces(p: Ctx13) {
+  const { view, selected, pull, playing, planningFrom, knownGrid, tileTargetsOf, heroTargetsOf, heldInHand } = p;
   // While a card is pulled, the places it can be dropped on are lit (issue 410): the tiles of Move 3 and of its tile
   // target, and the Heroes its Primary can be aimed at. They are the same places the tap flow offers.
   const pulling = !playing && pull.phase === "pulled";
@@ -817,7 +869,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   }, [pulling, heldInHand, selected.id, selected.heroClass, planningFrom, knownGrid, view.grid, view.heroes, view.enemies, view.placedCover]);
   const dragHighlights = useMemo(() => (dragPlaces ? [...dragPlaces.moveTiles, ...dragPlaces.primaryTiles] : NO_TILES), [dragPlaces]);
   const energyPillRef = useRef<HTMLDivElement>(null);
+  return { pulling, dragPlaces, dragHighlights, energyPillRef };
+}
+type Ctx14 = Ctx13 & ReturnType<typeof useDragPlaces>;
 
+function usePullState(p: Ctx14) {
+  const { selected, queue, setQueue, pitched, setPitched, setArmed, setAiming, setPullState, heldInHand  } = p;
   // The state of the pull is kept in a ref as well, because the window listeners of a gesture read it between renders.
   const pullRef = useRef<PullState>(IDLE);
   function setPull(next: PullState) {
@@ -859,6 +916,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     setPull(state);
     if (chosen) useCard(chosen.card, chosen.face);
   }
+  return { pullRef, gesture, pulledCard, pulledFaces, setPull, faceAt, applyPull };
+}
+type Ctx15 = Ctx14 & ReturnType<typeof usePullState>;
+
+function useDragHandlers(p: Ctx15) {
+  const { selected, queue, setQueue, pitched, setPitched, setArmed, setAiming, heldInHand, pickBoard, dragPlaces, energyPillRef, pullRef, gesture, setPull, faceAt, applyPull } = p;
   // The window listeners must be the same functions when added and removed, so they call the latest handlers.
   const dragHandlers = useRef<{ move: (event: PointerEvent) => void; end: (event: PointerEvent) => void }>({ move: () => {}, end: () => {} });
   const [{ onDragMove, onDragEnd }] = useState(() => ({
@@ -920,6 +983,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     setQueue(next.queue);
     setPitched(next.pitched);
   }
+  return { onDragMove, onDragEnd };
+}
+type Ctx16 = Ctx15 & ReturnType<typeof useDragHandlers>;
+
+function useCardTaps(p: Ctx16) {
+  const { selected, queue, setQueue, pitched, setPitched, armed, setArmed, aiming, setAiming, playing, aimsAtTile, targetableIds, gesture, setPull, onDragMove, onDragEnd } = p;
   function startCardPress(card: CardIndex, event: ReactPointerEvent) {
     if (playing || gesture.current || (event.pointerType === "mouse" && event.button !== 0)) return;
     // A mouse press must not start a text selection or a native drag, which would cancel the pointer gesture (the click still fires).
@@ -964,7 +1033,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     setQueue([...queue, moveAction(armed, destination)]);
     setArmed(undefined);
   }
+  return { startCardPress, clickCard, cancelUse, tapTarget, tapTile };
+}
+type Ctx17 = Ctx16 & ReturnType<typeof useCardTaps>;
 
+function useMusicAndCountdown(p: Ctx17) {
+  const { playing, contestedNow  } = p;
   // Planning ends early on Commit, or when the timer runs out; a timeout leaves the player's Queues empty.
   const [secondsLeft, setSecondsLeft] = useState(PLANNING_TIMER_SECONDS);
   // The music steps up with the round: planning, the last seconds of it, the Resolution; a contested Prime Zone is the climax.
@@ -982,6 +1056,12 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     const due = playing ? undefined : countdownCallout(secondsLeft);
     if (due) gameAudio.playUi(due.sound);
   }, [secondsLeft, playing]);
+  return { secondsLeft, setSecondsLeft };
+}
+type Ctx18 = Ctx17 & ReturnType<typeof useMusicAndCountdown>;
+
+function useCommit(p: Ctx18) {
+  const { view, playerHeroClass, submitPlan, onResolved, burnQueueRef, burnId, unmounted, setQueue, setPitched, setArmed, playback, setPlayback, setBurnQueue, setBurnPending, setShufflePending, setResolutionStage, setScoresAfter, setZonesAfter, setPrimeCallout, deckAfterResolution, sideOf, nameOf, setPull, setSecondsLeft } = p;
   const commitRef = useRef<((toSubmit: SquadPlan) => Promise<void>) | undefined>(undefined);
   commitRef.current = commit;
   const committingRef = useRef(false);
@@ -1029,173 +1109,67 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     setResolutionStage("callout");
     await new Promise((resolve) => setTimeout(resolve, RESOLUTION_CALLOUT_MS));
     if (unmounted.current) return;
-    setResolutionStage("ticks");
-    const positions: Record<string, GridPosition> = {};
-    const startPositions: Record<string, GridPosition> = Object.fromEntries(
-      [...view.heroes, ...view.enemies].flatMap((unit) => ("position" in unit ? [[unit.id, unit.position]] : [])),
+    const deckLeft = await playResolution(
+      {
+        view,
+        playerHeroClass,
+        nameOf,
+        sideOf,
+        isUnmounted: () => unmounted.current,
+        queuedAnimations: () => burnQueueRef.current.length,
+        nextBurnId: () => burnId.current++,
+        set: {
+          playback: setPlayback,
+          burnQueue: setBurnQueue,
+          burnPending: setBurnPending,
+          shufflePending: setShufflePending,
+          resolutionStage: setResolutionStage,
+          scoresAfter: setScoresAfter,
+          zonesAfter: setZonesAfter,
+          primeCallout: setPrimeCallout,
+        },
+      },
+      result,
     );
-    const shields: Record<string, number> = {};
-    const deckDamage: Record<string, number> = {};
-    const shuffled: Record<string, number> = {};
-    const playerHero = view.heroes.find((hero) => hero.heroClass === playerHeroClass)!;
-    // The enemies the Squad sees at the start or at the end of the Resolution may be heard; the rest stay silent (Fog of War).
-    const heardEnemies = new Set([...view.enemies, ...result.view.enemies].filter((enemy) => enemy.visibility === Visibility.Visible).map((enemy) => enemy.id));
-    const exhausted: string[] = [];
-    const tickCount = tickCountOf(result.events);
-    let commentary: CommentaryEntry[] = [];
-    let commentaryTick = 0;
-    const heroPositions = (heroes: typeof view.heroes) => Object.fromEntries(heroes.map((hero) => [hero.id, hero.position]));
-    const sightAfter = { visibleTiles: result.view.visibleTiles, startPositions: heroPositions(view.heroes), endPositions: heroPositions(result.view.heroes) };
-    setPlayback({ tick: 0, tickCount, positions, shields, deckDamage, shuffled, exhausted, hit: [], clips: {}, clipDelays: {}, walks: {}, sightAfter, aims: {}, effects: [], slowed: [], marked: [], commentary, lines: [], coverDestroyed: [], coverPlaced: [], coverPlacedOwn: [], coverNoScorch: [] });
-    let coverDestroyed: GridPosition[] = [];
-    let coverPlaced: GridPosition[] = [];
-    let coverPlacedOwn: GridPosition[] = [];
-    let coverNoScorch: GridPosition[] = [];
-    const ownHeroIds = new Set(view.heroes.map((hero) => hero.id));
-    const slowed: string[] = [];
-    const marked: string[] = [];
-    const classes = new Map([...view.heroes, ...view.enemies].map((unit) => [unit.id, unit.heroClass]));
-    // Reduced motion plays no clips, so a frame lasts one step; otherwise until the slowest clip is back at rest.
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const grid = coverGridOf(view.destroyedCover, view.placedCover, view.wreckCover);
-    for (const frame of buildPlaybackFrames(result.events, (heroId) => classes.get(heroId), (tile) => coverAt(grid, tile))) {
-      Object.assign(positions, frame.moves);
-      for (const [heroId, amount] of Object.entries(frame.shields)) shields[heroId] = (shields[heroId] ?? 0) + amount;
-      for (const { targetId, damage, absorbed } of frame.hits) {
-        shields[targetId] = Math.max(0, (shields[targetId] ?? 0) - absorbed);
-        deckDamage[targetId] = (deckDamage[targetId] ?? 0) + damage;
-      }
-      // Burns and shuffles queue in the order of the events, so a shuffle in the middle of a hit plays after the cards
-      // burned before it and before the cards that burn after it.
-      for (const event of frame.events) {
-        const isOwn = view.heroes.some((hero) => hero.id === (event.targetId ?? event.heroId));
-        if (event.kind === EventKind.AttackHit && (event.damage ?? 0) > 0 && isOwn) {
-          const heroId = event.targetId!;
-          setBurnPending((pending) => addBurn(pending, heroId, event.damage!));
-          setBurnQueue((queued) => [...queued, { kind: "burn", id: burnId.current++, heroId, cards: event.damage! }]);
-        }
-        if (event.kind === EventKind.DeckShuffled) {
-          shuffled[event.heroId] = (shuffled[event.heroId] ?? 0) + (event.amount ?? 0);
-          if (event.heroId === playerHero.id) {
-            const cards = event.amount ?? 0;
-            setShufflePending((pending) => addShuffle(pending, event.heroId, cards));
-            setBurnQueue((queued) => [...queued, { kind: "shuffle", id: burnId.current++, heroId: event.heroId, cards }]);
-          }
-        }
-      }
-      exhausted.push(...frame.exhausted);
-      for (const cue of frame.effects) {
-        if (cue.kind === "slow") slowed.push(cue.toId);
-        if (cue.kind === "marked") marked.push(cue.toId);
-      }
-      if (frame.tick !== commentaryTick) {
-        commentaryTick = frame.tick;
-        commentary = buildCommentary(
-          result.events.filter((event) => event.tick === frame.tick),
-          { nameOf, sideOf },
-        );
-      }
-      setPlayback({
-        tick: frame.tick,
-        tickCount,
-        positions: { ...positions },
-        shields: { ...shields },
-        deckDamage: { ...deckDamage },
-        shuffled: { ...shuffled },
-        exhausted: [...exhausted],
-        hit: frame.hits.map((hit) => hit.targetId),
-        clips: frame.clips,
-        clipDelays: frame.delays,
-        walks: frame.walks,
-        sightAfter,
-        aims: frame.aims,
-        effects: frame.effects,
-        slowed: [...slowed],
-        marked: [...marked],
-        commentary,
-        lines: replayTargetLines(frame.events, view.heroes, view.enemies, (heroId) => positions[heroId] ?? startPositions[heroId]),
-        coverDestroyed,
-        coverPlaced,
-        coverPlacedOwn,
-        coverNoScorch,
-      });
-      gameAudio.setListener(positions[playerHero.id] ?? startPositions[playerHero.id]!);
-      gameAudio.play(
-        planFrame(
-          frame,
-          gameAudio.contextFor({
-            classOf: (heroId) => classes.get(heroId),
-            isOwn: (heroId) => ownHeroIds.has(heroId),
-            isHeard: (heroId) => ownHeroIds.has(heroId) || (heardEnemies.has(heroId) && enemyIsDrawn(frame.clips[heroId])),
-            tileOf: (heroId) => positions[heroId] ?? startPositions[heroId],
-            immediate: reducedMotion,
-          }),
-        ),
-        positions[playerHero.id] ?? startPositions[playerHero.id],
-      );
-      // Cover that is placed or destroyed changes the board at the moment its effect shows it (at once with reduced motion).
-      const hold = reducedMotion ? STEP_MS : Math.max(STEP_MS, frame.holdMs / CLIP_SPEED);
-      let waited = 0;
-      for (const edit of [...frame.coverEdits].sort((a, b) => a.atMs - b.atMs)) {
-        const at = reducedMotion ? 0 : Math.min(hold, edit.atMs / CLIP_SPEED);
-        await new Promise((resolve) => setTimeout(resolve, at - waited));
-        if (unmounted.current) return;
-        waited = at;
-        const isTile = (tile: GridPosition) => tile.col === edit.tile.col && tile.row === edit.tile.row;
-        if (edit.kind === "destroyed") {
-          coverPlaced = coverPlaced.filter((tile) => !isTile(tile));
-          coverPlacedOwn = coverPlacedOwn.filter((tile) => !isTile(tile));
-          coverDestroyed = [...coverDestroyed, edit.tile];
-          // Placed Cover that goes because a fourth was placed leaves no scorched outline.
-          if (edit.scorch === false) coverNoScorch = [...coverNoScorch, edit.tile];
-        } else {
-          coverPlaced = [...coverPlaced, edit.tile];
-          if (edit.casterId !== undefined && ownHeroIds.has(edit.casterId)) coverPlacedOwn = [...coverPlacedOwn, edit.tile];
-        }
-        const [destroyedNow, placedNow, ownNow, noScorchNow] = [coverDestroyed, coverPlaced, coverPlacedOwn, coverNoScorch];
-        setPlayback((current) => current && { ...current, coverDestroyed: destroyedNow, coverPlaced: placedNow, coverPlacedOwn: ownNow, coverNoScorch: noScorchNow });
-      }
-      await new Promise((resolve) => setTimeout(resolve, hold - waited));
-      if (unmounted.current) return;
-    }
-    setResolutionStage("done");
-    setScoresAfter(result.view.scores);
-    // The zones after the Resolution: the callouts play one after the other.
-    setZonesAfter(result.view.zones);
-    const callouts = [...zoneCallouts(view.zones, result.view.zones, view.squad), ...matchEndCallouts(result.view.result, view.squad)];
-    for (const callout of callouts) {
-      // Unmount between two callouts so that two with the same text both play.
-      setPrimeCallout(undefined);
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      setPrimeCallout(callout);
-      callout.sounds?.forEach((sound, index) => gameAudio.playUi(sound, index * SOUND_GAP_MS));
-      await new Promise((resolve) => setTimeout(resolve, callout.durationMs));
-      if (unmounted.current) return;
-    }
-    // Let the pile animations that are still queued (a shuffle at the very end of the Resolution) play out.
-    const patience = Date.now() + 10_000;
-    while (burnQueueRef.current.length > 0 && Date.now() < patience) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      if (unmounted.current) return;
-    }
-    deckAfterResolution.current = playerHero.deckCount - (deckDamage[playerHero.id] ?? 0) + (shuffled[playerHero.id] ?? 0);
-    setBurnQueue([]);
-    setBurnPending(NO_BURN_PENDING);
-    setShufflePending(NO_SHUFFLE_PENDING);
-    setPlayback(undefined);
-    setResolutionStage(undefined);
-    setScoresAfter(undefined);
-    setZonesAfter(undefined);
-    setPrimeCallout(undefined);
+    if (deckLeft === undefined) return;
+    deckAfterResolution.current = deckLeft;
     setQueue([]);
     setPitched([]);
     setArmed(undefined);
     setPull(IDLE);
     onResolved(result.view);
   }
+  return { commit };
+}
+type Ctx19 = Ctx18 & ReturnType<typeof useCommit>;
 
+function usePlanningContext(props: PlanningScreenProps) {
+  const c1 = { ...props, ...usePlanState(props) };
+  const c2 = { ...c1, ...useMatchAudioLoad(c1) };
+  const c3 = { ...c2, ...usePlanAndStage(c2) };
+  const c4 = { ...c3, ...useHandDraw(c3) };
+  const c5 = { ...c4, ...usePileDisplay(c4) };
+  const c6 = { ...c5, ...usePlanPaths(c5) };
+  const c7 = { ...c6, ...useShownCover(c6) };
+  const c8 = { ...c7, ...usePlanLines(c7) };
+  const c9 = { ...c8, ...useAiming(c8) };
+  const c10 = { ...c9, ...useBoardDisplay(c9) };
+  const c11 = { ...c10, ...useTargeting(c10) };
+  const c12 = { ...c11, ...useCardUseState(c11) };
+  const c13 = { ...c12, ...useShotTargets(c12) };
+  const c14 = { ...c13, ...useDragPlaces(c13) };
+  const c15 = { ...c14, ...usePullState(c14) };
+  const c16 = { ...c15, ...useDragHandlers(c15) };
+  const c17 = { ...c16, ...useCardTaps(c16) };
+  const c18 = { ...c17, ...useMusicAndCountdown(c17) };
+  const c19 = { ...c18, ...useCommit(c18) };
+  return c19;
+}
+
+function PlanningBoard(p: Ctx19) {
+  const { view, playerHeroClass, selected, playback, paths, collisionTiles, shownDestroyed, shownPlaced, shownOwnPlaced, targetLines, effectPaths, crossfireRingList, marks, highlights, markers, boardHeroes, boardEnemies, score, countdown, changeSelection, coverPlan, pickBoard, heroScreenRef, frameHero, shotLines, targetableIds, rangeArea, dragPlaces, dragHighlights, tapTarget, tapTile } = p;
   return (
-    <div className="planning" ref={planningRef}>
+    <>
       <Board
         destroyedCover={shownDestroyed}
         placedCover={shownPlaced}
@@ -1238,6 +1212,14 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         moveFrameHero={frameHero}
         heroScreenRef={heroScreenRef}
       />
+    </>
+  );
+}
+
+function PlanningZoneHud(p: Ctx19) {
+  const { view, playing, score, points, zoneList, countdown, enemySquad, secondsLeft } = p;
+  return (
+    <>
       <div
         className={`prime-pill prime-${score.state} with-zones${playing ? " resolving" : ""}`}
         data-testid="prime-progress"
@@ -1272,6 +1254,14 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
           {secondsLeft === 0 || playing ? "LOCKED" : formatTimer(secondsLeft)}
         </span>
       </div>
+    </>
+  );
+}
+
+function PlanningCallouts(p: Ctx19) {
+  const { playback, playing, resolutionStage, primeCallout, shownOwnPlaced, aimsToPlaceCover, coverChange, secondsLeft } = p;
+  return (
+    <>
       {(shownOwnPlaced.length > 0 || coverChange?.fresh.length || aimsToPlaceCover) && (
         <CoverChip count={shownOwnPlaced.length} overflow={coverChange?.overflow === true} resolving={playing} />
       )}
@@ -1285,6 +1275,14 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
         </div>
       )}
       {primeCallout !== undefined && <Callout kind="word" text={primeCallout.text} detail={primeCallout.detail} tone={primeCallout.tone} durationMs={primeCallout.durationMs} />}
+    </>
+  );
+}
+
+function PlanningOverlays(p: Ctx19) {
+  const { selected, pull, playback, pullRef, pulledCard, pulledFaces, applyPull } = p;
+  return (
+    <>
       {playback !== undefined && playback.commentary.length > 0 && (
         // A new key per Tick: the entries of the previous Tick are replaced and slide in again.
         <ol className="commentary" aria-label="Resolution commentary" data-testid="commentary" key={playback.tick}>
@@ -1307,6 +1305,52 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
           onOutside={() => applyPull(tapPull(pullRef.current, undefined))}
         />
       )}
+    </>
+  );
+}
+
+/** Takes the last Pitch back: the Energy goes down and the card is free again. */
+function UndoPitchButton(p: Ctx19) {
+  const { pitched, setPitched, setPull, playing, drawing, exhaustion, focus } = p;
+  return (
+    <button
+      type="button"
+      className="pitch-undo"
+      disabled={playing || drawing || exhaustion.greyed}
+      style={{ opacity: focus.energyPill }}
+      onClick={() => {
+        setPitched(unpitchCard(pitched, pitched[pitched.length - 1]!));
+        setPull(IDLE);
+      }}
+    >
+      Undo Pitch
+    </button>
+  );
+}
+
+/** The Wait card beside the Hand. */
+function WaitSlot(p: Ctx19) {
+  const { selected, queue, setQueue, setArmed, setAiming, setPull, playing, drawing, exhaustion } = p;
+  return (
+    <WaitCard
+      dimmed={queue.length >= MAX_QUEUE_LENGTH}
+      disabled={playing || drawing || exhaustion.greyed}
+      locked={playing}
+      heroClass={selected.heroClass}
+      onWait={() => {
+        setQueue(addWaitAction(queue));
+        setArmed(undefined);
+        setAiming(undefined);
+        setPull(IDLE);
+      }}
+    />
+  );
+}
+
+function PlanningHandBar(p: Ctx19) {
+  const { selected, queue, pitched, armed, aiming, playing, drawing, draw, burnCounts, shownDeck, shownDiscard, shuffleWhileDrawing, exhaustion, energy, heldInHand, cardInUse, focus, picking, pulling, energyPillRef, startCardPress, clickCard } = p;
+  return (
+    <>
       <div className={`hud hand-bar${picking ? " collapsed" : ""}`}>
         <PilePanel
           deck={shuffleWhileDrawing ? draw.deckBefore : shownDeckCount(shownDeck, drawing ? draw.cards.length : 0, draw.departed)}
@@ -1316,35 +1360,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
           resolving={playing}
           skull={exhaustion.skull}
           greyed={exhaustion.greyed}
-          burn={
-            <>
-              {burning?.kind === "burn" && (
-                <DeckBurn
-                  key={burning.id}
-                  cards={burning.cards}
-                  visible={burning.heroId === selected.id}
-                  reducedMotion={reducedMotion}
-                  onLifted={() => setBurnPending((pending) => settleBurn(pending, burning.heroId, "lifted"))}
-                  onBurned={() => setBurnPending((pending) => settleBurn(pending, burning.heroId, "burned"))}
-                  onDone={() => setBurnQueue((queued) => queued.filter((batch) => batch.id !== burning.id))}
-                />
-              )}
-              {burning?.kind === "shuffle" && (
-                <DeckShuffle
-                  key={burning.id}
-                  cards={burning.cards}
-                  visible={burning.heroId === selected.id}
-                  reducedMotion={reducedMotion}
-                  onStart={() => setShufflePending((pending) => settleShuffle(pending, burning.heroId, "started", burning.cards))}
-                  onDone={() => {
-                    setShufflePending((pending) => settleShuffle(pending, burning.heroId, "ended", burning.cards));
-                    setBurnQueue((queued) => queued.filter((step) => step.id !== burning.id));
-                  }}
-                />
-              )}
-              {shuffleWhileDrawing && <DeckShuffle cards={draw.shuffled} visible reducedMotion={false} onStart={noop} onDone={noop} />}
-            </>
-          }
+          burn={<PileAnimations {...p} />}
         />
         <div className={`hand-column${exhaustion.greyed ? " exhausted-hud" : ""}`} style={playing ? { opacity: RESOLUTION_DIM } : undefined}>
           <div className="energy-row">
@@ -1356,20 +1372,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
               title={`Pitched ${energy.pitched} · Spent ${energy.spent}`}
               opacity={focus.energyPill}
             />
-            {pitched.length > 0 && (
-              <button
-                type="button"
-                className="pitch-undo"
-                disabled={playing || drawing || exhaustion.greyed}
-                style={{ opacity: focus.energyPill }}
-                onClick={() => {
-                  setPitched(unpitchCard(pitched, pitched[pitched.length - 1]!));
-                  setPull(IDLE);
-                }}
-              >
-                Undo Pitch
-              </button>
-            )}
+            {pitched.length > 0 && <UndoPitchButton {...p} />}
           </div>
           <Hand
             hero={selected}
@@ -1388,33 +1391,39 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
             collapsed={picking}
           />
         </div>
-        {!picking && (
-          <WaitCard
-            dimmed={queue.length >= MAX_QUEUE_LENGTH}
-            disabled={playing || drawing || exhaustion.greyed}
-            locked={playing}
-            heroClass={selected.heroClass}
-            onWait={() => {
-              setQueue(addWaitAction(queue));
-              setArmed(undefined);
-              setAiming(undefined);
-              setPull(IDLE);
-            }}
-          />
-        )}
+        {!picking && <WaitSlot {...p} />}
       </div>
-      {picking && (armed ?? aiming) !== undefined && (
-        <FloatingCard
-          card={HERO_DECKS[selected.heroClass][(armed ?? aiming)!]!}
-          instruction={
-            aimedCard === undefined
-              ? "Tap a lit tile"
-              : pickInstruction({ card: aimedCard, aimsAtTile, noEnemyInRange }) +
-                (aimHint ? ` · ${aimHint}` : "")
-          }
-          onCancel={cancelUse}
-        />
-      )}
+    </>
+  );
+}
+
+/** The card in use as a chip, with what to tap next. */
+function PickingCard(p: Ctx19) {
+  const { selected, armed, aiming, aimedCard, aimsAtTile, noEnemyInRange, aimHint, cancelUse } = p;
+  const instruction =
+    aimedCard === undefined ? "Tap a lit tile" : pickInstruction({ card: aimedCard, aimsAtTile, noEnemyInRange }) + (aimHint ? ` · ${aimHint}` : "");
+  return <FloatingCard card={HERO_DECKS[selected.heroClass][(armed ?? aiming)!]!} instruction={instruction} onCancel={cancelUse} />;
+}
+
+function CommitButton(p: Ctx19) {
+  const { queue, plan, issues, playing, resolutionStage, exhaustion, playback, commit } = p;
+  return (
+    <button
+      type="button"
+      className={`commit${resolutionStage ? " resolving" : ""}`}
+      disabled={queue.length === 0 || issues.length > 0 || playing || exhaustion.greyed}
+      onClick={() => void commit(plan)}
+    >
+      {resolutionStage ? resolutionCommitLabel(resolutionStage, playback?.tick ?? 0) : "Commit"}
+    </button>
+  );
+}
+
+function PlanningCommitPanel(p: Ctx19) {
+  const { selected, queue, setQueue, armed, setArmed, aiming, setAiming, playback, issues, playing, missHints, nameOf, focus, picking, setPull   } = p;
+  return (
+    <>
+      {picking && (armed ?? aiming) !== undefined && <PickingCard {...p} />}
       <section className="commit-panel" aria-label="Commit" style={{ opacity: focus.commit }}>
 
         <QueueColumn
@@ -1433,15 +1442,61 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
             setPull(IDLE);
           }}
         />
-        <button
-          type="button"
-          className={`commit${resolutionStage ? " resolving" : ""}`}
-          disabled={queue.length === 0 || issues.length > 0 || playing || exhaustion.greyed}
-          onClick={() => void commit(plan)}
-        >
-          {resolutionStage ? resolutionCommitLabel(resolutionStage,playback?.tick ?? 0) : "Commit"}
-        </button>
+        <CommitButton {...p} />
       </section>
+    </>
+  );
+}
+
+/** The Deck Damage and shuffle animations on the Deck pile, one at a time from the queue. */
+function PileAnimations(p: Ctx19) {
+  const { selected, setBurnQueue, setBurnPending, setShufflePending, draw, burning, shuffleWhileDrawing, reducedMotion } = p;
+  return (
+    <>
+      {burning?.kind === "burn" && (
+        <DeckBurn
+          key={burning.id}
+          cards={burning.cards}
+          visible={burning.heroId === selected.id}
+          reducedMotion={reducedMotion}
+          onLifted={() => setBurnPending((pending) => settleBurn(pending, burning.heroId, "lifted"))}
+          onBurned={() => setBurnPending((pending) => settleBurn(pending, burning.heroId, "burned"))}
+          onDone={() => setBurnQueue((queued) => queued.filter((batch) => batch.id !== burning.id))}
+        />
+      )}
+      {burning?.kind === "shuffle" && (
+        <DeckShuffle
+          key={burning.id}
+          cards={burning.cards}
+          visible={burning.heroId === selected.id}
+          reducedMotion={reducedMotion}
+          onStart={() => setShufflePending((pending) => settleShuffle(pending, burning.heroId, "started", burning.cards))}
+          onDone={() => {
+            setShufflePending((pending) => settleShuffle(pending, burning.heroId, "ended", burning.cards));
+            setBurnQueue((queued) => queued.filter((step) => step.id !== burning.id));
+          }}
+        />
+      )}
+      {shuffleWhileDrawing && <DeckShuffle cards={draw.shuffled} visible reducedMotion={false} onStart={noop} onDone={noop} />}
+    </>
+  );
+}
+
+function PlanningLayout(p: Ctx19) {
+  const { planningRef } = p;
+  return (
+    <div className="planning" ref={planningRef}>
+      <PlanningBoard {...p} />
+      <PlanningZoneHud {...p} />
+      <PlanningCallouts {...p} />
+      <PlanningOverlays {...p} />
+      <PlanningHandBar {...p} />
+      <PlanningCommitPanel {...p} />
     </div>
   );
+}
+
+export function PlanningScreen(props: PlanningScreenProps) {
+  const context = usePlanningContext(props);
+  return <PlanningLayout {...context} />;
 }
