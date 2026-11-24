@@ -84,11 +84,11 @@ describe("drawShots", () => {
   it("creates no line for an Unknown or Ghost enemy", () => {
     const unknown = { id: "u", heroClass: "bruiser", visibility: Visibility.Unknown } as unknown as EnemyView;
     const ghost = { id: "g", heroClass: "bruiser", visibility: Visibility.Ghost, position: { col: 5, row: 1 } } as unknown as EnemyView;
-    expect(drawShots(grid, attacker, 6, [unknown, ghost], ["u", "g"])).toEqual([]);
+    expect(drawShots(grid, attacker, { range: 6, enemies: [unknown, ghost], targetIds: ["u", "g"] })).toEqual([]);
   });
 
   it("draws only to the requested Visible enemies", () => {
     const enemies = [visible("a", { col: 5, row: 1 }), visible("b", { col: 6, row: 4 })];
-    expect(drawShots(grid, attacker, 6, enemies, ["b"]).map((shot) => shot.targetId)).toEqual(["b"]);
+    expect(drawShots(grid, attacker, { range: 6, enemies, targetIds: ["b"] }).map((shot) => shot.targetId)).toEqual(["b"]);
   });
 });

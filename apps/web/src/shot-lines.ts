@@ -91,10 +91,7 @@ export function dashRuns(from: Point, to: Point, dash: number, gap: number): { f
 export function drawShots(
   grid: Grid,
   attacker: GridPosition,
-  range: number,
-  enemies: readonly EnemyView[],
-  targetIds: readonly string[],
-  ignoreCover = false,
+  { range, enemies, targetIds, ignoreCover = false }: { range: number; enemies: readonly EnemyView[]; targetIds: readonly string[]; ignoreCover?: boolean },
 ): ShotDrawing[] {
   return enemies.flatMap((enemy) =>
     enemy.visibility === Visibility.Visible && targetIds.includes(enemy.id) ? [drawShot(grid, attacker, enemy, range, ignoreCover)] : [],

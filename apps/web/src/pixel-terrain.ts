@@ -122,6 +122,12 @@ export function textFits(grid: Grid, text: (typeof TEXTS)[number], tiles: number
   return true;
 }
 
+/** The floor frames of a plain tile: a few grates, some rust, mostly plates, picked by a hash value from 0 to 1. */
+const floorGroupFor = (v: number): string => {
+  if (v < 0.12) return "floor_grate";
+  return v < 0.3 ? "floor_rust" : "floor_plate";
+};
+
 /** Which frame goes on which tile, by the rules of `tools/assemble.js`. Nothing is drawn for what the layout has no frame for. */
 export function pixelLayout(grid: Grid, tileset: Pick<Tileset, "groups" | "texts">): PixelLayout {
   const pick = (group: string, col: number, row: number, salt: number) => {
@@ -141,7 +147,7 @@ export function pixelLayout(grid: Grid, tileset: Pick<Tileset, "groups" | "texts
       else if (here === TileKind.DropPoint) floor(pick("spawn_floor", col, row, 2));
       else {
         const v = tileHash(col, row, 3);
-        floor(v < 0.12 ? pick("floor_grate", col, row, 4) : v < 0.3 ? pick("floor_rust", col, row, 4) : pick("floor_plate", col, row, 4));
+        floor(pick(floorGroupFor(v), col, row, 4));
       }
       if (here !== TileKind.PrimeZone) {
         const zone = (c: number, r: number) => kind(c, r) === TileKind.PrimeZone;
