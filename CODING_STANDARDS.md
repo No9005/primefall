@@ -15,4 +15,4 @@ The review agent judges every pull request against this file, `CLAUDE.md`, the A
 - **Short names are fine in a one-line callback**, not in a multi-line one.
 - **Severity:** list a failing item as a **remark**. It is a **fail** only when the diff makes a function clearly harder to follow than before.
 
-Not here, because lint enforces them: `console.log` and `.only`/`.skip` in tests, and the readability warnings `no-nested-ternary`, `complexity`, `max-depth`, `max-params`, `max-lines-per-function` and `max-statements` for product code (`eslint.config.js`). They are errors for all product code; only `tools/factory` still has them as warnings (out of the scope of #494).
+Not here, because lint enforces them: `console.log` and `.only`/`.skip` in tests, and the readability warnings `no-nested-ternary`, `complexity`, `max-depth`, `max-params`, `max-lines-per-function` and `max-statements` for product code (`eslint.config.js`). They are errors for all product code, `tools/factory` included.
