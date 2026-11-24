@@ -68,8 +68,15 @@ export function parseAtlas(json: unknown): AtlasData {
   const height = count(size.h, "meta.size.h");
   if (width > MAX_ATLAS_SIDE || height > MAX_ATLAS_SIDE) throw new Error(`atlas page ${width} x ${height} is larger than ${MAX_ATLAS_SIDE}`);
 
+  const frames = parseFrames(record(root.frames, "frames"), width, height);
+  const animations = parseAnimations(record(root.animations, "animations"), frames);
+  const clips = meta.clips === undefined ? undefined : parseClips(record(meta.clips, "meta.clips"), animations);
+  return { frames, animations, meta: { image: meta.image, size: { w: width, h: height }, scale: meta.scale, format: typeof meta.format === "string" ? meta.format : undefined, clips } };
+}
+
+function parseFrames(source: Record<string, unknown>, width: number, height: number): Record<string, AtlasFrame> {
   const frames: Record<string, AtlasFrame> = {};
-  for (const [name, raw] of Object.entries(record(root.frames, "frames"))) {
+  for (const [name, raw] of Object.entries(source)) {
     const entry = record(raw, `frame ${name}`);
     const frame = rect(entry.frame, `frame ${name}.frame`);
     if (frame.x + frame.w > width || frame.y + frame.h > height) throw new Error(`frame ${name} lies outside the page`);
@@ -84,27 +91,30 @@ export function parseAtlas(json: unknown): AtlasData {
       anchor: { x: count(anchor.x, "anchor.x"), y: count(anchor.y, "anchor.y") },
     };
   }
+  return frames;
+}
 
+function parseAnimations(source: Record<string, unknown>, frames: Record<string, AtlasFrame>): Record<string, string[]> {
   const animations: Record<string, string[]> = {};
-  for (const [name, list] of Object.entries(record(root.animations, "animations"))) {
+  for (const [name, list] of Object.entries(source)) {
     if (!Array.isArray(list) || list.length === 0) throw new Error(`animation ${name} must be a list of frames`);
     for (const frameName of list) if (typeof frameName !== "string" || !frames[frameName]) throw new Error(`animation ${name} names an unknown frame ${String(frameName)}`);
     animations[name] = list as string[];
   }
+  return animations;
+}
 
-  let clips: Record<string, AtlasClipTiming> | undefined;
-  if (meta.clips !== undefined) {
-    clips = {};
-    for (const [name, raw] of Object.entries(record(meta.clips, "meta.clips"))) {
-      const timing = record(raw, `meta.clips.${name}`);
-      const parsed = { frames: count(timing.frames, `${name}.frames`), durationMs: count(timing.durationMs, `${name}.durationMs`) };
-      if (!animations[name]) throw new Error(`meta.clips names an animation that does not exist: ${name}`);
-      if (animations[name].length !== parsed.frames) throw new Error(`animation ${name} has ${animations[name].length} frames, its timing says ${parsed.frames}`);
-      if (parsed.durationMs <= 0) throw new Error(`animation ${name} must last longer than 0 ms`);
-      clips[name] = parsed;
-    }
+function parseClips(source: Record<string, unknown>, animations: Record<string, string[]>): Record<string, AtlasClipTiming> {
+  const clips: Record<string, AtlasClipTiming> = {};
+  for (const [name, raw] of Object.entries(source)) {
+    const timing = record(raw, `meta.clips.${name}`);
+    const parsed = { frames: count(timing.frames, `${name}.frames`), durationMs: count(timing.durationMs, `${name}.durationMs`) };
+    if (!animations[name]) throw new Error(`meta.clips names an animation that does not exist: ${name}`);
+    if (animations[name].length !== parsed.frames) throw new Error(`animation ${name} has ${animations[name].length} frames, its timing says ${parsed.frames}`);
+    if (parsed.durationMs <= 0) throw new Error(`animation ${name} must last longer than 0 ms`);
+    clips[name] = parsed;
   }
-  return { frames, animations, meta: { image: meta.image, size: { w: width, h: height }, scale: meta.scale, format: typeof meta.format === "string" ? meta.format : undefined, clips } };
+  return clips;
 }
 
 /** How long one frame of an animation stands (the total duration is shared evenly, so 2.0 s over 40 frames and 0.55 s over 8 both come out right). */

@@ -42,6 +42,35 @@ function missDetail({ card, reason }: MatchEvent): string {
   return reason ? `${what} misses: ${MISS_REASONS[reason]}` : `${what} misses: the target is not allowed when it fires`;
 }
 
+/** What an event says: the action, the detail, and whether the title names the target Hero ("on Max"). */
+interface Say {
+  action: string;
+  detail: string;
+  onTarget?: boolean;
+}
+
+/** The events that are one entry each; the steps of a Move, a blocked Move and a Wait need the context and are handled by `buildCommentary`. */
+const SAYINGS: Partial<Record<EventKind, (event: MatchEvent) => Say>> = {
+  [EventKind.ShieldGained]: (event) => ({ action: "Block", detail: `Shield ${event.amount ?? 0} until it is hit` }),
+  [EventKind.AttackHit]: (event) => ({ action: "Attack", detail: hitDetail(event.damage ?? 0, event.absorbed ?? 0), onTarget: true }),
+  [EventKind.AttackFailed]: (event) => ({ action: "Attack", detail: missDetail(event), onTarget: true }),
+  [EventKind.ActionFailed]: () => ({ action: "Action", detail: "The card cannot be used: nothing happens" }),
+  [EventKind.SlowApplied]: () => ({ action: "Slow", detail: "Its next Move covers half the distance", onTarget: true }),
+  [EventKind.MarkedApplied]: () => ({ action: "Mark", detail: "Marked: Hidden and Cover do not protect it", onTarget: true }),
+  [EventKind.HiddenGained]: () => ({ action: "Hide", detail: "Hidden from the enemy Squad until it attacks" }),
+  [EventKind.CoverPlaced]: () => ({ action: "Place Cover", detail: "Half Cover appears on the marked tile" }),
+  [EventKind.CoverDestroyed]: () => ({ action: "Urban Renewal", detail: "The Cover on the marked tile is destroyed" }),
+  [EventKind.AreaRevealed]: () => ({ action: "Site Survey", detail: "The marked area is revealed" }),
+  [EventKind.FieldPlaced]: () => ({ action: "Heavy Metal", detail: "A Scrap Field covers the marked area" }),
+  [EventKind.ScrapGained]: () => ({ action: "Scrap", detail: "Scrap: her cards are stronger this Round" }),
+  [EventKind.Pull]: (event) =>
+    event.card === "Personal Space"
+      ? { action: "Push", detail: "Is pushed one tile away" }
+      : { action: "Pull", detail: "Is pulled one tile toward the Bruiser" },
+  [EventKind.Charged]: () => ({ action: "Express Delivery", detail: "Rushes at the enemy" }),
+  [EventKind.Exhausted]: () => ({ action: "Exhausted", detail: "Out of cards: Exhausted" }),
+};
+
 /**
  * The commentary of one Tick, built from the events the Squad perceives, in the order of the events.
  * The steps of one Move make one entry. Events that only follow from another action (Hidden ends, a shuffle,
@@ -57,70 +86,21 @@ export function buildCommentary(events: readonly MatchEvent[], { nameOf, sideOf 
 
   for (const event of events) {
     const { heroId, targetId } = event;
-    switch (event.kind) {
-      case EventKind.Step:
-        if (!moves.has(heroId)) {
-          add(heroId, "Move", "Walks to the marked tile");
-          moves.set(heroId, entries[entries.length - 1]!);
-        }
-        break;
-      case EventKind.MoveBlocked: {
-        const detail = "Stops: a Hero, a Wall or a conflict is in the way";
-        const walked = moves.get(heroId);
-        if (walked) walked.detail = detail;
-        else add(heroId, "Move", detail);
-        break;
+    if (event.kind === EventKind.Step) {
+      if (!moves.has(heroId)) {
+        add(heroId, "Move", "Walks to the marked tile");
+        moves.set(heroId, entries[entries.length - 1]!);
       }
-      case EventKind.ShieldGained:
-        add(heroId, "Block", `Shield ${event.amount ?? 0} until it is hit`);
-        break;
-      case EventKind.AttackHit:
-        add(heroId, "Attack", hitDetail(event.damage ?? 0, event.absorbed ?? 0), targetId);
-        break;
-      case EventKind.AttackFailed:
-        add(heroId, "Attack", missDetail(event), targetId);
-        break;
-      case EventKind.ActionFailed:
-        add(heroId, "Action", "The card cannot be used: nothing happens");
-        break;
-      case EventKind.SlowApplied:
-        add(heroId, "Slow", "Its next Move covers half the distance", targetId);
-        break;
-      case EventKind.MarkedApplied:
-        add(heroId, "Mark", "Marked: Hidden and Cover do not protect it", targetId);
-        break;
-      case EventKind.HiddenGained:
-        add(heroId, "Hide", "Hidden from the enemy Squad until it attacks");
-        break;
-      case EventKind.CoverPlaced:
-        add(heroId, "Place Cover", "Half Cover appears on the marked tile");
-        break;
-      case EventKind.CoverDestroyed:
-        add(heroId, "Urban Renewal", "The Cover on the marked tile is destroyed");
-        break;
-      case EventKind.AreaRevealed:
-        add(heroId, "Site Survey", "The marked area is revealed");
-        break;
-      case EventKind.FieldPlaced:
-        add(heroId, "Heavy Metal", "A Scrap Field covers the marked area");
-        break;
-      case EventKind.ScrapGained:
-        add(heroId, "Scrap", "Scrap: her cards are stronger this Round");
-        break;
-      case EventKind.Pull:
-        add(heroId, event.card === "Personal Space" ? "Push" : "Pull", event.card === "Personal Space" ? "Is pushed one tile away" : "Is pulled one tile toward the Bruiser");
-        break;
-      case EventKind.Charged:
-        add(heroId, "Express Delivery", "Rushes at the enemy");
-        break;
-      case EventKind.Wait:
-        if (sideOf(heroId) === "own") add(heroId, "Wait", "Holds position, no Energy used");
-        break;
-      case EventKind.Exhausted:
-        add(heroId, "Exhausted", "Out of cards: Exhausted");
-        break;
-      default:
-        break;
+    } else if (event.kind === EventKind.MoveBlocked) {
+      const detail = "Stops: a Hero, a Wall or a conflict is in the way";
+      const walked = moves.get(heroId);
+      if (walked) walked.detail = detail;
+      else add(heroId, "Move", detail);
+    } else if (event.kind === EventKind.Wait) {
+      if (sideOf(heroId) === "own") add(heroId, "Wait", "Holds position, no Energy used");
+    } else {
+      const say = SAYINGS[event.kind]?.(event);
+      if (say) add(heroId, say.action, say.detail, say.onTarget ? targetId : undefined);
     }
   }
   return entries;
