@@ -31,53 +31,10 @@ export default tseslint.config(
     },
   },
   {
-    // Readability warnings for product code (CODING_STANDARDS.md, "Readability"). They become errors file by
-    // file once the cleanup ticket has removed the existing hits. Tests are excluded.
+    // Readability rules for product code (CODING_STANDARDS.md, "Readability"): errors, with the same thresholds everywhere (#494).
+    // Tests are excluded.
     files: ["**/*.{ts,tsx}"],
     ignores: ["**/*.test.{ts,tsx}", "apps/web/e2e/**"],
-    rules: {
-      "no-nested-ternary": "warn",
-      complexity: ["warn", 15],
-      "max-depth": ["warn", 4],
-      "max-params": ["warn", 5],
-      "max-lines-per-function": ["warn", { max: 80, skipBlankLines: true, skipComments: true }],
-      "max-statements": ["warn", 30],
-    },
-  },
-  {
-    // Files cleaned of readability warnings (#188): the six rules are errors here, with the same thresholds.
-    files: [
-      "apps/web/src/effects-layer.ts",
-      "apps/web/src/PlanningScreen.tsx",
-      "apps/web/src/resolution-playback.ts",
-      "apps/web/src/weapon-effects.ts",
-      "apps/web/scripts/screenshots.ts",
-      "apps/web/scripts/render-mix.ts",
-      "packages/game-core/src/balance.bal.ts",
-      "packages/game-core/src/plan.ts",
-      "apps/web/src/App.tsx",
-      "packages/game-core/src/ai.ts",
-      "packages/game-core/src/ai-world.ts",
-      "apps/web/src/board-layout.ts",
-      "apps/web/src/Board.tsx",
-      "apps/web/src/hero-figure.ts",
-      "apps/web/src/hangar-scene.ts",
-      "apps/web/src/title-scene.ts",
-      "apps/web/src/stage.ts",
-      "apps/web/src/notstrom-intro-scene.ts",
-      "apps/web/src/board-drawing.ts",
-      "apps/web/src/audio.ts",
-      "apps/web/src/target-lines.ts",
-      "apps/web/src/planning-selection.ts",
-      "apps/web/src/playback.ts",
-      "apps/web/src/terrain.ts",
-      "apps/web/src/pixel-terrain.ts",
-      "apps/web/src/atlas.ts",
-      "apps/web/src/commentary.ts",
-      "apps/web/src/hangar-select.ts",
-      "apps/web/scripts/atlas-packer.ts",
-      "packages/game-core/src/resolution.ts",
-    ],
     rules: {
       "no-nested-ternary": "error",
       complexity: ["error", 15],
@@ -85,6 +42,19 @@ export default tseslint.config(
       "max-params": ["error", 5],
       "max-lines-per-function": ["error", { max: 80, skipBlankLines: true, skipComments: true }],
       "max-statements": ["error", 30],
+    },
+  },
+  {
+    // The software factory is out of the scope of the readability cleanup (#494): its hits stay warnings until it is cleaned.
+    files: ["tools/factory/**/*.ts"],
+    ignores: ["**/*.test.ts"],
+    rules: {
+      "no-nested-ternary": "warn",
+      complexity: ["warn", 15],
+      "max-depth": ["warn", 4],
+      "max-params": ["warn", 5],
+      "max-lines-per-function": ["warn", { max: 80, skipBlankLines: true, skipComments: true }],
+      "max-statements": ["warn", 30],
     },
   },
   { files: ["*.js", "**/*.config.ts"], languageOptions: { globals: globals.node } },
