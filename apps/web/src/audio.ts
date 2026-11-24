@@ -536,31 +536,49 @@ export class GameAudio {
     if (!MUSIC_ON || this.music || !context || !manifest || !this.musicBus) return;
     const now = context.currentTime + 0.1;
     const barSeconds = (60 / manifest.bpm) * 4;
-    const openingFadeSeconds = barSeconds * OPENING_FADE_BARS;
+    const opening = this.startOpening(context, manifest, now, barSeconds);
     const layersFadeInSeconds = barSeconds * LAYERS_FADE_IN_BARS;
-    const openingBuffer = manifest.opening ? this.buffers.get("music:opening") : undefined;
-    let opening: GainNode | undefined;
-    const sources: AudioBufferSourceNode[] = [];
-    let startedAt = now;
-    let fadeInSeconds = MUSIC_FADE_OUT_S;
-    if (manifest.opening && openingBuffer) {
-      const source = context.createBufferSource();
-      source.buffer = openingBuffer;
-      opening = context.createGain();
-      const fadeFrom = now + Math.max(0, openingBuffer.duration - openingFadeSeconds);
-      opening.gain.setValueAtTime(manifest.opening.gain, now);
-      shapedRamp(opening.gain, { from: manifest.opening.gain, to: 0, start: fadeFrom, seconds: openingFadeSeconds }, (t) => 1 - Math.cos((t * Math.PI) / 2));
-      source.connect(opening).connect(this.musicBus);
-      source.start(now);
-      sources.push(source);
-      startedAt = now + Math.max(0, openingBuffer.duration - layersFadeInSeconds);
-      fadeInSeconds = layersFadeInSeconds;
+    const timing = {
+      now,
+      startedAt: opening ? opening.layersStart : now,
+      fadeInSeconds: opening ? layersFadeInSeconds : MUSIC_FADE_OUT_S,
+    };
+    const layers = this.startLayers(context, manifest, timing, opening?.gain);
+    const sources = [...(opening ? [opening.source] : []), ...layers.sources];
+    if (sources.length > 0) {
+      this.music = { startedAt: timing.startedAt, fadeInSeconds: timing.fadeInSeconds, loopSeconds: layers.loopSeconds, layers: layers.gains, opening: opening?.gain, sources };
     }
-    const layers: Record<string, GainNode> = {};
+  }
+
+  /** The opening of the match music, if the manifest has one and it is loaded: it plays hard from its first beat and fades out along a cosine. `layersStart` is when the layers come in. */
+  private startOpening(context: AudioContext, manifest: MusicManifest, now: number, barSeconds: number): { gain: GainNode; source: AudioBufferSourceNode; layersStart: number } | undefined {
+    const buffer = manifest.opening ? this.buffers.get("music:opening") : undefined;
+    if (!manifest.opening || !buffer || !this.musicBus) return undefined;
+    const fadeSeconds = barSeconds * OPENING_FADE_BARS;
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    const gain = context.createGain();
+    const fadeFrom = now + Math.max(0, buffer.duration - fadeSeconds);
+    gain.gain.setValueAtTime(manifest.opening.gain, now);
+    shapedRamp(gain.gain, { from: manifest.opening.gain, to: 0, start: fadeFrom, seconds: fadeSeconds }, (t) => 1 - Math.cos((t * Math.PI) / 2));
+    source.connect(gain).connect(this.musicBus);
+    source.start(now);
+    return { gain, source, layersStart: now + Math.max(0, buffer.duration - barSeconds * LAYERS_FADE_IN_BARS) };
+  }
+
+  /** The looping layers, all started on the same bar line at the gains of the level that is wanted now; they fade in under the opening, or from silence without one. */
+  private startLayers(
+    context: AudioContext,
+    manifest: MusicManifest,
+    { now, startedAt, fadeInSeconds }: { now: number; startedAt: number; fadeInSeconds: number },
+    opening: GainNode | undefined,
+  ): { gains: Record<string, GainNode>; sources: AudioBufferSourceNode[]; loopSeconds: number } {
+    const gains: Record<string, GainNode> = {};
+    const sources: AudioBufferSourceNode[] = [];
     let loopSeconds = 0;
     for (const layer of Object.keys(manifest.layers)) {
       const buffer = this.buffers.get(`music:${layer}`);
-      if (!buffer) continue;
+      if (!buffer || !this.musicBus) continue;
       loopSeconds = buffer.duration;
       const source = context.createBufferSource();
       source.buffer = buffer;
@@ -575,10 +593,10 @@ export class GameAudio {
       }
       source.connect(gain).connect(this.musicBus);
       source.start(startedAt);
-      layers[layer] = gain;
+      gains[layer] = gain;
       sources.push(source);
     }
-    if (sources.length > 0) this.music = { startedAt, fadeInSeconds, loopSeconds, layers, opening, sources };
+    return { gains, sources, loopSeconds };
   }
 
   /**

@@ -193,211 +193,246 @@ function stripFrame(texture: Texture, frames: number, index: number): Texture {
   return new Texture({ source: texture.source, frame: new Rectangle(texture.frame.x + index * width, texture.frame.y, width, texture.height) });
 }
 
+interface HangarParts {
+  lamps: { sprite: Sprite; seconds: number; delay: number }[];
+  flicker: Sprite;
+  guide: { sprite: Sprite; frames: Texture[] };
+  crystal: Sprite;
+  motes: { sprite: Sprite; seconds: number; delay: number; top: number }[];
+  sparks: { sprite: Sprite; frames: Texture[]; seconds: number; delay: number }[];
+  shades: Sprite[];
+  plates: Record<HangarHero, { sprite: Sprite; plain: Texture; chosen: Texture }>;
+  ring: Sprite;
+  heroes: Record<HangarHero, HeroView>;
+}
+
+/** Where the scene's pieces go: the container that holds the picture (shifted up) and how a picture is looked up. */
+interface BuildContext {
+  shift: Container;
+  picture: (name: string) => Texture;
+}
+
+const screen = (sprite: Sprite): Sprite => {
+  sprite.blendMode = "screen";
+  return sprite;
+};
+
+/** The floor picture and the door with the falling crystal behind its mask. Returns the crystal. */
+function addFloorAndDoor({ shift, picture }: BuildContext): Sprite {
+  // The floor picture is the hangar continued on all sides (hangar-wide.png, 2080 x 1052 pixels at 0.75): 300 px to the sides, 90 above, 150 below.
+  shift.addChild(placed(picture("hangar-wide"), -300, -90, 1560, 789));
+
+  const door = new Container();
+  door.position.set(DOOR.left, DOOR.top);
+  const doorMask = new Graphics().rect(0, 0, DOOR.width, DOOR.height).fill(0xffffff);
+  const crystal = new Sprite(picture("fire"));
+  crystal.anchor.set(0.5);
+  crystal.width = CRYSTAL.size;
+  crystal.height = CRYSTAL.size;
+  crystal.rotation = Math.PI; // the head leads: the picture has its head at the top right and falls to the lower left
+  crystal.visible = false;
+  door.addChild(doorMask, crystal);
+  door.mask = doorMask;
+  shift.addChild(door);
+  return crystal;
+}
+
+/** The lamps, the flicker and the guide light, all added over the floor with the "screen" blend. */
+function addLights({ shift, picture }: BuildContext): Pick<HangarParts, "lamps" | "flicker" | "guide"> {
+  const lamps = LAMPS.map(([name, seconds, delay]) => {
+    const sprite = screen(placed(picture(`lights-${name}`), 0, 0, PICTURE.width, PICTURE.height));
+    shift.addChild(sprite);
+    return { sprite, seconds, delay };
+  });
+  const flicker = screen(placed(picture("lights-flicker"), 0, 0, PICTURE.width, PICTURE.height));
+  shift.addChild(flicker);
+
+  const guideTexture = picture("guide");
+  const guideFrames = Array.from({ length: GUIDE.frames }, (_, index) => stripFrame(guideTexture, GUIDE.frames, index));
+  const guideSprite = screen(placed(guideFrames[0] as Texture, GUIDE.left, GUIDE.top, GUIDE.width, GUIDE.height));
+  shift.addChild(guideSprite);
+  return { lamps, flicker, guide: { sprite: guideSprite, frames: guideFrames } };
+}
+
+/** The dust motes and the sparks. */
+function addDustAndSparks({ shift, picture }: BuildContext): Pick<HangarParts, "motes" | "sparks"> {
+  const motes = MOTES.map(([left, top, seconds, delay]) => {
+    const sprite = placed(Texture.WHITE, left, top, 2, 2);
+    sprite.tint = 0x9cc8ff;
+    sprite.alpha = 0;
+    shift.addChild(sprite);
+    return { sprite, seconds, delay, top };
+  });
+
+  const sparkTexture = picture("spark");
+  const sparks = SPARKS.map(({ left, top, seconds, delay }) => {
+    const frames = Array.from({ length: 6 }, (_, index) => stripFrame(sparkTexture, 6, index));
+    const sprite = placed(frames[0] as Texture, left, top, SPARK_FRAME, SPARK_FRAME);
+    sprite.visible = false;
+    shift.addChild(sprite);
+    return { sprite, frames, seconds, delay };
+  });
+  return { motes, sparks };
+}
+
+/** The name plates and, for Kit, the ring of the crate, cut at the bottom of the crate. */
+function addPlatesAndRing({ shift, picture }: BuildContext): Pick<HangarParts, "plates" | "ring"> {
+  const plates = Object.fromEntries(
+    HANGAR_HEROES.map((hero) => {
+      const { left, top, width, height } = NAME_PLATE[hero];
+      const plain = picture(`name-${hero}`);
+      const sprite = placed(plain, left, top, width, height);
+      shift.addChild(sprite);
+      return [hero, { sprite, plain, chosen: picture(`name-${hero}-selected`) }];
+    }),
+  ) as HangarParts["plates"];
+
+  const ringTexture = picture("kit-ring");
+  const cut = ((CRATE_BOTTOM - KIT_RING.top) / KIT_RING.height) * ringTexture.height;
+  const ringCropped = new Texture({ source: ringTexture.source, frame: new Rectangle(ringTexture.frame.x, ringTexture.frame.y + cut, ringTexture.width, ringTexture.height - cut) });
+  const ring = placed(ringCropped, KIT_RING.left, CRATE_BOTTOM, KIT_RING.width, KIT_RING.top + KIT_RING.height - CRATE_BOTTOM);
+  ring.visible = false;
+  shift.addChild(ring);
+  return { plates, ring };
+}
+
+/** The three Heroes: first the shadows (below every figure), then the animated figures with their bridge frame. */
+function addHeroes({ shift, picture }: BuildContext, art: HangarArt, reduced: boolean): HangarParts["heroes"] {
+  const shadowTexture = picture("shadow");
+  const views = {} as HangarParts["heroes"];
+  for (const hero of HANGAR_HEROES) {
+    const shadow = new Sprite(shadowTexture);
+    shadow.visible = false;
+    shift.addChild(shadow);
+    views[hero] = { animator: undefined as unknown as AtlasAnimator, bridge: new Sprite(), shadow, sheet: art.sheet(hero), shown: "" };
+  }
+  for (const hero of HANGAR_HEROES) {
+    const view = views[hero];
+    const { left, top, width, height } = PLACE[hero];
+    const sourceWidth = Object.values(parseAtlas(view.sheet.data).frames)[0]?.sourceSize.w ?? width;
+    const scale = width / sourceWidth;
+    const animator = new AtlasAnimator(view.sheet);
+    animator.setScale(scale);
+    animator.setReducedMotion(reduced);
+    animator.container.position.set(left + width / 2, top + height);
+    view.animator = animator;
+    view.bridge.scale.set(scale);
+    view.bridge.position.set(left + width / 2, top + height);
+    view.bridge.visible = false;
+    shift.addChild(animator.container, view.bridge);
+  }
+  return views;
+}
+
+/** Builds the whole scene, back to front: backdrop, floor and door, lights, dust and sparks, the shade behind, plates, Heroes, the shade in front. */
+function buildHangar(art: HangarArt, reduced: boolean): { root: Container; parts: HangarParts } {
+  const root = new Container();
+  const backdrop = new Graphics().rect(-3000, -2000, 7000, 5000).fill(BACKDROP);
+  const shift = new Container();
+  shift.y = -HANGAR_SHIFT;
+  root.addChild(backdrop, shift);
+  const context: BuildContext = { shift, picture: (name) => pictureOf(art, name) };
+
+  const crystal = addFloorAndDoor(context);
+  const lights = addLights(context);
+  const dust = addDustAndSparks(context);
+  const shadeBack = placed(context.picture("shade-back"), 0, 0, PICTURE.width, PICTURE.tall);
+  const glow = screen(placed(context.picture("glow"), 0, 0, PICTURE.width, PICTURE.tall));
+  shift.addChild(shadeBack, glow);
+  const platesAndRing = addPlatesAndRing(context);
+  const heroes = addHeroes(context, art, reduced);
+  const shadeFront = placed(context.picture("shade-front"), 0, 0, PICTURE.width, PICTURE.tall);
+  shift.addChild(shadeFront);
+
+  return { root, parts: { ...lights, ...dust, ...platesAndRing, crystal, shades: [shadeBack, shadeFront], heroes } };
+}
+
+/** The layers of a clip that has effects of its own (`<clip>.fx_back`, `<clip>.fx_front`), back to front with the figure between; a clip without them is the figure alone. */
+function layersOf(sheet: AtlasSheet, clip: string): string[] {
+  return [`${clip}.fx_back`, clip, `${clip}.fx_front`].filter((name) => sheet.animations[name]);
+}
+
+/** Puts what the machine says on the Heroes: a clip starts when the mode changes; a bridge shows one of its two frames. */
+function showHeroes(parts: HangarParts, heroes: HangarHeroes, deltaMs: number): void {
+  for (const hero of HANGAR_HEROES) showHero(parts, heroes.players[hero], hero, deltaMs);
+  parts.ring.visible = heroes.players.kit.selected;
+}
+
+function showHero(parts: HangarParts, player: HeroPlayer, hero: HangarHero, deltaMs: number): void {
+  const view = parts.heroes[hero];
+  const { mode, bridgeEntry, bridgeHalf, bridgeFrom } = player.state;
+  const key = mode === "bridge" ? `bridge-${bridgeFrom}-${bridgeEntry}-${bridgeHalf}` : mode;
+  let advance = deltaMs;
+  if (key !== view.shown) {
+    view.shown = key;
+    advance = 0;
+    startShown(view, hero, player);
+  }
+  view.animator.update(advance);
+
+  const rect = mode === "bridge" ? bridgeShadow(hero, bridgeFrom, bridgeEntry * 2 + bridgeHalf) : clipShadow(`${hero}-${mode}`, Math.max(0, view.animator.frame));
+  view.shadow.visible = rect !== undefined;
+  if (rect) {
+    const { left, top } = PLACE[hero];
+    view.shadow.position.set(left + rect[0], top + rect[1]);
+    view.shadow.width = rect[2];
+    view.shadow.height = rect[3];
+  }
+  const plate = parts.plates[hero];
+  plate.sprite.texture = player.selected ? plate.chosen : plate.plain;
+}
+
+/** The mode changed: a bridge stops the clip and shows one still frame, any other mode plays its clip. */
+function startShown(view: HeroView, hero: HangarHero, { state }: HeroPlayer): void {
+  const { mode, bridgeEntry, bridgeHalf, bridgeFrom } = state;
+  if (mode !== "bridge") {
+    view.bridge.visible = false;
+    view.animator.play(layersOf(view.sheet, `${hero}.${mode}`), { loop: isLooped(mode) });
+    return;
+  }
+  const texture = view.sheet.animations[`${hero}.bridge.${bridgeFrom}`]?.[bridgeEntry * 2 + bridgeHalf];
+  view.animator.stop();
+  if (texture) {
+    view.bridge.texture = texture;
+    if (texture.defaultAnchor) view.bridge.anchor.copyFrom(texture.defaultAnchor);
+  }
+  view.bridge.visible = true;
+}
+
+/** The lamps, the flicker, the dust, the sparks, the crystal and the shade at the scene's time; without motion everything stands in its first state. */
+function showDecor(parts: HangarParts, reduced: boolean, time: number): void {
+  const t = reduced ? 0 : time;
+  parts.lamps.forEach(({ sprite, seconds, delay }) => (sprite.alpha = reduced ? 1 : lampOpacity(t, seconds, delay)));
+  parts.flicker.alpha = reduced ? 1 : flickerOpacity(t);
+  parts.guide.sprite.texture = parts.guide.frames[reduced ? 0 : guideFrame(t)] as Texture;
+  parts.shades.forEach((sprite) => (sprite.alpha = reduced ? 1 : shadeOpacity(t)));
+  const crystal = reduced ? undefined : crystalAt(t);
+  parts.crystal.visible = crystal !== undefined;
+  if (crystal) {
+    parts.crystal.position.set(crystal.x + CRYSTAL.size / 2, crystal.y + CRYSTAL.size / 2);
+    parts.crystal.alpha = crystal.opacity;
+  }
+  for (const mote of parts.motes) {
+    mote.sprite.visible = !reduced;
+    if (reduced) continue;
+    const { rise, opacity } = moteAt(t, mote.seconds, mote.delay);
+    mote.sprite.y = mote.top + rise;
+    mote.sprite.alpha = opacity;
+  }
+  for (const spark of parts.sparks) {
+    const frame = reduced ? undefined : sparkFrame(t, spark.seconds, spark.delay);
+    spark.sprite.visible = frame !== undefined;
+    if (frame !== undefined) spark.sprite.texture = spark.frames[frame] as Texture;
+  }
+}
+
 export function createHangarScene(art: HangarArt = pixiHangarArt): HangarScene {
   let env: SceneEnv | undefined;
   let heroes: HangarHeroes | undefined;
   let reduced = false;
   let time = 0;
   let synced = false;
-
-  interface Parts {
-    lamps: { sprite: Sprite; seconds: number; delay: number }[];
-    flicker: Sprite;
-    guide: { sprite: Sprite; frames: Texture[] };
-    crystal: Sprite;
-    motes: { sprite: Sprite; seconds: number; delay: number; top: number }[];
-    sparks: { sprite: Sprite; frames: Texture[]; seconds: number; delay: number }[];
-    shades: Sprite[];
-    plates: Record<HangarHero, { sprite: Sprite; plain: Texture; chosen: Texture }>;
-    ring: Sprite;
-    heroes: Record<HangarHero, HeroView>;
-  }
-  let parts: Parts | undefined;
-
-  function build(): Container {
-    const root = new Container();
-    const backdrop = new Graphics().rect(-3000, -2000, 7000, 5000).fill(BACKDROP);
-    const shift = new Container();
-    shift.y = -HANGAR_SHIFT;
-    root.addChild(backdrop, shift);
-
-    const picture = (name: string) => pictureOf(art, name);
-    // The floor picture is the hangar continued on all sides (hangar-wide.png, 2080 x 1052 pixels at 0.75): 300 px to the sides, 90 above, 150 below.
-    shift.addChild(placed(picture("hangar-wide"), -300, -90, 1560, 789));
-
-    const door = new Container();
-    door.position.set(DOOR.left, DOOR.top);
-    const doorMask = new Graphics().rect(0, 0, DOOR.width, DOOR.height).fill(0xffffff);
-    const crystal = new Sprite(picture("fire"));
-    crystal.anchor.set(0.5);
-    crystal.width = CRYSTAL.size;
-    crystal.height = CRYSTAL.size;
-    crystal.rotation = Math.PI; // the head leads: the picture has its head at the top right and falls to the lower left
-    crystal.visible = false;
-    door.addChild(doorMask, crystal);
-    door.mask = doorMask;
-    shift.addChild(door);
-
-    const screen = (sprite: Sprite): Sprite => {
-      sprite.blendMode = "screen";
-      return sprite;
-    };
-    const lamps = LAMPS.map(([name, seconds, delay]) => {
-      const sprite = screen(placed(picture(`lights-${name}`), 0, 0, PICTURE.width, PICTURE.height));
-      shift.addChild(sprite);
-      return { sprite, seconds, delay };
-    });
-    const flicker = screen(placed(picture("lights-flicker"), 0, 0, PICTURE.width, PICTURE.height));
-    shift.addChild(flicker);
-
-    const guideTexture = picture("guide");
-    const guideFrames = Array.from({ length: GUIDE.frames }, (_, index) => stripFrame(guideTexture, GUIDE.frames, index));
-    const guideSprite = screen(placed(guideFrames[0] as Texture, GUIDE.left, GUIDE.top, GUIDE.width, GUIDE.height));
-    shift.addChild(guideSprite);
-
-    const motes = MOTES.map(([left, top, seconds, delay]) => {
-      const sprite = placed(Texture.WHITE, left, top, 2, 2);
-      sprite.tint = 0x9cc8ff;
-      sprite.alpha = 0;
-      shift.addChild(sprite);
-      return { sprite, seconds, delay, top };
-    });
-
-    const sparkTexture = picture("spark");
-    const sparks = SPARKS.map(({ left, top, seconds, delay }) => {
-      const frames = Array.from({ length: 6 }, (_, index) => stripFrame(sparkTexture, 6, index));
-      const sprite = placed(frames[0] as Texture, left, top, SPARK_FRAME, SPARK_FRAME);
-      sprite.visible = false;
-      shift.addChild(sprite);
-      return { sprite, frames, seconds, delay };
-    });
-
-    const shadeBack = placed(picture("shade-back"), 0, 0, PICTURE.width, PICTURE.tall);
-    const glow = screen(placed(picture("glow"), 0, 0, PICTURE.width, PICTURE.tall));
-    shift.addChild(shadeBack, glow);
-
-    const plates = Object.fromEntries(
-      HANGAR_HEROES.map((hero) => {
-        const { left, top, width, height } = NAME_PLATE[hero];
-        const plain = picture(`name-${hero}`);
-        const sprite = placed(plain, left, top, width, height);
-        shift.addChild(sprite);
-        return [hero, { sprite, plain, chosen: picture(`name-${hero}-selected`) }];
-      }),
-    ) as Parts["plates"];
-
-    const ringTexture = picture("kit-ring");
-    const cut = ((CRATE_BOTTOM - KIT_RING.top) / KIT_RING.height) * ringTexture.height;
-    const ringCropped = new Texture({ source: ringTexture.source, frame: new Rectangle(ringTexture.frame.x, ringTexture.frame.y + cut, ringTexture.width, ringTexture.height - cut) });
-    const ring = placed(ringCropped, KIT_RING.left, CRATE_BOTTOM, KIT_RING.width, KIT_RING.top + KIT_RING.height - CRATE_BOTTOM);
-    ring.visible = false;
-    shift.addChild(ring);
-
-    const shadowTexture = picture("shadow");
-    const views = {} as Parts["heroes"];
-    for (const hero of HANGAR_HEROES) {
-      const shadow = new Sprite(shadowTexture);
-      shadow.visible = false;
-      shift.addChild(shadow);
-      views[hero] = { animator: undefined as unknown as AtlasAnimator, bridge: new Sprite(), shadow, sheet: art.sheet(hero), shown: "" };
-    }
-    for (const hero of HANGAR_HEROES) {
-      const view = views[hero];
-      const { left, top, width, height } = PLACE[hero];
-      const sourceWidth = Object.values(parseAtlas(view.sheet.data).frames)[0]?.sourceSize.w ?? width;
-      const scale = width / sourceWidth;
-      const animator = new AtlasAnimator(view.sheet);
-      animator.setScale(scale);
-      animator.setReducedMotion(reduced);
-      animator.container.position.set(left + width / 2, top + height);
-      view.animator = animator;
-      view.bridge.scale.set(scale);
-      view.bridge.position.set(left + width / 2, top + height);
-      view.bridge.visible = false;
-      shift.addChild(animator.container, view.bridge);
-    }
-
-    const shadeFront = placed(picture("shade-front"), 0, 0, PICTURE.width, PICTURE.tall);
-    shift.addChild(shadeFront);
-
-    parts = { lamps, flicker, guide: { sprite: guideSprite, frames: guideFrames }, crystal, motes, sparks, shades: [shadeBack, shadeFront], plates, ring, heroes: views };
-    return root;
-  }
-
-  /** The layers of a clip that has effects of its own (`<clip>.fx_back`, `<clip>.fx_front`), back to front with the figure between; a clip without them is the figure alone. */
-  function layersOf(sheet: AtlasSheet, clip: string): string[] {
-    return [`${clip}.fx_back`, clip, `${clip}.fx_front`].filter((name) => sheet.animations[name]);
-  }
-
-  /** Puts what the machine says on the Heroes: a clip starts when the mode changes; a bridge shows one of its two frames. */
-  function showHeroes(deltaMs: number): void {
-    if (!parts || !heroes) return;
-    for (const hero of HANGAR_HEROES) {
-      const view = parts.heroes[hero];
-      const player: HeroPlayer = heroes.players[hero];
-      const { mode, bridgeEntry, bridgeHalf, bridgeFrom } = player.state;
-      const key = mode === "bridge" ? `bridge-${bridgeFrom}-${bridgeEntry}-${bridgeHalf}` : mode;
-      let advance = deltaMs;
-      if (key !== view.shown) {
-        view.shown = key;
-        advance = 0;
-        if (mode === "bridge") {
-          const texture = view.sheet.animations[`${hero}.bridge.${bridgeFrom}`]?.[bridgeEntry * 2 + bridgeHalf];
-          view.animator.stop();
-          if (texture) {
-            view.bridge.texture = texture;
-            if (texture.defaultAnchor) view.bridge.anchor.copyFrom(texture.defaultAnchor);
-          }
-          view.bridge.visible = true;
-        } else {
-          view.bridge.visible = false;
-          view.animator.play(layersOf(view.sheet, `${hero}.${mode}`), { loop: isLooped(mode) });
-        }
-      }
-      view.animator.update(advance);
-
-      const rect = mode === "bridge" ? bridgeShadow(hero, bridgeFrom, bridgeEntry * 2 + bridgeHalf) : clipShadow(`${hero}-${mode}`, Math.max(0, view.animator.frame));
-      view.shadow.visible = rect !== undefined;
-      if (rect) {
-        const { left, top } = PLACE[hero];
-        view.shadow.position.set(left + rect[0], top + rect[1]);
-        view.shadow.width = rect[2];
-        view.shadow.height = rect[3];
-      }
-      const plate = parts.plates[hero];
-      plate.sprite.texture = player.selected ? plate.chosen : plate.plain;
-    }
-    parts.ring.visible = heroes.players.kit.selected;
-    synced = true;
-  }
-
-  /** The lamps, the flicker, the dust, the sparks, the crystal and the shade at the scene's time; without motion everything stands in its first state. */
-  function showDecor(): void {
-    if (!parts) return;
-    const t = reduced ? 0 : time;
-    parts.lamps.forEach(({ sprite, seconds, delay }) => (sprite.alpha = reduced ? 1 : lampOpacity(t, seconds, delay)));
-    parts.flicker.alpha = reduced ? 1 : flickerOpacity(t);
-    parts.guide.sprite.texture = parts.guide.frames[reduced ? 0 : guideFrame(t)] as Texture;
-    parts.shades.forEach((sprite) => (sprite.alpha = reduced ? 1 : shadeOpacity(t)));
-    const crystal = reduced ? undefined : crystalAt(t);
-    parts.crystal.visible = crystal !== undefined;
-    if (crystal) {
-      parts.crystal.position.set(crystal.x + CRYSTAL.size / 2, crystal.y + CRYSTAL.size / 2);
-      parts.crystal.alpha = crystal.opacity;
-    }
-    for (const mote of parts.motes) {
-      mote.sprite.visible = !reduced;
-      if (reduced) continue;
-      const { rise, opacity } = moteAt(t, mote.seconds, mote.delay);
-      mote.sprite.y = mote.top + rise;
-      mote.sprite.alpha = opacity;
-    }
-    for (const spark of parts.sparks) {
-      const frame = reduced ? undefined : sparkFrame(t, spark.seconds, spark.delay);
-      spark.sprite.visible = frame !== undefined;
-      if (frame !== undefined) spark.sprite.texture = spark.frames[frame] as Texture;
-    }
-  }
+  let parts: HangarParts | undefined;
 
   const scene: HangarScene = {
     name: HANGAR_SCENE_NAME,
@@ -407,7 +442,9 @@ export function createHangarScene(art: HangarArt = pixiHangarArt): HangarScene {
       reduced = sceneEnv.reducedMotion();
       time = 0;
       synced = false;
-      return build();
+      const built = buildHangar(art, reduced);
+      parts = built.parts;
+      return built.root;
     },
     enter() {
       scene.update(0);
@@ -422,8 +459,11 @@ export function createHangarScene(art: HangarArt = pixiHangarArt): HangarScene {
         time += deltaMs;
         heroes?.advance(deltaMs);
       }
-      showHeroes(deltaMs);
-      showDecor();
+      if (heroes) {
+        showHeroes(parts, heroes, deltaMs);
+        synced = true;
+      }
+      showDecor(parts, reduced, time);
     },
     ready: () => parts !== undefined && synced,
     animating: () => parts !== undefined && !reduced,
@@ -431,7 +471,7 @@ export function createHangarScene(art: HangarArt = pixiHangarArt): HangarScene {
       reduced = value;
       if (!parts) return;
       for (const hero of HANGAR_HEROES) parts.heroes[hero].animator.setReducedMotion(value);
-      showDecor();
+      showDecor(parts, reduced, time);
       env?.invalidate();
     },
     attach(next) {

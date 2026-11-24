@@ -186,6 +186,139 @@ function glowColor(share: number): number {
   return (channel(0) << 16) | (channel(1) << 8) | channel(2);
 }
 
+interface TitleParts {
+  twinkle: Sprite;
+  haze: Sprite;
+  logo: Sprite;
+  balls: { fall: Sprite; burst: Sprite; ball: Fireball }[];
+  groups: { near: Container; mid: Container; far: Container; pane: Container };
+  tunnel: Container;
+  streaks: [Container, Sprite][];
+  whip: Container;
+}
+
+const titlePicture = (art: TitleArt, name: string): Texture => {
+  const texture = art.texture(`${ART}${name}.png`);
+  texture.source.scaleMode = "nearest";
+  return texture;
+};
+
+const coverSprite = (art: TitleArt, name: string): Sprite => {
+  const sprite = new Sprite(titlePicture(art, name));
+  sprite.width = STAGE.width;
+  sprite.height = STAGE.height;
+  return sprite;
+};
+
+/** A group that is scaled about the point the fly-away pulls towards. */
+const aboutOrigin = (...children: Container[]): Container => {
+  const group = new Container();
+  group.pivot.set(ORIGIN.x, ORIGIN.y);
+  group.position.set(ORIGIN.x, ORIGIN.y);
+  group.addChild(...children);
+  return group;
+};
+
+/** The tunnel of the fly-away: a dark glow of rings and two layers of streaks over it, invisible until the fly-away starts. */
+function buildTunnel(art: TitleArt): { tunnel: Container; streaks: [Container, Sprite][] } {
+  const tunnelBack = new Graphics().rect(0, 0, STAGE.width, STAGE.height).fill(BACKDROP);
+  const radius = Math.hypot(Math.max(ORIGIN.x, STAGE.width - ORIGIN.x), Math.max(ORIGIN.y, STAGE.height - ORIGIN.y));
+  const rings = 40;
+  for (let ring = rings; ring >= 1; ring--) {
+    tunnelBack.circle(ORIGIN.x, ORIGIN.y, (0.6 * ring * radius) / rings).fill(glowColor(0.6 * ((ring - 0.5) / rings)));
+  }
+  const streaks = [coverSprite(art, "hyperspace"), coverSprite(art, "hyperspace")].map((sprite): [Container, Sprite] => {
+    sprite.blendMode = "screen";
+    return [aboutOrigin(sprite), sprite];
+  });
+  const tunnel = new Container();
+  tunnel.addChild(tunnelBack, ...streaks.map(([group]) => group));
+  tunnel.alpha = 0;
+  return { tunnel, streaks };
+}
+
+/** The falling crystal and its burst for each of the fireballs of the title screen. */
+function buildFireballs(art: TitleArt): TitleParts["balls"] {
+  return FIREBALLS.map((ball) => {
+    const fall = new Sprite(titlePicture(art, "fireball"));
+    fall.width = FIREBALL_BOX.width;
+    fall.height = FIREBALL_BOX.height;
+    fall.alpha = 0;
+    const burst = new Sprite(titlePicture(art, "impact"));
+    burst.anchor.set(0.5);
+    burst.alpha = 0;
+    return { fall, burst, ball };
+  });
+}
+
+function buildTitle(art: TitleArt): { root: Container; parts: TitleParts } {
+  const root = new Container();
+  const backdrop = new Graphics().rect(-3000, -2000, 7000, 5000).fill(BACKDROP);
+  // What is pulled beyond the frame is cut off: the picture is the frame (a narrower window cuts its sides, a wider one has dark sides).
+  const frame = new Container();
+  const frameMask = new Graphics().rect(0, 0, STAGE.width, STAGE.height).fill(0xffffff);
+  frame.addChild(frameMask);
+  frame.mask = frameMask;
+  root.addChild(backdrop, frame);
+
+  const { tunnel, streaks } = buildTunnel(art);
+  const twinkle = coverSprite(art, "stars");
+  const haze = coverSprite(art, "haze");
+  haze.blendMode = "screen";
+  const balls = buildFireballs(art);
+  const logo = coverSprite(art, "logo");
+  const tagline = coverSprite(art, "tagline");
+
+  const far = aboutOrigin(coverSprite(art, "background"));
+  const mid = aboutOrigin(twinkle, ...balls.flatMap(({ fall, burst }) => [fall, burst]), haze);
+  const near = aboutOrigin(logo, tagline);
+  const pane = new Container();
+  pane.addChild(far, mid, near);
+
+  const whipSprite = coverSprite(art, "hyperspace");
+  whipSprite.blendMode = "screen";
+  const whip = aboutOrigin(whipSprite);
+  whip.alpha = 0;
+
+  frame.addChild(tunnel, pane, whip);
+  return { root, parts: { twinkle, haze, logo, balls, groups: { near, mid, far, pane }, tunnel, streaks, whip } };
+}
+
+/** The stars, haze, logo and crystals at the scene's time; `still` (the first state) without motion, and while the fly-away pulls the picture. */
+function showDecor(parts: TitleParts, still: boolean, time: number): void {
+  const t = still ? 0 : time;
+  parts.twinkle.alpha = still ? 1 : twinkleOpacity(t);
+  parts.haze.alpha = still ? 1 : hazeOpacity(t);
+  parts.logo.y = still ? 0 : -logoRise(t);
+  for (const { fall, burst, ball } of parts.balls) {
+    const falling = still ? { x: ball.left, y: ball.top, opacity: 0 } : fireballAt(t, ball);
+    const bursting = still ? { scale: 0.3, opacity: 0 } : burstAt(t, ball);
+    fall.position.set(falling.x, falling.y);
+    fall.alpha = falling.opacity;
+    burst.position.set(ball.left + BURST_OFFSET.left + BURST_BOX.width / 2, ball.top + BURST_OFFSET.top + BURST_BOX.height / 2);
+    burst.scale.set((bursting.scale * BURST_BOX.width) / burst.texture.width, (bursting.scale * BURST_BOX.height) / burst.texture.height);
+    burst.alpha = bursting.opacity;
+  }
+}
+
+/** The fly-away at `flyTime`: the layers pulled each at their own speed, the picture fading out, the tunnel of streaks behind it. */
+function showFly(parts: TitleParts, flyTime: number): FlyLook {
+  const look = flyLook(flyTime);
+  parts.groups.near.scale.set(look.near);
+  parts.groups.mid.scale.set(look.mid);
+  parts.groups.far.scale.set(look.far);
+  parts.groups.pane.alpha = look.paneAlpha;
+  parts.tunnel.alpha = look.tunnelAlpha;
+  parts.streaks.forEach(([group, sprite], index) => {
+    const { scale, opacity } = streakLook(flyTime, index === 1);
+    group.scale.set(scale);
+    sprite.alpha = opacity;
+  });
+  parts.whip.alpha = look.whipAlpha;
+  parts.whip.scale.set(look.whipScale);
+  return look;
+}
+
 export function createTitleScene(art: TitleArt = pixiTitleArt): TitleScene {
   let env: SceneEnv | undefined;
   let reduced = false;
@@ -194,132 +327,11 @@ export function createTitleScene(art: TitleArt = pixiTitleArt): TitleScene {
   let flyDone: (() => void) | undefined;
   let listener: ((look: FlyLook) => void) | undefined;
   let drawn = false;
+  let parts: TitleParts | undefined;
 
-  interface Parts {
-    twinkle: Sprite;
-    haze: Sprite;
-    logo: Sprite;
-    balls: { fall: Sprite; burst: Sprite; ball: Fireball }[];
-    groups: { near: Container; mid: Container; far: Container; pane: Container };
-    tunnel: Container;
-    streaks: [Container, Sprite][];
-    whip: Container;
-  }
-  let parts: Parts | undefined;
-
-  const picture = (name: string): Texture => {
-    const texture = art.texture(`${ART}${name}.png`);
-    texture.source.scaleMode = "nearest";
-    return texture;
+  const decor = () => {
+    if (parts) showDecor(parts, reduced || flyTime !== undefined, time);
   };
-  const cover = (name: string): Sprite => {
-    const sprite = new Sprite(picture(name));
-    sprite.width = STAGE.width;
-    sprite.height = STAGE.height;
-    return sprite;
-  };
-  /** A group that is scaled about the point the fly-away pulls towards. */
-  const aboutOrigin = (...children: Container[]): Container => {
-    const group = new Container();
-    group.pivot.set(ORIGIN.x, ORIGIN.y);
-    group.position.set(ORIGIN.x, ORIGIN.y);
-    group.addChild(...children);
-    return group;
-  };
-
-  function build(): Container {
-    const root = new Container();
-    const backdrop = new Graphics().rect(-3000, -2000, 7000, 5000).fill(BACKDROP);
-    // What is pulled beyond the frame is cut off: the picture is the frame (a narrower window cuts its sides, a wider one has dark sides).
-    const frame = new Container();
-    const frameMask = new Graphics().rect(0, 0, STAGE.width, STAGE.height).fill(0xffffff);
-    frame.addChild(frameMask);
-    frame.mask = frameMask;
-    root.addChild(backdrop, frame);
-
-    const tunnelBack = new Graphics().rect(0, 0, STAGE.width, STAGE.height).fill(BACKDROP);
-    const radius = Math.hypot(Math.max(ORIGIN.x, STAGE.width - ORIGIN.x), Math.max(ORIGIN.y, STAGE.height - ORIGIN.y));
-    const rings = 40;
-    for (let ring = rings; ring >= 1; ring--) {
-      tunnelBack.circle(ORIGIN.x, ORIGIN.y, (0.6 * ring * radius) / rings).fill(glowColor(0.6 * ((ring - 0.5) / rings)));
-    }
-    const streaks = [cover("hyperspace"), cover("hyperspace")].map((sprite): [Container, Sprite] => {
-      sprite.blendMode = "screen";
-      return [aboutOrigin(sprite), sprite];
-    });
-    const tunnel = new Container();
-    tunnel.addChild(tunnelBack, ...streaks.map(([group]) => group));
-    tunnel.alpha = 0;
-
-    const twinkle = cover("stars");
-    const haze = cover("haze");
-    haze.blendMode = "screen";
-    const balls = FIREBALLS.map((ball) => {
-      const fall = new Sprite(picture("fireball"));
-      fall.width = FIREBALL_BOX.width;
-      fall.height = FIREBALL_BOX.height;
-      fall.alpha = 0;
-      const burst = new Sprite(picture("impact"));
-      burst.anchor.set(0.5);
-      burst.alpha = 0;
-      return { fall, burst, ball };
-    });
-    const logo = cover("logo");
-    const tagline = cover("tagline");
-
-    const far = aboutOrigin(cover("background"));
-    const mid = aboutOrigin(twinkle, ...balls.flatMap(({ fall, burst }) => [fall, burst]), haze);
-    const near = aboutOrigin(logo, tagline);
-    const pane = new Container();
-    pane.addChild(far, mid, near);
-
-    const whipSprite = cover("hyperspace");
-    whipSprite.blendMode = "screen";
-    const whip = aboutOrigin(whipSprite);
-    whip.alpha = 0;
-
-    frame.addChild(tunnel, pane, whip);
-    parts = { twinkle, haze, logo, balls, groups: { near, mid, far, pane }, tunnel, streaks, whip };
-    return root;
-  }
-
-  /** The stars, haze, logo and crystals at the scene's time; still (the first state) without motion, and while the fly-away pulls the picture. */
-  function showDecor(): void {
-    if (!parts) return;
-    const still = reduced || flyTime !== undefined;
-    const t = still ? 0 : time;
-    parts.twinkle.alpha = still ? 1 : twinkleOpacity(t);
-    parts.haze.alpha = still ? 1 : hazeOpacity(t);
-    parts.logo.y = still ? 0 : -logoRise(t);
-    for (const { fall, burst, ball } of parts.balls) {
-      const falling = still ? { x: ball.left, y: ball.top, opacity: 0 } : fireballAt(t, ball);
-      const bursting = still ? { scale: 0.3, opacity: 0 } : burstAt(t, ball);
-      fall.position.set(falling.x, falling.y);
-      fall.alpha = falling.opacity;
-      burst.position.set(ball.left + BURST_OFFSET.left + BURST_BOX.width / 2, ball.top + BURST_OFFSET.top + BURST_BOX.height / 2);
-      burst.scale.set((bursting.scale * BURST_BOX.width) / burst.texture.width, (bursting.scale * BURST_BOX.height) / burst.texture.height);
-      burst.alpha = bursting.opacity;
-    }
-  }
-
-  /** The fly-away at `flyTime`: the layers pulled each at their own speed, the picture fading out, the tunnel of streaks behind it. */
-  function showFly(): FlyLook | undefined {
-    if (!parts || flyTime === undefined) return undefined;
-    const look = flyLook(flyTime);
-    parts.groups.near.scale.set(look.near);
-    parts.groups.mid.scale.set(look.mid);
-    parts.groups.far.scale.set(look.far);
-    parts.groups.pane.alpha = look.paneAlpha;
-    parts.tunnel.alpha = look.tunnelAlpha;
-    parts.streaks.forEach(([group, sprite], index) => {
-      const { scale, opacity } = streakLook(flyTime ?? 0, index === 1);
-      group.scale.set(scale);
-      sprite.alpha = opacity;
-    });
-    parts.whip.alpha = look.whipAlpha;
-    parts.whip.scale.set(look.whipScale);
-    return look;
-  }
 
   const scene: TitleScene = {
     name: TITLE_SCENE_NAME,
@@ -330,7 +342,9 @@ export function createTitleScene(art: TitleArt = pixiTitleArt): TitleScene {
       reduced = sceneEnv.reducedMotion();
       time = 0;
       drawn = false;
-      return build();
+      const built = buildTitle(art);
+      parts = built.parts;
+      return built.root;
     },
     enter() {
       scene.update(0);
@@ -345,9 +359,9 @@ export function createTitleScene(art: TitleArt = pixiTitleArt): TitleScene {
       let look: FlyLook | undefined;
       if (flyTime !== undefined) {
         flyTime += deltaMs;
-        look = showFly();
+        look = showFly(parts, flyTime);
       }
-      showDecor();
+      decor();
       drawn = true;
       if (look) listener?.(look);
       if (flyTime !== undefined && flyTime >= WHIP_MS && flyDone) {
@@ -361,7 +375,7 @@ export function createTitleScene(art: TitleArt = pixiTitleArt): TitleScene {
     animating: () => parts !== undefined && (!reduced || flyDone !== undefined),
     reducedMotionChanged(value) {
       reduced = value;
-      showDecor();
+      decor();
       env?.invalidate();
     },
     fly(onDone) {
