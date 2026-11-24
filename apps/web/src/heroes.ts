@@ -131,10 +131,7 @@ const COVER_HOLD_FRAME_S = 0.15;
 export function coverRestProgress(
   heroClass: HeroClass,
   name: ClipName,
-  clipMs: number,
-  loopMs: number,
-  frames: number,
-  offsetMs = 0,
+  { clipMs, loopMs, frames, offsetMs = 0 }: { clipMs: number; loopMs: number; frames: number; offsetMs?: number },
 ): number {
   const from = COVER_LOOP_FROM[name];
   if (from === undefined) return clipMs / loopMs;
@@ -300,7 +297,7 @@ export class PixelHero {
     const loopMs = clipOf(this.heroClass, name).durationMs;
     const resting = COVER_LOOP_FROM[name] !== undefined;
     const frame = resting
-      ? frameAt(clip.frames, clip.loop, coverRestProgress(this.heroClass, name, clipMs, loopMs, clip.frames, this.restOffsetMs))
+      ? frameAt(clip.frames, clip.loop, coverRestProgress(this.heroClass, name, { clipMs, loopMs, frames: clip.frames, offsetMs: this.restOffsetMs }))
       : frameAt(clip.frames, clip.loop, progress);
     this.draw(clip, frame, EFFECT_CLIPS.includes(name));
     // A Hero that goes Hidden fades to the translucent look it keeps (the sheet's figure stays opaque).

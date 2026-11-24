@@ -120,6 +120,12 @@ export interface FlyLook {
   whipScale: number;
 }
 
+/** The window pane stays whole, fades to 0.6 shortly before the end and is gone after it. */
+const paneAlphaAt = (progress: number): number => {
+  if (progress < 0.875) return 1;
+  return progress < 1 ? 0.6 : 0;
+};
+
 /** What the fly-away looks like `timeMs` after the tap. */
 export function flyLook(timeMs: number): FlyLook {
   const progress = timeMs / PULL_MS;
@@ -128,7 +134,7 @@ export function flyLook(timeMs: number): FlyLook {
     near: stepKeyframe(NEAR, timeMs, PULL_MS),
     mid: stepKeyframe(MID, timeMs, PULL_MS),
     far: stepKeyframe(FAR, timeMs, PULL_MS),
-    paneAlpha: progress < 0.875 ? 1 : progress < 1 ? 0.6 : 0,
+    paneAlpha: paneAlphaAt(progress),
     tunnelAlpha: tunnel >= 0.22 && tunnel < 0.88 ? 1 : 0,
     whipAlpha: stepKeyframe(WHIP_OPACITY, timeMs, PULL_MS),
     whipScale: stepKeyframe(WHIP_SCALE, timeMs, PULL_MS),

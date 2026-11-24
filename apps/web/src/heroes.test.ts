@@ -106,7 +106,7 @@ describe("the rest loop of a Hero in Cover", () => {
 describe("the Cover rest: crouched most of the time, the loop now and then", () => {
   const frames = 88;
   const loopMs = clipOf(HeroClass.Assassin, "inCover").durationMs;
-  const at = (ms: number, offset = 0) => coverRestProgress(HeroClass.Assassin, "inCover", ms, loopMs, frames, offset);
+  const at = (ms: number, offset = 0) => coverRestProgress(HeroClass.Assassin, "inCover", { clipMs: ms, loopMs, frames, offsetMs: offset });
   const seconds = (s: number) => s * 1000 * CLIP_SPEED;
 
   it("starts crouched on the frame the loop starts on, and stays within the calm stretch for about six seconds", () => {
@@ -131,8 +131,8 @@ describe("the Cover rest: crouched most of the time, the loop now and then", () 
   });
 
   it("holds still when the sheet has no calm stretch to move in", () => {
-    const still = coverRestProgress(HeroClass.Bruiser, "inCoverFull", 0, 1000, 96);
-    expect(coverRestProgress(HeroClass.Bruiser, "inCoverFull", 123, 1000, 96)).toBeGreaterThanOrEqual(0.22);
+    const still = coverRestProgress(HeroClass.Bruiser, "inCoverFull", { clipMs: 0, loopMs: 1000, frames: 96 });
+    expect(coverRestProgress(HeroClass.Bruiser, "inCoverFull", { clipMs: 123, loopMs: 1000, frames: 96 })).toBeGreaterThanOrEqual(0.22);
     expect(still).toBeGreaterThanOrEqual(0.22);
   });
 });

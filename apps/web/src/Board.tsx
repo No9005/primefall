@@ -49,7 +49,7 @@ import { walkProgress } from "./playback";
 import { areaContains, areaLift, areaRing, canMove, enemyFade, finished, GHOST_ALPHA, GHOST_FADE_MS, TRANSITION_MS, type ZoneLook, zoneBorderAlpha, zoneRingAt } from "./vision-effects";
 import { type ClipName, restClipName } from "./hero-clips";
 import { enemyIsDrawn } from "./playback";
-import { marksFigure, shieldBubble } from "./hero-figure";
+import { type HeroPose, marksFigure, shieldBubble } from "./hero-figure";
 import { type PixelHero, styledHeroFigure } from "./heroes";
 import { HERO_STYLE } from "./hero-style";
 import type { HeroMarks } from "./shield-marks";
@@ -64,6 +64,18 @@ import { type PixelAtlas, PixelScenery } from "./pixel-terrain";
 const clock = boardScene.clock;
 
 /** Strokes `segment` as a run of dashes: long for a clear shot, dots for the stopped part, grey after a block. */
+/** The still pose of a Hero's figure: Exhausted wins, then a hit (shown for reduced motion), else idle. */
+function heroPose({ exhausted, hit }: { exhausted: boolean; hit: boolean }): HeroPose {
+  if (exhausted) return "exhausted";
+  return hit ? "hit" : "idle";
+}
+
+/** Whether the enemy was shown as a Ghost or as seen in the last frame, so the fade between the two can play. */
+function previousSighting(heroId: string, ghosts: ReadonlySet<string>, seen: ReadonlySet<string>): "ghost" | "seen" | undefined {
+  if (ghosts.has(heroId)) return "ghost";
+  return seen.has(heroId) ? "seen" : undefined;
+}
+
 function strokeShotSegment(graphics: Graphics, { from, to, style }: ShotInWorld["segments"][number]): void {
   const length = Math.hypot(to.x - from.x, to.y - from.y);
   if (length === 0) return;
@@ -218,7 +230,8 @@ function crossfireRingGraphics(ring: CrossfireRing): { ground: Container; top: C
     const start = -Math.PI / 2 + (index * Math.PI) / 2 + RING_GAP;
     const end = start + Math.PI / 2 - 2 * RING_GAP;
     const active = segment !== RingSegment.Empty;
-    const color = segment === RingSegment.Crossfire ? PLAN_STYLE.crossfire : active ? PLAN_STYLE.own : PLAN_STYLE.steel;
+    const plainColor = active ? PLAN_STYLE.own : PLAN_STYLE.steel;
+    const color = segment === RingSegment.Crossfire ? PLAN_STYLE.crossfire : plainColor;
     const first = at(start);
     arcs.moveTo(first.x, first.y);
     for (let step = 1; step <= 8; step++) {
@@ -784,7 +797,7 @@ export function Board({
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       // An Exhausted Hero plays its fall in the frame that Exhausts it; at any other time it shows the flat pose (a saved match too).
       const falling = hero.exhausted && clips[hero.id] === "exhausted" && !reduced;
-      const pose = hero.exhausted && !falling ? "exhausted" : reduced && hitIds.includes(hero.id) ? "hit" : "idle";
+      const pose = heroPose({ exhausted: hero.exhausted && !falling, hit: reduced && hitIds.includes(hero.id) });
       // The enemy Squad is told apart by the red ring under the figure.
       const { figure, pixel } = styledHeroFigure(hero.heroClass, enemy, pose, strokeScale, facings.current.get(hero.id) ?? baseFacing(enemy));
       if (hero.ghost) figure.alpha = GHOST_ALPHA;
@@ -793,7 +806,7 @@ export function Board({
       if (hero.ghost) token.addChild(ghostMark());
       // An enemy that just left sight fades to its Ghost; one seen again fades from the Ghost to the real figure.
       if (enemy && !reduced) {
-        const was = ghostSeen.current.has(hero.id) ? "ghost" : enemiesSeen.current.has(hero.id) ? "seen" : undefined;
+        const was = previousSighting(hero.id, ghostSeen.current, enemiesSeen.current);
         if (hero.ghost && was === "seen") cancels.push(animateFade(clock, figure, "toGhost"));
         else if (!hero.ghost && was === "ghost") cancels.push(animateFade(clock, figure, "toSeen"));
         else if (!hero.ghost && was === undefined && (enemiesDrawn.current || revealedAreas.some((area) => areaContains(area.center, area.size, hero.position)))) {

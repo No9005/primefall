@@ -141,6 +141,16 @@ const CONTROLLER_HEAVY_METAL = cardIndex(HeroClass.Controller, "Heavy Metal");
 
 const ENEMY_BRUISER = `${SquadId.Right}-bruiser`;
 
+/** What `bruiserCard` stages: the match seed, the card, how many Pitches pay for it, how it is played, and where the other Heroes stand. */
+interface BruiserCardSetup {
+  seed: number;
+  card: CardIndex;
+  pitches: number;
+  play: Omit<Extract<PlanStep, { slot: number }>, "slot">;
+  edit: (hero: (id: string) => HeroState, match: MatchState) => void;
+  resolutionShotsMs?: readonly number[];
+}
+
 /**
  * A Bruiser card played from the Hand's first slot, paid by pitching the next slots (a card of Energy cost 2 needs two
  * Pitches). `edit` places the other Heroes where the effect is visible. The enemies hold Attacks, so the AI shoots
@@ -149,12 +159,7 @@ const ENEMY_BRUISER = `${SquadId.Right}-bruiser`;
 function bruiserCard(
   name: string,
   description: string,
-  seed: number,
-  card: CardIndex,
-  pitches: number,
-  play: Omit<Extract<PlanStep, { slot: number }>, "slot">,
-  edit: (hero: (id: string) => HeroState, match: MatchState) => void,
-  resolutionShotsMs: readonly number[] = [600, 1300, 2000, 3000, 4500],
+  { seed, card, pitches, play, edit, resolutionShotsMs = [600, 1300, 2000, 3000, 4500] }: BruiserCardSetup,
 ): Scenario {
   const fillers = [BRUISER_HANDLE_WITH_CARE, BRUISER_HANDLE_WITH_CARE_2, BRUISER_TIME_FOR_COFFEE, BRUISER_BUY_ONE_GET_TWO].filter((index) => index !== card);
   return {
@@ -263,15 +268,15 @@ const ASSASSIN_SCENARIOS: readonly Scenario[] = [
 ];
 
 export const SCENARIOS: readonly Scenario[] = [
-  bruiserCard("handle-with-care", "A Bruiser fires Handle With Care (2 damage, 3 at Range 1; Range 1 to 2) at an enemy Bruiser two tiles away.", 31, BRUISER_HANDLE_WITH_CARE, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+  bruiserCard("handle-with-care", "A Bruiser fires Handle With Care (2 damage, 3 at Range 1; Range 1 to 2) at an enemy Bruiser two tiles away.", { seed: 31, card: BRUISER_HANDLE_WITH_CARE, pitches: 1, play: { use: "primary", target: ENEMY_BRUISER }, edit: (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
-  }),
-  bruiserCard("handle-with-care-left", "The mirror of handle-with-care: the Bruiser fires at an enemy Bruiser two tiles to its left, turns to it and keeps facing it.", 31, BRUISER_HANDLE_WITH_CARE, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+  } }),
+  bruiserCard("handle-with-care-left", "The mirror of handle-with-care: the Bruiser fires at an enemy Bruiser two tiles to its left, turns to it and keeps facing it.", { seed: 31, card: BRUISER_HANDLE_WITH_CARE, pitches: 1, play: { use: "primary", target: ENEMY_BRUISER }, edit: (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 10, row: 3 }, ENEMIES_WITH_ATTACKS);
-  }),
-  bruiserCard("time-for-coffee", "A Bruiser fires Time for Coffee (1 damage and Slow, Range 3) at an enemy Bruiser two tiles away.", 32, BRUISER_TIME_FOR_COFFEE, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+  } }),
+  bruiserCard("time-for-coffee", "A Bruiser fires Time for Coffee (1 damage and Slow, Range 3) at an enemy Bruiser two tiles away.", { seed: 32, card: BRUISER_TIME_FOR_COFFEE, pitches: 1, play: { use: "primary", target: ENEMY_BRUISER }, edit: (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
-  }),
+  } }),
   {
     name: "urban-renewal",
     description: "Tilly plays Urban Renewal on a Half Cover tile next to an enemy Bruiser: the bomb lands, the 3 x 3 area blows up, the Bruiser takes 2 damage, the Cover is destroyed, and Tilly pulls the rubble into her hand: Scrap.",
@@ -289,18 +294,18 @@ export const SCENARIOS: readonly Scenario[] = [
     ],
     resolutionShotsMs: [700, 1000, 1300, 1700, 2600, 3300, 4200, 5000],
   },
-  bruiserCard("buy-one-get-two", "A Bruiser plays Buy One, Get Two on an enemy Bruiser two tiles away: two shots, 2 damage each.", 34, BRUISER_BUY_ONE_GET_TWO, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+  bruiserCard("buy-one-get-two", "A Bruiser plays Buy One, Get Two on an enemy Bruiser two tiles away: two shots, 2 damage each.", { seed: 34, card: BRUISER_BUY_ONE_GET_TWO, pitches: 1, play: { use: "primary", target: ENEMY_BRUISER }, edit: (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
-  }),
-  bruiserCard("hard-hat", "A Bruiser plays Hard Hat: the Shield (2) bubble appears and soaks the enemy Handle With Care shots of the Resolution.", 36, BRUISER_HARD_HAT, 1, { use: "primary" }, (hero) => {
+  } }),
+  bruiserCard("hard-hat", "A Bruiser plays Hard Hat: the Shield (2) bubble appears and soaks the enemy Handle With Care shots of the Resolution.", { seed: 36, card: BRUISER_HARD_HAT, pitches: 1, play: { use: "primary" }, edit: (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 14, row: 3 }, ENEMIES_WITH_ATTACKS);
-  }),
-  bruiserCard("express-delivery", "A Bruiser plays Express Delivery on an enemy Bruiser four tiles away: Shield 2 first, then it closes in and ends next to the enemy.", 42, BRUISER_EXPRESS_DELIVERY, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+  } }),
+  bruiserCard("express-delivery", "A Bruiser plays Express Delivery on an enemy Bruiser four tiles away: Shield 2 first, then it closes in and ends next to the enemy.", { seed: 42, card: BRUISER_EXPRESS_DELIVERY, pitches: 1, play: { use: "primary", target: ENEMY_BRUISER }, edit: (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 16, row: 3 }, ENEMIES_WITH_ATTACKS);
-  }),
-  bruiserCard("cargo-hook", "A Bruiser plays Cargo Hook on an enemy Bruiser five tiles away: it is dragged all the way next to the Bruiser.", 43, BRUISER_CARGO_HOOK, 1, { use: "primary", target: ENEMY_BRUISER }, (hero) => {
+  } }),
+  bruiserCard("cargo-hook", "A Bruiser plays Cargo Hook on an enemy Bruiser five tiles away: it is dragged all the way next to the Bruiser.", { seed: 43, card: BRUISER_CARGO_HOOK, pitches: 1, play: { use: "primary", target: ENEMY_BRUISER }, edit: (hero) => {
     arrange(hero(ENEMY_BRUISER), { col: 17, row: 3 }, ENEMIES_WITH_ATTACKS);
-  }),
+  } }),
   {
     name: "charge-and-hit",
     description: "A Bruiser plays Express Delivery on an enemy Bruiser two tiles away, then Handle With Care at Range 1: the hit carries the tag CLOSE +1.",

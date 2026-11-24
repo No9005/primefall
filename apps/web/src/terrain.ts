@@ -115,6 +115,24 @@ const EPSILON = 1e-6;
 
 const flat = (points: { x: number; y: number }[]) => points.flatMap((p) => [p.x, p.y]);
 
+type TileEdge = { readonly from: readonly [number, number]; readonly to: readonly [number, number] };
+
+/** The two ends of the panel across the front of a tile: the middles of two front edges, or the one front edge itself. */
+function panelEnds<E extends TileEdge>(front: readonly E[], middleOf: (edge: E) => readonly [number, number]): (readonly [number, number])[] {
+  if (front.length === 2) return [middleOf(front[0]!), middleOf(front[1]!)];
+  return front.length === 1 ? [front[0]!.from, front[0]!.to] : [];
+}
+
+/** Where a bar of `thick` starts and ends along one axis of an edge that runs from `low` to `high`; `inward` is the side the bar grows toward. */
+function barSpan(inward: number, low: number, high: number, thick: number): { from: number; to: number } {
+  return { from: inward === -1 ? high - thick : low, to: inward === 1 ? low + thick : high };
+}
+
+const coverKindOfTile = (tileKind: TileKind): "full" | "half" | undefined => {
+  if (tileKind === TileKind.FullCover) return "full";
+  return tileKind === TileKind.HalfCover ? "half" : undefined;
+};
+
 function isNextToPrimeZone(grid: Grid, { col, row }: GridPosition): boolean {
   for (let dRow = -1; dRow <= 1; dRow++)
     for (let dCol = -1; dCol <= 1; dCol++) {
@@ -427,7 +445,7 @@ export function coverLook(position: GridPosition, kind: "full" | "half", built: 
       return middle.y > centreY + EPSILON;
     });
     const middleOf = (edge: (typeof edges)[number]) => [(edge.from[0] + edge.to[0]) / 2, (edge.from[1] + edge.to[1]) / 2] as const;
-    const ends = front.length === 2 ? [middleOf(front[0]!), middleOf(front[1]!)] : front.length === 1 ? [front[0]!.from, front[0]!.to] : [];
+    const ends = panelEnds(front, middleOf);
     if (ends.length === 2) {
       const [a, b] = ends.map(([dc, dr]) => proj.point(col + dc, row + dr, lift)).sort((p, q) => p.x - q.x) as [{ x: number; y: number }, { x: number; y: number }];
       look.panels.push({
@@ -444,10 +462,10 @@ export function coverLook(position: GridPosition, kind: "full" | "half", built: 
     const [fromCol, toCol] = [edge.from[0], edge.to[0]].sort((x, y) => x - y) as [number, number];
     const [fromRow, toRow] = [edge.from[1], edge.to[1]].sort((x, y) => x - y) as [number, number];
     const box: Box = {
-      fromCol: col + (edge.inward[0] === 1 ? fromCol : edge.inward[0] === -1 ? toCol - thick : fromCol),
-      toCol: col + (edge.inward[0] === 1 ? fromCol + thick : edge.inward[0] === -1 ? toCol : toCol),
-      fromRow: row + (edge.inward[1] === 1 ? fromRow : edge.inward[1] === -1 ? toRow - thick : fromRow),
-      toRow: row + (edge.inward[1] === 1 ? fromRow + thick : edge.inward[1] === -1 ? toRow : toRow),
+      fromCol: col + barSpan(edge.inward[0], fromCol, toCol, thick).from,
+      toCol: col + barSpan(edge.inward[0], fromCol, toCol, thick).to,
+      fromRow: row + barSpan(edge.inward[1], fromRow, toRow, thick).from,
+      toRow: row + barSpan(edge.inward[1], fromRow, toRow, thick).to,
     };
     // The second bar stops where the first one's thickness ends, so they meet in a clean corner.
     if (i === 1) {
@@ -488,7 +506,7 @@ export function coverMarks(grid: Grid, built: ReadonlySet<string> = new Set()): 
   const proj = PROJECTION;
   return grid.tiles.flatMap((line, row) =>
     line.flatMap((tileKind, col) => {
-      const kind = tileKind === TileKind.FullCover ? "full" : tileKind === TileKind.HalfCover ? "half" : undefined;
+      const kind = coverKindOfTile(tileKind);
       if (!kind || built.has(tileKey({ col, row }))) return [];
       const corner = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]].map(([c, r]) => proj.point(col + c!, row + r!)).reduce((a, b) => (b.y < a.y ? b : a));
       const mark: CoverMark = { position: { col, row }, kind, x: corner.x, y: corner.y - COVER_LOOK.natural[kind] * GAME_PX - 12 };

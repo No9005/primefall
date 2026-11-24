@@ -120,7 +120,8 @@ export function takeCoverClipName(cover: CoverKind): ClipName {
 
 /** What a Hero does when nothing is asked of it: stand, or stand behind the Cover it is on. */
 export function restClipName(cover: CoverKind): ClipName {
-  return cover === CoverKind.Full ? "inCoverFull" : cover === CoverKind.Half ? "inCover" : "idle";
+  if (cover === CoverKind.Full) return "inCoverFull";
+  return cover === CoverKind.Half ? "inCover" : "idle";
 }
 
 /** The clip of a Hero class; a clip the class does not have (a Long Shot of a Bruiser) is its basic attack. */

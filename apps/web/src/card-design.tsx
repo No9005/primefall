@@ -34,9 +34,14 @@ function Runs({ runs }: { runs: readonly TextRun[] }) {
   );
 }
 
+function cardKind(standard: string | undefined, type: CardType): "action" | "attack" | "utility" {
+  if (standard) return "action";
+  return type === CardType.Attack ? "attack" : "utility";
+}
+
 /** The designed card. Decorative: the button or the pulled card around it carries the name for assistive technology. */
 export function DesignedCard({ card, width, standard, cost, art }: DesignedCardProps) {
-  const kind = standard ? "action" : card.type === CardType.Attack ? "attack" : "utility";
+  const kind = cardKind(standard, card.type);
   const picture = art ?? cardArtUrl(card.name);
   const { runs, flavor } = cardTextOf(card);
   return (

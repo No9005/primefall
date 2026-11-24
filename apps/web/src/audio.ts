@@ -47,7 +47,7 @@ const LAYERS_FADE_IN_BARS = 4;
 const FADE_STEPS = 24;
 
 /** Ramps a parameter from `from` to `to` along `shape` (0 to 1 in, 0 to 1 out) as short straight pieces, which a later `cancelScheduledValues` can still cut. */
-function shapedRamp(param: AudioParam, from: number, to: number, start: number, seconds: number, shape: (t: number) => number): void {
+function shapedRamp(param: AudioParam, { from, to, start, seconds }: { from: number; to: number; start: number; seconds: number }, shape: (t: number) => number): void {
   param.setValueAtTime(from, start);
   for (let step = 1; step <= FADE_STEPS; step++) {
     const t = step / FADE_STEPS;
@@ -491,13 +491,13 @@ export class GameAudio {
     jingleSource.buffer = jingle;
     const jingleGain = context.createGain();
     jingleGain.gain.setValueAtTime(track.jingle.gain, start);
-    shapedRamp(jingleGain.gain, track.jingle.gain, 0, fadeFrom, fadeSeconds, (t) => 1 - Math.cos((t * Math.PI) / 2));
+    shapedRamp(jingleGain.gain, { from: track.jingle.gain, to: 0, start: fadeFrom, seconds: fadeSeconds }, (t) => 1 - Math.cos((t * Math.PI) / 2));
     const loopSource = context.createBufferSource();
     loopSource.buffer = loop;
     loopSource.loop = true;
     const loopGain = context.createGain();
     loopGain.gain.setValueAtTime(0, start);
-    shapedRamp(loopGain.gain, 0, track.loop.gain, fadeFrom, fadeSeconds, (t) => Math.sin((t * Math.PI) / 2));
+    shapedRamp(loopGain.gain, { from: 0, to: track.loop.gain, start: fadeFrom, seconds: fadeSeconds }, (t) => Math.sin((t * Math.PI) / 2));
     jingleSource.connect(jingleGain).connect(this.musicBus);
     loopSource.connect(loopGain).connect(this.musicBus);
     jingleSource.start(start);
@@ -549,7 +549,7 @@ export class GameAudio {
       opening = context.createGain();
       const fadeFrom = now + Math.max(0, openingBuffer.duration - openingFadeSeconds);
       opening.gain.setValueAtTime(manifest.opening.gain, now);
-      shapedRamp(opening.gain, manifest.opening.gain, 0, fadeFrom, openingFadeSeconds, (t) => 1 - Math.cos((t * Math.PI) / 2));
+      shapedRamp(opening.gain, { from: manifest.opening.gain, to: 0, start: fadeFrom, seconds: openingFadeSeconds }, (t) => 1 - Math.cos((t * Math.PI) / 2));
       source.connect(opening).connect(this.musicBus);
       source.start(now);
       sources.push(source);
@@ -568,7 +568,7 @@ export class GameAudio {
       const gain = context.createGain();
       gain.gain.setValueAtTime(0, now);
       const target = manifest.levels[this.musicLevel]?.gains[layer] ?? 0;
-      if (opening) shapedRamp(gain.gain, 0, target, startedAt, fadeInSeconds, (t) => t ** 2);
+      if (opening) shapedRamp(gain.gain, { from: 0, to: target, start: startedAt, seconds: fadeInSeconds }, (t) => t ** 2);
       else {
         gain.gain.setValueAtTime(0, startedAt);
         gain.gain.linearRampToValueAtTime(target, startedAt + fadeInSeconds);

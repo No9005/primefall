@@ -61,6 +61,14 @@ export function encodePng(image: Image): Buffer {
   return Buffer.concat([SIGNATURE, chunk("IHDR", header), chunk("IDAT", deflateSync(raw, { level: 9 })), chunk("IEND", Buffer.alloc(0))]);
 }
 
+/** The Paeth filter of PNG: of left, up and up-left, the one closest to `left + up - upLeft` (left wins ties, then up). */
+function paethPredictor(left: number, up: number, upLeft: number): number {
+  const estimate = left + up - upLeft;
+  const [dl, du, dul] = [Math.abs(estimate - left), Math.abs(estimate - up), Math.abs(estimate - upLeft)];
+  if (dl <= du && dl <= dul) return left;
+  return du <= dul ? up : upLeft;
+}
+
 export function decodePng(file: Buffer): Image {
   if (!file.subarray(0, 8).equals(SIGNATURE)) throw new Error("Not a PNG file");
   let width = 0;
@@ -92,11 +100,8 @@ export function decodePng(file: Buffer): Image {
       if (filter === 1) predicted = left;
       else if (filter === 2) predicted = up;
       else if (filter === 3) predicted = (left + up) >> 1;
-      else if (filter === 4) {
-        const estimate = left + up - upLeft;
-        const [dl, du, dul] = [Math.abs(estimate - left), Math.abs(estimate - up), Math.abs(estimate - upLeft)];
-        predicted = dl <= du && dl <= dul ? left : du <= dul ? up : upLeft;
-      } else if (filter !== 0) throw new Error(`Unknown PNG filter ${filter}`);
+      else if (filter === 4) predicted = paethPredictor(left, up, upLeft);
+      else if (filter !== 0) throw new Error(`Unknown PNG filter ${filter}`);
       data[at] = (byte + predicted) & 0xff;
     }
   }

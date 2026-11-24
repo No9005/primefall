@@ -363,6 +363,7 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
         const isPitched = pitched.includes(cardIndex);
         let use = "";
         const queued = queue[queuedAt];
+        const lockedTitle = queued || isPitched ? USED_TITLE : LOCKED_TITLE;
         if (queued && queued.kind !== ActionKind.Wait) {
           use = `${ACTION_USE_LABELS[queued.kind]} · #${queuedAt + 1}`;
         } else if (isPitched) use = `${CARD_USE_LABELS[CardUse.Pitch]} · tap to undo`;
@@ -386,7 +387,7 @@ function Hand({ hero, queue, pitched, armed, armedLabel, held, inUse, otherOpaci
               type="button"
               className={`card designed ${card.type}${queued || isPitched ? " used" : ""}${locked ? " locked" : ""}${cardIndex === held ? " lifted" : ""}`}
               aria-label={card.name}
-              title={locked ? (queued || isPitched ? USED_TITLE : LOCKED_TITLE) : undefined}
+              title={locked ? lockedTitle : undefined}
               aria-pressed={cardIndex === armed || cardIndex === held || queuedAt >= 0 || isPitched}
               disabled={disabled}
               onClick={(event) => onCardClick(event.detail === 0 ? cardIndex : pressedCard(event, cardIndex), event)}
@@ -759,13 +760,13 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
   const picking = (armed !== undefined || aiming !== undefined) && !playing;
   const heroScreenRef = useRef<((heroId: string) => Point | undefined) | undefined>(undefined);
   /** The hero whose surroundings the camera frames while a tile is picked. */
-  const frameHero = !picking ? undefined : armed !== undefined ? planningFrom : aimsAtTile ? planningFrom : undefined;
+  const frameHero = picking && (armed !== undefined || aimsAtTile) ? planningFrom : undefined;
 
   // The line of fire to every enemy the aimed Attack card can be aimed at.
   const shotLines = useMemo(
     () =>
       aimedCard?.type === CardType.Attack && aimedCard.range !== undefined && !playing
-        ? drawShots(knownGrid, planningFrom, aimedCard.range, view.enemies, candidateIds, ignoresCover(aimedCard))
+        ? drawShots(knownGrid, planningFrom, { range: aimedCard.range, enemies: view.enemies, targetIds: candidateIds, ignoreCover: ignoresCover(aimedCard) })
         : NO_SHOTS,
     [aimedCard, playing, knownGrid, planningFrom, view.enemies, candidateIds],
   );
@@ -805,7 +806,7 @@ export function PlanningScreen({ view, playerHeroClass, submitPlan, getAllyPlan,
     if (!targetsSelf) {
       const candidates = heroTargetsOf(card);
       const ranged = card.type === CardType.Attack && card.range !== undefined;
-      const shots = ranged ? drawShots(knownGrid, planningFrom, card.range!, view.enemies, candidates, ignoresCover(card)) : NO_SHOTS;
+      const shots = ranged ? drawShots(knownGrid, planningFrom, { range: card.range!, enemies: view.enemies, targetIds: candidates, ignoreCover: ignoresCover(card) }) : NO_SHOTS;
       const positioned = [...view.heroes, ...view.enemies].flatMap((unit) => (candidates.includes(unit.id) && "position" in unit ? [{ id: unit.id, position: unit.position }] : []));
       heroIds =
         card.type === CardType.Attack && card.target === CardTarget.VisibleEnemy
