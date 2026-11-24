@@ -241,8 +241,24 @@ const samePosition = (a: GridPosition, b: GridPosition) => a.col === b.col && a.
  * it stops is decided by `resolveWalks` (ADR 0013). Positions change only after the whole Tick is decided.
  */
 function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: MatchEvent[]): void {
-  // A Slowed Hero's Move covers half the distance, rounded down, and that uses the Slow up. A Hero that starts the
-  // Move in a Scrap Field is Slowed for it too, without using up a Slow of its own.
+  const slowedIds = useSlowForMoves(match, tick, movers, events);
+  const outcomes = resolveWalks(
+    new Map(match.heroes.filter((hero) => !hero.exhausted).map((hero) => [hero.id, hero.position])),
+    movers.map((mover) => ({ ...mover, distance: slowedIds.has(mover.heroId) ? slowedDistance(mover.distance) : mover.distance })),
+    match.grid,
+  );
+  reportWalkSteps(tick, movers, outcomes, events);
+  hurtByScrapFields(match, tick, movers, outcomes, events);
+  for (const { heroId } of movers) {
+    match.heroes.find((hero) => hero.id === heroId)!.position = { ...outcomes.get(heroId)!.path.at(-1)! };
+  }
+}
+
+/**
+ * A Slowed Hero's Move covers half the distance, rounded down, and that uses the Slow up. A Hero that starts the
+ * Move in a Scrap Field is Slowed for it too, without using up a Slow of its own. Returns the ids of the slowed Movers.
+ */
+function useSlowForMoves(match: MatchState, tick: number, movers: readonly Mover[], events: MatchEvent[]): Set<string> {
   const slowedIds = new Set<string>();
   for (const { heroId } of movers) {
     const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
@@ -252,11 +268,11 @@ function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: 
     slowedIds.add(heroId);
     events.push({ kind: EventKind.SlowUsed, tick, heroId });
   }
-  const outcomes = resolveWalks(
-    new Map(match.heroes.filter((hero) => !hero.exhausted).map((hero) => [hero.id, hero.position])),
-    movers.map((mover) => ({ ...mover, distance: slowedIds.has(mover.heroId) ? slowedDistance(mover.distance) : mover.distance })),
-    match.grid,
-  );
+  return slowedIds;
+}
+
+/** The Step and MoveBlocked events of a Tick, one step after the other for all Movers, so their steps interleave. */
+function reportWalkSteps(tick: number, movers: readonly Mover[], outcomes: ReturnType<typeof resolveWalks>, events: MatchEvent[]): void {
   const furthest = Math.max(0, ...[...outcomes.values()].map(({ path, blocked }) => path.length - 1 + (blocked ? 1 : 0)));
   for (let step = 1; step <= furthest; step++) {
     for (const { heroId } of movers) {
@@ -268,7 +284,10 @@ function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: 
       }
     }
   }
-  // A Move that starts in, passes or ends in a Scrap Field hurts the Hero once.
+}
+
+/** A Move that starts in, passes or ends in a Scrap Field hurts the Hero once. */
+function hurtByScrapFields(match: MatchState, tick: number, movers: readonly Mover[], outcomes: ReturnType<typeof resolveWalks>, events: MatchEvent[]): void {
   for (const { heroId } of movers) {
     const { path } = outcomes.get(heroId)!;
     if (path.length < 2) continue;
@@ -278,9 +297,6 @@ function resolveMoves(match: MatchState, tick: number, movers: Mover[], events: 
     const first = events.length;
     dealDamage(match, tick, events, { source: caster, target: match.heroes.find((hero) => hero.id === heroId)!, damage: field.damage, crossfire: false });
     for (const event of events.slice(first)) if (event.kind === EventKind.AttackHit) event.card = field.card;
-  }
-  for (const { heroId } of movers) {
-    match.heroes.find((hero) => hero.id === heroId)!.position = { ...outcomes.get(heroId)!.path.at(-1)! };
   }
 }
 
@@ -295,30 +311,15 @@ function scrapFieldsAt(match: MatchState, tile: GridPosition): ActiveField[] {
  * lose their last card in this Tick. A failed Attack (Range, Line of Sight, Exhausted target) does nothing.
  */
 function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], events: MatchEvent[]): void {
-  // The first check an Attack on `target` fails, in the order of ADR 0013; visibility is only asked of a Declared Target.
   // A Hidden Hero that attacks stops being Hidden, but its Hidden state counts for this very Attack (sight, Range, bonus).
   const hiddenAttackers = new Set(attacks.filter(({ hero }) => hero.hidden > 0).map(({ hero }) => hero.id));
-  const missReason = (hero: HeroState, card: CardDefinition, target: HeroState) => {
-    if (target.squad === hero.squad) return AttackFailReason.NotVisible;
-    if (!canSquadSeeHero(match, hero.squad, target)) return AttackFailReason.NotVisible;
-    if (target.exhausted) return AttackFailReason.TargetExhausted;
-    const distance = chebyshevDistance(hero.position, target.position);
-    if (distance > (card.range ?? 0)) return AttackFailReason.OutOfRange;
-    const far = card.effects.find(({ kind }) => kind === EffectKind.FarShot);
-    if (far && distance > (far.amount ?? 0) && !hiddenAttackers.has(hero.id) && target.marked === 0) return AttackFailReason.OutOfRange;
-    if (distance < (card.minRange ?? 0)) return AttackFailReason.TooClose;
-    const ignoresCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreCover);
-    if (!hasLineOfSight(match.grid, hero.position, target.position, ignoresCover)) return AttackFailReason.NoLineOfSight;
-    if (!ignoresCover && coverAgainst(match.grid, hero.position, target.position) === CoverKind.Full) return AttackFailReason.FullCover;
-    return undefined;
-  };
   const areaAttacks = attacks.filter(({ card }) => isAreaAttack(card));
   const aimed = attacks.filter(({ card }) => !isAreaAttack(card)).flatMap((attack) =>
     attack.card.effects.some(({ kind }) => kind === EffectKind.AttackTwice) ? [attack, attack] : [attack],
   );
   const reasons = aimed.map(({ hero, card, targetId }) => {
     const target = match.heroes.find((candidate) => candidate.id === targetId);
-    return target ? missReason(hero, card, target) : AttackFailReason.NotVisible;
+    return target ? attackMissReason(match, hiddenAttackers, hero, card, target) : AttackFailReason.NotVisible;
   });
   // Attacking gives away a Hidden Hero, whether or not the Attack lands.
   for (const { hero } of attacks) endHidden(tick, hero, events);
@@ -331,42 +332,72 @@ function resolveAttacks(match: MatchState, tick: number, attacks: Attack[], even
     }
     return reason === undefined;
   });
-  for (const { hero, card, targetId } of landed) {
-    const first = events.length;
-    const target = match.heroes.find((candidate) => candidate.id === targetId)!;
-    const distance = chebyshevDistance(hero.position, target.position);
-    const ignoresCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreCover);
-    const halfCover =
-      coverAgainst(match.grid, hero.position, target.position) === CoverKind.Half && !ignoresCover;
-    const damageEffect = effectFor(card.effects.find(({ kind }) => kind === EffectKind.Damage)!, hero.scrap);
-    const closeRange = card.effects.find(({ kind }) => kind === EffectKind.CloseRangeBonus);
-    const closeBonus = distance === 1 ? (closeRange?.amount ?? 0) : 0;
-    // A Hidden Hero that shoots beyond the normal Range deals +1 damage.
-    const far = card.effects.find(({ kind }) => kind === EffectKind.FarShot);
-    const farBonus = far && distance > (far.amount ?? 0) && hiddenAttackers.has(hero.id) ? 1 : 0;
-    const damage = (damageEffect.amount ?? 0) + closeBonus + farBonus;
-    const incoming = Math.max(0, damage - (halfCover ? HALF_COVER_REDUCTION : 0));
-    const piercing = card.effects.some(({ kind }) => kind === EffectKind.PiercingDamage);
-    dealDamage(match, tick, events, { source: hero, target, damage: incoming, piercing });
-    if (halfCover && damage > 0) flagHalfCover(events, first);
-    flagCloseBonus(events, first, closeBonus);
-    for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplySlow)) {
-      applySlow(tick, hero, target, effect, events);
-    }
-    for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplyMarked)) {
-      applyMarked(tick, hero, target, effect, events);
-    }
-    for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.Knockback)) {
-      pushAway(match, tick, events, { caster: hero, target, distance: effect.amount ?? 0 });
-    }
-    tagCardEvents(match, events, first, { caster: hero, card });
-  }
+  for (const attack of landed) resolveLandedAttack(match, tick, events, attack, hiddenAttackers);
   // Area Attacks come after the other damage of the Tick, so Cover they destroy still protected against it.
   for (const attack of areaAttacks) {
     const first = events.length;
     resolveAreaAttack(match, tick, attack, events);
     tagCardEvents(match, events, first, { caster: attack.hero, card: attack.card, tile: attack.tile });
   }
+}
+
+/** Out of Range, beyond a far shot that is not usable (Hidden Hero or Marked target), or inside the minimum Range. */
+function rangeFailureOf(card: CardDefinition, distance: number, farShotUsable: boolean): AttackFailReason | undefined {
+  if (distance > (card.range ?? 0)) return AttackFailReason.OutOfRange;
+  const far = card.effects.find(({ kind }) => kind === EffectKind.FarShot);
+  if (far && distance > (far.amount ?? 0) && !farShotUsable) return AttackFailReason.OutOfRange;
+  return distance < (card.minRange ?? 0) ? AttackFailReason.TooClose : undefined;
+}
+
+/** The first check an Attack on `target` fails, in the order of ADR 0013; visibility is only asked of a Declared Target. */
+function attackMissReason(match: MatchState, hiddenAttackers: ReadonlySet<string>, hero: HeroState, card: CardDefinition, target: HeroState): AttackFailReason | undefined {
+  if (target.squad === hero.squad) return AttackFailReason.NotVisible;
+  if (!canSquadSeeHero(match, hero.squad, target)) return AttackFailReason.NotVisible;
+  if (target.exhausted) return AttackFailReason.TargetExhausted;
+  const distance = chebyshevDistance(hero.position, target.position);
+  const farShotUsable = hiddenAttackers.has(hero.id) || target.marked > 0;
+  const rangeFailure = rangeFailureOf(card, distance, farShotUsable);
+  if (rangeFailure) return rangeFailure;
+  const ignoresCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreCover);
+  if (!hasLineOfSight(match.grid, hero.position, target.position, ignoresCover)) return AttackFailReason.NoLineOfSight;
+  if (!ignoresCover && coverAgainst(match.grid, hero.position, target.position) === CoverKind.Full) return AttackFailReason.FullCover;
+  return undefined;
+}
+
+/** An aimed Attack that passed every check: the damage (Half Cover, close range and far shot change it), then Slow, Marked and Knockback. */
+function resolveLandedAttack(match: MatchState, tick: number, events: MatchEvent[], { hero, card, targetId }: Attack, hiddenAttackers: ReadonlySet<string>): void {
+  const first = events.length;
+  const target = match.heroes.find((candidate) => candidate.id === targetId)!;
+  const distance = chebyshevDistance(hero.position, target.position);
+  const ignoresCover = card.effects.some(({ kind }) => kind === EffectKind.IgnoreCover);
+  const halfCover =
+    coverAgainst(match.grid, hero.position, target.position) === CoverKind.Half && !ignoresCover;
+  const { damage, closeBonus } = attackDamage(hero, card, distance, hiddenAttackers.has(hero.id));
+  const incoming = Math.max(0, damage - (halfCover ? HALF_COVER_REDUCTION : 0));
+  const piercing = card.effects.some(({ kind }) => kind === EffectKind.PiercingDamage);
+  dealDamage(match, tick, events, { source: hero, target, damage: incoming, piercing });
+  if (halfCover && damage > 0) flagHalfCover(events, first);
+  flagCloseBonus(events, first, closeBonus);
+  for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplySlow)) {
+    applySlow(tick, hero, target, effect, events);
+  }
+  for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.ApplyMarked)) {
+    applyMarked(tick, hero, target, effect, events);
+  }
+  for (const effect of card.effects.filter(({ kind }) => kind === EffectKind.Knockback)) {
+    pushAway(match, tick, events, { caster: hero, target, distance: effect.amount ?? 0 });
+  }
+  tagCardEvents(match, events, first, { caster: hero, card });
+}
+
+/** The damage of an Attack before Cover and Shield: the card's damage plus the close range bonus and, for a Hidden Hero shooting beyond the normal Range, +1. */
+function attackDamage(hero: HeroState, card: CardDefinition, distance: number, hidden: boolean): { damage: number; closeBonus: number } {
+  const damageEffect = effectFor(card.effects.find(({ kind }) => kind === EffectKind.Damage)!, hero.scrap);
+  const closeRange = card.effects.find(({ kind }) => kind === EffectKind.CloseRangeBonus);
+  const closeBonus = distance === 1 ? (closeRange?.amount ?? 0) : 0;
+  const far = card.effects.find(({ kind }) => kind === EffectKind.FarShot);
+  const farBonus = far && distance > (far.amount ?? 0) && hidden ? 1 : 0;
+  return { damage: (damageEffect.amount ?? 0) + closeBonus + farBonus, closeBonus };
 }
 
 /**
@@ -539,6 +570,33 @@ const UTILITY_EFFECTS: Record<(typeof PLAYABLE_UTILITY_EFFECTS)[number], (use: U
   },
 };
 
+/** Whether a Utility card may be played on `target` (or on `tile`), by what the card aims at. */
+function isValidUtilityTarget(
+  match: MatchState,
+  { caster, card, target, tile, ghostTile }: { caster: HeroState; card: CardDefinition; target: HeroState | undefined; tile: GridPosition | undefined; ghostTile: GridPosition | undefined },
+): boolean {
+  // Site Survey, Temporary Solution and Heavy Metal reach as far as the card's Range (no Line of Sight needed).
+  const inCardRange = (position: GridPosition | undefined) =>
+    position !== undefined && chebyshevDistance(caster.position, position) <= (card.range ?? Infinity);
+  const livingEnemy = target !== undefined && !target.exhausted && target.squad !== caster.squad;
+  switch (card.target) {
+    case CardTarget.VisibleEnemy:
+      return livingEnemy && canSquadSeeHero(match, caster.squad, target) && (card.range === undefined || inCardRange(target.position));
+    // A Ghost counts while the enemy still stands on the tile where the Squad last saw it (the memory of the Resolution's start).
+    case CardTarget.VisibleOrGhostEnemy:
+      return (
+        livingEnemy &&
+        (canSquadSeeHero(match, caster.squad, target) || (ghostTile !== undefined && samePosition(target.position, ghostTile))) &&
+        inCardRange(target.position)
+      );
+    case CardTarget.SelfHero:
+      return target === caster;
+    // A card aimed at a tile or an area is confirmed on the caster itself.
+    default:
+      return target === caster && inCardRange(tile);
+  }
+}
+
 /**
  * Plays a Utility card in its Tick. The target must be the caster (self cards) or another, not yet
  * Exhausted Hero of the same Squad (ally cards); otherwise the action fails without effect.
@@ -550,31 +608,7 @@ function resolveUtility(
   { caster, card, targetId, tile, ghostTile }: { caster: HeroState; card: CardDefinition; targetId: string; tile: GridPosition | undefined; ghostTile: GridPosition | undefined },
 ): void {
   const target = match.heroes.find((candidate) => candidate.id === targetId);
-  // Site Survey, Temporary Solution and Heavy Metal reach as far as the card's Range (no Line of Sight needed).
-  const inCardRange = (position: GridPosition | undefined) =>
-    position !== undefined && chebyshevDistance(caster.position, position) <= (card.range ?? Infinity);
-  let validTarget: boolean;
-  switch (card.target) {
-    case CardTarget.VisibleEnemy:
-      validTarget =
-        target !== undefined && !target.exhausted && target.squad !== caster.squad && canSquadSeeHero(match, caster.squad, target) &&
-        (card.range === undefined || inCardRange(target.position));
-      break;
-    // A Ghost counts while the enemy still stands on the tile where the Squad last saw it (the memory of the Resolution's start).
-    case CardTarget.VisibleOrGhostEnemy:
-      validTarget =
-        target !== undefined && !target.exhausted && target.squad !== caster.squad &&
-        (canSquadSeeHero(match, caster.squad, target) || (ghostTile !== undefined && samePosition(target.position, ghostTile))) &&
-        inCardRange(target.position);
-      break;
-    case CardTarget.SelfHero:
-      validTarget = target === caster;
-      break;
-    // A card aimed at a tile or an area is confirmed on the caster itself.
-    default:
-      validTarget = target === caster && inCardRange(tile);
-  }
-  if (!validTarget || !isPlayableUtility(card)) {
+  if (!isValidUtilityTarget(match, { caster, card, target, tile, ghostTile }) || !isPlayableUtility(card)) {
     events.push({ kind: EventKind.ActionFailed, tick, heroId: caster.id });
     return;
   }
@@ -739,44 +773,60 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
   const ghostTiles = structuredClone(match.ghosts);
   const ticks = Math.max(0, ...queues.map(({ queue }) => queue.length));
   for (let tick = 1; tick <= ticks; tick++) {
-    const actions = match.heroes.filter((hero) => !hero.exhausted).flatMap((hero) => {
-      const queue = queues.find(({ heroId }) => heroId === hero.id)?.queue;
-      if (queue && tick <= queue.length && !queue[tick - 1]) {
-        events.push({ kind: EventKind.ActionFailed, tick, heroId: hero.id });
-      }
-      const action = queue?.[tick - 1];
-      return action ? [{ hero, action }] : [];
-    });
-    for (const { hero, action } of actions) {
-      if (action.kind === ActionKind.Wait) events.push({ kind: EventKind.Wait, tick, heroId: hero.id });
-    }
-    for (const { hero, action } of actions) {
-      if (action.kind !== ActionKind.Primary) continue;
-      const card = playedCard(hero, action);
-      if (card.type !== CardType.Utility) continue;
-      const first = events.length;
-      resolveUtility(match, tick, events, { caster: hero, card, targetId: action.target, tile: action.tile, ghostTile: ghostTiles[hero.squad][action.target]?.position });
-      tagCardEvents(match, events, first, { caster: hero, card });
-    }
-    const movers = actions.flatMap(({ hero, action }) => {
-      if (action.kind !== ActionKind.Move) return [];
-      return [{ heroId: hero.id, destination: action.destination, distance: MOVE_DISTANCE }];
-    });
-    resolveMoves(match, tick, movers, events);
-    const attacks: Attack[] = actions.flatMap(({ hero, action }) =>
-      action.kind === ActionKind.Primary && playedCard(hero, action).type === CardType.Attack
-        ? [{
-            hero,
-            card: playedCard(hero, action),
-            targetId: action.target,
-            tile: action.tile,
-          }]
-        : [],
-    );
-    resolveAttacks(match, tick, attacks, events);
+    resolveTick(match, tick, queues, ghostTiles, events);
     endTick();
   }
+  settleRound(match, queues, events, Math.max(ticks, 1));
+  endTick();
+  return { match, events, perceivedBy, withheld };
+}
 
+/** The action each living Hero plays in a Tick; an illegal action in the Queue fails here without effect. */
+function actionsOfTick(match: MatchState, tick: number, queues: readonly HeroQueue[], events: MatchEvent[]): { hero: HeroState; action: QueuedAction }[] {
+  return match.heroes.filter((hero) => !hero.exhausted).flatMap((hero) => {
+    const queue = queues.find(({ heroId }) => heroId === hero.id)?.queue;
+    if (queue && tick <= queue.length && !queue[tick - 1]) {
+      events.push({ kind: EventKind.ActionFailed, tick, heroId: hero.id });
+    }
+    const action = queue?.[tick - 1];
+    return action ? [{ hero, action }] : [];
+  });
+}
+
+/** One Tick, in the order of ADR 0013: Waits, Utility cards, Moves, then Attacks. */
+function resolveTick(match: MatchState, tick: number, queues: readonly HeroQueue[], ghostTiles: MatchState["ghosts"], events: MatchEvent[]): void {
+  const actions = actionsOfTick(match, tick, queues, events);
+  for (const { hero, action } of actions) {
+    if (action.kind === ActionKind.Wait) events.push({ kind: EventKind.Wait, tick, heroId: hero.id });
+  }
+  for (const { hero, action } of actions) {
+    if (action.kind !== ActionKind.Primary) continue;
+    const card = playedCard(hero, action);
+    if (card.type !== CardType.Utility) continue;
+    const first = events.length;
+    resolveUtility(match, tick, events, { caster: hero, card, targetId: action.target, tile: action.tile, ghostTile: ghostTiles[hero.squad][action.target]?.position });
+    tagCardEvents(match, events, first, { caster: hero, card });
+  }
+  const movers = actions.flatMap(({ hero, action }) => {
+    if (action.kind !== ActionKind.Move) return [];
+    return [{ heroId: hero.id, destination: action.destination, distance: MOVE_DISTANCE }];
+  });
+  resolveMoves(match, tick, movers, events);
+  const attacks: Attack[] = actions.flatMap(({ hero, action }) =>
+    action.kind === ActionKind.Primary && playedCard(hero, action).type === CardType.Attack
+      ? [{
+          hero,
+          card: playedCard(hero, action),
+          targetId: action.target,
+          tile: action.tile,
+        }]
+      : [],
+  );
+  resolveAttacks(match, tick, attacks, events);
+}
+
+/** The end of the Resolution: used cards go to the Discard, effects of the Round expire, Decks refill, Exhaustion and the end of the match are judged (ADR 0006). */
+function settleRound(match: MatchState, queues: readonly HeroQueue[], events: MatchEvent[], lastTick: number): void {
   // Pitched and queued cards leave the Hand for the Discard; Energy and Shield expire with the Round.
   for (const { heroId, spent } of queues) {
     const hero = match.heroes.find((candidate) => candidate.id === heroId)!;
@@ -798,16 +848,14 @@ export function resolveRound(previous: MatchState, plans: readonly SquadPlan[]):
   // card is left to take or draw, so a Hero whose cards ran out mid-Resolution finished its Queue (ADR 0006).
   for (const hero of match.heroes.filter((candidate) => !candidate.exhausted)) {
     const shuffled = refillDeck(match, hero);
-    if (shuffled > 0) events.push({ kind: EventKind.DeckShuffled, tick: Math.max(ticks, 1), heroId: hero.id, amount: shuffled });
+    if (shuffled > 0) events.push({ kind: EventKind.DeckShuffled, tick: lastTick, heroId: hero.id, amount: shuffled });
   }
   for (const hero of match.heroes.filter((candidate) => !candidate.exhausted && candidate.deck.length === 0)) {
     hero.exhausted = true;
     match.grid = withWreck(match.grid, hero.position);
-    events.push({ kind: EventKind.Exhausted, tick: Math.max(ticks, 1), heroId: hero.id });
+    events.push({ kind: EventKind.Exhausted, tick: lastTick, heroId: hero.id });
   }
-  evaluateMatchEnd(match, events, Math.max(ticks, 1));
-  endTick();
-  return { match, events, perceivedBy, withheld };
+  evaluateMatchEnd(match, events, lastTick);
 }
 
 /**
