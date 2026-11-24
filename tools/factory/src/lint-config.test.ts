@@ -13,7 +13,7 @@ async function severityOf(file: string, rule: string): Promise<unknown> {
 
 describe("readability lint rules", () => {
   it.each(READABILITY_RULES)("%s is a warning for product code", async (rule) => {
-    for (const file of ["apps/web/src/Board.tsx", "apps/web/src/main.tsx"]) {
+    for (const file of ["tools/factory/src/decisions.ts", "apps/web/src/main.tsx"]) {
       expect([file, await severityOf(file, rule)]).toEqual([file, 1]);
     }
   });

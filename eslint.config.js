@@ -57,6 +57,7 @@ export default tseslint.config(
       "packages/game-core/src/ai.ts",
       "packages/game-core/src/ai-world.ts",
       "apps/web/src/board-layout.ts",
+      "apps/web/src/Board.tsx",
       "apps/web/src/hero-figure.ts",
       "apps/web/src/hangar-scene.ts",
       "apps/web/src/title-scene.ts",

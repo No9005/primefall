@@ -1,6 +1,7 @@
 import {
   CoverKind,
   coverAt,
+  type Grid,
   type GridPosition,
   type HeroClass,
   type RangeTile,
@@ -249,30 +250,36 @@ function crossfireRingGraphics(ring: CrossfireRing): { ground: Container; top: C
   return { ground, top };
 }
 
+type Chest = ReturnType<typeof chestOf>;
+
+/** An ally's plan: the bare line in yellow, no badge, no ring. */
+function allyTargetLine(container: Container, line: TargetLine, from: Chest, to: Chest): Container {
+  const dashed = line.kind === LineKind.Attack;
+  const graphics = new Graphics();
+  for (const run of dashed ? dashRuns(from, to, PLAN_STYLE.dash, PLAN_STYLE.dashGap) : [{ from, to }]) graphics.moveTo(run.from.x, run.from.y).lineTo(run.to.x, run.to.y);
+  container.addChild(graphics.stroke({ width: PLAN_STYLE.width, color: PLAN_STYLE.ally, cap: "round" }));
+  container.alpha = PLAN_STYLE.allyAlpha;
+  return container;
+}
+
+/** The player's Attack: dashed teal from chest to chest; red and dotted with "!" when the target cannot be reached. */
+function plannedAttackLine(container: Container, line: TargetLine, from: Chest, to: Chest): Container {
+  const color = line.unreachable ? PLAN_STYLE.danger : PLAN_STYLE.own;
+  const graphics = new Graphics();
+  const [dash, gap] = line.unreachable ? [PLAN_STYLE.dot, PLAN_STYLE.dotGap] : [PLAN_STYLE.dash, PLAN_STYLE.dashGap];
+  for (const run of dashRuns(from, to, dash, gap)) graphics.moveTo(run.from.x, run.from.y).lineTo(run.to.x, run.to.y);
+  container.addChild(graphics.stroke({ width: PLAN_STYLE.width, color, cap: "round" }), tileRing(line.to, PLAN_STYLE.danger));
+  container.addChild(slotBadge(`${line.tick}${line.unreachable ? "!" : ""}`, (from.x + to.x) / 2, (from.y + to.y) / 2, color));
+  return container;
+}
+
 /** A target line: the shot drawing for an Attack, an arrow to an allied Hero, a ring on a tile; the Tick sits in the middle. */
 function targetLineGraphics(line: TargetLine): Container {
   const container = new Container();
   const from = chestOf(line.from);
   const to = chestOf(line.to);
-  if (line.planned && line.faint) {
-    // An ally's plan: the bare line in yellow, no badge, no ring.
-    const dashed = line.kind === LineKind.Attack;
-    const graphics = new Graphics();
-    for (const run of dashed ? dashRuns(from, to, PLAN_STYLE.dash, PLAN_STYLE.dashGap) : [{ from, to }]) graphics.moveTo(run.from.x, run.from.y).lineTo(run.to.x, run.to.y);
-    container.addChild(graphics.stroke({ width: PLAN_STYLE.width, color: PLAN_STYLE.ally, cap: "round" }));
-    container.alpha = PLAN_STYLE.allyAlpha;
-    return container;
-  }
-  if (line.planned && line.kind === LineKind.Attack) {
-    // The player's Attack: dashed teal from chest to chest; red and dotted with "!" when the target cannot be reached.
-    const color = line.unreachable ? PLAN_STYLE.danger : PLAN_STYLE.own;
-    const graphics = new Graphics();
-    const [dash, gap] = line.unreachable ? [PLAN_STYLE.dot, PLAN_STYLE.dotGap] : [PLAN_STYLE.dash, PLAN_STYLE.dashGap];
-    for (const run of dashRuns(from, to, dash, gap)) graphics.moveTo(run.from.x, run.from.y).lineTo(run.to.x, run.to.y);
-    container.addChild(graphics.stroke({ width: PLAN_STYLE.width, color, cap: "round" }), tileRing(line.to, PLAN_STYLE.danger));
-    container.addChild(slotBadge(`${line.tick}${line.unreachable ? "!" : ""}`, (from.x + to.x) / 2, (from.y + to.y) / 2, color));
-    return container;
-  }
+  if (line.planned && line.faint) return allyTargetLine(container, line, from, to);
+  if (line.planned && line.kind === LineKind.Attack) return plannedAttackLine(container, line, from, to);
   const color = line.tone === LineTone.Clear ? SHOT_STYLE.clear : SHOT_STYLE.stopped;
   if (line.kind === LineKind.Attack && line.shot) {
     // An enemy's shot is always red, whatever the segment says.
@@ -492,50 +499,57 @@ const NO_SCANNED_AREAS: readonly Pick<RevealedArea, "center" | "size" | "remaini
 const NO_SCRAP_FIELDS: readonly ScrapFieldView[] = [];
 /** Red outline of an area the enemy scans. */
 
-export function Board({
-  destroyedCover,
-  placedCover,
-  ownPlacedCover,
-  coverPlan = NO_COVER_PLAN,
-  wreckCover,
-  revealedAreas,
-  scannedAreas = NO_SCANNED_AREAS,
-  scrapFields = NO_SCRAP_FIELDS,
-  visibleTiles,
-  heroes,
-  enemies,
-  selectedId,
-  onSelect,
-  targetableIds,
-  onTargetTap,
-  hitIds,
-  clips = NO_CLIPS,
-  clipDelays = NO_DELAYS,
-  walks = NO_WALKS,
-  sightAfter,
-  aims = NO_AIMS,
-  effects = NO_EFFECTS,
-  highlights,
-  markers,
-  onTileTap,
-  moveFrameHero,
-  zoneTint,
-  primeWalls = false,
-  zoneLabels,
-  areaTiles,
-  rangeArea = NO_RANGE,
-  dropTile,
-  shotLines,
-  targetLines,
-  crossfireRings = NO_RINGS,
-  effectPaths = NO_EFFECT_PATHS,
-  marks,
-  paths,
-  collisionTiles,
-  pickRef,
-  heroScreenRef,
-  overview = false,
-}: BoardProps) {
+function useBoardInputs(p: BoardProps) {
+  const {
+    destroyedCover,
+    placedCover,
+    ownPlacedCover,
+    coverPlan = NO_COVER_PLAN,
+    wreckCover,
+    revealedAreas,
+    scannedAreas = NO_SCANNED_AREAS,
+    scrapFields = NO_SCRAP_FIELDS,
+    visibleTiles,
+    heroes,
+    enemies,
+    selectedId,
+    onSelect,
+    targetableIds,
+    onTargetTap,
+    hitIds,
+    clips = NO_CLIPS,
+    clipDelays = NO_DELAYS,
+    walks = NO_WALKS,
+    sightAfter,
+    aims = NO_AIMS,
+    effects = NO_EFFECTS,
+    highlights,
+    markers,
+    onTileTap,
+    moveFrameHero,
+    zoneTint,
+    primeWalls = false,
+    zoneLabels,
+    areaTiles,
+    rangeArea = NO_RANGE,
+    dropTile,
+    shotLines,
+    targetLines,
+    crossfireRings = NO_RINGS,
+    effectPaths = NO_EFFECT_PATHS,
+    marks,
+    paths,
+    collisionTiles,
+    pickRef,
+    heroScreenRef,
+    overview = false,
+  } = p;
+  return { destroyedCover, placedCover, ownPlacedCover, coverPlan, wreckCover, revealedAreas, scannedAreas, scrapFields, visibleTiles, heroes, enemies, selectedId, onSelect, targetableIds, onTargetTap, hitIds, clips, clipDelays, walks, sightAfter, aims, effects, highlights, markers, onTileTap, moveFrameHero, zoneTint, primeWalls, zoneLabels, areaTiles, rangeArea, dropTile, shotLines, targetLines, crossfireRings, effectPaths, marks, paths, collisionTiles, pickRef, heroScreenRef, overview };
+}
+type Ctx1 = BoardProps & ReturnType<typeof useBoardInputs>;
+
+function useBoardLayers(p: Ctx1) {
+  const { destroyedCover, placedCover, wreckCover, overview } = p;
   const input = useRef<HTMLDivElement>(null);
   // The overview (side screen preview) shows the zones but not the Cover: where the goal is, not what the cover looks like.
   const coverGrid = useMemo(() => {
@@ -556,6 +570,12 @@ export function Board({
   const overlayTop = layers?.planningTop;
   const terrain = useMemo<Terrain | undefined>(() => layers && { floor: layers.floor, objects: layers.objects, planning: layers.planning, atlas: layers.atlas }, [layers]);
   const [scenery, setScenery] = useState<PixelScenery>();
+  return { input, coverGrid, tokens, effectsHost, overlay, fogLayer, wallsWereUp, overlayTop, terrain, layers, scenery, setScenery };
+}
+type Ctx2 = Ctx1 & ReturnType<typeof useBoardLayers>;
+
+function useLatestRefs(p: Ctx2) {
+  const { heroes, enemies, onSelect, targetableIds, onTargetTap, highlights, onTileTap } = p;
   // Always the latest callbacks, so the pixi sprites need not be rebuilt for them.
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
@@ -570,6 +590,12 @@ export function Board({
   ownPositionsRef.current = heroes.map((hero) => hero.position);
   const enemyIdsRef = useRef(new Set<string>());
   enemyIdsRef.current = new Set(enemies.map((hero) => hero.id));
+  return { onSelectRef, onTargetTapRef, onTileTapRef, candidatesRef, ownPositionsRef, enemyIdsRef };
+}
+type Ctx3 = Ctx2 & ReturnType<typeof useLatestRefs>;
+
+function useSeenRefs(p: Ctx3) {
+  const { zoneTint } = p;
   const bubbleSeen = useRef(new Set<string>());
   const { color: zoneColor, alpha: zoneAlpha, emblemAlpha: zoneEmblemAlpha, ring: zoneRingOn } = zoneTint;
   const areaSeen = useRef(new Map<string, { center: GridPosition; size: number }>());
@@ -579,6 +605,12 @@ export function Board({
   const enemiesSeen = useRef(new Set<string>());
   /** The enemies were drawn at least once, so an enemy that is new in the view came into sight and did not just load with the board. */
   const enemiesDrawn = useRef(false);
+  return { bubbleSeen, areaSeen, ringSeen, ghostSeen, enemiesSeen, enemiesDrawn, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn };
+}
+type Ctx4 = Ctx3 & ReturnType<typeof useSeenRefs>;
+
+function useFrameRefs(p: Ctx4) {
+  const { effects, shotLines } = p;
   // When the playback frame being shown started. The Shield and the Knockback slide of the Heroes follow it, so a redraw of
   // the figures in the middle of a frame (Cover that changes) does not start them again.
   const frameClock = useRef(clock.now());
@@ -589,6 +621,12 @@ export function Board({
     frameOfEffects.current = effects;
     frameClock.current = clock.now();
   }
+  return { frameClock, aiming };
+}
+type Ctx5 = Ctx4 & ReturnType<typeof useFrameRefs>;
+
+function useFigureRefs(p: Ctx5) {
+  const { heroes, enemies, selectedId, walks, aims } = p;
   // One clip player per Hero; the figures are drawn again for every frame, the players (and their cross-fades) are not.
   const clipPlayers = useRef(new Map<string, ClipPlayer>());
   const [pressed, setPressed] = useState<GridPosition>();
@@ -617,7 +655,12 @@ export function Board({
   );
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
+  return { clipPlayers, facings, cameraControl, selectedIdRef, pressed, setPressed, strokeScale, setStrokeScale };
+}
+type Ctx6 = Ctx5 & ReturnType<typeof useFigureRefs>;
 
+function useMoveFrameEffect(p: Ctx6) {
+  const { moveFrameHero, cameraControl } = p;
   // Arming a Move frames the Hero and its highlights; placing or cancelling it returns to the previous view.
   const frameCol = moveFrameHero?.col;
   const frameRow = moveFrameHero?.row;
@@ -626,313 +669,420 @@ export function Board({
     cameraControl.current?.frame({ col: frameCol, row: frameRow });
     return () => cameraControl.current?.release();
   }, [frameCol, frameRow]);
+  return {};
+}
+type Ctx7 = Ctx6 & ReturnType<typeof useMoveFrameEffect>;
 
+/** Puts a graphic on a layer at the world position of a tile and remembers it, so the effect can destroy it. */
+function addAt(layer: Container, created: Container[], graphic: Container, tile: GridPosition): void {
+  const { x, y } = gridToWorld(tile);
+  graphic.position.set(x, y);
+  layer.addChild(graphic);
+  created.push(graphic);
+}
+
+/** The orange tint of the area an effect reaches and the tint of the Range area of the card being aimed. */
+function drawAreaAndRange(overlay: Container, created: Container[], areaTiles: readonly GridPosition[], rangeArea: readonly { position: GridPosition; blocked: boolean }[]): void {
+  const diamond = floorOutline();
+  for (const tile of areaTiles) {
+    addAt(overlay, created, new Graphics().poly(diamond).fill({ color: 0xff8a3d, alpha: 0.2 }).stroke({ width: 1, color: 0xff8a3d, alpha: 0.5 }), tile);
+  }
+  for (const { position, blocked } of rangeArea) {
+    addAt(overlay, created, new Graphics().poly(diamond).fill({ color: blocked ? RANGE_BLOCKED_COLOR : RANGE_COLOR, alpha: RANGE_ALPHA }), position);
+  }
+}
+
+/** The lit tiles, which pulse slowly (issue 208); with reduced motion they stand still. Returns what stops the pulse. */
+function drawHighlights(overlay: Container, created: Container[], highlights: readonly GridPosition[]): (() => void) | undefined {
+  const diamond = floorOutline();
+  const lit: Graphics[] = [];
+  for (const tile of highlights) {
+    const highlight = new Graphics().poly(diamond).fill({ color: 0x2ec4b6 }).stroke({ width: 4, color: 0x2ec4b6 });
+    addAt(overlay, created, highlight, tile);
+    lit.push(highlight);
+  }
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const pulseStart = clock.now();
+  const pulse = (now: number) => {
+    const alpha = pulseAlpha(now - pulseStart, reducedMotion);
+    for (const highlight of lit) highlight.alpha = alpha;
+  };
+  if (lit.length === 0) return undefined;
+  pulse(pulseStart);
+  return reducedMotion ? undefined : clock.subscribe(pulse);
+}
+
+/** The tile under the finger, drawn larger than the tile so the finger does not hide it. */
+function drawPreviewTile(overlay: Container, created: Container[], previewTile: GridPosition | undefined): void {
+  if (!previewTile) return;
+  const preview = new Graphics().poly(floorOutline()).fill({ color: 0xffffff, alpha: 0.3 }).stroke({ width: 6, color: 0xffffff });
+  preview.scale.set(1.15);
+  addAt(overlay, created, preview, previewTile);
+}
+
+/** The numbers of the planned Moves, and the labels of the zones above the token's head so the Hero does not hide them. */
+function drawMarkersAndLabels(
+  overlay: Container,
+  created: Container[],
+  markers: readonly { position: GridPosition; label: string }[],
+  zoneLabels: readonly { position: GridPosition; text: string }[],
+): void {
+  for (const { position, label } of markers) {
+    const marker = new Container();
+    marker.addChild(new Graphics().circle(0, 0, 16).fill(0xff8a3d).stroke({ width: 2, color: 0x12161c }));
+    const text = new Text({ text: label, style: { fill: 0x12161c, fontSize: 20, fontWeight: "700" } });
+    text.anchor.set(0.5);
+    marker.addChild(text);
+    addAt(overlay, created, marker, position);
+  }
+  for (const { position, text } of zoneLabels) {
+    const label = new Container();
+    const caption = new Text({ text, style: { fill: 0x12161c, fontSize: 22, fontWeight: "700" } });
+    caption.anchor.set(0.5);
+    label.addChild(new Graphics().roundRect(-caption.width / 2 - 8, -16, caption.width + 16, 32, 6).fill(0xffffff), caption);
+    const { x, y } = gridToWorld(position);
+    label.position.set(x, y - TILE_HEIGHT * 1.5);
+    overlay.addChild(label);
+    created.push(label);
+  }
+}
+
+/** The oldest Placed Cover that goes gets a dashed amber outline, the tile of the new one a dashed teal one. */
+function drawCoverPlan(overlayTop: Container, created: Container[], coverPlan: typeof NO_COVER_PLAN, strokeScale: number): void {
+  for (const [tiles, color, text] of [[coverPlan.oldest, COVER_AMBER, "OLDEST · GOES"], [coverPlan.fresh, COVER_OWN, "NEW COVER HERE"]] as const) {
+    for (const tile of tiles) {
+      const dashed = dashedTileOutline(tile, color, strokeScale);
+      const tag = coverTag(text, color, tile);
+      // Above the Cover, so the outline of the oldest piece is not hidden behind its own bars.
+      overlayTop.addChild(dashed, tag);
+      created.push(dashed, tag);
+    }
+  }
+}
+
+/** A graphic with a part on the ground and a part above the props and Heroes. */
+interface TwoLayers {
+  ground: Container;
+  top: Container;
+}
+
+function addTwoLayers({ overlay, overlayTop }: { overlay: Container; overlayTop: Container }, created: Container[], drawn: TwoLayers): void {
+  overlay.addChild(drawn.ground);
+  overlayTop.addChild(drawn.top);
+  created.push(drawn.ground, drawn.top);
+}
+
+/** The lines and paths of the plan and of the aim: effect paths, Tick rings, target lines, shots, planned paths and the crosses of collisions. */
+function drawPlannedLines(
+  layers: { overlay: Container; overlayTop: Container },
+  created: Container[],
+  lines: Pick<BoardProps, "effectPaths" | "targetLines" | "shotLines" | "paths" | "collisionTiles" | "crossfireRings">,
+  strokeScale: number,
+): void {
+  const { overlay } = layers;
+  const { effectPaths = NO_EFFECT_PATHS, crossfireRings = NO_RINGS } = lines;
+  for (const effectPath of effectPaths) addTwoLayers(layers, created, effectPathGraphics(effectPath, strokeScale));
+  for (const ring of crossfireRings) addTwoLayers(layers, created, crossfireRingGraphics(ring));
+  for (const targetLine of lines.targetLines) {
+    const drawn = targetLineGraphics(targetLine);
+    overlay.addChild(drawn);
+    created.push(drawn);
+  }
+  for (const shot of lines.shotLines) {
+    const line = shotGraphics(shot);
+    overlay.addChild(line);
+    created.push(line);
+  }
+  for (const path of lines.paths) addTwoLayers(layers, created, pathGraphics(path, strokeScale));
+  for (const tile of lines.collisionTiles) {
+    const cross = collisionCross(tile);
+    overlay.addChild(cross);
+    created.push(cross);
+  }
+}
+
+function usePlanningOverlayEffect(p: Ctx7) {
+  const { coverPlan, highlights, markers, zoneLabels, areaTiles, rangeArea, dropTile, shotLines, targetLines, crossfireRings, effectPaths, paths, collisionTiles, overlay, overlayTop, pressed, strokeScale } = p;
   useEffect(() => {
     if (!overlay || !overlayTop) return;
     const created: Container[] = [];
-    const diamond = floorOutline();
-    for (const tile of areaTiles) {
-      const { x, y } = gridToWorld(tile);
-      const tint = new Graphics().poly(diamond).fill({ color: 0xff8a3d, alpha: 0.2 }).stroke({ width: 1, color: 0xff8a3d, alpha: 0.5 });
-      tint.position.set(x, y);
-      overlay.addChild(tint);
-      created.push(tint);
-    }
-    for (const { position, blocked } of rangeArea) {
-      const { x, y } = gridToWorld(position);
-      const color = blocked ? RANGE_BLOCKED_COLOR : RANGE_COLOR;
-      const tint = new Graphics().poly(diamond).fill({ color, alpha: RANGE_ALPHA });
-      tint.position.set(x, y);
-      overlay.addChild(tint);
-      created.push(tint);
-    }
-    const lit: Graphics[] = [];
-    for (const tile of highlights) {
-      const { x, y } = gridToWorld(tile);
-      const highlight = new Graphics().poly(diamond).fill({ color: 0x2ec4b6 }).stroke({ width: 4, color: 0x2ec4b6 });
-      highlight.position.set(x, y);
-      overlay.addChild(highlight);
-      created.push(highlight);
-      lit.push(highlight);
-    }
-    // The lit tiles pulse slowly (issue 208); with reduced motion they stand still.
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const pulseStart = clock.now();
-    const pulse = (now: number) => {
-      const alpha = pulseAlpha(now - pulseStart, reducedMotion);
-      for (const highlight of lit) highlight.alpha = alpha;
-    };
-    let stopPulse: (() => void) | undefined;
-    if (lit.length > 0) {
-      pulse(pulseStart);
-      if (!reducedMotion) stopPulse = clock.subscribe(pulse);
-    }
-    const previewTile = dropTile ?? pressed;
-    if (previewTile) {
-      // The tile under the finger, drawn larger than the tile so the finger does not hide it.
-      const { x, y } = gridToWorld(previewTile);
-      const preview = new Graphics().poly(diamond).fill({ color: 0xffffff, alpha: 0.3 }).stroke({ width: 6, color: 0xffffff });
-      preview.position.set(x, y);
-      preview.scale.set(1.15);
-      overlay.addChild(preview);
-      created.push(preview);
-    }
-    markers.forEach(({ position, label }) => {
-      const { x, y } = gridToWorld(position);
-      const marker = new Container();
-      marker.position.set(x, y);
-      marker.addChild(new Graphics().circle(0, 0, 16).fill(0xff8a3d).stroke({ width: 2, color: 0x12161c }));
-      const text = new Text({ text: label, style: { fill: 0x12161c, fontSize: 20, fontWeight: "700" } });
-      text.anchor.set(0.5);
-      marker.addChild(text);
-      overlay.addChild(marker);
-      created.push(marker);
-    });
-    zoneLabels.forEach(({ position, text }) => {
-      // Above the token's head, so the label is not hidden by the Hero.
-      const { x, y } = gridToWorld(position);
-      const label = new Container();
-      label.position.set(x, y - TILE_HEIGHT * 1.5);
-      const caption = new Text({ text, style: { fill: 0x12161c, fontSize: 22, fontWeight: "700" } });
-      caption.anchor.set(0.5);
-      label.addChild(new Graphics().roundRect(-caption.width / 2 - 8, -16, caption.width + 16, 32, 6).fill(0xffffff), caption);
-      overlay.addChild(label);
-      created.push(label);
-    });
-    // The oldest Placed Cover that goes gets a dashed amber outline, the tile of the new one a dashed teal one.
-    for (const [tiles, color, text] of [[coverPlan.oldest, COVER_AMBER, "OLDEST · GOES"], [coverPlan.fresh, COVER_OWN, "NEW COVER HERE"]] as const) {
-      for (const tile of tiles) {
-        const dashed = dashedTileOutline(tile, color, strokeScale);
-        const tag = coverTag(text, color, tile);
-        // Above the Cover, so the outline of the oldest piece is not hidden behind its own bars.
-        overlayTop.addChild(dashed, tag);
-        created.push(dashed, tag);
-      }
-    }
-    for (const effectPath of effectPaths) {
-      const drawn = effectPathGraphics(effectPath, strokeScale);
-      overlay.addChild(drawn.ground);
-      overlayTop.addChild(drawn.top);
-      created.push(drawn.ground, drawn.top);
-    }
-    for (const ring of crossfireRings) {
-      const drawn = crossfireRingGraphics(ring);
-      overlay.addChild(drawn.ground);
-      overlayTop.addChild(drawn.top);
-      created.push(drawn.ground, drawn.top);
-    }
-    for (const targetLine of targetLines) {
-      const drawn = targetLineGraphics(targetLine);
-      overlay.addChild(drawn);
-      created.push(drawn);
-    }
-    for (const shot of shotLines) {
-      const line = shotGraphics(shot);
-      overlay.addChild(line);
-      created.push(line);
-    }
-    for (const path of paths) {
-      const drawn = pathGraphics(path, strokeScale);
-      overlay.addChild(drawn.ground);
-      overlayTop.addChild(drawn.top);
-      created.push(drawn.ground, drawn.top);
-    }
-    for (const tile of collisionTiles) {
-      const cross = collisionCross(tile);
-      overlay.addChild(cross);
-      created.push(cross);
-    }
+    drawAreaAndRange(overlay, created, areaTiles, rangeArea);
+    const stopPulse = drawHighlights(overlay, created, highlights);
+    drawPreviewTile(overlay, created, dropTile ?? pressed);
+    drawMarkersAndLabels(overlay, created, markers, zoneLabels);
+    drawCoverPlan(overlayTop, created, coverPlan, strokeScale);
+    drawPlannedLines({ overlay, overlayTop }, created, { effectPaths, crossfireRings, targetLines, shotLines, paths, collisionTiles }, strokeScale);
     return () => {
       stopPulse?.();
       created.forEach((child) => child.destroy({ children: true }));
     };
   }, [overlay, overlayTop, highlights, markers, pressed, dropTile, zoneLabels, areaTiles, rangeArea, shotLines, targetLines, crossfireRings, effectPaths, coverPlan, paths, collisionTiles, strokeScale]);
+  return {};
+}
+type Ctx8 = Ctx7 & ReturnType<typeof usePlanningOverlayEffect>;
 
+/** What one redraw of the tokens reads from the board. */
+type TokenInputs = Pick<
+  Ctx8,
+  | "revealedAreas" | "heroes" | "enemies" | "selectedId" | "targetableIds" | "hitIds" | "clips" | "clipDelays" | "walks" | "effects" | "shotLines" | "marks" | "coverGrid"
+  | "strokeScale" | "bubbleSeen" | "ghostSeen" | "enemiesSeen" | "enemiesDrawn" | "frameClock" | "clipPlayers" | "facings"
+>;
+
+/** What one redraw of the tokens builds, and what the effect must cancel or destroy when the tokens are drawn again. */
+interface TokenBuild {
+  created: Container[];
+  cancels: (() => void)[];
+  /** The rings of the Heroes that can be tapped as target pulse (issue 209); with reduced motion they stand still. */
+  pulsingRings: Graphics[];
+  statusMarks: StatusMark[];
+  /** Shields that change in this frame, and Heroes that slide one tile of Pull (the rules moved them already). */
+  shieldMarks: StatusMark[];
+  slides: { token: Container; fromX: number; fromY: number; startMs: number }[];
+  /** Heroes that walk one tile in this frame glide from the tile they came from. */
+  glides: { token: Container; fromX: number; fromY: number }[];
+  /** The figures that play a clip (not the hit or Exhausted ones, which are flat poses). */
+  animated: { id: string; heroClass: HeroClass; cover: CoverKind; pixel: PixelHero }[];
+}
+
+const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const tokenRing = (color: number) => new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color });
+
+/** A soft light on the floor around each own Hero. */
+function addHeroLights(tokens: Container, created: Container[], heroes: readonly TokenHero[]): void {
+  for (const hero of heroes) {
+    const { x, y } = gridToWorld(hero.position);
+    const { color, alpha, rings } = TERRAIN_STYLE.heroLight;
+    const light = new Graphics();
+    for (let ring = 1; ring <= rings; ring++) {
+      const reach = ring / rings;
+      light.ellipse(0, 0, TILE_WIDTH * 0.9 * reach, TILE_HEIGHT * 0.9 * reach).fill({ color, alpha: alpha / rings });
+    }
+    light.position.set(x, y);
+    light.zIndex = -1;
+    tokens.addChild(light);
+    created.push(light);
+  }
+}
+
+/**
+ * The container of a Hero's token at its tile. A Hero that is pulled slides from the tile it was pulled from, and a Hero that walks
+ * one tile in this frame glides from the tile it came from; both are registered in `build` for the clip loop.
+ */
+function startToken(inputs: TokenInputs, build: TokenBuild, hero: TokenHero, enemy: boolean): Container {
+  const { effects, walks, enemiesSeen } = inputs;
+  const { x, y } = gridToWorld(hero.position);
+  const token = new Container();
+  token.position.set(x, y + footOffset());
+  token.zIndex = depthOf(hero.position) + 0.5;
+  // Only a figure that was on the board before can move on it: a Ghost, and an enemy that has just come into sight, stand where
+  // they are (they fade in; a glide from a tile of an earlier Round would slide them across the map).
+  const movable = canMove(hero, enemy, enemiesSeen.current.has(hero.id));
+  const slide = !movable || prefersReducedMotion() ? undefined : effects.find((cue) => cue.kind === "pull" && cue.toId === hero.id);
+  if (slide?.kind === "pull" && slide.from) {
+    // The token starts on the tile it was pulled from and slides to the one the rules put it on.
+    const from = gridToWorld(slide.from);
+    build.slides.push({ token, fromX: from.x - x, fromY: from.y - y, startMs: slide.startMs });
+  }
+  const walkedFrom = movable ? walks[hero.id] : undefined;
+  if (walkedFrom !== undefined && !prefersReducedMotion()) {
+    const from = gridToWorld(walkedFrom);
+    build.glides.push({ token, fromX: from.x - x, fromY: from.y - y });
+  }
+  return token;
+}
+
+/** The ring of the selected Hero and the pulsing ring of a Hero that can be tapped as the target. */
+function addTokenRings(inputs: TokenInputs, build: TokenBuild, token: Container, hero: TokenHero, enemy: boolean): void {
+  const { selectedId, targetableIds, shotLines } = inputs;
+  if (hero.id === selectedId) token.addChild(tokenRing(0x2ec4b6));
+  const cannotHit = shotLines.some((shot) => shot.targetId === hero.id && !shot.ringed);
+  if (targetableIds.includes(hero.id) && !cannotHit) {
+    const targetRing = tokenRing(enemy ? 0xe5484d : 0x2ec4b6);
+    token.addChild(targetRing);
+    build.pulsingRings.push(targetRing);
+  }
+}
+
+/** The fade of an enemy that just left sight (to its Ghost) or came into sight (from its Ghost, or from nothing). */
+function fadeEnemy(inputs: TokenInputs, build: TokenBuild, figure: Container, hero: TokenHero): void {
+  const { revealedAreas, ghostSeen, enemiesSeen, enemiesDrawn } = inputs;
+  const was = previousSighting(hero.id, ghostSeen.current, enemiesSeen.current);
+  if (hero.ghost && was === "seen") build.cancels.push(animateFade(clock, figure, "toGhost"));
+  else if (!hero.ghost && was === "ghost") build.cancels.push(animateFade(clock, figure, "toSeen"));
+  else if (!hero.ghost && was === undefined && (enemiesDrawn.current || revealedAreas.some((area) => areaContains(area.center, area.size, hero.position)))) {
+    // A Scout Drone lifted the fog over it, or a walking Hero came into sight of it (it shows with the next Round's view): it fades in.
+    build.cancels.push(animateFade(clock, figure, "appear"));
+  }
+}
+
+/** The figure of a Hero in its pose, with the Ghost and Hidden looks, and the fade of an enemy. Returns the pose it drew. */
+function addFigure(inputs: TokenInputs, build: TokenBuild, token: Container, hero: TokenHero, enemy: boolean): string {
+  const { clips, hitIds, strokeScale, facings, coverGrid } = inputs;
+  // A hit Hero plays the Hit clip; with reduced motion nothing moves, so it shows the flat white pose instead.
+  const reduced = prefersReducedMotion();
+  // An Exhausted Hero plays its fall in the frame that Exhausts it; at any other time it shows the flat pose (a saved match too).
+  const falling = hero.exhausted && clips[hero.id] === "exhausted" && !reduced;
+  const pose = heroPose({ exhausted: hero.exhausted && !falling, hit: reduced && hitIds.includes(hero.id) });
+  // The enemy Squad is told apart by the red ring under the figure.
+  const { figure, pixel } = styledHeroFigure(hero.heroClass, enemy, pose, strokeScale, facings.current.get(hero.id) ?? baseFacing(enemy));
+  if (hero.ghost) figure.alpha = GHOST_ALPHA;
+  // The Hidden clip fades the figure itself; reduced motion and every other moment show the ghost at once.
+  if (hero.hidden && (clips[hero.id] !== "hidden" || reduced)) figure.alpha = 0.55;
+  if (hero.ghost) token.addChild(ghostMark());
+  // An enemy that just left sight fades to its Ghost; one seen again fades from the Ghost to the real figure.
+  if (enemy && !reduced) fadeEnemy(inputs, build, figure, hero);
+  token.addChild(figure);
+  if (pose === "idle") build.animated.push({ id: hero.id, heroClass: hero.heroClass, cover: coverAt(coverGrid, hero.position), pixel });
+  return pose;
+}
+
+/** The animated Shield mark of a Hero whose Shield changes in this frame (gained, or hit and absorbing), if there is one. */
+function animatedShield(inputs: TokenInputs, build: TokenBuild, token: Container, hero: TokenHero, heroMarks: HeroMarks | undefined): StatusMark | undefined {
+  const { effects, strokeScale } = inputs;
+  if (prefersReducedMotion() || hero.ghost) return undefined;
+  const gain = effects.find((cue) => cue.kind === "shieldGain" && cue.toId === hero.id);
+  const hit = effects.find((cue) => cue.kind === "shieldHit" && cue.toId === hero.id);
+  if (gain?.kind !== "shieldGain" && hit?.kind !== "shieldHit") return undefined;
+  const shield = shieldMark({
+    held: heroMarks?.rubies ?? 0,
+    ...(gain?.kind === "shieldGain" && { gain: { startMs: gain.startMs, amount: gain.amount } }),
+    ...(hit?.kind === "shieldHit" && { hit: { startMs: hit.startMs, absorbed: hit.absorbed } }),
+    cameraScale: strokeScale,
+  });
+  token.addChild(shield.container);
+  build.shieldMarks.push(shield);
+  return shield;
+}
+
+/** The bubble of a Shield that is not animated: it appears with an animation when it was not there before, and fades away when the Shield was used up or expired. */
+function addBubble(inputs: TokenInputs, build: TokenBuild, token: Container, hero: TokenHero, heroMarks: HeroMarks | undefined): void {
+  const { strokeScale, bubbleSeen } = inputs;
+  if (heroMarks?.bubble) {
+    const bubble = shieldBubble(strokeScale);
+    token.addChild(bubble);
+    if (!bubbleSeen.current.has(hero.id)) build.cancels.push(animateAppear(clock, bubble, HERO_STYLE.marks.bubble.appearMs));
+  } else if (bubbleSeen.current.has(hero.id) && !prefersReducedMotion()) {
+    const bubble = shieldBubble(strokeScale);
+    token.addChild(bubble);
+    build.cancels.push(animateFadeOut(clock, bubble, HERO_STYLE.marks.bubble.appearMs));
+  }
+}
+
+/** The Shield of a Hero: an animated mark in the frame where it changes, otherwise rubies and icons, and the bubble. */
+function addShield(inputs: TokenInputs, build: TokenBuild, token: Container, hero: TokenHero): void {
+  const heroMarks = hero.ghost ? undefined : inputs.marks[hero.id];
+  const shield = animatedShield(inputs, build, token, hero, heroMarks);
+  if (shield !== undefined) return;
+  if (heroMarks && (heroMarks.rubies > 0 || heroMarks.icons.length > 0)) token.addChild(marksFigure(heroMarks, inputs.strokeScale));
+  // (The bubble of an animated Shield is part of its mark.)
+  addBubble(inputs, build, token, hero, heroMarks);
+}
+
+/**
+ * Marked and Slow are state: drawn whenever the Hero has them, also when the board is loaded mid-match. In the frame
+ * that applies one, the effects layer draws it with its lock-on instead. A Hidden enemy that a Scout Drone area shows gets its eye and tag.
+ */
+function addStatusMarks(inputs: TokenInputs, build: TokenBuild, token: Container, hero: TokenHero, enemy: boolean): void {
+  const { effects } = inputs;
+  const locking = (kind: string) => effects.some((cue) => cue.kind === kind && "toId" in cue && cue.toId === hero.id);
+  if (hero.marked && !hero.exhausted && !hero.ghost && !locking("marked")) {
+    const mark = markedMark();
+    token.addChild(mark.container);
+    build.statusMarks.push(mark);
+  }
+  if (hero.slowed && !hero.exhausted && !hero.ghost && !locking("slow")) {
+    const mark = slowMark();
+    token.addChild(mark.container);
+    build.statusMarks.push(mark);
+  }
+  // A Hidden enemy that a Scout Drone area shows: the figure at about 55 % (above), a cyan ring, an eye and the tag.
+  if (enemy && hero.hidden && !hero.exhausted && !hero.ghost) token.addChild(hiddenSeenMark());
+}
+
+function addToken(inputs: TokenInputs, build: TokenBuild, tokens: Container, hero: TokenHero, enemy: boolean): void {
+  // An enemy that goes Hidden is not drawn at all (Fog of War); only its own Squad sees the ghost.
+  if (enemy && !enemyIsDrawn(inputs.clips[hero.id])) return;
+  const token = startToken(inputs, build, hero, enemy);
+  addTokenRings(inputs, build, token, hero, enemy);
+  addFigure(inputs, build, token, hero, enemy);
+  addShield(inputs, build, token, hero);
+  addStatusMarks(inputs, build, token, hero, enemy);
+  tokens.addChild(token);
+  build.created.push(token);
+}
+
+/** The pulse of the target rings and the clip of every Hero: the active one of this frame, Idle otherwise. Reduced motion stands on the rest frame. */
+function animateTokens(inputs: TokenInputs, build: TokenBuild): void {
+  const { clips, clipDelays, frameClock, clipPlayers } = inputs;
+  const reducedMotion = prefersReducedMotion();
+  const pulseStart = clock.now();
+  const pulse = (now: number) => {
+    const alpha = pulseAlpha(now - pulseStart, reducedMotion);
+    for (const targetRing of build.pulsingRings) targetRing.alpha = alpha;
+  };
+  if (build.pulsingRings.length > 0) {
+    pulse(pulseStart);
+    if (!reducedMotion) build.cancels.push(clock.subscribe(pulse));
+  }
+  const playClips = (now: number) => {
+    const frameMs = (now - frameClock.current) * CLIP_SPEED;
+    for (const mark of build.shieldMarks) mark.update(frameMs);
+    for (const { token, fromX, fromY, startMs } of build.slides) {
+      const left = 1 - slideProgress(frameMs - startMs);
+      token.pivot.set(-fromX * left, -fromY * left);
+    }
+    const walked = walkProgress(now - frameClock.current);
+    for (const { token, fromX, fromY } of build.glides) token.pivot.set(-fromX * (1 - walked), -fromY * (1 - walked));
+    // Marked and Slow are past their lock-on here; the Slow field keeps breathing.
+    for (const mark of build.statusMarks) mark.update(reducedMotion ? STATUS_AT_REST_MS : 300 + now - pulseStart);
+    for (const { id, heroClass, cover, pixel } of build.animated) {
+      // A Hero with nothing to show stands, or stands behind the Cover it is on.
+      const name = clips[id] ?? restClipName(cover);
+      if (reducedMotion) {
+        pixel.showStill(name);
+        continue;
+      }
+      let player = clipPlayers.current.get(id);
+      if (player === undefined) {
+        player = new ClipPlayer(heroClass, now);
+        clipPlayers.current.set(id, player);
+      }
+      player.play(name, now, clipDelays[id] ?? 0, clips);
+      player.update(now);
+      pixel.show(player.playing, player.clipTimeMs(now));
+    }
+  };
+  playClips(clock.now());
+  if (!reducedMotion) build.cancels.push(clock.subscribe(playClips));
+}
+
+function useTokensEffect(p: Ctx8) {
+  const { revealedAreas, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, walks, aims, effects, shotLines, marks, coverGrid, tokens, bubbleSeen, ghostSeen, enemiesSeen, enemiesDrawn, frameClock, clipPlayers, facings, strokeScale } = p;
   useEffect(() => {
     if (!tokens) return;
-    const created: Container[] = [];
-    const cancels: (() => void)[] = [];
-    // The rings of the Heroes that can be tapped as target pulse (issue 209); with reduced motion they stand still.
-    const pulsingRings: Graphics[] = [];
-    const statusMarks: StatusMark[] = [];
-    // Shields that change in this frame, and Heroes that slide one tile of Pull (the rules moved them already).
-    const shieldMarks: StatusMark[] = [];
-    const slides: { token: Container; fromX: number; fromY: number; startMs: number }[] = [];
-    // Heroes that walk one tile in this frame glide from the tile they came from.
-    const glides: { token: Container; fromX: number; fromY: number }[] = [];
-    // The figures that play a clip (not the hit or Exhausted ones, which are flat poses).
-    const animated: { id: string; heroClass: HeroClass; cover: CoverKind; pixel: PixelHero }[] = [];
-    const ring = (color: number) =>
-      new Graphics().ellipse(0, -TILE_HEIGHT / 2, TILE_WIDTH * 0.42, TILE_HEIGHT * 0.42).stroke({ width: 4, color });
-    const addToken = (hero: TokenHero, enemy: boolean) => {
-      // An enemy that goes Hidden is not drawn at all (Fog of War); only its own Squad sees the ghost.
-      if (enemy && !enemyIsDrawn(clips[hero.id])) return;
-      const { x, y } = gridToWorld(hero.position);
-      const token = new Container();
-      token.position.set(x, y + footOffset());
-      token.zIndex = depthOf(hero.position) + 0.5;
-      const targetable = targetableIds.includes(hero.id);
-      // Only a figure that was on the board before can move on it: a Ghost, and an enemy that has just come into sight, stand where
-      // they are (they fade in; a glide from a tile of an earlier Round would slide them across the map).
-      const movable = canMove(hero, enemy, enemiesSeen.current.has(hero.id));
-      const slide = !movable || window.matchMedia("(prefers-reduced-motion: reduce)").matches ? undefined : effects.find((cue) => cue.kind === "pull" && cue.toId === hero.id);
-      if (slide?.kind === "pull" && slide.from) {
-        // The token starts on the tile it was pulled from and slides to the one the rules put it on.
-        const from = gridToWorld(slide.from);
-        slides.push({ token, fromX: from.x - x, fromY: from.y - y, startMs: slide.startMs });
-      }
-      const walkedFrom = movable ? walks[hero.id] : undefined;
-      if (walkedFrom !== undefined && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        const from = gridToWorld(walkedFrom);
-        glides.push({ token, fromX: from.x - x, fromY: from.y - y });
-      }
-      if (hero.id === selectedId) token.addChild(ring(0x2ec4b6));
-      const cannotHit = shotLines.some((shot) => shot.targetId === hero.id && !shot.ringed);
-      if (targetable && !cannotHit) {
-        const targetRing = ring(enemy ? 0xe5484d : 0x2ec4b6);
-        token.addChild(targetRing);
-        pulsingRings.push(targetRing);
-      }
-      // A hit Hero plays the Hit clip; with reduced motion nothing moves, so it shows the flat white pose instead.
-      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      // An Exhausted Hero plays its fall in the frame that Exhausts it; at any other time it shows the flat pose (a saved match too).
-      const falling = hero.exhausted && clips[hero.id] === "exhausted" && !reduced;
-      const pose = heroPose({ exhausted: hero.exhausted && !falling, hit: reduced && hitIds.includes(hero.id) });
-      // The enemy Squad is told apart by the red ring under the figure.
-      const { figure, pixel } = styledHeroFigure(hero.heroClass, enemy, pose, strokeScale, facings.current.get(hero.id) ?? baseFacing(enemy));
-      if (hero.ghost) figure.alpha = GHOST_ALPHA;
-      // The Hidden clip fades the figure itself; reduced motion and every other moment show the ghost at once.
-      if (hero.hidden && (clips[hero.id] !== "hidden" || reduced)) figure.alpha = 0.55;
-      if (hero.ghost) token.addChild(ghostMark());
-      // An enemy that just left sight fades to its Ghost; one seen again fades from the Ghost to the real figure.
-      if (enemy && !reduced) {
-        const was = previousSighting(hero.id, ghostSeen.current, enemiesSeen.current);
-        if (hero.ghost && was === "seen") cancels.push(animateFade(clock, figure, "toGhost"));
-        else if (!hero.ghost && was === "ghost") cancels.push(animateFade(clock, figure, "toSeen"));
-        else if (!hero.ghost && was === undefined && (enemiesDrawn.current || revealedAreas.some((area) => areaContains(area.center, area.size, hero.position)))) {
-          // A Scout Drone lifted the fog over it, or a walking Hero came into sight of it (it shows with the next Round's view): it fades in.
-          cancels.push(animateFade(clock, figure, "appear"));
-        }
-      }
-      token.addChild(figure);
-      if (pose === "idle") animated.push({ id: hero.id, heroClass: hero.heroClass, cover: coverAt(coverGrid, hero.position), pixel });
-      const heroMarks = hero.ghost ? undefined : marks[hero.id];
-      // A Shield that changes in this frame (gained, or hit and absorbing) is drawn with its own animation.
-      let shield: StatusMark | undefined;
-      if (!reduced && !hero.ghost) {
-        const gain = effects.find((cue) => cue.kind === "shieldGain" && cue.toId === hero.id);
-        const hit = effects.find((cue) => cue.kind === "shieldHit" && cue.toId === hero.id);
-        if (gain?.kind === "shieldGain" || hit?.kind === "shieldHit") {
-          shield = shieldMark({
-            held: heroMarks?.rubies ?? 0,
-            ...(gain?.kind === "shieldGain" && { gain: { startMs: gain.startMs, amount: gain.amount } }),
-            ...(hit?.kind === "shieldHit" && { hit: { startMs: hit.startMs, absorbed: hit.absorbed } }),
-            cameraScale: strokeScale,
-          });
-          token.addChild(shield.container);
-          shieldMarks.push(shield);
-        }
-      }
-      if (shield === undefined && heroMarks && (heroMarks.rubies > 0 || heroMarks.icons.length > 0)) {
-        token.addChild(marksFigure(heroMarks, strokeScale));
-      }
-      // (The bubble of an animated Shield is part of its mark.)
-      if (shield === undefined && heroMarks?.bubble) {
-        const bubble = shieldBubble(strokeScale);
-        token.addChild(bubble);
-        if (!bubbleSeen.current.has(hero.id)) cancels.push(animateAppear(clock, bubble,HERO_STYLE.marks.bubble.appearMs));
-      } else if (shield === undefined && bubbleSeen.current.has(hero.id) && !reduced) {
-        // The Shield was used up or expired: the bubble fades away (not with reduced motion).
-        const bubble = shieldBubble(strokeScale);
-        token.addChild(bubble);
-        cancels.push(animateFadeOut(clock, bubble,HERO_STYLE.marks.bubble.appearMs));
-      }
-      // Marked and Slow are state: drawn whenever the Hero has them, also when the board is loaded mid-match. In the frame
-      // that applies one, the effects layer draws it with its lock-on instead.
-      const locking = (kind: string) => effects.some((cue) => cue.kind === kind && "toId" in cue && cue.toId === hero.id);
-      if (hero.marked && !hero.exhausted && !hero.ghost && !locking("marked")) {
-        const mark = markedMark();
-        token.addChild(mark.container);
-        statusMarks.push(mark);
-      }
-      if (hero.slowed && !hero.exhausted && !hero.ghost && !locking("slow")) {
-        const mark = slowMark();
-        token.addChild(mark.container);
-        statusMarks.push(mark);
-      }
-      // A Hidden enemy that a Scout Drone area shows: the figure at about 55 % (above), a cyan ring, an eye and the tag.
-      if (enemy && hero.hidden && !hero.exhausted && !hero.ghost) token.addChild(hiddenSeenMark());
-      tokens.addChild(token);
-      created.push(token);
-    };
-    for (const hero of heroes) {
-      // A soft light on the floor around each own Hero.
-      const { x, y } = gridToWorld(hero.position);
-      const { color, alpha, rings } = TERRAIN_STYLE.heroLight;
-      const light = new Graphics();
-      for (let ring = 1; ring <= rings; ring++) {
-        const reach = ring / rings;
-        light.ellipse(0, 0, TILE_WIDTH * 0.9 * reach, TILE_HEIGHT * 0.9 * reach).fill({ color, alpha: alpha / rings });
-      }
-      light.position.set(x, y);
-      light.zIndex = -1;
-      tokens.addChild(light);
-      created.push(light);
-    }
-    heroes.forEach((hero) => addToken(hero, false));
-    enemies.forEach((hero) => addToken(hero, true));
+    const inputs: TokenInputs = { revealedAreas, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, walks, effects, shotLines, marks, coverGrid, strokeScale, bubbleSeen, ghostSeen, enemiesSeen, enemiesDrawn, frameClock, clipPlayers, facings };
+    const build: TokenBuild = { created: [], cancels: [], pulsingRings: [], statusMarks: [], shieldMarks: [], slides: [], glides: [], animated: [] };
+    addHeroLights(tokens, build.created, heroes);
+    heroes.forEach((hero) => addToken(inputs, build, tokens, hero, false));
+    enemies.forEach((hero) => addToken(inputs, build, tokens, hero, true));
     ghostSeen.current = new Set(enemies.filter((hero) => hero.ghost).map((hero) => hero.id));
     enemiesSeen.current = new Set(enemies.filter((hero) => !hero.ghost).map((hero) => hero.id));
     enemiesDrawn.current = true;
     // A bubble appears with an animation only when it was not there before this redraw.
     bubbleSeen.current = new Set(Object.entries(marks).flatMap(([id, heroMarks]) => (heroMarks.bubble ? [id] : [])));
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const pulseStart = clock.now();
-    const pulse = (now: number) => {
-      const alpha = pulseAlpha(now - pulseStart, reducedMotion);
-      for (const targetRing of pulsingRings) targetRing.alpha = alpha;
-    };
-    if (pulsingRings.length > 0) {
-      pulse(pulseStart);
-      if (!reducedMotion) cancels.push(clock.subscribe(pulse));
-    }
-    // The clip of every Hero: the active one of this frame, Idle otherwise. Reduced motion stands on the rest frame.
-    const playClips = (now: number) => {
-      const frameMs = (now - frameClock.current) * CLIP_SPEED;
-      for (const mark of shieldMarks) mark.update(frameMs);
-      for (const { token, fromX, fromY, startMs } of slides) {
-        const left = 1 - slideProgress(frameMs - startMs);
-        token.pivot.set(-fromX * left, -fromY * left);
-      }
-      const walked = walkProgress(now - frameClock.current);
-      for (const { token, fromX, fromY } of glides) token.pivot.set(-fromX * (1 - walked), -fromY * (1 - walked));
-      // Marked and Slow are past their lock-on here; the Slow field keeps breathing.
-      for (const mark of statusMarks) mark.update(reducedMotion ? STATUS_AT_REST_MS : 300 + now - pulseStart);
-      for (const { id, heroClass, cover, pixel } of animated) {
-        // A Hero with nothing to show stands, or stands behind the Cover it is on.
-        const name = clips[id] ?? restClipName(cover);
-        if (reducedMotion) {
-          pixel.showStill(name);
-          continue;
-        }
-        let player = clipPlayers.current.get(id);
-        if (player === undefined) {
-          player = new ClipPlayer(heroClass, now);
-          clipPlayers.current.set(id, player);
-        }
-        player.play(name, now, clipDelays[id] ?? 0, clips);
-        player.update(now);
-        pixel.show(player.playing, player.clipTimeMs(now));
-      }
-    };
-    playClips(clock.now());
-    if (!reducedMotion) cancels.push(clock.subscribe(playClips));
+    animateTokens(inputs, build);
     return () => {
-      cancels.forEach((cancel) => cancel());
-      created.forEach((token) => token.destroy({ children: true }));
+      build.cancels.forEach((cancel) => cancel());
+      build.created.forEach((token) => token.destroy({ children: true }));
     };
   }, [tokens, strokeScale, heroes, enemies, selectedId, targetableIds, hitIds, clips, clipDelays, walks, aims, effects, shotLines, marks, coverGrid]);
+  return {};
+}
+type Ctx9 = Ctx8 & ReturnType<typeof useTokensEffect>;
 
+function useEffectsLayerEffects(p: Ctx9) {
+  const { effects, effectsHost, candidatesRef, enemyIdsRef, frameClock } = p;
   // The effects of the attacks of the frame being shown. They read the latest Heroes from refs, so a redraw of
   // the tokens does not restart them; a new frame (a new `effects` array) does.
   const effectsLayer = useRef<EffectsLayer | undefined>(undefined);
@@ -974,7 +1124,12 @@ export function Board({
       effectsHost.world.pivot.set(0, 0);
     };
   }, [effects, effectsHost]);
+  return {};
+}
+type Ctx10 = Ctx9 & ReturnType<typeof useEffectsLayerEffects>;
 
+function useFogCloudsEffect(p: Ctx10) {
+  const { coverGrid, fogLayer } = p;
   // The cloud layer over the unseen tiles (fog-clouds.ts). Made once per board; it turns with the view and drifts on its own.
   const [fogClouds, setFogClouds] = useState<FogClouds>();
   useEffect(() => {
@@ -987,86 +1142,128 @@ export function Board({
       clouds.destroy();
     };
   }, [fogLayer, coverGrid.width, coverGrid.height]);
+  return { fogClouds };
+}
+type Ctx11 = Ctx10 & ReturnType<typeof useFogCloudsEffect>;
+
+type FogGrid = Grid;
+type SeenAreas = Map<string, { center: GridPosition; size: number }>;
+/** Tiles whose fog changes over time: the fog they have without the area, and how far the area has lifted. */
+interface FadingTile {
+  index: number;
+  fog: number;
+  lift: (ms: number) => number;
+}
+
+/** The tiles of the square area around `center`, each with its ring (0 in the middle). */
+function fogAreaTiles(grid: FogGrid, center: GridPosition, size: number): { tile: GridPosition; ring: number }[] {
+  const reach = Math.floor(size / 2);
+  const tiles: { tile: GridPosition; ring: number }[] = [];
+  for (let row = center.row - reach; row <= center.row + reach; row++) {
+    for (let col = center.col - reach; col <= center.col + reach; col++) {
+      if (tileAt(grid, { col, row }) !== undefined) tiles.push({ tile: { col, row }, ring: areaRing(center, { col, row }) });
+    }
+  }
+  return tiles;
+}
+
+/** The tiles of the Scout Drone areas that fade the fog out (a new area) or back in (an area that ended); with reduced motion nothing fades. */
+function fadingAreaTiles(
+  inputs: { coverGrid: FogGrid; visibleTiles: Parameters<typeof fogShape>[1]; revealedAreas: BoardProps["revealedAreas"]; own: GridPosition[]; reduced: boolean },
+  seen: SeenAreas,
+): { fading: FadingTile[]; seenNow: SeenAreas } {
+  const { coverGrid, visibleTiles, revealedAreas, own, reduced } = inputs;
+  const seenNow: SeenAreas = new Map();
+  const fading: FadingTile[] = [];
+  const withoutAreas = fogShape(coverGrid, visibleTiles.filter((tile) => !revealedAreas.some((area) => areaContains(area.center, area.size, tile))), own);
+  for (const { center, size } of revealedAreas) {
+    const key = `${center.col},${center.row},${size}`;
+    seenNow.set(key, { center, size });
+    if (reduced || seen.has(key)) continue;
+    for (const { tile, ring } of fogAreaTiles(coverGrid, center, size)) {
+      const index = tile.row * coverGrid.width + tile.col;
+      fading.push({ index, fog: withoutAreas[index]!, lift: (ms) => 1 - areaLift(ms, ring) });
+    }
+  }
+  if (reduced) return { fading, seenNow };
+  for (const [key, { center, size }] of seen) {
+    if (seenNow.has(key)) continue;
+    const reach = Math.floor(size / 2);
+    for (const { tile, ring } of fogAreaTiles(coverGrid, center, size)) {
+      const index = tile.row * coverGrid.width + tile.col;
+      fading.push({ index, fog: 0, lift: (ms) => 1 - areaLift(ms, reach - ring) });
+    }
+  }
+  return { fading, seenNow };
+}
+
+/** Resolution: the fog follows the walking Heroes between the sight at the start and at the end of the Round. Returns what stops it. */
+function followWalkFog(
+  fogClouds: FogClouds,
+  inputs: Pick<Ctx11, "coverGrid" | "visibleTiles" | "heroes" | "walks" | "frameClock"> & { sightAfter: NonNullable<Ctx11["sightAfter"]>; reduced: boolean },
+  fading: readonly FadingTile[],
+): () => void {
+  const { coverGrid, visibleTiles, heroes, walks, frameClock, sightAfter, reduced } = inputs;
+  const ids = heroes.map((hero) => hero.id).filter((id) => sightAfter.startPositions[id] && sightAfter.endPositions[id]);
+  const startFog = fogShape(coverGrid, visibleTiles, Object.values(sightAfter.startPositions));
+  const endFog = fogShape(coverGrid, sightAfter.visibleTiles, Object.values(sightAfter.endPositions));
+  const walkers: FogWalker[] = ids.map((id) => ({ from: sightAfter.startPositions[id]!, to: sightAfter.endPositions[id]!, at: { col: 0, row: 0 } }));
+  const frame = new Float32Array(startFog.length);
+  const startedAt = clock.now();
+  const step = (now: number) => {
+    const progress = reduced ? 1 : walkProgress(now - frameClock.current);
+    ids.forEach((id, index) => {
+      const to = heroes.find((hero) => hero.id === id)!.position;
+      const from = walks[id] ?? to;
+      walkers[index]!.at.col = from.col + (to.col - from.col) * progress;
+      walkers[index]!.at.row = from.row + (to.row - from.row) * progress;
+    });
+    fogDuringWalk(frame, startFog, endFog, coverGrid.width, walkers);
+    // A Scout Drone area still lifts or closes over its own timing, on top of the walk.
+    const ms = now - startedAt;
+    for (const { index, fog, lift } of fading) frame[index] = (fog - frame[index]!) * lift(ms) + frame[index]!;
+    fogClouds.setFog(frame);
+  };
+  step(startedAt);
+  return clock.subscribe(step);
+}
+
+/** Planning: the fog as the Squad sees now, with the Scout Drone areas lifting or closing over their own timing. Returns what stops it, if anything runs. */
+function settleFog(fogClouds: FogClouds, coverGrid: FogGrid, visibleTiles: Parameters<typeof fogShape>[1], own: GridPosition[], fading: readonly FadingTile[]): (() => void) | undefined {
+  const finalFog = fogShape(coverGrid, visibleTiles, own);
+  fogClouds.setFog(finalFog);
+  if (fading.length === 0) return undefined;
+  const frame = new Float32Array(finalFog);
+  const step = (ms: number): boolean => {
+    for (const { index, fog, lift } of fading) frame[index] = (fog - finalFog[index]!) * lift(ms) + finalFog[index]!;
+    fogClouds.setFog(frame);
+    const done = finished(ms, TRANSITION_MS);
+    if (done) fogClouds.setFog(finalFog);
+    return done;
+  };
+  step(0);
+  return runFor(clock, step);
+}
+
+function useFogAreaEffect(p: Ctx11) {
+  const { revealedAreas, visibleTiles, heroes, walks, sightAfter, coverGrid, frameClock, fogClouds } = p;
   // The fog is the Squad's own sight only. A Scout Drone area fades the fog out (or back in when it ends) over the area's own timing.
-  const fogAreaSeen = useRef(new Map<string, { center: GridPosition; size: number }>());
+  const fogAreaSeen = useRef<SeenAreas>(new Map());
   useEffect(() => {
     if (!fogClouds) return;
     const own = heroes.map((hero) => hero.position);
-    const areaTiles = (center: GridPosition, size: number) => {
-      const reach = Math.floor(size / 2);
-      const tiles: { tile: GridPosition; ring: number }[] = [];
-      for (let row = center.row - reach; row <= center.row + reach; row++) {
-        for (let col = center.col - reach; col <= center.col + reach; col++) {
-          if (tileAt(coverGrid, { col, row }) !== undefined) tiles.push({ tile: { col, row }, ring: areaRing(center, { col, row }) });
-        }
-      }
-      return tiles;
-    };
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const seenNow = new Map<string, { center: GridPosition; size: number }>();
-    /** Tiles whose fog changes over time: the fog they have without the area, and how far the area has lifted. */
-    const fading: { index: number; fog: number; lift: (ms: number) => number }[] = [];
-    const withoutAreas = fogShape(coverGrid, visibleTiles.filter((tile) => !revealedAreas.some((area) => areaContains(area.center, area.size, tile))), own);
-    for (const { center, size } of revealedAreas) {
-      const key = `${center.col},${center.row},${size}`;
-      seenNow.set(key, { center, size });
-      if (reduced || fogAreaSeen.current.has(key)) continue;
-      for (const { tile, ring } of areaTiles(center, size)) {
-        const index = tile.row * coverGrid.width + tile.col;
-        fading.push({ index, fog: withoutAreas[index]!, lift: (ms) => 1 - areaLift(ms, ring) });
-      }
-    }
-    if (!reduced) {
-      for (const [key, { center, size }] of fogAreaSeen.current) {
-        if (seenNow.has(key)) continue;
-        const reach = Math.floor(size / 2);
-        for (const { tile, ring } of areaTiles(center, size)) {
-          const index = tile.row * coverGrid.width + tile.col;
-          fading.push({ index, fog: 0, lift: (ms) => 1 - areaLift(ms, reach - ring) });
-        }
-      }
-    }
+    const { fading, seenNow } = fadingAreaTiles({ coverGrid, visibleTiles, revealedAreas, own, reduced }, fogAreaSeen.current);
     fogAreaSeen.current = seenNow;
-    if (sightAfter) {
-      // Resolution: the fog follows the walking Heroes between the sight at the start and at the end of the Round.
-      const ids = heroes.map((hero) => hero.id).filter((id) => sightAfter.startPositions[id] && sightAfter.endPositions[id]);
-      const startFog = fogShape(coverGrid, visibleTiles, Object.values(sightAfter.startPositions));
-      const endFog = fogShape(coverGrid, sightAfter.visibleTiles, Object.values(sightAfter.endPositions));
-      const walkers: FogWalker[] = ids.map((id) => ({ from: sightAfter.startPositions[id]!, to: sightAfter.endPositions[id]!, at: { col: 0, row: 0 } }));
-      const frame = new Float32Array(startFog.length);
-      const startedAt = clock.now();
-      const step = (now: number) => {
-        const progress = reduced ? 1 : walkProgress(now - frameClock.current);
-        ids.forEach((id, index) => {
-          const to = heroes.find((hero) => hero.id === id)!.position;
-          const from = walks[id] ?? to;
-          walkers[index]!.at.col = from.col + (to.col - from.col) * progress;
-          walkers[index]!.at.row = from.row + (to.row - from.row) * progress;
-        });
-        fogDuringWalk(frame, startFog, endFog, coverGrid.width, walkers);
-        // A Scout Drone area still lifts or closes over its own timing, on top of the walk.
-        const ms = now - startedAt;
-        for (const { index, fog, lift } of fading) frame[index] = (fog - frame[index]!) * lift(ms) + frame[index]!;
-        fogClouds.setFog(frame);
-      };
-      step(startedAt);
-      return clock.subscribe(step);
-    }
-    const finalFog = fogShape(coverGrid, visibleTiles, own);
-    fogClouds.setFog(finalFog);
-    if (fading.length === 0) return;
-    const frame = new Float32Array(finalFog);
-    const step = (ms: number): boolean => {
-      for (const { index, fog, lift } of fading) frame[index] = (fog - finalFog[index]!) * lift(ms) + finalFog[index]!;
-      fogClouds.setFog(frame);
-      const done = finished(ms, TRANSITION_MS);
-      if (done) fogClouds.setFog(finalFog);
-      return done;
-    };
-    step(0);
-    return runFor(clock, step);
+    if (sightAfter) return followWalkFog(fogClouds, { coverGrid, visibleTiles, heroes, walks, frameClock, sightAfter, reduced }, fading);
+    return settleFog(fogClouds, coverGrid, visibleTiles, own, fading);
   }, [fogClouds, coverGrid, visibleTiles, heroes, revealedAreas, sightAfter, walks]);
+  return {};
+}
+type Ctx12 = Ctx11 & ReturnType<typeof useFogAreaEffect>;
 
+function useSceneryEffects(p: Ctx12) {
+  const { destroyedCover, visibleTiles, heroes, overview, terrain, scenery, setScenery } = p;
   // Pixel art: the floor is baked into one texture and the Walls and Cover are sprites. They are built again only when the map's
   // own Cover changes (destroyed Cover); Placed Cover, wrecks and the fog are drawn over them by the effect below.
   const destroyedKey = destroyedCover.map((tile) => `${tile.col},${tile.row}`).join(";");
@@ -1093,131 +1290,175 @@ export function Board({
     if (reducedMotion || !scenery.animated) return;
     return clock.subscribe((now) => scenery.tick(now, false));
   }, [scenery]);
+  return {};
+}
+type Ctx13 = Ctx12 & ReturnType<typeof useSceneryEffects>;
 
+/** What the effects of the terrain share: what it made, what animates for 3 s, what pulses all the time, and when the effects began. */
+interface TerrainFx {
+  created: Container[];
+  /** Run on every frame for 3 s after the redraw (a transition). */
+  animated: ((now: number) => void)[];
+  /** Run on every frame while the zone is on screen (the idle pulse), unlike `animated`, which ends after 3 s. */
+  idle: ((now: number) => void)[];
+  effectBegan: number;
+  reducedMotion: boolean;
+}
+
+type TerrainLayersOf = { floor: Container; objects: Container; planning: Container };
+type SeenAreaMap = Map<string, { center: GridPosition; size: number }>;
+
+/** The Prime Zone tint (grey, teal, gold, amber, red) with its pulsing border; our Squad holding it sends a ring over the zone. */
+function addZoneFx(
+  fx: TerrainFx,
+  planning: Container,
+  grid: Grid,
+  look: Pick<Ctx13, "zoneColor" | "zoneAlpha" | "zoneEmblemAlpha" | "zoneRingOn" | "ringSeen">,
+): void {
+  const { zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn, ringSeen } = look;
+  const zone = drawZone(planning, grid, { color: zoneColor, alpha: zoneAlpha, emblemAlpha: zoneEmblemAlpha });
+  const zoneTiles = zone.tiles;
+  fx.created.push(...zone.created, ...drawOutposts(planning, grid));
+  if (zone.border && zone.glow) {
+    const { border, glow } = zone;
+    const setBorder = (now: number) => {
+      const alpha = zoneBorderAlpha(now, fx.reducedMotion);
+      border.alpha = alpha;
+      glow.alpha = alpha * 0.25;
+    };
+    setBorder(0);
+    if (!fx.reducedMotion) fx.idle.push(setBorder);
+  }
+  if (!zoneRingOn || zoneTiles.length === 0) {
+    ringSeen.current = "";
+    return;
+  }
+  const middle = gridToWorld({ col: zoneTiles.reduce((sum, tile) => sum + tile.col, 0) / zoneTiles.length, row: zoneTiles.reduce((sum, tile) => sum + tile.row, 0) / zoneTiles.length });
+  const zoneRing = new Graphics().ellipse(0, 0, TILE_WIDTH * 1.4, TILE_HEIGHT * 1.4).stroke({ width: 3, color: zoneColor });
+  zoneRing.position.set(middle.x, middle.y);
+  planning.addChild(zoneRing);
+  fx.created.push(zoneRing);
+  const pulseOf = (ms: number) => {
+    const { scale, alpha } = zoneRingAt(ms);
+    zoneRing.scale.set(scale);
+    zoneRing.alpha = alpha;
+  };
+  // One ring per Resolution held: it plays when the hold level (the tint) is new, not on every redraw.
+  const ringKey = `${zoneColor}-${zoneAlpha}`;
+  if (fx.reducedMotion || ringSeen.current === ringKey) zoneRing.visible = false;
+  else fx.animated.push((now) => pulseOf(now));
+  ringSeen.current = ringKey;
+}
+
+/**
+ * Scout Drone areas: the tiles lift from the middle outwards in cyan, two pips count the Resolutions left. An area that was already
+ * there before this redraw stands lifted; only a new one plays. Returns the areas seen now.
+ */
+function addScoutAreas(fx: TerrainFx, layers: TerrainLayersOf, grid: Grid, revealedAreas: BoardProps["revealedAreas"], areaSeen: SeenAreaMap): SeenAreaMap {
+  const { planning, objects } = layers;
+  const seenNow: SeenAreaMap = new Map();
+  for (const { center, size, remaining } of revealedAreas) {
+    const key = `${center.col},${center.row},${size}`;
+    seenNow.set(key, { center, size });
+    const plays = !fx.reducedMotion && !areaSeen.has(key);
+    const area = drawScoutArea(planning, grid, { center, size, remaining }, (tile) => areaRing(center, tile));
+    fx.created.push(...area.created);
+    // The drone circles over the area and scans; it hangs still with reduced motion.
+    const drone = scoutDroneMark(center, size, fx.reducedMotion);
+    drone.container.zIndex = depthOf(center) + size;
+    objects.addChild(drone.container);
+    fx.created.push(drone.container);
+    drone.update(0);
+    if (!fx.reducedMotion) fx.idle.push((now) => drone.update(now - fx.effectBegan));
+    if (!plays) continue;
+    for (const { tint, ring } of area.tints) {
+      tint.alpha = 0;
+      fx.animated.push((now) => {
+        tint.alpha = areaLift(now, ring);
+      });
+    }
+  }
+  return seenNow;
+}
+
+/** Areas the enemy scans: a dashed amber outline with a sweep and the Resolutions left. */
+function addScannedAreas(fx: TerrainFx, objects: Container, scannedAreas: BoardProps["scannedAreas"] & object): void {
+  for (const { center, size, remaining } of scannedAreas) {
+    const mark = scannedMark(center, size, remaining, fx.reducedMotion);
+    mark.container.zIndex = depthOf(center) + size;
+    objects.addChild(mark.container);
+    fx.created.push(mark.container);
+    mark.update(0);
+    if (!fx.reducedMotion) fx.idle.push((now) => mark.update(now - fx.effectBegan));
+  }
+}
+
+/** An area that ran out: the fog closes again from the outside inwards instead of cutting. */
+function addClosingAreas(fx: TerrainFx, planning: Container, grid: Grid, areaSeen: SeenAreaMap, seenNow: SeenAreaMap): void {
+  if (fx.reducedMotion) return;
+  for (const [key, { center, size }] of areaSeen) {
+    if (seenNow.has(key)) continue;
+    const reach = Math.floor(size / 2);
+    for (let row = center.row - reach; row <= center.row + reach; row++) {
+      for (let col = center.col - reach; col <= center.col + reach; col++) {
+        if (tileAt(grid, { col, row }) === undefined) continue;
+        const tint = new Graphics().poly(floorOutline()).fill({ color: areaColorOf(), alpha: 0.28 });
+        addAt(planning, fx.created, tint, { col, row });
+        const outward = reach - areaRing(center, { col, row });
+        fx.animated.push((now) => {
+          tint.alpha = 1 - areaLift(now, outward);
+        });
+      }
+    }
+  }
+}
+
+/** Runs the animated and idle effects on the clock: a transition ends within 3 s, the idle pulse never ends. Returns what stops it. */
+function runTerrainFx(fx: TerrainFx): (() => void) | undefined {
+  const { animated, idle, reducedMotion } = fx;
+  const effectStart = clock.now();
+  let stopEffects: (() => void) | undefined;
+  const runEffects = (now: number) => {
+    for (const update of animated) update(now - effectStart);
+    for (const update of idle) update(now);
+    // Every transition (the longest: a ring of the zone or an area of up to 5 rings) is over within 3 s; the idle pulse never ends.
+    const transitioning = animated.length > 0 && !finished(now - effectStart, TRANSITION_MS);
+    if (reducedMotion || (idle.length === 0 && !transitioning)) stopEffects?.();
+  };
+  runEffects(effectStart);
+  if (!reducedMotion && (idle.length > 0 || animated.length > 0)) stopEffects = clock.subscribe(runEffects);
+  return stopEffects;
+}
+
+function useTerrainEffect(p: Ctx13) {
+  const { destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scannedAreas, scrapFields, visibleTiles, heroes, coverGrid, terrain, areaSeen, ringSeen, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn, aiming, strokeScale } = p;
   // The terrain is drawn again when Cover the Squad has seen destroyed changes.
   useEffect(() => {
     if (!terrain) return;
     const { floor, objects, planning } = terrain;
     const grid = coverGrid;
-    const lit = litTiles(
-      visibleTiles,
-      heroes.map((hero) => hero.position),
-    );
+    const lit = litTiles(visibleTiles, heroes.map((hero) => hero.position));
     const created: Container[] = drawTerrain({ floor, objects, planning }, { grid, strokeScale, lit, placedCover, ownPlacedCover, destroyedCover });
-
-    // The Prime Zone tint (grey, teal, gold, amber, red); our Squad holding it sends a ring over the zone.
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const zone = drawZone(planning, grid, { color: zoneColor, alpha: zoneAlpha, emblemAlpha: zoneEmblemAlpha });
-    const zoneTiles = zone.tiles;
-    created.push(...zone.created, ...drawOutposts(planning, grid));
-    const animated: ((now: number) => void)[] = [];
-    const effectBegan = clock.now();
-    /** Run on every frame while the zone is on screen (the idle pulse), unlike `animated`, which ends after 3 s. */
-    const idle: ((now: number) => void)[] = [];
-    if (zone.border && zone.glow) {
-      const { border, glow } = zone;
-      const setBorder = (now: number) => {
-        const alpha = zoneBorderAlpha(now, reducedMotion);
-        border.alpha = alpha;
-        glow.alpha = alpha * 0.25;
-      };
-      setBorder(0);
-      if (!reducedMotion) idle.push(setBorder);
-    }
-    if (zoneRingOn && zoneTiles.length > 0) {
-      const middle = gridToWorld({ col: zoneTiles.reduce((sum, tile) => sum + tile.col, 0) / zoneTiles.length, row: zoneTiles.reduce((sum, tile) => sum + tile.row, 0) / zoneTiles.length });
-      const zoneRing = new Graphics().ellipse(0, 0, TILE_WIDTH * 1.4, TILE_HEIGHT * 1.4).stroke({ width: 3, color: zoneColor });
-      zoneRing.position.set(middle.x, middle.y);
-      planning.addChild(zoneRing);
-      created.push(zoneRing);
-      const pulseOf = (ms: number) => {
-        const { scale, alpha } = zoneRingAt(ms);
-        zoneRing.scale.set(scale);
-        zoneRing.alpha = alpha;
-      };
-      // One ring per Resolution held: it plays when the hold level (the tint) is new, not on every redraw.
-      const ringKey = `${zoneColor}-${zoneAlpha}`;
-      if (reducedMotion || ringSeen.current === ringKey) zoneRing.visible = false;
-      else animated.push((now) => pulseOf(now));
-      ringSeen.current = ringKey;
-    } else {
-      ringSeen.current = "";
-    }
-
-    // Scout Drone areas: the tiles lift from the middle outwards in cyan, two pips count the Resolutions left.
-    // An area that was already there before this redraw stands lifted; only a new one plays.
-    const seenNow = new Map<string, { center: GridPosition; size: number }>();
-    for (const { center, size, remaining } of revealedAreas) {
-      const key = `${center.col},${center.row},${size}`;
-      seenNow.set(key, { center, size });
-      const plays = !reducedMotion && !areaSeen.current.has(key);
-      const area = drawScoutArea(planning, grid, { center, size, remaining }, (tile) => areaRing(center, tile));
-      created.push(...area.created);
-      // The drone circles over the area and scans; it hangs still with reduced motion.
-      const drone = scoutDroneMark(center, size, reducedMotion);
-      drone.container.zIndex = depthOf(center) + size;
-      objects.addChild(drone.container);
-      created.push(drone.container);
-      drone.update(0);
-      if (!reducedMotion) idle.push((now) => drone.update(now - effectBegan));
-      if (!plays) continue;
-      for (const { tint, ring } of area.tints) {
-        tint.alpha = 0;
-        animated.push((now) => {
-          tint.alpha = areaLift(now, ring);
-        });
-      }
-    }
+    const fx: TerrainFx = { created, animated: [], idle: [], effectBegan: clock.now(), reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches };
+    addZoneFx(fx, planning, grid, { zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn, ringSeen });
+    const seenNow = addScoutAreas(fx, { floor, objects, planning }, grid, revealedAreas, areaSeen.current);
     // Scrap Fields: violet tiles with scrap and wire.
     for (const field of scrapFields) created.push(...drawScrapField(planning, grid, field));
-    // Areas the enemy scans: a dashed amber outline with a sweep and the Resolutions left.
-    for (const { center, size, remaining } of scannedAreas) {
-      const mark = scannedMark(center, size, remaining, reducedMotion);
-      mark.container.zIndex = depthOf(center) + size;
-      objects.addChild(mark.container);
-      created.push(mark.container);
-      mark.update(0);
-      if (!reducedMotion) idle.push((now) => mark.update(now - effectBegan));
-    }
-    // An area that ran out: the fog closes again from the outside inwards instead of cutting.
-    if (!reducedMotion) {
-      for (const [key, { center, size }] of areaSeen.current) {
-        if (seenNow.has(key)) continue;
-        const reach = Math.floor(size / 2);
-        for (let row = center.row - reach; row <= center.row + reach; row++) {
-          for (let col = center.col - reach; col <= center.col + reach; col++) {
-            if (tileAt(grid, { col, row }) === undefined) continue;
-            const { x, y } = gridToWorld({ col, row });
-            const tint = new Graphics().poly(floorOutline()).fill({ color: areaColorOf(), alpha: 0.28 });
-            tint.position.set(x, y);
-            planning.addChild(tint);
-            created.push(tint);
-            const outward = reach - areaRing(center, { col, row });
-            animated.push((now) => {
-              tint.alpha = 1 - areaLift(now, outward);
-            });
-          }
-        }
-      }
-    }
+    addScannedAreas(fx, objects, scannedAreas);
+    addClosingAreas(fx, planning, grid, areaSeen.current, seenNow);
     areaSeen.current = seenNow;
-    const effectStart = clock.now();
-    let stopEffects: (() => void) | undefined;
-    const runEffects = (now: number) => {
-      for (const update of animated) update(now - effectStart);
-      for (const update of idle) update(now);
-      // Every transition (the longest: a ring of the zone or an area of up to 5 rings) is over within 3 s; the idle pulse never ends.
-      const transitioning = animated.length > 0 && !finished(now - effectStart, TRANSITION_MS);
-      if (reducedMotion || (idle.length === 0 && !transitioning)) stopEffects?.();
-    };
-    runEffects(effectStart);
-    if (!reducedMotion && (idle.length > 0 || animated.length > 0)) stopEffects = clock.subscribe(runEffects);
+    const stopEffects = runTerrainFx(fx);
     return () => {
       stopEffects?.();
       created.forEach((child) => child.destroy({ children: true }));
     };
   }, [terrain, strokeScale, aiming, destroyedCover, placedCover, ownPlacedCover, wreckCover, revealedAreas, scannedAreas, scrapFields, visibleTiles, heroes, zoneColor, zoneAlpha, zoneEmblemAlpha, zoneRingOn]);
+  return {};
+}
+type Ctx14 = Ctx13 & ReturnType<typeof useTerrainEffect>;
 
+function usePrimeWallsEffect(p: Ctx14) {
+  const { primeWalls, wallsWereUp, terrain } = p;
   // The laser walls of the Prime Zone: closed while it is inactive (they show through the fog), a short flicker when it opens.
   useEffect(() => {
     if (!terrain) return;
@@ -1249,141 +1490,221 @@ export function Board({
       drawn.created.forEach((child) => child.destroy({ children: true }));
     };
   }, [terrain, primeWalls]);
+  return {};
+}
+type Ctx15 = Ctx14 & ReturnType<typeof usePrimeWallsEffect>;
 
+/** What the camera of the board reads from the board: the latest candidates and callbacks (in refs), and where it reports the stroke scale. */
+type CameraInputs = Pick<
+  Ctx15,
+  "overview" | "onSelectRef" | "onTargetTapRef" | "onTileTapRef" | "candidatesRef" | "ownPositionsRef" | "enemyIdsRef" | "cameraControl" | "selectedIdRef" | "setPressed" | "setStrokeScale"
+>;
+
+/** The camera of the board: where it is, how it eases, the automatic framing of an armed Move, and the picking in the world it sees. */
+class BoardCameraDirector {
+  private camera: Camera;
+  private stopAnimation: (() => void) | undefined;
+  /** The camera of an armed Move; a manual camera change ends the automatic framing for that Move. */
+  private framing: MoveFraming | undefined;
+
+  constructor(
+    private readonly world: Container,
+    private readonly element: HTMLElement,
+    private readonly inputs: CameraInputs,
+    private readonly cameraRef: { current: Camera | undefined },
+  ) {
+    this.camera = cameraRef.current ?? this.startFraming();
+  }
+
+  /** Pixel art zooms in whole steps, except in the overview, which always shows the whole board as large as fits. */
+  readonly size = (): CameraView => {
+    const view = boardScene.view();
+    return { width: view.width, height: view.height, pixel: !this.inputs.overview };
+  };
+
+  /** The start framing: the own Squad and the Prime Zone, never an enemy (Fog of War). */
+  readonly startFraming = (): Camera => {
+    const view = this.size();
+    const zone = zoneCentre();
+    return zone && !this.inputs.overview ? frameSquadCamera(this.inputs.ownPositionsRef.current, zone, view, freeBoardArea(view, { kind: "idle" })) : fitCamera(view);
+  };
+
+  readonly currentCamera = (): Camera => this.camera;
+
+  readonly setCamera = (next: Camera): void => {
+    this.camera = next;
+    this.cameraRef.current = next;
+    this.world.scale.set(next.scale);
+    this.world.position.set(next.x, next.y);
+    this.inputs.setStrokeScale(lineScale(next.scale));
+    boardScene.touch();
+  };
+
+  /** Eases to a camera in FRAME_MS on the scene clock; jumps when the player prefers reduced motion. */
+  private animateTo(target: Camera): void {
+    this.stopAnimation?.();
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return this.setCamera(target);
+    const from = this.camera;
+    this.stopAnimation = runFor(clock, (elapsed) => {
+      const t = Math.min(elapsed / FRAME_MS, 1);
+      const eased = 1 - (1 - t) ** 3;
+      this.setCamera({
+        scale: from.scale + (target.scale - from.scale) * eased,
+        x: from.x + (target.x - from.x) * eased,
+        y: from.y + (target.y - from.y) * eased,
+      });
+      return t >= 1;
+    });
+  }
+
+  readonly setCameraByHand = (next: Camera): void => {
+    this.stopAnimation?.();
+    this.framing = takeOverFraming(this.framing);
+    this.setCamera(next);
+  };
+
+  /** What the screen asks of the camera: toggle between the whole board and the selected Hero, frame an armed Move, release it. */
+  readonly control = {
+    toggle: () => {
+      const { candidatesRef, selectedIdRef } = this.inputs;
+      const hero = candidatesRef.current.heroes.find((h) => h.id === selectedIdRef.current);
+      if (isZoomed(this.camera, this.size()) || !hero) this.setCameraByHand(fitCamera(this.size()));
+      else this.setCameraByHand(zoomOnPoint(gridToWorld(hero.position), this.size()));
+    },
+    frame: (hero: GridPosition) => {
+      this.framing ??= beginMoveFraming(this.camera);
+      if (this.framing.automatic) this.animateTo(frameMoveCamera(hero, this.inputs.candidatesRef.current.highlights, this.size(), freeBoardArea(this.size(), { kind: "picking" })));
+    },
+    release: () => {
+      if (this.framing?.automatic) this.animateTo(endMoveFraming(this.framing, this.camera));
+      this.framing = undefined;
+    },
+  };
+
+  /** Where a Hero is on the screen, for the cards that are dropped on a Hero. */
+  readonly heroScreenPoint = (heroId: string) => {
+    const hero = this.inputs.candidatesRef.current.heroes.find((h) => h.id === heroId);
+    if (!hero) return undefined;
+    const at = gridToWorld(hero.position);
+    const rect = this.element.getBoundingClientRect();
+    return { x: rect.left + at.x * this.camera.scale + this.camera.x, y: rect.top + at.y * this.camera.scale + this.camera.y };
+  };
+
+  readonly pick = (viewX: number, viewY: number) => {
+    const { width, height } = this.size();
+    const { x, y } = viewToWorld(viewX, viewY, width, height, undefined, this.camera);
+    return { x, y, target: resolveTap(x, y, this.inputs.candidatesRef.current, undefined, this.camera.scale) };
+  };
+
+  /** Picks at a point in client pixels: what stands there and which tile it is on. */
+  readonly pickClient = ({ x: clientX, y: clientY }: { x: number; y: number }) => {
+    const rect = this.element.getBoundingClientRect();
+    const { x, y, target } = this.pick(clientX - rect.left, clientY - rect.top);
+    return { target, ground: pickTileAt(x, y, undefined) };
+  };
+
+  /** The gestures on the transparent element over the canvas: camera moves, presses and taps. */
+  gestures(): BoardGestures {
+    const { setPressed, onTileTapRef, onTargetTapRef, onSelectRef, candidatesRef, enemyIdsRef } = this.inputs;
+    return new BoardGestures({
+      camera: () => this.camera,
+      view: this.size,
+      setCameraByHand: this.setCameraByHand,
+      press: (point) => {
+        if (!point) return setPressed(undefined);
+        const { x, y, target } = this.pick(point.x, point.y);
+        setPressed(target.kind === "tile" ? target.tile : pickTileAt(x, y, undefined));
+      },
+      tap: (point) => {
+        const { target } = this.pick(point.x, point.y);
+        if (target.kind === "tile") onTileTapRef.current(target.tile);
+        else if (target.kind === "hero") {
+          const targetable = candidatesRef.current.targetableIds.includes(target.id);
+          if (enemyIdsRef.current.has(target.id) || targetable) onTargetTapRef.current(target.id);
+          else onSelectRef.current(target.id);
+        }
+      },
+    });
+  }
+
+  stopAnimating(): void {
+    this.stopAnimation?.();
+  }
+}
+
+function useCameraEffect(p: Ctx15) {
+  const { pickRef, heroScreenRef, input, layers, cameraControl    } = p;
   // The camera lives here, not in the scene: a scene rebuilt after a lost WebGL context gets the camera where the player left it.
   const cameraRef = useRef<Camera | undefined>(undefined);
   useEffect(() => {
     const element = input.current;
     if (!layers || !element) return;
-    const { world } = layers;
-    // Pixel art zooms in whole steps, except in the overview, which always shows the whole board as large as fits.
-    const size = (): CameraView => {
-      const view = boardScene.view();
-      return { width: view.width, height: view.height, pixel: !overview };
-    };
-    // The start framing: the own Squad and the Prime Zone, never an enemy (Fog of War).
-    const startFraming = (): Camera => {
-      const view = size();
-      const zone = zoneCentre();
-      return zone && !overview ? frameSquadCamera(ownPositionsRef.current, zone, view, freeBoardArea(view, { kind: "idle" })) : fitCamera(view);
-    };
-    let camera = cameraRef.current ?? startFraming();
-    const setCamera = (next: Camera) => {
-      camera = next;
-      cameraRef.current = next;
-      world.scale.set(camera.scale);
-      world.position.set(camera.x, camera.y);
-      setStrokeScale(lineScale(camera.scale));
-      boardScene.touch();
-    };
-    // Eases to a camera in FRAME_MS on the scene clock; jumps when the player prefers reduced motion.
-    let stopAnimation: (() => void) | undefined;
-    const animateTo = (target: Camera) => {
-      stopAnimation?.();
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setCamera(target);
-      const from = camera;
-      stopAnimation = runFor(clock, (elapsed) => {
-        const t = Math.min(elapsed / FRAME_MS, 1);
-        const eased = 1 - (1 - t) ** 3;
-        setCamera({
-          scale: from.scale + (target.scale - from.scale) * eased,
-          x: from.x + (target.x - from.x) * eased,
-          y: from.y + (target.y - from.y) * eased,
-        });
-        return t >= 1;
-      });
-    };
-    // The camera of an armed Move; a manual camera change ends the automatic framing for that Move.
-    let framing: MoveFraming | undefined;
-    const setCameraByHand = (next: Camera) => {
-      stopAnimation?.();
-      framing = takeOverFraming(framing);
-      setCamera(next);
-    };
-    cameraControl.current = {
-      toggle: () => {
-        const hero = candidatesRef.current.heroes.find((h) => h.id === selectedIdRef.current);
-        if (isZoomed(camera, size()) || !hero) setCameraByHand(fitCamera(size()));
-        else setCameraByHand(zoomOnPoint(gridToWorld(hero.position), size()));
-      },
-      frame: (hero) => {
-        framing ??= beginMoveFraming(camera);
-        if (framing.automatic) animateTo(frameMoveCamera(hero, candidatesRef.current.highlights, size(), freeBoardArea(size(), { kind: "picking" })));
-      },
-      release: () => {
-        if (framing?.automatic) animateTo(endMoveFraming(framing, camera));
-        framing = undefined;
-      },
-    };
-
-    if (heroScreenRef) {
-      heroScreenRef.current = (heroId) => {
-        const hero = candidatesRef.current.heroes.find((h) => h.id === heroId);
-        if (!hero) return undefined;
-        const at = gridToWorld(hero.position);
-        const rect = element.getBoundingClientRect();
-        return { x: rect.left + at.x * camera.scale + camera.x, y: rect.top + at.y * camera.scale + camera.y };
-      };
-    }
-
-    const pick = (viewX: number, viewY: number) => {
-      const { width, height } = size();
-      const { x, y } = viewToWorld(viewX, viewY, width, height, undefined, camera);
-      return { x, y, target: resolveTap(x, y, candidatesRef.current, undefined, camera.scale) };
-    };
-    pickRef.current = ({ x: clientX, y: clientY }) => {
-      const rect = element.getBoundingClientRect();
-      const { x, y, target } = pick(clientX - rect.left, clientY - rect.top);
-      return { target, ground: pickTileAt(x, y, undefined) };
-    };
+    const director = new BoardCameraDirector(layers.world, element, p, cameraRef);
+    cameraControl.current = director.control;
+    if (heroScreenRef) heroScreenRef.current = director.heroScreenPoint;
+    pickRef.current = director.pickClient;
     // One transparent element over the canvas takes the pointer events; the gestures turn them into camera moves, presses and taps.
-    const detach = attachBoardInput(
-      element,
-      new BoardGestures({
-        camera: () => camera,
-        view: size,
-        setCameraByHand,
-        press(point) {
-          if (!point) return setPressed(undefined);
-          const { x, y, target } = pick(point.x, point.y);
-          setPressed(target.kind === "tile" ? target.tile : pickTileAt(x, y, undefined));
-        },
-        tap(point) {
-          const { target } = pick(point.x, point.y);
-          if (target.kind === "tile") onTileTapRef.current(target.tile);
-          else if (target.kind === "hero") {
-            const targetable = candidatesRef.current.targetableIds.includes(target.id);
-            if (enemyIdsRef.current.has(target.id) || targetable) onTargetTapRef.current(target.id);
-            else onSelectRef.current(target.id);
-          }
-        },
-      }),
-    );
-
+    const detach = attachBoardInput(element, director.gestures());
     // After a resize or rotation the view starts framed on the own Squad again.
-    setCamera(camera);
-    const stopWatchingView = boardScene.watchView(() => setCameraByHand(startFraming()));
+    director.setCamera(director.currentCamera());
+    const stopWatchingView = boardScene.watchView(() => director.setCameraByHand(director.startFraming()));
     return () => {
       stopWatchingView();
       detach();
-      stopAnimation?.();
+      director.stopAnimating();
       cameraControl.current = undefined;
       pickRef.current = undefined;
       if (heroScreenRef) heroScreenRef.current = undefined;
     };
   }, [layers]);
+  return {};
+}
+type Ctx16 = Ctx15 & ReturnType<typeof useCameraEffect>;
 
+function useBoardReadyEffects(p: Ctx16) {
+  const { scenery } = p;
   // The first frame that shows the tiles and the Heroes is the one the scene reports as ready (the seam of ADR 0026, rule 10).
   useEffect(() => {
     if (scenery) boardScene.markDrawn();
   }, [scenery]);
   // Whatever the effects above changed is drawn in one more frame; a board that changes nothing runs no frames.
   useEffect(() => boardScene.touch());
+  return {};
+}
+type Ctx17 = Ctx16 & ReturnType<typeof useBoardReadyEffects>;
 
+function useBoardContext(props: BoardProps) {
+  const c1 = { ...props, ...useBoardInputs(props) };
+  const c2 = { ...c1, ...useBoardLayers(c1) };
+  const c3 = { ...c2, ...useLatestRefs(c2) };
+  const c4 = { ...c3, ...useSeenRefs(c3) };
+  const c5 = { ...c4, ...useFrameRefs(c4) };
+  const c6 = { ...c5, ...useFigureRefs(c5) };
+  const c7 = { ...c6, ...useMoveFrameEffect(c6) };
+  const c8 = { ...c7, ...usePlanningOverlayEffect(c7) };
+  const c9 = { ...c8, ...useTokensEffect(c8) };
+  const c10 = { ...c9, ...useEffectsLayerEffects(c9) };
+  const c11 = { ...c10, ...useFogCloudsEffect(c10) };
+  const c12 = { ...c11, ...useFogAreaEffect(c11) };
+  const c13 = { ...c12, ...useSceneryEffects(c12) };
+  const c14 = { ...c13, ...useTerrainEffect(c13) };
+  const c15 = { ...c14, ...usePrimeWallsEffect(c14) };
+  const c16 = { ...c15, ...useCameraEffect(c15) };
+  const c17 = { ...c16, ...useBoardReadyEffects(c16) };
+  return c17;
+}
+
+function BoardView(p: Ctx17) {
+  const { input } = p;
   return (
     <div className="board" role="img" aria-label="Notstrom Map">
       <StageLayer scene={BOARD_SCENE_NAME} />
       <div ref={input} className="board-input" />
     </div>
   );
+}
+
+export function Board(props: BoardProps) {
+  const context = useBoardContext(props);
+  return <BoardView {...context} />;
 }
