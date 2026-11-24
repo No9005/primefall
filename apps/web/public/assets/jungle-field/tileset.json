@@ -1,0 +1,324 @@
+{
+  "name": "fiebermoor",
+  "prefix": "jungle.",
+  "tile": {
+    "w": 32,
+    "h": 16
+  },
+  "halfCoverHeight": 10,
+  "fullCoverHeight": 22,
+  "platformHeight": 44,
+  "origin": "every sprite has its anchor on the centre of the tile it stands on",
+  "projection": {
+    "x": "(col - row) * 16",
+    "y": "(col + row) * 8"
+  },
+  "lighting": {
+    "lightScale": 1.5,
+    "lightSpriteRadius": 96,
+    "ambient": "#ffffff",
+    "lights": {
+      "artefact": {
+        "color": "#9be37a",
+        "alpha": 0.4,
+        "scale": 0.729
+      },
+      "centre": {
+        "color": "#9be37a",
+        "alpha": 0.333,
+        "scale": 1.25
+      },
+      "lamp": {
+        "color": "#e8c25a",
+        "alpha": 0.4,
+        "scale": 0.625
+      },
+      "firefly": {
+        "color": "#e6ff8a",
+        "alpha": 0.167,
+        "scale": 0.229
+      }
+    }
+  },
+  "mist": {
+    "image": "mist.png",
+    "size": 256,
+    "speed": [
+      10,
+      4
+    ],
+    "alpha": 0.5
+  },
+  "groups": {
+    "mud": [
+      "mud_0",
+      "mud_1",
+      "mud_2",
+      "mud_3"
+    ],
+    "grass": [
+      "grass_0",
+      "grass_1",
+      "grass_2",
+      "grass_3"
+    ],
+    "water": [
+      "water_0",
+      "water_1",
+      "water_2",
+      "water_3"
+    ],
+    "ford": [
+      "ford_0",
+      "ford_1"
+    ],
+    "outpost_floor": [
+      "outpost_floor_0",
+      "outpost_floor_1"
+    ],
+    "reeds": [
+      "reeds_0",
+      "reeds_1",
+      "reeds_2",
+      "reeds_3"
+    ],
+    "tuft": [
+      "tuft_0",
+      "tuft_1",
+      "tuft_2"
+    ],
+    "root_wall": [
+      "root_wall_0",
+      "root_wall_1",
+      "root_wall_2",
+      "root_wall_3"
+    ],
+    "tree_trunk": [
+      "tree_trunk_0",
+      "tree_trunk_1"
+    ],
+    "tree_canopy": [
+      "tree_canopy_0",
+      "tree_canopy_1"
+    ],
+    "pillar": [
+      "pillar_0",
+      "pillar_1",
+      "pillar_2"
+    ],
+    "platform_post": [
+      "platform_post_0",
+      "platform_post_1",
+      "platform_post_2"
+    ],
+    "frog": [
+      "frog_0",
+      "frog_1",
+      "frog_2",
+      "frog_3",
+      "frog_4"
+    ],
+    "firefly": [
+      "firefly_0",
+      "firefly_1",
+      "firefly_2",
+      "firefly_3"
+    ]
+  },
+  "sprites": {
+    "mud_0": {
+      "layer": "floor"
+    },
+    "mud_1": {
+      "layer": "floor"
+    },
+    "mud_2": {
+      "layer": "floor"
+    },
+    "mud_3": {
+      "layer": "floor"
+    },
+    "grass_0": {
+      "layer": "floor"
+    },
+    "grass_1": {
+      "layer": "floor"
+    },
+    "grass_2": {
+      "layer": "floor"
+    },
+    "grass_3": {
+      "layer": "floor"
+    },
+    "water_0": {
+      "layer": "floor"
+    },
+    "water_1": {
+      "layer": "floor"
+    },
+    "water_2": {
+      "layer": "floor"
+    },
+    "water_3": {
+      "layer": "floor"
+    },
+    "ford_0": {
+      "layer": "floor"
+    },
+    "ford_1": {
+      "layer": "floor"
+    },
+    "prime_floor": {
+      "layer": "floor"
+    },
+    "outpost_floor_0": {
+      "layer": "floor"
+    },
+    "outpost_floor_1": {
+      "layer": "floor"
+    },
+    "drop_floor": {
+      "layer": "floor"
+    },
+    "water_bank_n": {
+      "layer": "decal"
+    },
+    "water_bank_s": {
+      "layer": "decal"
+    },
+    "water_bank_w": {
+      "layer": "decal"
+    },
+    "water_bank_e": {
+      "layer": "decal"
+    },
+    "prime_edge_n": {
+      "layer": "decal"
+    },
+    "prime_edge_s": {
+      "layer": "decal"
+    },
+    "prime_edge_w": {
+      "layer": "decal"
+    },
+    "prime_edge_e": {
+      "layer": "decal"
+    },
+    "reeds_0": {
+      "layer": "object"
+    },
+    "reeds_1": {
+      "layer": "object"
+    },
+    "reeds_2": {
+      "layer": "object"
+    },
+    "reeds_3": {
+      "layer": "object"
+    },
+    "tuft_0": {
+      "layer": "object"
+    },
+    "tuft_1": {
+      "layer": "object"
+    },
+    "tuft_2": {
+      "layer": "object"
+    },
+    "root_wall_0": {
+      "layer": "object"
+    },
+    "root_wall_1": {
+      "layer": "object"
+    },
+    "root_wall_2": {
+      "layer": "object"
+    },
+    "root_wall_3": {
+      "layer": "object"
+    },
+    "tree_trunk_0": {
+      "layer": "object"
+    },
+    "tree_trunk_1": {
+      "layer": "object"
+    },
+    "tree_canopy_0": {
+      "layer": "top"
+    },
+    "tree_canopy_1": {
+      "layer": "top"
+    },
+    "artefact": {
+      "layer": "object",
+      "glow": "artefact_glow"
+    },
+    "pillar_0": {
+      "layer": "object"
+    },
+    "pillar_1": {
+      "layer": "object"
+    },
+    "pillar_2": {
+      "layer": "object"
+    },
+    "lamp": {
+      "layer": "object",
+      "glow": "lamp_glow"
+    },
+    "platform_top": {
+      "layer": "object"
+    },
+    "platform_face_l": {
+      "layer": "object"
+    },
+    "platform_face_r": {
+      "layer": "object"
+    },
+    "platform_post_0": {
+      "layer": "object"
+    },
+    "platform_post_1": {
+      "layer": "object"
+    },
+    "platform_post_2": {
+      "layer": "object"
+    },
+    "ladder": {
+      "layer": "object"
+    },
+    "basket": {
+      "layer": "object"
+    },
+    "frog_0": {
+      "layer": "object"
+    },
+    "frog_1": {
+      "layer": "object"
+    },
+    "frog_2": {
+      "layer": "object"
+    },
+    "frog_3": {
+      "layer": "object"
+    },
+    "frog_4": {
+      "layer": "object"
+    },
+    "firefly_0": {
+      "layer": "glow"
+    },
+    "firefly_1": {
+      "layer": "glow"
+    },
+    "firefly_2": {
+      "layer": "glow"
+    },
+    "firefly_3": {
+      "layer": "glow"
+    },
+    "light": {
+      "layer": "light"
+    }
+  }
+}
