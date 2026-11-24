@@ -52,6 +52,8 @@ export default tseslint.config(
       "packages/game-core/src/balance.bal.ts",
       "packages/game-core/src/plan.ts",
       "apps/web/src/App.tsx",
+      "packages/game-core/src/ai.ts",
+      "packages/game-core/src/ai-world.ts",
       "apps/web/src/board-layout.ts",
       "apps/web/src/hero-figure.ts",
       "apps/web/src/target-lines.ts",

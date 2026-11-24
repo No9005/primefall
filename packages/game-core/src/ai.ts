@@ -2,7 +2,7 @@
 // It only ever sees the Squad View, so it cannot read enemy Hands or unseen Heroes: no cheating.
 
 import { MAX_QUEUE_LENGTH, MOVE_DISTANCE } from "./rules";
-import { type CardIndex, HeroClass, HERO_DECKS, isSimpleAttack, normalRange } from "./cards";
+import { type CardDefinition, type CardIndex, HeroClass, HERO_DECKS, isSimpleAttack, normalRange } from "./cards";
 import { matchFromSquadView } from "./ai-world";
 import { buildSquadView, type HeroState, type MatchState, seededHash, ZONES } from "./match";
 import { resolveRound, cardsNotExiled } from "./resolution";
@@ -360,80 +360,111 @@ interface HeroPlanning {
   plannedAttacks: PlannedAttacks;
 }
 
-function planHero(view: SquadView, hero: HeroView, { claimed, blocked, nav, weights, plannedAttacks }: HeroPlanning): HeroPlan {
+/** A Hero's plan while it is being built, one slot at a time: the Queue so far, where the Hero would stand, and the cards still free. */
+interface HeroDraft {
+  view: SquadView;
+  hero: HeroView;
+  planning: HeroPlanning;
+  deck: readonly CardDefinition[];
+  targets: readonly VisibleEnemyView[];
+  /** The tiles a Move may not end on: the blocked ones and, in a Round the Squad yields, those an enemy can reach too. */
+  unavailable: ReadonlySet<number>;
+  weapon: number;
+  ghosts: readonly GhostThreat[];
+  queue: QueuedAction[];
+  position: GridPosition;
+  energyNeeded: number;
+  attackCards: CardIndex[];
+  otherCards: CardIndex[];
+}
+
+/** Attacks are kept for attacking; other cards pay for Moves, Blocks and Pitch first. */
+const spareCards = ({ otherCards, attackCards }: HeroDraft): CardIndex[] => [...otherCards, ...attackCards];
+
+/** Every queued card and every pitched card must come from the Hand. */
+const cardsLeftOf = ({ hero, queue, energyNeeded }: HeroDraft): number => hero.hand.length - queue.length - energyNeeded;
+
+const targetsInRange = ({ deck, targets }: HeroDraft, position: GridPosition, card: CardIndex): VisibleEnemyView[] =>
+  targets.filter((enemy) => chebyshevDistance(position, enemy.position) <= normalRange(deck[card]!));
+
+/**
+ * Two Heroes that would end a Move on the same tile both stop short. Mirrored Squads plan mirrored Moves, so
+ * without a tie-break they would block each other for ever: the Squads take turns, one per Round, at keeping
+ * away from the tiles an enemy can reach too.
+ */
+function unavailableTiles(view: SquadView, { blocked, nav }: HeroPlanning, targets: readonly VisibleEnemyView[]): Set<number> {
+  const unavailable = new Set(blocked);
+  const yieldsThisRound = (view.round + (view.squad === SquadId.Left ? 0 : 1)) % 2 === 0;
+  if (!yieldsThisRound) return unavailable;
+  for (const row of nav.grid.tiles.keys()) {
+    for (let col = 0; col < nav.grid.width; col++) {
+      if (targets.some((enemy) => chebyshevDistance(enemy.position, { col, row }) <= MOVE_DISTANCE)) unavailable.add(nav.key({ col, row }));
+    }
+  }
+  return unavailable;
+}
+
+function planHero(view: SquadView, hero: HeroView, planning: HeroPlanning): HeroPlan {
   const deck = HERO_DECKS[hero.heroClass];
   const isAttackCard = (card: CardIndex) => isSimpleAttack(deck[card]!);
-  // Attacks are kept for attacking; other cards pay for Moves, Blocks and Pitch first.
-  const attackCards = hero.hand.filter(isAttackCard);
-  const otherCards = hero.hand.filter((card) => !isAttackCard(card));
-  const spare = () => [...otherCards, ...attackCards];
-
   const targets = view.enemies.filter(
     (enemy): enemy is VisibleEnemyView => enemy.visibility === Visibility.Visible && !enemy.exhausted,
   );
-  const inRangeTargets = (position: GridPosition, card: CardIndex) =>
-    targets.filter((enemy) => chebyshevDistance(position, enemy.position) <= normalRange(deck[card]!));
-
-  // Two Heroes that would end a Move on the same tile both stop short. Mirrored Squads plan mirrored Moves, so
-  // without a tie-break they would block each other for ever: the Squads take turns, one per Round, at keeping
-  // away from the tiles an enemy can reach too.
-  const yieldsThisRound = (view.round + (view.squad === SquadId.Left ? 0 : 1)) % 2 === 0;
-  const unavailable = new Set(blocked);
-  if (yieldsThisRound) {
-    for (const row of nav.grid.tiles.keys()) {
-      for (let col = 0; col < nav.grid.width; col++) {
-        if (targets.some((enemy) => chebyshevDistance(enemy.position, { col, row }) <= MOVE_DISTANCE)) unavailable.add(nav.key({ col, row }));
-      }
-    }
+  const draft: HeroDraft = {
+    view,
+    hero,
+    planning,
+    deck,
+    targets,
+    unavailable: unavailableTiles(view, planning, targets),
+    weapon: Math.max(0, ...deck.filter(isSimpleAttack).map(normalRange)),
+    ghosts: ghostThreats(view),
+    queue: [],
+    position: hero.position,
+    energyNeeded: 0,
+    attackCards: hero.hand.filter(isAttackCard),
+    otherCards: hero.hand.filter((card) => !isAttackCard(card)),
+  };
+  while (draft.queue.length < Math.min(AI_QUEUE_LENGTH, MAX_QUEUE_LENGTH)) {
+    if (planAttack(draft)) continue;
+    if (!planMove(draft)) break;
   }
+  return { heroId: hero.id, queue: draft.queue, pitched: spareCards(draft).slice(0, draft.energyNeeded) };
+}
 
-  const weapon = Math.max(0, ...deck.filter(isSimpleAttack).map(normalRange));
-  const ghosts = ghostThreats(view);
-  const queue: QueuedAction[] = [];
-  let position = hero.position;
-  let energyNeeded = 0;
+/** Queues an Attack on an enemy in Range if a card and the Energy for it are left; the target is the one Squad mates aim at, else the weakest Deck. Returns whether it did. */
+function planAttack(draft: HeroDraft): boolean {
+  const { deck, queue, position, attackCards, planning } = draft;
+  const cardsLeft = cardsLeftOf(draft);
+  const attackCard = attackCards.find((card) => targetsInRange(draft, position, card).length > 0 && cardsLeft - 1 - deck[card]!.energyCost >= 0);
+  if (attackCard === undefined) return false;
+  const slot = queue.length;
+  const matesAim = (id: string, at: number) => planning.plannedAttacks.get(at)?.has(id) ?? false;
+  const focusScore = (enemy: VisibleEnemyView) => ([slot - 1, slot, slot + 1].some((at) => matesAim(enemy.id, at)) ? planning.weights.focus : 0);
+  const target = targetsInRange(draft, position, attackCard).sort((a, b) => focusScore(b) - focusScore(a) || a.deckCount - b.deckCount)[0]!;
+  planning.plannedAttacks.set(slot, (planning.plannedAttacks.get(slot) ?? new Set<string>()).add(target.id));
+  attackCards.splice(attackCards.indexOf(attackCard), 1);
+  claimSteps(planning.claimed, slot, [position, position], planning.nav);
+  queue.push({ kind: ActionKind.Primary, card: attackCard, target: target.id });
+  draft.energyNeeded += deck[attackCard]!.energyCost;
+  return true;
+}
 
-
-  while (queue.length < Math.min(AI_QUEUE_LENGTH, MAX_QUEUE_LENGTH)) {
-    // Every queued card and every pitched card must come from the Hand; Attacks need their Energy pitched.
-    const cardsLeft = hero.hand.length - queue.length - energyNeeded;
-    const attackCard = attackCards.find((card) => {
-      const cost = deck[card]!.energyCost;
-      return inRangeTargets(position, card).length > 0 && cardsLeft - 1 - cost >= 0;
-    });
-    if (attackCard !== undefined) {
-      const cost = deck[attackCard]!.energyCost;
-      const slot = queue.length;
-      const matesAim = (id: string, at: number) => plannedAttacks.get(at)?.has(id) ?? false;
-      const focusScore = (enemy: VisibleEnemyView) =>
-        [slot - 1, slot, slot + 1].some((at) => matesAim(enemy.id, at)) ? weights.focus : 0;
-      const target = inRangeTargets(position, attackCard).sort(
-        (a, b) => focusScore(b) - focusScore(a) || a.deckCount - b.deckCount,
-      )[0]!;
-      plannedAttacks.set(slot, (plannedAttacks.get(slot) ?? new Set<string>()).add(target.id));
-      attackCards.splice(attackCards.indexOf(attackCard), 1);
-      claimSteps(claimed, queue.length, [position, position], nav);
-      queue.push({ kind: ActionKind.Primary, card: attackCard, target: target.id });
-      energyNeeded += cost;
-      continue;
-    }
-    const card = spare()[0];
-    if (card === undefined || cardsLeft - 1 < 0) break;
-    const slot = queue.length;
-    const destination = chooseDestination(position, { squad: view.squad, slot, claimed, blocked: unavailable }, { nav, targets, mates: matesEndingSlot(claimed, slot, nav.grid.width), weapon, ghosts, weights });
-    if (destination) {
-      queue.push({ kind: ActionKind.Move, card, destination });
-      claimSteps(claimed, slot, tilesAfterSteps(position, destination, nav.grid), nav);
-      position = moveEnd(position, destination, nav.grid);
-    } else {
-      break;
-    }
-    const pool = otherCards.includes(card) ? otherCards : attackCards;
-    pool.splice(pool.indexOf(card), 1);
-  }
-
-  const pitched = spare().slice(0, energyNeeded);
-  return { heroId: hero.id, queue, pitched };
+/** Queues a Move to the best destination with a spare card. Returns false when no card or no destination is left, which ends the plan. */
+function planMove(draft: HeroDraft): boolean {
+  const { view, queue, position, planning, targets, unavailable, weapon, ghosts } = draft;
+  const card = spareCards(draft)[0];
+  if (card === undefined || cardsLeftOf(draft) - 1 < 0) return false;
+  const { claimed, nav, weights } = planning;
+  const slot = queue.length;
+  const destination = chooseDestination(position, { squad: view.squad, slot, claimed, blocked: unavailable }, { nav, targets, mates: matesEndingSlot(claimed, slot, nav.grid.width), weapon, ghosts, weights });
+  if (!destination) return false;
+  queue.push({ kind: ActionKind.Move, card, destination });
+  claimSteps(claimed, slot, tilesAfterSteps(position, destination, nav.grid), nav);
+  draft.position = moveEnd(position, destination, nav.grid);
+  const pool = draft.otherCards.includes(card) ? draft.otherCards : draft.attackCards;
+  pool.splice(pool.indexOf(card), 1);
+  return true;
 }
 
 /** One way to make a greedy plan: the candidates and the enemy replies differ in these. */

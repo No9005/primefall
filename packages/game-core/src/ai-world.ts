@@ -29,36 +29,85 @@ interface GuessedHero {
 export function matchFromSquadView(view: SquadView, seed: number, imagined: ReadonlyMap<string, GridPosition> = new Map()): MatchState {
   const salt = view.round * 2 + (view.squad === SquadId.Left ? 0 : 1);
   const enemySquad = view.squad === SquadId.Left ? SquadId.Right : SquadId.Left;
+  const heroState = (guessed: GuessedHero) => guessHero(seed, salt, guessed);
+  const ghosts: MatchState["ghosts"] = { [SquadId.Left]: {}, [SquadId.Right]: {} };
+  const heroes = [...ownHeroes(view, heroState), ...enemyHeroes(view, enemySquad, imagined, heroState, ghosts)];
+
+  const fieldCard = HERO_DECKS[HeroClass.Controller].find((card) => card.effects.some(({ kind }) => kind === EffectKind.ScrapField))!;
+  const fieldEffect = fieldCard.effects.find(({ kind }) => kind === EffectKind.ScrapField)!;
+  const match: MatchState = {
+    seed,
+    rngState: seededHash(seed, salt),
+    round: view.round,
+    heroes,
+    ghosts,
+    grid: knownGrid(view),
+    knownDestroyedCover: { [SquadId.Left]: view.destroyedCover.map((t) => ({ ...t })), [SquadId.Right]: view.destroyedCover.map((t) => ({ ...t })) },
+    knownWrecks: { [SquadId.Left]: view.wreckCover.map((t) => ({ ...t })), [SquadId.Right]: view.wreckCover.map((t) => ({ ...t })) },
+    placedCover: view.placedCover.map((position) => ({ squad: view.squad, position: { ...position } })),
+    revealedAreas: view.revealedAreas.map((area) => ({ ...structuredClone(area), squad: view.squad })),
+    scrapFields: view.scrapFields.map((field) => ({
+      center: { ...field.center }, size: field.size, remaining: field.remaining, squad: field.own ? view.squad : enemySquad,
+      // The caster of an enemy field is not known; the Controller of that Squad is the Hero that makes them.
+      casterId: heroes.find((hero) => hero.squad === (field.own ? view.squad : enemySquad) && hero.heroClass === HeroClass.Controller)?.id ?? "",
+      card: fieldCard.name, damage: fieldEffect.amount ?? 0,
+    })),
+    scores: { ...view.scores },
+    zoneControl: ZONES.map((_, i) => ({ controller: view.zones[i]?.controller, contested: view.zones[i]?.contested ?? false })),
+    takeoverCooldown: ZONES.map(() => 0),
+    rules: {},
+  };
+  recordSightings(match);
+  return match;
+}
+
+/** The Grid as the Squad knows it: destroyed Cover is gone, Wrecks and Placed Cover are in. */
+function knownGrid(view: SquadView): Grid {
   let grid: Grid = view.grid;
   for (const tile of view.destroyedCover) grid = destroyCover(grid, tile);
   for (const tile of view.wreckCover) grid = withWreck(grid, tile);
   for (const tile of view.placedCover) if (coverAt(grid, tile) === CoverKind.None) grid = withTile(grid, tile, TileKind.HalfCover);
+  return grid;
+}
 
-  const heroState = ({ id, squad, heroClass, position, counts, knownHand, exhausted }: GuessedHero): HeroState => {
-    const all = HERO_DECKS[heroClass].map((_, index) => index);
-    const others = all
-      .filter((card) => !knownHand?.includes(card))
-      .sort((a, b) => seededHash(seed, salt * 7919 + hashOfText(id) + a) - seededHash(seed, salt * 7919 + hashOfText(id) + b));
-    const hand = knownHand ? [...knownHand] : others.splice(0, Math.max(0, all.length - counts.deck - counts.discard - counts.exile));
-    // The cards that are not in the Hand fill Deck, Discard and Exile by the counts.
-    const deck = others.splice(0, counts.deck);
-    const discard = others.splice(0, counts.discard);
-    const exile = others.splice(0, counts.exile);
-    return {
-      id, squad, heroClass, position: { ...position },
-      deck: exhausted ? [] : deck, hand: exhausted ? [] : hand, discard: exhausted ? [] : discard, exile: exhausted ? [] : exile,
-      shield: 0, slow: 0, hidden: 0, marked: 0, scrap: false, exhausted,
-    };
+/** A Hero with a Hand and Deck guessed from the counts: the cards that are not the known Hand fill Hand, Deck, Discard and Exile in an order set by the seed. */
+function guessHero(seed: number, salt: number, { id, squad, heroClass, position, counts, knownHand, exhausted }: GuessedHero): HeroState {
+  const all = HERO_DECKS[heroClass].map((_, index) => index);
+  const others = all
+    .filter((card) => !knownHand?.includes(card))
+    .sort((a, b) => seededHash(seed, salt * 7919 + hashOfText(id) + a) - seededHash(seed, salt * 7919 + hashOfText(id) + b));
+  const hand = knownHand ? [...knownHand] : others.splice(0, Math.max(0, all.length - counts.deck - counts.discard - counts.exile));
+  // The cards that are not in the Hand fill Deck, Discard and Exile by the counts.
+  const deck = others.splice(0, counts.deck);
+  const discard = others.splice(0, counts.discard);
+  const exile = others.splice(0, counts.exile);
+  return {
+    id, squad, heroClass, position: { ...position },
+    deck: exhausted ? [] : deck, hand: exhausted ? [] : hand, discard: exhausted ? [] : discard, exile: exhausted ? [] : exile,
+    shield: 0, slow: 0, hidden: 0, marked: 0, scrap: false, exhausted,
   };
+}
 
-  const heroes: HeroState[] = view.heroes.map((own) => ({
+/** The Squad's own Heroes: exact, except the order of Deck and Discard. */
+function ownHeroes(view: SquadView, heroState: (guessed: GuessedHero) => HeroState): HeroState[] {
+  return view.heroes.map((own) => ({
     ...heroState({ id: own.id, squad: view.squad, heroClass: own.heroClass, position: own.position, counts: { deck: own.deckCount, discard: own.discardCount, exile: own.exileCount }, knownHand: own.hand, exhausted: own.exhausted }),
     slow: own.slowed ? 1 : 0,
     hidden: own.hidden ? 1 : 0,
     marked: own.marked ? 1 : 0,
     scrap: own.scrap,
   }));
-  const ghosts: MatchState["ghosts"] = { [SquadId.Left]: {}, [SquadId.Right]: {} };
+}
+
+/** The enemy Heroes as the Squad sees or remembers them; a Ghost is also written into `ghosts`, which this fills in. */
+function enemyHeroes(
+  view: SquadView,
+  enemySquad: SquadId,
+  imagined: ReadonlyMap<string, GridPosition>,
+  heroState: (guessed: GuessedHero) => HeroState,
+  ghosts: MatchState["ghosts"],
+): HeroState[] {
+  const heroes: HeroState[] = [];
   for (const enemy of view.enemies) {
     const guess = imagined.get(enemy.id);
     if (enemy.visibility === Visibility.Unknown) {
@@ -82,31 +131,5 @@ export function matchFromSquadView(view: SquadView, seed: number, imagined: Read
     }
     heroes.push(state);
   }
-
-  const fieldCard = HERO_DECKS[HeroClass.Controller].find((card) => card.effects.some(({ kind }) => kind === EffectKind.ScrapField))!;
-  const fieldEffect = fieldCard.effects.find(({ kind }) => kind === EffectKind.ScrapField)!;
-  const match: MatchState = {
-    seed,
-    rngState: seededHash(seed, salt),
-    round: view.round,
-    heroes,
-    ghosts,
-    grid,
-    knownDestroyedCover: { [SquadId.Left]: view.destroyedCover.map((t) => ({ ...t })), [SquadId.Right]: view.destroyedCover.map((t) => ({ ...t })) },
-    knownWrecks: { [SquadId.Left]: view.wreckCover.map((t) => ({ ...t })), [SquadId.Right]: view.wreckCover.map((t) => ({ ...t })) },
-    placedCover: view.placedCover.map((position) => ({ squad: view.squad, position: { ...position } })),
-    revealedAreas: view.revealedAreas.map((area) => ({ ...structuredClone(area), squad: view.squad })),
-    scrapFields: view.scrapFields.map((field) => ({
-      center: { ...field.center }, size: field.size, remaining: field.remaining, squad: field.own ? view.squad : enemySquad,
-      // The caster of an enemy field is not known; the Controller of that Squad is the Hero that makes them.
-      casterId: heroes.find((hero) => hero.squad === (field.own ? view.squad : enemySquad) && hero.heroClass === HeroClass.Controller)?.id ?? "",
-      card: fieldCard.name, damage: fieldEffect.amount ?? 0,
-    })),
-    scores: { ...view.scores },
-    zoneControl: ZONES.map((_, i) => ({ controller: view.zones[i]?.controller, contested: view.zones[i]?.contested ?? false })),
-    takeoverCooldown: ZONES.map(() => 0),
-    rules: {},
-  };
-  recordSightings(match);
-  return match;
+  return heroes;
 }
