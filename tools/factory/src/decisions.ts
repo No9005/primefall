@@ -260,20 +260,31 @@ export function parseReviewResult(raw: unknown): ReviewResult | undefined {
   const value = raw as Record<string, unknown>;
   const verdict = Object.values(ReviewVerdict).find((v) => v === value.verdict);
   if (!verdict || typeof value.summary !== "string" || !Array.isArray(value.findings)) return undefined;
+  const findings = parseFindings(value.findings as unknown[]);
+  if (findings === undefined) return undefined;
+  const reason = typeof value.raiseBlastRadiusReason === "string" && value.raiseBlastRadiusReason.length > 0 ? value.raiseBlastRadiusReason : undefined;
+  return { verdict, summary: value.summary, findings, raiseBlastRadiusReason: reason, resolvedThreads: parseResolvedThreads(value.resolvedThreads), brief: parseBrief(value.brief) };
+}
+
+/** The findings of a review; one that is not well formed makes the whole review count as failed (`undefined`). */
+function parseFindings(items: readonly unknown[]): ReviewFinding[] | undefined {
   const findings: ReviewFinding[] = [];
-  for (const item of value.findings as unknown[]) {
+  for (const item of items) {
     const f = item as Record<string, unknown>;
     if (typeof f?.path !== "string" || typeof f?.line !== "number" || typeof f?.body !== "string") return undefined;
     findings.push({ path: f.path, line: f.line, body: f.body });
   }
-  const reason = typeof value.raiseBlastRadiusReason === "string" && value.raiseBlastRadiusReason.length > 0 ? value.raiseBlastRadiusReason : undefined;
-  // Optional part: entries that are not well formed are dropped instead of failing the whole review.
+  return findings;
+}
+
+/** Optional part: entries that are not well formed are dropped instead of failing the whole review. */
+function parseResolvedThreads(raw: unknown): ResolvedThread[] {
   const resolvedThreads: ResolvedThread[] = [];
-  for (const item of Array.isArray(value.resolvedThreads) ? (value.resolvedThreads as unknown[]) : []) {
+  for (const item of Array.isArray(raw) ? (raw as unknown[]) : []) {
     const t = item as Record<string, unknown>;
     if (typeof t?.id === "string" && t.id.length > 0 && typeof t.reason === "string" && t.reason.trim().length > 0) resolvedThreads.push({ id: t.id, reason: t.reason.trim() });
   }
-  return { verdict, summary: value.summary, findings, raiseBlastRadiusReason: reason, resolvedThreads, brief: parseBrief(value.brief) };
+  return resolvedThreads;
 }
 
 /**
@@ -302,6 +313,12 @@ function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max)}...` : text;
 }
 
+/** What a denied tool tried: its command, else its file, else the input as JSON. */
+function deniedDetail(input: Record<string, unknown>): string {
+  if (typeof input.command === "string") return input.command;
+  return typeof input.file_path === "string" ? input.file_path : JSON.stringify(input);
+}
+
 /**
  * Reads the execution log the Claude action saves (a JSON array of messages) and extracts what a
  * human needs to see when a run ends without a pull request: the denied tools and the last words.
@@ -313,8 +330,7 @@ export function summarizeAgentRun(log: unknown): AgentRunSummary {
   const denials = Array.isArray(result?.permission_denials) ? (result.permission_denials as Record<string, unknown>[]) : [];
   const deniedTools = denials.slice(0, MAX_DENIED_SHOWN).map((d) => {
     const input = (d.tool_input ?? {}) as Record<string, unknown>;
-    const detail = typeof input.command === "string" ? input.command : typeof input.file_path === "string" ? input.file_path : JSON.stringify(input);
-    return `${String(d.tool_name ?? "unknown tool")}: ${truncate(detail, MAX_FIELD_LENGTH)}`;
+    return `${String(d.tool_name ?? "unknown tool")}: ${truncate(deniedDetail(input), MAX_FIELD_LENGTH)}`;
   });
   const lastAssistant = [...messages].reverse().find((m) => m?.type === "assistant");
   const content = ((lastAssistant?.message as Record<string, unknown> | undefined)?.content ?? []) as Record<string, unknown>[];

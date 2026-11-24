@@ -13,14 +13,9 @@ async function severityOf(file: string, rule: string): Promise<unknown> {
 
 describe("readability lint rules", () => {
   it.each(READABILITY_RULES)("%s is an error for product code", async (rule) => {
-    for (const file of ["packages/game-core/src/plan.ts", "apps/web/src/Board.tsx", "apps/web/src/main.tsx"]) {
+    for (const file of ["packages/game-core/src/plan.ts", "apps/web/src/Board.tsx", "apps/web/src/main.tsx", "tools/factory/src/decisions.ts"]) {
       expect([file, await severityOf(file, rule)]).toEqual([file, 2]);
     }
-  });
-
-  it.each(READABILITY_RULES)("%s is only a warning in tools/factory (out of the scope of #494)", async (rule) => {
-    const file = "tools/factory/src/decisions.ts";
-    expect([file, await severityOf(file, rule)]).toEqual([file, 1]);
   });
 
   it.each(READABILITY_RULES)("%s is off for test files", async (rule) => {

@@ -44,19 +44,6 @@ export default tseslint.config(
       "max-statements": ["error", 30],
     },
   },
-  {
-    // The software factory is out of the scope of the readability cleanup (#494): its hits stay warnings until it is cleaned.
-    files: ["tools/factory/**/*.ts"],
-    ignores: ["**/*.test.ts"],
-    rules: {
-      "no-nested-ternary": "warn",
-      complexity: ["warn", 15],
-      "max-depth": ["warn", 4],
-      "max-params": ["warn", 5],
-      "max-lines-per-function": ["warn", { max: 80, skipBlankLines: true, skipComments: true }],
-      "max-statements": ["warn", 30],
-    },
-  },
   { files: ["*.js", "**/*.config.ts"], languageOptions: { globals: globals.node } },
   {
     // game-core is deterministic and pure: no browser APIs, no Math.random (use the seeded PRNG).
