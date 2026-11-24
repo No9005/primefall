@@ -27,6 +27,8 @@ The product spec that used to carry these rules (`docs/specs/offline-mvp-prototy
 
 - **Wait** is a Queue action that does nothing for one Tick. It needs no card and no Energy and takes one slot of the Queue.
 - **An Exhausted Hero leaves Half Cover on its tile**; Cover that is better than Half Cover stays as it is.
+- **An Exhausted Hero is no obstacle to Moves.** A walk does not stop in front of it and its tile does not block the end of a Move (this corrects the list of obstacles in ADR 0013).
+- **A wreck (the Half Cover an Exhausted Hero leaves) is ordinary Half Cover.** Any effect that destroys Cover (today the area attacks) destroys a wreck too; wrecks get no special protection. A Squad that has seen a wreck destroyed forgets it; one that has not keeps it in its view.
 
 ## Consequences
 
