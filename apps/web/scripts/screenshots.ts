@@ -1,7 +1,7 @@
 // Screenshot tool for agents and reviewers: `npm run screenshots -w apps/web`.
 // Starts the Vite dev server, plays the standard path in Chromium at 844 x 390 and writes PNGs with stable names
 // to apps/web/screenshots/ (git-ignored), so a run before and after a change can be compared name by name.
-import { chromium, type Browser, type Page } from "@playwright/test";
+import { chromium, type Browser, type Locator, type Page } from "@playwright/test";
 import { type CardDefinition, CardTarget, coverAt, CoverKind, findTiles, type GridPosition, HERO_DECKS, HeroClass, moveDestinations, reachableMoveDestinations, NOTSTROM_MAP, TileKind, Visibility } from "game-core";
 import { SNAPSHOT_VERSION } from "game-core/local-host";
 import { buildSquadView, type MatchState } from "game-core/server";
@@ -184,6 +184,16 @@ async function playHeroSelect(browser: Browser): Promise<void> {
   await waitForScene(page);
   await page.waitForTimeout(1200);
   await shoot("01-idle.png");
+  await shootEachSelection(page, shoot);
+  await shootOtherWindows(page, shoot);
+  if (errors.length > 0) throw new Error(`hero-select: ${errors.join("; ")}`);
+  checkWritten(directory, SCREEN_SCENARIOS["hero-select"]!.shots);
+}
+
+type Shoot<Name extends string = string> = (name: Name) => Promise<unknown>;
+
+/** Frames 02 to 05 of the Hero Select: each Hero selected in turn, then the selection taken back. */
+async function shootEachSelection(page: Page, shoot: Shoot): Promise<void> {
   await page.getByTestId("hero-bruiser").click();
   await page.waitForTimeout(3300); // the lift-and-throw, then the ready pose
   await shoot("02-max-selected.png");
@@ -196,7 +206,10 @@ async function playHeroSelect(browser: Browser): Promise<void> {
   await page.getByTestId("hero-assassin").click();
   await page.waitForTimeout(1500); // the selection is taken back
   await shoot("05-deselected.png");
-  // Windows of other shapes: the hangar goes on beyond its frame, with no bars.
+}
+
+/** Frames 06 and 07: windows of other shapes; the hangar goes on beyond its frame, with no bars. */
+async function shootOtherWindows(page: Page, shoot: Shoot): Promise<void> {
   await page.setViewportSize({ width: 1024, height: 768 });
   await waitForScene(page);
   await page.waitForTimeout(300);
@@ -205,13 +218,18 @@ async function playHeroSelect(browser: Browser): Promise<void> {
   await waitForScene(page);
   await page.waitForTimeout(300);
   await shoot("07-window-21-9.png");
-  if (errors.length > 0) throw new Error(`hero-select: ${errors.join("; ")}`);
-  checkWritten(directory, SCREEN_SCENARIOS["hero-select"]!.shots);
 }
 
 async function playStandardPath(page: Page, hero?: HeroClass): Promise<void> {
-  const shoot = (name: ScreenshotName) => page.screenshot({ path: path.join(OUTPUT_DIR, name) });
+  const shoot: Shoot<ScreenshotName> = (name) => page.screenshot({ path: path.join(OUTPUT_DIR, name) });
+  const hand = await openPlanning(page, hero, shoot);
+  await armMoveAndQueueIt(page, hand, shoot);
+  await commitAndWatch(page, shoot);
+  await pullCards(page, hand, shoot);
+}
 
+/** Frame 01: the first Round on screen. Returns the Hand. */
+async function openPlanning(page: Page, hero: HeroClass | undefined, shoot: Shoot<ScreenshotName>): Promise<Locator> {
   await page.goto(hero ? `${URL}/?hero=${hero}` : URL);
   await page.getByTestId("play-classic").click();
   // Without ?hero= the Hero Select comes first: the Bruiser, then Start.
@@ -222,7 +240,11 @@ async function playStandardPath(page: Page, hero?: HeroClass): Promise<void> {
   await page.waitForFunction(() => !document.querySelector(".hand-bar button:disabled"), undefined, { timeout: 15_000 }).catch(() => {});
   await page.waitForTimeout(1500); // the first software-rendered frames
   await shoot("01-planning.png");
+  return hand;
+}
 
+/** Frames 02 and 03: a card armed as a Move, then the Move queued. */
+async function armMoveAndQueueIt(page: Page, hand: Locator, shoot: Shoot<ScreenshotName>): Promise<void> {
   await hand.getByRole("button").last().click();
   await page.getByRole("group", { name: "Use card as" }).getByRole("button", { name: /^Move/ }).click();
   await page.getByTestId("floating-card").waitFor();
@@ -232,7 +254,10 @@ async function playStandardPath(page: Page, hero?: HeroClass): Promise<void> {
   await queueMove(page);
   await page.waitForTimeout(500);
   await shoot("03-move-queued.png");
+}
 
+/** Frames 04 to 06: Commit, the start and the middle of the Resolution, and the next Round. */
+async function commitAndWatch(page: Page, shoot: Shoot<ScreenshotName>): Promise<void> {
   await page.getByRole("button", { name: "Commit" }).click();
   // The big callout is gone within a second; the bar stays for the playback.
   await page.getByTestId("resolution-bar").waitFor();
@@ -243,8 +268,10 @@ async function playStandardPath(page: Page, hero?: HeroClass): Promise<void> {
   await page.getByTestId("round").filter({ hasText: "ROUND 2" }).waitFor({ timeout: 40_000 });
   await page.waitForTimeout(1500);
   await shoot("06-round-2.png");
+}
 
-  // The card pull with a real pointer: press, drag up (the faces fade in), release in the middle (parked), then a low release.
+/** Frames 07 to 11: the card pull with a real pointer: press, drag up (the faces fade in), release in the middle (parked), then a low release. */
+async function pullCards(page: Page, hand: Locator, shoot: Shoot<ScreenshotName>): Promise<void> {
   const fan = (await hand.boundingBox())!;
   const grab = { x: fan.x + fan.width * 0.08, y: fan.y + 30 };
   await page.mouse.move(grab.x, grab.y);
@@ -411,18 +438,13 @@ async function playScenario(browser: Browser, scenario: Scenario): Promise<void>
   rmSync(directory, { recursive: true, force: true });
   mkdirSync(directory, { recursive: true });
   const names = scenarioScreenshotNames(scenario);
-  const shoot = (name: string) => page.screenshot({ path: path.join(directory, name) });
+  const shoot: Shoot = (name) => page.screenshot({ path: path.join(directory, name) });
 
   const match = scenario.buildMatch();
   const snapshot = JSON.stringify({ version: SNAPSHOT_VERSION, match });
   const page = await browser.newPage({ viewport: VIEWPORT });
   page.setDefaultTimeout(SCENARIO_ACTION_TIMEOUT_MS);
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
-  page.on("console", (message) => {
-    // The page has no favicon; the browser asks for it anyway.
-    if (message.type() === "error" && !message.location().url.endsWith("/favicon.ico")) errors.push(`console error: ${message.text()} (${message.location().url})`);
-  });
+  const errors = collectPageErrors(page);
   await page.addInitScript(
     ([key, value, heroKey, hero]) => {
       localStorage.setItem(key!, value!);
@@ -433,33 +455,8 @@ async function playScenario(browser: Browser, scenario: Scenario): Promise<void>
   try {
     await page.goto(URL);
     await page.getByTestId("resume").click();
-    await page.getByTestId("round").filter({ hasText: "ROUND 1" }).waitFor();
-    const hand = page.getByRole("list", { name: "Hand" });
-    await hand.getByRole("button").last().waitFor({ state: "visible" });
-    await page.waitForFunction(() => !document.querySelector(".hand-bar button:disabled"), undefined, { timeout: 15_000 }).catch(() => {});
-    await page.waitForTimeout(1500); // the first software-rendered frames
-
-    let frame = 0;
-    for (const [index, round] of scenarioRounds(scenario).entries()) {
-      if (index > 0) {
-        await page.getByTestId("round").filter({ hasText: `ROUND ${index + 1}` }).waitFor({ timeout: 40_000 });
-        await page.waitForTimeout(1500);
-      }
-      for (const step of round.steps) await driveStep(page, match, scenario.heroId, step);
-      await page.waitForTimeout(500);
-      await shoot(names[frame++]!);
-
-      await page.getByRole("button", { name: "Commit" }).click();
-      await page.getByTestId("resolution-bar").waitFor();
-      const started = Date.now();
-      for (const ms of round.resolutionShotsMs) {
-        await page.waitForTimeout(Math.max(0, ms - (Date.now() - started)));
-        await shoot(names[frame++]!);
-      }
-    }
-    await page.getByTestId("round").filter({ hasText: `ROUND ${scenarioRounds(scenario).length + 1}` }).waitFor({ timeout: 40_000 });
-    await page.waitForTimeout(1500);
-    await shoot(names[frame]!);
+    await waitForPlanning(page);
+    await playScenarioRounds(page, { scenario, match, names, shoot });
   } catch (error) {
     await page.screenshot({ path: path.join(directory, "failed.png") }).catch(() => {}); // what the page showed when the step failed
     throw error;
@@ -468,6 +465,51 @@ async function playScenario(browser: Browser, scenario: Scenario): Promise<void>
   }
   if (errors.length > 0) throw new Error(`${scenario.name}: ${errors.join("; ")}`);
   checkWritten(directory, names);
+}
+
+/** The errors the page raises while a scenario runs, as the list the caller reads at the end. */
+function collectPageErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+  page.on("console", (message) => {
+    // The page has no favicon; the browser asks for it anyway.
+    if (message.type() === "error" && !message.location().url.endsWith("/favicon.ico")) errors.push(`console error: ${message.text()} (${message.location().url})`);
+  });
+  return errors;
+}
+
+/** Round 1 is on screen with its Hand dealt and the first frames drawn. */
+async function waitForPlanning(page: Page): Promise<void> {
+  await page.getByTestId("round").filter({ hasText: "ROUND 1" }).waitFor();
+  const hand = page.getByRole("list", { name: "Hand" });
+  await hand.getByRole("button").last().waitFor({ state: "visible" });
+  await page.waitForFunction(() => !document.querySelector(".hand-bar button:disabled"), undefined, { timeout: 15_000 }).catch(() => {});
+  await page.waitForTimeout(1500); // the first software-rendered frames
+}
+
+/** Plays every Round of the scenario (the planned state, then the frames of the Resolution) and takes the frame after the last one. */
+async function playScenarioRounds(page: Page, { scenario, match, names, shoot }: { scenario: Scenario; match: MatchState; names: readonly string[]; shoot: Shoot }): Promise<void> {
+  let frame = 0;
+  for (const [index, round] of scenarioRounds(scenario).entries()) {
+    if (index > 0) {
+      await page.getByTestId("round").filter({ hasText: `ROUND ${index + 1}` }).waitFor({ timeout: 40_000 });
+      await page.waitForTimeout(1500);
+    }
+    for (const step of round.steps) await driveStep(page, match, scenario.heroId, step);
+    await page.waitForTimeout(500);
+    await shoot(names[frame++]!);
+
+    await page.getByRole("button", { name: "Commit" }).click();
+    await page.getByTestId("resolution-bar").waitFor();
+    const started = Date.now();
+    for (const ms of round.resolutionShotsMs) {
+      await page.waitForTimeout(Math.max(0, ms - (Date.now() - started)));
+      await shoot(names[frame++]!);
+    }
+  }
+  await page.getByTestId("round").filter({ hasText: `ROUND ${scenarioRounds(scenario).length + 1}` }).waitFor({ timeout: 40_000 });
+  await page.waitForTimeout(1500);
+  await shoot(names[frame]!);
 }
 
 export interface CliOptions {
@@ -499,14 +541,33 @@ export function parseArgs(args: readonly string[]): CliOptions {
 }
 
 
+/** `--list` and the arguments that were wrong: what the tool can play, or why it cannot. */
+function printListOrError(options: CliOptions): void {
+  if (options.error) {
+    console.error(`${options.error}. Valid names: all, ${[...SCENARIO_NAMES, ...Object.keys(SCREEN_SCENARIOS)].join(", ")}`);
+    return;
+  }
+  for (const scenario of SCENARIOS) console.log(`${scenario.name}\t${scenario.description}`);
+  for (const [name, screen] of Object.entries(SCREEN_SCENARIOS)) console.log(`${name}\t${screen.description}`);
+}
+
+/** Plays one named scenario (a screen of the app, or a match scenario) and lists its frames. */
+async function playNamed(browser: Browser, name: string): Promise<void> {
+  if (name in SCREEN_SCENARIOS) {
+    if (name === "title") await playTitle(browser);
+    else if (name === "notstrom-intro") await playNotstromIntro(browser);
+    else await playHeroSelect(browser);
+    console.log(`Scenario ${name}: ${path.join(OUTPUT_DIR, name)}\n${SCREEN_SCENARIOS[name]!.shots.join("\n")}`);
+    return;
+  }
+  await playScenario(browser, SCENARIOS.find((scenario) => scenario.name === name)!);
+  console.log(`Scenario ${name}: ${path.join(OUTPUT_DIR, name)}\n${SCENARIO_SCREENSHOT_NAMES[name]!.join("\n")}`);
+}
+
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   if (options.list || options.error) {
-    if (options.error) console.error(`${options.error}. Valid names: all, ${[...SCENARIO_NAMES, ...Object.keys(SCREEN_SCENARIOS)].join(", ")}`);
-    else {
-      for (const scenario of SCENARIOS) console.log(`${scenario.name}\t${scenario.description}`);
-      for (const [name, screen] of Object.entries(SCREEN_SCENARIOS)) console.log(`${name}\t${screen.description}`);
-    }
+    printListOrError(options);
     process.exitCode = options.error ? 1 : 0;
     return;
   }
@@ -519,21 +580,8 @@ async function main(): Promise<void> {
     await waitForServer();
     const browser = await chromium.launch({ executablePath, args: ["--use-gl=swiftshader", "--no-sandbox", "--enable-unsafe-swiftshader"] });
     try {
-      if (options.scenarios.length === 0) {
-        const page = await browser.newPage({ viewport: VIEWPORT });
-              await playStandardPath(page, options.hero);
-      }
-      for (const name of options.scenarios) {
-        if (name in SCREEN_SCENARIOS) {
-          if (name === "title") await playTitle(browser);
-          else if (name === "notstrom-intro") await playNotstromIntro(browser);
-          else await playHeroSelect(browser);
-          console.log(`Scenario ${name}: ${path.join(OUTPUT_DIR, name)}\n${SCREEN_SCENARIOS[name]!.shots.join("\n")}`);
-          continue;
-        }
-        await playScenario(browser, SCENARIOS.find((scenario) => scenario.name === name)!);
-        console.log(`Scenario ${name}: ${path.join(OUTPUT_DIR, name)}\n${SCENARIO_SCREENSHOT_NAMES[name]!.join("\n")}`);
-      }
+      if (options.scenarios.length === 0) await playStandardPath(await browser.newPage({ viewport: VIEWPORT }), options.hero);
+      for (const name of options.scenarios) await playNamed(browser, name);
     } finally {
       await browser.close();
     }

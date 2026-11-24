@@ -172,6 +172,28 @@ function writeWav(file: string, samples: number[]): void {
   writeFileSync(file, data);
 }
 
+/** Prints the loudness of the music against the voices and effects for each phase, and the peak of the full mix. */
+function printLoudness(rendered: Record<Pass, number[]>): void {
+  console.log("Loudness of the music against the voices and effects (dB of mean power, the music without ducking; negative: the music is quieter)");
+  console.log("phase        music   fx     music-fx | per band (music-fx):", BANDS.map((band) => band.name).join("  "));
+  let previous: number | undefined;
+  for (const phase of PHASES) {
+    const music = bandPower(rendered.music, phase.from + 2, phase.to);
+    const fx = bandPower(rendered.fx, phase.from + 2, phase.to);
+    const musicDb = db(music.reduce((a, b) => a + b, 0));
+    const duckedDb = db(bandPower(rendered.ducked, phase.from + 2, phase.to).reduce((a, b) => a + b, 0));
+    const fxDb = db(fx.reduce((a, b) => a + b, 0));
+    const step = previous === undefined ? "" : `  step ${(musicDb - previous >= 0 ? "+" : "") + (musicDb - previous).toFixed(1)} dB`;
+    previous = musicDb;
+    console.log(
+      `${phase.name.padEnd(11)} ${musicDb.toFixed(1).padStart(6)} ${fxDb.toFixed(1).padStart(6)} ${(musicDb - fxDb).toFixed(1).padStart(8)}  | ${BANDS.map((_, b) => (db(music[b] as number) - db(fx[b] as number)).toFixed(1).padStart(6)).join(" ")}${step}  ducking ${(duckedDb - musicDb).toFixed(1)} dB`,
+    );
+  }
+  let peak = 0;
+  for (const sample of rendered.full) peak = Math.max(peak, Math.abs(sample));
+  console.log(`peak of the full mix: ${db(peak ** 2).toFixed(1)} dBFS`);
+}
+
 async function main(): Promise<void> {
   const outIndex = process.argv.indexOf("--out");
   const outDir = outIndex >= 0 ? process.argv[outIndex + 1] : undefined;
@@ -195,24 +217,7 @@ async function main(): Promise<void> {
         writeWav(path.join(outDir, `mix-${pass}.wav`), rendered[pass]);
       }
     }
-    console.log("Loudness of the music against the voices and effects (dB of mean power, the music without ducking; negative: the music is quieter)");
-    console.log("phase        music   fx     music-fx | per band (music-fx):", BANDS.map((band) => band.name).join("  "));
-    let previous: number | undefined;
-    for (const phase of PHASES) {
-      const music = bandPower(rendered.music, phase.from + 2, phase.to);
-      const fx = bandPower(rendered.fx, phase.from + 2, phase.to);
-      const musicDb = db(music.reduce((a, b) => a + b, 0));
-      const duckedDb = db(bandPower(rendered.ducked, phase.from + 2, phase.to).reduce((a, b) => a + b, 0));
-      const fxDb = db(fx.reduce((a, b) => a + b, 0));
-      const step = previous === undefined ? "" : `  step ${(musicDb - previous >= 0 ? "+" : "") + (musicDb - previous).toFixed(1)} dB`;
-      previous = musicDb;
-      console.log(
-        `${phase.name.padEnd(11)} ${musicDb.toFixed(1).padStart(6)} ${fxDb.toFixed(1).padStart(6)} ${(musicDb - fxDb).toFixed(1).padStart(8)}  | ${BANDS.map((_, b) => (db(music[b] as number) - db(fx[b] as number)).toFixed(1).padStart(6)).join(" ")}${step}  ducking ${(duckedDb - musicDb).toFixed(1)} dB`,
-      );
-    }
-    let peak = 0;
-    for (const sample of rendered.full) peak = Math.max(peak, Math.abs(sample));
-    console.log(`peak of the full mix: ${db(peak ** 2).toFixed(1)} dBFS`);
+    printLoudness(rendered);
   } finally {
     await browser.close();
     await server.close();

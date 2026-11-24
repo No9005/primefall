@@ -49,6 +49,8 @@ export default tseslint.config(
     files: [
       "apps/web/src/effects-layer.ts",
       "apps/web/src/weapon-effects.ts",
+      "apps/web/scripts/screenshots.ts",
+      "apps/web/scripts/render-mix.ts",
       "packages/game-core/src/balance.bal.ts",
       "packages/game-core/src/plan.ts",
       "apps/web/src/App.tsx",
