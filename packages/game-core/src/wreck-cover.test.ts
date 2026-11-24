@@ -4,7 +4,7 @@ import { withFullCover } from "./full-cover-fixture";
 import { EventKind, SquadId } from "./host";
 import { buildSquadView, createMatch, type MatchState, startRound } from "./match";
 import { ActionKind, type SquadPlan } from "./plan";
-import { CoverKind, coverAgainst, coverAt, findTiles, type GridPosition, TileKind, tileAt } from "./notstrom-map";
+import { CoverKind, coverAgainst, coverAt, findTiles, type GridPosition, isWreck, TileKind, tileAt } from "./notstrom-map";
 import { resolveRound } from "./resolution";
 import { restoreLocalHost } from "./local-host";
 
@@ -19,6 +19,16 @@ const URBAN_RENEWAL = cardIndex(HeroClass.Controller, "Urban Renewal");
 const WRECK_TILE: GridPosition = { col: 8, row: 3 };
 const OPEN_TILE: GridPosition = { col: 8, row: 5 };
 const ATTACKER: GridPosition = { col: 5, row: 3 };
+
+/** The Left Controller, moved to the attacker's tile, plays Urban Renewal on `tile`. */
+function urbanRenewalPlan(match: MatchState, tile: GridPosition, from: GridPosition = ATTACKER): SquadPlan {
+  hero(match, LEFT_CONTROLLER).position = from;
+  hero(match, LEFT_CONTROLLER).hand = [URBAN_RENEWAL, SLAM_SHOT, 1, 2];
+  return {
+    squad: SquadId.Left,
+    heroes: [{ heroId: LEFT_CONTROLLER, queue: [{ kind: ActionKind.Primary, card: URBAN_RENEWAL, target: LEFT_CONTROLLER, tile }], pitched: [SLAM_SHOT] }],
+  };
+}
 
 const hero = (match: MatchState, id: string) => match.heroes.find((candidate) => candidate.id === id)!;
 
@@ -90,6 +100,15 @@ describe("Half Cover left by an Exhausted Hero", () => {
     expect(tileAt(after.grid, WRECK_TILE)).toBe(TileKind.Floor);
   });
 
+  it("is destroyed on a Prime Zone tile too, which stays a Prime Zone tile", () => {
+    const zone = findTiles(startRound(createMatch(5)).grid, TileKind.PrimeZone)[0]!;
+    const match = matchWithWreck(zone);
+    const { match: after, events } = resolveRound(match, [urbanRenewalPlan(match, zone, { col: zone.col - 2, row: zone.row })]);
+    expect(events.map(({ kind }) => kind)).toContain(EventKind.CoverDestroyed);
+    expect(coverAt(after.grid, zone)).toBe(CoverKind.None);
+    expect(tileAt(after.grid, zone)).toBe(TileKind.PrimeZone);
+  });
+
   it("keeps Full Cover on a Full Cover tile", () => {
     const match = withFullCover(matchWithWreck(WRECK_TILE), WRECK_TILE);
     expect(coverAt(match.grid, WRECK_TILE)).toBe(CoverKind.Full);
@@ -104,6 +123,18 @@ describe("Squad View of wreck Cover", () => {
     hero(unseen, LEFT_BRUISER).position = { col: 18, row: 3 };
     const seen = resolveRound(unseen, []).match;
     expect(buildSquadView(seen, SquadId.Left).wreckCover).toEqual([far]);
+  });
+
+  it("forgets a wreck it saw destroyed and keeps one it did not see destroyed", () => {
+    const match = matchWithWreck(WRECK_TILE);
+    hero(match, LEFT_BRUISER).position = { col: 7, row: 3 };
+    const known = resolveRound(match, []).match;
+    expect(buildSquadView(known, SquadId.Left).wreckCover).toEqual([WRECK_TILE]);
+    expect(buildSquadView(known, SquadId.Right).wreckCover).toEqual([WRECK_TILE]);
+    const after = resolveRound(known, [urbanRenewalPlan(known, WRECK_TILE)]).match;
+    expect(isWreck(after.grid, WRECK_TILE)).toBe(false);
+    expect(buildSquadView(after, SquadId.Left).wreckCover).toEqual([]);
+    expect(buildSquadView(after, SquadId.Right).wreckCover).toEqual([WRECK_TILE]);
   });
 
   it("lists a wreck of the Squad's own Hero at once", () => {
