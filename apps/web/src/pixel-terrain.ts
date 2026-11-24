@@ -128,73 +128,109 @@ const floorGroupFor = (v: number): string => {
   return v < 0.3 ? "floor_rust" : "floor_plate";
 };
 
+/** What the layout steps share: the tileset, a pick of a frame of a group by a hash of the tile, and the kind of a tile. */
+interface LayoutTools {
+  grid: Grid;
+  tileset: Pick<Tileset, "groups" | "texts">;
+  pick: (group: string, col: number, row: number, salt: number) => string;
+  kind: (col: number, row: number) => TileKind | undefined;
+}
+
 /** Which frame goes on which tile, by the rules of `tools/assemble.js`. Nothing is drawn for what the layout has no frame for. */
 export function pixelLayout(grid: Grid, tileset: Pick<Tileset, "groups" | "texts">): PixelLayout {
-  const pick = (group: string, col: number, row: number, salt: number) => {
-    const names = tileset.groups[group]!;
-    return names[Math.floor(tileHash(col, row, salt) * names.length)]!;
+  const tools: LayoutTools = {
+    grid,
+    tileset,
+    pick: (group, col, row, salt) => {
+      const names = tileset.groups[group]!;
+      return names[Math.floor(tileHash(col, row, salt) * names.length)]!;
+    },
+    kind: (col, row) => kindAt(grid, col, row),
   };
-  const kind = (col: number, row: number) => kindAt(grid, col, row);
   const layout: PixelLayout = { floors: [], standing: [], lights: [] };
+  addFloors(layout, tools);
+  const zoneTiles = components(grid, TileKind.PrimeZone).flat();
+  if (zoneTiles.length > 0) addGuideLights(layout, tools, zoneTiles);
+  addStandingPieces(layout, tools);
+  addWallTexts(layout, tools);
+  if (zoneTiles.length > 0) {
+    layout.core = middleOf(zoneTiles);
+    layout.lights.push({ kind: "core", col: layout.core.col, row: layout.core.row, dx: 0 });
+  }
+  return layout;
+}
 
+/** The floor frames of every open tile: the floor itself, the hazard edge around the Prime Zone and the corners of an Outpost. */
+function addFloors(layout: PixelLayout, { grid, pick, kind }: LayoutTools): void {
   for (let row = 0; row < grid.height; row++) {
     for (let col = 0; col < grid.width; col++) {
       const here = kind(col, row);
       if (here === TileKind.Wall || here === undefined) continue;
       const floor = (name: string) => layout.floors.push({ name, col, row });
-      if (here === TileKind.PrimeZone) floor("prime_floor");
-      else if (here === TileKind.Outpost) floor("outpost_floor");
-      else if (here === TileKind.DropPoint) floor(pick("spawn_floor", col, row, 2));
-      else {
-        const v = tileHash(col, row, 3);
-        floor(pick(floorGroupFor(v), col, row, 4));
-      }
-      if (here !== TileKind.PrimeZone) {
-        const zone = (c: number, r: number) => kind(c, r) === TileKind.PrimeZone;
-        const [n, s, w, e] = [zone(col, row - 1), zone(col, row + 1), zone(col - 1, row), zone(col + 1, row)];
-        if (n) floor("hazard_edge_n");
-        if (s) floor("hazard_edge_s");
-        if (w) floor("hazard_edge_w");
-        if (e) floor("hazard_edge_e");
-        if (!n && !w && zone(col - 1, row - 1)) floor("hazard_corner_nw");
-        if (!n && !e && zone(col + 1, row - 1)) floor("hazard_corner_ne");
-        if (!s && !e && zone(col + 1, row + 1)) floor("hazard_corner_se");
-        if (!s && !w && zone(col - 1, row + 1)) floor("hazard_corner_sw");
-      }
-      if (here === TileKind.Outpost) {
-        const outside = (c: number, r: number) => kind(c, r) !== TileKind.Outpost;
-        const [n, s, w, e] = [outside(col, row - 1), outside(col, row + 1), outside(col - 1, row), outside(col + 1, row)];
-        if (n && w) floor("outpost_corner_nw");
-        if (n && e) floor("outpost_corner_ne");
-        if (s && e) floor("outpost_corner_se");
-        if (s && w) floor("outpost_corner_sw");
-      }
+      floor(floorFrame(here, { col, row }, pick));
+      if (here !== TileKind.PrimeZone) addHazardEdges(floor, kind, col, row);
+      if (here === TileKind.Outpost) addOutpostCorners(floor, kind, col, row);
     }
   }
+}
 
-  // Guide lights lead from each Drop Point along its middle row to the Prime Zone, over the open floor in between.
-  const zoneTiles = components(grid, TileKind.PrimeZone).flat();
-  if (zoneTiles.length > 0) {
-    const zoneMiddle = middleOf(zoneTiles);
-    for (const dropPoint of components(grid, TileKind.DropPoint)) {
-      const middle = middleOf(dropPoint);
-      const towards = zoneMiddle.col > middle.col ? 1 : -1;
-      const edge = towards === 1 ? Math.max(...dropPoint.map((tile) => tile.col)) : Math.min(...dropPoint.map((tile) => tile.col));
-      for (let col = edge + towards; kind(col, middle.row) !== TileKind.PrimeZone && kind(col, middle.row) !== undefined; col += towards) {
-        if (kind(col, middle.row) === TileKind.Floor) layout.floors.push({ name: "guide_col", col, row: middle.row });
-      }
-      layout.lights.push({ kind: "breach", col: middle.col, row: middle.row, dx: middle.col < grid.width / 2 ? -10 : 10 });
+function floorFrame(here: TileKind, { col, row }: GridPosition, pick: LayoutTools["pick"]): string {
+  if (here === TileKind.PrimeZone) return "prime_floor";
+  if (here === TileKind.Outpost) return "outpost_floor";
+  if (here === TileKind.DropPoint) return pick("spawn_floor", col, row, 2);
+  return pick(floorGroupFor(tileHash(col, row, 3)), col, row, 4);
+}
+
+/** The hazard edge on each side of a tile that touches the Prime Zone, and the corner where only the diagonal does. */
+function addHazardEdges(floor: (name: string) => unknown, kind: LayoutTools["kind"], col: number, row: number): void {
+  const zone = (dCol: number, dRow: number) => kind(col + dCol, row + dRow) === TileKind.PrimeZone;
+  const [n, s, w, e] = [zone(0, -1), zone(0, 1), zone(-1, 0), zone(1, 0)];
+  const edges = [["hazard_edge_n", n], ["hazard_edge_s", s], ["hazard_edge_w", w], ["hazard_edge_e", e]] as const;
+  for (const [name, touches] of edges) if (touches) floor(name);
+  const corners = [
+    ["hazard_corner_nw", !n && !w, -1, -1],
+    ["hazard_corner_ne", !n && !e, 1, -1],
+    ["hazard_corner_se", !s && !e, 1, 1],
+    ["hazard_corner_sw", !s && !w, -1, 1],
+  ] as const;
+  for (const [name, open, dCol, dRow] of corners) if (open && zone(dCol, dRow)) floor(name);
+}
+
+function addOutpostCorners(floor: (name: string) => unknown, kind: LayoutTools["kind"], col: number, row: number): void {
+  const outside = (c: number, r: number) => kind(c, r) !== TileKind.Outpost;
+  const [n, s, w, e] = [outside(col, row - 1), outside(col, row + 1), outside(col - 1, row), outside(col + 1, row)];
+  if (n && w) floor("outpost_corner_nw");
+  if (n && e) floor("outpost_corner_ne");
+  if (s && e) floor("outpost_corner_se");
+  if (s && w) floor("outpost_corner_sw");
+}
+
+/** Guide lights lead from each Drop Point along its middle row to the Prime Zone, over the open floor in between. */
+function addGuideLights(layout: PixelLayout, { grid, kind }: LayoutTools, zoneTiles: readonly GridPosition[]): void {
+  const zoneMiddle = middleOf(zoneTiles);
+  for (const dropPoint of components(grid, TileKind.DropPoint)) {
+    const middle = middleOf(dropPoint);
+    const towards = zoneMiddle.col > middle.col ? 1 : -1;
+    const edge = towards === 1 ? Math.max(...dropPoint.map((tile) => tile.col)) : Math.min(...dropPoint.map((tile) => tile.col));
+    for (let col = edge + towards; kind(col, middle.row) !== TileKind.PrimeZone && kind(col, middle.row) !== undefined; col += towards) {
+      if (kind(col, middle.row) === TileKind.Floor) layout.floors.push({ name: "guide_col", col, row: middle.row });
     }
+    layout.lights.push({ kind: "breach", col: middle.col, row: middle.row, dx: middle.col < grid.width / 2 ? -10 : 10 });
   }
+}
 
-  // The closed side of a piece of Cover faces the middle line of the map, where the fighting is: in the upper half that is the front,
-  // in the lower half the back (the way the pieces are drawn). The row of the middle line itself counts to the upper half.
+/**
+ * The standing pieces (walls, Cover, plants), tile by tile in the order they are drawn, back to front. The closed side of a
+ * piece of Cover faces the middle line of the map, where the fighting is: in the upper half that is the front, in the lower
+ * half the back (the way the pieces are drawn). The row of the middle line itself counts to the upper half.
+ */
+function addStandingPieces(layout: PixelLayout, tools: LayoutTools): void {
+  const { grid, kind } = tools;
   const middleDepth = (grid.width + grid.height - 2) / 2;
   const inUpperHalf = (col: number, row: number) => depthOf(col, row) <= middleDepth;
   // A Hero stands at the depth of its tile plus 0.5. A piece that is closed at the front stands over the Hero behind it, so the Hero
   // crouches behind the front of the piece; a piece that is open at the front stays under the Hero, who stands in front of it.
   const coverDepth = (col: number, row: number) => depthOf(col, row) + (inUpperHalf(col, row) ? CLOSED_FRONT_DEPTH : 0);
-  const near = (col: number, row: number) => row === grid.height - 1 || col === grid.width - 1;
   for (let sum = 0; sum <= grid.width + grid.height - 2; sum++) {
     for (let row = 0; row < grid.height; row++) {
       const col = sum - row;
@@ -203,39 +239,46 @@ export function pixelLayout(grid: Grid, tileset: Pick<Tileset, "groups" | "texts
       const stand = (kindOfSprite: Standing["kind"], name: string, extra: Partial<Placed> & { closedAtFront?: boolean } = {}, depth = depthOf(col, row)) =>
         layout.standing.push({ kind: kindOfSprite, name, col, row, depth, ...extra });
       if (here === TileKind.Wall) {
-        const lampWall = tileHash(col, row, 10) < 0.3 && (isOpen(kind(col, row + 1)) || isOpen(kind(col + 1, row)));
-        if (near(col, row)) stand("wall", pick("wall_cut", col, row, 9));
-        else if (lampWall) {
-          stand("wall", "wall_lamp");
-          const facing = isOpen(kind(col, row + 1)) ? { col, row: row + 1 } : { col: col + 1, row };
-          layout.lights.push({ kind: "lamp", col: facing.col, row: facing.row, dx: 0 });
-        } else stand("wall", pick("wall", col, row, 9));
+        addWall(layout, tools, stand, col, row);
       } else if (here === TileKind.HalfCover) {
-        stand("cover", pick("half_cover", col, row, 11), { closedAtFront: inUpperHalf(col, row) }, coverDepth(col, row));
+        stand("cover", tools.pick("half_cover", col, row, 11), { closedAtFront: inUpperHalf(col, row) }, coverDepth(col, row));
         layout.lights.push({ kind: "cover", col, row, dx: 0 });
       } else if (here === TileKind.FullCover || here === TileKind.OverwatchNest) {
         // The Overwatch Nest is a Full Cover tile (ADR 0016) and the tileset has no frame of its own for it.
         stand("cover", "full_cover", { closedAtFront: inUpperHalf(col, row) }, coverDepth(col, row));
         layout.lights.push({ kind: "cover", col, row, dx: 0 });
       } else if (here !== TileKind.PrimeZone && tileHash(col, row, 12) < (here === TileKind.DropPoint ? 0.5 : 0.04)) {
-        stand("plant", pick("fern", col, row, 13), { dx: Math.round((tileHash(col, row, 14) - 0.5) * 14), dy: Math.round(tileHash(row, col, 15) * 5) });
+        stand("plant", tools.pick("fern", col, row, 13), { dx: Math.round((tileHash(col, row, 14) - 0.5) * 14), dy: Math.round(tileHash(row, col, 15) * 5) });
       }
     }
   }
+}
 
-  // A wall text is drawn once the last wall block of its run stands.
+type StandFn = (kindOfSprite: Standing["kind"], name: string, extra?: Partial<Placed> & { closedAtFront?: boolean }, depth?: number) => unknown;
+
+/** A wall block: the cut wall at the near edges of the map, a wall with a lamp where it has an open face (and a lamp light), else a plain wall. */
+function addWall(layout: PixelLayout, { grid, pick, kind }: LayoutTools, stand: StandFn, col: number, row: number): void {
+  const near = row === grid.height - 1 || col === grid.width - 1;
+  const lampWall = tileHash(col, row, 10) < 0.3 && (isOpen(kind(col, row + 1)) || isOpen(kind(col + 1, row)));
+  if (near) {
+    stand("wall", pick("wall_cut", col, row, 9));
+  } else if (lampWall) {
+    stand("wall", "wall_lamp");
+    const facing = isOpen(kind(col, row + 1)) ? { col, row: row + 1 } : { col: col + 1, row };
+    layout.lights.push({ kind: "lamp", col: facing.col, row: facing.row, dx: 0 });
+  } else {
+    stand("wall", pick("wall", col, row, 9));
+  }
+}
+
+/** A wall text is drawn once the last wall block of its run stands. */
+function addWallTexts(layout: PixelLayout, { grid, tileset }: LayoutTools): void {
   for (const text of TEXTS) {
     const tiles = tileset.texts[text.id]?.tiles;
     if (tiles === undefined || !textFits(grid, text, tiles)) continue;
     const last = text.face === "south" ? { col: text.col + tiles - 1, row: text.row } : { col: text.col, row: text.row };
     layout.standing.push({ kind: "text", name: `text_${text.face}_${text.id}`, col: text.col, row: text.row, depth: depthOf(last.col, last.row) + 0.1 });
   }
-
-  if (zoneTiles.length > 0) {
-    layout.core = middleOf(zoneTiles);
-    layout.lights.push({ kind: "core", col: layout.core.col, row: layout.core.row, dx: 0 });
-  }
-  return layout;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -345,29 +388,8 @@ function floorBounds(grid: Grid) {
 
 const artCentre = (col: number, row: number) => ({ x: (col - row) * 16, y: (col + row) * 8 });
 
-/** Draws the floor and its decals, then the light map multiplied over it and the glow of the floor lights added: the three layers of the README. */
-function bakeFloor(atlas: PixelAtlas, layout: PixelLayout, grid: Grid): HTMLCanvasElement {
-  const bounds = floorBounds(grid);
-  const make = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = bounds.width;
-    canvas.height = bounds.height;
-    const context = canvas.getContext("2d")!;
-    context.imageSmoothingEnabled = false;
-    return context;
-  };
-  const [map, glow, light, out] = [make(), make(), make(), make()];
-  const draw = (context: CanvasRenderingContext2D, name: string, x: number, y: number) => {
-    const { frame, anchor } = atlas.frames[FRAME_PREFIX + name]!;
-    context.drawImage(atlas.image, frame.x, frame.y, frame.w, frame.h, Math.round(x - anchor.x * frame.w - bounds.x), Math.round(y - anchor.y * frame.h - bounds.y), frame.w, frame.h);
-  };
-  for (const { name, col, row } of layout.floors) {
-    const { x, y } = artCentre(col, row);
-    draw(map, name, x, y);
-    const glowName = atlas.tileset.sprites[name]?.glow;
-    if (glowName) draw(glow, glowName, x, y);
-  }
-
+/** Paints the light map: the ambient colour over everything, then the pool of each floor light added to it. */
+function paintLightMap(light: CanvasRenderingContext2D, atlas: PixelAtlas, layout: PixelLayout, bounds: ReturnType<typeof floorBounds>): void {
   const { lighting } = atlas.tileset;
   light.fillStyle = lighting.ambient;
   light.fillRect(0, 0, bounds.width, bounds.height);
@@ -391,6 +413,32 @@ function bakeFloor(atlas: PixelAtlas, layout: PixelLayout, grid: Grid): HTMLCanv
     light.drawImage(pool, Math.round(x + lamp.dx - lightAnchor.x * pool.width - bounds.x), Math.round(y - lightAnchor.y * pool.height - bounds.y));
   }
   light.globalAlpha = 1;
+}
+
+/** Draws the floor and its decals, then the light map multiplied over it and the glow of the floor lights added: the three layers of the README. */
+function bakeFloor(atlas: PixelAtlas, layout: PixelLayout, grid: Grid): HTMLCanvasElement {
+  const bounds = floorBounds(grid);
+  const make = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = bounds.width;
+    canvas.height = bounds.height;
+    const context = canvas.getContext("2d")!;
+    context.imageSmoothingEnabled = false;
+    return context;
+  };
+  const [map, glow, light, out] = [make(), make(), make(), make()];
+  const draw = (context: CanvasRenderingContext2D, name: string, x: number, y: number) => {
+    const { frame, anchor } = atlas.frames[FRAME_PREFIX + name]!;
+    context.drawImage(atlas.image, frame.x, frame.y, frame.w, frame.h, Math.round(x - anchor.x * frame.w - bounds.x), Math.round(y - anchor.y * frame.h - bounds.y), frame.w, frame.h);
+  };
+  for (const { name, col, row } of layout.floors) {
+    const { x, y } = artCentre(col, row);
+    draw(map, name, x, y);
+    const glowName = atlas.tileset.sprites[name]?.glow;
+    if (glowName) draw(glow, glowName, x, y);
+  }
+
+  paintLightMap(light, atlas, layout, bounds);
 
   out.drawImage(map.canvas, 0, 0);
   out.globalCompositeOperation = "multiply";

@@ -415,48 +415,60 @@ function stripesOn(face: number[]): number[][] {
   return bands;
 }
 
+const COVER_EDGES = [
+  { from: [-0.5, -0.5], to: [0.5, -0.5], inward: [0, 1] },
+  { from: [0.5, -0.5], to: [0.5, 0.5], inward: [-1, 0] },
+  { from: [0.5, 0.5], to: [-0.5, 0.5], inward: [0, -1] },
+  { from: [-0.5, 0.5], to: [-0.5, -0.5], inward: [1, 0] },
+] as const;
+
+const edgeMiddle = (edge: (typeof COVER_EDGES)[number]) => [(edge.from[0] + edge.to[0]) / 2, (edge.from[1] + edge.to[1]) / 2] as const;
+
+/** The edges of a tile whose middle is on the screen's back side (above the centre) or on its front side (below it). */
+function tileEdgesOn(side: "back" | "front", { col, row }: GridPosition): (typeof COVER_EDGES)[number][] {
+  const centreY = PROJECTION.point(col, row).y;
+  return COVER_EDGES.filter((edge) => {
+    const [dc, dr] = edgeMiddle(edge);
+    const middleY = PROJECTION.point(col + dc, row + dr).y;
+    return side === "back" ? middleY < centreY - EPSILON : middleY > centreY + EPSILON;
+  });
+}
+
 /** The look of a Cover tile; `built` is Cover a Hero placed (bars), otherwise the map's own (panels). */
 export function coverLook(position: GridPosition, kind: "full" | "half", built: boolean, grow = 1): CoverLook {
+  const look: CoverLook = { kind, built, plinth: [], panels: [], bars: [], rails: [] };
+  if (built) builtCoverBars(look, position, grow);
+  else naturalCoverPanel(look, position);
+  return look;
+}
+
+/** The map's own Cover: a plinth and one panel across the front of the tile, level on the screen, drawn above the Heroes on the tile (a Hero standing on Cover is hidden behind it). */
+function naturalCoverPanel(look: CoverLook, position: GridPosition): void {
   const proj = PROJECTION;
   const { col, row } = position;
   const colors = TERRAIN_STYLE.coverLook;
-  const edges = [
-    { from: [-0.5, -0.5], to: [0.5, -0.5], inward: [0, 1] },
-    { from: [0.5, -0.5], to: [0.5, 0.5], inward: [-1, 0] },
-    { from: [0.5, 0.5], to: [-0.5, 0.5], inward: [0, -1] },
-    { from: [-0.5, 0.5], to: [-0.5, -0.5], inward: [1, 0] },
-  ] as const;
-  const centreY = proj.point(col, row).y;
-  const back = edges.filter((edge) => {
-    const middle = proj.point(col + (edge.from[0] + edge.to[0]) / 2, row + (edge.from[1] + edge.to[1]) / 2);
-    return middle.y < centreY - EPSILON;
+  const plinthStyle: PieceStyle = { top: colors.plinthTop, left: colors.plinthSide, right: colors.plinthSide, edge: colors.outline };
+  const whole = { fromCol: col - 0.5, toCol: col + 0.5, fromRow: row - 0.5, toRow: row + 0.5 };
+  look.plinth = boxFaces(proj, whole, COVER_LOOK.plinth * GAME_PX, plinthStyle, 1);
+  const lift = COVER_LOOK.plinth * GAME_PX;
+  const height = COVER_LOOK.natural[look.kind] * GAME_PX;
+  const ends = panelEnds(tileEdgesOn("front", position), edgeMiddle);
+  if (ends.length !== 2) return;
+  const [a, b] = ends.map(([dc, dr]) => proj.point(col + dc, row + dr, lift)).sort((p, q) => p.x - q.x) as [{ x: number; y: number }, { x: number; y: number }];
+  look.panels.push({
+    points: [a.x, a.y, b.x, b.y, b.x, b.y - height, a.x, a.y - height],
+    foot: [a.x, a.y, b.x, b.y],
+    top: [a.x, a.y - height, b.x, b.y - height],
   });
-  const look: CoverLook = { kind, built, plinth: [], panels: [], bars: [], rails: [] };
-  if (!built) {
-    const plinthStyle: PieceStyle = { top: colors.plinthTop, left: colors.plinthSide, right: colors.plinthSide, edge: colors.outline };
-    const whole = { fromCol: col - 0.5, toCol: col + 0.5, fromRow: row - 0.5, toRow: row + 0.5 };
-    look.plinth = boxFaces(proj, whole, COVER_LOOK.plinth * GAME_PX, plinthStyle, 1);
-    const lift = COVER_LOOK.plinth * GAME_PX;
-    const height = COVER_LOOK.natural[kind] * GAME_PX;
-    // One panel across the front of the tile, level on the screen, drawn above the Heroes on the tile:
-    // a Hero standing on Cover is hidden behind it.
-    const front = edges.filter((edge) => {
-      const middle = proj.point(col + (edge.from[0] + edge.to[0]) / 2, row + (edge.from[1] + edge.to[1]) / 2);
-      return middle.y > centreY + EPSILON;
-    });
-    const middleOf = (edge: (typeof edges)[number]) => [(edge.from[0] + edge.to[0]) / 2, (edge.from[1] + edge.to[1]) / 2] as const;
-    const ends = panelEnds(front, middleOf);
-    if (ends.length === 2) {
-      const [a, b] = ends.map(([dc, dr]) => proj.point(col + dc, row + dr, lift)).sort((p, q) => p.x - q.x) as [{ x: number; y: number }, { x: number; y: number }];
-      look.panels.push({
-        points: [a.x, a.y, b.x, b.y, b.x, b.y - height, a.x, a.y - height],
-        foot: [a.x, a.y, b.x, b.y],
-        top: [a.x, a.y - height, b.x, b.y - height],
-      });
-    }
-    return look;
-  }
-  const height = Math.max(0.5, COVER_LOOK.built[kind] * GAME_PX * grow);
+}
+
+/** The bars of Cover a Hero placed: up to two bars along the back edges of the tile, with a rail on top of a Full Cover. */
+function builtCoverBars(look: CoverLook, position: GridPosition, grow: number): void {
+  const proj = PROJECTION;
+  const { col, row } = position;
+  const colors = TERRAIN_STYLE.coverLook;
+  const back = tileEdgesOn("back", position);
+  const height = Math.max(0.5, COVER_LOOK.built[look.kind] * GAME_PX * grow);
   const thick = COVER_LOOK.built.thickness;
   const boxes: Box[] = back.map((edge, i) => {
     const [fromCol, toCol] = [edge.from[0], edge.to[0]].sort((x, y) => x - y) as [number, number];
@@ -480,16 +492,14 @@ export function coverLook(position: GridPosition, kind: "full" | "half", built: 
     if (face.role !== FaceRole.Top) look.bars.push({ points: face.points, fill: colors.yellow, stripes: stripesOn(face.points) });
   }
   for (const face of faces) if (face.role === FaceRole.Top) look.bars.push({ points: face.points, fill: colors.grey, stripes: [] });
-  if (kind === "full") {
-    const rail = COVER_LOOK.built.rail * GAME_PX;
-    for (const box of boxes) {
-      const a = proj.point(box.fromCol, box.fromRow, height + rail);
-      const b = proj.point(box.toCol, box.toRow, height + rail);
-      const foot = [proj.point(box.fromCol, box.fromRow, height), proj.point(box.toCol, box.toRow, height)];
-      look.rails.push([a.x, a.y, b.x, b.y], [a.x, a.y, a.x, foot[0]!.y], [b.x, b.y, b.x, foot[1]!.y]);
-    }
+  if (look.kind !== "full") return;
+  const rail = COVER_LOOK.built.rail * GAME_PX;
+  for (const box of boxes) {
+    const a = proj.point(box.fromCol, box.fromRow, height + rail);
+    const b = proj.point(box.toCol, box.toRow, height + rail);
+    const foot = [proj.point(box.fromCol, box.fromRow, height), proj.point(box.toCol, box.toRow, height)];
+    look.rails.push([a.x, a.y, b.x, b.y], [a.x, a.y, a.x, foot[0]!.y], [b.x, b.y, b.x, foot[1]!.y]);
   }
-  return look;
 }
 
 /** A shield mark above a Cover piece of the map: filled for Full Cover, half filled for Half Cover. */
