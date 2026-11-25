@@ -130,3 +130,16 @@ Tilly's nine original hangar strips as they were drawn on the design canvas (idl
 ## What this shows
 
 SDXL with text, a ControlNet or an inpaint pass does not draw Tilly's third arm or robot arm reliably, and a refinement either destroys a sketch or leaves it flat. The community's lane (an image-edit model with the picture as a reference) did it in `step3-klein-edit/`; the sprite-sheet LoRA and the pixel-snapping step are still to try: `docs/design/heroes/tools/comfy/RESEARCH.md`.
+
+## `step9-wan-idle-t1/` (first video test: Wan 2.2 TI2V-5B, idle)
+
+Test T1 of `TESTPLAN.md`. Start frame: `step8-pixel-cleanup/tilly-clean.png`, scaled 3x with nearest neighbour onto a 640 x 960 page of the flat colour (feet 8 px above the edge). Workflow `docs/design/heroes/tools/comfy/tilly-wan-ti2v.json` (gallery template `video_wan2_2_5B_ti2v`, image node enabled): 640 x 960, 49 frames at 24 fps, 20 steps, cfg 5, `uni_pc` / `simple`, shift 8, seed 1. Prompt: pixel art game character idle loop, she breathes in and out with an exaggerated chest and shoulder movement, the long mechanical arm above her head sways slowly to the left, back to the centre, then to the right, with a slight overshoot; static camera, flat grey background, nothing else moves. Files: `t1-idle-seed1.mp4`, `contact-sheet.png` (every 6th frame).
+
+Result (first look, no measurements yet):
+- **It runs on 16 GB**, but only with a tiled decode: with the plain `VAEDecode` (the machine needs `--fp32-vae`) the decode asked for 13.5 GiB and ran out of memory after the sampling had finished. The template's node 8 was changed to `VAEDecodeTiled` (tile 256, overlap 64, temporal 64 / 8). Sampling about 2 s a step; the whole run about 90 s.
+- **The figure stays Tilly** (jacket, trousers, both arms, goggles, the long arm all keep their shape and place) and the page stays flat.
+- **Almost no motion.** The long arm is nearly in the same place in frame 0, 24 and 48; the breathing is a few pixels. The asked-for exaggerated sway did not happen.
+- **The face drifts** (the eyes change from frame to frame) and the picture is softer than the input: the video VAE and the mp4 turn the hard pixels into a blur, so it is no longer clean pixel art and would need the pixel clean-up per frame, with the palette of `tilly-clean.png`.
+- Not a loop: the last frame was not compared with the first.
+
+Lesson: the model keeps the character but treats the prompt's motion as a hint; for a large, exact sway of one part the next tries are a stronger motion prompt or Fun Control with a guide, or animating the arm as its own layer.
