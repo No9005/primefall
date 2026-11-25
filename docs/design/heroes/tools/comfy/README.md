@@ -28,7 +28,7 @@ Custom node pack: `ComfyUI_IPAdapter_plus` (`git clone https://github.com/cubiq/
 
 ## Run
 
-ComfyUI must be started like this on this machine (RX 9070 XT, kernel 7.3.x): `python main.py --listen 127.0.0.1 --port 8188 --fp32-vae --disable-dynamic-vram`. Without the last two options every SDXL image came out black, striped or flat (also plain SDXL base, so it is not the models: their SHA-256 sums match Hugging Face's). In the MCP: `restart_comfyui` with `extra_args: ["--fp32-vae", "--disable-dynamic-vram"]`.
+Start ComfyUI with `docs/design/heroes/tools/comfy/start-comfyui.sh` (foreground, extra options are passed on). It runs `python main.py --listen 127.0.0.1 --port 8188 --fp32-vae --disable-dynamic-vram` in `~/claude-home/code/ComfyUI` (override with `COMFYUI_DIR`) and refuses to start when port 8188 already answers. The last two options are required on this machine (RX 9070 XT, kernel 7.3.x): without them every SDXL image came out black, striped or flat (also plain SDXL base, so it is not the models: their SHA-256 sums match Hugging Face's). In the MCP: `restart_comfyui` with `extra_args: ["--fp32-vae", "--disable-dynamic-vram"]`. After installing a custom node pack, restart ComfyUI.
 
 ```
 node docs/design/heroes/tools/comfy/tilly-poses.mjs --poses rig:pulse:620,hangar:act:13 --out my-poses
