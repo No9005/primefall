@@ -33,7 +33,7 @@ export interface SfxPlay {
 
 export type CueOn =
   | "heroSelected"
-  | "hangarAct"
+  | "hangarClip"
   | "attack"
   | "cardPlayed"
   | "cardPitched"
@@ -50,6 +50,8 @@ export type CueOn =
 
 export interface AudioCue {
   on: CueOn;
+  /** For `hangarClip`: the clip of the Hero Select (`idle`, `act`, `selecti`, `select`, ...) whose sounds this cue is. */
+  clip?: string;
   card?: string;
   when?: { damage?: Amount; absorbed?: Amount };
   /** The cue is for the Hero that is hit (or whose Cover holds), not for the attacker. */

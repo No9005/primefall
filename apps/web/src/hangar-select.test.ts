@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BRIDGES, CLIPS, FRAME, HANGAR_HEROES, type HangarHero, HeroPlayer, isLooped, type PlayerEnv, RIG_HEROES, tapOrder } from "./hangar-select";
+import { BRIDGES, CLIPS, FRAME, HANGAR_HEROES, type HangarHero, HeroPlayer, isLooped, LOOPS, type PlayerEnv, RIG_HEROES, tapOrder } from "./hangar-select";
 
 /** A clock the tests move by hand: timers run when the time reaches them. */
-function fakeEnv(random = (low: number) => low): PlayerEnv & { advance: (ms: number) => void } {
+function fakeEnv(random: PlayerEnv["random"] = (low) => low): PlayerEnv & { advance: (ms: number) => void } {
   let now = 0;
   let next = 0;
   const timers = new Map<number, { at: number; run: () => void }>();
@@ -80,27 +80,46 @@ describe("hangar Hero Select: a Hero", () => {
     expect(kit.made.state.mode).toBe("act");
   });
 
-  it("announces each pass of its act clip (the clip repeats once or twice) and none after a tap", () => {
+  it("announces every clip as it begins, and each pass again when the act repeats (Max), and none after a tap", () => {
     const heard: string[] = [];
-    /** `passes`: how often the clip repeats (the idle always takes its two loops). */
+    /** `passes`: how often Max's act is to play. */
     const run = (passes: number, tapAfterMs?: number) => {
       heard.length = 0;
-      const env = fakeEnv((low) => (low === 1 ? passes : low));
-      const made = new HeroPlayer("tilly", env, () => undefined, (hero) => heard.push(`${hero}@${env.now()}`));
+      const env = fakeEnv((low) => (low === LOOPS.max.act[0] ? passes : low));
+      const made = new HeroPlayer("max", env, () => undefined, (hero, clip) => heard.push(`${hero}:${clip}@${env.now()}`));
       made.begin(0);
-      env.advance(CLIPS.tilly.idle!.seconds * 1000 * 2 + CLIPS.tilly.tolift!.seconds * 1000);
+      env.advance(CLIPS.max.idle!.seconds * 1000 * LOOPS.max.idle[0] + CLIPS.max.tolift!.seconds * 1000);
       const actStart = env.now();
-      if (tapAfterMs === undefined) env.advance(CLIPS.tilly.act!.seconds * 1000 * 2);
-      else {
-        env.advance(tapAfterMs);
+      env.advance(tapAfterMs ?? CLIPS.max.act!.seconds * 1000 * 2);
+      if (tapAfterMs !== undefined) {
         made.tap();
-        env.advance(CLIPS.tilly.act!.seconds * 1000 * 2);
+        env.advance(CLIPS.max.act!.seconds * 1000 * 2);
       }
-      return heard.map((pass) => Number(pass.split("@")[1]) - actStart);
+      return heard.filter((entry) => entry.includes(":act@")).map((entry) => Number(entry.split("@")[1]) - actStart);
     };
+    expect(heard).toEqual([]);
     expect(run(1)).toEqual([0]);
-    expect(run(2)).toEqual([0, CLIPS.tilly.act!.seconds * 1000]);
+    expect(run(2)).toEqual([0, CLIPS.max.act!.seconds * 1000]);
     expect(run(2, 1000)).toEqual([0]);
+    expect(heard.some((entry) => entry.startsWith("max:bridge")) || heard.some((entry) => entry.startsWith("max:select@"))).toBe(true);
+  });
+
+  it("plays Tilly's act once, after a long and varying idle, so that her arm never tears off twice in a row", () => {
+    const idleMs = CLIPS.tilly.idle!.seconds * 1000;
+    expect(LOOPS.tilly.act).toEqual([1, 1]);
+    expect(LOOPS.tilly.idle[0]).toBeGreaterThanOrEqual(3);
+    expect(LOOPS.tilly.idle[1]).toBeGreaterThan(LOOPS.tilly.idle[0]);
+    for (const loops of [LOOPS.tilly.idle[0], LOOPS.tilly.idle[1]]) {
+      const env = fakeEnv((low, high) => (high === LOOPS.tilly.idle[1] ? loops : low));
+      const made = new HeroPlayer("tilly", env, () => undefined);
+      made.begin(0);
+      env.advance(idleMs * loops - 1);
+      expect(made.state.mode).toBe("idle");
+      env.advance(1 + CLIPS.tilly.tolift!.seconds * 1000);
+      expect(made.state.mode).toBe("act");
+      env.advance(CLIPS.tilly.act!.seconds * 1000);
+      expect(made.state.mode).toBe("toidle");
+    }
   });
 
   it("begins after its delay, so that the three are not in step", () => {
@@ -125,7 +144,7 @@ describe("hangar Hero Select: a Hero", () => {
   it("is selected in the middle of its action through a bridge of two frames", () => {
     const { made, env } = player("tilly");
     made.begin(0);
-    env.advance(CLIPS.tilly.idle!.seconds * 1000 * 2 + CLIPS.tilly.tolift!.seconds * 1000);
+    env.advance(CLIPS.tilly.idle!.seconds * 1000 * LOOPS.tilly.idle[0] + CLIPS.tilly.tolift!.seconds * 1000);
     expect(made.state.mode).toBe("act");
     env.advance(1000);
     made.tap();

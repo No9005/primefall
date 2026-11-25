@@ -251,10 +251,10 @@ function planCoverCrumbling(frame: PlaybackFrame, planner: Planner): void {
   if (who && cue) planner.emit(cue, { ...who, tile: crumbled.tile }, 0, CLIP_SPEED);
 }
 
-/** The cue of a moment outside the Resolution: the Hero Select, a Pitch, the end of the match. */
-export function planMoment(on: "heroSelected" | "hangarAct" | "cardPitched" | "matchEnd", who: Source, ctx: PlanContext, won?: boolean): SoundRequest[] {
+/** The cue of a moment outside the Resolution: the Hero Select, a clip of a Hero there (`clip`), a Pitch, the end of the match. */
+export function planMoment(on: "heroSelected" | "hangarClip" | "cardPitched" | "matchEnd", who: Source, ctx: PlanContext, won?: boolean, clip?: string): SoundRequest[] {
   const planner = new Planner(ctx);
-  const cue = planner.cueOf(who.heroClass, on, (candidate) => candidate.won === undefined || candidate.won === won);
+  const cue = planner.cueOf(who.heroClass, on, (candidate) => (candidate.won === undefined || candidate.won === won) && (on !== "hangarClip" || candidate.clip === clip));
   // The Hero Select sheet runs in real time; a Pitch and the end of the match have nothing to follow.
   if (cue) planner.emit(cue, who, 0, 1);
   return planner.requests;

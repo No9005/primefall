@@ -152,14 +152,23 @@ describe("the sounds of a frame", () => {
     expect(second).not.toEqual(first);
   });
 
-  it("plays the Hero Select line and the shots of Max", () => {
-    const act = planMoment("hangarAct", { heroId: "select-tilly", heroClass: HeroClass.Controller, tile: undefined }, context());
-    expect(act.map((request) => [request.assetId, request.startMs]).sort()).toEqual([["sfx.act-fiddle", 300], ["sfx.act-tear", 1100], ["voice.act-gasp", 1200]]);
-    expect(planMoment("hangarAct", { heroId: "select-max", heroClass: HeroClass.Bruiser, tile: undefined }, context())).toEqual([]);
-    const requests = planMoment("heroSelected", { heroId: "select", heroClass: HeroClass.Bruiser, tile: undefined }, context());
+  it("plays the Hero Select line of Max when he is chosen, and his one shot with the clip that has it", () => {
+    const max = { heroId: "select-max", heroClass: HeroClass.Bruiser, tile: undefined };
+    const requests = planMoment("heroSelected", max, context());
     expect(assets(requests, "voice")).toEqual(["voice.select"]);
-    expect(assets(requests, "sfx")).toEqual(["sfx.slam", "sfx.slam", "sfx.slam"]);
-    expect(requests.filter((request) => request.kind === "sfx").map((request) => request.startMs)).toEqual([1400, 2200, 3000]);
+    expect(assets(requests, "sfx")).toEqual([]);
+    const shot = (clip: string) => planMoment("hangarClip", max, context(), undefined, clip).map((request) => [request.assetId, request.startMs]);
+    expect(shot("selecti")).toEqual([["sfx.slam", 1080]]);
+    expect(shot("select")).toEqual([["sfx.slam", 1630]]);
+    expect(shot("idle")).toEqual([]);
+  });
+
+  it("gives Tilly's act clip fiddling, the crack of the arm and her gasp at the moments of the clip, and the other Heroes' act none", () => {
+    const tilly = { heroId: "select-tilly", heroClass: HeroClass.Controller, tile: undefined };
+    const act = planMoment("hangarClip", tilly, context(), undefined, "act");
+    expect(act.map((request) => [request.assetId, request.startMs]).sort()).toEqual([["sfx.act-fiddle", 300], ["sfx.act-tear", 1100], ["voice.act-gasp", 1200]]);
+    expect(planMoment("hangarClip", tilly, context(), undefined, "idle")).toEqual([]);
+    expect(planMoment("hangarClip", { heroId: "select-kit", heroClass: HeroClass.Assassin, tile: undefined }, context(), undefined, "act")).toEqual([]);
   });
 
   it("says something on a Pitch only some of the time, never on every one", () => {

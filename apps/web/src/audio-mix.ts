@@ -10,7 +10,7 @@ export const Priority = { Background: 0, Ambient: 1, Minor: 2, Normal: 3, Import
 /**
  * The importance of the voice and of the effects of every cue. A Hero's own Squad hears its sounds one tier higher
  * (`OWN_SQUAD_BONUS`), so the player always hears what their own Heroes do first.
- *  - Critical: the Hero Select (also the act of a Hero there, which repeats within the cooldown), an Exhausted Hero, the end of the match: they are never dropped by a cooldown.
+ *  - Critical: the Hero Select (also the clips of the Heroes there, whose sounds come again within the cooldown), an Exhausted Hero, the end of the match: they are never dropped by a cooldown.
  *  - Important: a hit (the cry and the impact) and the shots: the player must hear that something was hit.
  *  - Normal: the lines of the cards, a Shield, an end of Hidden.
  *  - Minor: taking cover, Cover that crumbles.
@@ -18,7 +18,7 @@ export const Priority = { Background: 0, Ambient: 1, Minor: 2, Normal: 3, Import
  */
 export const CUE_PRIORITY: Record<CueOn, { voice: number; sfx: number }> = {
   heroSelected: { voice: Priority.Critical, sfx: Priority.Critical },
-  hangarAct: { voice: Priority.Critical, sfx: Priority.Important },
+  hangarClip: { voice: Priority.Critical, sfx: Priority.Important },
   matchEnd: { voice: Priority.Critical, sfx: Priority.Critical },
   exhausted: { voice: Priority.Critical, sfx: Priority.Critical },
   attackHit: { voice: Priority.Important, sfx: Priority.Important },
