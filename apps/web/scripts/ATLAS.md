@@ -13,7 +13,7 @@ Hangar atlases (`public/assets/hangar/atlas/<hero>.png|json`): one per Hero (`ma
 
 ## Atlases from the rig (Tilly)
 
-Tilly's atlas is not packed from strips: `node docs/design/heroes/tools/export-hangar.mjs controller` renders it with the rig of the match Hero, so her figure is the map's. Her clips (`docs/design/heroes/tools/hangar-controller.js`) keep the frame counts and times of the `CLIPS` and `BRIDGES` tables. A clip with effects has them as layers of their own: `tilly.<clip>` is the figure, `tilly.<clip>.fx_back` and `.fx_front` the effects (same frame count and timing); the scene plays whichever exist, back to front. The bridge frames are flat pictures. The packer skips the Heroes in `RIG_HEROES` (`scripts/atlas-packer.ts`); Max and Kit are still packed from the strips.
+Tilly's atlas is not packed from strips: `node docs/design/heroes/tools/export-hangar.mjs controller` renders it with the rig of the match Hero, so her figure is the map's. Her clips (`docs/design/heroes/tools/hangar-controller.js`) keep the frame counts and times of the `CLIPS` and `BRIDGES` tables. A clip with effects has them as layers of their own: `tilly.<clip>` is the figure, `tilly.<clip>.fx_back` and `.fx_front` the effects (same frame count and timing); the scene plays whichever exist, back to front. The bridge frames are flat pictures. Tilly's `act` (and with it `tilly.tolift`, `tilly.toidle` and `tilly.bridge.act`) is then replaced by the Pixellab clip with `python3 -I docs/design/heroes/tools/pixellab-act.py` (`docs/design/heroes/pixellab-act/README.md`); run the script after the export. The packer skips the Heroes in `RIG_HEROES` (`scripts/atlas-packer.ts`); Max and Kit are still packed from the strips.
 
 ## The packer
 
