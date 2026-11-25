@@ -435,10 +435,14 @@ function showDecor(parts: HangarParts, reduced: boolean, time: number): void {
   }
 }
 
-/** Tells `listener` of the sounds that begin between two moments of the scene's time: a spark at each fuse box as its cycle starts. */
+/** The deepest dip of the flickering light, at this share of its 5.3 s cycle (the keyframe at 72 %, where it falls to 0.4): the buzz of the tube sounds there. */
+const FLICKER_DIP = { seconds: 5.3, delay: 5.3 * 0.72 };
+
+/** Tells `listener` of the sounds that begin between two moments of the scene's time: a spark at each fuse box as its cycle starts, the buzz of the tube at its deepest dip. */
 function announceSounds(listener: ((sound: HangarSound) => void) | undefined, fromMs: number, toMs: number): void {
   if (!listener) return;
   for (const spark of SPARKS) for (let start = 0; start < cycleStarts(fromMs, toMs, spark.seconds, spark.delay); start++) listener("spark");
+  for (let dip = 0; dip < cycleStarts(fromMs, toMs, FLICKER_DIP.seconds, FLICKER_DIP.delay); dip++) listener("flicker");
 }
 
 export function createHangarScene(art: HangarArt = pixiHangarArt): HangarScene {

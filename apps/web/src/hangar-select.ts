@@ -86,14 +86,13 @@ export const TRANSITIONS: Record<HangarHero, [ClipName | undefined, ClipName | u
 };
 
 /**
- * How many loops of the idle pass before the action, and how often the action plays, per Hero: [fewest, most]. Tilly's act (her arm tears off) plays once,
- * and the idle between two of them is long and varies, so that it never comes twice in a row.
+ * How many loops of the idle pass before the action, per Hero: [fewest, most]. Every action plays once, and the idle between two of them is long and varies
+ * (differently for each Hero), so that an animation never comes twice in a row and the three do not fall in step.
  */
-export const LOOPS: Record<HangarHero, { idle: [number, number]; act: [number, number] }> = {
-  max: { idle: [2, 3], act: [1, 1] }, // his grunts last longer than one pass of the lift, so it is played once
-  tilly: { idle: [3, 8], act: [1, 1] },
-  kit: { idle: [2, 3], act: [1, 2] },
-};
+export const IDLE_LOOPS: Record<HangarHero, [number, number]> = { max: [3, 7], tilly: [4, 9], kit: [2, 5] };
+
+/** The clips of an action: while one Hero is in them, no other Hero starts its own (only the idle runs together). */
+const ACTION_MODES: readonly Mode[] = ["tolift", "act", "toidle"];
 
 /** How long each of the two frames of a bridge stands. */
 export const BRIDGE_FRAME_MS = 85;
@@ -141,15 +140,16 @@ export class HeroPlayer {
   private timer: unknown;
   private pending = false;
   private queuedTap = false;
-  private passTimers: unknown[] = [];
   private disposed = false;
 
   constructor(
     readonly hero: HangarHero,
     private readonly env: PlayerEnv,
     private readonly onChange: () => void,
-    /** Called as every clip begins, for the sounds that belong to it (and again when a clip that repeats begins another pass). */
+    /** Called as every clip begins, for the sounds that belong to it. */
     private readonly onClipStart?: (hero: HangarHero, clip: ClipName) => void,
+    /** Whether this Hero may begin its action now: no other Hero is in its action and none is chosen. When it may not, it idles on for some more loops. */
+    private readonly canAct: () => boolean = () => true,
   ) {
     this.startedAt = env.now();
   }
@@ -207,14 +207,6 @@ export class HeroPlayer {
   private cancelTimer(): void {
     if (this.timer !== undefined) this.env.cancel(this.timer);
     this.timer = undefined;
-    for (const pass of this.passTimers) this.env.cancel(pass);
-    this.passTimers = [];
-  }
-
-  /** Announces the passes of the act after the first: the clip repeats when it is to play more than once (`passes`, see `LOOPS`). */
-  private announceActRepeats(passMs: number, totalMs: number): void {
-    const passes = Math.max(1, Math.round(totalMs / passMs));
-    for (let pass = 1; pass < passes; pass++) this.passTimers.push(this.env.after(pass * passMs, () => this.onClipStart?.(this.hero, "act")));
   }
 
   /** The clip that follows `mode` and after how many ms: idle and act last a random time, the others as long as the clip. */
@@ -223,9 +215,9 @@ export class HeroPlayer {
     const ms = seconds * 1000;
     switch (mode) {
       case "idle":
-        return { next: lift ?? "act", after: ms * this.env.random(...LOOPS[this.hero].idle) };
+        return { next: lift ?? "act", after: ms * this.env.random(...IDLE_LOOPS[this.hero]) };
       case "act":
-        return { next: drop ?? "idle", after: ms * this.env.random(...LOOPS[this.hero].act) };
+        return { next: drop ?? "idle", after: ms };
       case "tolift":
         return { next: "act", after: ms };
       case "toidle":
@@ -242,6 +234,8 @@ export class HeroPlayer {
   private start(mode: ClipName, delay: number): void {
     this.cancelTimer();
     const go = () => {
+      // The action is at the end of a loop of the idle, so the idle begins again without a seam.
+      if (mode === (TRANSITIONS[this.hero][0] ?? "act") && !this.canAct()) return this.start("idle", 0);
       this.startedAt = this.env.now();
       this.set({ mode, bridgeEntry: 0, bridgeHalf: 0, bridgeFrom: "idle" });
       const clip = CLIPS[this.hero][mode];
@@ -249,7 +243,6 @@ export class HeroPlayer {
       const following = this.followUp(mode, clip.seconds);
       if (following) this.timer = this.env.after(following.after, () => this.start(following.next, 0));
       this.onClipStart?.(this.hero, mode);
-      if (mode === "act") this.announceActRepeats(clip.seconds * 1000, following?.after ?? 0);
       if (this.pending && (mode === "idle" || mode === "act")) {
         this.pending = false;
         this.env.after(0, () => this.tap());
@@ -336,7 +329,10 @@ export class HangarHeroes {
     onClipStart?: (hero: HangarHero, clip: ClipName) => void,
   ) {
     this.clock = new SteppedClock(random);
-    this.players = Object.fromEntries(HANGAR_HEROES.map((hero) => [hero, new HeroPlayer(hero, this.clock, onChange, onClipStart)])) as Record<HangarHero, HeroPlayer>;
+    // While a Hero is chosen the others only idle, and say and sound nothing; and no two Heroes are in their action together.
+    const heard = onClipStart && ((hero: HangarHero, clip: ClipName) => (this.selected === undefined || this.selected === hero) && onClipStart(hero, clip));
+    const canAct = (hero: HangarHero) => () => this.selected === undefined && HANGAR_HEROES.every((other) => other === hero || !ACTION_MODES.includes(this.players[other].state.mode));
+    this.players = Object.fromEntries(HANGAR_HEROES.map((hero) => [hero, new HeroPlayer(hero, this.clock, onChange, heard, canAct(hero))])) as Record<HangarHero, HeroPlayer>;
   }
 
   /** Every Hero idles, or `initial` stands in the ready pose. */
