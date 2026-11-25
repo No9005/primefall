@@ -1264,3 +1264,25 @@ What the raw take was like (measured): about 8 s, -34.6 LUFS. Its energy sat in 
 Made into the loop (`export_scout_drone_loop.py`): everything above 1.4 kHz and below 35 Hz cut, the level flattened, a 1.5 s cross-fade of the end into the start, -28 LUFS (like `loops/laser-hum.wav`), mono, 22.05 kHz, WAV. Measured: 6.5 s; level spread of 1.3 dB over 0.5 s windows; the step at the seam (0.0021) is smaller than a typical step (0.0027); start and end have the same colour (centroid 238 and 236 Hz); centroid 142 Hz against 2633 Hz of the old effect; no energy above 1.5 kHz worth the name (0.007 % against 65 %). **Not measurable by numbers:** how it sounds, and whether the flutter is audible. **Caution:** 70 % of the energy is below 120 Hz (the 63 Hz hum), which a phone speaker does not play; what a phone plays is the tone at 200 to 250 Hz.
 
 Verdict: **used** (the owner listened and chose it). It is `apps/web/public/assets/audio/map/loops/scout-drone.wav` and runs while the player's Squad has a Site Survey area out; the old whining one-shot `sfx.scout-drone` (call `scout_drone`, raw take `sfx/tilly/tilly_scout_drone.mp3`) is gone from Tilly's manifest.
+
+### Call 44: 2026-11-25 19:36:25 (API call by script `gen_tilly_act.py`, the sounds of Tilly's act in the hangar)
+
+The new `act` clip of Tilly in the Hero Select (`docs/design/heroes/pixellab-act/`) has no sound. The owner asked for the fiddling at the arm (welding noises), the arm tearing off, a panicked gasp "oh" and, on the owner's yes, the clack of putting the arm back; one take of the gasp is a breath only. One call per take, no retry, every answer with its headers in `sfx/tilly/act/`.
+
+| take | kind and settings | text | cost |
+|---|---|---|---|
+| `fiddle_a`, `fiddle_b` | effect, `eleven_text_to_sound_v2` (default, no loop), 2 s, `prompt_influence` 0.5 | A mechanic tinkering at a metal joint of a robotic arm: quick small metallic ratchet clicks and wrench turns, a short sizzling welding spark crackle, a pause, then a second sizzle. Close, dry, no music, no voice. | 22 each |
+| `tear_a`, `tear_b` | effect, 2.5 s, 0.5 | A heavy metal robotic arm segment snapping off with a loud crack: bolts shearing, a sharp electrical spark burst, then the torn metal piece clattering and bouncing on a concrete floor. Dry, close, no music, no voice. | 28 each |
+| `clack` | effect, 1.5 s, 0.5 | A metal robotic arm segment snapping onto its mount with a hard clack and a bright electrical spark zap, then a small settling rattle. Dry, close, no music, no voice. | 17 |
+| `gasp_breath` | effect, 1 s, 0.5 | A young woman sharply gasping in shock, a sudden panicked inhale. Close, dry, no words, no music. | 11 |
+| `gasp_a` | speech, Bella `hpp4J3VqNfWAUOO0d1Us`, `eleven_v4`, stability 0.5, similarity 0.75 | [startled, breathless] Oh! | 11 |
+| `gasp_b` | the same | [gasps, panicked] Oh! | 9 |
+| `gasp_c` | the same | [small, scared] Oh! | 8 |
+
+Total: 156 credits (the estimate was about 230: the effects cost about 11 credits per second, not 20). The two takes of an effect have the same text; they differ (checked by hash), so they are two different takes. The timing in the clip (33 frames in 3.3 s): fiddling 0.3 to 1.1 s with sparks at 0.5 and 0.9 s, the rip at 1.2 s, the claw on the floor at 1.4 to 1.6 s, the clack at 2.8 s.
+
+History ids of the speech takes: `gasp_a` `IXtw6U34VEnuSVP9zPRG`, `gasp_b` `nrdf6uT2jubcaDBtZYfz`, `gasp_c` `env2dGTg3Yd0Sd9nys8T`. Trace ids of the effects are in `sfx/tilly/act/<take>.hdr`.
+
+Cut and levelled (`sfx/tilly/act/cut/`, mono MP3: effects 96 kbit/s to -14 LUFS, speech and the breath 80 kbit/s to -16 LUFS; the silence at the head and tail cut at -50 and -55 dB; a gain set from the measured loudness and a peak limiter at -3.6 dBFS before the encode). Measured: `fiddle_a` 2.04 s, -21.0 LUFS (crackle is peaky, so the limiter stops it below the target), `fiddle_b` 1.80 s, -17.6; `tear_a` 2.51 s, -15.1, `tear_b` 2.51 s, -15.7 (true peak 0.0 dBFS); `clack` 1.52 s, -15.7 (true peak -0.1); `gasp_breath` 0.65 s, -16.4; `gasp_a` 1.28 s, -16.8, `gasp_b` 1.12 s, -16.9, `gasp_c` 1.20 s, -17.4. Not measurable by numbers: whether the gasp sounds panicked, whether `gasp_b` says the word "gasps" (a tag of a sound is risky, see above), and how the effects sit together in time.
+
+Verdict: waiting for the owner's ear (the owner picks a take of each).
