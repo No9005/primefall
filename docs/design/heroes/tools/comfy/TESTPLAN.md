@@ -40,6 +40,7 @@ Light to heavy. After each step: VRAM peak, time per clip, flicker (`eval/flicke
 
 ## State of the tooling
 
+- **Step 0 done (2026-11-25):** the five Wan files are complete and their SHA-256 sums match Hugging Face's; ComfyUI started with `start-comfyui.sh` (argv `--fp32-vae --disable-dynamic-vram`, 16.8 GB VRAM free at start); `video_wan2_2_5B_ti2v`, `…_fun_control` and `…_fun_inpaint` pass `local_check` (runnable, no custom nodes). Nothing has been generated with them yet.
 - Ready: ComfyUI start script, SDXL pipeline and runner, pose guides from the rig and from strips, the evaluation prototypes in `eval/`, ffmpeg and ffprobe, a way to view results (the agent reads images; clips go through contact sheets and the side-by-side player).
 - Missing: a video runner (a ComfyUI workflow for the Wan templates run from Node, with frames saved as a PNG sequence), the acceptance criteria, a measurement of VRAM peaks, the Wan template runs themselves (nothing has been generated with a video model yet).
 - Not verified: that the 5B fits 16 GB at the template's resolution and length on this card with ROCm; how pixel art survives the video VAE; how long a clip takes.
