@@ -14,6 +14,7 @@ What it does (see docs/design/heroes/pixellab-act/README.md for how the frames w
 """
 
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -36,6 +37,8 @@ PALETTE_MERGE_DISTANCE = 10
 HEAD = (50, 72, 68, 84)  # x0, y0, x1, y1 of the part of the head the frames are matched on
 HEAD_TOP_ROW = 72
 ARM_TOP, ARM_LEFT = 40, 40
+ARM_LAG = 3  # idle frames the arm is behind the head (follow-through)
+ARM_SWAY = (1.2, 0.8)  # px the arm sways on its own over one idle loop, in x and in y
 ARM_BASE_ROWS = (60, 76)  # the arm's rows, from where the arched arm is taken down to where its stem meets the hair
 
 
@@ -117,11 +120,22 @@ def head_offset(idle: Image.Image, act: Image.Image) -> tuple:
     return best[1], best[2]
 
 
-def arch_arm(idle: Image.Image, act: Image.Image) -> Image.Image:
-    """The idle frame with its straight third arm replaced by the arched one of the first act frame, moved with the head."""
+def arm_offsets(heads: list) -> list:
+    """Where the arm of each idle frame sits: where the head was a few frames ago, plus a slow sway of its own, so that it trails the body and settles late."""
+    count = len(heads)
+    offsets = []
+    for index in range(count):
+        behind = heads[(index - ARM_LAG) % count]
+        phase = 2 * math.pi * (index - 2 * ARM_LAG) / count
+        offsets.append((behind[0] + round(ARM_SWAY[0] * math.sin(phase)), behind[1] + round(ARM_SWAY[1] * math.sin(phase - 1.2))))
+    return offsets
+
+
+def arch_arm(idle: Image.Image, act: Image.Image, offset: tuple) -> Image.Image:
+    """The idle frame with its straight third arm replaced by the arched one of the first act frame, put at `offset`."""
     result = idle.copy()
     px = result.load()
-    dx, dy = head_offset(idle, act)
+    dx, dy = offset
     for y in range(ARM_TOP, ARM_BASE_ROWS[1] + 1):
         limit = 99 if y < HEAD_TOP_ROW else (56 if y <= 74 else 49)  # the pole stands behind the hair and the goggles
         for x in range(ARM_LEFT, limit + 1):
@@ -165,11 +179,14 @@ def main() -> None:
     # The idle gets the arched third arm of the act (the rig's idle has it as a straight pole). Every animation that uses an idle frame
     # (tolift, toidle, the end of desel) gets the arched version of it too.
     arched = {}
-    for name in dict.fromkeys(animations["tilly.idle"]):
+    idle_names = list(dict.fromkeys(animations["tilly.idle"]))
+    pictures = [whole_frame(sheet, data, name) for name in idle_names]
+    offsets = arm_offsets([head_offset(picture, new_images[act[0]]) for picture in pictures])
+    for index, name in enumerate(idle_names):
         arched_name = name if name.startswith("tilly.arch.") else f"tilly.arch.{name.removeprefix('tilly.')}"
         arched[name] = arched_name
-        picture = whole_frame(sheet, data, name)
-        new_images[arched_name] = picture if name == arched_name else arch_arm(picture, new_images[act[0]])  # a second run leaves the arched frames as they are
+        picture = pictures[index]
+        new_images[arched_name] = picture if name == arched_name else arch_arm(picture, new_images[act[0]], offsets[index])  # a second run leaves the arched frames as they are
     for key, names in animations.items():
         animations[key] = [arched.get(name, name) for name in names]
     ready = animations["tilly.select"][0]  # the first frame of the ready pose: where the bridge leads to
