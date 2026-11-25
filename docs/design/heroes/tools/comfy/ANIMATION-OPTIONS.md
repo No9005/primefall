@@ -38,3 +38,7 @@ Not ComfyUI, for comparison: lengthen the arm parts in the rig (`SEG` and `ARM_B
 - `render-pose-guides.mjs` renders guides from rig clips (`hangar:<clip>:<frame>`, `rig:<clip>:<ms>`) and, with `STRIP_FILE=<png>`, from a strip (`strip:<label>:<frame>`). It warns when a pose touches the edge of the page.
 - ControlNet type `lineart` or `canny` for option A: set node 13's `type` to `canny/lineart/anime_lineart/mlsd` (in `tilly-restyle.json`), and feed node 14 an edge image from the `Canny` node instead of the guide itself.
 - Open: the owner's answers to two questions: keep Look D or let the look change completely; use the strip as a pose guide only or carry over its look.
+
+## Decision after the options (2026-11-25)
+
+The owner stays local and on what fits the card: option C is narrowed to **Wan 2.2 TI2V-5B** (with its Fun Control and Fun Inpaint variants), the 14B models and Wan Animate were dropped, and the cloud-only sprite sheet workflows are not used. The steps are in `TESTPLAN.md`.

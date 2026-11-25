@@ -26,6 +26,10 @@ Already in `~/comfy-models/` (used by the first workflow too): `checkpoints/sd_x
 
 The file names matter: the workflow names them. Download with the `download_model` tool of the ComfyUI MCP, or from a terminal in the folder, for example `curl -L -C - -o controlnet-union-sdxl-1.0-promax.safetensors <url>`; `-C -` continues a partial file after an interruption. A file is complete when its size equals the one above (the MCP's `download` tool reports `completed`).
 
+### Wan 2.2 5B (video)
+
+For the video tests (`TESTPLAN.md`): `text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors`, `vae/wan2.2_vae.safetensors`, and the diffusion models `wan2.2_ti2v_5B_fp16`, `wan2.2_fun_control_5B_bf16` and `wan2.2_fun_inpaint_5B_bf16` (each about 10 GB) from `Comfy-Org/Wan_2.2_ComfyUI_Repackaged` on Hugging Face (`split_files/…`). Core ComfyUI nodes only. The 14B models and Wan Animate are not used (they do not fit 16 GB).
+
 Custom node pack: `ComfyUI_IPAdapter_plus` (`git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus` into `ComfyUI/custom_nodes/`; ComfyUI-Manager is not installed, so `install_node` does not work). Restart ComfyUI afterwards.
 
 ## Run
