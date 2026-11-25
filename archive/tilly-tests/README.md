@@ -171,3 +171,9 @@ Result:
 - Cost: sampling about 2 s a step; the tiled decode with small tiles is slow (several minutes) and takes a lot of system RAM.
 
 Lesson: Fun Control gives the amount of motion and keeps her; the stretch, the squash and the follow-through come from the control video, so the control video is where the animation is designed.
+
+### `step11-wan-fun-control/` second run (T2b): rigid robotic arm in the control video
+
+The owner saw waves on the robotic hand. Cause: the breathing script moved the rows of the picture by different amounts along the arm that hangs beside the torso, which sheared the forearm; Wan copied the shear. Fix in `breathe.mjs`: the robotic arm and hand (columns left of 28 to 40, rows 150 to 245 of `tilly-clean.png`) are moved as one rigid piece with the shoulder and are not scaled by the chest widening. `step10-breathing-idle/` was rendered again with this. New control video `control-video-breathing-rigid-arm.mp4`, same Wan settings and seed as T2, result `t2b-fun-control-rigid-arm-seed1.mp4`, `contact-sheet-rigid-arm.png`.
+
+Result: the forearm, the segments and the fingers keep their shape in all frames, no waves; the hand moves a few pixels with the shoulder. Still soft (the video VAE), with some colour fringing on the hand in single frames, and not yet pixel-cleaned. The long arm on the back has the same row-based shear in the control video (its lower part beside the torso); it was not asked about yet and not changed.

@@ -18,6 +18,7 @@ const P = { neck: 112, shoulder: 122, hip: 200, chestTop: 118, chestBottom: 190,
   squash: 0.6,      // the exhale sinks to this fraction of the rise below rest
   chestX: 6,        // px the chest widens at each side at the full inhale
   lag: 4.0, damping: 0.25, followThrough: 6.0, // head, hair and arm: spring lag in frames, damping ratio, extra px of overshoot
+  arm: { x0: 28, x1: 40, y0: 150, y1: 245 }, // columns and rows of the robotic arm and hand (rigid)
   padTop: 22, padSide: 6 };
 
 const browser = await chromium.launch();
@@ -49,12 +50,16 @@ const out = await page.evaluate(async ({ url, FRAMES, P }) => {
       // upward shift of this output row: the torso stretches with the breath, head and arm add the spring's overshoot
       const body = P.rise * smooth(P.hip, P.shoulder, yy) * b;
       const head = P.followThrough * smooth(P.shoulder, P.neck, yy) * (fo - b);
-      const up = body + head, sy = Math.round(yy + up);
+      const up = body + head;
       const chest = P.chestX * b * Math.sin(Math.PI * smooth(P.chestTop - 10, P.chestTop + 10, yy) * (1 - smooth(P.chestBottom - 10, P.chestBottom + 10, yy)));
       if (yy === P.shoulder) lift = up;
-      if (sy < 0 || sy >= H) continue;
       for (let x = 0; x < OW; x++) {
-        const xx = x - P.padSide, cx = P.centreX, scale = 1 / (1 + chest / 40), sx = Math.round(cx + (xx - cx) * scale);
+        // The robotic arm and hand hang at the left: moved as one rigid piece with the shoulder (no shear), blended into the body over a few columns.
+        const xx = x - P.padSide, cx = P.centreX, bodyPart = smooth(P.arm.x0, P.arm.x1, xx);
+        const armW = (1 - bodyPart) * smooth(P.arm.y0 - 6, P.arm.y0 + 6, yy) * (1 - smooth(P.arm.y1 - 6, P.arm.y1 + 6, yy));
+        const upX = up * (1 - armW) + P.rise * smooth(P.hip, P.shoulder, P.arm.y0 + 10) * b * armW, sy = Math.round(yy + upX);
+        if (sy < 0 || sy >= H) continue;
+        const scale = 1 / (1 + chest * bodyPart / 40), sx = Math.round(cx + (xx - cx) * scale);
         if (sx < 0 || sx >= W) continue;
         const i = (sy * W + sx) * 4, j = (y * OW + x) * 4;
         od.data[j] = sd[i]; od.data[j + 1] = sd[i + 1]; od.data[j + 2] = sd[i + 2]; od.data[j + 3] = sd[i + 3];
