@@ -281,6 +281,8 @@ def main() -> None:
     animations["tilly.act"] = act
     idle_first = animations["tilly.idle"][0]
     ready_picture = whole_frame(sheet, data, ready)
+    animations["tilly.tolift"] = [idle_first, act[0]]  # the two poses are nearly the same, so there is nothing to mix
+    animations["tilly.toidle"] = [act[-1], idle_first]
 
     bridge = []
     for index, moment in enumerate(act):  # the bridge: the pose of the act, then half way into the ready pose, then the ready pose begins
