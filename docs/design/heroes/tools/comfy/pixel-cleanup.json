@@ -1,0 +1,5 @@
+{
+  "10": { "class_type": "LoadImage", "inputs": { "image": "" }, "_meta": { "title": "Picture with a flat page (flattened by cutout.mjs)" } },
+  "11": { "class_type": "PixelArtDetectorToImage", "inputs": { "images": ["10", 0], "reduce_palette": true, "reduce_palette_max_colors": 24 }, "_meta": { "title": "Detect the pixel grid, downscale, reduce the palette" } },
+  "12": { "class_type": "SaveImage", "inputs": { "images": ["11", 0], "filename_prefix": "tilly-pixel/cleanup" }, "_meta": { "title": "Save" } }
+}

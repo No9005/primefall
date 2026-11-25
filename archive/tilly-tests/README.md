@@ -117,6 +117,12 @@ The owner's notes on `step6`: take the weapons away and keep the robotic hand an
 
 Lesson: asking the model to redraw both eyes "cleanly and matching" fixed the eyes in one seed of three; try a few seeds and look at the faces enlarged.
 
+## `step8-pixel-cleanup/` (the reference as real pixel art)
+
+`tilly-reference-v2.png` (1056 x 1376, smooth, ~millions of colours) went through `docs/design/heroes/tools/comfy/pixel-cleanup.mjs`: page flattened to one colour and the floor shadow painted out around the boots (`flattened-input.png`; a first try with one big rectangle cut the boots off, the shadow is cleared only below and beside them), grid detection, downscale and palette reduction to at most 24 colours with ComfyUI-PixelArt-Detector (`detector-output.png`, 264 x 344 px), page keyed to alpha and cropped (**`tilly-clean.png`, 209 x 315 px, transparent**; `tilly-clean-x6-preview.png` is the same at 6x on a flat colour). Command: `node pixel-cleanup.mjs --in <v2> --out <png> --colors 24 --tol 36 --clear "0,1347,1056,29;0,1300,243,47;357,1300,68,47;532,1300,60,47"`. Looked at: the goggles, both eyes, the robotic arm and hand, the long scrap arm with its joints, the torn trousers and the boots are all still readable; the edge is clean on the page colour. One pass, no seeds involved (deterministic). A few fringe pixels of the page colour at the robotic hand (index fingertip, outer side of the little finger) were removed by hand with `eval/cutout.mjs erase` (rectangles `12,230,2,1` `6,223,3,5` `6,220,2,1` `8,216,2,3` `24,226,1,1` `9,227,1,1` `6,221,1,2`); an automatic edge trim (`cutout.mjs trim`) also ate real grey pixels of the hand and was not used.
+
+Lesson: flatten the page first and cut out after quantising; the figure is about 4x smaller than the generated picture, so thin details (the finger lines, the arm's rivets) are about the limit.
+
 ## `original-hangar-strips/`
 
 Tilly's nine original hangar strips as they were drawn on the design canvas (idle, tolift, act, toidle, select, selecti, hold, desel, bridge-act; frames of 136 x 116 px; counts and times in `apps/web/src/hangar-select.ts`). They were removed from `archive/hangar/strips/` when her atlas moved to the rig export (Git: commit `3f0c734`). Kept as the reference for her original choreography, in particular the `act` (see `ANIMATION-OPTIONS.md`).
