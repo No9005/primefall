@@ -1,0 +1,15 @@
+{
+  "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "sd_xl_base_1.0.safetensors" }, "_meta": { "title": "SDXL base (text encoder and VAE)" } },
+  "2": { "class_type": "UNETLoader", "inputs": { "unet_name": "sd_xl_inpainting_0.1_unet_fp16.safetensors", "weight_dtype": "default" }, "_meta": { "title": "SDXL inpainting UNet" } },
+  "3": { "class_type": "LoraLoader", "inputs": { "model": ["2", 0], "clip": ["1", 1], "lora_name": "pixel-art-xl.safetensors", "strength_model": 0.6, "strength_clip": 0.8 }, "_meta": { "title": "Pixel art LoRA" } },
+  "8": { "class_type": "CLIPTextEncode", "inputs": { "clip": ["3", 1], "text": "" }, "_meta": { "title": "Prompt: what goes into the mask" } },
+  "9": { "class_type": "CLIPTextEncode", "inputs": { "clip": ["3", 1], "text": "" }, "_meta": { "title": "Negative prompt" } },
+  "10": { "class_type": "LoadImage", "inputs": { "image": "" }, "_meta": { "title": "Picture to edit" } },
+  "11": { "class_type": "LoadImageMask", "inputs": { "image": "", "channel": "red" }, "_meta": { "title": "Mask (white = repaint)" } },
+  "12": { "class_type": "GrowMask", "inputs": { "mask": ["11", 0], "expand": 6, "tapered_corners": true }, "_meta": { "title": "Grow the mask" } },
+  "18": { "class_type": "InpaintModelConditioning", "inputs": { "positive": ["8", 0], "negative": ["9", 0], "vae": ["1", 2], "pixels": ["10", 0], "mask": ["12", 0], "noise_mask": true }, "_meta": { "title": "Inpaint conditioning" } },
+  "19": { "class_type": "KSampler", "inputs": { "model": ["3", 0], "positive": ["18", 0], "negative": ["18", 1], "latent_image": ["18", 2], "seed": 1, "control_after_generate": "fixed", "steps": 30, "cfg": 6.5, "sampler_name": "dpmpp_2m", "scheduler": "karras", "denoise": 1.0 }, "_meta": { "title": "Sampler (denoise: how much of the mask may change)" } },
+  "20": { "class_type": "VAEDecode", "inputs": { "samples": ["19", 0], "vae": ["1", 2] }, "_meta": { "title": "Decode" } },
+  "21": { "class_type": "ImageCompositeMasked", "inputs": { "destination": ["10", 0], "source": ["20", 0], "x": 0, "y": 0, "resize_source": false, "mask": ["12", 0] }, "_meta": { "title": "Paste the repaint into the picture (the rest stays as it was)" } },
+  "22": { "class_type": "SaveImage", "inputs": { "images": ["21", 0], "filename_prefix": "tilly-edit/edit" }, "_meta": { "title": "Save" } }
+}

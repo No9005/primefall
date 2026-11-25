@@ -16,7 +16,7 @@ const only = flag('--only', '')?.split(',').filter(Boolean);
 // Round 1: plain wording. Result: a detailed pixel-art style, but no third arm, a cannon instead of the robot arm in two pictures, mostly teal clothes, the magenta page ignored (grey).
 const DESCRIPTION_1 = [
   'detailed pixel art character sprite, 16-bit game art, full body, whole figure visible from head to boots, centered, standing relaxed, facing slightly right',
-  'young woman engineer, three heads tall, chunky proportions, big head, broad shoulders, short legs',
+  'young woman engineer',
   'brown hair tied back in a ponytail that hangs behind her, teal glowing goggles pushed up on her forehead, tan skin, small red mouth',
   'frayed torn orange sleeveless top, light grey metal chest plate with a glowing teal reactor core in the middle, angular grey shoulder plates',
   'her right arm is a grey robotic arm with a blocky claw hand and teal accents, her left arm is bare skin with a torn orange sleeve and a grey cuff with a teal emitter at the wrist',
@@ -29,7 +29,7 @@ const NEGATIVE_1 = 'blurry, photo, realistic, 3d render, extra limbs, extra arms
 // Round 2: key parts weighted (word:1.3) and the teal cut down. Result: worse than round 1 (technical armour, cropped bodies, magenta in the clothes).
 const DESCRIPTION_2 = [
   'single character, one figure only, front view, detailed pixel art character sprite, 16-bit game art, full body, whole figure visible from head to boots, centered',
-  'young woman engineer, three heads tall, chunky proportions, big head, broad shoulders, short legs, standing relaxed',
+  'young woman engineer, standing relaxed',
   'brown hair tied back in a ponytail, (goggles pushed up on her forehead with glowing teal lenses:1.2), tan skin, small red mouth',
   '(frayed torn orange sleeveless top:1.3), (light grey metal chest plate with one glowing teal reactor core in the middle:1.2), angular grey shoulder plates',
   '(her right arm is a grey robotic arm with a blocky claw hand:1.3), her left arm is bare skin with a torn orange sleeve and a small grey cuff',

@@ -6,7 +6,7 @@ First manual round, done together with the owner. Goal: find out whether a local
 
 - **Local and free only.** No Comfy Cloud, no partner nodes (Nano Banana, Gemini, Kling and so on). The hub workflows "Single Image to Animated Sprite Sheet" and "Sprite Sheet Generator" need them and are dropped.
 - **Only what fits 16 GB.** The model is **Wan 2.2 TI2V-5B**. The 14B models (`wan2.2_i2v_*_14B_fp8_scaled`, 14.3 GB each; Wan Animate fp8, 18.4 GB) were dropped with their LoRAs. 14B only comes back as a GGUF if the 5B turns out to be too weak, and that needs the ComfyUI-GGUF node pack.
-- **No existing spritesheets are used for these tests.** The old hangar atlases and strips are not the base. What stays is Tilly's description (see `ANIMATION-OPTIONS.md` and the description agreed in the chat: three heads tall, brown ponytail, teal goggles on her forehead, frayed orange top, grey chest plate with a glowing teal reactor core, grey robotic right arm, bare left arm with an emitter cuff, a long mechanical third arm with a claw).
+- **No existing spritesheets are used for these tests.** The old hangar atlases and strips are not the base. What stays is Tilly's description (see `ANIMATION-OPTIONS.md` and the description agreed in the chat: brown ponytail, teal goggles on her forehead, frayed orange top, grey chest plate with a glowing teal reactor core, grey robotic right arm, bare left arm with an emitter cuff, a long mechanical third arm with a claw).
 - Acceptance criteria are not fixed yet. They are worked out together during step 8.
 
 ## What is needed
