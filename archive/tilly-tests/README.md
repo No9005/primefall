@@ -159,3 +159,15 @@ Same workflow and start frame, seed 2, cfg 6.5, prompt: pixel art game sprite an
 Result: **there is motion now, but the character is gone.** The jacket's vertical centre moves 150 px of 960 over the clip (T1: 3 px), but the figure is redrawn every few frames: the long arm and the robotic hand vanish, she turns into a different girl, "breathes out" a white cloud over her chest, her face and jacket change, the picture is soft and noisy. VRAM: the plain tiled decode (256) ran out of memory again; with tile 192, temporal 16 it finished, slowly (several minutes for the decode, about 17 GB of system RAM in use).
 
 Lesson: with the text prompt alone the model either keeps her and does not move (T1) or moves and loses her (T1b); the strength of the motion and the identity cannot both be set by the words. What the community does for this is to give the motion as a guide (a control video, Fun Control) and not as words, and to keep the start frame strong.
+
+## `step11-wan-fun-control/` (the breathing as a control video: Wan 2.2 Fun Control 5B)
+
+Test T2 of `TESTPLAN.md`, after T1 and T1b showed that words alone cannot set both the motion and the identity (step 9). Workflow `docs/design/heroes/tools/comfy/tilly-wan-fun-control.json` (template `video_wan2_2_5B_fun_control`, its Canny node switched on, decode as `VAEDecodeTiled` 192 / 32 / 16 / 4): reference image `tilly-idle-start.png` (the cleaned Tilly at 3x on a 640 x 960 page), **control video `control-video-breathing.mp4`** (the 40 frames of `step10-breathing-idle` resampled to 49 frames at 24 fps, same 3x layout; the model sees its Canny edges), 640 x 960, 49 frames, 20 steps, cfg 5, seed 1, prompt: pixel art game sprite of a young woman with goggles on her forehead, an orange jacket, teal trousers, a robotic right arm and a long mechanical arm over her head, standing and breathing, flat grey background, hard pixel edges, same character in every frame. Files: `t2-fun-control-seed1.mp4`, `contact-sheet.png` (every 6th frame).
+
+Result:
+- **Identity kept.** Jacket, trousers, torn knees, goggles, robotic arm and hand, the long arm and the ponytail stay the same in all frames (T1b lost them).
+- **The motion follows the guide.** The vertical centre of the jacket moves 34 px over the clip in the video, against 32 px in the control video; the 49 samples run along the same curve (467 / 452 / 435 / 445 / 460 / 467 in the control video, 462 / 455 / 430 / 444 / 459 / 464 in the result), and the last frame is 1.3 px from the first (a nearly closed loop).
+- **Not yet pixel art.** The picture is softer than `tilly-clean.png` (mp4 and the video VAE), the face is slightly redrawn, and the page colour drifts from frame to frame (some frames are lighter), so every frame still needs the pixel clean-up with the palette of `tilly-clean.png`.
+- Cost: sampling about 2 s a step; the tiled decode with small tiles is slow (several minutes) and takes a lot of system RAM.
+
+Lesson: Fun Control gives the amount of motion and keeps her; the stretch, the squash and the follow-through come from the control video, so the control video is where the animation is designed.
