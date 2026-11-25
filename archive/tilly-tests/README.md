@@ -78,6 +78,19 @@ The owner's notes on `step4-klein-variants/`: the gun goes into her **left** han
 
 In all three the gun is in her left hand, but it is much **smaller** than the original's (a pistol held low by the hip), and the robotic right arm hangs relaxed with an open hand.
 
+## `step6-klein-scrap-arm-and-gun/` (a longer jointed scrap arm, the gun in the bare hand)
+
+The owner's notes on `step5-klein-robot-third-arm/`: W2 (the scrap robot) is the better third arm, but it shows no joints to move it with, it should be longer (it extends Tilly's reach), and in the wait position it should go over her head. `00-base-padded.png` is the base picture with 320 px of extra room above (made with `eval/pad.mjs`; the edit scales to 1.4 megapixels: slot `75/80.megapixels`), otherwise an arm that arches over her head would be cut off. Results are 1056 x 1376.
+
+| File | What |
+|---|---|
+| `x1`, `x2`, `x3-jointed-long_00001_.png` (seeds 1, 2, 3) | the same prompt: a long scrap robot arm out of the upper back with a ball joint on a mounting plate at the shoulder, an elbow with an exposed servo and a hydraulic piston, a wrist joint and a two-pronged pincer, rusty mismatched parts with welds, bolts and wiring, longer than her torso, arching over her head. **x2 is the best** (longest, clear joints, a pincer at the end); x1 ends in a rusty disc with claws, x3 in a robotic hand with fingers. In all three the gun was lost from her left hand (x1 and x3: in the robotic hand, x2: gone) |
+| `g1`, `g2-gun-left_00001_.png` | an edit of x2 that puts a rifle "in her left hand": the model reads "left" as the robotic hand (g1) or puts a gun in both hands (g2) |
+| **`h1-gun-right-of-image_00001_.png`** | the same edit with the **side of the picture** instead of "her left": the robotic hand on the left of the picture empty and open, one gun in the bare hand on the right of the picture. The long scrap arm stays untouched. **The current best picture** |
+| `h2-gun-right-of-image_00001_.png` | seed 2 of that prompt: again a gun in both hands |
+
+Lessons: name the side by the picture, not by her left or right; a follow-up edit that says "change nothing else" keeps the rest (the arm stayed identical); leave room around the figure when something has to reach beyond the old frame.
+
 ## `original-hangar-strips/`
 
 Tilly's nine original hangar strips as they were drawn on the design canvas (idle, tolift, act, toidle, select, selecti, hold, desel, bridge-act; frames of 136 x 116 px; counts and times in `apps/web/src/hangar-select.ts`). They were removed from `archive/hangar/strips/` when her atlas moved to the rig export (Git: commit `3f0c734`). Kept as the reference for her original choreography, in particular the `act` (see `ANIMATION-OPTIONS.md`).
