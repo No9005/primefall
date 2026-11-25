@@ -174,10 +174,10 @@
         "Node name for S&R": "VAEDecodeTiled"
       },
       "widgets_values": [
-        256,
-        64,
-        64,
-        8
+        192,
+        32,
+        16,
+        4
       ]
     },
     {
@@ -253,7 +253,7 @@
         "Node name for S&R": "SaveVideo"
       },
       "widgets_values": [
-        "tilly-wan/t1-idle",
+        "tilly-wan/t1b-breath",
         "auto",
         "auto"
       ]
@@ -383,7 +383,7 @@
         "Node name for S&R": "CLIPTextEncode"
       },
       "widgets_values": [
-        "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+        "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走，静止，没有动作，模糊，平滑，抗锯齿"
       ],
       "color": "#322",
       "bgcolor": "#533"
@@ -426,7 +426,7 @@
         "Node name for S&R": "CLIPTextEncode"
       },
       "widgets_values": [
-        "pixel art game character idle loop, a woman with brown ponytail, goggles on her forehead, orange jacket; she breathes in and out with an exaggerated chest and shoulder movement; the long mechanical arm above her head sways slowly to the left, back to the centre, then to the right, with a slight overshoot; static camera, flat grey background, nothing else moves"
+        "pixel art game sprite animation of a young woman standing and breathing deeply and heavily. Her chest and shoulders rise high and clearly as she breathes in, her jacket stretches, then her shoulders drop and her body sinks down as she breathes out. Her head and ponytail bob up and down with every breath. Strong, exaggerated, clearly visible breathing motion, anime style, flat grey background, static camera, hard pixel edges."
       ],
       "color": "#232",
       "bgcolor": "#353"
@@ -483,10 +483,10 @@
         "Node name for S&R": "KSampler"
       },
       "widgets_values": [
-        1,
+        2,
         "fixed",
         20,
-        5,
+        6.5,
         "uni_pc",
         "simple",
         1
