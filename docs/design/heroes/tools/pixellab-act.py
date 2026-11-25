@@ -40,6 +40,7 @@ HEAD_TOP_ROW = 72
 ARM_TOP, ARM_LEFT = 40, 40
 ARM_LAG = 3  # idle frames the arm is behind the head (follow-through)
 ARM_SWAY = (1.2, 0.8)  # px the arm sways on its own over one idle loop, in x and in y
+ODD_HAND = (31, (60, 98, 70, 109), {(201, 210, 217): (143, 154, 163), (143, 154, 163): (75, 84, 92)})  # act frame, hangar-frame box and colour map: Pixellab drew the hand of the right arm in light greys there, in the frames around it it is dark
 ARM_PIVOT = (52.5, 65.5)  # the elbow of the arched arm (the teal joint in the corner of the arch); the forearm and the claw turn about it
 ARM_SPLIT_X = 53  # columns up to this are the stem and the elbow, the rest is the forearm
 DESEL_SWING = (0.85, 0.65, 0.45, 0.28, 0.15, 0.05, -0.08, -0.10, -0.05, 0, 0, 0, 0)  # how far the forearm is still raised in desel frames 1 to 13 (of the angle of the ready pose); the dip below 0 is a small follow-through
@@ -244,6 +245,12 @@ def main() -> None:
         new_images[f"tilly.pxl.{index:03d}"] = whole
 
     act = list(new_images)
+    odd_frame, box, recolour = ODD_HAND
+    hand = new_images[act[odd_frame]].load()
+    for y in range(box[1], box[3]):
+        for x in range(box[0], box[2]):
+            if hand[x, y][3] and hand[x, y][:3] in recolour:
+                hand[x, y] = (*recolour[hand[x, y][:3]], 255)
     # The idle gets the arched third arm of the act (the rig's idle has it as a straight pole). Every animation that uses an idle frame
     # (tolift, toidle, the end of desel) gets the arched version of it too.
     arched = {}
