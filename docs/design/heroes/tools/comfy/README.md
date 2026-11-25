@@ -9,6 +9,8 @@ New poses of Tilly for the intro videos and as a base for new rig animations. Th
 | `tilly-pose-controlnet.json` | The workflow: SDXL inpainting UNet + pixel-art LoRA, IP-Adapter (her look from `tilly-source.png`), ControlNet union with the outline (Canny) of the guide as the pose, composited into the page (`tilly-blank.png`, or a scene for an intro frame) |
 | `tilly-pose-inpaint.json` | The first workflow: plain SDXL base inpainting with a mask. It cannot place a limb (it erases it or paints a new figure); kept as the simple baseline |
 
+Evaluation scripts (prototypes from the first manual round, acceptance criteria still to be worked out) are in `eval/`: `flicker.mjs` (frame-to-frame change against the guides, contact sheet), `compare.mjs` (original strip against an atlas clip), `zoom.mjs`, `player.mjs` (side-by-side HTML player), `strip-sheet.mjs`, `look-sheet.mjs`. Each has its usage in its first lines. They need ffmpeg only for video work: ffmpeg and ffprobe are installed as static builds in `~/.local/bin` (no sudo).
+
 Where the work stopped and which ways are left for the hangar animations: `ANIMATION-OPTIONS.md`.
 
 ## Models to download
