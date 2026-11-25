@@ -1,0 +1,10 @@
+{
+  "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "sd_xl_base_1.0.safetensors" }, "_meta": { "title": "SDXL base" } },
+  "3": { "class_type": "LoraLoader", "inputs": { "model": ["1", 0], "clip": ["1", 1], "lora_name": "pixel-art-xl.safetensors", "strength_model": 0.9, "strength_clip": 0.9 }, "_meta": { "title": "Pixel art LoRA" } },
+  "8": { "class_type": "CLIPTextEncode", "inputs": { "clip": ["3", 1], "text": "" }, "_meta": { "title": "Prompt: Tilly's look (set by tilly-looks.mjs)" } },
+  "9": { "class_type": "CLIPTextEncode", "inputs": { "clip": ["3", 1], "text": "" }, "_meta": { "title": "Negative prompt" } },
+  "17": { "class_type": "EmptyLatentImage", "inputs": { "width": 1024, "height": 1024, "batch_size": 1 }, "_meta": { "title": "Empty page" } },
+  "19": { "class_type": "KSampler", "inputs": { "model": ["3", 0], "positive": ["8", 0], "negative": ["9", 0], "latent_image": ["17", 0], "seed": 1, "control_after_generate": "fixed", "steps": 30, "cfg": 6.5, "sampler_name": "dpmpp_2m", "scheduler": "karras", "denoise": 1.0 }, "_meta": { "title": "Sampler" } },
+  "20": { "class_type": "VAEDecode", "inputs": { "samples": ["19", 0], "vae": ["1", 2] }, "_meta": { "title": "Decode" } },
+  "22": { "class_type": "SaveImage", "inputs": { "images": ["20", 0], "filename_prefix": "tilly-look/big" }, "_meta": { "title": "Save (1024 px)" } }
+}
