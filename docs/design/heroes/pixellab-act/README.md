@@ -18,7 +18,8 @@ Run the script **after** `export-hangar.mjs controller` if that was run: the rig
    - B (pick up, put back): first frame the last frame of A, last frame the reference (so that the clip ends in the idle pose). Action: she freezes one beat, crouches and snatches the torn segment, looks at it, swings it up behind her back, jams it onto the stump; a clack and a spark; she breathes out and stands calm.
    - Both prompts name the arm: "Her right arm (on the left of the picture) is a grey metal robot arm: a square shoulder block and a gripper hand with a teal light. It stays metal in every frame. When she shrugs, the square shoulder block jerks up with her shoulders and the gripper swings loosely, a frame later. Her other arm is human."
 3. **Arm of the first pass.** A first pass without that sentence gave the robot arm as a human forearm in some frames. The robot-arm strip of the second pass (x 0 to 28, y 32 to 54 of every frame, without its pale yellow flash pixels) was copied into the frames of the first pass, then the remaining skin-coloured pixels of that arm (x under 30, y 31 to 57) were set to the metal greys of the hand.
-4. **Palette.** The script snaps every pixel to the 23 colours of the rig's Tilly (the colours of the atlas used at least 300 times, close shades merged) and makes the alpha binary.
+4. **Idle arm.** The rig's idle draws the third arm as a straight pole; the script replaces it with the arched arm of the first act frame (moved with the head of each idle frame), so the idle and the act show the same arm. Every animation that uses an idle frame (`tolift`, `toidle`, the end of `desel`) gets the arched frame.
+5. **Palette.** The script snaps every pixel to the 23 colours of the rig's Tilly (the colours of the atlas used at least 300 times, close shades merged) and makes the alpha binary.
 
 Credits: a 64 x 64 px call costs one generation of the trial plan.
 

@@ -32,6 +32,11 @@ PAGE_WIDTH = 1024
 PADDING = 1
 PALETTE_MIN_COUNT = 300
 PALETTE_MERGE_DISTANCE = 10
+# Rows and columns of the hangar frame (136 x 116) where Tilly's head and third arm are (checked against the rig's idle and the act).
+HEAD = (50, 72, 68, 84)  # x0, y0, x1, y1 of the part of the head the frames are matched on
+HEAD_TOP_ROW = 72
+ARM_TOP, ARM_LEFT = 40, 40
+ARM_BASE_ROWS = (60, 76)  # the arm's rows, from where the arched arm is taken down to where its stem meets the hair
 
 
 def distance(a, b):
@@ -75,6 +80,64 @@ def snap(image: Image.Image, palette: list) -> Image.Image:
     return image
 
 
+def whole_frame(sheet: Image.Image, data: dict, name: str) -> Image.Image:
+    """The frame as the whole 136 x 116 picture (the atlas stores it trimmed)."""
+    entry = data["frames"][name]
+    whole = Image.new("RGBA", (FRAME_W, FRAME_H), (0, 0, 0, 0))
+    whole.paste(untrimmed(sheet, entry), (entry["spriteSourceSize"]["x"], entry["spriteSourceSize"]["y"]))
+    return whole
+
+
+def is_metal(pixel) -> bool:
+    """The outline, the teal lights and the greys: what the third arm is drawn with (the goggles share them, so they are only cleared where the arm is)."""
+    r, g, b, a = pixel
+    if a < 128:
+        return False
+    if (r, g, b) == (23, 17, 13):
+        return True
+    if g > 200 and b > 180 and r < 150:
+        return True
+    return abs(r - g) < 30 and abs(g - b) < 30
+
+
+def head_offset(idle: Image.Image, act: Image.Image) -> tuple:
+    """How far the head of the idle frame sits from the head of the first act frame (the body bobs a little in the idle)."""
+    a, p = act.load(), idle.load()
+    best = None
+    for dy in range(-4, 5):
+        for dx in range(-4, 5):
+            same = sum(
+                1
+                for y in range(HEAD[1], HEAD[3])
+                for x in range(HEAD[0], HEAD[2])
+                if p[x, y][3] > 0 and p[x, y] == a[x - dx, y - dy]
+            )
+            if best is None or same > best[0]:
+                best = (same, dx, dy)
+    return best[1], best[2]
+
+
+def arch_arm(idle: Image.Image, act: Image.Image) -> Image.Image:
+    """The idle frame with its straight third arm replaced by the arched one of the first act frame, moved with the head."""
+    result = idle.copy()
+    px = result.load()
+    dx, dy = head_offset(idle, act)
+    for y in range(ARM_TOP, ARM_BASE_ROWS[1] + 1):
+        limit = 99 if y < HEAD_TOP_ROW else (56 if y <= 74 else 49)  # the pole stands behind the hair and the goggles
+        for x in range(ARM_LEFT, limit + 1):
+            if is_metal(px[x, y]):
+                px[x, y] = (0, 0, 0, 0)
+    arm = Image.new("RGBA", (FRAME_W, FRAME_H), (0, 0, 0, 0))
+    ap, source = arm.load(), act.load()
+    for y in range(ARM_BASE_ROWS[0], ARM_BASE_ROWS[1] + 1):
+        for x in range(36, 100):
+            keep = y < HEAD_TOP_ROW or (y == HEAD_TOP_ROW and x <= 52) or (y > HEAD_TOP_ROW and x <= 50)
+            if keep and source[x, y][3] > 0:
+                ap[x, y] = source[x, y]
+    result.alpha_composite(arm, (dx, dy))
+    return result
+
+
 def main() -> None:
     data = json.loads((ATLAS / "tilly.json").read_text())
     sheet = Image.open(ATLAS / "tilly.png").convert("RGBA")
@@ -99,6 +162,16 @@ def main() -> None:
         new_images[f"tilly.pxl.{index:03d}"] = whole
 
     act = list(new_images)
+    # The idle gets the arched third arm of the act (the rig's idle has it as a straight pole). Every animation that uses an idle frame
+    # (tolift, toidle, the end of desel) gets the arched version of it too.
+    arched = {}
+    for name in dict.fromkeys(animations["tilly.idle"]):
+        arched_name = name if name.startswith("tilly.arch.") else f"tilly.arch.{name.removeprefix('tilly.')}"
+        arched[name] = arched_name
+        picture = whole_frame(sheet, data, name)
+        new_images[arched_name] = picture if name == arched_name else arch_arm(picture, new_images[act[0]])  # a second run leaves the arched frames as they are
+    for key, names in animations.items():
+        animations[key] = [arched.get(name, name) for name in names]
     ready = animations["tilly.select"][0]  # the first frame of the ready pose: where the bridge leads to
     animations["tilly.act"] = act
     animations["tilly.tolift"] = [animations["tilly.idle"][0], act[0]]
