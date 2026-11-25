@@ -1,0 +1,21 @@
+HTTP/1.1 200 Connection Established
+
+HTTP/1.1 200 OK
+Connection: close
+Content-Length: 17179
+Access-Control-Allow-Headers: *
+Access-Control-Allow-Methods: POST, PATCH, OPTIONS, DELETE, GET, PUT
+Access-Control-Allow-Origin: *
+Access-Control-Expose-Headers: character-cost
+Access-Control-Max-Age: 600
+Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+Character-Cost: 11
+Content-Type: audio/mpeg
+Date: Wed, 25 Nov 2026 20:04:50 GMT
+Server: uvicorn
+Strict-Transport-Security: max-age=1800;
+Vary: Accept-Language
+Via: 1.1 google
+X-Region: us-central1
+X-Trace-Id: 2fe3304c4292d84e30d2424b16050131
+

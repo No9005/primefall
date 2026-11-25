@@ -1288,3 +1288,31 @@ Cut and levelled (`sfx/tilly/act/cut/`, mono MP3: effects 96 kbit/s to -14 LUFS,
 Verdict: **used:** `fiddle_a`, `tear_b`, `gasp_b` (the owner listened and picked; they are `apps/web/public/assets/audio/tilly/sfx/act-fiddle.mp3`, `sfx/act-tear.mp3` and `voice/act-gasp.mp3`, wired as the cue `hangarAct`). **Discarded:** `fiddle_b`, `tear_a`, `gasp_a`, `gasp_c`, the breath-only `gasp_breath` (not picked) and `clack` ("not good", not wired in); the raw takes stay.
 
 Afterwards (2026-11-25): the owner heard `tear_b` in the hangar and found a sound that was detached from the animation. Measured: the take has a burst in its first 0.5 s, then silence, and its real crack at 1.15 s, so with the file starting at the rip the crack fell at 2.25 s of the clip, while the claw was being picked up. The game now plays `cut/tear_b_crack.mp3` (the raw take from 1.0 s on, 1.44 s long, cut and levelled like the others, -15.1 LUFS) at 1.1 s, so that its crack (at 0.1 s into the file) falls at the rip, 1.2 s, and the clatter after it as the claw lands. No new generation.
+
+### Call 45: 2026-11-25 20:04:42 (API call by script `gen_hangar_sounds.py`, the sounds of the hangar of the Hero Select)
+
+The hangar needs sounds for its flickering light, the sparks at the fuse boxes, Max lifting and throwing the barbell and the barbell crashing against the metal door, and Kit's quiet "Nice." when his rifle gleams (the owner asked for them; for Kit a hum was not made, because Kit never celebrates and a quiet "Nice." fits the dry character). The training grunts and the effort of the throw are Max's own voice (the owner asked for that). One call per take, no retry, every answer with its headers in `sfx/hangar/`. Effects: `eleven_text_to_sound_v2` (no loop), `prompt_influence` 0.5, `POST /v1/sound-generation`.
+
+| take | settings | text | cost |
+|---|---|---|---|
+| `flicker_a`, `flicker_b` | effect, 0.8 s | An old fluorescent ceiling light flickering: a short stuttering electric buzz with two quick ticks, then fading. Close, dry, no music, no voice. | 9 each |
+| `spark_a`, `spark_b` | effect, 0.8 s | Electric sparks jumping from a damaged fuse box: a crisp crackling zap with a few snapping pops. Short, dry, no music, no voice. | 9 each |
+| `set_down_a`, `set_down_b` | effect, 1.0 s | A heavy steel barbell set down hard on a concrete floor: a deep thud, a short metallic ring, a rattle of the plates. Dry, close, no music, no voice. | 11 each |
+| `whoosh_a`, `whoosh_b` | effect, 1.0 s | A heavy steel barbell flying sideways through the air with a fast low whoosh. Dry, close, no voice, no music. | 11 each |
+| `crash_a`, `crash_b` | effect, 2.0 s | A heavy steel barbell crashing against a metal door: a huge clanging boom, a shower of sparks crackling, a long rattling metallic aftershock. Dry, close, no music, no voice. | 22 each |
+| `lift_a` | speech, Max, Morgan `SAxJUlDKRc79XAyeWyMu`, `eleven_v4`, stability 0.3, similarity 0.75 | [strained] Nnnngh... hnnnnh... HAH! | 15 |
+| `lift_b` | the same | [grunts, strained] Hnnnnngh... nnngh... | 17 |
+| `lift_c` | the same | [strained, wheezing] Hnnn... nngh... hah. | 18 |
+| `throw_a` | the same | [shouting] HRAAAH! | 8 |
+| `throw_b` | the same | [roars] RRAAAGH! | 7 |
+| `nice_a` | speech, Kit, Oxley `2gPFXx8pN3Avh27Dw5Ma`, `eleven_v4`, stability 0.5, similarity 0.75 | [quietly, content] Nice. | 11 |
+| `nice_b` | the same | [dryly, quietly] Nice. | 10 |
+| `nice_c` | the same | [softly, calm] Nice... | 10 |
+
+Total 220 credits (the estimate was about 190). History ids of the speech takes: `lift_a` `IBCbeYgpyU0AIzK5JDyO`, `lift_b` `Y1WA2ihQUKegut6wR03E`, `lift_c` `0fiEXMLlwlqnALtInjBz`, `throw_a` `Fjn959uEZ7cYaZnYQjbY`, `throw_b` `wGlnQJA8v883XekrT0hO`, `nice_a` `ZHKSxOx2yJd10zHmsusT`, `nice_b` `Y2Fd0M1wYO6GDgiWs7Qm`, `nice_c` `VU1NkHIb02TvEUqedNJV`.
+
+Timing in the clips (what the takes are for): Max's act (18 frames in 1.8 s): the lift at 0.2 to 0.4 s, the hold with strain from 0.6 to 1.4 s, the barbell set down at 1.5 to 1.6 s. Max's select clip (32 frames in 2.0 s): the throw at 0.2 s, the impact on the metal door at 0.31 s (flash), the barbell landing at 0.85 s, the shot at 1.63 s. Kit's act (42 frames in 2.9 s): the rifle gleams at frame 28, 1.93 s. The scene: the flicker dips at 7, 40 and 71 % of a 5.3 s cycle; the two sparks at the fuse boxes every 3.7 s (from 0.6 s) and 5.3 s (from 2.1 s), each lasting the first 14 % of its cycle.
+
+Cut and levelled (`sfx/hangar/cut/`, mono MP3: effects 96 kbit/s to -14 LUFS, speech 80 kbit/s to -16 LUFS, peak limiter at -3.6 dBFS; measurements in `cut/measure.json`: length, LUFS, true peak, where the first loud part and the loudest part fall in the file).
+
+Verdict: waiting for the owner's ear.
