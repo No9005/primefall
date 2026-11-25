@@ -143,3 +143,11 @@ Result (first look, no measurements yet):
 - Not a loop: the last frame was not compared with the first.
 
 Lesson: the model keeps the character but treats the prompt's motion as a hint; for a large, exact sway of one part the next tries are a stronger motion prompt or Fun Control with a guide, or animating the arm as its own layer.
+
+## `step10-breathing-idle/` (the breathing, made from the pixel picture)
+
+The Wan idle of step 9 hardly breathed, so the breathing is made directly from `step8-pixel-cleanup/tilly-clean.png` with `docs/design/heroes/tools/comfy/breathe.mjs` (no model; rows of the picture are moved and squeezed and sampled with nearest neighbour, so palette and hard pixels stay exact; the feet stay fixed). 40 frames at 20 fps (a 2 s loop, 221 x 337 px with headroom), `frames/f00..f39.png`, `sheet-x4.png`, `breathing-idle-x3.gif` (on a flat colour).
+
+What it does, against `docs/design/animation-criteria.md`: the **inhale** is fast (40 % of the loop) and stretches the torso (shoulders up 11 px at the peak, the chest widens 6 px at each side); the **exhale** is slower (60 %) and **squashes** below the rest pose (shoulders 6.6 px down, the torso compressed); head, hair and the long arm are carried on a damped spring (lag about 4 frames, damping ratio 0.25) and **overshoot** by up to 6 px, so they follow through after the body stops. The values are constants at the top of the script (`rise`, `squash`, `chestX`, `lag`, `damping`, `followThrough`).
+
+Not done: the third arm does not move on its own yet (it only rides with the body), no breath-synchronised small details (goggle strap, hair strands, the reactor glow), the loop seam and the amplitudes are looked at in the contact strips only, not yet judged by the owner.
