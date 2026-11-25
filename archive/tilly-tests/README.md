@@ -54,6 +54,18 @@ Test plan step 1 again, now with the community's way (RESEARCH.md): the ComfyUI 
 
 Read the exact prompts with `png-settings.mjs` (the png carries the template's graph). Lessons: one prompt with all changes beats a chain of edits (a later edit can undo an earlier one, and the colours drift); name what must stay (the other arm, face, hair); the edit model keeps the character where the SDXL passes did not.
 
+## `step4-klein-variants/` (three directions for the refined picture)
+
+The owner's notes on `step3-klein-edit/all-a_00001_.png`: keep the gun of the original (it is needed for her shooting animations); the robot hand looked like a glove, the whole arm from the shoulder should be robotic; the third arm looked as if it came out of her backside, it should come out of her upper back, be more filigree and look put together from scrap. Same template and reference (`step2-adding-parts/01-no-robot.png`, which still has the gun), one prompt with all changes, three third-arm directions. `variants-sheet.png` shows them side by side.
+
+| File | Third arm | Robot arm and gun | Other arm |
+|---|---|---|---|
+| `v1-scrap-pipes_00001_.png` (seed 1) | thin, curving over her head, pipes and cables with a wrench-like pincer at the end; from her upper back | whole arm robotic, gun held | gets a robotic cuff (not wanted) |
+| `v2-tools-and-hose_00001_.png` (seed 2) | a rusty wrench on a hose and a bent pipe, strapped to her back; clean and readable | whole arm robotic, gun held | bare (as asked) |
+| `v3-pistons-harness_00001_.png` (seed 3) | hydraulic pistons and cables on a harness, but **three** appendages (a second one reaches forward, a small hand with a pointing finger appears on the left) | whole arm robotic, gun held | bare |
+
+The prompts are readable with `png-settings.mjs`.
+
 ## `original-hangar-strips/`
 
 Tilly's nine original hangar strips as they were drawn on the design canvas (idle, tolift, act, toidle, select, selecti, hold, desel, bridge-act; frames of 136 x 116 px; counts and times in `apps/web/src/hangar-select.ts`). They were removed from `archive/hangar/strips/` when her atlas moved to the rig export (Git: commit `3f0c734`). Kept as the reference for her original choreography, in particular the `act` (see `ANIMATION-OPTIONS.md`).
