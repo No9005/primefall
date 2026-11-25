@@ -735,6 +735,11 @@ function useBoardDisplay(p: Ctx9) {
   useEffect(() => {
     gameAudio.setBarrier(wallsUp);
   }, [wallsUp]);
+  // The own Scout Drone hums while the Squad has a Site Survey area out (the areas in the view are the own Squad's).
+  const droneAreas = view.revealedAreas.map(({ center }) => `${center.col},${center.row}`).join(";");
+  useEffect(() => {
+    gameAudio.setScoutDrones(view.revealedAreas.map(({ center }) => center));
+  }, [droneAreas]);
   const enemySquad = view.squad === SquadId.Left ? SquadId.Right : SquadId.Left;
   return { boardHeroes, boardEnemies, zone, contestedNow, score, points, zoneList, countdown, enemySquad };
 }

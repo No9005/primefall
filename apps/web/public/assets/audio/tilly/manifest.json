@@ -262,12 +262,6 @@
    "what": "Heavy Metal: Scrap Field spreads",
    "durationMs": 1567
   },
-  "sfx.scout-drone": {
-   "file": "sfx/scout-drone.mp3",
-   "kind": "sfx",
-   "what": "Site Survey: drone",
-   "durationMs": 2090
-  },
   "sfx.hit-flesh": {
    "file": "sfx/hit-flesh.mp3",
    "kind": "sfx",
@@ -326,17 +320,7 @@
     ],
     "atMs": 0
    },
-   "clip": "select_ready",
-   "sfx": [
-    {
-     "play": [
-      "sfx.scout-drone"
-     ],
-     "atMs": 900,
-     "guess": true,
-     "note": "she releases the drone; the time is read from the frames"
-    }
-   ]
+   "clip": "select_ready"
   },
   {
    "on": "attack",
@@ -399,15 +383,7 @@
      "voice.site-survey-2"
     ],
     "atMs": -200
-   },
-   "sfx": [
-    {
-     "play": [
-      "sfx.scout-drone"
-     ],
-     "atMs": 600
-    }
-   ]
+   }
   },
   {
    "on": "cardPlayed",

@@ -107,6 +107,11 @@
    "file": "ui/countdown-final.mp3",
    "what": "the last big number (1): a long low duud",
    "durationMs": 1045
+  },
+  "loop.scout-drone": {
+   "file": "loops/scout-drone.wav",
+   "what": "quadcopter scout drone hovering: a dark, soft, steady hum, seamless loop (WAV)",
+   "durationMs": 6500
   }
  },
  "ambience": {
@@ -140,6 +145,11 @@
    "gain": 0.8,
    "dissolve": "ui.laser-off",
    "note": "hums while the Prime Zone is inactive (the red laser walls stand), louder the nearer the player's Hero; the dissolve sounds when the walls flicker out"
+  },
+  "scoutDrone": {
+   "loop": "loop.scout-drone",
+   "gain": 0.8,
+   "note": "hums while the player's Squad has a Scout Drone area out (Site Survey, two Resolutions), louder the nearer the player's Hero is to the nearest area"
   }
  },
  "ui": {
