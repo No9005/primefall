@@ -91,6 +91,17 @@ The owner's notes on `step5-klein-robot-third-arm/`: W2 (the scrap robot) is the
 
 Lessons: name the side by the picture, not by her left or right; a follow-up edit that says "change nothing else" keeps the rest (the arm stayed identical); leave room around the figure when something has to reach beyond the old frame.
 
+**The original gun** (the owner's requirement: it is needed for her shooting animations, and it belongs in her left hand, the right of the picture). `h1` has a compact rifle, not the original. Tries to bring the original in:
+
+| File | Way | Result |
+|---|---|---|
+| `gun-a1`, `gun-a2` | the template's two-picture branch (nodes 92 and 94 un-bypassed, 75 and 9 bypassed): image 1 is x2, image 2 the base with the original gun | a1: the original gun, but with the whole human arm of the reference: it replaced her robotic arm on the left of the picture; a2: a small gun in the robotic hand. The model copies the side of the reference |
+| `gun-b1`, `gun-b2`, `gun-b3` (reference `00-base-padded-mirrored.png`) | the same, with the reference mirrored so that its gun is on the right of the picture | b1: the original gun with a hand floating beside her, not attached; b2, b3: no gun at all |
+| `tilly-reference-v1.png` | **not the model**: the original gun cut out of the base picture pixel for pixel (`step2-adding-parts/01-no-robot.png`, region 40,405,170,250), mirrored, scaled by 1.03125 (the edit result is 1.03125 times the padded base) and pasted onto x2 at 495,858 with `eval/paste.mjs`; the page colour is keyed out | **the current reference picture**: the original gun, in the original size and form, in the bare hand on the right of the picture, held low with the barrel pointing down and to the right; it covers her fingers |
+| `gun-c1`, `gun-c2` | an edit pass over that composite: "the hand holds the gun naturally, keep the gun the same" | the pass changes almost nothing; the picture stays the composite |
+
+Lesson: when a part of the original must come back exactly, cut it out and paste it. The edit model rebuilds, it does not copy.
+
 ## `original-hangar-strips/`
 
 Tilly's nine original hangar strips as they were drawn on the design canvas (idle, tolift, act, toidle, select, selecti, hold, desel, bridge-act; frames of 136 x 116 px; counts and times in `apps/web/src/hangar-select.ts`). They were removed from `archive/hangar/strips/` when her atlas moved to the rig export (Git: commit `3f0c734`). Kept as the reference for her original choreography, in particular the `act` (see `ANIMATION-OPTIONS.md`).
