@@ -158,16 +158,20 @@ describe("the sounds of a frame", () => {
     expect(second).not.toEqual(first);
   });
 
-  it("plays the Hero Select line of Max when he is chosen, and his one shot with the clip that has it", () => {
+  it("gives Max his line and his sounds with the clip that has them, so that the line does not run over the cry of the throw", () => {
     const max = { heroId: "select-max", heroClass: HeroClass.Bruiser, tile: undefined };
-    const requests = planMoment("heroSelected", max, context());
-    expect(assets(requests, "voice")).toEqual(["voice.select"]);
-    expect(assets(requests, "sfx")).toEqual([]);
-    const shot = (clip: string) => planMoment("hangarClip", max, context(), undefined, clip).map((request) => [request.assetId, request.startMs]);
-    expect(shot("selecti")).toEqual([["sfx.slam", 1080]]);
-    expect(shot("select")).toEqual([["sfx.act-throw", 0], ["sfx.slam", 1630]]);
-    expect(shot("act")).toEqual([["sfx.act-lift", 0]]);
-    expect(shot("idle")).toEqual([]);
+    expect(planMoment("heroSelected", max, context())).toEqual([]);
+    const at = (clip: string) => planMoment("hangarClip", max, context(), undefined, clip).map((request) => [request.assetId, request.startMs]).sort();
+    expect(at("selecti")).toEqual([["sfx.slam", 1080], ["voice.select", 0]]);
+    // The throw: the cry first, the locker at the flash, the barbell on the floor, the shot, and the line only after the cry.
+    expect(at("select")).toEqual([["sfx.act-throw", 0], ["sfx.barbell-floor", 650], ["sfx.barbell-locker", 260], ["sfx.slam", 1630], ["voice.select", 1000]]);
+    // The lift: the grunts begin in the clip before it, the barbell lands at its end.
+    expect(at("tolift")).toEqual([["sfx.act-lift", 420]]);
+    expect(at("act")).toEqual([["sfx.barbell-floor", 1400]]);
+    expect(at("idle")).toEqual([]);
+    const cry = planMoment("hangarClip", max, context(), undefined, "select").find((request) => request.assetId === "sfx.act-throw")!;
+    const line = planMoment("hangarClip", max, context(), undefined, "select").find((request) => request.assetId === "voice.select")!;
+    expect(line.startMs).toBeGreaterThanOrEqual(cry.startMs + (JSON.parse(readFileSync(path.join(AUDIO_DIR, "max", "manifest.json"), "utf8")) as AudioManifest).assets["sfx.act-throw"]!.durationMs);
   });
 
   it("gives Tilly's act clip fiddling, the crack of the arm and her gasp at the moments of the clip, and the other Heroes' act none", () => {

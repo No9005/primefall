@@ -117,6 +117,6 @@ describe("the hum of the Scout Drone", () => {
     const [spark] = fake.sources.filter((source) => source.buffer === buffer);
     expect(spark?.started).toBe(true);
     audio.playHangarSound("flicker");
-    expect(fake.sources).toHaveLength(1);
+    expect(fake.sources).toHaveLength(2);
   });
 });

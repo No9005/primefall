@@ -360,19 +360,24 @@
    "kind": "sfx",
    "what": "Hero Select select clip: Max's effort cry as he throws the barbell (his own voice, as an effect)",
    "durationMs": 967
+  },
+  "sfx.barbell-floor": {
+   "file": "sfx/barbell-floor.mp3",
+   "kind": "sfx",
+   "what": "Hero Select: the heavy barbell with plates lands on the floor (the impact at 0.1 s, the sub-bass thump at 0.3 s)",
+   "durationMs": 1384
+  },
+  "sfx.barbell-locker": {
+   "file": "sfx/barbell-locker.mp3",
+   "kind": "sfx",
+   "what": "Hero Select: the heavy barbell slams into the steel locker door (the impact in the first 0.2 s, then the buckling metal)",
+   "durationMs": 2429
   }
  },
  "cues": [
   {
    "on": "heroSelected",
-   "clip": "select_ready",
-   "note": "his Hero Select line; the shot belongs to the clip that plays (cues `hangarClip`), because the clip now has one shot, not three",
-   "voice": {
-    "play": [
-     "voice.select"
-    ],
-    "atMs": 0
-   }
+   "note": "nothing of its own: his line and his shot belong to the clip that plays (cues `hangarClip`), so that the line does not run over the cry of the throw"
   },
   {
    "on": "attack",
@@ -801,7 +806,7 @@
   {
    "on": "hangarClip",
    "clip": "selecti",
-   "note": "the select-in clip (20 frames in 1.2 s): the one shot is at frame 18, 1.08 s",
+   "note": "the select-in clip (20 frames in 1.2 s): his line from the start, the one shot at frame 18, 1.08 s",
    "sfx": [
     {
      "play": [
@@ -809,12 +814,18 @@
      ],
      "atMs": 1080
     }
-   ]
+   ],
+   "voice": {
+    "play": [
+     "voice.select"
+    ],
+    "atMs": 0
+   }
   },
   {
    "on": "hangarClip",
    "clip": "select",
-   "note": "the select clip (32 frames in 2.0 s) after a tap in the middle of the lift or during the way back: his cry as the barbell leaves his hands (0 s, the loudest part at 0.4 s), the one shot at frame 26, 1.63 s",
+   "note": "the select clip (32 frames in 2.0 s), the barbell is thrown: his cry as it leaves his hands (0 s), the locker (the impact flash is at 0.31 s), the barbell on the floor (frame 13, 0.81 s), the one shot (frame 26, 1.63 s); his line only after the cry (1.0 s) so that they do not overlap",
    "sfx": [
     {
      "play": [
@@ -824,22 +835,53 @@
     },
     {
      "play": [
+      "sfx.barbell-locker"
+     ],
+     "atMs": 260
+    },
+    {
+     "play": [
+      "sfx.barbell-floor"
+     ],
+     "atMs": 650
+    },
+    {
+     "play": [
       "sfx.slam"
      ],
      "atMs": 1630
+    }
+   ],
+   "voice": {
+    "play": [
+     "voice.select"
+    ],
+    "atMs": 1000
+   }
+  },
+  {
+   "on": "hangarClip",
+   "clip": "act",
+   "note": "the act clip of the Hero Select (18 frames in 1.8 s): the barbell lands on the floor (frames 15 to 16, 1.5 s); the grunts are at the clip before it (`tolift`)",
+   "sfx": [
+    {
+     "play": [
+      "sfx.barbell-floor"
+     ],
+     "atMs": 1400
     }
    ]
   },
   {
    "on": "hangarClip",
-   "clip": "act",
-   "note": "the act clip of the Hero Select (18 frames in 1.8 s): the grunts run 3 s, their three phrases at the lift (0.2 s), the end of the hold and the set-down; the act plays once",
+   "clip": "tolift",
+   "note": "the clip before the lift (10 frames in 0.7 s: he crouches to the bar): the grunts begin 0.28 s before the act, so that their first effort falls on the jerk of the lift (0.3 s into the act), the second on the lowering (1.5 s) and the release after the set-down",
    "sfx": [
     {
      "play": [
       "sfx.act-lift"
      ],
-     "atMs": 0
+     "atMs": 420
     }
    ]
   }

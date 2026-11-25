@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BRIDGES, CLIPS, FRAME, HANGAR_HEROES, type HangarHero, HeroPlayer, isLooped, LOOPS, type PlayerEnv, RIG_HEROES, tapOrder } from "./hangar-select";
+import { BRIDGES, CLIPS, FRAME, HANGAR_HEROES, type HangarHero, HangarHeroes, HeroPlayer, IDLE_LOOPS, isLooped, type PlayerEnv, RIG_HEROES, tapOrder } from "./hangar-select";
 
 /** A clock the tests move by hand: timers run when the time reaches them. */
 function fakeEnv(random: PlayerEnv["random"] = (low) => low): PlayerEnv & { advance: (ms: number) => void } {
@@ -68,7 +68,7 @@ describe("hangar Hero Select: a Hero", () => {
     const { made, env } = player("max");
     made.begin(0);
     expect(made.state.mode).toBe("idle");
-    env.advance(CLIPS.max.idle!.seconds * 1000 * 2);
+    env.advance(CLIPS.max.idle!.seconds * 1000 * IDLE_LOOPS.max[0]);
     expect(made.state.mode).toBe("tolift");
     env.advance(CLIPS.max.tolift!.seconds * 1000);
     expect(made.state.mode).toBe("act");
@@ -76,54 +76,87 @@ describe("hangar Hero Select: a Hero", () => {
     expect(made.state.mode).toBe("toidle");
     const kit = player("kit");
     kit.made.begin(0);
-    kit.env.advance(CLIPS.kit.idle!.seconds * 1000 * 2);
+    kit.env.advance(CLIPS.kit.idle!.seconds * 1000 * IDLE_LOOPS.kit[0]);
     expect(kit.made.state.mode).toBe("act");
   });
 
-  it("announces every clip as it begins, and each pass again when the act repeats (Kit), and none after a tap", () => {
+  it("announces every clip as it begins", () => {
     const heard: string[] = [];
-    /** `passes`: how often Kit's act is to play. */
-    const run = (passes: number, tapAfterMs?: number) => {
-      heard.length = 0;
-      const env = fakeEnv((low) => (low === LOOPS.kit.act[0] ? passes : low));
-      const made = new HeroPlayer("kit", env, () => undefined, (hero, clip) => heard.push(`${hero}:${clip}@${env.now()}`));
-      made.begin(0);
-      env.advance(CLIPS.kit.idle!.seconds * 1000 * LOOPS.kit.idle[0]);
-      const actStart = env.now();
-      env.advance(tapAfterMs ?? CLIPS.kit.act!.seconds * 1000 * 2);
-      if (tapAfterMs !== undefined) {
-        made.tap();
-        env.advance(CLIPS.kit.act!.seconds * 1000 * 2);
-      }
-      return heard.filter((entry) => entry.includes(":act@")).map((entry) => Number(entry.split("@")[1]) - actStart);
-    };
-    expect(run(1)).toEqual([0]);
-    expect(run(2)).toEqual([0, CLIPS.kit.act!.seconds * 1000]);
-    expect(run(2, 1000)).toEqual([0]);
-    expect(heard.some((entry) => entry.startsWith("kit:idle@"))).toBe(true);
+    const env = fakeEnv();
+    const made = new HeroPlayer("tilly", env, () => undefined, (hero, clip) => heard.push(`${hero}:${clip}`));
+    made.begin(0);
+    env.advance(CLIPS.tilly.idle!.seconds * 1000 * IDLE_LOOPS.tilly[0] + CLIPS.tilly.tolift!.seconds * 1000 + CLIPS.tilly.act!.seconds * 1000);
+    expect(heard).toEqual(["tilly:idle", "tilly:tolift", "tilly:act", "tilly:toidle"]);
   });
 
-  it("plays Max's lift once, so that his grunts, which are longer than a pass of it, do not overlap", () => {
-    expect(LOOPS.max.act).toEqual([1, 1]);
-    expect(LOOPS.kit.act[1]).toBeGreaterThan(1);
-  });
-
-  it("plays Tilly's act once, after a long and varying idle, so that her arm never tears off twice in a row", () => {
-    const idleMs = CLIPS.tilly.idle!.seconds * 1000;
-    expect(LOOPS.tilly.act).toEqual([1, 1]);
-    expect(LOOPS.tilly.idle[0]).toBeGreaterThanOrEqual(3);
-    expect(LOOPS.tilly.idle[1]).toBeGreaterThan(LOOPS.tilly.idle[0]);
-    for (const loops of [LOOPS.tilly.idle[0], LOOPS.tilly.idle[1]]) {
-      const env = fakeEnv((low, high) => (high === LOOPS.tilly.idle[1] ? loops : low));
-      const made = new HeroPlayer("tilly", env, () => undefined);
-      made.begin(0);
-      env.advance(idleMs * loops - 1);
-      expect(made.state.mode).toBe("idle");
-      env.advance(1 + CLIPS.tilly.tolift!.seconds * 1000);
-      expect(made.state.mode).toBe("act");
-      env.advance(CLIPS.tilly.act!.seconds * 1000);
-      expect(made.state.mode).toBe("toidle");
+  it("plays every action once, after an idle of several loops that differs for each Hero, so that an animation never comes twice in a row", () => {
+    const ranges = HANGAR_HEROES.map((hero) => IDLE_LOOPS[hero]);
+    for (const [fewest, most] of ranges) {
+      expect(fewest).toBeGreaterThanOrEqual(2);
+      expect(most).toBeGreaterThan(fewest);
     }
+    expect(new Set(ranges.map((range) => range.join("-"))).size).toBe(HANGAR_HEROES.length);
+    for (const hero of HANGAR_HEROES) {
+      for (const loops of IDLE_LOOPS[hero]) {
+        const idleMs = CLIPS[hero].idle!.seconds * 1000;
+        const env = fakeEnv((low, high) => (high === IDLE_LOOPS[hero][1] ? loops : low));
+        const made = new HeroPlayer(hero, env, () => undefined);
+        made.begin(0);
+        env.advance(idleMs * loops - 1);
+        expect(made.state.mode, `${hero} idles for ${loops} loops`).toBe("idle");
+        env.advance(1 + (CLIPS[hero].tolift?.seconds ?? 0) * 1000);
+        expect(made.state.mode).toBe("act");
+        env.advance(CLIPS[hero].act!.seconds * 1000);
+        expect(made.state.mode, `${hero}'s action plays once`).not.toBe("act");
+      }
+    }
+  });
+
+  /** A repeatable pseudo-random source for the simulations. */
+  const seeded = (seed: number) => {
+    let state = seed;
+    return (low: number, high: number) => {
+      state = (state * 1664525 + 1013904223) % 4294967296;
+      return low + Math.floor((state / 4294967296) * (high - low + 1));
+    };
+  };
+
+  it("never has two Heroes in their action together, and every Hero still acts now and then (twenty minutes, several seeds)", () => {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const acted = new Set<string>();
+      const heroes = new HangarHeroes(() => undefined, false, seeded(seed), (hero, clip) => void (clip === "act" && acted.add(hero)));
+      heroes.start();
+      for (let step = 0; step < 12_000; step++) {
+        heroes.advance(100);
+        const busy = HANGAR_HEROES.filter((hero) => ["tolift", "act", "toidle"].includes(heroes.players[hero].state.mode));
+        expect(busy.length, `seed ${seed}, ${step * 100} ms`).toBeLessThanOrEqual(1);
+      }
+      expect([...acted].sort()).toEqual([...HANGAR_HEROES].sort());
+    }
+  });
+
+  it("lets the other Heroes only idle, and make no sound, while one is chosen", () => {
+    const heard: string[] = [];
+    const heroes = new HangarHeroes(() => undefined, false, seeded(7), (hero, clip) => heard.push(`${hero}:${clip}`));
+    heroes.start();
+    heroes.advance(30_000);
+    heroes.tap("max");
+    heard.length = 0;
+    heroes.advance(CLIPS.max.selecti!.seconds * 1000 + 6000); // whoever was acting has finished
+    heard.length = 0;
+    for (let step = 0; step < 6000; step++) {
+      heroes.advance(100);
+      for (const hero of ["tilly", "kit"] as const) expect(heroes.players[hero].state.mode, `${hero} at ${step * 100} ms`).toBe("idle");
+    }
+    expect(heard.filter((entry) => !entry.startsWith("max:"))).toEqual([]);
+    // The choice is taken back: the others may act again.
+    heroes.tap("max");
+    heroes.advance(CLIPS.max.desel!.seconds * 1000);
+    const acted = new Set<string>();
+    const watch = new HangarHeroes(() => undefined, false, seeded(7), (hero, clip) => void (clip === "act" && acted.add(hero)));
+    watch.start();
+    watch.advance(200_000);
+    expect(acted.size).toBe(HANGAR_HEROES.length);
   });
 
   it("begins after its delay, so that the three are not in step", () => {
@@ -148,7 +181,7 @@ describe("hangar Hero Select: a Hero", () => {
   it("is selected in the middle of its action through a bridge of two frames", () => {
     const { made, env } = player("tilly");
     made.begin(0);
-    env.advance(CLIPS.tilly.idle!.seconds * 1000 * LOOPS.tilly.idle[0] + CLIPS.tilly.tolift!.seconds * 1000);
+    env.advance(CLIPS.tilly.idle!.seconds * 1000 * IDLE_LOOPS.tilly[0] + CLIPS.tilly.tolift!.seconds * 1000);
     expect(made.state.mode).toBe("act");
     env.advance(1000);
     made.tap();
@@ -168,7 +201,7 @@ describe("hangar Hero Select: a Hero", () => {
   it("waits for the end of a lift or a drop before it takes a tap", () => {
     const { made, env } = player("max");
     made.begin(0);
-    env.advance(CLIPS.max.idle!.seconds * 1000 * 2);
+    env.advance(CLIPS.max.idle!.seconds * 1000 * IDLE_LOOPS.max[0]);
     expect(made.state.mode).toBe("tolift");
     made.tap();
     expect(made.state.mode).toBe("tolift");

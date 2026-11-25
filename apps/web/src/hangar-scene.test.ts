@@ -99,7 +99,7 @@ describe("the hangar scene on the stage", () => {
     scene.attach(heroes);
     await stage.showScene(HANGAR_SCENE_NAME);
     expect(heroes.players.max.state.mode).toBe("idle");
-    stage.step(2000 * 2 - 100);
+    stage.step(2000 * 3 - 100);
     expect(heroes.players.max.state.mode).toBe("idle");
     stage.step(200);
     expect(heroes.players.max.state.mode).toBe("tolift");
@@ -110,7 +110,7 @@ describe("the hangar scene on the stage", () => {
   it("tells of the sparks at the fuse boxes as their cycles start, on the stage clock", async () => {
     const { stage, scene, heroes } = setup();
     const heard: string[] = [];
-    scene.sounds = (sound) => heard.push(sound);
+    scene.sounds = (sound) => sound === "spark" && heard.push(sound);
     heroes.start();
     scene.attach(heroes);
     await stage.showScene(HANGAR_SCENE_NAME);
@@ -124,6 +124,21 @@ describe("the hangar scene on the stage", () => {
     expect(heard).toHaveLength(2);
     stage.step(700);
     expect(heard).toHaveLength(3);
+  });
+
+  it("tells of the buzz of the tube at the deepest dip of the light, once per cycle of 5.3 s", async () => {
+    const { stage, scene, heroes } = setup();
+    const heard: string[] = [];
+    scene.sounds = (sound) => sound === "flicker" && heard.push(sound);
+    heroes.start();
+    scene.attach(heroes);
+    await stage.showScene(HANGAR_SCENE_NAME);
+    stage.step(3800);
+    expect(heard).toEqual([]);
+    stage.step(100); // 3.9 s: the dip at 72 % of the cycle is at 3.816 s
+    expect(heard).toEqual(["flicker"]);
+    stage.step(5300);
+    expect(heard).toEqual(["flicker", "flicker"]);
   });
 
   it("chooses one Hero at a time and takes the choice back", async () => {
