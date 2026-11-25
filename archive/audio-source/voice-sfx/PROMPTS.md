@@ -1245,3 +1245,22 @@ EOF
 for pair in laser_off:-22 zone_taken:-16 score_a:-16 score_b:-16 tick_a:-18 tick_b:-18 final:-16; do k=${pair%%:*}; l=${pair##*:}; ffmpeg -v error -y -i sfx/map/$k.mp3 -af "silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.01,areverse,silenceremove=start_periods=1:start_threshold=-55dB:start_silence=0.01,areverse,loudnorm=I=$l:TP=-2:LRA=11" -ar 44100 -ac 1 -b:a 96k map/final/$k.mp3; echo $k $(ffprobe -v error -show_entries format=duration -of csv=p=0 map/final/$k.mp3); done
 ```
 </details>
+
+### Call 43: 2026-11-25 18:13:41 (API call by curl, the quadcopter scout drone as a loop)
+
+The old `sfx.scout-drone` (2.1 s, a quadcopter whirring up and flying away with a rising whine, from call `scout_drone`) was found shrill. The owner asked for a darker, less screeching version that loops, so that it can run for as long as the drone is out.
+
+| item | value |
+|---|---|
+| prompt | A small quadcopter scout drone hovering in place: a deep, soft, steady low hum with a gentle slow rotor flutter, muffled and dark, like heard through a thick wall. No whine, no high frequencies, no screech, no beeps. Steady and unchanging, seamless loop. |
+| endpoint, model | `POST /v1/sound-generation?output_format=mp3_44100_128`, `eleven_text_to_sound_v2`, `loop: true` |
+| settings | `duration_seconds` 8, `prompt_influence` 0.5 |
+| cost | 88 (`Character-Cost` header), one call, no retry |
+| trace id | `3ecbe735e1a9f0b930ebb59e4bccee52` (`sfx/tilly/scout_drone_loop_v1.hdr`) |
+| files | `sfx/tilly/scout_drone_loop_v1_raw.mp3` (as generated), `scout_drone_loop_v1_loop.wav` (made by `export_scout_drone_loop.py`) |
+
+What the raw take was like (measured): about 8 s, -34.6 LUFS. Its energy sat in a 63 Hz hum, a tone at 200 and 250 Hz and a broad hiss above 6 kHz (about a third of the energy was above 3 kHz). The level sank by about 5 dB over the take and the start and the end differed in colour, so it could not loop as it came, although it was asked for as a loop.
+
+Made into the loop (`export_scout_drone_loop.py`): everything above 1.4 kHz and below 35 Hz cut, the level flattened, a 1.5 s cross-fade of the end into the start, -28 LUFS (like `loops/laser-hum.wav`), mono, 22.05 kHz, WAV. Measured: 6.5 s; level spread of 1.3 dB over 0.5 s windows; the step at the seam (0.0021) is smaller than a typical step (0.0027); start and end have the same colour (centroid 238 and 236 Hz); centroid 142 Hz against 2633 Hz of the old effect; no energy above 1.5 kHz worth the name (0.007 % against 65 %). **Not measurable by numbers:** how it sounds, and whether the flutter is audible. **Caution:** 70 % of the energy is below 120 Hz (the 63 Hz hum), which a phone speaker does not play; what a phone plays is the tone at 200 to 250 Hz.
+
+Verdict: candidate, waiting for the owner's ear. Not wired in (`apps/web/public/assets/audio/` is untouched).
