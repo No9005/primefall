@@ -1318,3 +1318,20 @@ Cut and levelled (`sfx/hangar/cut/`, mono MP3: effects 96 kbit/s to -14 LUFS, sp
 Verdict: waiting for the owner's ear.
 
 Afterwards (2026-11-25), the owner listened: **picked** `lift_a`, `throw_a`, `nice_a`, `spark_b` (in the game: `max/sfx/act-lift.mp3`, `max/sfx/act-throw.mp3`, `kit/voice/act-nice.mp3`, `map/ui/hangar-spark.mp3`). **Rejected:** `whoosh_a/b`, `crash_a/b` and the set-down (`set_down_a/b`) for lacking weight (the owner: a heavy barbell with plates hitting the floor or the metal box), and `flicker_a/b` for not sounding like fluorescent lamps. Not picked: `lift_b/c`, `throw_b`, `nice_b/c`, `spark_a`.
+
+### Call 46: 2026-11-25 20:19:25 (API call by script `gen_hangar_sounds2.py`, the barbell sounds and the fluorescent tube again)
+
+The owner rejected the first barbell takes (the set-down, the whoosh, the crash) for lacking weight ("a very heavy barbell with plates hits the floor or the metal box") and the flicker for not sounding like fluorescent lamps. The crash is now the barbell hitting a **steel locker door** (the owner chose the locker over the door). One call per take, no retry, two takes per sound, `eleven_text_to_sound_v2` (no loop), `prompt_influence` 0.5, every answer with its headers in `sfx/hangar/`.
+
+| take | length | text | cost |
+|---|---|---|---|
+| `floor_a`, `floor_b` | 1.5 s | A huge Olympic barbell loaded with thick cast-iron weight plates dropped from head height onto a concrete floor: a massive deep boom that shakes the room, the iron plates crashing and rattling against each other, a long low metallic ring. Extremely heavy, close, dry, no music, no voice. | 17 each |
+| `heavy_whoosh_a`, `heavy_whoosh_b` | 1.0 s | A very heavy iron barbell with big weight plates swung and thrown through the air: a low, thick, rumbling whoosh with a dull metallic rattle of the plates, heavy and slow-moving. Close, dry, no voice, no music. | 11 each |
+| `locker_a`, `locker_b` | 2.5 s | A huge heavy barbell with iron plates slammed into a steel locker door at full speed: a thunderous deep metallic impact, the sheet metal buckling and booming, plates clanging, a long rattling and ringing aftershock, sparks crackling. Extremely heavy, close, dry, no music, no voice. | 28 each |
+| `tube_a`, `tube_b` | 1.0 s | A fluorescent tube light flickering and starting up: a rapid ticking, a harsh electric buzz with the typical 100 Hz mains hum, a few stuttering blinks, then a steady low hum. Close, dry, no music, no voice. | 11 each |
+
+Total 134 credits. Cut and levelled like the others (`sfx/hangar/cut/`, -14 LUFS). **Measured weight (energy under 150 Hz, spectral centroid):** the new takes did **not** come out heavier by the numbers than the first set-down (`set_down_a`: centroid 676 Hz, 43 % under 150 Hz): `floor_a` 2336 Hz and 2.0 %, `floor_b` 2031 Hz and 0.2 %, `locker_a` 1482 Hz and 0.6 %, `locker_b` 1525 Hz and 1.6 %, `heavy_whoosh_a` 969 Hz and 12.8 %, `heavy_whoosh_b` 1370 Hz and 0.7 %: they are brighter and clangier, with little boom. `tube_a` 2984 Hz, `tube_b` 3369 Hz (the first flicker: 5807 Hz).
+
+So `export_hangar_heavy.py` makes a heavier version of each barbell take (`<take>_heavy.mp3`): the file played slower (the pitch down to 0.78 to 0.85), the bass lifted by 8 dB at 110 Hz and, for the floor and the locker, a 48 Hz sub-thump of 0.16 s decay at the loudest moment. Measured: `floor_a_heavy` centroid 705 Hz and 63 % under 150 Hz, `floor_b_heavy` 494 Hz and 72 %, `locker_a_heavy` 528 Hz and 58 %, `locker_b_heavy` 526 Hz and 59 %, `heavy_whoosh_a_heavy` 470 Hz and 52 %, `heavy_whoosh_b_heavy` 1126 Hz and 4 % (lengths 0.93 to 3.1 s, the files are slower). Not measurable by numbers: whether they sound like a very heavy barbell on a floor or a locker, and whether the sub-thump reads as an impact or as a boom effect laid on top.
+
+Verdict: waiting for the owner's ear.
