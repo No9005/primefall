@@ -13,9 +13,10 @@ interface FakeSource {
   buffer: unknown;
   loop: boolean;
   started: boolean;
+  startedAt: number | undefined;
   stoppedAt: number | undefined;
   connect: (node: unknown) => unknown;
-  start: () => void;
+  start: (when?: number) => void;
   stop: (when: number) => void;
 }
 
@@ -37,7 +38,7 @@ function fakeContext() {
     createGain: () => node(),
     createDynamicsCompressor: () => node({ threshold: {}, knee: {}, ratio: {}, attack: {}, release: {} }),
     createBufferSource: () => {
-      const source: FakeSource = { buffer: undefined, loop: false, started: false, stoppedAt: undefined, connect: (next) => next, start: () => void (source.started = true), stop: (when) => void (source.stoppedAt = when) };
+      const source: FakeSource = { buffer: undefined, loop: false, started: false, startedAt: undefined, stoppedAt: undefined, connect: (next) => next, start: (when) => void ((source.started = true), (source.startedAt = when)), stop: (when) => void (source.stoppedAt = when) };
       sources.push(source);
       return source;
     },
@@ -93,5 +94,20 @@ describe("the hum of the Scout Drone", () => {
     expect(drone?.started).toBe(true);
     audio.stopAmbience();
     expect(drone?.stoppedAt).toBeGreaterThan(fake.context.currentTime);
+  });
+
+  it("hums in the Hero Select from a moment after Tilly is chosen until another Hero is chosen, the choice is taken back or the screen goes", () => {
+    audio.setSelectDrone(true);
+    const [hum] = dronesIn(audio, fake.sources);
+    expect(hum?.loop).toBe(true);
+    expect(hum?.startedAt).toBeGreaterThan(fake.context.currentTime);
+    audio.setSelectDrone(true);
+    expect(dronesIn(audio, fake.sources)).toHaveLength(1);
+    audio.setSelectDrone(false);
+    expect(hum?.stoppedAt).toBeGreaterThan(fake.context.currentTime);
+    audio.setSelectDrone(true);
+    const [, second] = dronesIn(audio, fake.sources);
+    audio.stopAll();
+    expect(second?.stoppedAt).toBeGreaterThan(fake.context.currentTime);
   });
 });
