@@ -45,6 +45,8 @@ With reduced motion the clips do not play, so all sounds of a frame start with t
 
 The values are first proposals; tune them by playing.
 
+**The act of Tilly in the Hero Select** (cue `hangarAct` in `tilly/manifest.json`, `docs/design/heroes/pixellab-act/`): while her act clip runs, `sfx.act-fiddle` (fiddling at the arm, welding and ratchet noises) plays from 0.3 s into the clip, `sfx.act-tear` (the arm tears off and clatters) at 1.1 s and her panicked gasp `voice.act-gasp` ("Oh!") at 1.2 s. The clip repeats once or twice, and the sounds repeat with every pass (`onActPass` of the hangar player); a tap on a Hero silences them (`stopAll`). The cue is at the top tier (Critical for the voice), because the gasp comes again within the 4 s cooldown of a voice. The clack of putting the arm back was made and dropped (archive: `clack`). The takes are in `archive/audio-source/voice-sfx/sfx/tilly/act/` (call 44 in `PROMPTS.md`).
+
 ## The map and the cards (`audio/map/`)
 
 Not tied to a Hero; `map/manifest.json` has its own shape (`ambience` and `ui`).

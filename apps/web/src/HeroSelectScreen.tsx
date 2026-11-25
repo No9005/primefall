@@ -29,6 +29,11 @@ interface HeroSelectScreenProps {
   onStart: (hero: HeroClass) => void;
 }
 
+/** The sounds of the act clip of a Hero as one pass of it begins (only Tilly has any: fiddling, the arm tearing off, her gasp). */
+function playActSounds(hero: (typeof HANGAR_HEROES)[number]): void {
+  gameAudio.playMoment("hangarAct", { heroId: `select-${HERO_OF[hero]}`, heroClass: HERO_OF[hero], tile: undefined });
+}
+
 export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenProps) {
   const [fit, setFit] = useState(windowFit);
   const [, redraw] = useReducer((count: number) => count + 1, 0);
@@ -55,7 +60,7 @@ export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenP
     const made = new HangarHeroes(() => {
       redraw();
       hangarScene.invalidate();
-    }, prefersReducedMotion());
+    }, prefersReducedMotion(), undefined, playActSounds);
     heroes.current = made;
     made.start(initial);
     hangarScene.attach(made);

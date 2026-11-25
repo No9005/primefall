@@ -80,6 +80,29 @@ describe("hangar Hero Select: a Hero", () => {
     expect(kit.made.state.mode).toBe("act");
   });
 
+  it("announces each pass of its act clip (the clip repeats once or twice) and none after a tap", () => {
+    const heard: string[] = [];
+    /** `passes`: how often the clip repeats (the idle always takes its two loops). */
+    const run = (passes: number, tapAfterMs?: number) => {
+      heard.length = 0;
+      const env = fakeEnv((low) => (low === 1 ? passes : low));
+      const made = new HeroPlayer("tilly", env, () => undefined, (hero) => heard.push(`${hero}@${env.now()}`));
+      made.begin(0);
+      env.advance(CLIPS.tilly.idle!.seconds * 1000 * 2 + CLIPS.tilly.tolift!.seconds * 1000);
+      const actStart = env.now();
+      if (tapAfterMs === undefined) env.advance(CLIPS.tilly.act!.seconds * 1000 * 2);
+      else {
+        env.advance(tapAfterMs);
+        made.tap();
+        env.advance(CLIPS.tilly.act!.seconds * 1000 * 2);
+      }
+      return heard.map((pass) => Number(pass.split("@")[1]) - actStart);
+    };
+    expect(run(1)).toEqual([0]);
+    expect(run(2)).toEqual([0, CLIPS.tilly.act!.seconds * 1000]);
+    expect(run(2, 1000)).toEqual([0]);
+  });
+
   it("begins after its delay, so that the three are not in step", () => {
     const { made, env } = player("tilly");
     made.begin(1400);

@@ -131,12 +131,15 @@ export class HeroPlayer {
   private timer: unknown;
   private pending = false;
   private queuedTap = false;
+  private passTimers: unknown[] = [];
   private disposed = false;
 
   constructor(
     readonly hero: HangarHero,
     private readonly env: PlayerEnv,
     private readonly onChange: () => void,
+    /** Called as every pass of the act clip begins (the clip repeats once or twice), for the sounds that belong to it. */
+    private readonly onActPass?: (hero: HangarHero) => void,
   ) {
     this.startedAt = env.now();
   }
@@ -194,6 +197,15 @@ export class HeroPlayer {
   private cancelTimer(): void {
     if (this.timer !== undefined) this.env.cancel(this.timer);
     this.timer = undefined;
+    for (const pass of this.passTimers) this.env.cancel(pass);
+    this.passTimers = [];
+  }
+
+  /** Tells `onActPass` as each pass of the act begins: the first one now, a second one when the clip repeats. */
+  private announceActPasses(passMs: number, totalMs: number): void {
+    const passes = Math.max(1, Math.round(totalMs / passMs));
+    this.onActPass?.(this.hero);
+    for (let pass = 1; pass < passes; pass++) this.passTimers.push(this.env.after(pass * passMs, () => this.onActPass?.(this.hero)));
   }
 
   /** The clip that follows `mode` and after how many ms: idle and act last a random time, the others as long as the clip. */
@@ -227,6 +239,7 @@ export class HeroPlayer {
       if (!clip) return;
       const following = this.followUp(mode, clip.seconds);
       if (following) this.timer = this.env.after(following.after, () => this.start(following.next, 0));
+      if (mode === "act") this.announceActPasses(clip.seconds * 1000, following?.after ?? 0);
       if (this.pending && (mode === "idle" || mode === "act")) {
         this.pending = false;
         this.env.after(0, () => this.tap());
@@ -310,9 +323,10 @@ export class HangarHeroes {
     onChange: () => void,
     readonly still: boolean,
     random?: PlayerEnv["random"],
+    onActPass?: (hero: HangarHero) => void,
   ) {
     this.clock = new SteppedClock(random);
-    this.players = Object.fromEntries(HANGAR_HEROES.map((hero) => [hero, new HeroPlayer(hero, this.clock, onChange)])) as Record<HangarHero, HeroPlayer>;
+    this.players = Object.fromEntries(HANGAR_HEROES.map((hero) => [hero, new HeroPlayer(hero, this.clock, onChange, onActPass)])) as Record<HangarHero, HeroPlayer>;
   }
 
   /** Every Hero idles, or `initial` stands in the ready pose. */

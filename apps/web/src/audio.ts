@@ -875,7 +875,7 @@ export class GameAudio {
   }
 
   /** A moment of the game that is not a frame of the Resolution: the Hero Select, a Pitch, the end of the match. */
-  playMoment(on: "heroSelected" | "cardPitched" | "matchEnd", who: Source, won?: boolean): void {
+  playMoment(on: "heroSelected" | "hangarAct" | "cardPitched" | "matchEnd", who: Source, won?: boolean): void {
     const ctx = this.contextFor({ classOf: () => who.heroClass, isOwn: () => true, isHeard: () => true, tileOf: () => who.tile });
     this.play(planMoment(on, who, ctx, won), who.tile);
   }
