@@ -40,6 +40,9 @@ HEAD_TOP_ROW = 72
 ARM_TOP, ARM_LEFT = 40, 40
 ARM_LAG = 3  # idle frames the arm is behind the head (follow-through)
 ARM_SWAY = (1.2, 0.8)  # px the arm sways on its own over one idle loop, in x and in y
+ARM_PIVOT = (52.5, 65.5)  # the elbow of the arched arm (the teal joint in the corner of the arch); the forearm and the claw turn about it
+ARM_SPLIT_X = 53  # columns up to this are the stem and the elbow, the rest is the forearm
+DESEL_SWING = (0.85, 0.65, 0.45, 0.28, 0.15, 0.05, -0.08, -0.10, -0.05, 0, 0, 0, 0)  # how far the forearm is still raised in desel frames 1 to 13 (of the angle of the ready pose); the dip below 0 is a small follow-through
 ARM_BASE_ROWS = (60, 81)  # the arm's rows: from the top of the arch down past the first joint, where the stem meets the back pack
 
 
@@ -146,16 +149,18 @@ def arm_offsets(heads: list) -> list:
     return offsets
 
 
-def arch_arm(idle: Image.Image, act: Image.Image, offset: tuple) -> Image.Image:
-    """The idle frame with its straight third arm replaced by the arched one of the first act frame, put at `offset`."""
-    result = idle.copy()
-    px = result.load()
-    dx, dy = offset
+def clear_pole(frame: Image.Image) -> None:
+    """Removes the rig's straight third arm from a frame (it stands behind the hair and the goggles, which stay)."""
+    px = frame.load()
     for y in range(ARM_TOP, 77):
-        limit = 99 if y < HEAD_TOP_ROW else (56 if y <= 74 else 49)  # the pole stands behind the hair and the goggles
+        limit = 99 if y < HEAD_TOP_ROW else (56 if y <= 74 else 49)
         for x in range(ARM_LEFT, limit + 1):
             if is_metal(px[x, y]):
                 px[x, y] = (0, 0, 0, 0)
+
+
+def arm_layer(act: Image.Image) -> Image.Image:
+    """The arched arm of the first act frame on a picture of its own: the arch, the stem and the first joint, without the head."""
     arm = Image.new("RGBA", (FRAME_W, FRAME_H), (0, 0, 0, 0))
     ap, source = arm.load(), act.load()
     for y in range(ARM_BASE_ROWS[0], ARM_BASE_ROWS[1] + 1):
@@ -163,7 +168,55 @@ def arch_arm(idle: Image.Image, act: Image.Image, offset: tuple) -> Image.Image:
             keep = y < HEAD_TOP_ROW or (y == HEAD_TOP_ROW and x <= 52) or (HEAD_TOP_ROW < y <= 76 and x <= 50) or (y > 76 and x <= 47)
             if keep and source[x, y][3] > 0:
                 ap[x, y] = source[x, y]
-    result.alpha_composite(arm, (dx, dy))
+    return arm
+
+
+def posed_arm(arm: Image.Image, angle: float) -> Image.Image:
+    """The arm with its forearm and claw turned up by `angle` degrees about the elbow (0 is the arch of the act and the idle)."""
+    stem, forearm = arm.copy(), arm.copy()
+    for y in range(FRAME_H):
+        for x in range(FRAME_W):
+            (stem if x > ARM_SPLIT_X else forearm).putpixel((x, y), (0, 0, 0, 0))
+    if angle:
+        forearm = forearm.rotate(angle, resample=Image.NEAREST, center=ARM_PIVOT)
+    stem.alpha_composite(forearm)
+    return stem
+
+
+def ready_angle(hold: Image.Image, act: Image.Image) -> float:
+    """The angle of the forearm in the hold pose of the rig: the one at which the turned arm covers most of the arm drawn in that frame."""
+    mask = {(x, y) for y in range(ARM_TOP, HEAD_TOP_ROW) for x in range(ARM_LEFT, 100) if is_metal(hold.getpixel((x, y)))}
+    shift = head_offset(hold, act)
+    arm = arm_layer(act)
+    best = None
+    for angle in range(0, 95, 5):
+        posed = posed_arm(arm, angle)
+        cells = {(x + shift[0], y + shift[1]) for y in range(ARM_TOP, HEAD_TOP_ROW) for x in range(ARM_LEFT, 100) if posed.getpixel((x, y))[3] > 0}
+        score = len(cells & mask) - 0.3 * len(cells - mask)
+        if best is None or score > best[0]:
+            best = (score, angle)
+    return best[1]
+
+
+def swung_desel(frames: list, act: Image.Image) -> list:
+    """The frames of desel with the arm swinging from the pose of the hold down into the arch of the idle (the rig's frames carry a straight pole)."""
+    arm = arm_layer(act)
+    angle = ready_angle(frames[0], act)
+    result = [frames[0]]
+    for index in range(1, len(frames) - 1):
+        frame = frames[index].copy()
+        clear_pole(frame)
+        frame.alpha_composite(posed_arm(arm, angle * DESEL_SWING[index - 1]), head_offset(frame, act))
+        result.append(frame)
+    result.append(frames[-1])
+    return result
+
+
+def arch_arm(idle: Image.Image, act: Image.Image, offset: tuple) -> Image.Image:
+    """The idle frame with its straight third arm replaced by the arched one of the first act frame, put at `offset`."""
+    result = idle.copy()
+    clear_pole(result)
+    result.alpha_composite(arm_layer(act), offset)
     return result
 
 
@@ -204,6 +257,19 @@ def main() -> None:
         new_images[arched_name] = picture if name == arched_name else arch_arm(picture, new_images[act[0]], offsets[index])  # a second run leaves the arched frames as they are
     for key, names in animations.items():
         animations[key] = [arched.get(name, name) for name in names]
+    # desel: the arm swings from the hold pose into the arched idle (frame 0 is the hold's own, the last one is the arched idle frame)
+    desel = animations["tilly.desel"]
+    if not any(name.startswith("tilly.desel.arm.") for name in desel):
+        pictures = [new_images[name] if name in new_images else whole_frame(sheet, data, name) for name in desel]
+        swung = swung_desel(pictures, new_images[act[0]])
+        animations["tilly.desel"] = [name if index in (0, len(desel) - 1) else f"tilly.desel.arm.{index:02d}" for index, name in enumerate(desel)]
+        for index, name in enumerate(animations["tilly.desel"]):
+            if name.startswith("tilly.desel.arm."):
+                new_images[name] = swung[index]
+    else:
+        for name in desel:
+            if name.startswith("tilly.desel.arm."):
+                new_images[name] = whole_frame(sheet, data, name)
     ready = animations["tilly.select"][0]  # the first frame of the ready pose: where the bridge leads to
     animations["tilly.act"] = act
     idle_first = animations["tilly.idle"][0]
