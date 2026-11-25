@@ -4,6 +4,8 @@ State on 2026-11-25. The pictures behind each point are in `archive/tilly-tests/
 
 ## The reference picture
 
+**Newest: `archive/tilly-tests/step7-klein-goggles-no-gun/tilly-reference-v2.png`** (the owner asked for no weapon, welding goggles pushed up on the forehead and the faulty eye fixed): v1 below without the gun, with goggles on her forehead and two matching green eyes. The list below describes v1; the gun of v1 can be pasted into v2 again with the command at the end.
+
 `archive/tilly-tests/step6-klein-scrap-arm-and-gun/tilly-reference-v1.png` (1056 x 1376, flat page, 320 px of headroom):
 
 - the owner's base figure (brown hair, orange jacket, torn teal trousers) with her face, hair and jacket unchanged;
@@ -30,7 +32,8 @@ Not done yet: pixel grid and palette (`ComfyUI-PixelArt-Detector` is installed),
 7. **A follow-up edit that says "change nothing else" keeps the rest exactly** (the long arm stayed identical in `h1`).
 8. **A reference picture copies its sides and its arm** (`step6`: `gun-a1` took the whole human arm of the reference into the left of the picture; a mirrored reference gave a floating hand). Use it for style or parts that do not depend on a side.
 9. **When a part of the original must come back exactly, cut it out and paste it** (`eval/paste.mjs`: a rectangle of the original, mirrored, scaled, the page colour keyed out). The edit model rebuilds it, it does not copy it. A harmonising edit pass afterwards changes almost nothing (`gun-c1`).
-10. **Compare prompts with the same seed, and expect seeds to differ a lot** (the same prompt gave a gun in one hand, in both, or in none: `h1`, `h2`, `b2`).
+10. **A faulty detail (an eye) can be redrawn by asking for it**: "redraw both eyes cleanly and matching" gave two matching green eyes in one seed of three (`step7`); look at the faces enlarged (`eval/look-sheet.mjs` with `LOOK_CROP`). **Say where an accessory sits**: goggles "on top of her forehead, pushed up above her eyes", not just "goggles" (the first try covered the eyes).
+11. **Compare prompts with the same seed, and expect seeds to differ a lot** (the same prompt gave a gun in one hand, in both, or in none: `h1`, `h2`, `b2`).
 
 ## Repeat the gun step
 

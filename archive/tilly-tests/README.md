@@ -102,6 +102,21 @@ Lessons: name the side by the picture, not by her left or right; a follow-up edi
 
 Lesson: when a part of the original must come back exactly, cut it out and paste it. The edit model rebuilds, it does not copy.
 
+## `step7-klein-goggles-no-gun/` (no gun, welding goggles on the forehead, the eyes fixed)
+
+The owner's notes on `step6`: take the weapons away and keep the robotic hand and the real (bare) hand; her eye is faulty (in `before-x2.png` the two eyes do not match: one dark blue-grey, one green); give her welding goggles. Starting point is `x2` of step 6 (it has no gun), so "no gun" is already there. A first prompt that put the goggles **over the eyes** was stopped by the owner: the goggles go **pushed up on the forehead**, the eyes stay visible. Prompt (seeds 1, 2, 3): goggles of two round dark green tinted lenses in a rusty metal frame with a strap, on top of the forehead; redraw both eyes cleanly and matching, two dark green eyes of the same shape and size with eyelids and eyebrows; change nothing else (both hands empty, the long arm, hair, jacket, trousers, page).
+
+| File | Eyes | Goggles |
+|---|---|---|
+| `j1-goggles-on-forehead_00001_.png` (seed 1) | **both green and matching** | on the forehead, round green lenses, brass-rusty frame, strap |
+| `j2-...` (seed 2) | one green, one red | the same |
+| `j3-...` (seed 3) | one reddish, one green | the same |
+| `faces-sheet.png` | before and the three faces enlarged | |
+
+**`tilly-reference-v2.png` is J1: the current reference picture** (no gun). Side effects of the pass: the hair on top is smoother and darker under the goggle strap, the robotic hand a little smaller. The original gun of `step6/tilly-reference-v1.png` can be pasted in again later (`KLEIN-EDIT-NOTES.md`).
+
+Lesson: asking the model to redraw both eyes "cleanly and matching" fixed the eyes in one seed of three; try a few seeds and look at the faces enlarged.
+
 ## `original-hangar-strips/`
 
 Tilly's nine original hangar strips as they were drawn on the design canvas (idle, tolift, act, toidle, select, selecti, hold, desel, bridge-act; frames of 136 x 116 px; counts and times in `apps/web/src/hangar-select.ts`). They were removed from `archive/hangar/strips/` when her atlas moved to the rig export (Git: commit `3f0c734`). Kept as the reference for her original choreography, in particular the `act` (see `ANIMATION-OPTIONS.md`).
