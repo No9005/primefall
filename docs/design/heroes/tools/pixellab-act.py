@@ -29,6 +29,7 @@ FEET = (58, 112)
 SOURCE_FEET = (32, 58)  # the feet in the 64 x 64 source frames
 ACT_MS = 3300
 BRIDGE_FRAME_MS = 85  # BRIDGE_FRAME_MS of apps/web/src/hangar-select.ts
+BAYER = ((0, 8, 2, 10), (12, 4, 14, 6), (3, 11, 1, 9), (15, 7, 13, 5))
 PAGE_WIDTH = 1024
 PADDING = 1
 PALETTE_MIN_COUNT = 300
@@ -39,7 +40,7 @@ HEAD_TOP_ROW = 72
 ARM_TOP, ARM_LEFT = 40, 40
 ARM_LAG = 3  # idle frames the arm is behind the head (follow-through)
 ARM_SWAY = (1.2, 0.8)  # px the arm sways on its own over one idle loop, in x and in y
-ARM_BASE_ROWS = (60, 76)  # the arm's rows, from where the arched arm is taken down to where its stem meets the hair
+ARM_BASE_ROWS = (60, 81)  # the arm's rows: from the top of the arch down past the first joint, where the stem meets the back pack
 
 
 def distance(a, b):
@@ -91,6 +92,17 @@ def whole_frame(sheet: Image.Image, data: dict, name: str) -> Image.Image:
     return whole
 
 
+def mix(first: Image.Image, second: Image.Image, weight: float) -> Image.Image:
+    """A pixel-art in-between of two poses: each pixel is the second pose's where the 4 x 4 Bayer matrix is under `weight`, else the first's."""
+    result = first.copy()
+    a, b, out = first.load(), second.load(), result.load()
+    for y in range(FRAME_H):
+        for x in range(FRAME_W):
+            if (BAYER[y % 4][x % 4] + 0.5) / 16 <= weight:
+                out[x, y] = b[x, y]
+    return result
+
+
 def is_metal(pixel) -> bool:
     """The outline, the teal lights and the greys: what the third arm is drawn with (the goggles share them, so they are only cleared where the arm is)."""
     r, g, b, a = pixel
@@ -121,13 +133,16 @@ def head_offset(idle: Image.Image, act: Image.Image) -> tuple:
 
 
 def arm_offsets(heads: list) -> list:
-    """Where the arm of each idle frame sits: where the head was a few frames ago, plus a slow sway of its own, so that it trails the body and settles late."""
+    """Where the arm of each idle frame sits: where the head was a few frames ago plus a slow sway of its own, so that it trails the body and settles late.
+    Both fade to nothing towards the first frame (the loop is periodic), where the arm sits exactly as in the act: tolift, toidle and desel meet it there."""
     count = len(heads)
     offsets = []
     for index in range(count):
         behind = heads[(index - ARM_LAG) % count]
         phase = 2 * math.pi * (index - 2 * ARM_LAG) / count
-        offsets.append((behind[0] + round(ARM_SWAY[0] * math.sin(phase)), behind[1] + round(ARM_SWAY[1] * math.sin(phase - 1.2))))
+        free = (behind[0] + round(ARM_SWAY[0] * math.sin(phase)), behind[1] + round(ARM_SWAY[1] * math.sin(phase - 1.2)))
+        strength = (1 - math.cos(2 * math.pi * index / count)) / 2
+        offsets.append((round(heads[index][0] + (free[0] - heads[index][0]) * strength), round(heads[index][1] + (free[1] - heads[index][1]) * strength)))
     return offsets
 
 
@@ -136,7 +151,7 @@ def arch_arm(idle: Image.Image, act: Image.Image, offset: tuple) -> Image.Image:
     result = idle.copy()
     px = result.load()
     dx, dy = offset
-    for y in range(ARM_TOP, ARM_BASE_ROWS[1] + 1):
+    for y in range(ARM_TOP, 77):
         limit = 99 if y < HEAD_TOP_ROW else (56 if y <= 74 else 49)  # the pole stands behind the hair and the goggles
         for x in range(ARM_LEFT, limit + 1):
             if is_metal(px[x, y]):
@@ -145,7 +160,7 @@ def arch_arm(idle: Image.Image, act: Image.Image, offset: tuple) -> Image.Image:
     ap, source = arm.load(), act.load()
     for y in range(ARM_BASE_ROWS[0], ARM_BASE_ROWS[1] + 1):
         for x in range(36, 100):
-            keep = y < HEAD_TOP_ROW or (y == HEAD_TOP_ROW and x <= 52) or (y > HEAD_TOP_ROW and x <= 50)
+            keep = y < HEAD_TOP_ROW or (y == HEAD_TOP_ROW and x <= 52) or (HEAD_TOP_ROW < y <= 76 and x <= 50) or (y > 76 and x <= 47)
             if keep and source[x, y][3] > 0:
                 ap[x, y] = source[x, y]
     result.alpha_composite(arm, (dx, dy))
@@ -191,9 +206,15 @@ def main() -> None:
         animations[key] = [arched.get(name, name) for name in names]
     ready = animations["tilly.select"][0]  # the first frame of the ready pose: where the bridge leads to
     animations["tilly.act"] = act
-    animations["tilly.tolift"] = [animations["tilly.idle"][0], act[0]]
-    animations["tilly.toidle"] = [act[0], animations["tilly.idle"][0]]
-    animations["tilly.bridge.act"] = [name for moment in act for name in (moment, ready)]
+    idle_first = animations["tilly.idle"][0]
+    ready_picture = whole_frame(sheet, data, ready)
+
+    bridge = []
+    for index, moment in enumerate(act):  # the bridge: the pose of the act, then half way into the ready pose, then the ready pose begins
+        half = f"tilly.mix.bridge.{index:03d}"
+        new_images[half] = mix(new_images[moment], ready_picture, 0.5)
+        bridge += [moment, half]
+    animations["tilly.bridge.act"] = bridge
     clips["tilly.act"] = {"frames": len(act), "durationMs": ACT_MS}
     clips["tilly.bridge.act"] = {"frames": len(animations["tilly.bridge.act"]), "durationMs": len(animations["tilly.bridge.act"]) * BRIDGE_FRAME_MS}
 
