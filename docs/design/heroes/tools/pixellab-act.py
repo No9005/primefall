@@ -29,7 +29,7 @@ FEET = (58, 112)
 SOURCE_FEET = (32, 58)  # the feet in the 64 x 64 source frames
 ACT_MS = 3300
 BRIDGE_FRAME_MS = 85  # BRIDGE_FRAME_MS of apps/web/src/hangar-select.ts
-BAYER = ((0, 8, 2, 10), (12, 4, 14, 6), (3, 11, 1, 9), (15, 7, 13, 5))
+BRIDGE_HOP_PX = 2  # the in-between frame of the bridge: the ready pose, this many pixels up (a small hop of surprise)
 PAGE_WIDTH = 1024
 PADDING = 1
 PALETTE_MIN_COUNT = 300
@@ -96,14 +96,10 @@ def whole_frame(sheet: Image.Image, data: dict, name: str) -> Image.Image:
     return whole
 
 
-def mix(first: Image.Image, second: Image.Image, weight: float) -> Image.Image:
-    """A pixel-art in-between of two poses: each pixel is the second pose's where the 4 x 4 Bayer matrix is under `weight`, else the first's."""
-    result = first.copy()
-    a, b, out = first.load(), second.load(), result.load()
-    for y in range(FRAME_H):
-        for x in range(FRAME_W):
-            if (BAYER[y % 4][x % 4] + 0.5) / 16 <= weight:
-                out[x, y] = b[x, y]
+def lifted(picture: Image.Image, pixels: int) -> Image.Image:
+    """The picture moved up by `pixels` (the Hero is off the ground for a frame)."""
+    result = Image.new("RGBA", picture.size, (0, 0, 0, 0))
+    result.alpha_composite(picture, (0, -pixels))
     return result
 
 
@@ -284,11 +280,9 @@ def main() -> None:
     animations["tilly.tolift"] = [idle_first, act[0]]  # the two poses are nearly the same, so there is nothing to mix
     animations["tilly.toidle"] = [act[-1], idle_first]
 
-    bridge = []
-    for index, moment in enumerate(act):  # the bridge: the pose of the act, then half way into the ready pose, then the ready pose begins
-        half = f"tilly.mix.bridge.{index:03d}"
-        new_images[half] = mix(new_images[moment], ready_picture, 0.5)
-        bridge += [moment, half]
+    hop = "tilly.bridge.hop"  # one in-between frame for every moment: she hops into the ready pose
+    new_images[hop] = lifted(ready_picture, BRIDGE_HOP_PX)
+    bridge = [name for moment in act for name in (moment, hop)]  # the bridge: the pose of the act, the hop, then the ready pose begins
     animations["tilly.bridge.act"] = bridge
     clips["tilly.act"] = {"frames": len(act), "durationMs": ACT_MS}
     clips["tilly.bridge.act"] = {"frames": len(animations["tilly.bridge.act"]), "durationMs": len(animations["tilly.bridge.act"]) * BRIDGE_FRAME_MS}
