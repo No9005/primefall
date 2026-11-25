@@ -39,10 +39,25 @@ Starting from a picture the owner picked: `00-base.png`, a plain SDXL text-to-im
 
 The exact calls are in `docs/design/heroes/tools/comfy/step2-add-parts.sh`. Torn clothes were not done.
 
+## `step3-klein-edit/` (FLUX.2 klein 4B image edit, the first result worth keeping)
+
+Test plan step 1 again, now with the community's way (RESEARCH.md): the ComfyUI gallery template `image_flux2_klein_image_edit_4b_distilled` (the branch with one input picture: slots `76.image`, `75.text`, `75.noise_seed`; models `flux-2-klein-4b-fp8`, `qwen_3_4b`, `flux2-vae`; 4 steps, about 15 s per picture, VRAM in use peaked at about 13.2 GB of 17.1 GB incl. the desktop). The reference picture is `step2-adding-parts/01-no-robot.png` (the owner's base picture, robot taken out). Seed 1 everywhere, one edit per prompt:
+
+| File | Prompt (shortened) | Result |
+|---|---|---|
+| `arm3-a_00001_.png` | add a long mechanical grey arm with three segments, teal glowing joints and a pincer, rising from behind her right shoulder | a detailed third arm with segments, teal joints and a claw; the character unchanged |
+| `robotarm-a_00001_.png` | replace the gun and her right arm with a grey robotic arm of segmented plates with teal joints and a claw hand | a robotic arm with a metal fist; side effect: a grey cuff appeared on her other forearm |
+| `torn-a_00001_.png` | make the jacket sleeves and the trousers frayed and torn | ragged hems, rips and patches on the trousers, slightly frayed cuffs |
+| `chain2-a_00001_.png` | `torn` then the robot arm (the prompt now says her other arm stays bare) | torn trousers and the robot arm, the other arm bare |
+| `chain3-a_00001_.png` | `chain2` then the third arm | the third arm is there, **but the robot arm is gone again**, and the colours drift a little with every edit |
+| **`all-a_00001_.png`** | all three changes in **one** prompt (robot arm, third arm, torn clothes, other arm stays bare) | **all three at once**; face, hair and jacket the same; the third arm is thick and ends in a hand with three or four fingers, not a two-pronged pincer |
+
+Read the exact prompts with `png-settings.mjs` (the png carries the template's graph). Lessons: one prompt with all changes beats a chain of edits (a later edit can undo an earlier one, and the colours drift); name what must stay (the other arm, face, hair); the edit model keeps the character where the SDXL passes did not.
+
 ## `original-hangar-strips/`
 
 Tilly's nine original hangar strips as they were drawn on the design canvas (idle, tolift, act, toidle, select, selecti, hold, desel, bridge-act; frames of 136 x 116 px; counts and times in `apps/web/src/hangar-select.ts`). They were removed from `archive/hangar/strips/` when her atlas moved to the rig export (Git: commit `3f0c734`). Kept as the reference for her original choreography, in particular the `act` (see `ANIMATION-OPTIONS.md`).
 
 ## What this shows
 
-SDXL with text, a ControlNet or an inpaint pass does not draw Tilly's third arm or robot arm reliably, and a refinement either destroys a sketch or leaves it flat. The next round should use the lane the community uses for sprites (an image-edit model with the picture as a reference, a sprite-sheet LoRA, and a pixel-snapping step): `docs/design/heroes/tools/comfy/RESEARCH.md`.
+SDXL with text, a ControlNet or an inpaint pass does not draw Tilly's third arm or robot arm reliably, and a refinement either destroys a sketch or leaves it flat. The community's lane (an image-edit model with the picture as a reference) did it in `step3-klein-edit/`; the sprite-sheet LoRA and the pixel-snapping step are still to try: `docs/design/heroes/tools/comfy/RESEARCH.md`.

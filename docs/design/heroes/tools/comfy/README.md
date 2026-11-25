@@ -11,6 +11,8 @@ New poses of Tilly for the intro videos and as a base for new rig animations. Th
 
 Evaluation scripts (prototypes from the first manual round, acceptance criteria still to be worked out) are in `eval/`: `flicker.mjs` (frame-to-frame change against the guides, contact sheet), `compare.mjs` (original strip against an atlas clip), `zoom.mjs`, `player.mjs` (side-by-side HTML player), `strip-sheet.mjs`, `look-sheet.mjs`. Each has its usage in its first lines. They need ffmpeg only for video work: ffmpeg and ffprobe are installed as static builds in `~/.local/bin` (no sudo).
 
+`tilly-klein-edit.json` is the gallery template `image_flux2_klein_image_edit_4b_distilled` (UI format, with subgraphs) with the slots of the best run filled in (picture `76.image` and `81.image`, prompt `75.text`, seed `75.noise_seed`; set them with the MCP's `set_workflow_slot`, run with `run_workflow`). It needs `diffusion_models/flux-2-klein-4b-fp8.safetensors` (4.07 GB), `text_encoders/qwen_3_4b.safetensors` (8.04 GB) and `vae/flux2-vae.safetensors` (0.34 GB), and uses about 13 GB of VRAM, about 15 s per picture. The results are in `archive/tilly-tests/step3-klein-edit/`.
+
 Where the work stopped and which ways are left for the hangar animations: `ANIMATION-OPTIONS.md`.
 
 ## Models to download
