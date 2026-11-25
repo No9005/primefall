@@ -1015,6 +1015,9 @@ function addToken(inputs: TokenInputs, build: TokenBuild, tokens: Container, her
 /** The pulse of the target rings and the clip of every Hero: the active one of this frame, Idle otherwise. Reduced motion stands on the rest frame. */
 function animateTokens(inputs: TokenInputs, build: TokenBuild): void {
   const { clips, clipDelays, frameClock, clipPlayers } = inputs;
+  // The frame clock is reset while the board renders, before this build is replaced. The figures of the old build keep running
+  // until then; if they read the live clock they would snap back to the start of their glide for a moment (a hop).
+  const frameStart = frameClock.current;
   const reducedMotion = prefersReducedMotion();
   const pulseStart = clock.now();
   const pulse = (now: number) => {
@@ -1026,13 +1029,13 @@ function animateTokens(inputs: TokenInputs, build: TokenBuild): void {
     if (!reducedMotion) build.cancels.push(clock.subscribe(pulse));
   }
   const playClips = (now: number) => {
-    const frameMs = (now - frameClock.current) * CLIP_SPEED;
+    const frameMs = (now - frameStart) * CLIP_SPEED;
     for (const mark of build.shieldMarks) mark.update(frameMs);
     for (const { token, fromX, fromY, startMs } of build.slides) {
       const left = 1 - slideProgress(frameMs - startMs);
       token.pivot.set(-fromX * left, -fromY * left);
     }
-    const walked = walkProgress(now - frameClock.current);
+    const walked = walkProgress(now - frameStart);
     for (const { token, fromX, fromY } of build.glides) token.pivot.set(-fromX * (1 - walked), -fromY * (1 - walked));
     // Marked and Slow are past their lock-on here; the Slow field keeps breathing.
     for (const mark of build.statusMarks) mark.update(reducedMotion ? STATUS_AT_REST_MS : 300 + now - pulseStart);
@@ -1210,8 +1213,10 @@ function followWalkFog(
   const walkers: FogWalker[] = ids.map((id) => ({ from: sightAfter.startPositions[id]!, to: sightAfter.endPositions[id]!, at: { col: 0, row: 0 } }));
   const frame = new Float32Array(startFog.length);
   const startedAt = clock.now();
+  // The frame start of this build (the live clock is already reset for the next frame while this fog still runs).
+  const frameStart = frameClock.current;
   const step = (now: number) => {
-    const progress = reduced ? 1 : walkProgress(now - frameClock.current);
+    const progress = reduced ? 1 : walkProgress(now - frameStart);
     ids.forEach((id, index) => {
       const to = heroes.find((hero) => hero.id === id)!.position;
       const from = walks[id] ?? to;
