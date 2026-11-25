@@ -1,7 +1,7 @@
 // An original strip against an atlas clip, frame by frame (strip on top, atlas below with all its layers, 7 columns, 1.5x).
 //   node compare.mjs <strip png> <atlas png> <atlas json> <clip> <frames> <out png>
-// The atlas is a hangar atlas (apps/web/public/assets/hangar/atlas/tilly.*); frames are 136 x 116 px. Get an original strip from Git, for example
-// `git show 3f0c734:archive/hangar/strips/tilly-act.png > tilly-act.png`.
+// The atlas is a hangar atlas (apps/web/public/assets/hangar/atlas/tilly.*); frames are 136 x 116 px. Tilly's original strips are kept in
+// `archive/tilly-tests/original-hangar-strips/` (frames of 136 x 116 px).
 import { createRequire } from 'node:module';
 import { readFileSync, writeFileSync } from 'node:fs';
 

@@ -4,7 +4,7 @@ Written down so that another session or agent can pick up where this one stopped
 
 ## The animation to reproduce
 
-The original `act` strip (27 frames, 136 x 116 px, 100 ms per frame) is no longer in the tree, it was removed with the move to the rig export. Get it from Git: `git show 3f0c734:archive/hangar/strips/tilly-act.png`. The beats:
+The original `act` strip (27 frames, 136 x 116 px, 100 ms per frame) was removed from `archive/hangar/strips/` with the move to the rig export. It is kept at `archive/tilly-tests/original-hangar-strips/tilly-act.png` (with her other original strips); in Git it is at commit `3f0c734`. The beats:
 
 - Frames 0 to 12: both arms up, the third arm forms a big arch over her head, she works on its end with both hands; her robot arm crosses in front of her chest, below her face.
 - Frames 13 to 17: the third arm shoots straight up and its claw tears off and flies away (speed lines, a yellow spark); she is shocked (wide white eyes, open mouth), steam at the break.

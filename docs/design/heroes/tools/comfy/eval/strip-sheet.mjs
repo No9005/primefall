@@ -1,6 +1,6 @@
 // A numbered contact sheet of a strip (frames side by side in one png).
 //   node strip-sheet.mjs <strip png> <frames> <columns> <scale> <out png>
-// For an original hangar strip from Git: `git show 3f0c734:archive/hangar/strips/tilly-act.png > tilly-act.png`.
+// Tilly's original hangar strips are kept in `archive/tilly-tests/original-hangar-strips/`.
 import { createRequire } from 'node:module';
 import { readFileSync, writeFileSync } from 'node:fs';
 
