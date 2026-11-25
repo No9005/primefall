@@ -112,6 +112,11 @@
    "file": "loops/scout-drone.wav",
    "what": "quadcopter scout drone hovering: a dark, soft, steady hum, seamless loop (WAV)",
    "durationMs": 6500
+  },
+  "ui.hangar-spark": {
+   "file": "ui/hangar-spark.mp3",
+   "what": "sparks jumping from a damaged fuse box in the hangar of the Hero Select",
+   "durationMs": 836
   }
  },
  "ambience": {
@@ -150,6 +155,15 @@
    "loop": "loop.scout-drone",
    "gain": 0.8,
    "note": "hums while the player's Squad has a Scout Drone area out (Site Survey, two Resolutions), louder the nearer the player's Hero is to the nearest area"
+  },
+  "hangar": {
+   "spark": {
+    "play": [
+     "ui.hangar-spark"
+    ],
+    "gain": 0.5,
+    "note": "at the start of every spark of the two fuse boxes in the picture of the hangar (the scene tells when)"
+   }
   }
  },
  "ui": {

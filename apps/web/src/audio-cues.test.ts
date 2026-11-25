@@ -71,6 +71,12 @@ describe("the map manifest", () => {
     for (const cue of tilly.cues) for (const sfx of cue.sfx ?? []) expect(sfx.play, `${cue.on}`).not.toContain("sfx.scout-drone");
   });
 
+  it("has the spark of the fuse boxes of the hangar, which the scene plays", () => {
+    const spark = map.ambience.hangar.spark!;
+    expect(spark.gain).toBeGreaterThan(0);
+    for (const id of spark.play) expect(map.assets[id], id).toBeDefined();
+  });
+
   it("keeps the loops in WAV (an MP3 leaves a gap at the seam) and puts a riffle on each beat of the shuffle animation", () => {
     for (const loop of map.ambience.loops) expect(map.assets[loop.play]!.file).toMatch(/\.wav$/);
     expect(map.ui.shuffle.atMs).toEqual(SHUFFLE_TIMELINE.riffles.map((riffle) => riffle.split));
@@ -159,7 +165,8 @@ describe("the sounds of a frame", () => {
     expect(assets(requests, "sfx")).toEqual([]);
     const shot = (clip: string) => planMoment("hangarClip", max, context(), undefined, clip).map((request) => [request.assetId, request.startMs]);
     expect(shot("selecti")).toEqual([["sfx.slam", 1080]]);
-    expect(shot("select")).toEqual([["sfx.slam", 1630]]);
+    expect(shot("select")).toEqual([["sfx.act-throw", 0], ["sfx.slam", 1630]]);
+    expect(shot("act")).toEqual([["sfx.act-lift", 0]]);
     expect(shot("idle")).toEqual([]);
   });
 
@@ -168,7 +175,9 @@ describe("the sounds of a frame", () => {
     const act = planMoment("hangarClip", tilly, context(), undefined, "act");
     expect(act.map((request) => [request.assetId, request.startMs]).sort()).toEqual([["sfx.act-fiddle", 300], ["sfx.act-tear", 1100], ["voice.act-gasp", 1200]]);
     expect(planMoment("hangarClip", tilly, context(), undefined, "idle")).toEqual([]);
-    expect(planMoment("hangarClip", { heroId: "select-kit", heroClass: HeroClass.Assassin, tile: undefined }, context(), undefined, "act")).toEqual([]);
+    const kit = { heroId: "select-kit", heroClass: HeroClass.Assassin, tile: undefined };
+    expect(planMoment("hangarClip", kit, context({ random: () => 0 }), undefined, "act").map((request) => [request.assetId, request.startMs])).toEqual([["voice.act-nice", 1900]]);
+    expect(planMoment("hangarClip", kit, context({ random: () => 0.95 }), undefined, "act")).toEqual([]);
   });
 
   it("says something on a Pitch only some of the time, never on every one", () => {

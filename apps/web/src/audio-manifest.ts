@@ -94,6 +94,9 @@ export const MAP_MANIFEST_URL = `${AUDIO_BASE}${MAP_FOLDER}/manifest.json`;
 /** The sounds of the player's own actions and of the moments of the match; `ui` in the map manifest. */
 export type UiSound = "cardPlayed" | "cardBack" | "cardDraw" | "cardBurn" | "energyUp" | "laserOff" | "zoneTaken" | "score" | "countdownTick" | "countdownFinal";
 
+/** The details of the hangar that sound: a spark at one of the fuse boxes, the flicker of the light. */
+export type HangarSound = "spark" | "flicker";
+
 export interface MapManifest {
   assets: Record<string, Pick<AudioAsset, "file" | "durationMs">>;
   ambience: {
@@ -105,6 +108,8 @@ export interface MapManifest {
     barrier: { loop: string; gain: number; dissolve: string };
     /** The hum of the player's own Scout Drone: a loop that runs while the Squad has a Site Survey area out. */
     scoutDrone: { loop: string; gain: number };
+    /** The sounds of the details of the hangar of the Hero Select, played when the scene tells (`HangarScene.sounds`). */
+    hangar: Partial<Record<HangarSound, { play: string[]; gain: number }>>;
   };
   ui: Record<UiSound, { play: string[] }> & { shuffle: { play: string[]; atMs: number[] } };
 }

@@ -82,9 +82,11 @@ export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenP
     heroes.current = made;
     made.start(initial);
     hangarScene.attach(made);
+    hangarScene.sounds = (sound) => gameAudio.playHangarSound(sound);
     redraw();
     return () => {
       hangarScene.attach(undefined);
+      hangarScene.sounds = undefined;
       made.dispose();
       heroes.current = undefined;
     };

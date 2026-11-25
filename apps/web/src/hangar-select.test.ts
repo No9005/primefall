@@ -80,28 +80,32 @@ describe("hangar Hero Select: a Hero", () => {
     expect(kit.made.state.mode).toBe("act");
   });
 
-  it("announces every clip as it begins, and each pass again when the act repeats (Max), and none after a tap", () => {
+  it("announces every clip as it begins, and each pass again when the act repeats (Kit), and none after a tap", () => {
     const heard: string[] = [];
-    /** `passes`: how often Max's act is to play. */
+    /** `passes`: how often Kit's act is to play. */
     const run = (passes: number, tapAfterMs?: number) => {
       heard.length = 0;
-      const env = fakeEnv((low) => (low === LOOPS.max.act[0] ? passes : low));
-      const made = new HeroPlayer("max", env, () => undefined, (hero, clip) => heard.push(`${hero}:${clip}@${env.now()}`));
+      const env = fakeEnv((low) => (low === LOOPS.kit.act[0] ? passes : low));
+      const made = new HeroPlayer("kit", env, () => undefined, (hero, clip) => heard.push(`${hero}:${clip}@${env.now()}`));
       made.begin(0);
-      env.advance(CLIPS.max.idle!.seconds * 1000 * LOOPS.max.idle[0] + CLIPS.max.tolift!.seconds * 1000);
+      env.advance(CLIPS.kit.idle!.seconds * 1000 * LOOPS.kit.idle[0]);
       const actStart = env.now();
-      env.advance(tapAfterMs ?? CLIPS.max.act!.seconds * 1000 * 2);
+      env.advance(tapAfterMs ?? CLIPS.kit.act!.seconds * 1000 * 2);
       if (tapAfterMs !== undefined) {
         made.tap();
-        env.advance(CLIPS.max.act!.seconds * 1000 * 2);
+        env.advance(CLIPS.kit.act!.seconds * 1000 * 2);
       }
       return heard.filter((entry) => entry.includes(":act@")).map((entry) => Number(entry.split("@")[1]) - actStart);
     };
-    expect(heard).toEqual([]);
     expect(run(1)).toEqual([0]);
-    expect(run(2)).toEqual([0, CLIPS.max.act!.seconds * 1000]);
+    expect(run(2)).toEqual([0, CLIPS.kit.act!.seconds * 1000]);
     expect(run(2, 1000)).toEqual([0]);
-    expect(heard.some((entry) => entry.startsWith("max:bridge")) || heard.some((entry) => entry.startsWith("max:select@"))).toBe(true);
+    expect(heard.some((entry) => entry.startsWith("kit:idle@"))).toBe(true);
+  });
+
+  it("plays Max's lift once, so that his grunts, which are longer than a pass of it, do not overlap", () => {
+    expect(LOOPS.max.act).toEqual([1, 1]);
+    expect(LOOPS.kit.act[1]).toBeGreaterThan(1);
   });
 
   it("plays Tilly's act once, after a long and varying idle, so that her arm never tears off twice in a row", () => {

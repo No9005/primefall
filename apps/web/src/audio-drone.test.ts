@@ -110,4 +110,13 @@ describe("the hum of the Scout Drone", () => {
     audio.stopAll();
     expect(second?.stoppedAt).toBeGreaterThan(fake.context.currentTime);
   });
+
+  it("plays a spark of the hangar at the level of the map manifest", () => {
+    audio.playHangarSound("spark");
+    const buffer = (audio as unknown as { buffers: Map<string, unknown> }).buffers.get(`map:${MAP_MANIFEST.ambience.hangar.spark!.play[0]}`);
+    const [spark] = fake.sources.filter((source) => source.buffer === buffer);
+    expect(spark?.started).toBe(true);
+    audio.playHangarSound("flicker");
+    expect(fake.sources).toHaveLength(1);
+  });
 });

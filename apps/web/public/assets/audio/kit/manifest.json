@@ -304,6 +304,12 @@
    "what": "impact on a Hero that is hit (shared with Tilly's folder)",
    "durationMs": 522,
    "shared": true
+  },
+  "voice.act-nice": {
+   "file": "voice/act-nice.mp3",
+   "kind": "voice",
+   "text": "Nice.",
+   "durationMs": 1071
   }
  },
  "cues": [
@@ -705,6 +711,18 @@
      "voice.defeat-2"
     ],
     "atMs": 0
+   }
+  },
+  {
+   "on": "hangarClip",
+   "clip": "act",
+   "note": "the act clip of the Hero Select (42 frames in 2.9 s): the rifle gleams at frame 28, 1.93 s; he says it on most passes, not every one",
+   "voice": {
+    "play": [
+     "voice.act-nice"
+    ],
+    "atMs": 1900,
+    "chance": 0.7
    }
   }
  ]
