@@ -1,4 +1,5 @@
 import { Assets, Container, Graphics, Rectangle, type Spritesheet, Sprite, Texture } from "pixi.js";
+import { type HangarSound } from "./audio-manifest";
 import { parseAtlas } from "./atlas";
 import { AtlasAnimator, type AtlasSheet } from "./atlas-animator";
 import {
@@ -95,6 +96,12 @@ const BROWN: readonly (readonly [number, number])[] = [[0, 1], [61, 1], [61.5, 0
 export const shadeOpacity = (timeMs: number): number => stepValue(BROWN, cyclePercent(timeMs, 9.4, 0) ?? 0);
 
 /** The amber guide lights: one of six frames, each for 200 ms. */
+/** How many starts of a looped animation of `seconds` and `delay` (seconds) lie in the time after `fromMs` up to and including `toMs`. */
+export function cycleStarts(fromMs: number, toMs: number, seconds: number, delay: number): number {
+  const started = (ms: number) => (ms / 1000 < delay ? 0 : Math.floor((ms / 1000 - delay) / seconds) + 1);
+  return Math.max(0, started(toMs) - started(fromMs));
+}
+
 export const guideFrame = (timeMs: number): number => Math.floor(timeMs / GUIDE.frameMs) % GUIDE.frames;
 
 /** The frame of a spark, or undefined while it is out. */
@@ -162,6 +169,8 @@ export interface HangarScene extends Scene {
   attach(heroes: HangarHeroes | undefined): void;
   /** The Heroes changed while the ticker is not running (reduced motion): draws one more frame. */
   invalidate(): void;
+  /** Who is told when a detail of the picture that sounds begins (a spark at a fuse box); the scene keeps the time, so that the sound is in step with the picture. */
+  sounds: ((sound: HangarSound) => void) | undefined;
 }
 
 interface HeroView {
@@ -426,6 +435,12 @@ function showDecor(parts: HangarParts, reduced: boolean, time: number): void {
   }
 }
 
+/** Tells `listener` of the sounds that begin between two moments of the scene's time: a spark at each fuse box as its cycle starts. */
+function announceSounds(listener: ((sound: HangarSound) => void) | undefined, fromMs: number, toMs: number): void {
+  if (!listener) return;
+  for (const spark of SPARKS) for (let start = 0; start < cycleStarts(fromMs, toMs, spark.seconds, spark.delay); start++) listener("spark");
+}
+
 export function createHangarScene(art: HangarArt = pixiHangarArt): HangarScene {
   let env: SceneEnv | undefined;
   let heroes: HangarHeroes | undefined;
@@ -463,6 +478,7 @@ export function createHangarScene(art: HangarArt = pixiHangarArt): HangarScene {
         showHeroes(parts, heroes, deltaMs);
         synced = true;
       }
+      if (!reduced) announceSounds(scene.sounds, time - deltaMs, time);
       showDecor(parts, reduced, time);
     },
     ready: () => parts !== undefined && synced,
@@ -481,6 +497,7 @@ export function createHangarScene(art: HangarArt = pixiHangarArt): HangarScene {
       env?.invalidate();
     },
     invalidate: () => env?.invalidate(),
+    sounds: undefined,
   };
   return scene;
 }

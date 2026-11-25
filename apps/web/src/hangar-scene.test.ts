@@ -3,7 +3,7 @@ import { Texture } from "pixi.js";
 import { describe, expect, it } from "vitest";
 import { HeroClass } from "game-core";
 import { parseAtlas } from "./atlas";
-import { cyclePercent, crystalAt, createHangarScene, flickerOpacity, guideFrame, HANGAR_SCENE_NAME, type HangarArt, lampOpacity, moteAt, shadeOpacity, sparkFrame } from "./hangar-scene";
+import { cyclePercent, crystalAt, createHangarScene, cycleStarts, flickerOpacity, guideFrame, HANGAR_SCENE_NAME, type HangarArt, lampOpacity, moteAt, shadeOpacity, sparkFrame } from "./hangar-scene";
 import { HANGAR_HEROES, HangarHeroes } from "./hangar-select";
 import { createStage, type AssetSource, type StageEnvironment, type StageHost } from "./stage";
 
@@ -107,6 +107,25 @@ describe("the hangar scene on the stage", () => {
     expect(heroes.players.max.state.mode).toBe("act");
   });
 
+  it("tells of the sparks at the fuse boxes as their cycles start, on the stage clock", async () => {
+    const { stage, scene, heroes } = setup();
+    const heard: string[] = [];
+    scene.sounds = (sound) => heard.push(sound);
+    heroes.start();
+    scene.attach(heroes);
+    await stage.showScene(HANGAR_SCENE_NAME);
+    stage.step(500);
+    expect(heard).toEqual([]);
+    stage.step(200); // 0.7 s: the first box sparks from 0.6 s
+    expect(heard).toEqual(["spark"]);
+    stage.step(1500); // 2.2 s: the second box sparks from 2.1 s
+    expect(heard).toEqual(["spark", "spark"]);
+    stage.step(1500); // 3.7 s: the first box sparks again 3.7 s after its first spark, at 4.3 s
+    expect(heard).toHaveLength(2);
+    stage.step(700);
+    expect(heard).toHaveLength(3);
+  });
+
   it("chooses one Hero at a time and takes the choice back", async () => {
     const { stage, scene, heroes } = setup();
     heroes.start();
@@ -160,6 +179,14 @@ describe("the hangar scene on the stage", () => {
 });
 
 describe("hangar motion on the scene's time", () => {
+  it("counts the starts of a cycle between two moments", () => {
+    expect(cycleStarts(0, 500, 3.7, 0.6)).toBe(0);
+    expect(cycleStarts(0, 600, 3.7, 0.6)).toBe(1);
+    expect(cycleStarts(600, 4299, 3.7, 0.6)).toBe(0);
+    expect(cycleStarts(600, 4310, 3.7, 0.6)).toBe(1);
+    expect(cycleStarts(0, 20_000, 3.7, 0.6)).toBe(6);
+  });
+
   it("blinks the lamps once per cycle and offsets them by their delay", () => {
     expect(lampOpacity(0, 1.6, 0)).toBe(1);
     expect(lampOpacity(900, 1.6, 0)).toBe(0.08);

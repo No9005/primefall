@@ -1,5 +1,5 @@
 import { findTiles, type GridPosition, type HeroClass, NOTSTROM_MAP, TileKind } from "game-core";
-import { AUDIO_FOLDER, type AudioManifest, assetUrl, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl, MUSIC_MANIFEST_URL, type MusicManifest, musicFileUrl, type UiSound } from "./audio-manifest";
+import { AUDIO_FOLDER, type AudioManifest, assetUrl, type HangarSound, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl, MUSIC_MANIFEST_URL, type MusicManifest, musicFileUrl, type UiSound } from "./audio-manifest";
 import { distanceGain, MUSIC_DUCK, nextAmbienceGapMs, pickVariant, Priority, SfxLimiter, VoiceDirector } from "./audio-mix";
 import { planMoment, type PlanContext, type SoundRequest, type Source } from "./audio-cues";
 import { NOTSTROM_INTRO_SOUND } from "./notstrom-intro";
@@ -745,6 +745,18 @@ export class GameAudio {
   }
 
   /** A sound of the player's own action or of a moment of the match: a card goes in, a zone is taken, a number counts down. */
+  /** A detail of the hangar of the Hero Select that sounds (a spark at a fuse box): at the level the map manifest gives it, never the same variant twice in a row. */
+  playHangarSound(sound: HangarSound): void {
+    const entry = this.mapManifest?.ambience.hangar[sound];
+    const context = this.context;
+    if (!entry || !context || context.state === "closed" || !this.sfxBus) return;
+    const id = pickVariant(entry.play, this.lastPick.get(`hangar:${sound}`), Math.random);
+    const buffer = id === undefined ? undefined : this.buffers.get(`${MAP_FOLDER}:${id}`);
+    if (id === undefined || !buffer) return;
+    this.lastPick.set(`hangar:${sound}`, id);
+    this.startBuffer(context, buffer, this.sfxBus, { level: entry.gain });
+  }
+
   playUi(name: UiSound, delayMs = 0): void {
     const manifest = this.mapManifest;
     const context = this.context;

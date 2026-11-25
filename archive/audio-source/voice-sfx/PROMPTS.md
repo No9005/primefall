@@ -1316,3 +1316,5 @@ Timing in the clips (what the takes are for): Max's act (18 frames in 1.8 s): th
 Cut and levelled (`sfx/hangar/cut/`, mono MP3: effects 96 kbit/s to -14 LUFS, speech 80 kbit/s to -16 LUFS, peak limiter at -3.6 dBFS; measurements in `cut/measure.json`: length, LUFS, true peak, where the first loud part and the loudest part fall in the file).
 
 Verdict: waiting for the owner's ear.
+
+Afterwards (2026-11-25), the owner listened: **picked** `lift_a`, `throw_a`, `nice_a`, `spark_b` (in the game: `max/sfx/act-lift.mp3`, `max/sfx/act-throw.mp3`, `kit/voice/act-nice.mp3`, `map/ui/hangar-spark.mp3`). **Rejected:** `whoosh_a/b`, `crash_a/b` and the set-down (`set_down_a/b`) for lacking weight (the owner: a heavy barbell with plates hitting the floor or the metal box), and `flicker_a/b` for not sounding like fluorescent lamps. Not picked: `lift_b/c`, `throw_b`, `nice_b/c`, `spark_a`.

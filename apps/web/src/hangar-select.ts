@@ -90,7 +90,7 @@ export const TRANSITIONS: Record<HangarHero, [ClipName | undefined, ClipName | u
  * and the idle between two of them is long and varies, so that it never comes twice in a row.
  */
 export const LOOPS: Record<HangarHero, { idle: [number, number]; act: [number, number] }> = {
-  max: { idle: [2, 3], act: [1, 2] },
+  max: { idle: [2, 3], act: [1, 1] }, // his grunts last longer than one pass of the lift, so it is played once
   tilly: { idle: [3, 8], act: [1, 1] },
   kit: { idle: [2, 3], act: [1, 2] },
 };

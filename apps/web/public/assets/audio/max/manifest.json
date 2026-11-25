@@ -348,6 +348,18 @@
    "what": "Shield absorbs a hit (shared with Tilly's folder)",
    "durationMs": 836,
    "shared": true
+  },
+  "sfx.act-lift": {
+   "file": "sfx/act-lift.mp3",
+   "kind": "sfx",
+   "what": "Hero Select act: Max's training grunts as he lifts the barbell (his own voice, as an effect so that his select line does not cut it)",
+   "durationMs": 3056
+  },
+  "sfx.act-throw": {
+   "file": "sfx/act-throw.mp3",
+   "kind": "sfx",
+   "what": "Hero Select select clip: Max's effort cry as he throws the barbell (his own voice, as an effect)",
+   "durationMs": 967
   }
  },
  "cues": [
@@ -802,13 +814,32 @@
   {
    "on": "hangarClip",
    "clip": "select",
-   "note": "the select clip (32 frames in 2.0 s) after a tap in the middle of the lift or during the way back: the one shot is at frame 26, 1.63 s",
+   "note": "the select clip (32 frames in 2.0 s) after a tap in the middle of the lift or during the way back: his cry as the barbell leaves his hands (0 s, the loudest part at 0.4 s), the one shot at frame 26, 1.63 s",
    "sfx": [
+    {
+     "play": [
+      "sfx.act-throw"
+     ],
+     "atMs": 0
+    },
     {
      "play": [
       "sfx.slam"
      ],
      "atMs": 1630
+    }
+   ]
+  },
+  {
+   "on": "hangarClip",
+   "clip": "act",
+   "note": "the act clip of the Hero Select (18 frames in 1.8 s): the grunts run 3 s, their three phrases at the lift (0.2 s), the end of the hold and the set-down; the act plays once",
+   "sfx": [
+    {
+     "play": [
+      "sfx.act-lift"
+     ],
+     "atMs": 0
     }
    ]
   }
