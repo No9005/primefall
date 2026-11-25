@@ -36,7 +36,7 @@ export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenP
 
   useEffect(() => {
     // The sounds of the three Heroes load while the player looks at them; leaving the screen silences a line that still runs.
-    void gameAudio.load(SELECTABLE_HEROES);
+    void Promise.all([gameAudio.load(SELECTABLE_HEROES), gameAudio.loadMap()]);
     // The intro of the music plays under the Hero Select.
     void gameAudio.loadMusic().then(() => gameAudio.startIntro());
     return () => {
@@ -73,9 +73,11 @@ export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenP
 
   const tap = (hero: (typeof HANGAR_HEROES)[number]) => {
     const now = heroes.current?.tap(hero);
-    if (!now) return;
-    gameAudio.stopAll();
-    gameAudio.playMoment("heroSelected", { heroId: `select-${HERO_OF[now]}`, heroClass: HERO_OF[now], tile: undefined });
+    if (now) {
+      gameAudio.stopAll();
+      gameAudio.playMoment("heroSelected", { heroId: `select-${HERO_OF[now]}`, heroClass: HERO_OF[now], tile: undefined });
+    }
+    gameAudio.setSelectDrone(now === "tilly"); // Tilly's drone hums while she is the chosen Hero
   };
 
   const nav = { width: NAV.width * fit.scale, height: NAV.height * fit.scale, bottom: fit.offsetY + NAV.lift * fit.scale };

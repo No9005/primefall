@@ -81,6 +81,8 @@ interface Music {
 
 /** The ambience fades in and out this slowly. */
 const AMBIENCE_FADE_S = 2;
+/** In the Hero Select the hum of Tilly's drone starts this long after her tap: where her select clip lets the drone go. */
+const SELECT_DRONE_DELAY_S = 0.9;
 /** The one-shots of the ambience are quieter than the effects of the Heroes. */
 const ONE_SHOT_GAIN = 0.6;
 
@@ -131,6 +133,8 @@ export class GameAudio {
   /** The middles of the Scout Drone areas the player's Squad has out: the drone hums while there is one. */
   private scoutDroneAreas: readonly GridPosition[] = [];
   private scoutDrone: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
+  /** The hum of Tilly's drone in the Hero Select: it runs while she is the chosen Hero. */
+  private selectDrone: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
   private listener: GridPosition | undefined;
 
   /** Arms the sound on the first tap or key press of the page. Returns the function that takes it back. */
@@ -309,23 +313,45 @@ export class GameAudio {
     return Math.max(...this.scoutDroneAreas.map((centre) => distanceGain(listener, centre)));
   }
 
+  /** The hum of the Scout Drone as a loop that fades in from `delayS` on; undefined while its sound is not loaded. */
+  private startDroneLoop(level: number, delayS = 0): { source: AudioBufferSourceNode; gain: GainNode } | undefined {
+    const context = this.context;
+    const manifest = this.mapManifest;
+    const buffer = manifest && this.buffers.get(`${MAP_FOLDER}:${manifest.ambience.scoutDrone.loop}`);
+    if (!context || !buffer || !this.sfxBus) return undefined;
+    const begin = context.currentTime + delayS;
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0, begin);
+    gain.gain.linearRampToValueAtTime(level, begin + AMBIENCE_FADE_S / 2);
+    source.connect(gain).connect(this.sfxBus);
+    source.start(begin);
+    return { source, gain };
+  }
+
+  /**
+   * The hum of Tilly's Scout Drone in the Hero Select: it starts under her select clip, where she lets the drone go, and runs while she stays
+   * the chosen Hero (`on`); another Hero, taking the choice back or leaving the screen fades it out.
+   */
+  setSelectDrone(on: boolean): void {
+    const running = this.selectDrone;
+    if (on && !running) {
+      this.selectDrone = this.startDroneLoop(this.mapManifest?.ambience.scoutDrone.gain ?? 0, SELECT_DRONE_DELAY_S);
+    } else if (!on && running) {
+      this.selectDrone = undefined;
+      this.fadeOutLoop(running);
+    }
+  }
+
   private applyScoutDrone(): void {
     const context = this.context;
     const manifest = this.mapManifest;
     if (!context || !manifest || !this.ambience || !this.sfxBus) return;
     const wanted = this.scoutDroneAreas.length > 0;
     if (wanted && !this.scoutDrone) {
-      const buffer = this.buffers.get(`${MAP_FOLDER}:${manifest.ambience.scoutDrone.loop}`);
-      if (!buffer) return;
-      const source = context.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
-      const gain = context.createGain();
-      gain.gain.setValueAtTime(0, context.currentTime);
-      gain.gain.linearRampToValueAtTime(manifest.ambience.scoutDrone.gain * this.scoutDroneDistance(), context.currentTime + AMBIENCE_FADE_S / 2);
-      source.connect(gain).connect(this.sfxBus);
-      source.start();
-      this.scoutDrone = { source, gain };
+      this.scoutDrone = this.startDroneLoop(manifest.ambience.scoutDrone.gain * this.scoutDroneDistance());
     } else if (!wanted && this.scoutDrone) {
       const drone = this.scoutDrone;
       this.scoutDrone = undefined;
@@ -845,6 +871,7 @@ export class GameAudio {
     this.playing.clear();
     this.director.clear();
     this.limiter.clear();
+    this.setSelectDrone(false);
   }
 
   /** A moment of the game that is not a frame of the Resolution: the Hero Select, a Pitch, the end of the match. */
