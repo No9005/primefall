@@ -66,6 +66,18 @@ The owner's notes on `step3-klein-edit/all-a_00001_.png`: keep the gun of the or
 
 The prompts are readable with `png-settings.mjs`.
 
+## `step5-klein-robot-third-arm/` (gun in the left hand, a third arm that reads as a robot arm)
+
+The owner's notes on `step4-klein-variants/`: the gun goes into her **left** hand (the right of the picture); the robotic right arm (the left of the picture) is fine; the third arm is not in the direction it should take: it must be recognisable as a **robot arm** (pipes, a wrench and a hose were not), still thin and put together from scrap. Same template, reference and **the same seed 1** for all three, so that prompt and chance can be told apart. One prompt with all changes (robotic right arm hanging relaxed with an open hand, gun moved to the other hand, a thin robot arm out of her upper back, torn trousers). `variants-sheet.png` shows them.
+
+| File | Third arm | Reading |
+|---|---|---|
+| `w1-servo-segments_00001_.png` | thin metal segments, round ball joints with small servos, a two-pronged pincer | clearly a robot arm and the most filigree; reads a little like a trident on a stick, not much scrap |
+| `w2-scrap-robot_00001_.png` | a boxy rusty segment with exposed wiring, a mechanical joint, a two-pronged claw | the scrap look; boxy and thicker |
+| `w3-insect-leg-robot_00001_.png` | a thin jointed arm holding a rusty block with prongs | odd: the end is a block, not a hand |
+
+In all three the gun is in her left hand, but it is much **smaller** than the original's (a pistol held low by the hip), and the robotic right arm hangs relaxed with an open hand.
+
 ## `original-hangar-strips/`
 
 Tilly's nine original hangar strips as they were drawn on the design canvas (idle, tolift, act, toidle, select, selecti, hold, desel, bridge-act; frames of 136 x 116 px; counts and times in `apps/web/src/hangar-select.ts`). They were removed from `archive/hangar/strips/` when her atlas moved to the rig export (Git: commit `3f0c734`). Kept as the reference for her original choreography, in particular the `act` (see `ANIMATION-OPTIONS.md`).
