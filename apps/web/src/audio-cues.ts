@@ -252,7 +252,7 @@ function planCoverCrumbling(frame: PlaybackFrame, planner: Planner): void {
 }
 
 /** The cue of a moment outside the Resolution: the Hero Select, a Pitch, the end of the match. */
-export function planMoment(on: "heroSelected" | "cardPitched" | "matchEnd", who: Source, ctx: PlanContext, won?: boolean): SoundRequest[] {
+export function planMoment(on: "heroSelected" | "hangarAct" | "cardPitched" | "matchEnd", who: Source, ctx: PlanContext, won?: boolean): SoundRequest[] {
   const planner = new Planner(ctx);
   const cue = planner.cueOf(who.heroClass, on, (candidate) => candidate.won === undefined || candidate.won === won);
   // The Hero Select sheet runs in real time; a Pitch and the end of the match have nothing to follow.

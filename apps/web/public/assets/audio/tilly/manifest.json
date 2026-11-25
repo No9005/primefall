@@ -309,6 +309,24 @@
    "kind": "sfx",
    "what": "Exhausted: armour collapses",
    "durationMs": 3082
+  },
+  "sfx.act-fiddle": {
+   "file": "sfx/act-fiddle.mp3",
+   "kind": "sfx",
+   "what": "Hero Select act: fiddling at the third arm, welding and ratchet noises",
+   "durationMs": 2038
+  },
+  "sfx.act-tear": {
+   "file": "sfx/act-tear.mp3",
+   "kind": "sfx",
+   "what": "Hero Select act: the arm tears off and clatters on the floor",
+   "durationMs": 2508
+  },
+  "voice.act-gasp": {
+   "file": "voice/act-gasp.mp3",
+   "kind": "voice",
+   "text": "Oh! (a panicked gasp)",
+   "durationMs": 1123
   }
  },
  "cues": [
@@ -673,6 +691,30 @@
     ],
     "atMs": 0
    }
+  },
+  {
+   "on": "hangarAct",
+   "note": "the act clip of the Hero Select (docs/design/heroes/pixellab-act/): fiddling from 0.3 s, the arm tears off at 1.1 s, her gasp at 1.2 s; played again with every pass of the clip",
+   "voice": {
+    "play": [
+     "voice.act-gasp"
+    ],
+    "atMs": 1200
+   },
+   "sfx": [
+    {
+     "play": [
+      "sfx.act-fiddle"
+     ],
+     "atMs": 300
+    },
+    {
+     "play": [
+      "sfx.act-tear"
+     ],
+     "atMs": 1100
+    }
+   ]
   }
  ]
 }

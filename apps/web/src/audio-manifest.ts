@@ -33,6 +33,7 @@ export interface SfxPlay {
 
 export type CueOn =
   | "heroSelected"
+  | "hangarAct"
   | "attack"
   | "cardPlayed"
   | "cardPitched"

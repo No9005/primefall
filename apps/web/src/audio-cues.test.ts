@@ -153,6 +153,9 @@ describe("the sounds of a frame", () => {
   });
 
   it("plays the Hero Select line and the shots of Max", () => {
+    const act = planMoment("hangarAct", { heroId: "select-tilly", heroClass: HeroClass.Controller, tile: undefined }, context());
+    expect(act.map((request) => [request.assetId, request.startMs]).sort()).toEqual([["sfx.act-fiddle", 300], ["sfx.act-tear", 1100], ["voice.act-gasp", 1200]]);
+    expect(planMoment("hangarAct", { heroId: "select-max", heroClass: HeroClass.Bruiser, tile: undefined }, context())).toEqual([]);
     const requests = planMoment("heroSelected", { heroId: "select", heroClass: HeroClass.Bruiser, tile: undefined }, context());
     expect(assets(requests, "voice")).toEqual(["voice.select"]);
     expect(assets(requests, "sfx")).toEqual(["sfx.slam", "sfx.slam", "sfx.slam"]);
