@@ -21,7 +21,8 @@ Run the script **after** `export-hangar.mjs controller` if that was run: the rig
 4. **Idle arm.** The rig's idle draws the third arm as a straight pole; the script replaces it with the arched arm of the first act frame (moved with the head of each idle frame), so the idle and the act show the same arm, down to its first joint. The arm trails the head by three frames and sways a pixel of its own; both fade out towards the first frame, so `tolift`, `toidle` and the end of `desel` meet it exactly. Every animation that uses an idle frame (`tolift`, `toidle`, the end of `desel`) gets the arched frame.
 5. **Desel.** The rig's `desel` runs from the hold pose (arm bent up) to the idle with a straight pole. The script keeps frame 0, clears the pole in the frames between and swings the forearm and claw of the arched arm about the elbow from the angle of the hold pose down to the idle arch (frames 1 to 13, with a small dip below it for follow-through; `DESEL_SWING`); the last frame is the arched idle.
 6. **Bridge.** The bridge from a moment of the act into the ready pose is the pose, then a dithered half-and-half mix of it with the ready pose, then the ready pose begins (`tolift` and `toidle` stay two frames: a dither between nearly equal poses only speckles the arm).
-7. **Palette.** The script snaps every pixel to the 23 colours of the rig's Tilly (the colours of the atlas used at least 300 times, close shades merged) and makes the alpha binary.
+7. **Hand.** In act frame 31 Pixellab drew the glove of the right arm in light greys, in the frames around it is dark; the script maps those greys to the dark ones in that frame (`ODD_HAND`).
+8. **Palette.** The script snaps every pixel to the 23 colours of the rig's Tilly (the colours of the atlas used at least 300 times, close shades merged) and makes the alpha binary.
 
 Credits: a 64 x 64 px call costs one generation of the trial plan.
 
