@@ -62,6 +62,15 @@ describe("the map manifest", () => {
     expect(map.ui.laserOff.play).toContain(map.ambience.barrier.dissolve);
   });
 
+  it("has the hum of the Scout Drone as a loop in WAV and no whining one-shot of it any more", () => {
+    const drone = map.assets[map.ambience.scoutDrone.loop]!;
+    expect(drone.file).toMatch(/\.wav$/);
+    expect(drone.durationMs).toBeGreaterThan(5000);
+    const tilly = manifests.get(HeroClass.Controller)!;
+    expect(tilly.assets["sfx.scout-drone"]).toBeUndefined();
+    for (const cue of tilly.cues) for (const sfx of cue.sfx ?? []) expect(sfx.play, `${cue.on}`).not.toContain("sfx.scout-drone");
+  });
+
   it("keeps the loops in WAV (an MP3 leaves a gap at the seam) and puts a riffle on each beat of the shuffle animation", () => {
     for (const loop of map.ambience.loops) expect(map.assets[loop.play]!.file).toMatch(/\.wav$/);
     expect(map.ui.shuffle.atMs).toEqual(SHUFFLE_TIMELINE.riffles.map((riffle) => riffle.split));

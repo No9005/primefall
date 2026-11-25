@@ -100,6 +100,8 @@ export interface MapManifest {
     oneShots: { play: string[]; everyMs: [number, number] };
     /** The laser barrier around the inactive Prime Zone: a loop that hums while the walls stand; `dissolve` is the sound in `ui` when they go. */
     barrier: { loop: string; gain: number; dissolve: string };
+    /** The hum of the player's own Scout Drone: a loop that runs while the Squad has a Site Survey area out. */
+    scoutDrone: { loop: string; gain: number };
   };
   ui: Record<UiSound, { play: string[] }> & { shuffle: { play: string[]; atMs: number[] } };
 }

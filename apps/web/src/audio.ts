@@ -128,6 +128,9 @@ export class GameAudio {
   /** The laser barrier: wanted while the Prime Zone is inactive, heard while the ambience runs. */
   private barrierWanted = false;
   private barrier: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
+  /** The middles of the Scout Drone areas the player's Squad has out: the drone hums while there is one. */
+  private scoutDroneAreas: readonly GridPosition[] = [];
+  private scoutDrone: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
   private listener: GridPosition | undefined;
 
   /** Arms the sound on the first tap or key press of the page. Returns the function that takes it back. */
@@ -237,6 +240,7 @@ export class GameAudio {
       if (loop.nearPrimeZone) loop.gain.gain.setTargetAtTime(loop.base * distanceGain(tile, PRIME_ZONE_CENTRE), context.currentTime, 0.5);
     }
     if (this.barrier && this.mapManifest) this.barrier.gain.gain.setTargetAtTime(this.mapManifest.ambience.barrier.gain * distanceGain(tile, PRIME_ZONE_CENTRE), context.currentTime, 0.5);
+    if (this.scoutDrone && this.mapManifest) this.scoutDrone.gain.gain.setTargetAtTime(this.mapManifest.ambience.scoutDrone.gain * this.scoutDroneDistance(), context.currentTime, 0.5);
   }
 
   /**
@@ -273,14 +277,62 @@ export class GameAudio {
   }
 
   private fadeOutBarrier(): void {
-    const context = this.context;
     const barrier = this.barrier;
     this.barrier = undefined;
-    if (!barrier || !context) return;
-    barrier.gain.gain.cancelScheduledValues(context.currentTime);
-    barrier.gain.gain.setValueAtTime(barrier.gain.gain.value, context.currentTime);
-    barrier.gain.gain.linearRampToValueAtTime(0, context.currentTime + AMBIENCE_FADE_S / 2);
-    barrier.source.stop(context.currentTime + AMBIENCE_FADE_S / 2 + 0.05);
+    this.fadeOutLoop(barrier);
+  }
+
+  /** Fades a looping sound out and stops it. */
+  private fadeOutLoop(loop: { source: AudioBufferSourceNode; gain: GainNode } | undefined): void {
+    const context = this.context;
+    if (!loop || !context) return;
+    loop.gain.gain.cancelScheduledValues(context.currentTime);
+    loop.gain.gain.setValueAtTime(loop.gain.gain.value, context.currentTime);
+    loop.gain.gain.linearRampToValueAtTime(0, context.currentTime + AMBIENCE_FADE_S / 2);
+    loop.source.stop(context.currentTime + AMBIENCE_FADE_S / 2 + 0.05);
+  }
+
+  /**
+   * The hum of the player's own Scout Drone: it runs while the Squad has a Site Survey area out (`centres` are the middles of the areas, none
+   * when there is no area) and is quieter the further the player's Hero is from the nearest one. Only the own Squad's areas are passed, so it
+   * gives nothing away about the enemy (Fog of War).
+   */
+  setScoutDrones(centres: readonly GridPosition[]): void {
+    this.scoutDroneAreas = centres;
+    this.applyScoutDrone();
+  }
+
+  /** 1 near the nearest area, less with distance (`distanceGain`); 1 while the player's Hero is not known. */
+  private scoutDroneDistance(): number {
+    const listener = this.listener;
+    if (!listener || this.scoutDroneAreas.length === 0) return 1;
+    return Math.max(...this.scoutDroneAreas.map((centre) => distanceGain(listener, centre)));
+  }
+
+  private applyScoutDrone(): void {
+    const context = this.context;
+    const manifest = this.mapManifest;
+    if (!context || !manifest || !this.ambience || !this.sfxBus) return;
+    const wanted = this.scoutDroneAreas.length > 0;
+    if (wanted && !this.scoutDrone) {
+      const buffer = this.buffers.get(`${MAP_FOLDER}:${manifest.ambience.scoutDrone.loop}`);
+      if (!buffer) return;
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      const gain = context.createGain();
+      gain.gain.setValueAtTime(0, context.currentTime);
+      gain.gain.linearRampToValueAtTime(manifest.ambience.scoutDrone.gain * this.scoutDroneDistance(), context.currentTime + AMBIENCE_FADE_S / 2);
+      source.connect(gain).connect(this.sfxBus);
+      source.start();
+      this.scoutDrone = { source, gain };
+    } else if (!wanted && this.scoutDrone) {
+      const drone = this.scoutDrone;
+      this.scoutDrone = undefined;
+      this.fadeOutLoop(drone);
+    } else if (this.scoutDrone) {
+      this.scoutDrone.gain.gain.setTargetAtTime(manifest.ambience.scoutDrone.gain * this.scoutDroneDistance(), context.currentTime, 0.5);
+    }
   }
 
   /** Starts the ambience of the map: the loops fade in, and a quiet sound now and then. Runs until `stopAmbience`. */
@@ -305,6 +357,7 @@ export class GameAudio {
     this.ambience = { loops, timer: undefined };
     this.scheduleOneShot(manifest.ambience.oneShots);
     this.applyBarrier(false);
+    this.applyScoutDrone();
   }
 
   private scheduleOneShot(oneShots: MapManifest["ambience"]["oneShots"]): void {
@@ -652,6 +705,9 @@ export class GameAudio {
     if (!ambience || !context) return;
     clearTimeout(ambience.timer);
     this.fadeOutBarrier();
+    const drone = this.scoutDrone;
+    this.scoutDrone = undefined;
+    this.fadeOutLoop(drone);
     for (const { source, gain } of ambience.loops) {
       gain.gain.cancelScheduledValues(context.currentTime);
       gain.gain.setValueAtTime(gain.gain.value, context.currentTime);
