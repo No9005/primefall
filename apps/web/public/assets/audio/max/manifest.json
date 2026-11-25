@@ -354,34 +354,13 @@
   {
    "on": "heroSelected",
    "clip": "select_ready",
-   "guess": true,
-   "note": "he fires three shots; the times are read from the frames",
+   "note": "his Hero Select line; the shot belongs to the clip that plays (cues `hangarClip`), because the clip now has one shot, not three",
    "voice": {
     "play": [
      "voice.select"
     ],
     "atMs": 0
-   },
-   "sfx": [
-    {
-     "play": [
-      "sfx.slam"
-     ],
-     "atMs": 1400
-    },
-    {
-     "play": [
-      "sfx.slam"
-     ],
-     "atMs": 2200
-    },
-    {
-     "play": [
-      "sfx.slam"
-     ],
-     "atMs": 3000
-    }
-   ]
+   }
   },
   {
    "on": "attack",
@@ -806,6 +785,32 @@
     ],
     "atMs": 0
    }
+  },
+  {
+   "on": "hangarClip",
+   "clip": "selecti",
+   "note": "the select-in clip (20 frames in 1.2 s): the one shot is at frame 18, 1.08 s",
+   "sfx": [
+    {
+     "play": [
+      "sfx.slam"
+     ],
+     "atMs": 1080
+    }
+   ]
+  },
+  {
+   "on": "hangarClip",
+   "clip": "select",
+   "note": "the select clip (32 frames in 2.0 s) after a tap in the middle of the lift or during the way back: the one shot is at frame 26, 1.63 s",
+   "sfx": [
+    {
+     "play": [
+      "sfx.slam"
+     ],
+     "atMs": 1630
+    }
+   ]
   }
  ]
 }

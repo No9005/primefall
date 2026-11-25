@@ -319,8 +319,8 @@
   "sfx.act-tear": {
    "file": "sfx/act-tear.mp3",
    "kind": "sfx",
-   "what": "Hero Select act: the arm tears off and clatters on the floor",
-   "durationMs": 2508
+   "what": "Hero Select act: the arm tears off (the crack first, then the piece clattering on the floor)",
+   "durationMs": 1437
   },
   "voice.act-gasp": {
    "file": "voice/act-gasp.mp3",
@@ -693,8 +693,8 @@
    }
   },
   {
-   "on": "hangarAct",
-   "note": "the act clip of the Hero Select (docs/design/heroes/pixellab-act/): fiddling from 0.3 s, the arm tears off at 1.1 s, her gasp at 1.2 s; played again with every pass of the clip",
+   "on": "hangarClip",
+   "note": "the act clip of the Hero Select (docs/design/heroes/pixellab-act/): fiddling from 0.3 s, the arm tears off with its crack at 1.2 s (the file has the crack in its first 0.1 s), her gasp at 1.2 s; the clip plays once per cycle",
    "voice": {
     "play": [
      "voice.act-gasp"
@@ -714,7 +714,8 @@
      ],
      "atMs": 1100
     }
-   ]
+   ],
+   "clip": "act"
   }
  ]
 }

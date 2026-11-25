@@ -85,6 +85,16 @@ export const TRANSITIONS: Record<HangarHero, [ClipName | undefined, ClipName | u
   kit: [undefined, undefined],
 };
 
+/**
+ * How many loops of the idle pass before the action, and how often the action plays, per Hero: [fewest, most]. Tilly's act (her arm tears off) plays once,
+ * and the idle between two of them is long and varies, so that it never comes twice in a row.
+ */
+export const LOOPS: Record<HangarHero, { idle: [number, number]; act: [number, number] }> = {
+  max: { idle: [2, 3], act: [1, 2] },
+  tilly: { idle: [3, 8], act: [1, 1] },
+  kit: { idle: [2, 3], act: [1, 2] },
+};
+
 /** How long each of the two frames of a bridge stands. */
 export const BRIDGE_FRAME_MS = 85;
 
@@ -138,8 +148,8 @@ export class HeroPlayer {
     readonly hero: HangarHero,
     private readonly env: PlayerEnv,
     private readonly onChange: () => void,
-    /** Called as every pass of the act clip begins (the clip repeats once or twice), for the sounds that belong to it. */
-    private readonly onActPass?: (hero: HangarHero) => void,
+    /** Called as every clip begins, for the sounds that belong to it (and again when a clip that repeats begins another pass). */
+    private readonly onClipStart?: (hero: HangarHero, clip: ClipName) => void,
   ) {
     this.startedAt = env.now();
   }
@@ -201,11 +211,10 @@ export class HeroPlayer {
     this.passTimers = [];
   }
 
-  /** Tells `onActPass` as each pass of the act begins: the first one now, a second one when the clip repeats. */
-  private announceActPasses(passMs: number, totalMs: number): void {
+  /** Announces the passes of the act after the first: the clip repeats when it is to play more than once (`passes`, see `LOOPS`). */
+  private announceActRepeats(passMs: number, totalMs: number): void {
     const passes = Math.max(1, Math.round(totalMs / passMs));
-    this.onActPass?.(this.hero);
-    for (let pass = 1; pass < passes; pass++) this.passTimers.push(this.env.after(pass * passMs, () => this.onActPass?.(this.hero)));
+    for (let pass = 1; pass < passes; pass++) this.passTimers.push(this.env.after(pass * passMs, () => this.onClipStart?.(this.hero, "act")));
   }
 
   /** The clip that follows `mode` and after how many ms: idle and act last a random time, the others as long as the clip. */
@@ -214,9 +223,9 @@ export class HeroPlayer {
     const ms = seconds * 1000;
     switch (mode) {
       case "idle":
-        return { next: lift ?? "act", after: ms * this.env.random(2, 3) };
+        return { next: lift ?? "act", after: ms * this.env.random(...LOOPS[this.hero].idle) };
       case "act":
-        return { next: drop ?? "idle", after: ms * this.env.random(1, 2) };
+        return { next: drop ?? "idle", after: ms * this.env.random(...LOOPS[this.hero].act) };
       case "tolift":
         return { next: "act", after: ms };
       case "toidle":
@@ -239,7 +248,8 @@ export class HeroPlayer {
       if (!clip) return;
       const following = this.followUp(mode, clip.seconds);
       if (following) this.timer = this.env.after(following.after, () => this.start(following.next, 0));
-      if (mode === "act") this.announceActPasses(clip.seconds * 1000, following?.after ?? 0);
+      this.onClipStart?.(this.hero, mode);
+      if (mode === "act") this.announceActRepeats(clip.seconds * 1000, following?.after ?? 0);
       if (this.pending && (mode === "idle" || mode === "act")) {
         this.pending = false;
         this.env.after(0, () => this.tap());
@@ -323,10 +333,10 @@ export class HangarHeroes {
     onChange: () => void,
     readonly still: boolean,
     random?: PlayerEnv["random"],
-    onActPass?: (hero: HangarHero) => void,
+    onClipStart?: (hero: HangarHero, clip: ClipName) => void,
   ) {
     this.clock = new SteppedClock(random);
-    this.players = Object.fromEntries(HANGAR_HEROES.map((hero) => [hero, new HeroPlayer(hero, this.clock, onChange, onActPass)])) as Record<HangarHero, HeroPlayer>;
+    this.players = Object.fromEntries(HANGAR_HEROES.map((hero) => [hero, new HeroPlayer(hero, this.clock, onChange, onClipStart)])) as Record<HangarHero, HeroPlayer>;
   }
 
   /** Every Hero idles, or `initial` stands in the ready pose. */

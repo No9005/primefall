@@ -1,7 +1,7 @@
 import { HeroClass } from "game-core";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { gameAudio } from "./audio";
-import { HANGAR_HEROES, HangarHeroes, HERO_OF } from "./hangar-select";
+import { type ClipName, HANGAR_HEROES, HangarHeroes, HERO_OF } from "./hangar-select";
 import { HANGAR_SCENE_NAME, HANGAR_SHIFT, hangarScene, PLACE } from "./hangar-scene";
 import { HERO_NAMES, HERO_PROFILES, SELECTABLE_HEROES } from "./hero-select";
 import { StageLayer } from "./StageLayer";
@@ -29,9 +29,24 @@ interface HeroSelectScreenProps {
   onStart: (hero: HeroClass) => void;
 }
 
-/** The sounds of the act clip of a Hero as one pass of it begins (only Tilly has any: fiddling, the arm tearing off, her gasp). */
-function playActSounds(hero: (typeof HANGAR_HEROES)[number]): void {
-  gameAudio.playMoment("hangarAct", { heroId: `select-${HERO_OF[hero]}`, heroClass: HERO_OF[hero], tile: undefined });
+/** The sounds that belong to a clip of a Hero as it begins (Tilly's act: fiddling, the arm tearing off, her gasp; Max's one shot): the cues `hangarClip` of the manifests. */
+function playClipSounds(hero: (typeof HANGAR_HEROES)[number], clip: ClipName): void {
+  gameAudio.playMoment("hangarClip", { heroId: `select-${HERO_OF[hero]}`, heroClass: HERO_OF[hero], tile: undefined }, undefined, clip);
+}
+
+/** How loud the ambience of the map is in the hangar against the match (1): the music and the Heroes' sounds come first. A first guess, to be tuned by ear. */
+const HANGAR_AMBIENCE_LEVEL = 0.5;
+
+/**
+ * A tap on a Hero. A tap that chooses one first silences what runs (also the clip sounds of the Hero that was chosen before), and only then starts the clip
+ * of the tap, whose sounds must not be cut; then the line of the choice and, for Tilly, the hum of her drone.
+ */
+function tapHero(heroes: HangarHeroes | undefined, hero: (typeof HANGAR_HEROES)[number]): void {
+  if (!heroes) return;
+  if (!heroes.players[hero].selected) gameAudio.stopAll();
+  const now = heroes.tap(hero);
+  if (now) gameAudio.playMoment("heroSelected", { heroId: `select-${HERO_OF[now]}`, heroClass: HERO_OF[now], tile: undefined });
+  gameAudio.setSelectDrone(now === "tilly"); // Tilly's drone hums while she is the chosen Hero
 }
 
 export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenProps) {
@@ -41,12 +56,15 @@ export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenP
 
   useEffect(() => {
     // The sounds of the three Heroes load while the player looks at them; leaving the screen silences a line that still runs.
-    void Promise.all([gameAudio.load(SELECTABLE_HEROES), gameAudio.loadMap()]);
-    // The intro of the music plays under the Hero Select.
+    let leaving = false;
+    void Promise.all([gameAudio.load(SELECTABLE_HEROES), gameAudio.loadMap().then(() => !leaving && gameAudio.startAmbience(HANGAR_AMBIENCE_LEVEL))]);
+    // The intro of the music plays under the Hero Select, and the ambience of the map (the hangar is part of the hauler) quietly under that.
     void gameAudio.loadMusic().then(() => gameAudio.startIntro());
     return () => {
+      leaving = true;
       gameAudio.stopAll();
       gameAudio.stopIntro();
+      gameAudio.stopAmbience();
     };
   }, []);
 
@@ -60,7 +78,7 @@ export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenP
     const made = new HangarHeroes(() => {
       redraw();
       hangarScene.invalidate();
-    }, prefersReducedMotion(), undefined, playActSounds);
+    }, prefersReducedMotion(), undefined, playClipSounds);
     heroes.current = made;
     made.start(initial);
     hangarScene.attach(made);
@@ -76,14 +94,7 @@ export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenP
   const all = heroes.current?.players;
   const chosen = heroes.current?.selected;
 
-  const tap = (hero: (typeof HANGAR_HEROES)[number]) => {
-    const now = heroes.current?.tap(hero);
-    if (now) {
-      gameAudio.stopAll();
-      gameAudio.playMoment("heroSelected", { heroId: `select-${HERO_OF[now]}`, heroClass: HERO_OF[now], tile: undefined });
-    }
-    gameAudio.setSelectDrone(now === "tilly"); // Tilly's drone hums while she is the chosen Hero
-  };
+  const tap = (hero: (typeof HANGAR_HEROES)[number]) => tapHero(heroes.current, hero);
 
   const nav = { width: NAV.width * fit.scale, height: NAV.height * fit.scale, bottom: fit.offsetY + NAV.lift * fit.scale };
   return (

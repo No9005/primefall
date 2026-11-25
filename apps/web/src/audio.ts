@@ -22,6 +22,8 @@ interface Playing {
 
 /** The ambience of the map while a match runs. */
 interface Ambience {
+  /** How loud the ambience is against the match (1): the Hero Select plays it quieter. */
+  level: number;
   loops: { source: AudioBufferSourceNode; gain: GainNode; base: number; nearPrimeZone: boolean }[];
   timer: ReturnType<typeof setTimeout> | undefined;
 }
@@ -361,8 +363,8 @@ export class GameAudio {
     }
   }
 
-  /** Starts the ambience of the map: the loops fade in, and a quiet sound now and then. Runs until `stopAmbience`. */
-  startAmbience(): void {
+  /** Starts the ambience of the map: the loops fade in, and a quiet sound now and then. Runs until `stopAmbience`. `level` is how loud it is (1 in the match). */
+  startAmbience(level = 1): void {
     const context = this.context;
     const manifest = this.mapManifest;
     if (this.ambience || !context || !manifest) return;
@@ -373,14 +375,14 @@ export class GameAudio {
       source.buffer = buffer;
       source.loop = true;
       const gain = context.createGain();
-      const level = nearPrimeZone && this.listener ? base * distanceGain(this.listener, PRIME_ZONE_CENTRE) : base;
+      const loudness = nearPrimeZone && this.listener ? base * level * distanceGain(this.listener, PRIME_ZONE_CENTRE) : base * level;
       gain.gain.setValueAtTime(0, context.currentTime);
-      gain.gain.linearRampToValueAtTime(level, context.currentTime + AMBIENCE_FADE_S);
+      gain.gain.linearRampToValueAtTime(loudness, context.currentTime + AMBIENCE_FADE_S);
       source.connect(gain).connect(this.sfxBus);
       source.start();
-      return [{ source, gain, base, nearPrimeZone: nearPrimeZone === true }];
+      return [{ source, gain, base: base * level, nearPrimeZone: nearPrimeZone === true }];
     });
-    this.ambience = { loops, timer: undefined };
+    this.ambience = { level, loops, timer: undefined };
     this.scheduleOneShot(manifest.ambience.oneShots);
     this.applyBarrier(false);
     this.applyScoutDrone();
@@ -396,7 +398,7 @@ export class GameAudio {
       if (id !== undefined && context && buffer && this.sfxBus) {
         this.lastPick.set("ambience", id);
         const decision = this.limiter.request({ assetId: `${MAP_FOLDER}:${id}`, startMs: context.currentTime * 1000, durationMs: buffer.duration * 1000, priority: Priority.Background });
-        if (decision.play) this.startBuffer(context, buffer, this.sfxBus, { level: ONE_SHOT_GAIN, panner: context.createStereoPanner?.() });
+        if (decision.play) this.startBuffer(context, buffer, this.sfxBus, { level: ONE_SHOT_GAIN * (this.ambience?.level ?? 1), panner: context.createStereoPanner?.() });
       }
       this.scheduleOneShot(oneShots);
     }, nextAmbienceGapMs(Math.random, { min, max }));
@@ -875,9 +877,9 @@ export class GameAudio {
   }
 
   /** A moment of the game that is not a frame of the Resolution: the Hero Select, a Pitch, the end of the match. */
-  playMoment(on: "heroSelected" | "hangarAct" | "cardPitched" | "matchEnd", who: Source, won?: boolean): void {
+  playMoment(on: "heroSelected" | "hangarClip" | "cardPitched" | "matchEnd", who: Source, won?: boolean, clip?: string): void {
     const ctx = this.contextFor({ classOf: () => who.heroClass, isOwn: () => true, isHeard: () => true, tileOf: () => who.tile });
-    this.play(planMoment(on, who, ctx, won), who.tile);
+    this.play(planMoment(on, who, ctx, won, clip), who.tile);
   }
 }
 
