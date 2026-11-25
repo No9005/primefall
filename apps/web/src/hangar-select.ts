@@ -46,7 +46,7 @@ export const CLIPS: Record<HangarHero, Partial<Record<ClipName, Clip>>> = {
   tilly: {
     idle: { frames: 40, seconds: 2.0 },
     tolift: { frames: 2, seconds: 0.12 },
-    act: { frames: 27, seconds: 2.7 },
+    act: { frames: 33, seconds: 3.3 },
     toidle: { frames: 2, seconds: 0.12 },
     select: { frames: 23, seconds: 1.5 },
     selecti: { frames: 30, seconds: 1.8 },
@@ -74,7 +74,7 @@ export interface Bridge {
 
 export const BRIDGES: Record<HangarHero, Partial<Record<"idle" | "act", Bridge>>> = {
   max: { act: { file: "max-bridge-act.png", frames: 36 } },
-  tilly: { act: { frames: 54 } },
+  tilly: { act: { frames: 66 } },
   kit: { act: { file: "kit-bridge.png", frames: 84 }, idle: { file: "kit-bridge.png", frames: 84, entry: 0 } },
 };
 
