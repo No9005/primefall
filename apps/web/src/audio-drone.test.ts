@@ -128,4 +128,22 @@ describe("the hum of the Scout Drone", () => {
     expect(played).not.toContain(buffers.get("map:loop.core"));
     expect(fake.sources.filter((source) => source.loop)).toHaveLength(1);
   });
+
+  it("leaves out the quiet sounds it is told to as well (the hangar has its own sparks)", () => {
+    vi.useFakeTimers();
+    try {
+      audio.startAmbience(1, ["sfx.spark"]);
+      const buffers = (audio as unknown as { buffers: Map<string, unknown> }).buffers;
+      const heard = new Set<unknown>();
+      for (let minute = 0; minute < 200; minute++) {
+        vi.advanceTimersByTime(30_000);
+        for (const source of fake.sources) if (!source.loop) heard.add(source.buffer);
+      }
+      expect(heard.size).toBeGreaterThan(1);
+      expect(heard.has(buffers.get("map:sfx.spark"))).toBe(false);
+    } finally {
+      audio.stopAmbience();
+      vi.useRealTimers();
+    }
+  });
 });

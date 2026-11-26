@@ -363,7 +363,7 @@ export class GameAudio {
     }
   }
 
-  /** Starts the ambience of the map: the loops fade in, and a quiet sound now and then. Runs until `stopAmbience`. `level` is how loud it is (1 in the match); `without` are loops of the map that are left out (the hangar has no plasma core). */
+  /** Starts the ambience of the map: the loops fade in, and a quiet sound now and then. Runs until `stopAmbience`. `level` is how loud it is (1 in the match); `without` are sounds of the map ambience (loops and the quiet sounds now and then) that are left out (the hangar has no plasma core, and its own sparks). */
   startAmbience(level = 1, without: readonly string[] = []): void {
     const context = this.context;
     const manifest = this.mapManifest;
@@ -384,7 +384,7 @@ export class GameAudio {
       return [{ source, gain, base: base * level, nearPrimeZone: nearPrimeZone === true }];
     });
     this.ambience = { level, loops, timer: undefined };
-    this.scheduleOneShot(manifest.ambience.oneShots);
+    this.scheduleOneShot({ ...manifest.ambience.oneShots, play: manifest.ambience.oneShots.play.filter((id) => !without.includes(id)) });
     this.applyBarrier(false);
     this.applyScoutDrone();
   }
