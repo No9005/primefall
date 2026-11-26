@@ -1337,3 +1337,36 @@ So `export_hangar_heavy.py` makes a heavier version of each barbell take (`<take
 Verdict: waiting for the owner's ear.
 
 Afterwards (2026-11-25), the owner listened to call 46: **picked** `floor_b_heavy`, `locker_a_heavy` and `tube_b` (in the game: `max/sfx/barbell-floor.mp3`, `max/sfx/barbell-locker.mp3`, `map/ui/hangar-flicker.mp3`). **Not used:** the unprocessed floor and locker takes, `floor_a`, `locker_b`, `tube_a` and both whooshes (`heavy_whoosh_a/b`, with their heavy versions: the owner picked no whoosh). The sparks (`spark_b`) were too loud and were lowered from 0.5 to 0.2 of their level.
+
+### Call 47: 2026-11-26 (API call by script `gen_notstrom_intro_sounds.py`, the sounds of the Notstrom Intro film, issue #482)
+
+The owner asked for sounds that follow the film: the hyperspace flight (only the travel, no rattle), the exit from it (a deep "wump fupp"), a very light breathing at the close-up of the humans, and the ship's movement (a rocket under water or a submarine). One call per take, no retry, one take per sound, `eleven_text_to_sound_v2` (no loop), `prompt_influence` 0.5. Asked for **lossless** (`output_format=pcm_44100`, the owner's rule of 2026-11-26): the account allowed it, the answers are saved as `.wav` (16 bit, **stereo**, 44.1 kHz; `pcm_44100` from this endpoint is stereo) with their headers in `sfx/notstrom-intro/`.
+
+| take | length | text | cost |
+|---|---|---|---|
+| `hyperspace_a` | 4 s | Sci-fi hyperspace flight: a smooth continuous tunnel of rushing light, a rising airy shimmering whoosh with a low sustained pitch rise. Only the travel, no rattle, no impacts. No music, no voice. | 44 |
+| `exit_a` | 2 s | Ship exits hyperspace: a deep low "wump" followed by a short deeper "fupp", soft heavy sub-bass pulses with a quick air release. No rattle, no music, no voice. | 22 |
+| `breath_a` | 4 s | Very quiet slow breathing of a person inside a space helmet, close microphone, soft muffled inhale and exhale, faint suit hiss. No voice, no music. | 44 |
+| `ship_a` | 6 s | Underwater rocket or submarine passing: low muffled engine rumble, slow propeller churn, soft hull creaks, deep and heavy. No music, no voice. | 66 |
+
+Total 176 credits (about 11 per second of effect; the earlier estimate of 31 per second is for music). Measured, uncut: `hyperspace_a` -11.0 LUFS, peak 0.0 dBFS; `exit_a` -3.7 LUFS, peak +0.2 dBFS (very loud, clips a little); `breath_a` -43.0 LUFS, peak -18.2 dBFS (almost silent: it needs about 27 dB of gain, which lifts its noise too); `ship_a` -14.4 LUFS, peak -1.2 dBFS.
+
+**Mistake in the first listening package:** the script wrote the PCM as mono, but it is stereo, so the first `.wav` files were twice as long and an octave too low (and the first measurements above were of those). The files in the folder are the corrected ones (`ffprobe` gives the requested 4, 2, 4 and 6 s). The owner's first verdict was given on the wrong files: **do not rely on it for the takes**, listen again. `gen_notstrom_intro_sounds.py` now writes stereo.
+
+Verdict: waiting for the owner's ear.
+
+### Call 48: 2026-11-26 (API call by script `gen_tilly_breath.py`, Tilly's breathing for the close-up of the Notstrom Intro, issue #482)
+
+The owner rejected the effect-generator breathing ("the breathing in the helmet is completely broken") and chose a character instead: Tilly. Her fixed voice (*Bella*, `hpp4J3VqNfWAUOO0d1Us`), `eleven_v4`, `stability` 0.3, `similarity_boost` 0.75, tags and no words. Two refusals first, both before any charge: a text of tags alone gives 400 "empty text" (so each text has a spoken "Hhh..."), and `pcm_44100` gives 403 for speech below the Pro tier. The owner chose MP3 128 kbit/s (`mp3_44100_128`) instead; **these takes are not lossless** (the owner's rule of 2026-11-26 could not be kept for speech on this account).
+
+| take | length | text | cost |
+|---|---|---|---|
+| `tilly_breath_a` | 8.8 s | [breathing softly, hushed] Hhh... [inhales slowly] [short pause] Hhh... [exhales slowly] [inhales slowly] [short pause] [exhales slowly] | 60 |
+| `tilly_breath_b` | 7.7 s | [hushed, nervous] Hhh... [inhales] [short pause] Hhhh... [exhales] [inhales] [short pause] [exhales softly] | 47 |
+| `tilly_breath_c` | 5.3 s | [whispers] Hhh... [slow breath in] [short pause] Hhh... [slow breath out] | 32 |
+
+Total 139 credits. Measured, uncut: about -42 LUFS and peaks of -24 to -27 dBFS for all three (very quiet: they need about 26 dB of gain). Not measurable by numbers: whether she breathes or speaks the tags.
+
+Not used (owner, 2026-11-26): `hyperspace_a` and `exit_a` of call 47 ("we do not score the hyperspace and the exit"); the helmet breathing `breath_a` of call 47 (unusable). **Used:** `ship_a` (the owner: "the ship sound fits"): in the game `music/notstrom-intro-ship.mp3` (the first 5.8 s, fade in 0.15 s, +5 dB from 2.4 s where the visor with the reflection begins, fade out from 4.5 s, mono, -14 LUFS before the boost, 96 kbit/s).
+
+Verdict (2026-11-26): the owner picked **`tilly_breath_a`**; `tilly_breath_b` and `tilly_breath_c` not used. In the game: `music/notstrom-intro-breath.mp3` (the owner's cut of 2026-11-26: an exhale and an inhale, 3.8 s to 5.6 s of the take (the cuts that began on a spoken "Hhh" of the text, at 2.65 s and at 0.15 s of the take, crackled in their first second, the owner heard it; the take has seven sounds: Hhh 0.3 s, inhale 1.55, Hhh 2.8, exhale 3.95, inhale 5.15, exhale 6.45, one more 7.55), played twice with a pause of 0.2 s; slowed to 85 % by resampling (`asetrate`: a little lower in pitch; the first version used `atempo`, and the owner heard crackling) and low-passed at 1.2 and 1.8 kHz so that it sounds muffled (owner's wish, a second round); -16 LUFS, mono, 80 kbit/s; played at gain 0.11).
