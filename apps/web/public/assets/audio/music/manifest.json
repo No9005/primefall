@@ -1,6 +1,6 @@
 {
  "name": "Notstrom, a rough first version for the look and feel test",
- "format": "AAC (.m4a), stereo, 96 kbit/s; an MP3 would leave a gap at the seam of the loop",
+ "format": "AAC (.m4a), stereo, 96 kbit/s (the menu theme: 128 kbit/s); an MP3 would leave a gap at the seam of the loop",
  "bpm": 72,
  "bars": 8,
  "note": "One loop of 8 bars (26.667 s) in four layers that start together and loop in sync. A layer file is stored 6 dB down. The gains of a level set the loudness: about -34, -32, -30 and -27 dB (mean power, `npm run render-mix`), which keeps the music well under the voices and effects. The levels are cut by the game on the next bar line. See archive/audio-source/music/README.md for where the layers come from.",
