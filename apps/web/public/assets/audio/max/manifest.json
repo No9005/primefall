@@ -353,7 +353,7 @@
    "file": "sfx/act-lift.mp3",
    "kind": "sfx",
    "what": "Hero Select act: Max's training grunts as he lifts the barbell (his own voice, as an effect so that his select line does not cut it)",
-   "durationMs": 3056
+   "durationMs": 2351
   },
   "sfx.act-throw": {
    "file": "sfx/act-throw.mp3",
@@ -875,7 +875,7 @@
   {
    "on": "hangarClip",
    "clip": "tolift",
-   "note": "the clip before the lift (10 frames in 0.7 s: he crouches to the bar): the grunts begin 0.28 s before the act, so that their first effort falls on the jerk of the lift (0.3 s into the act), the second on the lowering (1.5 s) and the release after the set-down",
+   "note": "the clip before the lift (10 frames in 0.7 s: he crouches to the bar): the grunts begin 0.28 s before the act, so that their first effort falls on the jerk of the lift (0.3 s into the act), the second on the lowering (1.5 s); the third grunt, the release after the set-down, is cut off (owner: superfluous)",
    "sfx": [
     {
      "play": [

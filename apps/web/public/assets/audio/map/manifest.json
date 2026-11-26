@@ -166,14 +166,14 @@
     "play": [
      "ui.hangar-spark"
     ],
-    "gain": 0.2,
+    "gain": 0.1,
     "note": "at the start of every spark of the two fuse boxes in the picture of the hangar (the scene tells when)"
    },
    "flicker": {
     "play": [
      "ui.hangar-flicker"
     ],
-    "gain": 0.4,
+    "gain": 0.3,
     "note": "at the deepest dip of the flickering light (72 % of its 5.3 s cycle), once per cycle"
    }
   }
