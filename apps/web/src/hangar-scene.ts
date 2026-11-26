@@ -91,6 +91,9 @@ export const lampOpacity = (timeMs: number, seconds: number, delay: number): num
 const FLICKER: readonly (readonly [number, number])[] = [[0, 1], [7, 0.5], [9, 1], [40, 1], [43, 0.65], [45, 1], [71, 1], [72, 0.4], [74, 1]];
 export const flickerOpacity = (timeMs: number): number => stepValue(FLICKER, cyclePercent(timeMs, 5.3, 0) ?? 0);
 
+/** How much of the hall the dip of the flickering light darkens: 0.55 of what the glow loses (0.33 black at its deepest dip). The lamps and the guide light sit over the black, so lit places lose less. */
+export const flickerDimming = (timeMs: number): number => 0.55 * (1 - flickerOpacity(timeMs));
+
 const BROWN: readonly (readonly [number, number])[] = [[0, 1], [61, 1], [61.5, 0.55], [63, 1], [64, 0.7], [65, 1]];
 /** The shade in front of and behind the Heroes dims now and then. */
 export const shadeOpacity = (timeMs: number): number => stepValue(BROWN, cyclePercent(timeMs, 9.4, 0) ?? 0);
@@ -205,6 +208,8 @@ function stripFrame(texture: Texture, frames: number, index: number): Texture {
 interface HangarParts {
   lamps: { sprite: Sprite; seconds: number; delay: number }[];
   flicker: Sprite;
+  /** Black over the floor, under the lights: it darkens the unlit places and lets the lit ones shine through (see `flickerDimming`). */
+  dimmer: Graphics;
   guide: { sprite: Sprite; frames: Texture[] };
   crystal: Sprite;
   motes: { sprite: Sprite; seconds: number; delay: number; top: number }[];
@@ -247,7 +252,10 @@ function addFloorAndDoor({ shift, picture }: BuildContext): Sprite {
 }
 
 /** The lamps, the flicker and the guide light, all added over the floor with the "screen" blend. */
-function addLights({ shift, picture }: BuildContext): Pick<HangarParts, "lamps" | "flicker" | "guide"> {
+function addLights({ shift, picture }: BuildContext): Pick<HangarParts, "lamps" | "flicker" | "dimmer" | "guide"> {
+  const dimmer = new Graphics().rect(-300, -90, 1560, 789).fill(0x000000);
+  dimmer.alpha = 0;
+  shift.addChild(dimmer);
   const lamps = LAMPS.map(([name, seconds, delay]) => {
     const sprite = screen(placed(picture(`lights-${name}`), 0, 0, PICTURE.width, PICTURE.height));
     shift.addChild(sprite);
@@ -260,7 +268,7 @@ function addLights({ shift, picture }: BuildContext): Pick<HangarParts, "lamps" 
   const guideFrames = Array.from({ length: GUIDE.frames }, (_, index) => stripFrame(guideTexture, GUIDE.frames, index));
   const guideSprite = screen(placed(guideFrames[0] as Texture, GUIDE.left, GUIDE.top, GUIDE.width, GUIDE.height));
   shift.addChild(guideSprite);
-  return { lamps, flicker, guide: { sprite: guideSprite, frames: guideFrames } };
+  return { lamps, flicker, dimmer, guide: { sprite: guideSprite, frames: guideFrames } };
 }
 
 /** The dust motes and the sparks. */
@@ -413,6 +421,15 @@ function showDecor(parts: HangarParts, reduced: boolean, time: number): void {
   const t = reduced ? 0 : time;
   parts.lamps.forEach(({ sprite, seconds, delay }) => (sprite.alpha = reduced ? 1 : lampOpacity(t, seconds, delay)));
   parts.flicker.alpha = reduced ? 1 : flickerOpacity(t);
+  const dimming = reduced ? 0 : flickerDimming(t);
+  parts.dimmer.alpha = dimming;
+  // The Heroes stand over the black, so they are darkened by the same share (a grey tint), or they would pop out of the dimmed hall.
+  const level = Math.round(255 * (1 - dimming));
+  const grey = (level << 16) | (level << 8) | level;
+  for (const { animator, bridge } of Object.values(parts.heroes)) {
+    animator.container.tint = grey;
+    bridge.tint = grey;
+  }
   parts.guide.sprite.texture = parts.guide.frames[reduced ? 0 : guideFrame(t)] as Texture;
   parts.shades.forEach((sprite) => (sprite.alpha = reduced ? 1 : shadeOpacity(t)));
   const crystal = reduced ? undefined : crystalAt(t);

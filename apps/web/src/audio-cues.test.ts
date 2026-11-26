@@ -165,8 +165,13 @@ describe("the sounds of a frame", () => {
     expect(at("selecti")).toEqual([["sfx.slam", 1080], ["voice.select", 0]]);
     // The throw: the cry first, the locker at the flash, the barbell on the floor, the shot, and the line only after the cry.
     expect(at("select")).toEqual([["sfx.act-throw", 0], ["sfx.barbell-floor", 650], ["sfx.barbell-locker", 260], ["sfx.slam", 1630], ["voice.select", 1000]]);
-    // The lift: the grunts begin in the clip before it, the barbell lands at its end.
-    expect(at("tolift")).toEqual([["sfx.act-lift", 420]]);
+    // The lift: Max walks from the end of the barbell to its middle (two steps), the grunts begin in the same clip, the barbell lands at the end of the act.
+    const steps = (clip: string) => at(clip).filter(([asset]) => String(asset).startsWith("sfx.step-")).map(([, startMs]) => Number(startMs)).sort((a, b) => a - b);
+    expect(steps("tolift")).toEqual([80, 300]);
+    expect(at("tolift").filter(([asset]) => asset === "sfx.act-lift")).toEqual([["sfx.act-lift", 420]]);
+    // And back to the end of the barbell after it: two steps, nothing else.
+    expect(at("toidle").every(([asset]) => String(asset).startsWith("sfx.step-"))).toBe(true);
+    expect(steps("toidle")).toEqual([110, 330]);
     expect(at("act")).toEqual([["sfx.barbell-floor", 1400]]);
     expect(at("idle")).toEqual([]);
     const cry = planMoment("hangarClip", max, context(), undefined, "select").find((request) => request.assetId === "sfx.act-throw")!;
