@@ -36,6 +36,8 @@ function playClipSounds(hero: (typeof HANGAR_HEROES)[number], clip: ClipName): v
 
 /** How loud the ambience of the map is in the hangar against the match (1): the music and the Heroes' sounds come first. A first guess, to be tuned by ear. */
 const HANGAR_AMBIENCE_LEVEL = 0.5;
+/** The loops of the map that the hangar leaves out: the hum of the plasma core makes no sense there (it is the hum of the Prime Zone of the map). */
+const HANGAR_WITHOUT = ["loop.core"];
 
 /**
  * A tap on a Hero. A tap that chooses one first silences what runs (also the clip sounds of the Hero that was chosen before), and only then starts the clip
@@ -57,7 +59,7 @@ export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenP
   useEffect(() => {
     // The sounds of the three Heroes load while the player looks at them; leaving the screen silences a line that still runs.
     let leaving = false;
-    void Promise.all([gameAudio.load(SELECTABLE_HEROES), gameAudio.loadMap().then(() => !leaving && gameAudio.startAmbience(HANGAR_AMBIENCE_LEVEL))]);
+    void Promise.all([gameAudio.load(SELECTABLE_HEROES), gameAudio.loadMap().then(() => !leaving && gameAudio.startAmbience(HANGAR_AMBIENCE_LEVEL, HANGAR_WITHOUT))]);
     // The intro of the music plays under the Hero Select, and the ambience of the map (the hangar is part of the hauler) quietly under that.
     void gameAudio.loadMusic().then(() => gameAudio.startIntro());
     return () => {
