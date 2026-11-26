@@ -1,4 +1,4 @@
-import { Application, Assets, Container, Graphics, type Texture, type VideoSource } from "pixi.js";
+import { Application, Assets, Container, Graphics, Texture, VideoSource } from "pixi.js";
 import { computeFill, computeFit, computeHeightFit, type FillView, type StageFit } from "./stage-fit";
 
 /** What a scene gets from the stage (ADR 0026). */
@@ -542,22 +542,69 @@ function pixiVideoClip(texture: Texture): VideoClip {
   };
 }
 
-const loadedFilms = new Map<VideoClip, string>();
+/** How long a film may take to show its first picture before it counts as not loaded (the intro then ends as if it was skipped, instead of waiting for ever). */
+const FILM_LOAD_TIMEOUT_MS = 8000;
+
+/**
+ * A hidden `<video>` with the first picture of the film on it. iOS loads no film before it plays (it ignores `preload`), and PixiJS's loader waits for a
+ * `canplay` that never comes: the stage kept the old scene frozen on screen. So the film is played muted, which starts the loading, and held at its start
+ * as soon as the first picture is there.
+ */
+async function loadFilmElement(url: string): Promise<HTMLVideoElement> {
+  const element = document.createElement("video");
+  element.muted = true;
+  element.loop = false;
+  element.preload = "auto";
+  for (const attribute of ["playsinline", "webkit-playsinline", "muted"]) element.setAttribute(attribute, "");
+  element.src = url;
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => done(new Error(`The film ${url} did not load in ${FILM_LOAD_TIMEOUT_MS} ms`)), FILM_LOAD_TIMEOUT_MS);
+    function done(error?: Error) {
+      clearTimeout(timeout);
+      element.removeEventListener("loadeddata", onData);
+      element.removeEventListener("error", onError);
+      if (error) reject(error);
+      else resolve();
+    }
+    const onData = () => done();
+    const onError = () => done(new Error(`The film ${url} could not be loaded`));
+    element.addEventListener("loadeddata", onData);
+    element.addEventListener("error", onError);
+    if (element.readyState >= 2) return done();
+    element.load();
+    // A refused play (a browser that blocks it) is not the end: the picture may still load, and the timeout ends the wait.
+    void element.play().catch(() => undefined);
+  }).catch((error: unknown) => {
+    element.removeAttribute("src");
+    element.load();
+    throw error;
+  });
+  element.pause();
+  element.currentTime = 0;
+  return element;
+}
+
+const loadedFilms = new Map<VideoClip, Texture>();
 
 export const pixiVideoAssets: Required<Pick<AssetSource, "loadVideo" | "unloadVideo">> = {
   async loadVideo(formats) {
-    const url = playableFormat(formats);
-    // No `preload`: PixiJS then waits for `canplay` (enough to start) instead of `canplaythrough` (the whole film), which iOS does not fire before the film plays: the stage would keep the previous scene frozen on screen.
-    const texture = await Assets.load<Texture>({ src: url, data: { autoPlay: false, muted: true, playsinline: true, loop: false, preload: false } });
+    const element = await loadFilmElement(playableFormat(formats));
+    const source = new VideoSource({ resource: element, autoPlay: false, loop: false, muted: true, playsinline: true });
+    if (source.width <= 1) source.resize(element.videoWidth, element.videoHeight);
+    const texture = new Texture({ source });
     const clip = pixiVideoClip(texture);
-    loadedFilms.set(clip, url);
+    loadedFilms.set(clip, texture);
     return clip;
   },
   async unloadVideo(clip) {
     clip.pause();
-    const url = loadedFilms.get(clip);
+    const texture = loadedFilms.get(clip);
     loadedFilms.delete(clip);
-    if (url) await Assets.unload(url);
+    if (!texture) return;
+    const element = (texture.source as VideoSource).resource;
+    texture.destroy(true);
+    element.removeAttribute("src");
+    element.load();
   },
 };
 
