@@ -94,6 +94,31 @@ const PRIME_ZONE_CENTRE: GridPosition = (() => {
   return { col: Math.round(tiles.reduce((sum, tile) => sum + tile.col, 0) / tiles.length), row: Math.round(tiles.reduce((sum, tile) => sum + tile.row, 0) / tiles.length) };
 })();
 
+/** The groups of the music a screen can wait for (see `loadMusic`). */
+export type MusicGroup = "menu" | "intro" | "match" | "ending";
+
+/** The files of one group of the music, by the name their buffer has (`music:<name>`). */
+function musicFilesOf(manifest: MusicManifest, group: MusicGroup): Record<string, string> {
+  const files: Record<string, string> = {};
+  if (group === "menu" && manifest.menu) files.menu = manifest.menu.file;
+  if (group === "intro") {
+    if (manifest.notstromIntro) files.notstromIntro = manifest.notstromIntro.file;
+    manifest.notstromIntro?.effects?.forEach((effect, index) => (files[`notstromIntro:effect:${index}`] = effect.file));
+    if (manifest.intro) files.intro = manifest.intro.file;
+  }
+  if (group === "match") {
+    Object.assign(files, manifest.layers);
+    if (manifest.opening) files.opening = manifest.opening.file;
+  }
+  if (group === "ending") {
+    for (const [outcome, track] of Object.entries(manifest.ending ?? {})) {
+      files[`ending:${outcome}:jingle`] = track.jingle.file;
+      files[`ending:${outcome}:loop`] = track.loop.file;
+    }
+  }
+  return files;
+}
+
 export class GameAudio {
   /** `createContext` is for tests and for rendering the mix to a file (an `OfflineAudioContext`); the game uses the default. */
   constructor(private readonly createContext: () => AudioContext = () => new AudioContext()) {}
@@ -112,7 +137,8 @@ export class GameAudio {
   private mapLoading: Promise<void> | undefined;
   private ambience: Ambience | undefined;
   private musicManifest: MusicManifest | undefined;
-  private musicLoading: Promise<void> | undefined;
+  private musicLoading: Partial<Record<MusicGroup, Promise<void>>> = {};
+  private musicManifestLoading: Promise<MusicManifest> | undefined;
   private music: Music | undefined;
   private musicBus: GainNode | undefined;
   /** The sound of the Notstrom Intro after a tap on Start: it plays once. The Hero Select loop is scheduled under its end (`intro`, from `introAt`). */
@@ -408,33 +434,33 @@ export class GameAudio {
     if (this.ambience) this.ambience.timer = timer;
   }
 
-  /** Loads the layers of the music, once. */
-  loadMusic(): Promise<void> {
-    this.musicLoading ??= this.fetchMusic().catch(() => {
+  /**
+   * Loads one group of the music, once. A screen waits only for what it plays: the start screen for the menu theme (the biggest file), the Notstrom Intro for
+   * its sound and the Hero Select loop, a match for its opening and layers, the end screen for its jingles. Other groups can be loaded ahead in the background.
+   */
+  loadMusic(group: MusicGroup): Promise<void> {
+    this.musicLoading[group] ??= this.fetchMusic(group).catch(() => {
       // A missing sound must never break the game; try again at the next load.
-      this.musicLoading = undefined;
+      delete this.musicLoading[group];
     });
-    return this.musicLoading;
+    return this.musicLoading[group] as Promise<void>;
   }
 
-  private async fetchMusic(): Promise<void> {
+  private async fetchMusic(group: MusicGroup): Promise<void> {
     const context = this.ensureContext();
     if (!context) return;
-    const manifest = (await (await fetch(MUSIC_MANIFEST_URL)).json()) as MusicManifest;
-    const files: Record<string, string> = { ...manifest.layers };
-    if (manifest.menu) files.menu = manifest.menu.file;
-    if (manifest.notstromIntro) files.notstromIntro = manifest.notstromIntro.file;
-    manifest.notstromIntro?.effects?.forEach((effect, index) => (files[`notstromIntro:effect:${index}`] = effect.file));
-    if (manifest.intro) files.intro = manifest.intro.file;
-    if (manifest.opening) files.opening = manifest.opening.file;
-    for (const [outcome, track] of Object.entries(manifest.ending ?? {})) {
-      files[`ending:${outcome}:jingle`] = track.jingle.file;
-      files[`ending:${outcome}:loop`] = track.loop.file;
+    this.musicManifestLoading ??= fetch(MUSIC_MANIFEST_URL).then((response) => response.json() as Promise<MusicManifest>);
+    try {
+      this.musicManifest = await this.musicManifestLoading;
+    } catch (error) {
+      this.musicManifestLoading = undefined;
+      throw error;
     }
     // Each file on its own: one that a browser cannot fetch or decode (Safari on iOS is stricter than Chrome) must not take the whole music with it.
     // Everything that plays checks for its buffer, so a missing one is silent while the rest still plays.
     await Promise.all(
-      Object.entries(files).map(async ([name, file]) => {
+      Object.entries(musicFilesOf(this.musicManifest, group)).map(async ([name, file]) => {
+        if (this.buffers.has(`music:${name}`)) return;
         try {
           const data = await (await fetch(musicFileUrl(file))).arrayBuffer();
           this.buffers.set(`music:${name}`, await context.decodeAudioData(data));
@@ -443,7 +469,6 @@ export class GameAudio {
         }
       }),
     );
-    this.musicManifest = manifest;
   }
 
   /** The main-menu theme of the start screen: it loops until `stopMenu`. It starts when the browser lets the page make sound (the first tap). */

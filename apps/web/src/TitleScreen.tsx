@@ -32,7 +32,11 @@ export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onResume }
   useEffect(() => preloadScene(notstromIntro ? NOTSTROM_INTRO_SCENE_NAME : HANGAR_SCENE_NAME), [notstromIntro]);
   // The main-menu theme plays while the start screen is shown (it starts with the first tap, when the browser allows sound).
   useEffect(() => {
-    void gameAudio.loadMusic().then(() => gameAudio.startMenu());
+    void gameAudio.loadMusic("menu").then(() => {
+      gameAudio.startMenu();
+      // The sound of the Notstrom Intro and the Hero Select loop are small; they load behind the menu theme.
+      void gameAudio.loadMusic("intro");
+    });
     return () => gameAudio.stopMenu();
   }, []);
 
@@ -53,7 +57,7 @@ export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onResume }
     setFlying(true);
     // The menu theme fades out now and the sound of the Notstrom Intro starts: the Notstrom Intro is 9 s long from this tap.
     gameAudio.stopMenu();
-    void gameAudio.loadMusic().then(() => gameAudio.startNotstromIntroCue());
+    void gameAudio.loadMusic("intro").then(() => gameAudio.startNotstromIntroCue());
     cancelFly.current = titleScene.fly(onPlay);
   }
 

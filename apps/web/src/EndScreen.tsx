@@ -56,7 +56,7 @@ export function EndScreen({ result, squad, seed, hero, onPlayAgain }: EndScreenP
   useEffect(() => {
     if (result.winner === undefined) return;
     const won = result.winner === squad;
-    void gameAudio.loadMusic().then(() => gameAudio.startEnding(won));
+    void gameAudio.loadMusic("ending").then(() => gameAudio.startEnding(won));
     const timer = setTimeout(() => {
       if (heroRef.current) gameAudio.playMoment("matchEnd", heroRef.current, won);
     }, END_VOICE_DELAY_MS);

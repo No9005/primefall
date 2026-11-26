@@ -53,7 +53,7 @@ describe("the sounds that follow the Notstrom Intro film", () => {
     vi.stubGlobal("AudioContext", class {});
     vi.stubGlobal("fetch", () => Promise.resolve({ json: () => Promise.resolve(MUSIC), arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) }));
     audio = new GameAudio(() => fake.context as unknown as AudioContext);
-    await audio.loadMusic();
+    await audio.loadMusic("intro");
     const buffers = (audio as unknown as { buffers: Map<string, unknown> }).buffers;
     for (const key of buffers.keys()) buffers.set(key, { key });
     audio.startNotstromIntroCue();
@@ -103,5 +103,46 @@ describe("the sounds that follow the Notstrom Intro film", () => {
     expect(ship?.stoppedAt).toBeGreaterThan(fake.context.currentTime);
     audio.followNotstromIntro(3000);
     expect(effectSources()).toHaveLength(1);
+  });
+});
+
+describe("loading the music in groups", () => {
+  function loadingAudio(failing: string[] = []) {
+    const fake = fakeContext();
+    const fetched: string[] = [];
+    vi.stubGlobal("AudioContext", class {});
+    vi.stubGlobal("fetch", (url: string) => {
+      fetched.push(url);
+      return Promise.resolve({ json: () => Promise.resolve(MUSIC), arrayBuffer: () => Promise.resolve(new ArrayBuffer(failing.some((name) => url.includes(name)) ? 1 : 8)) });
+    });
+    (fake.context as { decodeAudioData: (data: ArrayBuffer) => Promise<unknown> }).decodeAudioData = (data: ArrayBuffer) => (data.byteLength === 1 ? Promise.reject(new Error("cannot decode")) : Promise.resolve({ duration: 1 }));
+    const audio = new GameAudio(() => fake.context as unknown as AudioContext);
+    const buffers = () => [...(audio as unknown as { buffers: Map<string, unknown> }).buffers.keys()];
+    return { audio, fetched, buffers };
+  }
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("fetches only the files of the group a screen asks for, and each file once", async () => {
+    const { audio, fetched, buffers } = loadingAudio();
+    await audio.loadMusic("menu");
+    expect(buffers()).toEqual(["music:menu"]);
+    expect(fetched.filter((url) => url.endsWith(".m4a"))).toHaveLength(1);
+    await audio.loadMusic("menu");
+    await audio.loadMusic("intro");
+    expect(buffers()).toContain("music:notstromIntro");
+    expect(buffers()).toContain("music:intro");
+    expect(buffers()).not.toContain("music:drone");
+    expect(fetched.filter((url) => url.includes("menu.m4a"))).toHaveLength(1);
+  });
+
+  it("keeps the other files of a group when one cannot be decoded", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const { audio, buffers } = loadingAudio(["menu.m4a"]);
+    await audio.loadMusic("menu");
+    expect(buffers()).toEqual([]);
+    await audio.loadMusic("match");
+    expect(buffers()).toContain("music:drone");
+    vi.restoreAllMocks();
   });
 });

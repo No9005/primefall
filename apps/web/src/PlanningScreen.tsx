@@ -458,7 +458,10 @@ function useMatchAudioLoad(p: Ctx1) {
     // The map's own sounds: its ambience runs for the match.
     void gameAudio.loadMap().then(() => gameAudio.startAmbience());
     // The music of the match: a loop in layers; its level follows the phase of the round (see the effect below).
-    void gameAudio.loadMusic().then(() => gameAudio.startMusic());
+    void gameAudio.loadMusic("match").then(() => {
+      gameAudio.startMusic();
+      void gameAudio.loadMusic("ending");
+    });
     return () => {
       unmounted.current = true;
       gameAudio.stopAll();

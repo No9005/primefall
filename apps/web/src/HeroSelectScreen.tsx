@@ -61,7 +61,11 @@ export function HeroSelectScreen({ initial, onBack, onStart }: HeroSelectScreenP
     let leaving = false;
     void Promise.all([gameAudio.load(SELECTABLE_HEROES), gameAudio.loadMap().then(() => !leaving && gameAudio.startAmbience(HANGAR_AMBIENCE_LEVEL, HANGAR_WITHOUT))]);
     // The intro of the music plays under the Hero Select, and the ambience of the map (the hangar is part of the hauler) quietly under that.
-    void gameAudio.loadMusic().then(() => gameAudio.startIntro());
+    void gameAudio.loadMusic("intro").then(() => {
+      gameAudio.startIntro();
+      // The music of the match is loaded while the Hero is picked.
+      void gameAudio.loadMusic("match");
+    });
     return () => {
       leaving = true;
       gameAudio.stopAll();

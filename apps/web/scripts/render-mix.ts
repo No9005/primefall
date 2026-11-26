@@ -64,7 +64,10 @@ async function renderInPage(args: { pass: Pass; steps: Step[]; sampleRate: numbe
   const muteFx = args.pass === "ducked";
   await audio.load(args.classes);
   await audio.loadMap();
-  if (withMusic) await audio.loadMusic();
+  if (withMusic) {
+    await audio.loadMusic("match");
+    await audio.loadMusic("ending");
+  }
   if (muteFx) {
     const buses = audio as unknown as { voiceBus: GainNode; sfxBus: GainNode };
     buses.voiceBus.gain.value = 0;
