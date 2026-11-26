@@ -363,12 +363,13 @@ export class GameAudio {
     }
   }
 
-  /** Starts the ambience of the map: the loops fade in, and a quiet sound now and then. Runs until `stopAmbience`. `level` is how loud it is (1 in the match). */
-  startAmbience(level = 1): void {
+  /** Starts the ambience of the map: the loops fade in, and a quiet sound now and then. Runs until `stopAmbience`. `level` is how loud it is (1 in the match); `without` are loops of the map that are left out (the hangar has no plasma core). */
+  startAmbience(level = 1, without: readonly string[] = []): void {
     const context = this.context;
     const manifest = this.mapManifest;
     if (this.ambience || !context || !manifest) return;
     const loops = manifest.ambience.loops.flatMap(({ play, gain: base, nearPrimeZone }) => {
+      if (without.includes(play)) return [];
       const buffer = this.buffers.get(`${MAP_FOLDER}:${play}`);
       if (!buffer || !this.sfxBus) return [];
       const source = context.createBufferSource();

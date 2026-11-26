@@ -119,4 +119,13 @@ describe("the hum of the Scout Drone", () => {
     audio.playHangarSound("flicker");
     expect(fake.sources).toHaveLength(2);
   });
+
+  it("leaves out the loops it is told to when the ambience starts (the hangar has no plasma core)", () => {
+    audio.startAmbience(0.5, ["loop.core"]);
+    const buffers = (audio as unknown as { buffers: Map<string, unknown> }).buffers;
+    const played = fake.sources.map((source) => source.buffer);
+    expect(played).toContain(buffers.get("map:loop.bed"));
+    expect(played).not.toContain(buffers.get("map:loop.core"));
+    expect(fake.sources.filter((source) => source.loop)).toHaveLength(1);
+  });
 });
