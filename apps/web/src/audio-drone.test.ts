@@ -131,18 +131,21 @@ describe("the hum of the Scout Drone", () => {
 
   it("leaves out the quiet sounds it is told to as well (the hangar has its own sparks)", () => {
     vi.useFakeTimers();
-    try {
-      audio.startAmbience(1, ["sfx.spark"]);
-      const buffers = (audio as unknown as { buffers: Map<string, unknown> }).buffers;
-      const heard = new Set<unknown>();
-      for (let minute = 0; minute < 200; minute++) {
-        vi.advanceTimersByTime(30_000);
-        for (const source of fake.sources) if (!source.loop) heard.add(source.buffer);
-      }
-      expect(heard.size).toBeGreaterThan(1);
-      expect(heard.has(buffers.get("map:sfx.spark"))).toBe(false);
-    } finally {
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // the third of the quiet sounds is the spark; every gap is the middle of its range
+    const firstQuietSound = (without: string[]) => {
+      fake.sources.length = 0;
+      (audio as unknown as { lastPick: Map<string, string> }).lastPick.clear(); // the same sound is not picked twice in a row, also not across two starts
+      audio.startAmbience(1, without);
+      vi.advanceTimersByTime(25_000);
       audio.stopAmbience();
+      return fake.sources.find((source) => !source.loop)?.buffer;
+    };
+    const spark = (audio as unknown as { buffers: Map<string, unknown> }).buffers.get("map:sfx.spark");
+    try {
+      expect(firstQuietSound([])).toBe(spark);
+      expect(firstQuietSound(["sfx.spark"])).not.toBe(spark);
+    } finally {
+      vi.restoreAllMocks();
       vi.useRealTimers();
     }
   });
