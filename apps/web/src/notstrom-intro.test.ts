@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import type { MusicManifest } from "./audio-manifest";
 import { describe, expect, it } from "vitest";
 import { NOTSTROM_INTRO, NOTSTROM_INTRO_SOUND, shouldPlayNotstromIntro } from "./notstrom-intro";
 
@@ -21,6 +22,19 @@ describe("Notstrom Intro", () => {
     expect(NOTSTROM_INTRO_SOUND.loopStartsAtSeconds).toBeLessThan(8.9);
     expect(8.9 - NOTSTROM_INTRO_SOUND.loopStartsAtSeconds).toBeLessThanOrEqual(0.5);
     expect(NOTSTROM_INTRO_SOUND.loopFadeInSeconds).toBeGreaterThan(0.5);
+  });
+
+  it("keeps the sounds that follow the pictures inside the film, in order, and their files exist", () => {
+    const manifest = JSON.parse(readFileSync(new URL("../public/assets/audio/music/manifest.json", import.meta.url), "utf8")) as MusicManifest;
+    const effects = manifest.notstromIntro?.effects ?? [];
+    const filmMs = (NOTSTROM_INTRO.frames / NOTSTROM_INTRO.fps) * 1000;
+    expect(effects.length).toBeGreaterThan(0);
+    expect(effects.map((effect) => effect.atMs)).toEqual([...effects.map((effect) => effect.atMs)].sort((a, b) => a - b));
+    for (const effect of effects) {
+      expect(effect.atMs).toBeGreaterThanOrEqual(0);
+      expect(effect.atMs).toBeLessThan(filmMs);
+      expect(existsSync(new URL(`../public/assets/audio/music/${effect.file}`, import.meta.url))).toBe(true);
+    }
   });
 
   it("plays only for a player who has not asked for less motion, unless forced", () => {

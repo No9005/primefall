@@ -133,6 +133,14 @@ export function meets(value: number, spec: Amount | undefined): boolean {
   }
 }
 
+/** A sound that follows a picture of the Notstrom Intro: it starts when the film's own clock reaches `atMs` (not the audio clock, so a late video keeps the sound with the picture). */
+export interface NotstromIntroEffect {
+  file: string;
+  gain: number;
+  atMs: number;
+  what?: string;
+}
+
 /** The music: `assets/audio/music/manifest.json`. One loop of `bars` bars in layers that run in sync; a level says how loud each layer is. */
 export interface MusicManifest {
   bpm: number;
@@ -140,8 +148,8 @@ export interface MusicManifest {
   layers: Record<string, string>;
   /** The main-menu theme of the start screen: a loop of 177 s (docs: `archive/audio-source/music/menu-theme/`). */
   menu?: { file: string; gain: number };
-  /** The sound of the Notstrom Intro after a tap on Start (8.9 s, plays once; docs: `archive/audio-source/music/notstrom-intro-cue/`). */
-  notstromIntro?: { file: string; gain: number };
+  /** The sound of the Notstrom Intro after a tap on Start (`settle`: it starts at `startGain` and sinks to `gain` over `seconds`, so that its opening is louder) (8.9 s, plays once; docs: `archive/audio-source/music/notstrom-intro-cue/`). */
+  notstromIntro?: { file: string; gain: number; settle?: { startGain: number; seconds: number }; effects?: NotstromIntroEffect[] };
   /** The loop under the Hero Select. */
   intro?: { file: string; gain: number };
   /** Plays once when a match starts, hard from the first beat, and fades into the layers over its last bar. */

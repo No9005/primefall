@@ -100,6 +100,20 @@ describe("Notstrom Intro scene", () => {
     expect(t.hasPendingFrame()).toBe(true);
   });
 
+  it("tells the sounds how far the film itself is, only while it plays", async () => {
+    const t = setup();
+    const heard: number[] = [];
+    t.scene.clock = (filmMs) => heard.push(filmMs);
+    await t.stage.showScene(NOTSTROM_INTRO_SCENE_NAME);
+    t.film.clip.currentTime = 2.7;
+    t.scene.update(0);
+    t.scene.skip();
+    t.film.clip.currentTime = 3;
+    t.scene.update(0);
+    expect(heard.at(-1)).toBe(2700);
+    expect(heard).not.toContain(3000);
+  });
+
   it("is not ready while the first picture cannot be drawn", async () => {
     const t = setup();
     t.film.state.frame = false;

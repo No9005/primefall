@@ -1,5 +1,5 @@
 import { findTiles, type GridPosition, type HeroClass, NOTSTROM_MAP, TileKind } from "game-core";
-import { AUDIO_FOLDER, type AudioManifest, assetUrl, type HangarSound, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl, MUSIC_MANIFEST_URL, type MusicManifest, musicFileUrl, type UiSound } from "./audio-manifest";
+import { AUDIO_FOLDER, type AudioManifest, assetUrl, type HangarSound, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl, MUSIC_MANIFEST_URL, type MusicManifest, musicFileUrl, type NotstromIntroEffect, type UiSound } from "./audio-manifest";
 import { distanceGain, MUSIC_DUCK, nextAmbienceGapMs, pickVariant, Priority, SfxLimiter, VoiceDirector } from "./audio-mix";
 import { planMoment, type PlanContext, type SoundRequest, type Source } from "./audio-cues";
 import { NOTSTROM_INTRO_SOUND } from "./notstrom-intro";
@@ -119,6 +119,8 @@ export class GameAudio {
   private introAt: number | undefined;
   private introStopTimer: ReturnType<typeof setTimeout> | undefined;
   private notstromIntroCue: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
+  /** The effects that follow the film's pictures: how many have started, and the ones that run (to fade out when the film is skipped). */
+  private notstromIntroEffects: { next: number; playing: { source: AudioBufferSourceNode; gain: GainNode }[] } | undefined;
   /** The main-menu theme of the start screen: a loop that runs until the player leaves the screen. */
   private menu: { source: AudioBufferSourceNode; gain: GainNode } | undefined;
   /** The intro of the Hero Select: a loop that runs until the player leaves the screen. */
@@ -422,6 +424,7 @@ export class GameAudio {
     const files: Record<string, string> = { ...manifest.layers };
     if (manifest.menu) files.menu = manifest.menu.file;
     if (manifest.notstromIntro) files.notstromIntro = manifest.notstromIntro.file;
+    manifest.notstromIntro?.effects?.forEach((effect, index) => (files[`notstromIntro:effect:${index}`] = effect.file));
     if (manifest.intro) files.intro = manifest.intro.file;
     if (manifest.opening) files.opening = manifest.opening.file;
     for (const [outcome, track] of Object.entries(manifest.ending ?? {})) {
@@ -475,11 +478,44 @@ export class GameAudio {
     const source = context.createBufferSource();
     source.buffer = buffer;
     const gain = context.createGain();
-    gain.gain.value = manifest.notstromIntro.gain;
+    const { gain: level, settle } = manifest.notstromIntro;
+    if (settle) {
+      gain.gain.setValueAtTime(settle.startGain, context.currentTime);
+      gain.gain.linearRampToValueAtTime(level, context.currentTime + settle.seconds);
+    } else gain.gain.value = level;
     source.connect(gain).connect(this.musicBus);
     source.start();
     this.notstromIntroCue = { source, gain };
+    // Once it has played out, the next tap on Start (the player came back to the start screen) must be able to start it again.
+    source.onended = () => {
+      if (this.notstromIntroCue?.source === source) this.notstromIntroCue = undefined;
+    };
+    this.notstromIntroEffects = { next: 0, playing: [] };
     this.scheduleLoopUnderNotstromIntro(context, manifest.intro, this.buffers.get("music:intro"));
+  }
+
+  /**
+   * The sounds that follow the pictures of the Notstrom Intro: the film tells how far it is (`filmMs`, its own clock), and every effect of the manifest whose
+   * `atMs` has been reached starts once. The film can start late on a slow device; the sounds then stay with the pictures, which the music does not.
+   */
+  followNotstromIntro(filmMs: number): void {
+    const state = this.notstromIntroEffects;
+    const context = this.context;
+    const effects = this.musicManifest?.notstromIntro?.effects;
+    if (!state || !context || !effects || !this.sfxBus) return;
+    while (state.next < effects.length && (effects[state.next] as NotstromIntroEffect).atMs <= filmMs) {
+      const index = state.next++;
+      const effect = effects[index] as NotstromIntroEffect;
+      const buffer = this.buffers.get(`music:notstromIntro:effect:${index}`);
+      if (!buffer) continue;
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      const gain = context.createGain();
+      gain.gain.value = effect.gain;
+      source.connect(gain).connect(this.sfxBus);
+      source.start();
+      state.playing.push({ source, gain });
+    }
   }
 
   /** The Hero Select loop starts under the end of the sound of the Notstrom Intro, timed on the audio clock (`NOTSTROM_INTRO_SOUND`). */
@@ -502,8 +538,20 @@ export class GameAudio {
   stopNotstromIntroCue(): void {
     const cue = this.notstromIntroCue;
     const context = this.context;
+    const effects = this.notstromIntroEffects;
     this.notstromIntroCue = undefined;
+    this.notstromIntroEffects = undefined;
     if (!cue || !context) return;
+    for (const { source, gain } of effects?.playing ?? []) {
+      gain.gain.cancelScheduledValues(context.currentTime);
+      gain.gain.setValueAtTime(gain.gain.value, context.currentTime);
+      gain.gain.linearRampToValueAtTime(0, context.currentTime + INTRO_FADE_OUT_S);
+      try {
+        source.stop(context.currentTime + INTRO_FADE_OUT_S + 0.05);
+      } catch {
+        // Already ended.
+      }
+    }
     // A loop that has not begun yet is cancelled: the Hero Select starts its own.
     if (this.intro && this.introAt !== undefined && context.currentTime < this.introAt) {
       this.intro.source.stop();

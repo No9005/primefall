@@ -29,7 +29,11 @@ export function NotstromIntro({ onDone }: NotstromIntroProps) {
       if (!playedToEnd) gameAudio.stopNotstromIntroCue();
       done.current(playedToEnd);
     });
-    return () => notstromIntroScene.watch(undefined);
+    notstromIntroScene.clock = (filmMs) => gameAudio.followNotstromIntro(filmMs);
+    return () => {
+      notstromIntroScene.clock = undefined;
+      notstromIntroScene.watch(undefined);
+    };
   }, []);
 
   return (
