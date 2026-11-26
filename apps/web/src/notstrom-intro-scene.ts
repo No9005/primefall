@@ -5,7 +5,7 @@ import type { FillView } from "./stage-fit";
 
 // The Notstrom Intro as a scene on the stage (ADR 0026; design: docs/design/notstrom-intro/README.md). The film is a video on a sprite, the one
 // film of the app (rule 3), shown whole in the window: as large as fits, dark around it, never cropped or stretched. The film's own end event
-// ends the scene, which is the one place where the stage ticker is not the clock. The sound stays with the audio clock (`audio.ts`).
+// ends the scene, which is the one place where the stage ticker is not the clock. The music stays with the audio clock (`audio.ts`); the effects that follow its pictures take their time from the film (`clock`).
 
 export const NOTSTROM_INTRO_SCENE_NAME = "notstrom-intro";
 
@@ -14,6 +14,8 @@ const BACKDROP = 0x04060f;
 export interface NotstromIntroScene extends Scene {
   /** The screen asks for the outcome: `onDone(true)` when the film ran to its end, `onDone(false)` when it was skipped or could not play. `undefined` stops. */
   watch(onDone: ((playedToEnd: boolean) => void) | undefined): void;
+  /** Called on every tick while the film plays with how far the film itself is, in ms: the sounds that follow its pictures take their time from here. */
+  clock: ((filmMs: number) => void) | undefined;
   /** Ends the film at once (a tap). */
   skip(): void;
 }
@@ -95,8 +97,10 @@ export function createNotstromIntroScene(urls: () => string[] = notstromIntroVid
       sprite = undefined;
       drawn = false;
     },
+    clock: undefined,
     update() {
       drawn = clip?.hasFrame() ?? false;
+      if (clip && drawn && outcome === undefined) scene.clock?.(clip.currentTime * 1000);
     },
     ready: () => drawn,
     animating: () => clip !== undefined && outcome === undefined && !hidden,

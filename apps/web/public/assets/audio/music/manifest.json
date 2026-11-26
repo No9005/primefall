@@ -16,7 +16,22 @@
  },
  "notstromIntro": {
   "file": "notstrom-intro.m4a",
-  "gain": 1
+  "gain": 1,
+  "settle": { "startGain": 1.5, "seconds": 3.5 },
+  "effects": [
+   {
+    "file": "notstrom-intro-ship.mp3",
+    "gain": 1.5,
+    "atMs": 250,
+    "what": "the ship leaves the hyperspace (the ring is at 0.1 to 0.25 s of the film, the ship flies from 0.33 s to 2.6 s): an underwater rocket or submarine, 5.85 s; louder (+5 dB, baked in per sample without a limiter; the file is 4.6 dB lower and the gain 1.5. The ffmpeg `volume` filter with `eval=frame` changes its gain in steps per frame, which crackled) from 2.4 s, where the visor with the reflection begins (2.7 s), its natural peak falls there; fades out from 4.5 s"
+   },
+   {
+    "file": "notstrom-intro-breath.mp3",
+    "gain": 0.11,
+    "atMs": 2400,
+    "what": "the visor (2.7 s to 6.3 s of the film; it starts a little before): Tilly breathing, very light, slowed to 85 % by resampling (a little lower in pitch, no time-stretch artefacts) and muffled as in a helmet (low-passed at 1.2 and 1.8 kHz): an exhale and an inhale, a pause of 0.2 s, the same two again (take A of call 48, 3.8 s to 5.6 s of the take: the spoken Hhh anchors at 0.3 s and 2.8 s crackle and are left out)"
+   }
+  ]
  },
  "intro": {
   "file": "intro.m4a",
