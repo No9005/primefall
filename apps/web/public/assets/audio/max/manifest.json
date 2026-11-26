@@ -353,7 +353,7 @@
    "file": "sfx/act-lift.mp3",
    "kind": "sfx",
    "what": "Hero Select act: Max's training grunts as he lifts the barbell (his own voice, as an effect so that his select line does not cut it)",
-   "durationMs": 3056
+   "durationMs": 2351
   },
   "sfx.act-throw": {
    "file": "sfx/act-throw.mp3",
@@ -875,13 +875,52 @@
   {
    "on": "hangarClip",
    "clip": "tolift",
-   "note": "the clip before the lift (10 frames in 0.7 s: he crouches to the bar): the grunts begin 0.28 s before the act, so that their first effort falls on the jerk of the lift (0.3 s into the act), the second on the lowering (1.5 s) and the release after the set-down",
+   "note": "the clip before the lift (10 frames in 0.7 s: he crouches to the bar): Max walks from the outer end of the barbell to its middle (two steps, 80 ms and 300 ms); the grunts begin 0.28 s before the act, so that their first effort falls on the jerk of the lift (0.3 s into the act), the second on the lowering (1.5 s); the third grunt, the release after the set-down, is cut off (owner: superfluous)",
    "sfx": [
+    {
+     "play": [
+      "sfx.step-1",
+      "sfx.step-2",
+      "sfx.step-3"
+     ],
+     "atMs": 80
+    },
+    {
+     "play": [
+      "sfx.step-1",
+      "sfx.step-2",
+      "sfx.step-3"
+     ],
+     "atMs": 300
+    },
     {
      "play": [
       "sfx.act-lift"
      ],
      "atMs": 420
+    }
+   ]
+  },
+  {
+   "on": "hangarClip",
+   "clip": "toidle",
+   "note": "the clip after the lift (8 frames in 0.55 s): Max walks from the middle of the barbell back to its outer end, two steps; the same walk the other way is the start of `tolift`",
+   "sfx": [
+    {
+     "play": [
+      "sfx.step-1",
+      "sfx.step-2",
+      "sfx.step-3"
+     ],
+     "atMs": 110
+    },
+    {
+     "play": [
+      "sfx.step-1",
+      "sfx.step-2",
+      "sfx.step-3"
+     ],
+     "atMs": 330
     }
    ]
   }

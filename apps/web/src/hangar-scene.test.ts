@@ -3,7 +3,7 @@ import { Texture } from "pixi.js";
 import { describe, expect, it } from "vitest";
 import { HeroClass } from "game-core";
 import { parseAtlas } from "./atlas";
-import { cyclePercent, crystalAt, createHangarScene, cycleStarts, flickerOpacity, guideFrame, HANGAR_SCENE_NAME, type HangarArt, lampOpacity, moteAt, shadeOpacity, sparkFrame } from "./hangar-scene";
+import { cyclePercent, crystalAt, createHangarScene, cycleStarts, flickerDimming, flickerOpacity, guideFrame, HANGAR_SCENE_NAME, type HangarArt, lampOpacity, moteAt, shadeOpacity, sparkFrame } from "./hangar-scene";
 import { HANGAR_HEROES, HangarHeroes } from "./hangar-select";
 import { createStage, type AssetSource, type StageEnvironment, type StageHost } from "./stage";
 
@@ -214,6 +214,12 @@ describe("hangar motion on the scene's time", () => {
     expect(flickerOpacity(0.5 * 5300)).toBe(1);
     expect(shadeOpacity(0.615 * 9400)).toBe(0.55);
     expect(shadeOpacity(0.7 * 9400)).toBe(1);
+  });
+
+  it("darkens the hall only while the light flickers, deepest at the dip", () => {
+    expect(flickerDimming(0.5 * 5300)).toBe(0);
+    expect(flickerDimming(0.72 * 5300)).toBeCloseTo(0.33);
+    expect(flickerDimming(0.08 * 5300)).toBeCloseTo(0.275);
   });
 
   it("steps the guide lights through six frames", () => {
