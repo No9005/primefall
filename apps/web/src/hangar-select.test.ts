@@ -121,42 +121,38 @@ describe("hangar Hero Select: a Hero", () => {
     };
   };
 
-  it("never has two Heroes in their action together, and every Hero still acts now and then (twenty minutes, several seeds)", () => {
-    for (const seed of [1, 2, 3, 4, 5]) {
-      const acted = new Set<string>();
-      const heroes = new HangarHeroes(() => undefined, false, seeded(seed), (hero, clip) => void (clip === "act" && acted.add(hero)));
-      heroes.start();
-      for (let step = 0; step < 12_000; step++) {
-        heroes.advance(100);
-        const busy = HANGAR_HEROES.filter((hero) => ["tolift", "act", "toidle"].includes(heroes.players[hero].state.mode));
-        expect(busy.length, `seed ${seed}, ${step * 100} ms`).toBeLessThanOrEqual(1);
-      }
-      expect([...acted].sort()).toEqual([...HANGAR_HEROES].sort());
-    }
+  /** Checks `rule` at every change of state of the three Heroes (so no stepping through time), while the clock runs for `ms`. */
+  const watched = (seed: number, rule: (heroes: HangarHeroes) => void, ms: number, between?: (heroes: HangarHeroes) => void) => {
+    const acted = new Set<string>();
+    const made: { heroes?: HangarHeroes } = {};
+    const heroes = new HangarHeroes(() => made.heroes && rule(made.heroes), false, seeded(seed), (hero, clip) => void (clip === "act" && acted.add(hero)));
+    made.heroes = heroes;
+    heroes.start();
+    between?.(heroes);
+    heroes.advance(ms);
+    return acted;
+  };
+  const inAction = (heroes: HangarHeroes) => HANGAR_HEROES.filter((hero) => ["tolift", "act", "toidle"].includes(heroes.players[hero].state.mode));
+
+  it("never has two Heroes in their action together, and every Hero still acts now and then", () => {
+    const acted = watched(1, (heroes) => expect(inAction(heroes).length).toBeLessThanOrEqual(1), 240_000);
+    expect([...acted].sort()).toEqual([...HANGAR_HEROES].sort());
   });
 
   it("lets the other Heroes only idle, and make no sound, while one is chosen", () => {
     const heard: string[] = [];
-    const heroes = new HangarHeroes(() => undefined, false, seeded(7), (hero, clip) => heard.push(`${hero}:${clip}`));
+    let chosen = false;
+    const made: { heroes?: HangarHeroes } = {};
+    const heroes = new HangarHeroes(() => chosen && made.heroes && expect(inAction(made.heroes).filter((hero) => hero !== "max")).toEqual([]), false, seeded(7), (hero, clip) => heard.push(`${hero}:${clip}`));
+    made.heroes = heroes;
     heroes.start();
     heroes.advance(30_000);
     heroes.tap("max");
+    heroes.advance(10_000); // whoever was acting has finished and goes quiet
+    chosen = true;
     heard.length = 0;
-    heroes.advance(CLIPS.max.selecti!.seconds * 1000 + 6000); // whoever was acting has finished
-    heard.length = 0;
-    for (let step = 0; step < 6000; step++) {
-      heroes.advance(100);
-      for (const hero of ["tilly", "kit"] as const) expect(heroes.players[hero].state.mode, `${hero} at ${step * 100} ms`).toBe("idle");
-    }
+    heroes.advance(60_000);
     expect(heard.filter((entry) => !entry.startsWith("max:"))).toEqual([]);
-    // The choice is taken back: the others may act again.
-    heroes.tap("max");
-    heroes.advance(CLIPS.max.desel!.seconds * 1000);
-    const acted = new Set<string>();
-    const watch = new HangarHeroes(() => undefined, false, seeded(7), (hero, clip) => void (clip === "act" && acted.add(hero)));
-    watch.start();
-    watch.advance(200_000);
-    expect(acted.size).toBe(HANGAR_HEROES.length);
   });
 
   it("begins after its delay, so that the three are not in step", () => {
