@@ -36,8 +36,8 @@ function playClipSounds(hero: (typeof HANGAR_HEROES)[number], clip: ClipName): v
 
 /** How loud the ambience of the map is in the hangar against the match (1): the music and the Heroes' sounds come first. A first guess, to be tuned by ear. */
 const HANGAR_AMBIENCE_LEVEL = 0.5;
-/** The loops of the map that the hangar leaves out: the hum of the plasma core makes no sense there (it is the hum of the Prime Zone of the map). */
-const HANGAR_WITHOUT = ["loop.core"];
+/** The sounds of the map ambience that the hangar leaves out: the hum of the plasma core makes no sense there (it is the hum of the Prime Zone of the map), and the sparks come from its own fuse boxes. */
+const HANGAR_WITHOUT = ["loop.core", "sfx.spark"];
 
 /**
  * A tap on a Hero. A tap that chooses one first silences what runs (also the clip sounds of the Hero that was chosen before), and only then starts the clip
