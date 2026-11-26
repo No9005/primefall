@@ -11,15 +11,20 @@ export const STAGE_SCENES: readonly Scene[] = [hangarScene, boardScene, titleSce
 // One stage for the whole app: remounting a screen reuses it instead of making a second Application.
 let shared: Promise<{ stage: Stage; host: StageHost }> | undefined;
 
-/** The one stage, with its root put into `parent` (the screen that shows a scene). */
-export async function getStage(parent: HTMLElement): Promise<Stage> {
+/** The one stage, with its root put into `parent` (the screen that shows a scene); without a parent it stays where it is. */
+export async function getStage(parent?: HTMLElement): Promise<Stage> {
   shared ??= createPixiHost().then((host) => ({
     host,
     stage: createStage({ host, assets: pixiAssets, clock: browserClock(), environment: browserEnvironment(), scenes: STAGE_SCENES }),
   }));
   const { stage, host } = await shared;
-  host.mount?.(parent);
+  if (parent) host.mount?.(parent);
   return stage;
+}
+
+/** Loads a scene that a screen will show next while the current screen runs, so that the switch does not wait for it (a failed preload is harmless). */
+export function preloadScene(scene: string): void {
+  void getStage().then((stage) => stage.preload(scene)).catch(() => undefined);
 }
 
 /** Mounts the stage below the UI layer and shows a scene; leaving the screen leaves the scene. Render it before the screen's UI. */
