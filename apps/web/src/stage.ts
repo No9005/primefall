@@ -102,6 +102,11 @@ export interface StageEnvironment {
 
 export interface Stage {
   showScene(name: string): Promise<void>;
+  /**
+   * Loads the assets and films of a scene that comes next while the current one is on show, so that `showScene` finds them ready and the
+   * switch does not wait (the picture of the old scene would stay frozen meanwhile). Only the scene that is shown next keeps what it loaded.
+   */
+  preload(name: string): Promise<void>;
   /** Leaves the current scene: destroys its container and textures, clears the seam attributes. */
   leaveScene(): Promise<void>;
   /** Advances the clock by a given delta without real time passing (tests, recordings). */
@@ -143,6 +148,8 @@ class StageController implements Stage {
   private entered: Scene | undefined;
   /** The films of the scene that is being entered or is on show. */
   private clips: (VideoClip | undefined)[] = [];
+  /** Scenes whose assets and films are being or have been loaded ahead of `showScene`; each holds its own claim on its assets. */
+  private readonly preloaded = new Map<Scene, Promise<(VideoClip | undefined)[]>>();
   private destroyed = false;
   private readonly sceneEnv: SceneEnv;
   private readonly stopWatching: () => void;
@@ -290,17 +297,19 @@ class StageController implements Stage {
     return ticket !== this.entering || this.destroyed;
   }
 
+  /** Loads the assets and films of a scene (what `enter` and `preload` both need). */
+  private async loadScene(scene: Scene): Promise<(VideoClip | undefined)[]> {
+    await scene.prepare?.();
+    await this.acquire(scene.assets);
+    return this.acquireVideos(scene);
+  }
+
   private async enter(scene: Scene): Promise<void> {
     const ticket = ++this.entering;
     this.setAttributes(scene.name, false);
-    await scene.prepare?.();
-    if (this.overtaken(ticket)) return;
-    await this.acquire(scene.assets);
-    if (this.overtaken(ticket)) {
-      await this.release(scene.assets);
-      return;
-    }
-    const loaded = await this.acquireVideos(scene);
+    const early = this.preloaded.get(scene);
+    this.preloaded.delete(scene);
+    const loaded = await (early ?? this.loadScene(scene));
     if (this.overtaken(ticket)) {
       await this.releaseVideos(loaded);
       await this.release(scene.assets);
@@ -320,11 +329,36 @@ class StageController implements Stage {
     if (scene.animating()) this.schedule();
   }
 
+  async preload(name: string): Promise<void> {
+    const scene = this.scenes.find((candidate) => candidate.name === name);
+    if (!scene) throw new Error(`Unknown scene: ${name}`);
+    if (this.destroyed || this.current?.scene === scene || this.preloaded.has(scene)) return;
+    const loading = this.loadScene(scene);
+    this.preloaded.set(scene, loading);
+    // A load that fails is forgotten: the scene then loads itself when it is shown, as without a preload.
+    await loading.then(
+      () => undefined,
+      () => void (this.preloaded.get(scene) === loading && this.preloaded.delete(scene)),
+    );
+  }
+
+  /** Lets go of what was loaded ahead for scenes other than `keep`: they are not coming next after all. */
+  private async dropPreloaded(keep: Scene): Promise<void> {
+    for (const [scene, loading] of [...this.preloaded]) {
+      if (scene === keep) continue;
+      this.preloaded.delete(scene);
+      const loaded = await loading.catch(() => undefined);
+      if (loaded) await this.releaseVideos(loaded);
+      await this.release(scene.assets);
+    }
+  }
+
   async showScene(name: string): Promise<void> {
     const scene = this.scenes.find((candidate) => candidate.name === name);
     if (!scene) throw new Error(`Unknown scene: ${name}`);
     this.reduced = this.environment.reducedMotion.matches();
     this.setAttributes(name, false);
+    void this.dropPreloaded(scene);
     await this.leaveCurrent();
     await this.enter(scene);
   }
@@ -374,6 +408,10 @@ class StageController implements Stage {
     void this.releaseVideos(this.clips);
     this.clips = [];
     if (scene) void this.release(scene.assets);
+    for (const [early, loading] of [...this.preloaded]) {
+      this.preloaded.delete(early);
+      void loading.then((loaded) => this.releaseVideos(loaded).then(() => this.release(early.assets)), () => undefined);
+    }
     this.host.destroy();
   }
 }

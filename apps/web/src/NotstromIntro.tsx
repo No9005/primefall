@@ -1,15 +1,10 @@
 import { useEffect, useRef } from "react";
 import { gameAudio } from "./audio";
-import { NOTSTROM_INTRO, notstromIntroVideoUrls } from "./notstrom-intro";
+import { HANGAR_SCENE_NAME } from "./hangar-scene";
+import { NOTSTROM_INTRO } from "./notstrom-intro";
 import { NOTSTROM_INTRO_SCENE_NAME, notstromIntroScene } from "./notstrom-intro-scene";
-import { playableFormat } from "./stage";
-import { StageLayer } from "./StageLayer";
+import { preloadScene, StageLayer } from "./StageLayer";
 import "./notstrom-intro.css";
-
-/** Fetches the film of the Notstrom Intro into the browser's cache, so that it can start at once (the start screen asks for this). */
-export function preloadNotstromIntro(): void {
-  void fetch(playableFormat(notstromIntroVideoUrls())).catch(() => undefined);
-}
 
 interface NotstromIntroProps {
   /** Called once: with true when the Notstrom Intro ran to its end (its flash follows), with false when the player skipped it or it could not play. */
@@ -21,6 +16,9 @@ export function NotstromIntro({ onDone }: NotstromIntroProps) {
   const finished = useRef(false);
   const done = useRef(onDone);
   done.current = onDone;
+
+  // The Hero Select that follows is loaded while the film plays, so the hangar is there when the film ends.
+  useEffect(() => preloadScene(HANGAR_SCENE_NAME), []);
 
   useEffect(() => {
     notstromIntroScene.watch((playedToEnd) => {

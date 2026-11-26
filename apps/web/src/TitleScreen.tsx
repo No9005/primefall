@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { gameAudio } from "./audio";
-import { preloadNotstromIntro } from "./NotstromIntro";
-import { StageLayer } from "./StageLayer";
+import { HANGAR_SCENE_NAME } from "./hangar-scene";
+import { NOTSTROM_INTRO_SCENE_NAME } from "./notstrom-intro-scene";
+import { preloadScene, StageLayer } from "./StageLayer";
 import { MENU_SLOTS, type MenuId, menuIds, percentY, STAGE, streakTop } from "./title-menu";
 import { type FlyLook, TITLE_SCENE_NAME, titleScene } from "./title-scene";
 import "./title-screen.css";
@@ -27,8 +28,8 @@ export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onResume }
   const [row, setRow] = useState(0);
   const [flying, setFlying] = useState(false);
   const screen = useRef<HTMLElement>(null);
-  // The Notstrom Intro of Classic is fetched while the start screen is shown.
-  useEffect(preloadNotstromIntro, []);
+  // The scene that follows (the Notstrom Intro of Classic, or the Hero Select without it) is loaded while the start screen is shown, so the switch does not wait.
+  useEffect(() => preloadScene(notstromIntro ? NOTSTROM_INTRO_SCENE_NAME : HANGAR_SCENE_NAME), [notstromIntro]);
   // The main-menu theme plays while the start screen is shown (it starts with the first tap, when the browser allows sound).
   useEffect(() => {
     void gameAudio.loadMusic().then(() => gameAudio.startMenu());

@@ -2,9 +2,9 @@ import { ESLint } from "eslint";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { computeFit, DESIGN_HEIGHT, DESIGN_WIDTH, MAX_CANVAS_SIDE } from "./stage-fit";
-import { createProofScene, createStage, PROOF_SPEED, type AssetSource, type StageEnvironment, type StageHost } from "./stage";
+import { createProofScene, createStage, PROOF_SPEED, type AssetSource, type Scene, type StageEnvironment, type StageHost } from "./stage";
 
-function setup() {
+function setup(extraScenes: Scene[] = []) {
   const attributes: Record<string, string> = {};
   const state = { hidden: false, reduced: false, requests: 0, renders: 0, loads: [] as string[], unloads: [] as string[] };
   let pending: (() => void) | undefined;
@@ -43,7 +43,7 @@ function setup() {
     now: () => 0,
   };
   const proof = createProofScene();
-  const stage = createStage({ host, assets, clock, environment, scenes: [proof] });
+  const stage = createStage({ host, assets, clock, environment, scenes: [proof, ...extraScenes] });
   return {
     stage, proof, attributes, state,
     hasPendingFrame: () => pending !== undefined,
@@ -53,6 +53,12 @@ function setup() {
     pageChanged: () => changeListeners.forEach((cb) => cb()),
     motionChanged: () => motionListeners.forEach((cb) => cb()),
   };
+}
+
+/** A scene that needs two images and takes no time of its own. */
+function imageScene(name: string, assets: string[]): Scene {
+  const proof = createProofScene();
+  return { ...proof, name, assets, create: (env) => proof.create(env) };
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -167,5 +173,49 @@ describe("one PixiJS Application", () => {
     expect((await lint("apps/web/src/other.ts")).some((m) => m.includes("PixiJS Application"))).toBe(true);
     expect(await lint("apps/web/src/stage.ts")).toEqual([]);
     expect((await lint("apps/web/src/Board.tsx")).some((m) => m.includes("PixiJS Application"))).toBe(true);
+  });
+});
+
+describe("stage preload", () => {
+  it("loads a scene ahead and shows it without loading it again", async () => {
+    const next = imageScene("next", ["next-a.png", "next-b.png"]);
+    const t = setup([next]);
+    await t.stage.showScene("proof");
+    await t.stage.preload("next");
+    expect(t.state.loads).toEqual(["proof.png", "next-a.png", "next-b.png"]);
+    await t.stage.showScene("next");
+    expect(t.state.loads).toEqual(["proof.png", "next-a.png", "next-b.png"]);
+    expect(t.state.unloads).toEqual(["proof.png"]);
+    expect(t.attributes["data-scene"]).toBe("next");
+  });
+
+  it("shows a scene that is still being preloaded when it is asked for", async () => {
+    const next = imageScene("next", ["next-a.png"]);
+    const t = setup([next]);
+    await t.stage.showScene("proof");
+    const loading = t.stage.preload("next");
+    await t.stage.showScene("next");
+    await loading;
+    expect(t.state.loads).toEqual(["proof.png", "next-a.png"]);
+    expect(t.attributes["data-scene"]).toBe("next");
+  });
+
+  it("lets go of a preloaded scene that is not shown next", async () => {
+    const next = imageScene("next", ["next-a.png"]);
+    const t = setup([next]);
+    await t.stage.showScene("proof");
+    await t.stage.preload("next");
+    await t.stage.showScene("proof");
+    await flush();
+    expect(t.state.unloads).toContain("next-a.png");
+  });
+
+  it("does nothing for the scene on show and rejects an unknown one", async () => {
+    const t = setup();
+    await t.stage.showScene("proof");
+    const before = t.state.loads.length;
+    await t.stage.preload("proof");
+    expect(t.state.loads.length).toBe(before);
+    await expect(t.stage.preload("nowhere")).rejects.toThrow("Unknown scene");
   });
 });
