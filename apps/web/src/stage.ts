@@ -509,7 +509,8 @@ const loadedFilms = new Map<VideoClip, string>();
 export const pixiVideoAssets: Required<Pick<AssetSource, "loadVideo" | "unloadVideo">> = {
   async loadVideo(formats) {
     const url = playableFormat(formats);
-    const texture = await Assets.load<Texture>({ src: url, data: { autoPlay: false, muted: true, playsinline: true, loop: false, preload: true } });
+    // No `preload`: PixiJS then waits for `canplay` (enough to start) instead of `canplaythrough` (the whole film), which iOS does not fire before the film plays: the stage would keep the previous scene frozen on screen.
+    const texture = await Assets.load<Texture>({ src: url, data: { autoPlay: false, muted: true, playsinline: true, loop: false, preload: false } });
     const clip = pixiVideoClip(texture);
     loadedFilms.set(clip, url);
     return clip;

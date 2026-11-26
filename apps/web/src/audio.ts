@@ -431,10 +431,16 @@ export class GameAudio {
       files[`ending:${outcome}:jingle`] = track.jingle.file;
       files[`ending:${outcome}:loop`] = track.loop.file;
     }
+    // Each file on its own: one that a browser cannot fetch or decode (Safari on iOS is stricter than Chrome) must not take the whole music with it.
+    // Everything that plays checks for its buffer, so a missing one is silent while the rest still plays.
     await Promise.all(
       Object.entries(files).map(async ([name, file]) => {
-        const data = await (await fetch(musicFileUrl(file))).arrayBuffer();
-        this.buffers.set(`music:${name}`, await context.decodeAudioData(data));
+        try {
+          const data = await (await fetch(musicFileUrl(file))).arrayBuffer();
+          this.buffers.set(`music:${name}`, await context.decodeAudioData(data));
+        } catch (error) {
+          console.warn(`Music file ${file} could not be loaded`, error);
+        }
       }),
     );
     this.musicManifest = manifest;
