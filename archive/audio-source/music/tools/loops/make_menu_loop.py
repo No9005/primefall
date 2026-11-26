@@ -23,4 +23,4 @@ ramp = np.arange(x)[:, None] / x
 blend = y[n - x :] * np.cos(np.pi / 2 * ramp) + y[:x] * np.sin(np.pi / 2 * ramp)
 loop = np.concatenate([y[x : n - x], blend]) * 0.5
 print(f"loop {len(loop) / SR:.3f} s, peak {np.abs(loop).max():.2f}")
-subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "f32le", "-ar", str(SR), "-ac", "2", "-i", "-", "-c:a", "aac", "-b:a", "96k", dst], input=loop.astype(np.float32).tobytes(), check=True)
+subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "f32le", "-ar", str(SR), "-ac", "2", "-i", "-", "-c:a", "aac", "-b:a", "128k", dst], input=loop.astype(np.float32).tobytes(), check=True)
