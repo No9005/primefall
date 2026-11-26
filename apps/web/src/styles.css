@@ -47,7 +47,8 @@ html, body, #root { height: 100%; margin: 0; }
    not sized with vh/dvh, which on an iPhone web app leave a strip at the bottom; the HUD sits flush with the screen edges. */
 html, body { overscroll-behavior: none; }
 body { background: var(--graphite); color: var(--text); font-family: Barlow, system-ui, sans-serif; overflow: hidden; position: fixed; inset: 0; width: 100%; }
-button { font: inherit; color: inherit; touch-action: manipulation; }
+/* The tap areas lie over the canvas; without this a mobile browser flashes a dark box around the tapped button (the Hero Select showed it around the Heroes). */
+button { font: inherit; color: inherit; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
 .app { height: 100%; position: relative; }
 .loading { padding: 16px; }
