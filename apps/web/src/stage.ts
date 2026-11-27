@@ -523,22 +523,10 @@ export function playableFormat(formats: readonly string[]): string {
 /** The real films: PixiJS loads a video texture; the video element is muted and plays inline (mobile browsers need both). */
 function pixiVideoClip(texture: Texture): VideoClip {
   const element = (texture.source as VideoSource).resource;
-  // The film waits, paused at its start, until the scene plays it. iOS lets a film that was paused after loading run on by itself: it was at its end
-  // (or anywhere) when the scene took it over. A play that nobody asked for is stopped and rewound.
-  let wanted = false;
-  element.addEventListener("play", () => {
-    if (wanted) return;
-    debugLog(`film started by itself at ${element.currentTime.toFixed(2)} s: held at its start`);
-    element.pause();
-    element.currentTime = 0;
-  });
   return {
     texture,
     hasFrame: () => element.readyState >= 2,
-    play: () => {
-      wanted = true;
-      return element.play();
-    },
+    play: () => element.play(),
     reachedEnd: () => element.ended || (element.duration > 0 && element.currentTime >= element.duration - 0.05),
     pause: () => element.pause(),
     get currentTime() {
@@ -562,9 +550,9 @@ function pixiVideoClip(texture: Texture): VideoClip {
 const FILM_LOAD_TIMEOUT_MS = 8000;
 
 /**
- * A hidden `<video>` with the first picture of the film on it. iOS loads no film before it plays (it ignores `preload`), and PixiJS's loader waits for a
- * `canplay` that never comes: the stage kept the old scene frozen on screen. So the film is played muted, which starts the loading, and held at its start
- * as soon as the first picture is there.
+ * A hidden `<video>` that has its first picture and is playing, muted. iOS loads no film before it plays (it ignores `preload`), and PixiJS's loader waits
+ * for a `canplay` that never comes: the stage kept the old scene frozen on screen. So the film is played from the start of the loading, and nothing
+ * ever holds it: a film that was paused after loading ran on by itself on iOS. The scene that shows it sets it to its start.
  */
 async function loadFilmElement(url: string): Promise<HTMLVideoElement> {
   const element = document.createElement("video");
@@ -598,8 +586,6 @@ async function loadFilmElement(url: string): Promise<HTMLVideoElement> {
     element.load();
     throw error;
   });
-  element.pause();
-  element.currentTime = 0;
   return element;
 }
 

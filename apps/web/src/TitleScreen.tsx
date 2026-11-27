@@ -28,8 +28,7 @@ export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onResume }
   const [row, setRow] = useState(0);
   const [flying, setFlying] = useState(false);
   const screen = useRef<HTMLElement>(null);
-  // The scene that follows (the Notstrom Intro of Classic, or the Hero Select without it) is loaded while the start screen is shown, so the switch does not wait.
-  useEffect(() => preloadScene(notstromIntro ? NOTSTROM_INTRO_SCENE_NAME : HANGAR_SCENE_NAME), [notstromIntro]);
+  useEffect(() => void (notstromIntro || preloadScene(HANGAR_SCENE_NAME)), [notstromIntro]); // without the Notstrom Intro the Hero Select follows: loaded ahead
   // The main-menu theme plays while the start screen is shown (it starts with the first tap, when the browser allows sound).
   useEffect(() => {
     void gameAudio.loadMusic("menu").then(() => {
@@ -58,15 +57,13 @@ export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onResume }
     // The menu theme fades out now and the sound of the Notstrom Intro starts: the Notstrom Intro is 9 s long from this tap.
     gameAudio.stopMenu();
     void gameAudio.loadMusic("intro").then(() => gameAudio.startNotstromIntroCue());
+    preloadScene(NOTSTROM_INTRO_SCENE_NAME); // the film loads, and plays muted, from the tap on (iOS loads no film before it plays); the fly-away covers the time
     cancelFly.current = titleScene.fly(onPlay);
   }
 
   const entries: Record<MenuId, { label: string; testId: string; run: () => void }> = {
     classic: { label: "Start", testId: "play-classic", run: notstromIntro ? fly : onPlay },
     resume: { label: "Resume match", testId: "resume", run: onResume },
-  };
-  const pick = (index: number) => {
-    setRow(index);
   };
 
   return (
@@ -91,8 +88,8 @@ export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onResume }
               style={{ top: percentY(slot.top), height: `${(slot.height / STAGE.height) * 100}%`, ["--art" as string]: `${(slot.art / slot.height) * 100}%` }}
               data-testid={entry.testId}
               aria-label={entry.label}
-              onPointerEnter={() => pick(index)}
-              onFocus={() => pick(index)}
+              onPointerEnter={() => setRow(index)}
+              onFocus={() => setRow(index)}
               onClick={entry.run}
             >
               <img className="title-off" src={`${ART}menu-${id}-off.png`} alt="" />
