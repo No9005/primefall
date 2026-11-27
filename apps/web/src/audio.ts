@@ -173,7 +173,9 @@ export class GameAudio {
     const unlock = () => {
       void this.ensureContext()?.resume().catch(() => undefined);
     };
-    const events = ["pointerdown", "keydown"] as const;
+    // iOS counts only the end of a touch (and a click, a key) as the tap that may start sound, not its start (`pointerdown`): a context that is resumed
+    // there stays suspended, and the music the page started waits for ever.
+    const events = ["pointerdown", "pointerup", "touchend", "click", "keydown"] as const;
     for (const name of events) window.addEventListener(name, unlock);
     return () => {
       for (const name of events) window.removeEventListener(name, unlock);

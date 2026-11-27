@@ -23,7 +23,7 @@ export function debugLog(message: string): void {
 /** Logs the events of a media element (a film) with its position, so that a start at the wrong place or a stall can be read off. */
 export function debugMedia(name: string, element: HTMLMediaElement): void {
   if (!enabled) return;
-  for (const type of ["loadeddata", "canplay", "playing", "pause", "seeking", "seeked", "waiting", "stalled", "ended", "error"]) {
+  for (const type of ["loadeddata", "canplay", "play", "playing", "pause", "seeking", "seeked", "waiting", "stalled", "ended", "error"]) {
     element.addEventListener(type, () => debugLog(`${name} ${type} t=${element.currentTime.toFixed(2)} state=${element.readyState}`));
   }
 }
