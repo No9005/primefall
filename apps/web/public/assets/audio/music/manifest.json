@@ -23,7 +23,7 @@
     "file": "notstrom-intro-ship.mp3",
     "gain": 1.5,
     "atMs": 250,
-    "what": "the ship leaves the hyperspace (the ring is at 0.1 to 0.25 s of the film, the ship flies from 0.33 s to 2.6 s): an underwater rocket or submarine, 5.85 s; louder (+5 dB, baked in per sample without a limiter; the file is 4.6 dB lower and the gain 1.5. The ffmpeg `volume` filter with `eval=frame` changes its gain in steps per frame, which crackled) from 2.4 s, where the visor with the reflection begins (2.7 s), its natural peak falls there; fades out from 4.5 s"
+    "what": "the ship leaves the hyperspace (the ring is at 0.1 to 0.25 s of the film, the ship flies from 0.33 s to 2.6 s): an underwater rocket or submarine, 7.9 s (the pass of the take, 5.85 s, and from 3.0 s a hum of the hull under its end that goes on to the end of the film, for the camera ride along the hull to the airlock: `archive/audio-source/voice-sfx/build_ship_hum.py`, no new take); louder (+5 dB, baked in per sample without a limiter; the file is 4.6 dB lower and the gain 1.5. The ffmpeg `volume` filter with `eval=frame` changes its gain in steps per frame, which crackled) from 2.4 s, where the visor with the reflection begins (2.7 s), its natural peak falls there; fades out from 4.5 s"
    },
    {
     "file": "notstrom-intro-breath.mp3",

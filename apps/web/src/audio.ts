@@ -246,6 +246,7 @@ export class GameAudio {
       }),
     );
     this.manifests.set(heroClass, manifest);
+    debugLog(`sounds of ${heroClass} loaded`);
   }
 
   /** Loads the sounds of the map and of the cards, once. */

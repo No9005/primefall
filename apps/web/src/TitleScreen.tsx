@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { gameAudio } from "./audio";
 import { HANGAR_SCENE_NAME } from "./hangar-scene";
+import { SELECTABLE_HEROES } from "./hero-select";
 import { NOTSTROM_INTRO_SCENE_NAME } from "./notstrom-intro-scene";
 import { preloadScene, StageLayer } from "./StageLayer";
 import { MENU_SLOTS, type MenuId, menuIds, percentY, STAGE, streakTop } from "./title-menu";
@@ -33,8 +34,9 @@ export function TitleScreen({ seed, canResume, notstromIntro, onPlay, onResume }
   useEffect(() => {
     void gameAudio.loadMusic("menu").then(() => {
       gameAudio.startMenu();
-      // The sound of the Notstrom Intro and the Hero Select loop are small; they load behind the menu theme.
-      void gameAudio.loadMusic("intro");
+      // The sound of the Notstrom Intro and the Hero Select loop are small; they load behind the menu theme, and the sounds of the Heroes (3 MB in 160 files) and of the map behind them,
+      // so that the first clips of the hangar have theirs: it is on show from the end of the Notstrom Intro, when the player looks at the Heroes.
+      void gameAudio.loadMusic("intro").then(() => Promise.all([gameAudio.load(SELECTABLE_HEROES), gameAudio.loadMap()]));
     });
     return () => gameAudio.stopMenu();
   }, []);
