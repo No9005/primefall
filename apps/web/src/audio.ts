@@ -1,4 +1,5 @@
 import { findTiles, type GridPosition, type HeroClass, NOTSTROM_MAP, TileKind } from "game-core";
+import { debugLog } from "./debug-log";
 import { AUDIO_FOLDER, type AudioManifest, assetUrl, type HangarSound, MAP_FOLDER, MAP_MANIFEST_URL, type MapManifest, manifestUrl, MUSIC_MANIFEST_URL, type MusicManifest, musicFileUrl, type NotstromIntroEffect, type UiSound } from "./audio-manifest";
 import { distanceGain, MUSIC_DUCK, nextAmbienceGapMs, pickVariant, Priority, SfxLimiter, VoiceDirector } from "./audio-mix";
 import { planMoment, type PlanContext, type SoundRequest, type Source } from "./audio-cues";
@@ -211,6 +212,8 @@ export class GameAudio {
     this.duckNode = context.createGain();
     this.musicBus.connect(this.duckNode).connect(limiter).connect(master);
     this.context = context;
+    debugLog(`audio context created: ${context.state}`);
+    if (typeof context.addEventListener === "function") context.addEventListener("statechange", () => debugLog(`audio context is ${context.state}`));
     return context;
   }
 
@@ -456,6 +459,7 @@ export class GameAudio {
       this.musicManifestLoading = undefined;
       throw error;
     }
+    debugLog(`music "${group}" loads`);
     // Each file on its own: one that a browser cannot fetch or decode (Safari on iOS is stricter than Chrome) must not take the whole music with it.
     // Everything that plays checks for its buffer, so a missing one is silent while the rest still plays.
     await Promise.all(
@@ -466,9 +470,11 @@ export class GameAudio {
           this.buffers.set(`music:${name}`, await context.decodeAudioData(data));
         } catch (error) {
           console.warn(`Music file ${file} could not be loaded`, error);
+          debugLog(`music file ${file} FAILED: ${error instanceof Error ? error.message : String(error)}`);
         }
       }),
     );
+    debugLog(`music "${group}" loaded`);
   }
 
   /** The main-menu theme of the start screen: it loops until `stopMenu`. It starts when the browser lets the page make sound (the first tap). */
@@ -485,6 +491,7 @@ export class GameAudio {
     gain.gain.linearRampToValueAtTime(manifest.menu.gain, context.currentTime + MENU_FADE_IN_S);
     source.connect(gain).connect(this.musicBus);
     source.start();
+    debugLog(`menu theme starts (context ${context.state})`);
     this.menu = { source, gain };
   }
 
@@ -516,6 +523,7 @@ export class GameAudio {
     } else gain.gain.value = level;
     source.connect(gain).connect(this.musicBus);
     source.start();
+    debugLog(`intro sound starts (context ${context.state})`);
     this.notstromIntroCue = { source, gain };
     // Once it has played out, the next tap on Start (the player came back to the start screen) must be able to start it again.
     source.onended = () => {
@@ -545,6 +553,7 @@ export class GameAudio {
       gain.gain.value = effect.gain;
       source.connect(gain).connect(this.sfxBus);
       source.start();
+      debugLog(`intro effect ${index} starts at film ${Math.round(filmMs)} ms`);
       state.playing.push({ source, gain });
     }
   }
