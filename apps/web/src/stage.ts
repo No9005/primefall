@@ -23,6 +23,8 @@ export interface VideoClip {
   pause(): void;
   /** Seconds into the film. */
   currentTime: number;
+  /** Whether the film has played to its end (also when the browser sent no `ended`: Safari does not send it again for a film that was rewound). */
+  reachedEnd(): boolean;
   /** Calls back when the film ended and when it failed to decode or play; returns what removes the listeners. */
   listen(handlers: { ended(): void; failed(): void }): () => void;
 }
@@ -521,10 +523,23 @@ export function playableFormat(formats: readonly string[]): string {
 /** The real films: PixiJS loads a video texture; the video element is muted and plays inline (mobile browsers need both). */
 function pixiVideoClip(texture: Texture): VideoClip {
   const element = (texture.source as VideoSource).resource;
+  // The film waits, paused at its start, until the scene plays it. iOS lets a film that was paused after loading run on by itself: it was at its end
+  // (or anywhere) when the scene took it over. A play that nobody asked for is stopped and rewound.
+  let wanted = false;
+  element.addEventListener("play", () => {
+    if (wanted) return;
+    debugLog(`film started by itself at ${element.currentTime.toFixed(2)} s: held at its start`);
+    element.pause();
+    element.currentTime = 0;
+  });
   return {
     texture,
     hasFrame: () => element.readyState >= 2,
-    play: () => element.play(),
+    play: () => {
+      wanted = true;
+      return element.play();
+    },
+    reachedEnd: () => element.ended || (element.duration > 0 && element.currentTime >= element.duration - 0.05),
     pause: () => element.pause(),
     get currentTime() {
       return element.currentTime;
