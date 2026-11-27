@@ -8,7 +8,8 @@ const FILM = { width: 1280, height: 592 };
 /** A film that the test drives: it counts how often it plays and pauses and lets the test end or break it. */
 function fakeClip() {
   let handlers: { ended(): void; failed(): void } | undefined;
-  const state = { plays: 0, pauses: 0, frame: true, rejectPlay: false, listeners: 0 };
+  let position = 0;
+  const state = { plays: 0, pauses: 0, frame: true, rejectPlay: false, listeners: 0, atEnd: false };
   const clip: VideoClip = {
     texture: new Texture({ frame: new Rectangle(0, 0, FILM.width, FILM.height) }),
     hasFrame: () => state.frame,
@@ -17,7 +18,15 @@ function fakeClip() {
       return state.rejectPlay ? Promise.reject(new Error("blocked")) : Promise.resolve();
     },
     pause: () => void state.pauses++,
-    currentTime: 0,
+    // Like a real film: seeking back to the start clears the end.
+    get currentTime() {
+      return position;
+    },
+    set currentTime(seconds: number) {
+      position = seconds;
+      if (seconds < 1) state.atEnd = false;
+    },
+    reachedEnd: () => state.atEnd,
     listen(next) {
       handlers = next;
       state.listeners++;
@@ -129,6 +138,27 @@ describe("Notstrom Intro scene", () => {
     t.scene.skip();
     expect(t.results).toEqual([true]);
     expect(t.scene.animating()).toBe(false);
+  });
+
+  it("ends when the film has reached its end although the browser sent no ended event", async () => {
+    const t = setup();
+    await t.stage.showScene(NOTSTROM_INTRO_SCENE_NAME);
+    t.film.state.atEnd = true;
+    t.stage.step(16);
+    t.stage.step(16);
+    expect(t.results).toEqual([true]);
+    expect(t.scene.animating()).toBe(false);
+  });
+
+  it("does not end because a film that was loaded ahead stands at its end, and starts it from the beginning", async () => {
+    const t = setup();
+    t.film.state.atEnd = true;
+    t.film.clip.currentTime = 7.92;
+    await t.stage.showScene(NOTSTROM_INTRO_SCENE_NAME);
+    expect(t.film.clip.currentTime).toBe(0);
+    t.stage.step(16);
+    expect(t.results).toEqual([]);
+    expect(t.film.state.plays).toBe(1);
   });
 
   it("tells the screen once that a tap skipped it, and pauses the film", async () => {

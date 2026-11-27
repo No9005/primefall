@@ -41,6 +41,11 @@ function buildFilmRoot(clip: VideoClip | undefined): { root: Container; sprite?:
   return { root, sprite };
 }
 
+/** Plays the film; a browser that refuses to play it ends the intro (`onRefused`). */
+function playFilm(clip: VideoClip | undefined, onRefused: (reason: string) => void): Promise<void> | undefined {
+  return clip?.play().catch((error: unknown) => onRefused(`play() refused: ${error instanceof Error ? error.name : String(error)}`));
+}
+
 export function createNotstromIntroScene(urls: () => string[] = notstromIntroVideoUrls): NotstromIntroScene {
   let clip: VideoClip | undefined;
   let sprite: Sprite | undefined;
@@ -50,6 +55,7 @@ export function createNotstromIntroScene(urls: () => string[] = notstromIntroVid
   let stopListening = () => {};
   let hidden = false;
   let drawn = false;
+  let started = false; // whether the film was asked to play: only then can it have reached its end
   /** Where the film goes on after the scene was rebuilt (a lost WebGL context) while the screen is still there. */
   let resumeAt = 0;
 
@@ -63,7 +69,7 @@ export function createNotstromIntroScene(urls: () => string[] = notstromIntroVid
     onDone?.(playedToEnd);
   }
 
-  const play = () => clip?.play().catch((error: unknown) => finish(false, `play() refused: ${error instanceof Error ? error.name : String(error)}`));
+  const play = () => ((started = true), playFilm(clip, (reason) => finish(false, reason)));
 
   const scene: NotstromIntroScene = {
     name: NOTSTROM_INTRO_SCENE_NAME,
@@ -73,11 +79,10 @@ export function createNotstromIntroScene(urls: () => string[] = notstromIntroVid
     create(env: SceneEnv) {
       clip = env.video(0);
       drawn = false;
+      started = false;
       const built = buildFilmRoot(clip);
-      if (built.sprite) {
-        sprite = built.sprite;
-        layout();
-      }
+      sprite = built.sprite;
+      layout();
       return built.root;
     },
     enter() {
@@ -86,7 +91,8 @@ export function createNotstromIntroScene(urls: () => string[] = notstromIntroVid
       stopListening = clip.listen({ ended: () => finish(true, "the film ended"), failed: () => finish(false, "the video reported an error") });
       debugLog(`intro scene enters: film at ${clip.currentTime.toFixed(2)} s`);
       if (outcome === undefined) {
-        if (resumeAt > 0) clip.currentTime = resumeAt;
+        // Always from a known place: a film that was loaded ahead may have run on (or ended) while the start screen was shown.
+        clip.currentTime = resumeAt;
         if (!hidden) play();
       }
       scene.update(0);
@@ -99,10 +105,12 @@ export function createNotstromIntroScene(urls: () => string[] = notstromIntroVid
       clip = undefined;
       sprite = undefined;
       drawn = false;
+      started = false;
     },
     clock: undefined,
     update() {
       drawn = clip?.hasFrame() ?? false;
+      if (clip && started && outcome === undefined && clip.reachedEnd()) return finish(true, "the film reached its end (no ended event came)");
       if (clip && drawn && outcome === undefined) scene.clock?.(clip.currentTime * 1000);
     },
     ready: () => drawn,
@@ -119,10 +127,8 @@ export function createNotstromIntroScene(urls: () => string[] = notstromIntroVid
     },
     watch(next) {
       onDone = next;
-      if (!next) {
-        outcome = undefined;
-        resumeAt = 0;
-      } else if (outcome !== undefined) next(outcome);
+      if (next && outcome !== undefined) return next(outcome);
+      if (!next) [outcome, resumeAt] = [undefined, 0];
     },
     skip: () => finish(false, "tap on the screen"),
   };
