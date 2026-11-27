@@ -1,4 +1,5 @@
 import { Container, Graphics, Sprite } from "pixi.js";
+import { debugLog } from "./debug-log";
 import { notstromIntroVideoUrls } from "./notstrom-intro";
 import type { Scene, SceneEnv, VideoClip } from "./stage";
 import type { FillView } from "./stage-fit";
@@ -54,14 +55,15 @@ export function createNotstromIntroScene(urls: () => string[] = notstromIntroVid
 
   const layout = () => sprite && view && fitFilm(sprite, view);
 
-  function finish(playedToEnd: boolean) {
+  function finish(playedToEnd: boolean, reason: string) {
     if (outcome !== undefined) return;
+    debugLog(`intro ends (${playedToEnd ? "played to the end" : "not played to the end"}): ${reason}`);
     outcome = playedToEnd;
     clip?.pause();
     onDone?.(playedToEnd);
   }
 
-  const play = () => clip?.play().catch(() => finish(false));
+  const play = () => clip?.play().catch((error: unknown) => finish(false, `play() refused: ${error instanceof Error ? error.name : String(error)}`));
 
   const scene: NotstromIntroScene = {
     name: NOTSTROM_INTRO_SCENE_NAME,
@@ -80,8 +82,9 @@ export function createNotstromIntroScene(urls: () => string[] = notstromIntroVid
     },
     enter() {
       // The film could not be loaded: the intro is over, as if it was skipped.
-      if (!clip) return finish(false);
-      stopListening = clip.listen({ ended: () => finish(true), failed: () => finish(false) });
+      if (!clip) return finish(false, "the film did not load");
+      stopListening = clip.listen({ ended: () => finish(true, "the film ended"), failed: () => finish(false, "the video reported an error") });
+      debugLog(`intro scene enters: film at ${clip.currentTime.toFixed(2)} s`);
       if (outcome === undefined) {
         if (resumeAt > 0) clip.currentTime = resumeAt;
         if (!hidden) play();
@@ -121,7 +124,7 @@ export function createNotstromIntroScene(urls: () => string[] = notstromIntroVid
         resumeAt = 0;
       } else if (outcome !== undefined) next(outcome);
     },
-    skip: () => finish(false),
+    skip: () => finish(false, "tap on the screen"),
   };
   return scene;
 }

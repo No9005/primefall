@@ -1,4 +1,5 @@
 import { Application, Assets, Container, Graphics, Texture, VideoSource } from "pixi.js";
+import { debugLog, debugMedia } from "./debug-log";
 import { computeFill, computeFit, computeHeightFit, type FillView, type StageFit } from "./stage-fit";
 
 /** What a scene gets from the stage (ADR 0026). */
@@ -557,6 +558,8 @@ async function loadFilmElement(url: string): Promise<HTMLVideoElement> {
   element.preload = "auto";
   for (const attribute of ["playsinline", "webkit-playsinline", "muted"]) element.setAttribute(attribute, "");
   element.src = url;
+  debugLog(`film loads: ${url}`);
+  debugMedia("film", element);
   await new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(() => done(new Error(`The film ${url} did not load in ${FILM_LOAD_TIMEOUT_MS} ms`)), FILM_LOAD_TIMEOUT_MS);
     function done(error?: Error) {
@@ -573,8 +576,9 @@ async function loadFilmElement(url: string): Promise<HTMLVideoElement> {
     if (element.readyState >= 2) return done();
     element.load();
     // A refused play (a browser that blocks it) is not the end: the picture may still load, and the timeout ends the wait.
-    void element.play().catch(() => undefined);
+    void element.play().catch((error: unknown) => debugLog(`film play() refused while loading: ${error instanceof Error ? error.name : String(error)}`));
   }).catch((error: unknown) => {
+    debugLog(`film failed: ${error instanceof Error ? error.message : String(error)}`);
     element.removeAttribute("src");
     element.load();
     throw error;
